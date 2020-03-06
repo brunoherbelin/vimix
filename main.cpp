@@ -1,0 +1,354 @@
+
+#include <stdio.h>
+#include <iostream>
+
+// standalone image loader
+#include "stb_image.h"
+
+// Opengl
+#include <glad/glad.h>
+#include <glm/glm.hpp> 
+
+//  GStreamer
+#include <gst/gst.h>
+#include <gst/gstbin.h>
+#include <gst/gl/gl.h>
+
+// vmix
+#include "defines.h"
+#include "ShaderManager.h"
+#include "SettingsManager.h"
+#include "ResourceManager.h"
+#include "RenderingManager.h"
+#include "UserInterfaceManager.h"
+
+#include "imgui.h"
+#include "ImGuiToolkit.h"
+#include "GstToolkit.h"
+#include "MediaPlayer.h"
+
+#define PI 3.14159265358979323846
+
+MediaPlayer testmedia("testmedia");
+MediaPlayer testmedia2("testmedia2");
+Shader rendering_shader;
+unsigned int vbo, vao, ebo;
+float texturear = 1.0;
+GLuint textureimagepng = 0;
+
+void create_square(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
+{
+
+	// create the triangle
+	float _vertices[] = {
+		-1.f, -1.f, 0.0f, // position vertex 3
+		0.0f, 1.0f, 0.0f,	 // uv vertex 3
+		-1.f, 1.f, 0.0f,	// position vertex 0
+		0.0f, 0.0f, 0.0f,	 // uv vertex 0
+		1.f, -1.f, 0.0f,  // position vertex 2
+		1.0f, 1.0f, 0.0f,	 // uv vertex 2
+		1.f, 1.f, 0.0f,	// position vertex 1
+		1.0f, 0.0f, 0.0f,	 // uv vertex 1
+	};
+	unsigned int _indices[] = { 0, 1, 2, 3 };
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	glGenBuffers(1, &ebo);
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(_indices), _indices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+}
+
+GLuint loadPNG(const char *imagepath, float *aspectrato)
+{
+    int w, h, n, image;
+    /* FIXME: remove once the example supports gl3 and/or gles2 */
+    g_setenv ("GST_GL_API", "opengl", FALSE);
+	unsigned char* img;
+    *aspectrato = 1.f;
+
+	img = stbi_load(imagepath, &w, &h, &n, 3);
+	if (img == NULL) {
+		printf("Failed to load png - %s\n", stbi_failure_reason());
+	 return 0;
+	}
+    GLuint tex;
+    glGenTextures(1, &tex);
+
+	glBindTexture( GL_TEXTURE_2D, tex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 3);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, img);
+
+	stbi_image_free(img);
+	glBindTexture( GL_TEXTURE_2D, 0);
+
+    *aspectrato = static_cast<float>(w) / static_cast<float>(h);
+    return tex;
+}
+
+// from https://gstreamer.freedesktop.org/documentation/application-development/advanced/pipeline-manipulation.html?gi-language=c
+
+void drawMediaBackgound()
+{
+    if ( !testmedia2.isOpen() )
+        return;
+
+
+    // rendering TRIANGLE geometries
+    rendering_shader.use();
+    rendering_shader.setUniform("render_projection", Rendering::Projection());
+    
+
+    testmedia2.Update();
+    testmedia2.Bind();
+
+    // rendering_shader.setUniform("aspectratio", texturear);
+    // glBindTexture(GL_TEXTURE_2D, textureimagepng);
+
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // render TRIANGLE GUI
+    {
+        ImGui::Begin("Image properties");
+
+        static float translation[] = {0.f, 0.f};
+        if (ImGuiToolkit::ButtonIcon(6, 15)) {
+            translation[0] = 0.f;
+            translation[1] = 0.f;
+        }
+        ImGui::SameLine(0, 10);
+        ImGui::SliderFloat2("position", translation, -5.0, 5.0);
+
+        static float rotation = 0.f;
+        if (ImGuiToolkit::ButtonIcon(4, 15))
+            rotation = 0.f;
+        ImGui::SameLine(0, 10); 
+        ImGui::SliderFloat("rotation", &rotation, 0, 2 * PI);
+
+        static float scale = 1.f;
+        if (ImGuiToolkit::ButtonIcon(3, 15))
+            scale = 1.f;
+        ImGui::SameLine(0, 10);
+        ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f);
+
+        // color picker
+        static float color[4] = { 1.0f,1.0f,1.0f,1.0f };
+        if (ImGuiToolkit::ButtonIcon(16, 8)) {
+            color[0] = 1.f;
+            color[1] = 1.f;
+            color[2] = 1.f;
+            color[3] = 1.f;
+        }
+        ImGui::SameLine(0, 10);
+        ImGui::ColorEdit3("color", color);
+
+        static float brightness = 0.0;
+        if (ImGuiToolkit::ButtonIcon(4, 1))
+            brightness = 0.f;
+        ImGui::SameLine(0, 10);
+        ImGui::SliderFloat("brightness", &brightness, -1.0, 1.0, "%.3f", 2.f);
+
+        static float contrast = 0.0;
+        if (ImGuiToolkit::ButtonIcon(2, 1))
+            contrast = 0.f;
+        ImGui::SameLine(0, 10);
+        ImGui::SliderFloat("contrast", &contrast, -1.0, 1.0, "%.3f", 2.f);
+
+        // pass the parameters to the shader
+        rendering_shader.setUniform("scale", scale);
+        rendering_shader.setUniform("rotation", rotation);
+        rendering_shader.setUniform("translation", translation[0], translation[1]);
+        rendering_shader.setUniform("color", color[0], color[1], color[2]);
+        rendering_shader.setUniform("brightness", brightness);
+        rendering_shader.setUniform("contrast", contrast);
+        rendering_shader.setUniform("aspectratio", testmedia2.AspectRatio());
+
+        ImGui::End();
+    }
+
+    // // add gui elements to vmix main window
+    // ImGui::Begin("v-mix");
+    // static float zoom = 0.3f;
+    // if (ImGuiToolkit::ButtonIcon(5, 7))
+    //     zoom = 0.3f;
+    // ImGui::SameLine(0, 10);
+    // if (ImGui::SliderFloat("zoom", &zoom, 0.1f, 10.f, "%.4f", 3.f))
+    //     UserInterface::Log("Zoom %f", zoom);
+    // rendering_shader.setUniform("render_zoom", zoom);
+    // ImGui::End();
+
+
+    Shader::enduse();
+
+}
+
+void drawMediaPlayer()
+{
+    if ( !testmedia.isOpen() )
+        return;
+
+    testmedia.Update();
+
+    ImGui::Begin("Media Player");
+    float width = ImGui::GetContentRegionAvail().x;
+    float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+
+    ImVec2 imagesize ( width, width / testmedia.AspectRatio());
+    ImGui::Image((void*)(intptr_t)testmedia.Texture(), imagesize);
+
+    if (ImGuiToolkit::ButtonIcon(17, 7)) testmedia.Rewind();
+    ImGui::SameLine(0, spacing);
+    if (testmedia.isPlaying()) {
+        // if (ImGuiToolkit::ButtonIcon(2, 8))
+        if (ImGui::Button(ICON_FA_STOP " Stop") )
+            testmedia.Play(false);
+        ImGui::SameLine(0, spacing);
+        ImGui::PushButtonRepeat(true);
+        // if (ImGui::Button(ICON_FA_FAST_FORWARD))
+        if (ImGuiToolkit::ButtonIcon(14, 7))
+        {
+            testmedia.FastForward ();
+        }
+        ImGui::PopButtonRepeat();
+    } else {
+        // if (ImGuiToolkit::ButtonIcon(9, 7))
+        if (ImGui::Button(ICON_FA_PLAY "  Play") )
+            testmedia.Play(true);
+        ImGui::SameLine(0, spacing);
+        if (ImGuiToolkit::ButtonIcon(8, 0)) testmedia.SeekNextFrame();
+    }
+
+    ImGui::SameLine(0, spacing * 2.f);
+    ImGui::Dummy(ImVec2(width - 700.0, 0));  // right align
+
+    static int current_loop = 1;
+    static const char* loop_names[3] = { "Stop", "Rewind", "Bounce" };
+    const char* current_loop_name = loop_names[current_loop];
+    ImGui::SameLine(0, spacing);
+    if (current_loop == 0)  ImGuiToolkit::Icon(0, 15);
+    else if (current_loop == 1)  ImGuiToolkit::Icon(1, 15);
+    else ImGuiToolkit::Icon(19, 14);
+    ImGui::SameLine(0, spacing);
+    ImGui::SetNextItemWidth(90);
+    if ( ImGui::SliderInt("", &current_loop, 0, 2, current_loop_name) )
+        testmedia.setLoop( (MediaPlayer::LoopMode) current_loop );
+
+    float speed = static_cast<float>(testmedia.PlaySpeed());
+    ImGui::SameLine(0, spacing);
+    ImGui::SetNextItemWidth(270);
+    // ImGui::SetNextItemWidth(width - 90.0);
+    if (ImGui::SliderFloat( "Speed", &speed, -10.f, 10.f, "x %.1f", 2.f))
+        testmedia.SetPlaySpeed( static_cast<double>(speed) );
+    ImGui::SameLine(0, spacing);
+    if (ImGuiToolkit::ButtonIcon(19, 15)) {
+        speed = 1.f;
+        testmedia.SetPlaySpeed( static_cast<double>(speed) );
+    }
+
+    //ImGuiToolkit::Bar(0.6f, 0.1, 0.8, 0.0, 1.0, "time", true);
+
+    guint64 t = testmedia.Position();
+    guint64 begin = testmedia.Duration() / 5;
+    guint64 end = 4 * testmedia.Duration() / 5;
+    if (ImGuiToolkit::TimelineSlider( "timeline", &t, begin, end, testmedia.Duration(), testmedia.FrameDuration()) )
+    {
+        testmedia.SeekTo(t);
+
+    }
+
+    ImGui::Text("Dimension %d x %d", testmedia.Width(), testmedia.Height());
+    ImGui::Text("Framerate %.2f / %.2f", testmedia.UpdateFrameRate() , testmedia.FrameRate() );
+
+    ImGui::End();
+}
+
+int main(int, char**)
+{
+    ///
+    /// Settings
+    ///
+    Settings::Load();
+
+    ///
+    /// RENDERING INIT
+    ///
+    if ( !Rendering::Init() )
+        return 1;
+
+    ///
+    /// UI INIT
+    ///
+    if ( !UserInterface::Init() )
+        return 1;
+
+    ///
+    /// GStreamer
+    ///
+    gst_debug_set_active(TRUE);
+    gst_debug_set_default_threshold (GST_LEVEL_WARNING);
+
+    // 1
+    // testmedia.Open("file:///home/bhbn/Images/2014-10-18_16-46-47.jpg");
+    // testmedia.Open("file:///home/bhbn/Videos/balls.gif");
+    // testmedia.Open("file:///home/bhbn/Videos/SIGGRAPH92_1.avi");
+    // testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
+    // testmedia.Open("file:///home/bhbn/Videos/iss.mov");
+    // testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");    
+    testmedia.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
+
+    testmedia.Play(false);
+    // Add draw callbacks to the Rendering
+    Rendering::AddDrawCallback(drawMediaPlayer);
+
+    // 2
+    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
+    // testmedia2.Open("file:///home/bhbn/Videos/balls.gif");
+    // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
+    testmedia2.Play(true);
+    // create our geometries
+	create_square(vbo, vao, ebo);
+    // Add draw callbacks to the Rendering
+    Rendering::AddDrawCallback(drawMediaBackgound);
+
+    // // load an image
+    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
+
+	// init shader
+	rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");
+
+    UserInterface::OpenTextEditor( Resource::getText("shaders/texture-shader.vs") );
+
+    // Main loop
+    while ( Rendering::isActive() )
+    {
+
+        Rendering::Draw();
+    }
+
+    testmedia.Close();
+    testmedia2.Close();
+
+    UserInterface::Terminate();
+    Rendering::Terminate();
+
+    Settings::Save();
+
+    return 0;
+}
