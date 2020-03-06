@@ -1,0 +1,3 @@
+[submodule "ext/tinyfiledialogs"]
+	path = ext/tinyfiledialogs
+	url = https://github.com/native-toolkit/tinyfiledialogs.git
