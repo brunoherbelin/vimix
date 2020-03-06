@@ -13,3 +13,6 @@
 [submodule "ext/imgui"]
 	path = ext/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "ext/Dirent"]
+	path = ext/Dirent
+	url = https://github.com/tronkko/dirent.git
