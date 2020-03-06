@@ -1,3 +1,15 @@
 [submodule "ext/tinyfiledialogs"]
 	path = ext/tinyfiledialogs
 	url = https://github.com/native-toolkit/tinyfiledialogs.git
+[submodule "ext/tinyxml2"]
+	path = ext/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git
+[submodule "ext/ImGuiColorTextEdit"]
+	path = ext/ImGuiColorTextEdit
+	url = https://github.com/BalazsJako/ImGuiColorTextEdit.git
+[submodule "ext/stb"]
+	path = ext/stb
+	url = https://github.com/nothings/stb.git
+[submodule "ext/imgui"]
+	path = ext/imgui
+	url = https://github.com/ocornut/imgui.git
