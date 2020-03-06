@@ -127,7 +127,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
 
     // user input
     const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputTextIsActive(id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
     if (!temp_input_is_active)
     {
         const bool focus_requested = ImGui::FocusableItemRegister(window, id);
