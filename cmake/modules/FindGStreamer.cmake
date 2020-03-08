@@ -79,7 +79,7 @@ foreach(_component ${GStreamer_FIND_COMPONENTS})
     elseif (${_component} STREQUAL "net")
         _find_gst_component(NET gstnet.h)
     else()
-        message (AUTHOR_WARNING "FindGStreamerPluginsBase.cmake: Invalid component \"${_component}\" was specified")
+        message (AUTHOR_WARNING "FindGStreamer.cmake: Invalid component \"${_component}\" was specified")
     endif()
 endforeach()
 

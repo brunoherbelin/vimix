@@ -279,6 +279,8 @@ void drawMediaPlayer()
     ImGui::End();
 }
 
+
+
 int main(int, char**)
 {
     ///
@@ -304,22 +306,24 @@ int main(int, char**)
     gst_debug_set_active(TRUE);
     gst_debug_set_default_threshold (GST_LEVEL_WARNING);
 
+
     // 1
     // testmedia.Open("file:///home/bhbn/Images/2014-10-18_16-46-47.jpg");
     // testmedia.Open("file:///home/bhbn/Videos/balls.gif");
     // testmedia.Open("file:///home/bhbn/Videos/SIGGRAPH92_1.avi");
     // testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
-    // testmedia.Open("file:///home/bhbn/Videos/iss.mov");
-    // testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");    
-    testmedia.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
+     testmedia.Open("file:///home/bhbn/Videos/iss.mov");
+    // testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
+//    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
+//    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
 
     testmedia.Play(false);
     // Add draw callbacks to the Rendering
     Rendering::AddDrawCallback(drawMediaPlayer);
 
     // 2
-    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
-    // testmedia2.Open("file:///home/bhbn/Videos/balls.gif");
+//    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
+     testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
     // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
     testmedia2.Play(true);
     // create our geometries
@@ -328,7 +332,7 @@ int main(int, char**)
     Rendering::AddDrawCallback(drawMediaBackgound);
 
     // // load an image
-    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
+//    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
 
 	// init shader
 	rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");

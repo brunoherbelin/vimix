@@ -19,6 +19,8 @@ class MainWindow
 {
     bool show_overlay_stats;
     bool show_app_about;
+    bool show_gst_about;
+    bool show_opengl_about;
     bool show_demo_window;
     bool show_logs_window;
     bool show_icons_window;

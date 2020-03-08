@@ -55,6 +55,7 @@ macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamer opengl library"
 "${GSTREAMER_GL_LIBRARY}"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
+
 # Various preprocessor definitions for GST
 add_definitions(-DGST_DISABLE_XML -DGST_DISABLE_LOADSAVE)
 
@@ -116,10 +117,8 @@ message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git
 #
 # ImGui Color Text Editor
 #
-set(TEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
-set(TEXTEDIT_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp
-)
+set(IMGUITEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
+add_library(IMGUITEXTEDIT "${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp")
 message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${TEXTEDIT_INCLUDE_DIR}.")
 
 #
@@ -188,7 +187,7 @@ include_directories(
     ${GLM_INCLUDE_DIRS}
     ${IMGUI_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}/examples
-    ${TEXTEDIT_INCLUDE_DIR}
+    ${IMGUITEXTEDIT_INCLUDE_DIR}
     ${TINYXML2_INCLUDE_DIR}
     ${TINYFD_INCLUDE_DIR}
     ${STB_INCLUDE_DIR}
@@ -259,8 +258,9 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${PNG_LIBRARY}
     ${THREAD_LIBRARY}
     TINYXML2
-    IMGUI
     TINYFD
+    IMGUI
+    IMGUITEXTEDIT
     vmix::rc
 )
 

@@ -39,6 +39,7 @@
 #include "SettingsManager.h"
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
+#include "GstToolkit.h"
 
 MessageBox UserInterface::warnings;
 MainWindow UserInterface::mainwindow;
@@ -459,6 +460,8 @@ MainWindow::MainWindow()
 {
     show_overlay_stats = false;
     show_app_about = false;
+    show_gst_about = false;
+    show_opengl_about = false;
     show_demo_window = false;
     show_logs_window = false;
     show_icons_window = false;
@@ -521,6 +524,158 @@ void MainWindow::StartScreenshot()
     screenshot_step = 1;
 }
 
+static void ShowAboutOpengl(bool* p_open)
+{
+    if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
+    ImGui::Text("%s %s", glGetString(GL_RENDERER), glGetString(GL_VENDOR));
+    ImGui::PopFont();
+    ImGui::Separator();
+    ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
+
+    if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://www.opengl.org") )
+        OpenWebpage("https://www.opengl.org");
+    ImGui::SameLine();
+
+//    static std::string allextensions( glGetString(GL_EXTENSIONS) );
+
+    static bool show_opengl_info = false;
+    ImGui::Checkbox( ICON_FA_CHEVRON_DOWN " Show details", &show_opengl_info);
+    if (show_opengl_info)
+    {
+        ImGui::Separator();
+        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+        ImGui::SameLine(0.f, 60.f);
+        static char _openglfilter[64] = "";
+        ImGui::InputText("Filter", _openglfilter, 64);
+        ImGui::SameLine();
+        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+            _openglfilter[0] = '\0';
+        std::string filter(_openglfilter);
+
+        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
+        if (copy_to_clipboard)
+        {
+            ImGui::LogToClipboard();
+            ImGui::LogText("```\n");
+        }
+
+        ImGui::Text("OpenGL Extensions (runtime) :");
+
+        GLint numExtensions = 0;
+        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+        for (int i = 0; i < numExtensions; ++i){
+            std::string ext( (char*) glGetStringi(GL_EXTENSIONS, i) );
+            if ( filter.empty() || ext.find(filter) != std::string::npos )
+                ImGui::Text("%s", ext.c_str());
+        }
+
+
+        if (copy_to_clipboard)
+        {
+            ImGui::LogText("\n```\n");
+            ImGui::LogFinish();
+        }
+
+        ImGui::EndChildFrame();
+    }
+    ImGui::End();
+}
+
+
+
+static void ShowAboutGStreamer(bool* p_open)
+{
+    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
+    ImGui::PopFont();
+    ImGui::Separator();
+    ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
+    ImGui::Text("GStreamer is licensed under the LGPL License.");
+
+    if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://gstreamer.freedesktop.org") )
+        OpenWebpage("https://gstreamer.freedesktop.org/");
+    ImGui::SameLine();
+
+    static bool show_config_info = false;
+    ImGui::Checkbox( ICON_FA_CHEVRON_DOWN " Show details", &show_config_info);
+    if (show_config_info)
+    {
+        ImGui::Separator();
+        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+        ImGui::SameLine(0.f, 60.f);
+        static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
+        ImGui::SameLine();
+        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+            _filter[0] = '\0';
+        std::string filter(_filter);
+
+        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
+        if (copy_to_clipboard)
+        {
+            ImGui::LogToClipboard();
+            ImGui::LogText("```\n");
+        }
+
+        ImGui::Text("GStreamer Plugins & features (runtime) :");
+
+        std::list<std::string> filteredlist;
+
+        // filter
+        if ( filter.empty() )
+            filteredlist = GstToolkit::all_plugins();
+        else {
+            std::list<std::string> plist = GstToolkit::all_plugins();
+            for (auto const& i: plist) {
+                // add plugin if plugin name match
+                if ( i.find(filter) != std::string::npos )
+                    filteredlist.push_back( i.c_str() );
+                // check in features
+                std::list<std::string> flist = GstToolkit::all_plugin_features(i);
+                for (auto const& j: flist) {
+                    // add plugin if feature name matches
+                    if ( j.find(filter) != std::string::npos )
+                        filteredlist.push_back( i.c_str() );
+                }
+            }
+        }
+
+        // display list
+        for (auto const& t: filteredlist) {
+            ImGui::Text("> %s", t.c_str());
+            std::list<std::string> flist = GstToolkit::all_plugin_features(t);
+            for (auto const& j: flist) {
+                if ( j.find(filter) != std::string::npos )
+                {
+                    ImGui::Text(" -   %s", j.c_str());
+                }
+            }
+        }
+
+        if (copy_to_clipboard)
+        {
+            ImGui::LogText("\n```\n");
+            ImGui::LogFinish();
+        }
+
+        ImGui::EndChildFrame();
+    }
+    ImGui::End();
+}
+
+
 void MainWindow::Render()
 {
     // We specify a default position/size in case there's no data in the .ini file. Typically this isn't required! We only do it to make the Demo applications a little more welcoming.
@@ -565,12 +720,15 @@ void MainWindow::Render()
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", NULL) )
                 StartScreenshot();
 
-            ImGui::MenuItem("--", NULL, false, false);
+            ImGui::MenuItem("About", NULL, false, false);
+            ImGui::MenuItem("About ImGui", NULL, &show_app_about);
+            ImGui::MenuItem("About OpenGL", NULL, &show_opengl_about);
+            ImGui::MenuItem("About GStreamer", NULL, &show_gst_about);
+
+            ImGui::MenuItem("Dev", NULL, false, false);
             ImGui::MenuItem("Icons", NULL, &show_icons_window);
             ImGui::MenuItem("Demo ImGui", NULL, &show_demo_window);
-            ImGui::MenuItem("About ImGui", NULL, &show_app_about);
-            if ( ImGui::MenuItem("About Gstreamer", NULL) )
-                OpenWebpage("https://gstreamer.freedesktop.org/");
+
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -608,8 +766,12 @@ void MainWindow::Render()
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
-    if (show_app_about)               
-        ImGui::ShowAboutWindow(&show_app_about); 
+    if (show_app_about)
+        ImGui::ShowAboutWindow(&show_app_about);
+    if (show_gst_about)
+        ShowAboutGStreamer(&show_gst_about);
+    if (show_opengl_about)
+        ShowAboutOpengl(&show_opengl_about);
 
     // taking screenshot is in 3 steps
     // 1) wait 1 frame that the menu / action showing button to take screenshot disapears
