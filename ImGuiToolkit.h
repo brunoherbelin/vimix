@@ -13,7 +13,8 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
     void ToggleButton( const char* label, bool& toggle );
     void Bar(float value, float in, float out, float min, float max, const char* title, bool expand);
-    bool TimelineSlider(const char* label, guint64 *time, guint64 begin, guint64 end, guint64 duration, guint64 step);
+    bool TimelineSlider(const char* label, guint64 *time,
+                        guint64 begin, guint64 end, guint64 duration, guint64 step);
     
     // fonts from ressources 'fonts/'
     typedef enum {

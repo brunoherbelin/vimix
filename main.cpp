@@ -213,26 +213,34 @@ void drawMediaPlayer()
     ImVec2 imagesize ( width, width / testmedia.AspectRatio());
     ImGui::Image((void*)(intptr_t)testmedia.Texture(), imagesize);
 
-    if (ImGuiToolkit::ButtonIcon(17, 7)) testmedia.Rewind();
+    if (ImGui::Button(ICON_FA_FAST_BACKWARD))
+        testmedia.Rewind();
     ImGui::SameLine(0, spacing);
-    if (testmedia.isPlaying()) {
-        // if (ImGuiToolkit::ButtonIcon(2, 8))
+
+    static bool media_playing = testmedia.isPlaying();
+
+    // display buttons Play/Stop depending on current playing state
+    if (media_playing) {
+
         if (ImGui::Button(ICON_FA_STOP " Stop") )
             testmedia.Play(false);
         ImGui::SameLine(0, spacing);
+
         ImGui::PushButtonRepeat(true);
-        // if (ImGui::Button(ICON_FA_FAST_FORWARD))
-        if (ImGuiToolkit::ButtonIcon(14, 7))
-        {
+         if (ImGui::Button(ICON_FA_FORWARD))
             testmedia.FastForward ();
-        }
         ImGui::PopButtonRepeat();
-    } else {
-        // if (ImGuiToolkit::ButtonIcon(9, 7))
+    }
+    else {
+
         if (ImGui::Button(ICON_FA_PLAY "  Play") )
             testmedia.Play(true);
         ImGui::SameLine(0, spacing);
-        if (ImGuiToolkit::ButtonIcon(8, 0)) testmedia.SeekNextFrame();
+
+        ImGui::PushButtonRepeat(true);
+        if (ImGui::Button(ICON_FA_STEP_FORWARD))
+            testmedia.SeekNextFrame();
+        ImGui::PopButtonRepeat();
     }
 
     ImGui::SameLine(0, spacing * 2.f);
@@ -264,15 +272,33 @@ void drawMediaPlayer()
 
     //ImGuiToolkit::Bar(0.6f, 0.1, 0.8, 0.0, 1.0, "time", true);
 
-    guint64 t = testmedia.Position();
+    guint64 current_t = testmedia.Position();
+    guint64 t = current_t;
     guint64 begin = testmedia.Duration() / 5;
     guint64 end = 4 * testmedia.Duration() / 5;
-    if (ImGuiToolkit::TimelineSlider( "timeline", &t, begin, end, testmedia.Duration(), testmedia.FrameDuration()) )
-    {
+
+    static bool slider_was_pressed = false;
+    bool slider_pressed = ImGuiToolkit::TimelineSlider( "timeline", &t, begin, end,
+                                                        testmedia.Duration(), testmedia.FrameDuration());
+
+    // change status only
+    if (slider_pressed != slider_was_pressed) {
+
+        // if was playing, pause during slider press
+        if ( media_playing )
+            testmedia.Play( !slider_pressed );
+
+        slider_was_pressed = slider_pressed;
+    }
+    // normal update of media status
+    if (!slider_was_pressed)
+        media_playing = testmedia.isPlaying();
+
+    // seek only if position is new
+    if (current_t != t)
         testmedia.SeekTo(t);
 
-    }
-
+    // display info
     ImGui::Text("Dimension %d x %d", testmedia.Width(), testmedia.Height());
     ImGui::Text("Framerate %.2f / %.2f", testmedia.UpdateFrameRate() , testmedia.FrameRate() );
 

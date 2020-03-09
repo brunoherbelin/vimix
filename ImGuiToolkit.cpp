@@ -100,12 +100,13 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
     static guint64 optimal_tick_marks[] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE };
 
 
-    bool value_changed = false;
+    bool value_return = false;
 
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return value_changed;
+    if (window->SkipItems) {
+        return value_return;
+    }
 
     // get style
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -119,7 +120,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
     ImRect bbox(pos, pos + size);
     ImGui::ItemSize(size, style.FramePadding.y);
     if (!ImGui::ItemAdd(bbox, id))
-        return value_changed;
+        return value_return;
 
     // cursor size
     const float cursor_scale = 1.f;
@@ -138,6 +139,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
             ImGui::SetFocusID(id, window);
             ImGui::FocusWindow(window);
         }
+        value_return = hovered && (clicked || g.IO.MouseDownDuration[0] > 0.f);
     }
 
     // Render bounding box
@@ -215,7 +217,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
     float time_slider = time_; 
     float time_zero = 0.f;
     float time_end = 1.f;
-    value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero, 
+    bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
                                           &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_bb);
     if (value_changed){
         //ImGuiToolkit::Log("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
@@ -233,7 +235,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
     pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width * 0.5f, 0.f);
     ImGui::RenderArrow(window->DrawList, pos, color, ImGuiDir_Up, cursor_scale);
 
-    return value_changed;
+    return value_return;
 }
 
 
