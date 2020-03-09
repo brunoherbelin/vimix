@@ -222,7 +222,7 @@ void drawMediaPlayer()
     // display buttons Play/Stop depending on current playing state
     if (media_playing) {
 
-        if (ImGui::Button(ICON_FA_STOP " Stop") )
+        if (ImGui::Button(ICON_FA_STOP " Stop"))
             testmedia.Play(false);
         ImGui::SameLine(0, spacing);
 
@@ -233,7 +233,7 @@ void drawMediaPlayer()
     }
     else {
 
-        if (ImGui::Button(ICON_FA_PLAY "  Play") )
+        if (ImGui::Button(ICON_FA_PLAY "  Play"))
             testmedia.Play(true);
         ImGui::SameLine(0, spacing);
 
@@ -269,8 +269,6 @@ void drawMediaPlayer()
         speed = 1.f;
         testmedia.SetPlaySpeed( static_cast<double>(speed) );
     }
-
-    //ImGuiToolkit::Bar(0.6f, 0.1, 0.8, 0.0, 1.0, "time", true);
 
     guint64 current_t = testmedia.Position();
     guint64 t = current_t;
@@ -329,9 +327,10 @@ int main(int, char**)
     ///
     /// GStreamer
     ///
+#ifndef NDEBUG
     gst_debug_set_active(TRUE);
     gst_debug_set_default_threshold (GST_LEVEL_WARNING);
-
+#endif
 
     // 1
     // testmedia.Open("file:///home/bhbn/Images/2014-10-18_16-46-47.jpg");

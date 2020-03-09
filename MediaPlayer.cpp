@@ -17,6 +17,10 @@
 #include <gst/pbutils/gstdiscoverer.h>
 #include <gst/app/gstappsink.h>
 
+#ifndef NDEBUG
+#define MEDIA_PLAYER_DEBUG
+#endif
+
 // opengl texture
 static GLuint tex_index_black = 0;
 static GstStaticCaps gl_render_caps = GST_STATIC_CAPS ("video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D");
@@ -92,7 +96,7 @@ void MediaPlayer::Open(string uri)
     GError *err = NULL;
     discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
     if (!discoverer) {
-        Log::Info("Error creating discoverer instance: %s\n", err->message);
+        UserInterface::Warning("Error creating discoverer instance: %s\n", err->message);
         g_clear_error (&err);
         return;
     }
@@ -174,9 +178,8 @@ void MediaPlayer::execute_open()
         UserInterface::Warning("%s: Failed to open media %s \n%s\n", gst_element_get_name(pipeline), uri.c_str(), discoverer_message.str().c_str());
     }
     else {
-        Log::Info("%s: Media Player openned %s\n", gst_element_get_name(pipeline), uri.c_str());
-
         // all good
+        Log::Info("%s: Media Player openned %s\n", gst_element_get_name(pipeline), uri.c_str());
         ready = true;
     }
 
@@ -200,7 +203,7 @@ void MediaPlayer::Close()
     if (!ready) 
         return;
 
-    /* clean up GST */
+    // clean up GST
     if (pipeline != nullptr) {
         gst_element_set_state (pipeline, GST_STATE_NULL);
         gst_object_unref (pipeline);
@@ -261,11 +264,18 @@ GstClockTime MediaPlayer::Position()
 
 void MediaPlayer::Play(bool on)
 {
+    // cannot play an image
     if (isimage)
         return;
 
     // request state 
-    desired_state = on ? GST_STATE_PLAYING : GST_STATE_PAUSED;
+    GstState requested_state = on ? GST_STATE_PLAYING : GST_STATE_PAUSED;
+    // ignore if requesting twice same state
+    if (desired_state == requested_state)
+        return;
+
+    // accept request to the desired state
+    desired_state = requested_state;
 
     // if not ready yet, the requested state will be handled later
     if ( pipeline == nullptr  )
@@ -281,11 +291,13 @@ void MediaPlayer::Play(bool on)
     GstStateChangeReturn ret = gst_element_set_state (pipeline, desired_state);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         UserInterface::Warning("Failed to start up Media %s\n", gst_element_get_name(pipeline));
-    }
+    }    
+#ifdef MEDIA_PLAYER_DEBUG
     else if (on)
         Log::Info("Start Media %s\n", gst_element_get_name(pipeline));
     else
         Log::Info("Stop Media %s\n", gst_element_get_name(pipeline));
+#endif
 }
 
 bool MediaPlayer::isPlaying() const
@@ -446,42 +458,42 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 
     // seek position : default to target
     GstClockTime seek_pos = target;
-    // seek speed rate
-    gdouble seek_rate = rate;
-    // seek with flush (always)
-    int seek_flags = GST_SEEK_FLAG_FLUSH;
 
     // no target given
     if (target == GST_CLOCK_TIME_NONE) 
         // create seek event with current position (rate changed ?)
-        seek_pos = position;
+        seek_pos = Position();
     // target is given but useless
-    else if (target == Position()) 
+    else if ( ABS_DIFF(target, Position()) < frame_duration) {
         // ignore request
+#ifdef MEDIA_PLAYER_DEBUG
+        Log::Info("%s: Media Player ignored seek to current position\n", id);
+#endif
         return;
-    
+    }
+
+    // seek with flush (always)
+    int seek_flags = GST_SEEK_FLAG_FLUSH;
     // seek with trick mode if fast speed
-    if ( ABS(seek_rate) > 2.0 )
+    if ( ABS(rate) > 2.0 )
         seek_flags |= GST_SEEK_FLAG_TRICKMODE | GST_SEEK_FLAG_TRICKMODE_NO_AUDIO;
 
     // create seek event depending on direction
-    if (seek_rate > 0) {
-        seek_event = gst_event_new_seek (seek_rate, GST_FORMAT_TIME, (GstSeekFlags) seek_flags, 
+    if (rate > 0) {
+        seek_event = gst_event_new_seek (rate, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
             GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_END, 0);
     } else {
-        seek_event = gst_event_new_seek (seek_rate, GST_FORMAT_TIME, (GstSeekFlags) seek_flags, 
+        seek_event = gst_event_new_seek (rate, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
             GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_SET, seek_pos);
     }
 
-    /* Send the event */
+    // Send the event
     if (seek_event && !gst_element_send_event(pipeline, seek_event) )
         Log::Info("Seek failed in Media %s\n", gst_element_get_name(pipeline));
+#ifdef MEDIA_PLAYER_DEBUG
     else
-    {
-        Log::Info("Seek Media %s %ld %f\n", gst_element_get_name(pipeline), seek_pos, seek_rate);
-    }
-        
-
+        Log::Info("Seek Media %s %ld %f\n", gst_element_get_name(pipeline), seek_pos, rate);
+#endif
 }
 
 void MediaPlayer::SetPlaySpeed(double s)
@@ -551,32 +563,6 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
     return true;
 }
 
-GstFlowReturn MediaPlayer::callback_get_last_sample_video (GstElement *bin, MediaPlayer *m)
-{   
-    GstFlowReturn ret = GST_FLOW_OK;
-    
-    if (m && !m->v_frame_is_full) {
-        // get last sample (non blocking)
-        GstSample *sample = nullptr;
-        g_object_get (bin, "last-sample", &sample, NULL);
-
-        if (sample != nullptr) {
-
-            GstBuffer *buf;
-            buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
-            gst_sample_unref (sample);
-
-            if ( !m->fill_v_frame(buf) )
-                ret = GST_FLOW_ERROR;
-            gst_buffer_unref (buf);
-
-        }
-    }
-
-    return ret;
-}
-
-
 GstFlowReturn MediaPlayer::callback_pull_sample_video (GstElement *bin, MediaPlayer *m)
 {
     GstFlowReturn ret = GST_FLOW_OK;
@@ -631,11 +617,9 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
     GstDiscovererResult result = gst_discoverer_info_get_result (info);
     switch (result) {
         case GST_DISCOVERER_URI_INVALID:
-        // g_print ("Invalid URI '%s'\n", uri);
             m->discoverer_message << "Invalid URI: " << uri;
         break;
         case GST_DISCOVERER_ERROR:
-        // g_print ("Discoverer error: %s\n", err->message);
             m->discoverer_message << "Error: " << err->message;
         break;
         case GST_DISCOVERER_TIMEOUT:
@@ -726,246 +710,3 @@ int TimeCounter::framecount() const
     return nbFrames;
 }
 
-
-
-
-
-    // /* TESTING  */
-
-
-// static void cb_new_pad (GstElement* decodebin, GstPad* pad, GstElement* target)
-// {
-//     GstPad* target_pad = gst_element_get_static_pad (target, "sink");
-//     if (!target_pad)
-//         g_warning ("target has no sink\n");
-
-//     //only link once
-//     if (GST_PAD_IS_LINKED (target_pad))
-//     {
-//         gst_object_unref (target_pad);
-//         g_warning ("target not free\n");
-//         return;
-//     }
-
-//     GstCaps* caps = gst_pad_get_current_caps (pad);
-//     GstStructure* str = gst_caps_get_structure (caps, 0);
-
-//     if (!g_strrstr (gst_structure_get_name (str), "video"))
-//     {
-//         gst_caps_unref (caps);
-//         gst_object_unref (target_pad);
-//         g_warning ("decodebin not a video %s\n", gst_structure_get_name (str));
-//         return;
-//     }
-//     gst_caps_unref (caps);
-
-//     GstPadLinkReturn ret = gst_pad_link (pad, target_pad);
-//     if (ret != GST_PAD_LINK_OK)
-//         g_warning ("Failed to link decodebin %s with target %s ! %d\n", gst_pad_get_name(pad), gst_pad_get_name(target_pad), ret);
-            
-// }
-
-    // GstElement* videosrc = gst_element_factory_make ("filesrc", "filesrc0");
-    // GstElement* decodebin = gst_element_factory_make ("decodebin", "decodebin0");
-    // // GstElement* convertbin = gst_element_factory_make ("videoconvert", "converterbin0");
-    // GstElement* convertbin = gst_element_factory_make ("glupload", "converterbin0");
-    // // GstElement* glimagesink  = gst_element_factory_make ("glimagesink", "glimagesink0");
-    // GstElement* glimagesink  = gst_element_factory_make ("glimagesinkelement", "glimagesink0");
-    // // GstElement* glimagesink  = gst_element_factory_make ("fakesink", "glimagesink0");
-
-    // if (!videosrc || !decodebin || !convertbin || !glimagesink)
-    // {
-    //     UserInterface::Error ("A Gstreamer element could not be found \n");
-    //     return 1;
-    // }
-    // /* configure elements */
-    // g_object_set(G_OBJECT(videosrc), "num-buffers", 800, NULL);
-    // g_object_set(G_OBJECT(videosrc), "location", video_location.c_str(), NULL);
-    // g_signal_connect(G_OBJECT(decodebin), "drained", G_CALLBACK (endVideoCallback), NULL);
-
-    // // glimagesink
-    // // g_signal_connect(G_OBJECT(glimagesink), "client-draw", G_CALLBACK (drawCallback), NULL);
-
-    // // glimagesinkelement
-    // // g_signal_connect(G_OBJECT(glimagesink), "client-reshape", G_CALLBACK (scaleTextureCallback), NULL);
-    // g_signal_connect(G_OBJECT(glimagesink), "client-draw", G_CALLBACK (textureCallback), NULL);
-    // // // g_object_set(G_OBJECT(glimagesink), "show-preroll-frame", TRUE, NULL);
-    // g_object_set(G_OBJECT(glimagesink), "sync", TRUE, NULL);
-    // g_object_set(G_OBJECT(glimagesink), "handle-events", FALSE, NULL);
-    
-    // // fakesink
-    // // g_signal_connect(G_OBJECT(glimagesink), "handoff", G_CALLBACK (fakesinkCallback), NULL);
-    // // g_object_set(G_OBJECT(glimagesink), "signal-handoffs", TRUE, NULL);
-    // // g_object_set(G_OBJECT(glimagesink), "sync", TRUE, NULL);
-
-    // /* add elements */
-    // gst_bin_add_many (GST_BIN (pipeline), videosrc, decodebin, convertbin, glimagesink, NULL);
-
-    // /* link elements */
-	// if (!gst_element_link (videosrc, decodebin) )
-	// // if (!gst_element_link_pads (videosrc, "src", decodebin, "sink") )
-    // {
-    //     g_warning ("Failed to link videosrc to decodebin !\n");
-    //     return -1;
-    // }
-
-    // g_signal_connect (decodebin, "pad-added", G_CALLBACK (cb_new_pad), convertbin);
-
-    // if(!gst_element_link (convertbin, glimagesink))
-    // {
-    //     g_warning("Failed to link convertbin to glimagesink!\n") ;
-    //     return -1 ;
-    // }
-
-
-// static gboolean drawTextureCallback (GstElement *object, guint texture,  guint width, guint height, GstElement *pipeline)
-// {
-//     //printStreamPosition(pipeline);
-
-//     texture_gst = texture;
-//     //std::cerr << "Texture " << width << " x " << height << std::endl;
-    
-//     return TRUE;
-// }
-
-// static void fakesinkCallback (GstElement *bin, GstBuffer  buffer, GstPad  pad, GstElement *pipeline)
-// {
-//     static GstClockTime current_time;
-//     static GstClockTime last_time = gst_util_get_timestamp();
-//     static gint nbFrames = 0;
-
-//     current_time = gst_util_get_timestamp ();
-//     nbFrames++ ;
-    
-//     if ((current_time - last_time) >= GST_SECOND)
-//     {
-//         //std::cerr << nbFrames << " frame / s" <<  std::endl;
-
-//       //  GstElement *pipeline = (GstElement*)data;
-
-//         last_time = current_time;
-//         nbFrames = 0;
-
-//         // if (!gst_element_seek (pipeline, 1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-//         //                         GST_SEEK_TYPE_SET, 0,
-//         //                         GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
-//         //     g_print ("Seek failed!\n");
-//         // }
-
-//     }
-
-// }
-
-// static void endVideoCallback (GstElement *bin, GstElement *pipeline)
-// {
-//     g_warning ("end of stream %s\n", gst_element_get_name(pipeline));
-
-//     printStreamPosition(pipeline);
-
-// }
-
-    // video
-
-    // gchar *descr;
-    // // descr = g_strdup_printf ("videotestsrc pattern=ball ! video/x-raw,format=RGBA ! glimagesink");
-    // // descr = g_strdup_printf ("videotestsrc ! glupload ! glfilterapp name=capture ! fakesink name=sink");
-    // descr = g_strdup_printf ("uridecodebin uri=file:///home/bhbn/Videos/glmixervideo180324111104.mp4 name=decoder ! videoconvert ! "
-    //                          "video/x-raw,format=RGBA ! glupload ! glfilterapp name=capture ! fakesink name=sink");
-    // g_print ("pipeline: %s\n", descr);
-
-    // GError *error = NULL;
-    // GstElement *pipeline = gst_parse_launch (descr, &error);
-    // if (error != NULL) {
-    //     g_print ("could not construct pipeline: %s\n", error->message);
-    //     g_clear_error (&error);
-    //     exit (-1);
-    // }
-    // g_object_set(G_OBJECT(pipeline), "name", "vmixpipeline", NULL);
-
-    // GstElement *capture = gst_bin_get_by_name (GST_BIN (pipeline), "capture");
-    // if (capture)
-    //     g_signal_connect(G_OBJECT(capture), "client-draw", G_CALLBACK (drawTextureCallback), pipeline);
-    // GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline), "sink");
-    // if (sink) {
-    //     g_signal_connect(G_OBJECT(sink), "handoff", G_CALLBACK (fakesinkCallback), pipeline);
-    //     g_object_set(G_OBJECT(sink), "signal-handoffs", TRUE, NULL);
-    //     g_object_set(G_OBJECT(sink), "sync", TRUE, NULL);
-    // }
-    // GstElement *decoder = gst_bin_get_by_name (GST_BIN (pipeline), "decoder");
-    // if (decoder)
-    //     g_signal_connect(G_OBJECT(decoder), "drained", G_CALLBACK (endVideoCallback), pipeline);
-    //     // g_signal_connect(G_OBJECT(decoder), "about-to-finish", G_CALLBACK (endVideoCallback), pipeline);
-
-    // // g_timeout_add (200, (GSourceFunc) printStreamPosition, pipeline);
-
-    // // /* WORKING PIPELINE PURE OGL */
-    // // GstElement* pipeline = gst_pipeline_new ("pipeline");
-    // // GstElement *src = gst_element_factory_make ("gltestsrc", NULL);
-
-    // // // GstElement *sink = gst_element_factory_make ("glimagesinkelement", NULL);
-    // // // g_signal_connect(G_OBJECT(sink), "client-draw", G_CALLBACK (drawCallback), NULL);
-    // // // g_object_set(G_OBJECT(sink), "show-preroll-frame", FALSE, NULL);
-    // // // g_object_set(G_OBJECT(sink), "handle-events", FALSE, NULL);
-
-    // // GstElement *capture = gst_element_factory_make ("glfilterapp", NULL);
-    // // g_signal_connect(G_OBJECT(capture), "client-draw", G_CALLBACK (drawTextureCallback), NULL);
-    // // GstElement* sink  = gst_element_factory_make ("fakesink", NULL);
-    // // g_signal_connect(G_OBJECT(sink), "handoff", G_CALLBACK (fakesinkCallback), NULL);
-    // // g_object_set(G_OBJECT(sink), "signal-handoffs", TRUE, NULL);
-    // // g_object_set(G_OBJECT(sink), "sync", TRUE, NULL);
-
-    // // gst_bin_add_many (GST_BIN (pipeline), src, capture, sink, NULL);
-    // // gst_element_link_many (src, capture, sink, NULL);
-
-
-    // // capture bus signals to force a unique opengl context for all GST elements 
-    // Rendering::LinkPipeline(GST_PIPELINE (pipeline));
-
-    // /* run */
-    // GstStateChangeReturn ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
-    // if (ret == GST_STATE_CHANGE_FAILURE)
-    // {
-    //     g_warning ("Failed to start up pipeline!\n");
-
-    //     return -1;
-    // }
-
-        // string description = "uridecodebin uri=" + uri + " name=decoder ! videoconvert ! "
-    //                      "video/x-raw,format=RGBA ! glupload ! glfilterapp name=capture ! appsink name=sink";
-
-    // GError *error = NULL;
-    // pipeline = gst_parse_launch (description.c_str(), &error);
-    // if (error != NULL) {
-    //     ImGuiToolkit::Log("Could not construct pipeline %s:\n%s\n", description.c_str(), error->message);
-    //     g_clear_error (&error);
-    //     return false;
-    // }
-    // g_object_set(G_OBJECT(pipeline), "name", id.c_str(), NULL);
-
-    // GstElement *capture = gst_bin_get_by_name (GST_BIN (pipeline), "capture");
-    // if (capture) {
-    //     g_signal_connect(G_OBJECT(capture), "client-draw", G_CALLBACK (textureCallback), this);
-    // }
-
-    // GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline), "sink");
-    // if (sink) {
-    //     GstCaps *caps = gst_static_caps_get (&render_caps);
-
-    //     g_object_set (sink, "emit-signals", TRUE, "enable-last-sample", TRUE, "sync", TRUE, "wait-on-eos", FALSE, "caps", caps, NULL);
-    //     g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (sampleCallback), this);
-    //     g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (sampleCallback), this);
-    //     g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (endMediaCallback), this);
-        
-    //     gst_object_unref (sink);
-    //     gst_caps_unref (caps);
-    // }
-
-    // // capture bus signals to force a unique opengl context for all GST elements 
-    // Rendering::LinkPipeline(GST_PIPELINE (pipeline));
-
-    // /* set to PAUSED to make the first frame arrive in the sink */
-    // GstStateChangeReturn ret = gst_element_set_state (pipeline, GST_STATE_PAUSED);
-    // if (ret == GST_STATE_CHANGE_FAILURE) {
-    //     ImGuiToolkit::Log("%s: Failed to open media %s\n", gst_element_get_name(pipeline), uri.c_str());
-    //     return false;
-    // }

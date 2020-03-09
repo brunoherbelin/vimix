@@ -8,6 +8,7 @@
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))
+#define ABS_DIFF(a, b) ( (a) < (b) ? (b - a) : (a - b) )
 #define SIGN(a)	   (((a) < 0) ? -1.0 : 1.0)
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
