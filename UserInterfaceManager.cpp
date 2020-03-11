@@ -546,7 +546,7 @@ static void ShowAboutOpengl(bool* p_open)
 //    static std::string allextensions( glGetString(GL_EXTENSIONS) );
 
     static bool show_opengl_info = false;
-    ImGui::Checkbox( ICON_FA_CHEVRON_DOWN " Show details", &show_opengl_info);
+    ImGui::Checkbox(  "Show details " ICON_FA_CHEVRON_DOWN, &show_opengl_info);
     if (show_opengl_info)
     {
         ImGui::Separator();
@@ -610,7 +610,7 @@ static void ShowAboutGStreamer(bool* p_open)
     ImGui::SameLine();
 
     static bool show_config_info = false;
-    ImGui::Checkbox( ICON_FA_CHEVRON_DOWN " Show details", &show_config_info);
+    ImGui::Checkbox("Show details " ICON_FA_CHEVRON_DOWN , &show_config_info);
     if (show_config_info)
     {
         ImGui::Separator();
