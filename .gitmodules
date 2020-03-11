@@ -13,3 +13,6 @@
 [submodule "ext/Dirent"]
 	path = ext/Dirent
 	url = https://github.com/tronkko/dirent.git
+[submodule "ext/tfd"]
+	path = ext/tfd
+	url = https://github.com/native-toolkit/tinyfiledialogs.git

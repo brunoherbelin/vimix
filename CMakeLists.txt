@@ -146,8 +146,8 @@ endif( WIN32 )
 #
 # TINY FILE DIALOG
 #
-set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyfiledialogs)
-add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyfiledialogs/tinyfiledialogs.c")
+set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
+add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
 message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolkit/tinyfiledialogs.git -- ${TINYFD_INCLUDE_DIR}.")
 
 #
