@@ -1,6 +1,3 @@
-[submodule "ext/tinyfiledialogs"]
-	path = ext/tinyfiledialogs
-	url = https://github.com/native-toolkit/tinyfiledialogs.git 
 [submodule "ext/tinyxml2"]
 	path = ext/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
