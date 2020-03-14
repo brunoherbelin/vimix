@@ -365,8 +365,13 @@ void MediaPlayer::SeekTo(GstClockTime pos)
     if (!seekable)
         return;
 
+    // remember pos
+    GstClockTime previous_pos = Position();
+
+    // apply seek
     GstClockTime target = CLAMP(pos, 0, duration);
     execute_seek_command(target);
+
 }
 
 void MediaPlayer::FastForward()
@@ -467,7 +472,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     else if ( ABS_DIFF(target, Position()) < frame_duration) {
         // ignore request
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("%s: Media Player ignored seek to current position\n", id);
+        Log::Info("%s: Media Player ignored seek to current position\n", id.c_str());
 #endif
         return;
     }

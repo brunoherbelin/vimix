@@ -220,7 +220,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begi
     bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
                                           &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_bb);
     if (value_changed){
-        //ImGuiToolkit::Log("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
+//        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
         *time = static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) );
     }
         

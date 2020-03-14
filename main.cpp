@@ -201,8 +201,10 @@ void drawMediaBackgound()
 
 void drawMediaPlayer()
 {
+
     if ( !testmedia.isOpen() )
         return;
+
 
     testmedia.Update();
 
@@ -217,13 +219,14 @@ void drawMediaPlayer()
         testmedia.Rewind();
     ImGui::SameLine(0, spacing);
 
-    static bool media_playing = testmedia.isPlaying();
+    // remember playing mode of the GUI
+    static bool media_playing_mode = testmedia.isPlaying();
 
-    // display buttons Play/Stop depending on current playing state
-    if (media_playing) {
+    // display buttons Play/Stop depending on current playing mode
+    if (media_playing_mode) {
 
         if (ImGui::Button(ICON_FA_STOP " Stop"))
-            testmedia.Play(false);
+            media_playing_mode = false;
         ImGui::SameLine(0, spacing);
 
         ImGui::PushButtonRepeat(true);
@@ -234,7 +237,7 @@ void drawMediaPlayer()
     else {
 
         if (ImGui::Button(ICON_FA_PLAY "  Play"))
-            testmedia.Play(true);
+            media_playing_mode = true;
         ImGui::SameLine(0, spacing);
 
         ImGui::PushButtonRepeat(true);
@@ -271,30 +274,32 @@ void drawMediaPlayer()
     }
 
     guint64 current_t = testmedia.Position();
-    guint64 t = current_t;
+    guint64 seek_t = current_t;
     guint64 begin = testmedia.Duration() / 5;
     guint64 end = 4 * testmedia.Duration() / 5;
 
-    static bool slider_was_pressed = false;
-    bool slider_pressed = ImGuiToolkit::TimelineSlider( "timeline", &t, begin, end,
+    bool slider_pressed = ImGuiToolkit::TimelineSlider( "timeline", &seek_t, begin, end,
                                                         testmedia.Duration(), testmedia.FrameDuration());
 
-    // change status only
-    if (slider_pressed != slider_was_pressed) {
+    // if the seek target time is different from the current position time
+    // (i.e. the difference is less than one frame)
+    if ( ABS_DIFF (current_t, seek_t) > testmedia.FrameDuration() ) {
 
-        // if was playing, pause during slider press
-        if ( media_playing )
-            testmedia.Play( !slider_pressed );
-
-        slider_was_pressed = slider_pressed;
+        // request seek (ASYNC)
+        testmedia.SeekTo(seek_t);
     }
-    // normal update of media status
-    if (!slider_was_pressed)
-        media_playing = testmedia.isPlaying();
 
-    // seek only if position is new
-    if (current_t != t)
-        testmedia.SeekTo(t);
+    // play/stop command should be following the playing mode (buttons)
+    // AND force to stop when the slider is pressed
+    bool media_play = media_playing_mode & (!slider_pressed);
+
+    // apply play action to media only if status should change
+    // NB: The seek command performed an ASYNC state change, but
+    // gst_element_get_state called in isPlaying() will wait for the state change to complete.
+    if ( testmedia.isPlaying() != media_play ) {
+        testmedia.Play( media_play );
+    }
+
 
     // display info
     ImGui::Text("Dimension %d x %d", testmedia.Width(), testmedia.Height());
@@ -337,8 +342,8 @@ int main(int, char**)
     // testmedia.Open("file:///home/bhbn/Videos/balls.gif");
     // testmedia.Open("file:///home/bhbn/Videos/SIGGRAPH92_1.avi");
     // testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
-     testmedia.Open("file:///home/bhbn/Videos/iss.mov");
-    // testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
+//     testmedia.Open("file:///home/bhbn/Videos/iss.mov");
+     testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
 
@@ -347,8 +352,8 @@ int main(int, char**)
     Rendering::AddDrawCallback(drawMediaPlayer);
 
     // 2
-//    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
-     testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
+    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
+//     testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
     // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
     testmedia2.Play(true);
     // create our geometries
