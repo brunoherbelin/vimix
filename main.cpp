@@ -328,7 +328,7 @@ void drawMediaPlayer()
     }
 
     // display info
-    ImGui::Text("Dimension %d x %d", testmedia.Width(), testmedia.Height());
+    ImGui::Text("%s %d x %d", testmedia.Codec().c_str(), testmedia.Width(), testmedia.Height());
     ImGui::Text("Framerate %.2f / %.2f", testmedia.UpdateFrameRate() , testmedia.FrameRate() );
 
     ImGui::End();
@@ -364,10 +364,9 @@ int main(int, char**)
 #endif
 
     // 1
-    // testmedia.Open("file:///home/bhbn/Images/2014-10-18_16-46-47.jpg");
-    // testmedia.Open("file:///home/bhbn/Videos/balls.gif");
-    // testmedia.Open("file:///home/bhbn/Videos/SIGGRAPH92_1.avi");
-     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
+//     testmedia.Open("file:///home/bhbn/Videos/MOV001.MOD");
+     testmedia.Open("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
+//     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
 //    testmedia.Open("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
 //    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
@@ -380,8 +379,10 @@ int main(int, char**)
     Rendering::manager().AddDrawCallback(drawMediaPlayer);
 
     // 2
-    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
-//    testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
+    //    testmedia2.Open("file:///home/bhbn/Images/Butterfly.gif");
+//        testmedia2.Open("file:///home/bhbn/Images/Scan-090614-0022.jpg");
+    testmedia2.Open("file:///home/bhbn/Images/svg/abstract.svg");
+//    testmedia2.Open("file:///home/bhbn/Images/4k/colors-3840x2160-splash-4k-18458.jpg");
     // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
     testmedia2.Play(true);
     // create our geometries
@@ -393,9 +394,9 @@ int main(int, char**)
 //    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
 
 	// init shader
-	rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");
+    rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");
 
-    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.vs") );
+    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
     ///
     /// Main LOOP

@@ -178,7 +178,11 @@ public:
     /**
      * Get framerate of the media
      * */
-    double FrameRate() const;
+    double FrameRate() const;    
+    /**
+     * Get name of Codec of the media
+     * */
+    std::string Codec() const;
     /**
      * Get rendering update framerate
      * measured during play
@@ -212,6 +216,7 @@ private:
     guint textureindex;  
     guint width;  
     guint height;  
+    guint par_width;  // width to match pixel aspect ratio
     GstClockTime position;
     GstClockTime start_position;
     GstClockTime duration;
@@ -224,6 +229,7 @@ private:
     GstElement *pipeline;
     GstDiscoverer *discoverer;
     std::stringstream discoverer_message;
+    std::string codec_name;
     GstVideoFrame v_frame;
     GstVideoInfo v_frame_video_info;
     std::atomic<bool> v_frame_is_full;
@@ -235,6 +241,7 @@ private:
     bool ready;
     bool seekable;
     bool isimage;
+    bool interlaced;
 
     void execute_open();
     void execute_loop_command();

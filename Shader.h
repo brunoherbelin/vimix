@@ -1,5 +1,5 @@
-#ifndef vlmixer_shader
-#define vlmixer_shader
+#ifndef __SHADER_H_
+#define __SHADER_H_
 
 #include <string>
 #include <vector>
@@ -28,4 +28,4 @@ private:
 
 };
 
-#endif /* vlmixer_shader */
+#endif /* __SHADER_H_ */

@@ -215,7 +215,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // how many pixels to represent one frame step?
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;     
     // while there is less than 3 pixels between two tick marks (or at last optimal tick mark)
-    for ( int i=0; i<10 && tick_step_pixels < 3.f; ++i )
+    for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
     {
         // try to use the optimal tick marks pre-defined
         tick_step = optimal_tick_marks[i];

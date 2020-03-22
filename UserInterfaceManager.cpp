@@ -609,7 +609,7 @@ void MainWindow::Render()
     ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
 
 
-    ImGui::Begin( ICON_FA_DOT_CIRCLE " v-mix", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);  
+    ImGui::Begin( ICON_FA_CIRCLE_NOTCH " v-mix", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
 
     // Menu Bar
     if (ImGui::BeginMenuBar())
@@ -738,8 +738,35 @@ void UserInterface::OpenTextEditor(std::string text)
     currentTextEdit = text;
 
     auto lang = TextEditor::LanguageDefinition::GLSL();
-	editor.SetLanguageDefinition(lang);
 
+    static const char* const keywords[] = {
+        "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
+        "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
+        "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
+        "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
+        "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
+    };
+    for (auto& k : keywords)
+        lang.mKeywords.insert(k);
+
+    static const char* const identifiers[] = {
+        "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
+        "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
+        "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
+        "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
+        "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
+        "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
+        "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
+        "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
+    };
+    for (auto& k : identifiers)
+    {
+        TextEditor::Identifier id;
+        id.mDeclaration = "Added function";
+        lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+    }
+
+	editor.SetLanguageDefinition(lang);
     editor.SetText(currentTextEdit);
 }
 
