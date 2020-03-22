@@ -34,56 +34,70 @@ class Rendering
     friend class UserInterface;
 
     // GLFW integration in OS window management
-    static class GLFWwindow* window;
-    static Screenshot window_screenshot;
-    static std::string glsl_version;
-    static int render_width, render_height;
-    static bool request_screenshot;
+    class GLFWwindow* window;
+    Screenshot window_screenshot;
+    std::string glsl_version;
+    int render_width, render_height;
+    bool request_screenshot;
+
+    // Private Constructor
+    Rendering();
+    Rendering(Rendering const& copy);            // Not Implemented
+    Rendering& operator=(Rendering const& copy); // Not Implemented
 
 public:
 
-    // Initialization OpenGL and GLFW window creation
-    static bool Init();
-    // true if active rendering window
-    static bool isActive();
-    // request close of the UI (Quit the program)
-    static void Close();
-    // Post-loop termination
-    static void Terminate();
+    static Rendering& manager()
+    {
+        // The only instance
+        static Rendering _instance;
+        return _instance;
+    }
 
+    // Initialization OpenGL and GLFW window creation
+    bool Init();
+    // true if active rendering window
+    bool isActive();
     // draw one frame
-    static void Draw();
+    void Draw();
+    // request close of the UI (Quit the program)
+    void Close();
+    // Post-loop termination
+    void Terminate();
+
     // add function to call during Draw
     typedef void (* RenderingCallback)(void);
-    static void AddDrawCallback(RenderingCallback function);
+    void AddDrawCallback(RenderingCallback function);
+
     // request screenshot
-    static void RequestScreenshot();
+    void RequestScreenshot();
     // get Screenshot
-    static Screenshot *CurrentScreenshot();
+    Screenshot *CurrentScreenshot();
     
     // request fullscreen
-    static void ToggleFullscreen();
+    void ToggleFullscreen();
     // get width of rendering area
-    static float Width() { return render_width; }
+    float Width() { return render_width; }
     // get height of rendering area
-    static float Height() { return render_height; }
+    float Height() { return render_height; }
     // get aspect ratio of rendering area
-    static float AspectRatio();
-    // get projection matrix (for sharers)
-    static glm::mat4 Projection();
+    float AspectRatio();
 
-    // for opengl pipile in gstreamer
-    static void LinkPipeline( GstPipeline *pipeline );
+    // get projection matrix (for sharers) => Views
+    glm::mat4 Projection();
 
+    // for opengl pipeline in gstreamer
+    void LinkPipeline( GstPipeline *pipeline );
 
 private:
 
     // loop update to begin new frame
-    static bool Begin();
+    bool Begin();
     // loop update end frame
-    static void End();
+    void End();
+
     // list of functions to call at each Draw
-    static std::list<RenderingCallback> drawCallbacks;
+    std::list<RenderingCallback> drawCallbacks;
 
     // file drop callback
     static void FileDropped(GLFWwindow* window, int path_count, const char* paths[]);

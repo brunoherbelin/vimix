@@ -42,51 +42,40 @@
 // vmix
 #include "defines.h"
 #include "Log.h"
-#include "ResourceManager.h"
-#include "SettingsManager.h"
+#include "Resource.h"
+#include "Settings.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
-
-// Class statics
-GLFWwindow* Rendering::window = nullptr;
-std::string Rendering::glsl_version;
-int Rendering::render_width = 0;
-int Rendering::render_height = 0;
-std::list<Rendering::RenderingCallback> Rendering::drawCallbacks;
-Screenshot Rendering::window_screenshot;
-bool Rendering::request_screenshot = false;
 
 // local statics
 static GstGLContext *global_gl_context = NULL;
 static GstGLDisplay *global_display = NULL;
 static guintptr global_window_handle = 0;
 
-
 static void glfw_error_callback(int error, const char* description)
 {
-    std::string msg = "Glfw Error: " + std::string(description);
-    UserInterface::Error(msg, APP_TITLE);
+    Log::Error("Glfw Error %d: %s",  error, description);
 }
 
 static void WindowRefreshCallback( GLFWwindow* window )
 {
-    Rendering::Draw();
+    Rendering::manager().Draw();
 }
 
-glm::mat4 Rendering::Projection() {
-    glm::mat4 projection = glm::ortho(-5.0, 5.0, -5.0, 5.0);
-    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.f, AspectRatio(), 1.f));
-
-    return projection * scale;
+Rendering::Rendering()
+{
+    window = nullptr;
+    render_width = 0;
+    render_height = 0;
+    request_screenshot = false;
 }
-
 
 bool Rendering::Init()
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()){
-        UserInterface::Error("Failed to Initialize GLFW.");
+        Log::Error("Failed to Initialize GLFW.");
         return false;
     }
 
@@ -99,19 +88,19 @@ bool Rendering::Init()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
 
-    WindowSettings winset = Settings::application.windows.front();
+    Settings::Window winset = Settings::application.windows.front();
 
     // Create window with graphics context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     window = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
     if (window == NULL){
-        UserInterface::Error("Failed to Create GLFW Window.");
+        Log::Error("Failed to Create GLFW Window.");
         return false;
     }
 
     // Add application icon
     size_t fpsize = 0;
-    const char *fp = Resource::getData("images/glmixer_256x256.png", &fpsize);
+    const char *fp = Resource::getData("images/v-mix_256x256.png", &fpsize);
     if (fp != nullptr) {
         GLFWimage icon;
         icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
@@ -127,7 +116,7 @@ bool Rendering::Init()
     // Initialize OpenGL loader
     bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
     if (err) {
-        UserInterface::Error("Failed to initialize OpenGL loader.");
+        Log::Error("Failed to initialize GLAD OpenGL loader.");
         return false;
     }
 
@@ -146,50 +135,19 @@ bool Rendering::Init()
     gst_init (NULL, NULL);
 
 #if GST_GL_HAVE_PLATFORM_WGL
-  context =
-      gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
-      GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
+    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
+                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
+
 #elif GST_GL_HAVE_PLATFORM_CGL
 
-// GstGLDisplay* display = gst_gl_display_new();
-// guintptr context = gst_gl_context_get_current_gl_context(GST_GL_HAVE_PLATFORM_CGL);
-// GstGLContext* gstcontext = gst_gl_context_new_wrapped(display, context, GST_GL_HAVE_PLATFORM_CGL, GST_GL_API_OPENGL);
-// GstGLDisplay *gst_display;
 
+//    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(window) );
+//    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
 
-   // GstGLDisplay *gst_display;
+//    global_gl_context = gst_gl_context_new_wrapped (global_display,
+//                                         (guintptr) 0,
+//                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
 
-    //global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(window) );
-
-//GstGLDisplayCocoa *tmp = gst_gl_display_cocoa_new ();
-
-    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
-
-    //glfwMakeContextCurrent(window);
-
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                         (guintptr) 0,
-                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
-
-// id toto = glfwGetNSGLContext(window);
-
-// g_warning("OpenGL Contexts  %ld %ld", (long int) glfwGetNSGLContext(window), (long int) CocoaToolkit::get_current_nsopengl_context() );
-
-//     global_gl_context = gst_gl_context_new_wrapped (global_display,
-//                                          (guintptr) glfwGetNSGLContext(window),
-//                                          GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
-
-    // guintptr context;
-    // context = gst_gl_context_get_current_gl_context (GST_GL_PLATFORM_CGL);
-
-    // gst_display = gst_gl_display_new ();
-
-    // global_gl_context = gst_gl_context_new_wrapped (GST_GL_DISPLAY (gst_display),
-    //   context, GST_GL_PLATFORM_CGL, gst_gl_context_get_current_gl_api (GST_GL_PLATFORM_CGL, NULL, NULL));
-
-    // global_display = GST_GL_DISPLAY ( gst_gl_context_get_display(global_gl_context) );
-
-  //  global_window_handle =  (guintptr) glfwGetCocoaWindow(window);
 
 #elif GST_GL_HAVE_PLATFORM_GLX
 
@@ -237,9 +195,9 @@ void Rendering::AddDrawCallback(RenderingCallback function)
 
 void Rendering::Draw()
 {
-    if (Rendering::Begin() )
+    if ( Begin() )
     {
-        UserInterface::NewFrame();
+        UserInterface::manager().NewFrame();
 
 		std::list<Rendering::RenderingCallback>::iterator iter;
 		for (iter=drawCallbacks.begin(); iter != drawCallbacks.end(); iter++)
@@ -247,8 +205,8 @@ void Rendering::Draw()
             (*iter)();
         }
 
-        UserInterface::Render();
-        Rendering::End();
+        UserInterface::manager().Render();
+        End();
     }
 
     // no g_main_loop_run(loop) : update global GMainContext
@@ -324,6 +282,14 @@ void Rendering::Close()
     glfwSetWindowShouldClose(window, true);
 }
 
+
+glm::mat4 Rendering::Projection() {
+    glm::mat4 projection = glm::ortho(-5.0, 5.0, -5.0, 5.0);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.f, AspectRatio(), 1.f));
+
+    return projection * scale;
+}
+
 void Rendering::ToggleFullscreen()
 {
     // if in fullscreen mode
@@ -360,52 +326,6 @@ void Rendering::ToggleFullscreen()
 float Rendering::AspectRatio()
 {
     return static_cast<float>(render_width) / static_cast<float>(render_height);
-}
-
-
-static GstBusSyncReply
-bus_sync_handler (GstBus * bus, GstMessage * msg, gpointer user_data)
-{
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
-        const gchar* contextType;
-        gst_message_parse_context_type(msg, &contextType);
-
-        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-            gst_context_set_gl_display(displayContext, global_display);
-            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
-            gst_context_unref (displayContext);
-
-            g_info ("Managed %s\n", contextType);
-        }
-        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
-            GstStructure* structure = gst_context_writable_structure(appContext);
-            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, global_gl_context, nullptr);
-            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
-            gst_context_unref (appContext);
-
-            g_info ("Managed %s\n", contextType);
-        }
-    }
-
-    gst_message_unref (msg);
-
-    return GST_BUS_DROP;
-}
-
-void Rendering::LinkPipeline( GstPipeline *pipeline )
-{
-    // capture bus signals to force a unique opengl context for all GST elements
-    GstBus* m_bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
-    gst_bus_set_sync_handler (m_bus, (GstBusSyncHandler) bus_sync_handler, pipeline, NULL);
-    gst_object_unref (m_bus);
-
-
-    // GstBus*  m_bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
-    // gst_bus_enable_sync_message_emission (m_bus);
-    // g_signal_connect (m_bus, "sync-message", G_CALLBACK (bus_sync_handler), pipeline);
-    // gst_object_unref (m_bus);
 }
 
 void Rendering::FileDropped(GLFWwindow* window, int path_count, const char* paths[])
@@ -501,4 +421,58 @@ void Screenshot::FlipVertical()
         line_b -= stride;
     }
     delete[] line_tmp;
+}
+
+
+
+//
+// Discarded because not working under OSX - kept in case it would become useful
+//
+// Linking pipeline to the rendering instance ensures the opengl contexts
+// created by gstreamer inside plugins (e.g. glsinkbin) is the same
+//
+
+static GstBusSyncReply
+bus_sync_handler (GstBus * bus, GstMessage * msg, gpointer user_data)
+{
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
+        const gchar* contextType;
+        gst_message_parse_context_type(msg, &contextType);
+
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, global_display);
+            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
+            gst_context_unref (displayContext);
+
+            g_info ("Managed %s\n", contextType);
+        }
+        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, global_gl_context, nullptr);
+            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
+            gst_context_unref (appContext);
+
+            g_info ("Managed %s\n", contextType);
+        }
+    }
+
+    gst_message_unref (msg);
+
+    return GST_BUS_DROP;
+}
+
+void Rendering::LinkPipeline( GstPipeline *pipeline )
+{
+    // capture bus signals to force a unique opengl context for all GST elements
+    GstBus* m_bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+    gst_bus_set_sync_handler (m_bus, (GstBusSyncHandler) bus_sync_handler, pipeline, NULL);
+    gst_object_unref (m_bus);
+
+
+    // GstBus*  m_bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+    // gst_bus_enable_sync_message_emission (m_bus);
+    // g_signal_connect (m_bus, "sync-message", G_CALLBACK (bus_sync_handler), pipeline);
+    // gst_object_unref (m_bus);
 }

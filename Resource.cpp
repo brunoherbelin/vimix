@@ -1,5 +1,5 @@
 #include "defines.h"
-#include "ResourceManager.h"
+#include "Resource.h"
 #include "Log.h"
 
 #include <fstream>
@@ -21,7 +21,7 @@
 CMRC_DECLARE(vmix);
 
 
-std::map<std::string, unsigned int> Resource::textureIndex;
+std::map<std::string, unsigned int> textureIndex;
 
 const char *Resource::getData(const std::string& path, size_t* out_file_size){
 
@@ -202,7 +202,7 @@ unsigned int Resource::getTextureImage(const std::string& path)
 	return textureID;
 }
 
-void Resource::listFiles()
+std::string Resource::listDirectory()
 {
 	// enter icons directory
     auto fs = cmrc::vmix::get_filesystem();
@@ -210,16 +210,19 @@ void Resource::listFiles()
 	cmrc::directory_iterator it = fs.iterate_directory("");
 	cmrc::directory_iterator itend = it.end();
 
+    std::string ls;
+
 	// loop over all icons
 	while(it != itend){
 
 		cmrc::directory_entry file = *it;
 
 		if (file.is_file()) {
-			std::cerr << "Found file " << file.filename()  << std::endl;
-
+            ls += file.filename() + ", ";
 		}
 
 		it++;
 	}
+
+    return ls;
 }

@@ -16,9 +16,9 @@
 
 // vmix
 #include "defines.h"
-#include "ShaderManager.h"
-#include "SettingsManager.h"
-#include "ResourceManager.h"
+#include "Shader.h"
+#include "Settings.h"
+#include "Resource.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 
@@ -106,12 +106,10 @@ void drawMediaBackgound()
     if ( !testmedia2.isOpen() )
         return;
 
-
     // rendering TRIANGLE geometries
     rendering_shader.use();
-    rendering_shader.setUniform("render_projection", Rendering::Projection());
+    rendering_shader.setUniform("render_projection", Rendering::manager().Projection());
     
-
     testmedia2.Update();
     testmedia2.Bind();
 
@@ -201,12 +199,27 @@ void drawMediaBackgound()
 
 void drawMediaPlayer()
 {
+    static GstClockTime begin = GST_CLOCK_TIME_NONE;
+    static GstClockTime end = GST_CLOCK_TIME_NONE;
 
     if ( !testmedia.isOpen() )
         return;
 
-
     testmedia.Update();
+
+    if ( begin == GST_CLOCK_TIME_NONE) {
+
+        begin = testmedia.Duration() / 5;
+        end = testmedia.Duration() / 3;
+//        if ( testmedia.addPlaySegment(begin, end) )
+//            std::cerr << " - first segment " << std::endl;
+
+//        begin *= 2;
+//        end *= 2;
+//        if ( testmedia.addPlaySegment(begin, end) )
+//            std::cerr << " - second segment " << std::endl;
+
+    }
 
     ImGui::Begin("Media Player");
     float width = ImGui::GetContentRegionAvail().x;
@@ -275,11 +288,25 @@ void drawMediaPlayer()
 
     guint64 current_t = testmedia.Position();
     guint64 seek_t = current_t;
-    guint64 begin = testmedia.Duration() / 5;
-    guint64 end = 4 * testmedia.Duration() / 5;
 
-    bool slider_pressed = ImGuiToolkit::TimelineSlider( "timeline", &seek_t, begin, end,
+    bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
                                                         testmedia.Duration(), testmedia.FrameDuration());
+
+//    std::list<std::pair<guint64, guint64> > segments = testmedia.getPlaySegments();
+//    bool slider_pressed = ImGuiToolkit::TimelineSliderEdit( "timeline", &seek_t, testmedia.Duration(),
+//                                                        testmedia.FrameDuration(), segments);
+
+//    if (!segments.empty()) {
+//        // segments have been modified
+//        g_print("Segments modified \n");
+
+//        for (std::list< std::pair<guint64, guint64> >::iterator s = segments.begin(); s != segments.end(); s++){
+//            MediaSegment newsegment(s->first, s->second);
+//            testmedia.removeAllPlaySegmentOverlap(newsegment);
+//            if (!testmedia.addPlaySegment(newsegment))
+//                g_print("new Segment could not be added \n");
+//        }
+//    }
 
     // if the seek target time is different from the current position time
     // (i.e. the difference is less than one frame)
@@ -300,7 +327,6 @@ void drawMediaPlayer()
         testmedia.Play( media_play );
     }
 
-
     // display info
     ImGui::Text("Dimension %d x %d", testmedia.Width(), testmedia.Height());
     ImGui::Text("Framerate %.2f / %.2f", testmedia.UpdateFrameRate() , testmedia.FrameRate() );
@@ -320,46 +346,48 @@ int main(int, char**)
     ///
     /// RENDERING INIT
     ///
-    if ( !Rendering::Init() )
+    if ( !Rendering::manager().Init() )
         return 1;
 
     ///
     /// UI INIT
     ///
-    if ( !UserInterface::Init() )
+    if ( !UserInterface::manager().Init() )
         return 1;
 
     ///
     /// GStreamer
     ///
 #ifndef NDEBUG
-    gst_debug_set_active(TRUE);
     gst_debug_set_default_threshold (GST_LEVEL_WARNING);
+    gst_debug_set_active(TRUE);
 #endif
 
     // 1
     // testmedia.Open("file:///home/bhbn/Images/2014-10-18_16-46-47.jpg");
     // testmedia.Open("file:///home/bhbn/Videos/balls.gif");
     // testmedia.Open("file:///home/bhbn/Videos/SIGGRAPH92_1.avi");
-    // testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
-//     testmedia.Open("file:///home/bhbn/Videos/iss.mov");
-     testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
+     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
+//    testmedia.Open("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
+//    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
 
+//    testmedia.Open("file:///home/bhbn/Videos/iss.mov");
     testmedia.Play(false);
+
     // Add draw callbacks to the Rendering
-    Rendering::AddDrawCallback(drawMediaPlayer);
+    Rendering::manager().AddDrawCallback(drawMediaPlayer);
 
     // 2
     testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
-//     testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
+//    testmedia2.Open("file:///home/bhbn/Images/svg/drawing.svg");
     // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
     testmedia2.Play(true);
     // create our geometries
 	create_square(vbo, vao, ebo);
     // Add draw callbacks to the Rendering
-    Rendering::AddDrawCallback(drawMediaBackgound);
+    Rendering::manager().AddDrawCallback(drawMediaBackgound);
 
     // // load an image
 //    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
@@ -367,20 +395,21 @@ int main(int, char**)
 	// init shader
 	rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");
 
-    UserInterface::OpenTextEditor( Resource::getText("shaders/texture-shader.vs") );
+    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.vs") );
 
-    // Main loop
-    while ( Rendering::isActive() )
+    ///
+    /// Main LOOP
+    ///
+    while ( Rendering::manager().isActive() )
     {
-
-        Rendering::Draw();
+        Rendering::manager().Draw();
     }
 
     testmedia.Close();
     testmedia2.Close();
 
-    UserInterface::Terminate();
-    Rendering::Terminate();
+    UserInterface::manager().Terminate();
+    Rendering::manager().Terminate();
 
     Settings::Save();
 

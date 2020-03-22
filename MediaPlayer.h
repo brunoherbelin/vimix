@@ -4,6 +4,9 @@
 #include <string>
 #include <atomic>
 #include <sstream>
+#include <set>
+#include <list>
+#include <utility>
 using namespace std;
 
 #include <gst/gst.h>
@@ -26,18 +29,71 @@ public:
     int framecount() const;
 };
 
+struct MediaSegment
+{
+    GstClockTime begin;
+    GstClockTime end;
+
+    MediaSegment()
+    {
+        begin = GST_CLOCK_TIME_NONE;
+        end = GST_CLOCK_TIME_NONE;
+    }
+
+    MediaSegment(GstClockTime b, GstClockTime e)
+    {
+        if ( b < e ) {
+            begin = b;
+            end = e;
+        } else {
+            begin = GST_CLOCK_TIME_NONE;
+            end = GST_CLOCK_TIME_NONE;
+        }
+    }
+    inline bool is_valid() const
+    {
+        return begin != GST_CLOCK_TIME_NONE && end != GST_CLOCK_TIME_NONE && begin < end;
+    }
+    inline bool operator < (const MediaSegment b) const
+    {
+        return (this->is_valid() && b.is_valid() && this->end < b.begin);
+    }
+    inline bool operator == (const MediaSegment b) const
+    {
+        return (this->begin == b.begin && this->end == b.end);
+    }
+    inline bool operator != (const MediaSegment b) const
+    {
+        return (this->begin != b.begin || this->end != b.end);
+    }
+};
+
+struct containsTime: public std::unary_function<MediaSegment, bool>
+{
+    inline bool operator()(const MediaSegment s) const
+    {
+       return ( s.is_valid() && _t > s.begin && _t < s.end );
+    }
+
+    containsTime(GstClockTime t) : _t(t) { }
+
+private:
+    GstClockTime _t;
+};
+
+
+typedef std::set<MediaSegment> MediaSegmentSet;
+
 class MediaPlayer {
 
 public:
 
     /**
      * Constructor of a GStreamer Media
-     * 
      */
     MediaPlayer(string name);
     /**
      * Destructor.
-     *
      */
     ~MediaPlayer();
     /** 
@@ -141,7 +197,15 @@ public:
     guint Height() const;
     float AspectRatio() const;
 
+
+
 private:
+
+    bool addPlaySegment(GstClockTime begin, GstClockTime end);
+    bool addPlaySegment(MediaSegment s);
+    bool removePlaySegmentAt(GstClockTime t);
+    bool removeAllPlaySegmentOverlap(MediaSegment s);
+    std::list< std::pair<guint64, guint64> > getPlaySegments() const;
 
     string id;
     string uri;
@@ -165,13 +229,16 @@ private:
     std::atomic<bool> v_frame_is_full;
     std::atomic<bool> need_loop;
 
+    MediaSegmentSet segments;
+    MediaSegmentSet::iterator current_segment;
+
     bool ready;
     bool seekable;
     bool isimage;
 
     void execute_open();
     void execute_loop_command();
-    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);
+    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);   
     bool fill_v_frame(GstBuffer *buf);
 
     static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);

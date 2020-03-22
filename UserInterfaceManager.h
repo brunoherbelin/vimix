@@ -5,16 +5,6 @@
 #include <list>
 using namespace std;
 
-class MessageBox 
-{
-public:
-    list<string> messages;
-
-    MessageBox();
-    void Append(const string& text);
-    void Render(float width);
-};
-
 class MainWindow
 {
     bool show_overlay_stats;
@@ -41,39 +31,48 @@ public:
 
 class UserInterface
 {
-
     // own implementation of ImGui 
-    static unsigned int textureicons;
-    static MainWindow mainwindow;
-    static MessageBox warnings;
-    static std::string currentFileDialog;
-    static std::string currentTextEdit;
+    unsigned int textureicons;
+    MainWindow mainwindow;
+    std::string currentFileDialog;
+    std::string currentTextEdit;
 
-    static void handleKeyboard();
-    static void handleMouse();
+    void handleKeyboard();
+    void handleMouse();
+
+    // Private Constructor
+    UserInterface();
+    UserInterface(UserInterface const& copy);            // Not Implemented
+    UserInterface& operator=(UserInterface const& copy); // Not Implemented
 
 public:
 
+    static UserInterface& manager()
+    {
+        // The only instance
+        static UserInterface _instance;
+        return _instance;
+    }
+
     // pre-loop initialization
-    static bool Init();
+    bool Init();
     // loop update start new frame
-    static void NewFrame();
+    void NewFrame();
     // loop update rendering
-    static void Render();
+    void Render();
     // Post-loop termination
-    static void Terminate();
-    // Boxer integration in OS of Error messages
-    static void Error(const string& text, const string& title = std::string());
-    // ImGui modal dialog for Warning messages
-    static void Warning(const char* fmt, ...);
+    void Terminate();
+
     // Open an Open File dialog for TEXT file 
-    static void OpenFileText();
+    void OpenFileText();
     // Open an Open File dialog for IMAGE file 
-    static void OpenFileImage();
+    void OpenFileImage();
     // Open an Open File dialog for MEDIA file 
-    static void OpenFileMedia();
-    
-    static void OpenTextEditor(std::string text);
+    void OpenFileMedia();
+
+    //
+    void OpenTextEditor(std::string text);
+
 };
 
 #endif /* #define __UI_MANAGER_H_ */

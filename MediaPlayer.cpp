@@ -1,10 +1,11 @@
 #include "MediaPlayer.h"
+#include <algorithm>
 
 // vmix
 #include "defines.h"
 #include "Log.h"
 #include "RenderingManager.h"
-#include "ResourceManager.h"
+#include "Resource.h"
 #include "UserInterfaceManager.h"
 #include "GstToolkit.h"
 
@@ -61,8 +62,10 @@ MediaPlayer::MediaPlayer(string name) : id(name)
     loop = LoopMode::LOOP_REWIND;
     need_loop = false;
     v_frame_is_full = false;
+    current_segment = segments.begin();
 
     textureindex = 0;    
+
 }
 
 MediaPlayer::~MediaPlayer()
@@ -96,7 +99,7 @@ void MediaPlayer::Open(string uri)
     GError *err = NULL;
     discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
     if (!discoverer) {
-        UserInterface::Warning("Error creating discoverer instance: %s\n", err->message);
+        Log::Warning("Error creating discoverer instance: %s\n", err->message);
         g_clear_error (&err);
         return;
     }
@@ -110,7 +113,7 @@ void MediaPlayer::Open(string uri)
     gst_discoverer_start(discoverer);
     // Add the request to process asynchronously the URI 
     if (!gst_discoverer_discover_uri_async (discoverer, uri.c_str())) {
-        UserInterface::Warning("Failed to start discovering URI '%s'\n", uri.c_str());
+        Log::Warning("Failed to start discovering URI '%s'\n", uri.c_str());
         g_object_unref (discoverer);
         discoverer = nullptr;
     }
@@ -129,7 +132,7 @@ void MediaPlayer::execute_open()
     GError *error = NULL;
     pipeline = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        UserInterface::Warning("Could not construct pipeline %s:\n%s\n", description.c_str(), error->message);
+        Log::Warning("Could not construct pipeline %s:\n%s\n", description.c_str(), error->message);
         g_clear_error (&error);
         return;
     }
@@ -139,7 +142,7 @@ void MediaPlayer::execute_open()
     string capstring = "video/x-raw,format=RGB,width="+ std::to_string(width) + ",height=" + std::to_string(height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info, caps)) {
-        UserInterface::Warning("%s: Could not configure MediaPlayer video frame info\n", gst_element_get_name(pipeline));
+        Log::Warning("%s: Could not configure MediaPlayer video frame info\n", gst_element_get_name(pipeline));
         return;
     }
 
@@ -164,7 +167,7 @@ void MediaPlayer::execute_open()
         gst_object_unref (sink);
     } 
     else {
-        UserInterface::Warning("%s: Could not configure MediaPlayer sink\n", gst_element_get_name(pipeline));
+        Log::Warning("%s: Could not configure MediaPlayer sink\n", gst_element_get_name(pipeline));
         return;
     }
     gst_caps_unref (caps);
@@ -175,7 +178,7 @@ void MediaPlayer::execute_open()
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline, desired_state);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        UserInterface::Warning("%s: Failed to open media %s \n%s\n", gst_element_get_name(pipeline), uri.c_str(), discoverer_message.str().c_str());
+        Log::Warning("%s: Failed to open media %s \n%s\n", gst_element_get_name(pipeline), uri.c_str(), discoverer_message.str().c_str());
     }
     else {
         // all good
@@ -290,7 +293,7 @@ void MediaPlayer::Play(bool on)
     // all ready, apply state change immediately
     GstStateChangeReturn ret = gst_element_set_state (pipeline, desired_state);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        UserInterface::Warning("Failed to start up Media %s\n", gst_element_get_name(pipeline));
+        Log::Warning("Failed to start up Media %s\n", gst_element_get_name(pipeline));
     }    
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
@@ -394,6 +397,47 @@ void MediaPlayer::FastForward()
 }
 
 
+
+bool MediaPlayer::addPlaySegment(GstClockTime begin, GstClockTime end)
+{
+    return addPlaySegment( MediaSegment(begin, end) );
+}
+
+bool MediaPlayer::addPlaySegment(MediaSegment s)
+{
+    if ( s.is_valid() )
+        return segments.insert(s).second;
+
+    return false;
+}
+
+bool MediaPlayer::removeAllPlaySegmentOverlap(MediaSegment s)
+{
+    bool ret = removePlaySegmentAt(s.begin);
+    return removePlaySegmentAt(s.end) || ret;
+}
+
+bool MediaPlayer::removePlaySegmentAt(GstClockTime t)
+{
+    MediaSegmentSet::const_iterator s = std::find_if(segments.begin(), segments.end(), containsTime(t));
+
+    if ( s != segments.end() ) {
+        segments.erase(s);
+        return true;
+    }
+
+    return false;
+}
+
+std::list< std::pair<guint64, guint64> > MediaPlayer::getPlaySegments() const
+{
+    std::list< std::pair<guint64, guint64> > ret;
+    for (MediaSegmentSet::iterator it = segments.begin(); it != segments.end(); it++)
+        ret.push_back( std::make_pair( it->begin, it->end ) );
+
+    return ret;
+}
+
 void MediaPlayer::Update()
 {
     // discard 
@@ -408,6 +452,7 @@ void MediaPlayer::Update()
 
     // apply texture
     if (v_frame_is_full) {
+        // first occurence; create texture
         if (textureindex==0) {
             glActiveTexture(GL_TEXTURE0);
             glGenTextures(1, &textureindex);
@@ -417,7 +462,7 @@ void MediaPlayer::Update()
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 
                          0, GL_RGB, GL_UNSIGNED_BYTE, v_frame.data[0]);
         }
-        else
+        else // bind texture
         {
             glBindTexture(GL_TEXTURE_2D, textureindex);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, 
@@ -430,20 +475,34 @@ void MediaPlayer::Update()
 
     // manage loop mode
     if (need_loop && !isimage) {
-        if (loop == LOOP_NONE)
-            Play(false);
-        else 
-            execute_loop_command();
-
+        execute_loop_command();
         need_loop = false;
+    }
+
+    // all other updates below are only for playing mode
+    if (desired_state != GST_STATE_PLAYING)
+        return;
+
+    // test segments
+    if ( segments.begin() != segments.end()) {
+
+        if ( current_segment == segments.end() )
+            current_segment = segments.begin();
+
+        if ( Position() > current_segment->end) {
+            g_print("switch to next segment ");
+            current_segment++;
+            if ( current_segment == segments.end() )
+                current_segment = segments.begin();
+            SeekTo(current_segment->begin);
+        }
+
     }
 
 }
 
 void MediaPlayer::execute_loop_command()
 {
-    if ( pipeline == nullptr)  return;
-
     if (loop==LOOP_REWIND) {
         Rewind();
     } 
@@ -451,7 +510,9 @@ void MediaPlayer::execute_loop_command()
         rate *= - 1.f;
         execute_seek_command();
     }
-
+    else {
+        Play(false);
+    }
 }
 
 void MediaPlayer::execute_seek_command(GstClockTime target)
@@ -481,7 +542,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
     // seek with trick mode if fast speed
     if ( ABS(rate) > 2.0 )
-        seek_flags |= GST_SEEK_FLAG_TRICKMODE | GST_SEEK_FLAG_TRICKMODE_NO_AUDIO;
+        seek_flags |= GST_SEEK_FLAG_TRICKMODE;
 
     // create seek event depending on direction
     if (rate > 0) {
@@ -492,7 +553,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
             GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_SET, seek_pos);
     }
 
-    // Send the event
+    // Send the event (ASYNC)
     if (seek_event && !gst_element_send_event(pipeline, seek_event) )
         Log::Info("Seek failed in Media %s\n", gst_element_get_name(pipeline));
 #ifdef MEDIA_PLAYER_DEBUG
@@ -531,6 +592,7 @@ double MediaPlayer::UpdateFrameRate() const
 {
     return timecount.framerate();
 }
+
 
 // CALLBACKS
 
@@ -690,7 +752,7 @@ TimeCounter::TimeCounter() {
     current_time = gst_util_get_timestamp ();
     last_time = gst_util_get_timestamp();
     nbFrames = 0;
-    fps = 0.f;
+    fps = 1.f;
 }
 
 void TimeCounter::tic ()
@@ -700,7 +762,7 @@ void TimeCounter::tic ()
     if ((current_time - last_time) >= GST_SECOND)
     {
         last_time = current_time;
-        fps = 0.2f * fps + 0.8f * static_cast<float>(nbFrames);
+        fps = 0.1f * fps + 0.9f * static_cast<float>(nbFrames);
         nbFrames = 0;
     }
 }

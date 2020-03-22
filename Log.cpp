@@ -7,6 +7,14 @@
 #include "imgui_internal.h"
 
 #include "ImGuiToolkit.h"
+#include "defines.h"
+
+// multiplatform
+#include <tinyfiledialogs.h>
+
+#include <string>
+#include <list>
+using namespace std;
 
 struct AppLog
 {
@@ -119,7 +127,7 @@ struct AppLog
 
 static AppLog logs;
 
-void Log::Info(const char* fmt, ...) 
+void Log::Info(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -129,7 +137,72 @@ void Log::Info(const char* fmt, ...)
 
 void Log::ShowLogWindow(bool* p_open)
 {
-    ImGui::SetNextWindowSize(ImVec2(500, 600), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
     logs.Draw( ICON_FA_LIST_UL " Logs", p_open);
+}
+
+
+static list<string> warnings;
+
+void Log::Warning(const char* fmt, ...)
+{
+    ImGuiTextBuffer buf;
+
+    va_list args;
+    va_start(args, fmt);
+    buf.appendfv(fmt, args);
+    va_end(args);
+
+    warnings.push_back(buf.c_str());
+    Log::Info("Warning - %s\n", buf.c_str());
+}
+
+void Log::Render()
+{
+    if (warnings.empty())
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float width = io.DisplaySize.x * 0.4f;
+
+    ImGui::OpenPopup("Warning");
+    if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGuiToolkit::Icon(9, 4);
+        ImGui::SameLine(0, 10);
+        ImGui::SetNextItemWidth(width);
+        ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", warnings.size());
+        ImGui::Dummy(ImVec2(width, 0));
+
+        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
+        for (list<string>::iterator it=warnings.begin(); it != warnings.end(); ++it) {
+            ImGui::Text("%s \n", (*it).c_str());
+            ImGui::Separator();
+        }
+        ImGui::PopTextWrapPos();
+
+        ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
+        if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))) {
+            ImGui::CloseCurrentPopup();
+            // messages have been seen
+            warnings.clear();
+        }
+
+        ImGui::SetItemDefaultFocus();
+        ImGui::EndPopup();
+    }
+}
+
+void Log::Error(const char* fmt, ...)
+{
+    ImGuiTextBuffer buf;
+
+    va_list args;
+    va_start(args, fmt);
+    buf.appendfv(fmt, args);
+    va_end(args);
+
+    tinyfd_messageBox( APP_TITLE, buf.c_str(), "ok", "error", 0);
+    Log::Info("Error - %s\n", buf.c_str());
 }
 

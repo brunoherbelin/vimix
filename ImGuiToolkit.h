@@ -3,6 +3,8 @@
 
 #include <glib.h>
 #include <string>
+#include <list>
+#include <utility>
 #include "rsc/fonts/IconsFontAwesome5.h"
 
 namespace ImGuiToolkit
@@ -13,8 +15,9 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
     void ToggleButton( const char* label, bool& toggle );
     void Bar(float value, float in, float out, float min, float max, const char* title, bool expand);
-    bool TimelineSlider(const char* label, guint64 *time,
-                        guint64 begin, guint64 end, guint64 duration, guint64 step);
+    bool TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step);
+    bool TimelineSliderEdit(const char* label, guint64 *time, guint64 duration, guint64 step,
+                        std::list<std::pair<guint64, guint64> >& segments);
     
     // fonts from ressources 'fonts/'
     typedef enum {
@@ -35,6 +38,7 @@ namespace ImGuiToolkit
     void SetAccentColor(accent_color color);
 
     std::string DateTime();
-};
+    void OpenWebpage( const char* url );
+}
 
 #endif // __IMGUI_TOOLKIT_H_

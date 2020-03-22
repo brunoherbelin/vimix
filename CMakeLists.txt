@@ -198,16 +198,16 @@ include_directories(
 set(VMIX_BINARY "vmix")
 set(VMIX_SRCS
     main.cpp
-    ShaderManager.cpp
-    RenderingManager.cpp
-    SettingsManager.cpp
-    ResourceManager.cpp
-    UserInterfaceManager.cpp
+    Log.cpp
+    Shader.cpp
+    Settings.cpp
+    Resource.cpp
     FileDialog.cpp
     ImGuiToolkit.cpp
     GstToolkit.cpp
     MediaPlayer.cpp
-    Log.cpp
+    RenderingManager.cpp
+    UserInterfaceManager.cpp
 )
 
 set(VMIX_RSC_FILES
@@ -221,7 +221,7 @@ set(VMIX_RSC_FILES
     ./rsc/fonts/Roboto-Italic.ttf
     ./rsc/fonts/fa-regular-400.ttf
     ./rsc/fonts/fa-solid-900.ttf
-    ./rsc/images/glmixer_256x256.png
+    ./rsc/images/v-mix_256x256.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
 )

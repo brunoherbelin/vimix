@@ -1,5 +1,5 @@
-#include "SettingsManager.h"
-#include "defines.h"
+#include "Settings.h"
+#include "Log.h"
 
 #include <iostream>
 
@@ -7,20 +7,12 @@
 using namespace tinyxml2;
 
 #ifndef XMLCheckResult
-	#define XMLCheckResult(a_eResult) if (a_eResult != XML_SUCCESS) { printf("Settings warning: %i\n", a_eResult); return; }
+    #define XMLCheckResult(a_eResult) if (a_eResult != XML_SUCCESS) { Log::Warning("XML error %i\n", a_eResult); return; }
 #endif
 
-AppSettings Settings::application(APP_NAME);
 
-AppSettings::AppSettings(const string& name) {
-
-    this->name = name;
-    this->filename = "./" + name + ".xml";
-    this->windows.clear();
-    this->windows.push_back(WindowSettings(15,15,1280,720, APP_TITLE));
-	this->scale = 1.0;
-	this->color = 0;
-}
+Settings::Application Settings::application;
+string filename = string("./") + APP_NAME + ".xml";
 
 void Settings::Save()
 {
@@ -41,10 +33,10 @@ void Settings::Save()
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
-		list<WindowSettings>::iterator iter;
+        list<Settings::Window>::iterator iter;
 		for (iter=application.windows.begin(); iter != application.windows.end(); iter++)
 		{
-			const WindowSettings& w=*iter;
+            const Settings::Window& w=*iter;
 
 			XMLElement *window = xmlDoc.NewElement( "Window" );            
 			window->SetAttribute("name", w.name.c_str());
@@ -64,14 +56,14 @@ void Settings::Save()
 	applicationNode->SetAttribute("color", application.color);
     pRoot->InsertEndChild(applicationNode);
 
-    XMLError eResult = xmlDoc.SaveFile(application.filename.c_str());
+    XMLError eResult = xmlDoc.SaveFile(filename.c_str());
     XMLCheckResult(eResult);
 }
 
 void Settings::Load()
 {
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(application.filename.c_str());
+    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
 
 	// do not warn if non existing file
     if (eResult == XML_ERROR_FILE_NOT_FOUND)
@@ -96,7 +88,7 @@ void Settings::Load()
 		XMLElement* pWindowNode = pElement->FirstChildElement("Window");
 		for( ; pWindowNode ; pWindowNode=pWindowNode->NextSiblingElement())
 		{
-			WindowSettings w;
+            Settings::Window w;
 			const char *pName=pWindowNode->Attribute("name");
 			if (pName) w.name=pName;
 			
@@ -123,7 +115,7 @@ void Settings::Check()
 	Settings::Save();
 
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(application.filename.c_str());
+    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
     XMLCheckResult(eResult);
 
 	xmlDoc.Print();

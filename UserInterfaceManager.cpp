@@ -25,26 +25,16 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#ifdef _WIN32
-#  include <windows.h>
-#  include <shellapi.h>
-#endif
-
 #include "defines.h"
 #include "Log.h"
 #include "TextEditor.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
-#include "ResourceManager.h"
-#include "SettingsManager.h"
+#include "Resource.h"
+#include "Settings.h"
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
-
-MessageBox UserInterface::warnings;
-MainWindow UserInterface::mainwindow;
-std::string UserInterface::currentFileDialog = "";
-std::string UserInterface::currentTextEdit = "";
 
 static std::thread loadThread;
 static bool loadThreadDone = false;
@@ -74,25 +64,16 @@ static void NativeOpenFile(std::string ext)
 }
 
 
-static void OpenWebpage( const char* url )
-{
-#ifdef _WIN32
-    ShellExecuteA( nullptr, nullptr, url, nullptr, nullptr, 0 );
-#elif defined __APPLE__
-    char buf[1024];
-    sprintf( buf, "open %s", url );
-    system( buf );
-#else
-    char buf[1024];
-    sprintf( buf, "xdg-open %s", url );
-    system( buf );
-#endif
-}
 
+UserInterface::UserInterface()
+{
+    currentFileDialog = "";
+    currentTextEdit = "";
+}
 
 bool UserInterface::Init()
 {
-    if (Rendering::window == nullptr)
+    if (Rendering::manager().window == nullptr)
         return false;
 
     // Setup Dear ImGui context
@@ -103,8 +84,8 @@ bool UserInterface::Init()
     io.MouseDrawCursor = true;
 
     // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(Rendering::window, true);
-    ImGui_ImplOpenGL3_Init(Rendering::glsl_version.c_str());
+    ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().window, true);
+    ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
 
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.color));
@@ -148,7 +129,7 @@ void UserInterface::handleKeyboard()
     if ( io.KeyCtrl ) {
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  
-            Rendering::Close();
+            Rendering::manager().Close();
         else if (ImGui::IsKeyPressed( GLFW_KEY_O ))
             UserInterface::OpenFileMedia();
         else if (ImGui::IsKeyPressed( GLFW_KEY_S ))
@@ -162,7 +143,7 @@ void UserInterface::handleKeyboard()
 
     // Application F-Keys
     if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
-        Rendering::ToggleFullscreen();
+        Rendering::manager().ToggleFullscreen();
     else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
         mainwindow.StartScreenshot();
             
@@ -205,17 +186,17 @@ void UserInterface::NewFrame()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // Main window
-    mainwindow.Render();
 }
-
 
 void UserInterface::Render()
 {	
-    ImVec2 geometry(static_cast<float>(Rendering::render_width), static_cast<float>(Rendering::render_height));
+    ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
+
+    // Main window
+    mainwindow.Render();
 
     // warning modal dialog
-    warnings.Render( geometry.x * 0.4f ); // 40% width
+    Log::Render();
 
     // file modal dialog
     geometry.x *= 0.4f;
@@ -240,62 +221,6 @@ void UserInterface::Terminate()
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-}
-
-void UserInterface::Error(const string& text, const string& title)
-{
-    // Show NON Graphical dialog (using multiplatform tiny file dialog )
-    string t = title.empty() ? APP_TITLE : title;
-    tinyfd_messageBox( t.c_str(), text.c_str(), "ok", "error", 0);
-
-}
-
-void UserInterface::Warning(const char* fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-
-    ImGuiTextBuffer buf;
-    buf.appendfv(fmt, args);
-    warnings.messages.push_back(buf.c_str());
-    Log::Info(buf.c_str());
-
-    va_end(args);
-}
-
-MessageBox::MessageBox() 
-{
-
-}
-
-void MessageBox::Render(float width)
-{
-    if (messages.empty())
-        return;    
-
-    ImGui::OpenPopup("Warning");
-    if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGuiToolkit::Icon(9, 4);
-        ImGui::SameLine(0, 10);
-        ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", messages.size());
-
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
-        for (list<string>::iterator it=messages.begin(); it != messages.end(); ++it) {
-            ImGui::Text("%s\n", (*it).c_str()); 
-            ImGui::Separator();
-        }
-        ImGui::PopTextWrapPos();
-
-        ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
-        if (ImGui::Button("Ok", ImVec2(width * 0.2f, 0))) { 
-            ImGui::CloseCurrentPopup(); 
-            // messages have been seen
-            messages.clear();
-        }
-        ImGui::SetItemDefaultFocus();
-        ImGui::EndPopup();
-    }
 }
 
 // template info panel
@@ -491,7 +416,8 @@ void MainWindow::ShowStats(bool* p_open)
             ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
         else
             ImGui::Text("Mouse  <invalid>");
-        
+
+        ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
         ImGui::Text("Rendering %.1f FPS", io.Framerate);
         ImGui::PopFont();
 
@@ -540,7 +466,7 @@ static void ShowAboutOpengl(bool* p_open)
     ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
 
     if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://www.opengl.org") )
-        OpenWebpage("https://www.opengl.org");
+        ImGuiToolkit::OpenWebpage("https://www.opengl.org");
     ImGui::SameLine();
 
 //    static std::string allextensions( glGetString(GL_EXTENSIONS) );
@@ -606,7 +532,7 @@ static void ShowAboutGStreamer(bool* p_open)
     ImGui::Text("GStreamer is licensed under the LGPL License.");
 
     if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://gstreamer.freedesktop.org") )
-        OpenWebpage("https://gstreamer.freedesktop.org/");
+        ImGuiToolkit::OpenWebpage("https://gstreamer.freedesktop.org/");
     ImGui::SameLine();
 
     static bool show_config_info = false;
@@ -694,10 +620,10 @@ void MainWindow::Render()
 
             }
             if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
-                UserInterface::OpenFileMedia();
+                UserInterface::manager().OpenFileMedia();
             }
             if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
-                Rendering::Close();
+                Rendering::manager().Close();
             }
             ImGui::EndMenu();
         }
@@ -784,17 +710,17 @@ void MainWindow::Render()
                 screenshot_step = 2;
             break;
             case 2:
-                Rendering::RequestScreenshot();
+                Rendering::manager().RequestScreenshot();
                 screenshot_step = 3;
             break;
             case 3:
             {
-                if ( Rendering::CurrentScreenshot()->IsFull() ){
+                if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
                     std::time_t t = std::time(0);   // get time now
                     std::tm* now = std::localtime(&t);
                     std::string filename =  ImGuiToolkit::DateTime() + "_vmixcapture.png";
-                    Rendering::CurrentScreenshot()->SaveFile( filename.c_str() );
-                    Rendering::CurrentScreenshot()->Clear();
+                    Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
+                    Rendering::manager().CurrentScreenshot()->Clear();
                 }
                 screenshot_step = 4;
             }
