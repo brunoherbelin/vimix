@@ -10,14 +10,23 @@ include(MacroLogFeature)
 if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
+
+        set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
+        set(CMAKE_OSX_ARCHITECTURES x86_64)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+
     else()
         add_definitions(-DLINUX)
+
+        set(OpenGL_GL_PREFERENCE "GLVND")
+
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)
     add_definitions(-DWIN32)
     add_definitions(-DMINGW32)
 endif(UNIX)
+
 
 # Include the CMake RC module
 include(CMakeRC)
@@ -81,7 +90,6 @@ find_package(glfw3 3.3 REQUIRED)
 macro_log_feature(glfw3_FOUND "GLFW3" "Open Source, multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
 set(GLFW_LIBRARY glfw)
 
-set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 
 #
@@ -118,8 +126,11 @@ message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git
 # ImGui Color Text Editor
 #
 set(IMGUITEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
-add_library(IMGUITEXTEDIT "${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp")
-message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${TEXTEDIT_INCLUDE_DIR}.")
+set(IMGUITEXTEDIT_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp
+)
+message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}.")
+
 
 #
 # TINY XML 2
@@ -228,7 +239,7 @@ set(VMIX_RSC_FILES
 
 add_executable(${VMIX_BINARY}
     ${VMIX_SRCS}
-    ${TEXTEDIT_SRCS}
+    ${IMGUITEXTEDIT_SRC}
 )
 
 set_property(TARGET ${VMIX_BINARY} PROPERTY CXX_STANDARD 17)
@@ -260,7 +271,6 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     TINYXML2
     TINYFD
     IMGUI
-    IMGUITEXTEDIT
     vmix::rc
 )
 

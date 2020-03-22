@@ -90,7 +90,7 @@ string GstToolkit::gst_version()
     oss << GST_VERSION_MAJOR << '.' << GST_VERSION_MINOR << '.';
     oss << std::setw(2) << std::setfill('0') << GST_VERSION_MICRO ;
     if (GST_VERSION_NANO > 0)
-        oss << GST_VERSION_NANO ? " - (CVS)" : " - (Prerelease)";
+        oss << ( (GST_VERSION_NANO < 2 ) ? " - (CVS)" : " - (Prerelease)");
 
     return oss.str();
 }
