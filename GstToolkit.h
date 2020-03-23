@@ -3,20 +3,19 @@
 
 #include <string>
 #include <list>
-using namespace std;
 
 
 namespace GstToolkit
 {
 
-    string to_string(guint64 t);
+    std::string date_time_string();
+    std::string time_to_string(guint64 t);
 
-    list<string> all_plugins();
-    list<string> all_plugin_features(string pluginname);
+    std::string gst_version();
+    std::list<std::string> all_plugins();
+    std::list<std::string> all_plugin_features(std::string pluginname);
 
-    bool enable_feature (string name, bool enable);
-
-    string gst_version();
+    bool enable_feature (std::string name, bool enable);
 
 }
 

@@ -1,27 +1,44 @@
 
 #include <sstream>
 #include <iomanip>
+#include <ctime>
+using namespace std;
 
 #include <gst/gst.h>
 
 #include "GstToolkit.h"
 
+string GstToolkit::date_time_string()
+{
+    std::time_t t = std::time(0);   // get time now
+    std::tm* now = std::localtime(&t);
 
-string GstToolkit::to_string(guint64 t) {
+    ostringstream oss;
+    oss << std::to_string(now->tm_year + 1900);
+    oss <<  std::to_string(now->tm_mon + 1);
+    oss << setw(2) << setfill('0') << std::to_string(now->tm_mday );
+    oss << setw(2) << setfill('0') << std::to_string(now->tm_hour );
+    oss << setw(2) << setfill('0') << std::to_string(now->tm_min );
+    oss << setw(2) << setfill('0') << std::to_string(now->tm_sec );
 
+    return oss.str();
+}
+
+string GstToolkit::time_to_string(guint64 t)
+{
     if (t == GST_CLOCK_TIME_NONE)
         return "00:00:00.00";
 
     guint ms =  GST_TIME_AS_MSECONDS(t);
     guint s = ms / 1000;
 
-    std::ostringstream oss;
+    ostringstream oss;
     if (s / 3600)
-        oss << std::setw(2) << std::setfill('0') << s / 3600 << ':';
+        oss << setw(2) << setfill('0') << s / 3600 << ':';
     if ((s % 3600) / 60)
-        oss << std::setw(2) << std::setfill('0') << (s % 3600) / 60 << ':';
-    oss << std::setw(2) << std::setfill('0') << (s % 3600) % 60 << '.';
-    oss << std::setw(2) << std::setfill('0') << (ms % 1000) / 10;
+        oss << setw(2) << setfill('0') << (s % 3600) / 60 << ':';
+    oss << setw(2) << setfill('0') << (s % 3600) % 60 << '.';
+    oss << setw(2) << setfill('0') << (ms % 1000) / 10;
 
     return oss.str();
 }
@@ -88,7 +105,7 @@ string GstToolkit::gst_version()
 {
     std::ostringstream oss;
     oss << GST_VERSION_MAJOR << '.' << GST_VERSION_MINOR << '.';
-    oss << std::setw(2) << std::setfill('0') << GST_VERSION_MICRO ;
+    oss << std::setw(2) << setfill('0') << GST_VERSION_MICRO ;
     if (GST_VERSION_NANO > 0)
         oss << ( (GST_VERSION_NANO < 2 ) ? " - (CVS)" : " - (Prerelease)");
 

@@ -37,7 +37,6 @@ namespace ImGuiToolkit
     } accent_color;
     void SetAccentColor(accent_color color);
 
-    std::string DateTime();
     void OpenWebpage( const char* url );
 }
 

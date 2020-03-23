@@ -1,6 +1,5 @@
 
 #include <map>
-#include <ctime>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -21,19 +20,8 @@
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 
-static unsigned int textureicons = 0;
-static std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
-
-std::string ImGuiToolkit::DateTime(){
-    std::time_t t = std::time(0);   // get time now
-    std::tm* now = std::localtime(&t);
-    std::string datetime =  std::to_string(now->tm_year + 1900) + 
-                            std::to_string(now->tm_mon + 1) + std::to_string(now->tm_mday) + 
-                            std::to_string(now->tm_hour) + std::to_string(now->tm_min) + 
-                            std::to_string(now->tm_sec);
-
-    return datetime;
-}
+unsigned int textureicons = 0;
+std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
 
 void ImGuiToolkit::OpenWebpage( const char* url )
@@ -248,13 +236,13 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // render text : duration and current time
     char overlay_buf[24];
     ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::to_string(duration).c_str());
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     overlay_size += ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( bbox.GetBR() - overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
 
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::to_string(*time).c_str());
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
     if (overlay_size.x > 0.0f)
@@ -452,13 +440,13 @@ bool ImGuiToolkit::TimelineSliderEdit(const char* label, guint64 *time, guint64 
     // render text : duration and current time
     char overlay_buf[24];
     ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::to_string(duration).c_str());
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     overlay_size += ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( bbox.GetBR() - overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
 
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::to_string(*time).c_str());
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
     if (overlay_size.x > 0.0f)
