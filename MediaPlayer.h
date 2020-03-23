@@ -25,8 +25,8 @@ struct TimeCounter {
 public:
     TimeCounter();
     void tic();
+    void reset();
     float framerate() const;
-    int framecount() const;
 };
 
 struct MediaSegment

@@ -300,6 +300,10 @@ void MediaPlayer::Play(bool on)
     else
         Log::Info("MediaPlayer %s Stop", gst_element_get_name(pipeline));
 #endif
+
+    // reset time counter on stop
+    if (!on)
+        timecount.reset();
 }
 
 bool MediaPlayer::isPlaying() const
@@ -786,31 +790,44 @@ void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaP
 }
 
 TimeCounter::TimeCounter() {
-    current_time = gst_util_get_timestamp ();
-    last_time = gst_util_get_timestamp();
-    nbFrames = 0;
-    fps = 1.f;
+
+    reset();
 }
 
 void TimeCounter::tic ()
 {
+    // how long since last time
     current_time = gst_util_get_timestamp ();
-    nbFrames++ ;
-    if ((current_time - last_time) >= GST_SECOND)
+    gint64 dt = current_time - last_time;
+
+    // one more frame since last time
+    nbFrames++;
+
+    // calculate instantaneous framerate
+    // Exponential moving averate with previous framerate to filter jutter (50/50)
+    // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
+    // NB: factor 100 to get 0.01 precision
+    fps = 0.5f * fps + 0.005f * static_cast<float>( ( 100 * GST_SECOND * nbFrames ) / dt );
+
+    // reset counter every second
+    if ( dt >= GST_SECOND)
     {
         last_time = current_time;
-        fps = 0.1f * fps + 0.9f * static_cast<float>(nbFrames);
         nbFrames = 0;
     }
+
+}
+
+void TimeCounter::reset ()
+{
+    current_time = gst_util_get_timestamp ();
+    last_time = gst_util_get_timestamp();
+    nbFrames = 0;
+    fps = 0.f;
 }
 
 float TimeCounter::framerate() const
 {
-    return fps;
-}
-
-int TimeCounter::framecount() const
-{
-    return nbFrames;
+    return  fps;
 }
 
