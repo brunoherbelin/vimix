@@ -718,7 +718,7 @@ void MainWindow::Render()
                 if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
                     std::time_t t = std::time(0);   // get time now
                     std::tm* now = std::localtime(&t);
-                    std::string filename =  ImGuiToolkit::DateTime() + "_vmixcapture.png";
+                    std::string filename =  GstToolkit::date_time_string() + "_vmixcapture.png";
                     Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
                     Rendering::manager().CurrentScreenshot()->Clear();
                 }

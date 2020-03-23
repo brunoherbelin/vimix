@@ -7,7 +7,6 @@
 #include <set>
 #include <list>
 #include <utility>
-using namespace std;
 
 #include <gst/gst.h>
 #include <gst/gl/gl.h>
@@ -91,7 +90,7 @@ public:
     /**
      * Constructor of a GStreamer Media
      */
-    MediaPlayer(string name);
+    MediaPlayer( std::string name = std::string() );
     /**
      * Destructor.
      */
@@ -99,7 +98,7 @@ public:
     /** 
      * Open a media using gstreamer URI 
      * */
-    void Open(string uri);
+    void Open( std::string uri);
     /**
      * True if a media was oppenned
      * */
@@ -211,8 +210,8 @@ private:
     bool removeAllPlaySegmentOverlap(MediaSegment s);
     std::list< std::pair<guint64, guint64> > getPlaySegments() const;
 
-    string id;
-    string uri;
+    std::string id;
+    std::string uri;
     guint textureindex;  
     guint width;  
     guint height;  

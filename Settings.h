@@ -3,16 +3,14 @@
 
 #include "defines.h"
 
-
 #include <string>
 #include <list>
-using namespace std;
 
 namespace Settings {
 
 struct Window
 {
-    string name;
+    std::string name;
     int x,y,w,h;
     bool fullscreen;
 
@@ -22,10 +20,10 @@ struct Window
 
 struct Application
 {
-    string name;
+    std::string name;
     float scale;
     int color;
-    list<Window> windows;
+    std::list<Window> windows;
 
     Application() : name(APP_NAME), scale(1.f), color(0){
         windows.push_back(Window());

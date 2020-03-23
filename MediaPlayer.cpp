@@ -41,30 +41,33 @@ GLuint blackTexture()
 
 MediaPlayer::MediaPlayer(string name) : id(name)
 {
+    if (std::empty(id))
+        id = GstToolkit::date_time_string();
+
     uri = "undefined";
+    pipeline = nullptr;
+    discoverer = nullptr;
+
     ready = false;
     seekable = false;
     isimage = false;
     interlaced = false;
-    pipeline = nullptr;
-    discoverer = nullptr;
+    need_loop = false;
+    v_frame_is_full = false;
+    rate = 1.0;
+    framerate = 0.0;
 
-    width = 640;
+    width = par_width = 640;
     height = 480;
     position = GST_CLOCK_TIME_NONE;
     duration = GST_CLOCK_TIME_NONE;
     start_position = GST_CLOCK_TIME_NONE;
     frame_duration = GST_CLOCK_TIME_NONE;
     desired_state = GST_STATE_PAUSED;
-    rate = 1.0;
-    framerate = 1.0;
     loop = LoopMode::LOOP_REWIND;
-    need_loop = false;
-    v_frame_is_full = false;
     current_segment = segments.begin();
 
     textureindex = 0;    
-
 }
 
 MediaPlayer::~MediaPlayer()
@@ -631,6 +634,9 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
             // set start position (i.e. pts of first frame we got)
             if (start_position == GST_CLOCK_TIME_NONE) 
                 start_position = position;
+
+            // keep update time (i.e. actual FPS of update)
+            timecount.tic();
         }
 
     }
@@ -670,8 +676,6 @@ GstFlowReturn MediaPlayer::callback_pull_sample_video (GstElement *bin, MediaPla
             sample = gst_app_sink_try_pull_sample( (GstAppSink * ) bin, 0 );
         }
 
-        // keep update time (i.e. actual FPS of update)
-        m->timecount.tic();
     }
 
     return ret;

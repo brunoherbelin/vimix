@@ -29,7 +29,7 @@
 
 #define PI 3.14159265358979323846
 
-MediaPlayer testmedia("testmedia");
+MediaPlayer testmedia;
 MediaPlayer testmedia2("testmedia2");
 Shader rendering_shader;
 unsigned int vbo, vao, ebo;
@@ -365,10 +365,10 @@ int main(int, char**)
 
     // 1
 //     testmedia.Open("file:///home/bhbn/Videos/MOV001.MOD");
-     testmedia.Open("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
+//     testmedia.Open("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
 //     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
 //    testmedia.Open("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
-//    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
+    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
 //    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
 
