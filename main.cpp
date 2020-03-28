@@ -8,6 +8,7 @@
 // Opengl
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -143,6 +144,7 @@ void drawMediaBackgound()
     {
         ImGui::Begin("Image properties");
 
+        // MODEL VIEW
         static float translation[] = {0.f, 0.f};
         if (ImGuiToolkit::ButtonIcon(6, 15)) {
             translation[0] = 0.f;
@@ -152,55 +154,30 @@ void drawMediaBackgound()
         ImGui::SliderFloat2("position", translation, -5.0, 5.0);
 
         static float rotation = 0.f;
-        if (ImGuiToolkit::ButtonIcon(4, 15))
-            rotation = 0.f;
+        if (ImGuiToolkit::ButtonIcon(4, 15)) rotation = 0.f;
         ImGui::SameLine(0, 10); 
         ImGui::SliderFloat("rotation", &rotation, 0, 2 * PI);
 
         static float scale = 1.f;
-        if (ImGuiToolkit::ButtonIcon(3, 15))
-            scale = 1.f;
+        if (ImGuiToolkit::ButtonIcon(3, 15))  scale = 1.f;
         ImGui::SameLine(0, 10);
         ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f);
 
-        glm::mat4 modelview;
-        glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(translation[0], translation[1], 0.f));
-        View = glm::rotate(View, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-        glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale * testmedia2.AspectRatio(), scale, scale));
-        modelview = View * Model;
-        rendering_shader.setModelview(modelview);
+        // set modelview
+        rendering_shader.setModelview(translation[0], translation[1], rotation, scale, testmedia2.AspectRatio());
 
         // color picker
-        static float color[4] = { 1.0f,1.0f,1.0f,1.0f };
-        if (ImGuiToolkit::ButtonIcon(16, 8)) {
-            color[0] = 1.f;
-            color[1] = 1.f;
-            color[2] = 1.f;
-            color[3] = 1.f;
-            rendering_shader.setColor( glm::vec4(color[0], color[1], color[2], color[3]) ) ;
-        }
+        if (ImGuiToolkit::ButtonIcon(16, 8))  rendering_shader.color = glm::vec4(1.f);
         ImGui::SameLine(0, 10);
-        if ( ImGui::ColorEdit3("color", color) ) {
-            rendering_shader.setColor( glm::vec4(color[0], color[1], color[2], color[3]) ) ;
-        }
-
-        static float brightness = 0.0;
-        if (ImGuiToolkit::ButtonIcon(4, 1)) {
-            brightness = 0.f;
-            rendering_shader.setBrightness(brightness);
-        }
+        ImGui::ColorEdit3("color", glm::value_ptr(rendering_shader.color) ) ;
+        // brightness slider
+        if (ImGuiToolkit::ButtonIcon(4, 1)) rendering_shader.brightness = 0.f;
         ImGui::SameLine(0, 10);
-        if ( ImGui::SliderFloat("brightness", &brightness, -1.0, 1.0, "%.3f", 2.f) )
-            rendering_shader.setBrightness(brightness);
-
-        static float contrast = 0.0;
-        if (ImGuiToolkit::ButtonIcon(2, 1)) {
-            contrast = 0.f;
-            rendering_shader.setContrast(contrast);
-        }
+        ImGui::SliderFloat("brightness", &rendering_shader.brightness, -1.0, 1.0, "%.3f", 2.f);
+        // contrast slider
+        if (ImGuiToolkit::ButtonIcon(2, 1)) rendering_shader.contrast = 0.f;
         ImGui::SameLine(0, 10);
-        if (ImGui::SliderFloat("contrast", &contrast, -1.0, 1.0, "%.3f", 2.f) )
-            rendering_shader.setContrast(contrast);
+        ImGui::SliderFloat("contrast", &rendering_shader.contrast, -1.0, 1.0, "%.3f", 2.f);
 
         ImGui::End();
     }

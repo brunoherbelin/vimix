@@ -11,7 +11,7 @@ public:
     ShadingProgram();
 	void init(const std::string& vertex_code, const std::string& fragment_code);
     bool initialized();
-    bool use();
+    void use();
 	template<typename T> void setUniform(const std::string& name, T val);
 	template<typename T> void setUniform(const std::string& name, T val1, T val2);
 	template<typename T> void setUniform(const std::string& name, T val1, T val2, T val3);
@@ -39,14 +39,12 @@ public:
     virtual void use();
     virtual void reset();
 
-    void setModelview(glm::mat4 m);
-    void setColor(glm::vec4 c);
-
-protected:
     glm::mat4 modelview;
     glm::vec4 color;
 
-    bool shader_changed;
+    void setModelview(float x, float y, float angle, float scale, float aspect_ratio);
+
+protected:
     ShadingProgram program_;
     std::string vertex_file;
     std::string fragment_file;

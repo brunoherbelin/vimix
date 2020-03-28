@@ -65,14 +65,12 @@ void ShadingProgram::link()
     glDeleteShader(fragment_id_);
 }
 
-bool ShadingProgram::use()
+void ShadingProgram::use()
 {
     if (_currentProgram == nullptr || _currentProgram != this) {
         _currentProgram = this;
         glUseProgram(id_);
-        return true;
     }
-    return false;
 }
 
 void ShadingProgram::enduse()
@@ -167,14 +165,13 @@ void Shader::use()
     }
 
     // Use program and set uniforms
-    // - if the program was changed, we should set the uniforms
-    // - or if the shader values were changed, we should set the uniforms
-    if (program_.use() || shader_changed) {
-        program_.setUniform("projection", Rendering::manager().Projection());
-        program_.setUniform("modelview", modelview);
-        program_.setUniform("color", color);
-        shader_changed = false;
-    }
+    program_.use();
+
+    // set uniforms
+    program_.setUniform("projection", Rendering::manager().Projection());
+    program_.setUniform("modelview", modelview);
+    program_.setUniform("color", color);
+
 }
 
 
@@ -182,18 +179,13 @@ void Shader::reset()
 {
     modelview =  glm::identity<glm::mat4>();
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-    shader_changed = true;
 }
 
 
-void Shader::setModelview(glm::mat4 m)
+void Shader::setModelview(float x, float y, float angle, float scale, float aspect_ratio)
 {
-    modelview = m;
-    shader_changed = true;
-}
-
-void Shader::setColor(glm::vec4 c)
-{
-    color = c;
-    shader_changed = true;
+    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(x, y, 0.f));
+    View = glm::rotate(View, angle, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale * aspect_ratio, scale, scale));
+    modelview = View * Model;
 }
