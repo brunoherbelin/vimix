@@ -3,14 +3,15 @@
 
 #include <string>
 #include <vector>
+#include <glm/glm.hpp>
 
-class Shader
+class ShadingProgram
 {
 public:
-	Shader();
-	void load(const std::string& vertex_rsc, const std::string& fragment_rsc);
+    ShadingProgram();
 	void init(const std::string& vertex_code, const std::string& fragment_code);
-	void use();
+    bool initialized();
+    bool use();
 	template<typename T> void setUniform(const std::string& name, T val);
 	template<typename T> void setUniform(const std::string& name, T val1, T val2);
 	template<typename T> void setUniform(const std::string& name, T val1, T val2, T val3);
@@ -26,6 +27,29 @@ private:
 	std::string vertex_code_;
 	std::string fragment_code_;
 
+    static ShadingProgram *_currentProgram;
+};
+
+class Shader
+{
+public:
+    Shader();
+    virtual ~Shader() {}
+
+    virtual void use();
+    virtual void reset();
+
+    void setModelview(glm::mat4 m);
+    void setColor(glm::vec4 c);
+
+protected:
+    glm::mat4 modelview;
+    glm::vec4 color;
+
+    bool shader_changed;
+    ShadingProgram program_;
+    std::string vertex_file;
+    std::string fragment_file;
 };
 
 #endif /* __SHADER_H_ */

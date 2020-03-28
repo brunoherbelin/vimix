@@ -11,7 +11,6 @@
 #define ABS_DIFF(a, b) ( (a) < (b) ? (b - a) : (a - b) )
 #define SIGN(a)	   (((a) < 0) ? -1.0 : 1.0)
 #define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define EPSILON 0.00001
 #define LOG100(val) (50.0/log(10.0)*log((float)val + 1.0))
 #define EXP100(val) (exp(log(10.0)/50.0*(float)(val))-1.0)

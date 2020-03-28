@@ -7,7 +7,11 @@
 
 // Opengl
 #include <glad/glad.h>
-#include <glm/glm.hpp> 
+#include <glm/glm.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 //  GStreamer
 #include <gst/gst.h>
@@ -16,7 +20,7 @@
 
 // vmix
 #include "defines.h"
-#include "Shader.h"
+#include "ImageShader.h"
 #include "Settings.h"
 #include "Resource.h"
 #include "RenderingManager.h"
@@ -31,38 +35,51 @@
 
 MediaPlayer testmedia;
 MediaPlayer testmedia2("testmedia2");
-Shader rendering_shader;
+ImageShader rendering_shader;
 unsigned int vbo, vao, ebo;
 float texturear = 1.0;
 GLuint textureimagepng = 0;
 
 void create_square(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
 {
-
-	// create the triangle
-	float _vertices[] = {
-		-1.f, -1.f, 0.0f, // position vertex 3
-		0.0f, 1.0f, 0.0f,	 // uv vertex 3
-		-1.f, 1.f, 0.0f,	// position vertex 0
-		0.0f, 0.0f, 0.0f,	 // uv vertex 0
-		1.f, -1.f, 0.0f,  // position vertex 2
-		1.0f, 1.0f, 0.0f,	 // uv vertex 2
-		1.f, 1.f, 0.0f,	// position vertex 1
-		1.0f, 0.0f, 0.0f,	 // uv vertex 1
+    // create the triangles
+    float _vertices[] = {
+        -1.f, -1.f, 0.f,  // position vertex 3
+        1.f, 0.f, 1.f,    // color vertex 3
+        0.f, 1.f, 0.f,	  // uv vertex 3
+        -1.f, 1.f, 0.f,	  // position vertex 0
+        1.f, 1.f, 0.f,    // color vertex 0
+        0.f, 0.f, 0.f,	  // uv vertex 0
+        1.f, -1.f, 0.f,   // position vertex 2
+        1.f, 1.f, 1.f,    // color vertex 2
+        1.f, 1.f, 0.f,	  // uv vertex 2
+        1.f, 1.f, 0.f,	  // position vertex 1
+        0.f, 1.f, 1.f,    // color vertex 1
+        1.f, 0.f, 0.f,	  // uv vertex 1
 	};
 	unsigned int _indices[] = { 0, 1, 2, 3 };
+
+    // create the opengl objects
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
 	glGenBuffers(1, &ebo);
 	glBindVertexArray(vao);
+
+    // bind vertext array and its buffer
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(_indices), _indices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+
+    // explain how to read attributes 1, 2 and 3
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    // done
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
@@ -106,23 +123,23 @@ void drawMediaBackgound()
     if ( !testmedia2.isOpen() )
         return;
 
-    // rendering TRIANGLE geometries
+    //
+    // RENDER SOURCE
+    //
+    // use the shader
     rendering_shader.use();
-    rendering_shader.setUniform("render_projection", Rendering::manager().Projection());
-    
+    // use the media
     testmedia2.Update();
     testmedia2.Bind();
-
-    // rendering_shader.setUniform("aspectratio", texturear);
-    // glBindTexture(GL_TEXTURE_2D, textureimagepng);
-
+    // draw the vertex array
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
-
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // render TRIANGLE GUI
+    //
+    // GUI to control SOURCE
+    //
     {
         ImGui::Begin("Image properties");
 
@@ -146,6 +163,13 @@ void drawMediaBackgound()
         ImGui::SameLine(0, 10);
         ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f);
 
+        glm::mat4 modelview;
+        glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(translation[0], translation[1], 0.f));
+        View = glm::rotate(View, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale * testmedia2.AspectRatio(), scale, scale));
+        modelview = View * Model;
+        rendering_shader.setModelview(modelview);
+
         // color picker
         static float color[4] = { 1.0f,1.0f,1.0f,1.0f };
         if (ImGuiToolkit::ButtonIcon(16, 8)) {
@@ -153,47 +177,33 @@ void drawMediaBackgound()
             color[1] = 1.f;
             color[2] = 1.f;
             color[3] = 1.f;
+            rendering_shader.setColor( glm::vec4(color[0], color[1], color[2], color[3]) ) ;
         }
         ImGui::SameLine(0, 10);
-        ImGui::ColorEdit3("color", color);
+        if ( ImGui::ColorEdit3("color", color) ) {
+            rendering_shader.setColor( glm::vec4(color[0], color[1], color[2], color[3]) ) ;
+        }
 
         static float brightness = 0.0;
-        if (ImGuiToolkit::ButtonIcon(4, 1))
+        if (ImGuiToolkit::ButtonIcon(4, 1)) {
             brightness = 0.f;
+            rendering_shader.setBrightness(brightness);
+        }
         ImGui::SameLine(0, 10);
-        ImGui::SliderFloat("brightness", &brightness, -1.0, 1.0, "%.3f", 2.f);
+        if ( ImGui::SliderFloat("brightness", &brightness, -1.0, 1.0, "%.3f", 2.f) )
+            rendering_shader.setBrightness(brightness);
 
         static float contrast = 0.0;
-        if (ImGuiToolkit::ButtonIcon(2, 1))
+        if (ImGuiToolkit::ButtonIcon(2, 1)) {
             contrast = 0.f;
+            rendering_shader.setContrast(contrast);
+        }
         ImGui::SameLine(0, 10);
-        ImGui::SliderFloat("contrast", &contrast, -1.0, 1.0, "%.3f", 2.f);
-
-        // pass the parameters to the shader
-        rendering_shader.setUniform("scale", scale);
-        rendering_shader.setUniform("rotation", rotation);
-        rendering_shader.setUniform("translation", translation[0], translation[1]);
-        rendering_shader.setUniform("color", color[0], color[1], color[2]);
-        rendering_shader.setUniform("brightness", brightness);
-        rendering_shader.setUniform("contrast", contrast);
-        rendering_shader.setUniform("aspectratio", testmedia2.AspectRatio());
+        if (ImGui::SliderFloat("contrast", &contrast, -1.0, 1.0, "%.3f", 2.f) )
+            rendering_shader.setContrast(contrast);
 
         ImGui::End();
     }
-
-    // // add gui elements to vmix main window
-    // ImGui::Begin("v-mix");
-    // static float zoom = 0.3f;
-    // if (ImGuiToolkit::ButtonIcon(5, 7))
-    //     zoom = 0.3f;
-    // ImGui::SameLine(0, 10);
-    // if (ImGui::SliderFloat("zoom", &zoom, 0.1f, 10.f, "%.4f", 3.f))
-    //     UserInterface::Log("Zoom %f", zoom);
-    // rendering_shader.setUniform("render_zoom", zoom);
-    // ImGui::End();
-
-
-    Shader::enduse();
 
 }
 
@@ -381,9 +391,10 @@ int main(int, char**)
     // 2
     //    testmedia2.Open("file:///home/bhbn/Images/Butterfly.gif");
 //        testmedia2.Open("file:///home/bhbn/Images/Scan-090614-0022.jpg");
-    testmedia2.Open("file:///home/bhbn/Images/svg/abstract.svg");
+    //    testmedia2.Open("file:///home/bhbn/Images/svg/abstract.svg");
+        testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
 //    testmedia2.Open("file:///home/bhbn/Images/4k/colors-3840x2160-splash-4k-18458.jpg");
-    // testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
+//     testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
     testmedia2.Play(true);
     // create our geometries
 	create_square(vbo, vao, ebo);
@@ -392,9 +403,6 @@ int main(int, char**)
 
     // // load an image
 //    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
-
-	// init shader
-    rendering_shader.load("shaders/texture-shader.vs", "shaders/texture-shader.fs");
 
     UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 

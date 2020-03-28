@@ -184,6 +184,21 @@ message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolki
 #  Application
 #
 
+#
+# SCENE GRAPH
+#
+set(SSG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg)
+set(SSG_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/ssg.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/Texture.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/TextureLoader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/ObjLoader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/InitShader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ssg/FrameBufferObject.cpp
+)
+add_library(SSG "${SSG_SRCS}")
+
+
 # Setup the environment
 include_directories(
     ${GSTREAMER_INCLUDE_DIR}
@@ -203,6 +218,7 @@ include_directories(
     ${TINYFD_INCLUDE_DIR}
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
+    ${SSG_INCLUDE_DIR}
 )
 
 
@@ -211,6 +227,7 @@ set(VMIX_SRCS
     main.cpp
     Log.cpp
     Shader.cpp
+    ImageShader.cpp
     Settings.cpp
     Resource.cpp
     FileDialog.cpp
@@ -271,6 +288,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     TINYXML2
     TINYFD
     IMGUI
+    SSG
     vmix::rc
 )
 
