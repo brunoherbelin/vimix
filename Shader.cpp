@@ -18,18 +18,20 @@
 #include <glm/gtx/string_cast.hpp>
 
 // Globals
-ShadingProgram *ShadingProgram::_currentProgram = nullptr;
+ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
+ShadingProgram simpleShadingProgram("shaders/simple-shader.vs", "shaders/simple-shader.fs");
 
 
-
-ShadingProgram::ShadingProgram() : vertex_id_(0), fragment_id_(0), id_(0)
+ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
 {
+    vertex_file_ = vertex_file;
+    fragment_file_ = fragment_file;
 }
 
-void ShadingProgram::init(const std::string& vertex_code, const std::string& fragment_code)
+void ShadingProgram::init()
 {
-	vertex_code_ = vertex_code;
-	fragment_code_ = fragment_code;
+    vertex_code_ = Resource::getText(vertex_file_);
+    fragment_code_ = Resource::getText(fragment_file_);
 	compile();
 	link();
 }
@@ -67,8 +69,8 @@ void ShadingProgram::link()
 
 void ShadingProgram::use()
 {
-    if (_currentProgram == nullptr || _currentProgram != this) {
-        _currentProgram = this;
+    if (currentProgram_ == nullptr || currentProgram_ != this) {
+        currentProgram_ = this;
         glUseProgram(id_);
     }
 }
@@ -76,7 +78,7 @@ void ShadingProgram::use()
 void ShadingProgram::enduse()
 {
     glUseProgram(0);
-    _currentProgram = nullptr ;
+    currentProgram_ = nullptr ;
 }
 
 template<>
@@ -152,25 +154,23 @@ void ShadingProgram::checkLinkingErr()
 
 Shader::Shader()
 {
-    vertex_file = "shaders/simple-shader.vs";
-    fragment_file = "shaders/simple-shader.fs";
+    program_ = &simpleShadingProgram;
+    reset();
 }
 
 void Shader::use()
 {
     // initialization on first use
-    if (!program_.initialized()) {
-        program_.init(Resource::getText(vertex_file), Resource::getText(fragment_file));
-        reset();
-    }
+    if (!program_->initialized())
+        program_->init();
 
     // Use program and set uniforms
-    program_.use();
+    program_->use();
 
     // set uniforms
-    program_.setUniform("projection", Rendering::manager().Projection());
-    program_.setUniform("modelview", modelview);
-    program_.setUniform("color", color);
+    program_->setUniform("projection", Rendering::manager().Projection());
+    program_->setUniform("modelview", modelview);
+    program_->setUniform("color", color);
 
 }
 

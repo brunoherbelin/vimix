@@ -8,8 +8,8 @@
 class ShadingProgram
 {
 public:
-    ShadingProgram();
-	void init(const std::string& vertex_code, const std::string& fragment_code);
+    ShadingProgram(const std::string& vertex_file, const std::string& fragment_file);
+    void init();
     bool initialized();
     void use();
 	template<typename T> void setUniform(const std::string& name, T val);
@@ -26,8 +26,10 @@ private:
 	unsigned int vertex_id_, fragment_id_, id_;
 	std::string vertex_code_;
 	std::string fragment_code_;
+    std::string vertex_file_;
+    std::string fragment_file_;
 
-    static ShadingProgram *_currentProgram;
+    static ShadingProgram *currentProgram_;
 };
 
 class Shader
@@ -45,9 +47,7 @@ public:
     void setModelview(float x, float y, float angle, float scale, float aspect_ratio);
 
 protected:
-    ShadingProgram program_;
-    std::string vertex_file;
-    std::string fragment_file;
+    ShadingProgram *program_;
 };
 
 #endif /* __SHADER_H_ */

@@ -1,19 +1,20 @@
 #include "defines.h"
 #include "ImageShader.h"
 
+ShadingProgram imageShadingProgram("shaders/texture-shader.vs", "shaders/texture-shader.fs");
 
 ImageShader::ImageShader()
 {
-    vertex_file = "shaders/texture-shader.vs";
-    fragment_file = "shaders/texture-shader.fs";
+    program_ = &imageShadingProgram;
+    reset();
 }
 
 void ImageShader::use()
 {
     Shader::use();
 
-    program_.setUniform("brightness", brightness);
-    program_.setUniform("contrast", contrast);
+    program_->setUniform("brightness", brightness);
+    program_->setUniform("contrast", contrast);
 }
 
 
