@@ -37,9 +37,8 @@ const char *Resource::getData(const std::string& path, size_t* out_file_size){
         cmrc::file::iterator it = file.begin();
         data = static_cast<const char *>(it);
     }
-	catch (std::system_error e) {
-        std::string msg = "Could not access ressource " + std::string(path);
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+    catch (std::system_error e) {
+        Log::Error("Could not access ressource %s", std::string(path).c_str());
 	}
 
     return data;
@@ -55,8 +54,7 @@ std::string Resource::getText(const std::string& path){
     	file_stream << std::string(file.begin(), file.end()) << std::endl;
     }
 	catch (std::system_error e) {
-        std::string msg = "Could not access ressource " + std::string(path);
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+        Log::Error("Could not access ressource %s", std::string(path).c_str());
 	}
 
 	return file_stream.str();
@@ -78,16 +76,14 @@ unsigned int Resource::getTextureDDS(const std::string& path)
     size_t size = 0;
     const char *fp = getData(path, &size);
     if ( size==0 ){
-        std::string msg = "Empty ressource " + std::string(path);
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+        Log::Error("Could not open ressource %s: empty?", std::string(path).c_str());
         return 0;
     }
 
 	// verify the type of file = bytes [0 - 3]
     const char *filecode = fp;
     if (strncmp(filecode, "DDS ", 4) != 0){
-        std::string msg = "Not a DDS image " + std::string(path);
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+        Log::Error("Could not open DDS ressource %s: wrong format.", std::string(path).c_str());
         return 0;
     }
 
@@ -121,9 +117,8 @@ unsigned int Resource::getTextureDDS(const std::string& path)
 		break;
 	default:
         {
-            std::string msg = "Not a DXT1, DXT3 or DXT5 texture " + std::string(path);
-            tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
-            return 0;
+        Log::Error("Could not open DDS ressource %s: Not a DXT1, DXT3 or DXT5 texture.",std::string(path).c_str());
+        return 0;
         }
 	}
 
@@ -175,15 +170,13 @@ unsigned int Resource::getTextureImage(const std::string& path)
     size_t size = 0;
     const char *fp = getData(path, &size);
     if ( size==0 ){
-        std::string msg = "Empty ressource " + std::string(path);
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+        Log::Error("Could not open ressource %s: empty?",std::string(path).c_str());
         return 0;
     }
 
 	img = stbi_load_from_memory(reinterpret_cast<const unsigned char *>(fp), size, &w, &h, &n, 4);
 	if (img == NULL) {
-        std::string msg = "Failed to load " + std::string(path) + " : " + std::string(stbi_failure_reason());
-        tinyfd_messageBox(APP_TITLE, msg.c_str(), "ok", "error", 0);
+        Log::Error("Failed to open ressource %s: %s", std::string(path).c_str(), stbi_failure_reason() );
 	 	return 0;
 	}
 
