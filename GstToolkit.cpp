@@ -20,6 +20,7 @@ string GstToolkit::date_time_string()
     oss << setw(2) << setfill('0') << std::to_string(now->tm_hour );
     oss << setw(2) << setfill('0') << std::to_string(now->tm_min );
     oss << setw(2) << setfill('0') << std::to_string(now->tm_sec );
+    // TODO : add milisecond precision
 
     return oss.str();
 }

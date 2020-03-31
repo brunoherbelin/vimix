@@ -2,8 +2,8 @@
 
 out vec4 FragColor;
 
-in vec3 vertexUV;
 in vec3 vertexColor;
+in vec2 vertexUV;
 
 uniform sampler2D sourceTexture;
 uniform vec4 color;
@@ -12,7 +12,7 @@ uniform float brightness;
 
 void main()
 {		
-    vec4 texturecolor = texture(sourceTexture, vertexUV.xy);
+    vec4 texturecolor = texture(sourceTexture, vertexUV);
     vec3 transformedRGB = mix(vec3(0.62), texturecolor.rgb, contrast + 1.0) + brightness;
     transformedRGB *= vertexColor;
 

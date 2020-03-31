@@ -9,9 +9,11 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
 //  GStreamer
@@ -31,9 +33,13 @@
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "MediaPlayer.h"
+#include "Scene.h"
+#include "Primitives.h"
+#include "Visitor.h"
 
 #define PI 3.14159265358979323846
 
+Scene scene;
 MediaPlayer testmedia;
 MediaPlayer testmedia2("testmedia2");
 ImageShader rendering_shader;
@@ -41,81 +47,6 @@ unsigned int vbo, vao, ebo;
 float texturear = 1.0;
 GLuint textureimagepng = 0;
 
-void create_square(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
-{
-    // create the triangles
-    float _vertices[] = {
-        -1.f, -1.f, 0.f,  // position vertex 3
-        1.f, 0.f, 1.f,    // color vertex 3
-        0.f, 1.f, 0.f,	  // uv vertex 3
-        -1.f, 1.f, 0.f,	  // position vertex 0
-        1.f, 1.f, 0.f,    // color vertex 0
-        0.f, 0.f, 0.f,	  // uv vertex 0
-        1.f, -1.f, 0.f,   // position vertex 2
-        1.f, 1.f, 1.f,    // color vertex 2
-        1.f, 1.f, 0.f,	  // uv vertex 2
-        1.f, 1.f, 0.f,	  // position vertex 1
-        0.f, 1.f, 1.f,    // color vertex 1
-        1.f, 0.f, 0.f,	  // uv vertex 1
-	};
-	unsigned int _indices[] = { 0, 1, 2, 3 };
-
-    // create the opengl objects
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &ebo);
-	glBindVertexArray(vao);
-
-    // bind vertext array and its buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(_indices), _indices, GL_STATIC_DRAW);
-
-    // explain how to read attributes 1, 2 and 3
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)0);
-	glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void *)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    // done
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
-}
-
-GLuint loadPNG(const char *imagepath, float *aspectrato)
-{
-    int w, h, n, image;
-    /* FIXME: remove once the example supports gl3 and/or gles2 */
-    g_setenv ("GST_GL_API", "opengl", FALSE);
-	unsigned char* img;
-    *aspectrato = 1.f;
-
-	img = stbi_load(imagepath, &w, &h, &n, 3);
-	if (img == NULL) {
-		printf("Failed to load png - %s\n", stbi_failure_reason());
-	 return 0;
-	}
-    GLuint tex;
-    glGenTextures(1, &tex);
-
-	glBindTexture( GL_TEXTURE_2D, tex);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 3);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, img);
-
-	stbi_image_free(img);
-	glBindTexture( GL_TEXTURE_2D, 0);
-
-    *aspectrato = static_cast<float>(w) / static_cast<float>(h);
-    return tex;
-}
 
 // from https://gstreamer.freedesktop.org/documentation/application-development/advanced/pipeline-manipulation.html?gi-language=c
 
@@ -127,10 +58,13 @@ void drawMediaBackgound()
     //
     // RENDER SOURCE
     //
+    testmedia2.Update();
+
     // use the shader
+    rendering_shader.projection = Rendering::manager().Projection();
+    rendering_shader.modelview = glm::identity<glm::mat4>();;
     rendering_shader.use();
     // use the media
-    testmedia2.Update();
     testmedia2.Bind();
     // draw the vertex array
     glBindVertexArray(vao);
@@ -164,7 +98,7 @@ void drawMediaBackgound()
         ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f);
 
         // set modelview
-        rendering_shader.setModelview(translation[0], translation[1], rotation, scale, testmedia2.AspectRatio());
+//        rendering_shader.setModelview(translation[0], translation[1], rotation, scale, testmedia2.AspectRatio());
 
         // color picker
         if (ImGuiToolkit::ButtonIcon(16, 8))  rendering_shader.color = glm::vec4(1.f);
@@ -322,6 +256,23 @@ void drawMediaPlayer()
 }
 
 
+void drawScene()
+{
+    static gint64 last_time = gst_util_get_timestamp ();
+    gint64 current_time = gst_util_get_timestamp ();
+    gint64 dt = current_time - last_time;
+
+    glm::mat4 mv = glm::identity<glm::mat4>();
+//    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(0, 0, 0.f));
+//    View = glm::rotate(View, 0.f, glm::vec3(0.0f, 0.0f, 1.0f));
+//    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1, 1, 1));
+//    mv = View * Model;
+
+    scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
+    scene.root_.draw(mv, Rendering::manager().Projection());
+
+    last_time = current_time;
+}
 
 int main(int, char**)
 {
@@ -350,38 +301,62 @@ int main(int, char**)
     gst_debug_set_active(TRUE);
 #endif
 
-    // 1
-//     testmedia.Open("file:///home/bhbn/Videos/MOV001.MOD");
-//     testmedia.Open("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
-//     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
-//    testmedia.Open("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
-    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
-//    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
-//    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
-
-//    testmedia.Open("file:///home/bhbn/Videos/iss.mov");
-    testmedia.Play(false);
+////     testmedia.Open("file:///home/bhbn/Videos/MOV001.MOD");
+////     testmedia.Open("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
+////     testmedia.Open("file:///home/bhbn/Videos/fish.mp4");
+////    testmedia.Open("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
+//    testmedia.Open("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
+////    testmedia.Open("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
+////    testmedia.Open("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
+////    testmedia.Open("file:///home/bhbn/Videos/iss.mov");
+//    testmedia.Play(false);
 
     // Add draw callbacks to the Rendering
-    Rendering::manager().AddDrawCallback(drawMediaPlayer);
+//    Rendering::manager().AddDrawCallback(drawMediaPlayer);
 
-    // 2
-    //    testmedia2.Open("file:///home/bhbn/Images/Butterfly.gif");
-//        testmedia2.Open("file:///home/bhbn/Images/Scan-090614-0022.jpg");
-    //    testmedia2.Open("file:///home/bhbn/Images/svg/abstract.svg");
-        testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
-//    testmedia2.Open("file:///home/bhbn/Images/4k/colors-3840x2160-splash-4k-18458.jpg");
-//     testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
-    testmedia2.Play(true);
-    // create our geometries
-	create_square(vbo, vao, ebo);
-    // Add draw callbacks to the Rendering
-    Rendering::manager().AddDrawCallback(drawMediaBackgound);
+////    testmedia2.Open("file:///home/bhbn/Images/Butterfly.gif");
+////    testmedia2.Open("file:///home/bhbn/Images/Scan-090614-0022.jpg");
+////    testmedia2.Open("file:///home/bhbn/Images/svg/abstract.svg");
+//    testmedia2.Open("file:///home/bhbn/Videos/iss.mov");
+////    testmedia2.Open("file:///home/bhbn/Images/4k/colors-3840x2160-splash-4k-18458.jpg");
+////    testmedia2.Open("file:///home/bhbn/Videos/Upgrade.2018.720p.AMZN.WEB-DL.DDP5.1.H.264-NTG.m4v");
+//    testmedia2.Play(true);
+//    // create our geometries
+//    create_square_glm(vbo, vao, ebo);
+//    // Add draw callbacks to the Rendering
+//    Rendering::manager().AddDrawCallback(drawMediaBackgound);
 
-    // // load an image
-//    textureimagepng = loadPNG("/home/bhbn/Videos/iss_snap.png", &texturear);
+//     test text editor
+//    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
-    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
+    // init the scene
+    scene.root_.init();
+    Rendering::manager().AddDrawCallback(drawScene);
+
+    // create and add a elements to the scene
+
+    MediaRectangle testnode1("file:///home/bhbn/Videos/iss.mov");
+    testnode1.init();
+
+    MediaRectangle testnode2("file:///home/bhbn/Videos/fish.mp4");
+    testnode2.init();
+
+    Group g1;
+    g1.init();
+    g1.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, 1.f, 0.f));
+
+    Group g2;
+    g2.init();
+    g2.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, -1.f, 0.f));
+
+    // build tree
+    g1.addChild(&testnode1);
+    scene.root_.addChild(&g1);
+    g2.addChild(&testnode2);
+    scene.root_.addChild(&g2);
+
+    SessionVisitor savetoxml("/home/bhbn/test.vmx");
+    scene.accept(savetoxml);
 
     ///
     /// Main LOOP

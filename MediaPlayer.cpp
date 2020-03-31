@@ -66,6 +66,7 @@ MediaPlayer::MediaPlayer(string name) : id(name)
     desired_state = GST_STATE_PAUSED;
     loop = LoopMode::LOOP_REWIND;
     current_segment = segments.begin();
+    v_frame.buffer = nullptr;
 
     textureindex = 0;    
 }
@@ -447,7 +448,8 @@ std::list< std::pair<guint64, guint64> > MediaPlayer::getPlaySegments() const
 void MediaPlayer::Update()
 {
     // discard 
-    if (!ready) return;
+    if (!ready)
+        return;
 
     // done discovering stream
     if (discoverer != nullptr) {

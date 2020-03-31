@@ -22,6 +22,7 @@ CMRC_DECLARE(vmix);
 
 
 std::map<std::string, unsigned int> textureIndex;
+std::map<std::string, float> textureAspectRatio;
 
 const char *Resource::getData(const std::string& path, size_t* out_file_size){
 
@@ -65,12 +66,14 @@ std::string Resource::getText(const std::string& path){
 #define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
 #define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
 
-unsigned int Resource::getTextureDDS(const std::string& path)
+unsigned int Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 {
 	GLuint textureID = 0;
 
-	if (textureIndex.count(path) > 0)
-		return textureIndex[path];
+    if (textureIndex.count(path) > 0){
+        if (aspect_ratio) *aspect_ratio = textureAspectRatio[path];
+        return textureIndex[path];
+    }
 
     // Get the pointer
     size_t size = 0;
@@ -103,7 +106,7 @@ unsigned int Resource::getTextureDDS(const std::string& path)
 	const char *buffer = fp + 128;
 
 	unsigned int components  = (fourCC == FOURCC_DXT1) ? 3 : 4;
-	unsigned int format;
+    unsigned int format = 0;
 	switch(fourCC)
 	{
 	case FOURCC_DXT1:
@@ -121,6 +124,12 @@ unsigned int Resource::getTextureDDS(const std::string& path)
         return 0;
         }
 	}
+
+    if (height == 0){
+        Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        return 0;
+    }
+    float ar = static_cast<float>(width) / static_cast<float>(height);
 
 	// Create one OpenGL texture
 	glGenTextures(1, &textureID);
@@ -151,20 +160,29 @@ unsigned int Resource::getTextureDDS(const std::string& path)
 
 	}
 
-	textureIndex[path] = textureID;
-	return textureID;
+    // remember to avoid openning the same resource twice
+    textureIndex[path] = textureID;
+    textureAspectRatio[path] = ar;
+
+    // return values
+    if (aspect_ratio) *aspect_ratio = ar;
+    return textureID;
 }
 
 
-unsigned int Resource::getTextureImage(const std::string& path)
+unsigned int Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 {
 	GLuint textureID = 0;
 
-	if (textureIndex.count(path) > 0)
+    // return previously openned resource if already openned before
+    if (textureIndex.count(path) > 0) {
+        if (aspect_ratio) *aspect_ratio = textureAspectRatio[path];
 		return textureIndex[path];
+    }
 
+    float ar = 1.0;
  	int w, h, n;
-	unsigned char* img;
+    unsigned char* img = nullptr;
 
     // Get the pointer
     size_t size = 0;
@@ -179,6 +197,11 @@ unsigned int Resource::getTextureImage(const std::string& path)
         Log::Error("Failed to open ressource %s: %s", std::string(path).c_str(), stbi_failure_reason() );
 	 	return 0;
 	}
+    if (h == 0){
+        Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        return 0;
+    }
+    ar = static_cast<float>(w) / static_cast<float>(h);
 
     glGenTextures(1, &textureID);
 	glBindTexture( GL_TEXTURE_2D, textureID);
@@ -186,12 +209,17 @@ unsigned int Resource::getTextureImage(const std::string& path)
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
 
+    // free memory
 	stbi_image_free(img);
 
+    // remember to avoid openning the same resource twice
 	textureIndex[path] = textureID;
+    textureAspectRatio[path] = ar;
+
+    // return values
+    if (aspect_ratio) *aspect_ratio = ar;
 	return textureID;
 }
 

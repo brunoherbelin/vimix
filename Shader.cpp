@@ -69,7 +69,8 @@ void ShadingProgram::link()
 
 void ShadingProgram::use()
 {
-    if (currentProgram_ == nullptr || currentProgram_ != this) {
+    if (currentProgram_ == nullptr || currentProgram_ != this)
+    {
         currentProgram_ = this;
         glUseProgram(id_);
     }
@@ -168,15 +169,15 @@ void Shader::use()
     program_->use();
 
     // set uniforms
-    program_->setUniform("projection", Rendering::manager().Projection());
+    program_->setUniform("projection", projection);
     program_->setUniform("modelview", modelview);
     program_->setUniform("color", color);
-
 }
 
 
 void Shader::reset()
 {
+    projection =  glm::identity<glm::mat4>();
     modelview =  glm::identity<glm::mat4>();
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 }

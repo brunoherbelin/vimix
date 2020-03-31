@@ -41,6 +41,7 @@ public:
     virtual void use();
     virtual void reset();
 
+    glm::mat4 projection;
     glm::mat4 modelview;
     glm::vec4 color;
 
