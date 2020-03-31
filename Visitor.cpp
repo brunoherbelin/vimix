@@ -10,10 +10,10 @@
 #include <glm/glm.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
-#include <glm/virtrev/xstream.hpp>
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
@@ -30,8 +30,6 @@ SessionVisitor::SessionVisitor(std::string filename) : filename_(filename)
 
 void SessionVisitor::visit(Group &n)
 {
-    std::cerr << "Group" << std::endl;
-
     XMLElement *xmlParent = xmlCurrent_;
     xmlCurrent_ = xmlDoc_->NewElement("Group");
     visit( (Node&) n);
@@ -78,34 +76,81 @@ void SessionVisitor::visit(Group &n)
 
 }
 
+
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec3 vector)
+{
+    XMLElement *newelement = doc->NewElement( "vec3" );
+    newelement->SetAttribute("x", vector[0]);
+    newelement->SetAttribute("y", vector[1]);
+    newelement->SetAttribute("z", vector[2]);
+    return newelement;
+}
+
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec4 vector)
+{
+    XMLElement *newelement = doc->NewElement( "vec4" );
+    newelement->SetAttribute("x", vector[0]);
+    newelement->SetAttribute("y", vector[1]);
+    newelement->SetAttribute("z", vector[2]);
+    newelement->SetAttribute("w", vector[3]);
+    return newelement;
+}
+
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::mat4 matrix)
+{
+    XMLElement *newelement = doc->NewElement( "mat4" );
+    for (int r = 0 ; r < 4 ; r ++)
+    {
+        glm::vec4 row = glm::row(matrix, r);
+        XMLElement *rowxml = XMLElementGLM(doc, row);
+        rowxml->SetAttribute("row", r);
+        newelement->InsertEndChild(rowxml);
+    }
+    return newelement;
+}
+
 void SessionVisitor::visit(Node &n)
 {
-    XMLElement *transform = xmlDoc_->NewElement("Transform");
-    XMLText *matrix = xmlDoc_->NewText( glm::to_string(n.transform_).c_str() );
-    transform->InsertEndChild(matrix);
+    XMLElement *transform = XMLElementGLM(xmlDoc_, n.transform_);
     xmlCurrent_->InsertEndChild(transform);
 }
 
 void SessionVisitor::visit(Primitive &n)
 {
-    std::cerr << "Primitive" << std::endl;
     visit( (Node&) n);
 }
 
 void SessionVisitor::visit(TexturedRectangle &n)
 {
-    std::cerr << "TexturedRectangle" << std::endl;
+    // type specific
+    XMLElement *xmlParent = xmlCurrent_;
+    xmlCurrent_ = xmlDoc_->NewElement("TexturedRectangle");
 
+    XMLElement *image = xmlDoc_->NewElement("filename");
+    xmlCurrent_->InsertEndChild(image);
+    XMLText *filename = xmlDoc_->NewText( n.getResourcePath().c_str() );
+    image->InsertEndChild(filename);
+
+    // inherited from Primitive
+    visit( (Primitive&) n);
+
+    // recursive
+    xmlParent->InsertEndChild(xmlCurrent_);
+    xmlCurrent_ = xmlParent;
 }
 
 void SessionVisitor::visit(MediaRectangle &n)
 {
-    std::cerr << "MediaRectangle" << std::endl;
-
     // type specific
     XMLElement *xmlParent = xmlCurrent_;
     xmlCurrent_ = xmlDoc_->NewElement("MediaRectangle");
-    xmlCurrent_->SetAttribute("Filename", n.getMediaPath().c_str() );
+
+    XMLElement *media = xmlDoc_->NewElement("filename");
+    xmlCurrent_->InsertEndChild(media);
+    XMLText *filename = xmlDoc_->NewText( n.getMediaPath().c_str() );
+    media->InsertEndChild(filename);
+
+    // TODO : visit MediaPlayer
 
     // inherited from Primitive
     visit( (Primitive&) n);
@@ -117,14 +162,32 @@ void SessionVisitor::visit(MediaRectangle &n)
 
 void SessionVisitor::visit(LineStrip &n)
 {
-    std::cerr << "LineStrip" << std::endl;
+    // type specific
+    XMLElement *xmlParent = xmlCurrent_;
+    xmlCurrent_ = xmlDoc_->NewElement("LineStrip");
 
+    XMLElement *color = XMLElementGLM(xmlDoc_, n.getColor());
+    color->SetAttribute("type", "RGBA");
+    xmlCurrent_->InsertEndChild(color);
+
+    std::vector<glm::vec3> points = n.getPoints();
+    for(size_t i = 0; i < points.size(); ++i)
+    {
+        XMLElement *p = XMLElementGLM(xmlDoc_, points[i]);
+        p->SetAttribute("point", (int) i);
+        xmlCurrent_->InsertEndChild(p);
+    }
+
+    // inherited from Primitive
+    visit( (Primitive&) n);
+
+    // recursive
+    xmlParent->InsertEndChild(xmlCurrent_);
+    xmlCurrent_ = xmlParent;
 }
 
 void SessionVisitor::visit(Scene &n)
 {
-    std::cerr << "root" << std::endl;
-
     XMLDeclaration *pDec = xmlDoc_->NewDeclaration();
     xmlDoc_->InsertFirstChild(pDec);
 

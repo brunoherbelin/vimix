@@ -14,7 +14,7 @@ class TexturedRectangle : public Primitive {
 public:
     TexturedRectangle(const std::string& resourcepath);
 
-    void draw(glm::mat4 modelview, glm::mat4 projection);
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
     void accept(Visitor& v) override { v.visit(*this);  }
 
     std::string getResourcePath() { return texturepath_; }
@@ -34,8 +34,8 @@ public:
     MediaRectangle(const std::string& mediapath);
     ~MediaRectangle();
 
-    void update ( float dt );
-    void draw(glm::mat4 modelview, glm::mat4 projection);
+    void update ( float dt ) override;
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
     void accept(Visitor& v) override { v.visit(*this); }
 
     std::string getMediaPath() { return mediapath_; }
