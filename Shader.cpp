@@ -132,12 +132,12 @@ void ShadingProgram::checkCompileErr()
     glGetShaderiv(vertex_id_, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vertex_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Vertex ShadingProgram:\n%s \n%s", infoLog, vertex_code_);
+        Log::Warning("Error compiling Vertex ShadingProgram:\n%s \n%s", infoLog, vertex_code_.c_str());
     }
     glGetShaderiv(fragment_id_, GL_COMPILE_STATUS, &success);
 	if (!success) {
         glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Fragment ShadingProgram:\n%s \n%s", infoLog, vertex_code_);
+        Log::Warning("Error compiling Fragment ShadingProgram:\n%s \n%s", infoLog, vertex_code_.c_str());
 	}
 }
 

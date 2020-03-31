@@ -41,8 +41,8 @@ public:
     Primitive() : Node(), shader_(nullptr), vao_(0), arrayBuffer_(0), elementBuffer_(0), drawingPrimitive_(0) {}
     virtual ~Primitive();
 
-    virtual void init ();
-    virtual void draw ( glm::mat4 modelview, glm::mat4 projection);
+    virtual void init () override;
+    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override { v.visit(*this); }
 
     Shader *getShader() { return shader_; }
@@ -68,9 +68,9 @@ public:
     Group() : Node() {}
     virtual ~Group();
 
-    virtual void init ();
-    virtual void update ( float dt );
-    virtual void draw ( glm::mat4 modelview, glm::mat4 projection);
+    virtual void init () override;
+    virtual void update ( float dt ) override;
+    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override { v.visit(*this); }
 
     virtual void addChild ( Node *child );

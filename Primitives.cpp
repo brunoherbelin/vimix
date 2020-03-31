@@ -121,7 +121,7 @@ void MediaRectangle::update( float dt )
 
 LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color)
 {
-    for(int i = 0; i < points.size(); ++i)
+    for(size_t i = 0; i < points.size(); ++i)
     {
         points_.push_back( points[i] );
         colors_.push_back( color );
