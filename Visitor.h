@@ -3,8 +3,6 @@
 
 #include <string>
 
-#include "tinyxml2Toolkit.h"
-
 // Forward declare different kind of Node
 class Node;
 class Primitive;

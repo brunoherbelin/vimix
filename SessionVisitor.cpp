@@ -1,4 +1,5 @@
-#include "Visitor.h"
+#include "SessionVisitor.h"
+
 #include "Log.h"
 #include "Scene.h"
 #include "Primitives.h"

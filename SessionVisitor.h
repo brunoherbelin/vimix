@@ -2,6 +2,7 @@
 #define XMLVISITOR_H
 
 #include "Visitor.h"
+#include "tinyxml2Toolkit.h"
 
 class SessionVisitor : public Visitor {
 

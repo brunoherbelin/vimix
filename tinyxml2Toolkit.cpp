@@ -3,12 +3,13 @@
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
+#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/gtc/matrix_access.hpp>
 
 
-XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec3 vector)
+XMLElement *tinyxml2::XMLElementGLM(XMLDocument *doc, glm::vec3 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec3" );
     newelement->SetAttribute("x", vector[0]);
@@ -17,7 +18,7 @@ XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec3 vector)
     return newelement;
 }
 
-XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec4 vector)
+XMLElement *tinyxml2::XMLElementGLM(XMLDocument *doc, glm::vec4 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec4" );
     newelement->SetAttribute("x", vector[0]);
@@ -27,7 +28,7 @@ XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec4 vector)
     return newelement;
 }
 
-XMLElement *XMLElementGLM(XMLDocument *doc, glm::mat4 matrix)
+XMLElement *tinyxml2::XMLElementGLM(XMLDocument *doc, glm::mat4 matrix)
 {
     XMLElement *newelement = doc->NewElement( "mat4" );
     for (int r = 0 ; r < 4 ; r ++)

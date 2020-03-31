@@ -219,15 +219,16 @@ set(VMIX_SRCS
     ImageShader.cpp
     Scene.cpp
     Primitives.cpp
-    Visitor.cpp
+    SessionVisitor.cpp
     Settings.cpp
     Resource.cpp
     FileDialog.cpp
-    ImGuiToolkit.cpp
-    GstToolkit.cpp
     MediaPlayer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
+    ImGuiToolkit.cpp
+    GstToolkit.cpp
+    tinyxml2Toolkit.cpp
 )
 
 set(VMIX_RSC_FILES

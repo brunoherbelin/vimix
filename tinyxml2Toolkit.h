@@ -8,9 +8,9 @@ namespace tinyxml2 {
 class XMLDocument;
 class XMLElement;
 
-tinyxml2::XMLElement *XMLElementGLM(tinyxml2::XMLDocument *doc, glm::vec3 vector);
-tinyxml2::XMLElement *XMLElementGLM(tinyxml2::XMLDocument *doc, glm::vec4 vector);
-tinyxml2::XMLElement *XMLElementGLM(tinyxml2::XMLDocument *doc, glm::mat4 matrix);
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec3 vector);
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::vec4 vector);
+XMLElement *XMLElementGLM(XMLDocument *doc, glm::mat4 matrix);
 
 }
 

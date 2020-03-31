@@ -35,7 +35,7 @@
 #include "MediaPlayer.h"
 #include "Scene.h"
 #include "Primitives.h"
-#include "Visitor.h"
+#include "SessionVisitor.h"
 
 #define PI 3.14159265358979323846
 
