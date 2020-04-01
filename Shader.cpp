@@ -22,6 +22,12 @@
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple-shader.vs", "shaders/simple-shader.fs");
 
+// Blending presets for matching with Shader::BlendMode
+GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
+GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,};
+GLenum blending_destination_function[6] = {GL_ONE, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
+
+
 
 ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
 {
@@ -154,7 +160,7 @@ void ShadingProgram::checkLinkingErr()
 }
 
 
-Shader::Shader()
+Shader::Shader() : blending(BLEND_OPACITY)
 {
     program_ = &simpleShadingProgram;
     reset();
@@ -177,6 +183,15 @@ void Shader::use()
     program_->setUniform("projection", projection);
     program_->setUniform("modelview", modelview);
     program_->setUniform("color", color);
+
+    // Blending Function
+    if ( blending != BLEND_NONE) {
+        glEnable(GL_BLEND);
+        glBlendEquation(blending_equation[blending]);
+        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
+    }
+    else
+        glDisable(GL_BLEND);
 }
 
 

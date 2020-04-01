@@ -49,10 +49,21 @@ public:
     glm::mat4 modelview;
     glm::vec4 color;
 
+    typedef enum {
+        BLEND_NONE = 0,
+        BLEND_ADD,
+        BLEND_SUBSTRACT,
+        BLEND_LAYER_ADD,
+        BLEND_LAYER_SUBSTRACT,
+        BLEND_OPACITY
+    } BlendMode;
+    BlendMode blending;
+
     void setModelview(float x, float y, float angle, float scale, float aspect_ratio);
 
 protected:
     ShadingProgram *program_;
+
 };
 
 #endif /* __SHADER_H_ */

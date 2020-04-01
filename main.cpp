@@ -341,22 +341,36 @@ int main(int, char**)
     MediaRectangle testnode2("file:///home/bhbn/Videos/fish.mp4");
     testnode2.init();
 
+    TexturedRectangle testnode3("images/v-mix_256x256.png");
+    testnode3.init();
+    testnode3.getShader()->blending = Shader::BLEND_SUBSTRACT;
+
+    std::vector<glm::vec3> points;
+    points.push_back( glm::vec3( -1.f, -1.f, 0.f ) );
+    points.push_back( glm::vec3( -1.f, 1.f, 0.f ) );
+    points.push_back( glm::vec3( 1.f, 1.f, 0.f ) );
+    points.push_back( glm::vec3( 1.f, -1.f, 0.f ) );
+    glm::vec3 color( 1.f, 1.f, 0.f );
+    LineStrip border(points, color);
+    border.init();
+
     Group g1;
     g1.init();
     g1.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, 1.f, 0.f));
 
-    Group g2;
+    Switch g2;
     g2.init();
     g2.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, -1.f, 0.f));
 
+
     // build tree
     g1.addChild(&testnode1);
+    g1.addChild(&testnode3);
     scene.root_.addChild(&g1);
     g2.addChild(&testnode2);
+    g2.addChild(&border);
+    g2.setActiveIndex(1);
     scene.root_.addChild(&g2);
-
-    SessionVisitor savetoxml("/home/bhbn/test.vmx");
-    scene.accept(savetoxml);
 
     ///
     /// Main LOOP
@@ -368,6 +382,9 @@ int main(int, char**)
 
     testmedia.Close();
     testmedia2.Close();
+
+    SessionVisitor savetoxml("/home/bhbn/test.vmx");
+    scene.accept(savetoxml);
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();

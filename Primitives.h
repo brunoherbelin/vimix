@@ -46,9 +46,12 @@ public:
 // Draw a line strip
 class LineStrip : public Primitive {
 
+    int linewidth_;
+
 public:
     LineStrip(std::vector<glm::vec3> points, glm::vec3 color);
 
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
     void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }

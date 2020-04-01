@@ -6,6 +6,7 @@
 // Forward declare different kind of Node
 class Node;
 class Group;
+class Switch;
 class Primitive;
 class Scene;
 class TexturedRectangle;
@@ -22,6 +23,7 @@ public:
     // Declare overloads for each kind of Node to visit
     virtual void visit(Node& n) = 0;
     virtual void visit(Group& n) = 0;
+    virtual void visit(Switch& n) = 0;
     virtual void visit(Primitive& n) = 0;
     virtual void visit(Scene& n) = 0;
     virtual void visit(TexturedRectangle& n) = 0;

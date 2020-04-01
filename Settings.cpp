@@ -1,15 +1,11 @@
 #include "Settings.h"
-#include "Log.h"
+#include "tinyxml2Toolkit.h"
 
 #include <iostream>
 using namespace std;
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
-
-#ifndef XMLCheckResult
-    #define XMLCheckResult(a_eResult) if (a_eResult != XML_SUCCESS) { Log::Warning("XML error %i\n", a_eResult); return; }
-#endif
 
 
 Settings::Application Settings::application;

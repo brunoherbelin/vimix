@@ -16,7 +16,7 @@
 
 
 
-TexturedRectangle::TexturedRectangle(const std::string& resourcepath)
+TexturedRectangle::TexturedRectangle(const std::string& resourcepath) : Primitive()
 {
     texturepath_ = resourcepath;
 
@@ -48,6 +48,7 @@ TexturedRectangle::TexturedRectangle(const std::string& resourcepath)
 
     // setup shader for textured image
     shader_ = new ImageShader();
+    drawingPrimitive_ = GL_TRIANGLE_STRIP;
 }
 
 void TexturedRectangle::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -66,7 +67,7 @@ void TexturedRectangle::accept(Visitor& v)
 }
 
 
-MediaRectangle::MediaRectangle(const std::string& mediapath)
+MediaRectangle::MediaRectangle(const std::string& mediapath) : Primitive()
 {
     mediapath_ = mediapath;
 
@@ -98,6 +99,7 @@ MediaRectangle::MediaRectangle(const std::string& mediapath)
 
     // setup shader for textured image
     shader_ = new ImageShader();
+    drawingPrimitive_ = GL_TRIANGLE_STRIP;
 }
 
 MediaRectangle::~MediaRectangle()
@@ -130,7 +132,7 @@ void MediaRectangle::accept(Visitor& v)
     v.visit(*this);
 }
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color)
+LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color) : Primitive()
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
@@ -140,7 +142,15 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color)
     }
 
     shader_ = new Shader();
-    drawingPrimitive_ = GL_LINE_STRIP;
+
+    drawingPrimitive_ = GL_LINE_LOOP;
+    linewidth_ = 2;
+}
+
+void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    glLineWidth(linewidth_);
+    Primitive::draw(modelview, projection);
 }
 
 void LineStrip::accept(Visitor& v)

@@ -16,6 +16,7 @@ public:
     // Elements of Scene
     void visit(Node& n) override;
     void visit(Group& n) override;
+    void visit(Switch& n) override;
     void visit(Primitive& n) override;
     void visit(Scene& n) override;
     void visit(TexturedRectangle& n) override;

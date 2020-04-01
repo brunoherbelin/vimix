@@ -12,9 +12,6 @@
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
-#ifndef XMLCheckResult
-    #define XMLCheckResult(a_eResult) if (a_eResult != XML_SUCCESS) { Log::Warning("XML error %i\n", a_eResult); return; }
-#endif
 
 SessionVisitor::SessionVisitor(std::string filename) : filename_(filename)
 {    
@@ -27,7 +24,7 @@ void SessionVisitor::visit(Node &n)
     XMLElement *newelement = xmlDoc_->NewElement("Node");
 //    xmlCurrent_->SetAttribute("type", "Undefined");
 
-    XMLElement *transform = XMLElementGLM(xmlDoc_, n.transform_);
+    XMLElement *transform = XMLElementFromGLM(xmlDoc_, n.transform_);
     newelement->InsertEndChild(transform);
 
     // insert into hierarchy
@@ -46,9 +43,17 @@ void SessionVisitor::visit(Group &n)
     {
         // recursive
         n.getChild(i)->accept(*this);
+        xmlCurrent_->SetAttribute("index", i);
         // revert to group as current
         xmlCurrent_ = group;
     }
+}
+
+void SessionVisitor::visit(Switch &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "Switch");
+    xmlCurrent_->SetAttribute("active", n.activeIndex());
 }
 
 void SessionVisitor::visit(Primitive &n)
@@ -107,9 +112,13 @@ void SessionVisitor::visit(Shader &n)
     // Shader of a simple type
     xmlCurrent_->SetAttribute("type", "DefaultShader");
 
-    XMLElement *color = XMLElementGLM(xmlDoc_, n.color);
+    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.color);
     color->SetAttribute("type", "RGBA");
     xmlCurrent_->InsertEndChild(color);
+
+    XMLElement *blend = xmlDoc_->NewElement("blending");
+    blend->SetAttribute("mode", (int) n.blending);
+    xmlCurrent_->InsertEndChild(blend);
 
 }
 
@@ -130,15 +139,15 @@ void SessionVisitor::visit(LineStrip &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineStrip");
 
-    XMLElement *color = XMLElementGLM(xmlDoc_, n.getColor());
+    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.getColor());
     color->SetAttribute("type", "RGBA");
     xmlCurrent_->InsertEndChild(color);
 
     std::vector<glm::vec3> points = n.getPoints();
     for(size_t i = 0; i < points.size(); ++i)
     {
-        XMLElement *p = XMLElementGLM(xmlDoc_, points[i]);
-        p->SetAttribute("point", (int) i);
+        XMLElement *p = XMLElementFromGLM(xmlDoc_, points[i]);
+        p->SetAttribute("index", (int) i);
         xmlCurrent_->InsertEndChild(p);
     }
 }
@@ -148,7 +157,7 @@ void SessionVisitor::visit(Scene &n)
     XMLDeclaration *pDec = xmlDoc_->NewDeclaration();
     xmlDoc_->InsertFirstChild(pDec);
 
-    XMLElement *pRoot = xmlDoc_->NewElement("Session");
+    XMLElement *pRoot = xmlDoc_->NewElement("Scene");
     xmlDoc_->InsertEndChild(pRoot);
 
     std::string s = "Saved on " + GstToolkit::date_time_string();

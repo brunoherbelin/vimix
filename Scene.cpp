@@ -1,4 +1,4 @@
-
+#include "defines.h"
 #include "Scene.h"
 #include "Shader.h"
 #include "Primitives.h"
@@ -94,7 +94,6 @@ void Primitive::init()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    drawingPrimitive_ = GL_TRIANGLE_STRIP;
     visible_ = true;
 }
 
@@ -109,7 +108,7 @@ void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
       }
 
       //
-      // draw
+      // draw vertex array object
       //
       glBindVertexArray( vao_ );
       glDrawElements( drawingPrimitive_, indices_.size(), GL_UNSIGNED_INT, 0  );
@@ -136,12 +135,6 @@ void Primitive::deleteGLBuffers_()
 Group::~Group()
 {
     children_.clear();
-}
-
-void Group::accept(Visitor& v)
-{
-    Node::accept(v);
-    v.visit(*this);
 }
 
 void Group::init()
@@ -172,8 +165,13 @@ void Group::draw(glm::mat4 modelview, glm::mat4 projection)
              node != children_.end(); node++) {
             (*node)->draw ( ctm, projection );
         }
-
     }
+}
+
+void Group::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
 }
 
 
@@ -183,20 +181,58 @@ void Group::addChild(Node *child)
     child->parent_ = this;
 }
 
-Node *Group::getChild(int i)
+Node *Group::getChild(uint i)
 {
     if ( i >= 0 && i < children_.size() )
-      return children_[i];
+        return children_[i];
     else
-      return nullptr;
+        return nullptr;
 }
 
-int Group::numChildren()
+uint Group::numChildren() const
 {
     return children_.size();
 }
 
+void Switch::update( float dt )
+{
+    Node::update(dt);
 
-void Scene::accept(Visitor& v) {
+    // update active child node
+    children_[active_]->update( dt );
+}
+
+void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( visible_ ) {
+        // append the instance transform to the ctm
+        glm::mat4 ctm = modelview * transform_;
+
+        // draw current child
+        children_[active_]->draw(ctm, projection);
+    }
+}
+
+void Switch::accept(Visitor& v)
+{
+    Group::accept(v);
+    v.visit(*this);
+}
+
+void Switch::setActiveIndex(uint index)
+{
+    active_ = CLAMP( index, 0, children_.size() - 1);
+}
+
+Node* Switch::activeNode()
+{
+    if ( children_.empty() )
+        return nullptr;
+
+    return children_[active_];
+}
+
+void Scene::accept(Visitor& v)
+{
     v.visit(*this);
 }

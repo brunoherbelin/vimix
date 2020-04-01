@@ -72,12 +72,29 @@ public:
     virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
-    virtual void addChild ( Node *child );
-    virtual Node* getChild ( int i );
-    virtual int numChildren();
+    void addChild ( Node *child );
+    Node* getChild ( uint i );
+    uint numChildren() const;
 
 protected:
     std::vector< Node* > children_;
+};
+
+class Switch : public Group {
+
+public:
+    Switch() : Group(), active_(0) {}
+
+    virtual void update ( float dt ) override;
+    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void accept(Visitor& v) override;
+
+    void setActiveIndex(uint index);
+    uint activeIndex() const { return active_; }
+    Node* activeNode();
+
+protected:
+    uint active_;
 };
 
 // A scene contains a root node and gives a simplified API to add nodes
