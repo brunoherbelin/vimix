@@ -2,6 +2,7 @@
 #include "ImageShader.h"
 #include "Resource.h"
 #include "MediaPlayer.h"
+#include "Visitor.h"
 #include "Log.h"
 
 #include <glad/glad.h>
@@ -58,6 +59,11 @@ void TexturedRectangle::draw(glm::mat4 modelview, glm::mat4 projection)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void TexturedRectangle::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
 
 
 MediaRectangle::MediaRectangle(const std::string& mediapath)
@@ -118,6 +124,11 @@ void MediaRectangle::update( float dt )
     Primitive::update( dt );
 }
 
+void MediaRectangle::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
 
 LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color)
 {
@@ -132,4 +143,8 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color)
     drawingPrimitive_ = GL_LINE_STRIP;
 }
 
-
+void LineStrip::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}

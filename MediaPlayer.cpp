@@ -6,6 +6,7 @@
 #include "Log.h"
 #include "RenderingManager.h"
 #include "Resource.h"
+#include "Visitor.h"
 #include "UserInterfaceManager.h"
 #include "GstToolkit.h"
 
@@ -75,6 +76,10 @@ MediaPlayer::~MediaPlayer()
 {
     Close();
     // g_free(v_frame);
+}
+
+void MediaPlayer::accept(Visitor& v) {
+    v.visit(*this);
 }
 
 void MediaPlayer::Bind() 

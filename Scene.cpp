@@ -1,6 +1,8 @@
 
 #include "Scene.h"
 #include "Shader.h"
+#include "Primitives.h"
+#include "Visitor.h"
 #include "Log.h"
 
 #include <glad/glad.h>
@@ -30,6 +32,11 @@ void Node::update( float dt )
       localToWorld_ = transform_;
       worldToLocal_ = glm::inverse(transform_);
     }
+}
+
+
+void Node::accept(Visitor& v) {
+    v.visit(*this);
 }
 
 // Primitive
@@ -110,6 +117,13 @@ void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 }
 
+void Primitive::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}
+
+
 void Primitive::deleteGLBuffers_()
 {
     if ( arrayBuffer_ ) glDeleteBuffers ( 1, &arrayBuffer_);
@@ -122,6 +136,12 @@ void Primitive::deleteGLBuffers_()
 Group::~Group()
 {
     children_.clear();
+}
+
+void Group::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
 }
 
 void Group::init()
@@ -159,7 +179,7 @@ void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 
 void Group::addChild(Node *child)
 {
-    children_.push_back ( child );
+    children_.push_back( child );
     child->parent_ = this;
 }
 
@@ -176,3 +196,7 @@ int Group::numChildren()
     return children_.size();
 }
 
+
+void Scene::accept(Visitor& v) {
+    v.visit(*this);
+}

@@ -2,13 +2,12 @@
 #define SCENE_H
 
 #include <vector>
-
 #include <glm/glm.hpp>
 
-#include "Visitor.h"
 
 // Forward declare classes referenced
 class Shader;
+class Visitor;
 
 // Base virtual class for all Node types
 // Manages modelview transformations and culling
@@ -20,7 +19,7 @@ public:
 
     virtual void init() = 0;
     virtual void draw( glm::mat4 modelview,  glm::mat4 projection) = 0;
-    virtual void accept(Visitor& v) = 0;
+    virtual void accept(Visitor& v);
     virtual void update( float dt );
 
     virtual glm::mat4 getWorldToLocalMatrix() {return worldToLocal_;}
@@ -43,7 +42,7 @@ public:
 
     virtual void init () override;
     virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
-    virtual void accept(Visitor& v) override { v.visit(*this); }
+    virtual void accept(Visitor& v) override;
 
     Shader *getShader() { return shader_; }
     void setShader( Shader* e ) { shader_ = e; }
@@ -71,7 +70,7 @@ public:
     virtual void init () override;
     virtual void update ( float dt ) override;
     virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
-    virtual void accept(Visitor& v) override { v.visit(*this); }
+    virtual void accept(Visitor& v) override;
 
     virtual void addChild ( Node *child );
     virtual Node* getChild ( int i );
@@ -89,7 +88,7 @@ public:
 
     Group *getRoot() { return &root_; }
 
-    void accept(Visitor& v) { v.visit(*this); }
+    void accept(Visitor& v);
 
     Group root_;
 

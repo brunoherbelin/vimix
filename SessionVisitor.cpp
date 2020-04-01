@@ -3,6 +3,7 @@
 #include "Log.h"
 #include "Scene.h"
 #include "Primitives.h"
+#include "ImageShader.h"
 #include "MediaPlayer.h"
 #include "GstToolkit.h"
 
@@ -21,110 +22,113 @@ SessionVisitor::SessionVisitor(std::string filename) : filename_(filename)
     xmlCurrent_ = nullptr;
 }
 
-void SessionVisitor::visit(Group &n)
-{
-    XMLElement *xmlParent = xmlCurrent_;
-    xmlCurrent_ = xmlDoc_->NewElement("Group");
-    visit( (Node&) n);
-
-    for (int node = 0; node < n.numChildren(); ++node)
-    {
-        Node *child = n.getChild(node);
-
-        Group *g = dynamic_cast<Group *>(child);
-        if (g != nullptr) {
-            g->accept(*this);
-            continue;
-        }
-
-        TexturedRectangle *tr = dynamic_cast<TexturedRectangle *>(child);
-        if (tr != nullptr) {
-            tr->accept(*this);
-            continue;
-        }
-
-        MediaRectangle *mr = dynamic_cast<MediaRectangle *>(child);
-        if (mr != nullptr) {
-            mr->accept(*this);
-            continue;
-        }
-
-        LineStrip *ls = dynamic_cast<LineStrip *>(child);
-        if (ls != nullptr) {
-            ls->accept(*this);
-            continue;
-        }
-
-        Primitive *p = dynamic_cast<Primitive *>(child);
-        if (p != nullptr) {
-            p->accept(*this);
-            continue;
-        }
-
-    }
-
-    // recursive
-    xmlParent->InsertEndChild(xmlCurrent_);
-    xmlCurrent_ = xmlParent;
-
-}
-
 void SessionVisitor::visit(Node &n)
 {
+    XMLElement *newelement = xmlDoc_->NewElement("Node");
+//    xmlCurrent_->SetAttribute("type", "Undefined");
+
     XMLElement *transform = XMLElementGLM(xmlDoc_, n.transform_);
-    xmlCurrent_->InsertEndChild(transform);
+    newelement->InsertEndChild(transform);
+
+    // insert into hierarchy
+    xmlCurrent_->InsertEndChild(newelement);
+    xmlCurrent_ = newelement;  // parent for next visits
+}
+
+void SessionVisitor::visit(Group &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "Group");
+
+    // loop over members of a group
+    XMLElement *group = xmlCurrent_;
+    for (int i = 0; i < n.numChildren(); ++i)
+    {
+        // recursive
+        n.getChild(i)->accept(*this);
+        // revert to group as current
+        xmlCurrent_ = group;
+    }
 }
 
 void SessionVisitor::visit(Primitive &n)
 {
-    visit( (Node&) n);
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "Primitive");
+
+    // go over members of a primitive
+    XMLElement *Primitive = xmlCurrent_;
+
+    xmlCurrent_ = xmlDoc_->NewElement("Shader");
+    n.getShader()->accept(*this);
+    Primitive->InsertEndChild(xmlCurrent_);
+
+    // revert to primitive as current
+    xmlCurrent_ = Primitive;
 }
+
 
 void SessionVisitor::visit(TexturedRectangle &n)
 {
-    // type specific
-    XMLElement *xmlParent = xmlCurrent_;
-    xmlCurrent_ = xmlDoc_->NewElement("TexturedRectangle");
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "TexturedRectangle");
 
-    XMLElement *image = xmlDoc_->NewElement("filename");
-    xmlCurrent_->InsertEndChild(image);
     XMLText *filename = xmlDoc_->NewText( n.getResourcePath().c_str() );
+    XMLElement *image = xmlDoc_->NewElement("filename");
     image->InsertEndChild(filename);
-
-    // inherited from Primitive
-    visit( (Primitive&) n);
-
-    // recursive
-    xmlParent->InsertEndChild(xmlCurrent_);
-    xmlCurrent_ = xmlParent;
+    xmlCurrent_->InsertEndChild(image);
 }
 
 void SessionVisitor::visit(MediaRectangle &n)
 {
-    // type specific
-    XMLElement *xmlParent = xmlCurrent_;
-    xmlCurrent_ = xmlDoc_->NewElement("MediaRectangle");
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "MediaRectangle");
 
-    XMLElement *media = xmlDoc_->NewElement("filename");
-    xmlCurrent_->InsertEndChild(media);
     XMLText *filename = xmlDoc_->NewText( n.getMediaPath().c_str() );
+    XMLElement *media = xmlDoc_->NewElement("filename");
     media->InsertEndChild(filename);
+    xmlCurrent_->InsertEndChild(media);
 
-    // TODO : visit MediaPlayer
+    n.getMediaPlayer()->accept(*this);
 
-    // inherited from Primitive
-    visit( (Primitive&) n);
+}
 
-    // recursive
-    xmlParent->InsertEndChild(xmlCurrent_);
-    xmlCurrent_ = xmlParent;
+void SessionVisitor::visit(MediaPlayer &n)
+{
+    XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
+    newelement->SetAttribute("play", n.isPlaying());
+    newelement->SetAttribute("loop", (int) n.Loop());
+    newelement->SetAttribute("speed", n.PlaySpeed());
+    xmlCurrent_->InsertEndChild(newelement);
+}
+
+void SessionVisitor::visit(Shader &n)
+{
+    // Shader of a simple type
+    xmlCurrent_->SetAttribute("type", "DefaultShader");
+
+    XMLElement *color = XMLElementGLM(xmlDoc_, n.color);
+    color->SetAttribute("type", "RGBA");
+    xmlCurrent_->InsertEndChild(color);
+
+}
+
+void SessionVisitor::visit(ImageShader &n)
+{
+    // Shader of a textured type
+    xmlCurrent_->SetAttribute("type", "ImageShader");
+
+    XMLElement *filter = xmlDoc_->NewElement("filter");
+    filter->SetAttribute("brightness", n.brightness);
+    filter->SetAttribute("contrast", n.contrast);
+    xmlCurrent_->InsertEndChild(filter);
+
 }
 
 void SessionVisitor::visit(LineStrip &n)
 {
-    // type specific
-    XMLElement *xmlParent = xmlCurrent_;
-    xmlCurrent_ = xmlDoc_->NewElement("LineStrip");
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "LineStrip");
 
     XMLElement *color = XMLElementGLM(xmlDoc_, n.getColor());
     color->SetAttribute("type", "RGBA");
@@ -137,13 +141,6 @@ void SessionVisitor::visit(LineStrip &n)
         p->SetAttribute("point", (int) i);
         xmlCurrent_->InsertEndChild(p);
     }
-
-    // inherited from Primitive
-    visit( (Primitive&) n);
-
-    // recursive
-    xmlParent->InsertEndChild(xmlCurrent_);
-    xmlCurrent_ = xmlParent;
 }
 
 void SessionVisitor::visit(Scene &n)
@@ -158,10 +155,11 @@ void SessionVisitor::visit(Scene &n)
     XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
     pRoot->InsertEndChild(pComment);
 
-    // save scene
+    // start recursive traverse from root node
     xmlCurrent_ = pRoot;
     n.getRoot()->accept(*this);
 
+    // save scene
     XMLError eResult = xmlDoc_->SaveFile(filename_.c_str());
     XMLCheckResult(eResult);
 }

@@ -12,6 +12,7 @@ public:
 
     virtual void use();
     virtual void reset();
+    virtual void accept(Visitor& v);
 
     float brightness;
     float contrast;

@@ -1,6 +1,7 @@
 #include "Shader.h"
 #include "Resource.h"
 #include "Log.h"
+#include "Visitor.h"
 #include "RenderingManager.h"
 
 #include <fstream>
@@ -157,6 +158,10 @@ Shader::Shader()
 {
     program_ = &simpleShadingProgram;
     reset();
+}
+
+void Shader::accept(Visitor& v) {
+    v.visit(*this);
 }
 
 void Shader::use()

@@ -12,6 +12,9 @@
 #include <gst/gl/gl.h>
 #include <gst/pbutils/pbutils.h>
 
+// Forward declare classes referenced
+class Visitor;
+
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
 
@@ -200,7 +203,10 @@ public:
     guint Height() const;
     float AspectRatio() const;
 
-
+    /**
+     * Accept visitors
+     * */
+    void accept(Visitor& v);
 
 private:
 

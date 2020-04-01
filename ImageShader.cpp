@@ -1,4 +1,5 @@
 #include "defines.h"
+#include "Visitor.h"
 #include "ImageShader.h"
 
 ShadingProgram imageShadingProgram("shaders/texture-shader.vs", "shaders/texture-shader.fs");
@@ -24,4 +25,9 @@ void ImageShader::reset()
 
     brightness = 0.f;
     contrast = 0.f;
+}
+
+void ImageShader::accept(Visitor& v) {
+    Shader::accept(v);
+    v.visit(*this);
 }

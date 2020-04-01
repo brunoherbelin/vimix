@@ -5,6 +5,9 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+// Forward declare classes referenced
+class Visitor;
+
 class ShadingProgram
 {
 public:
@@ -40,6 +43,7 @@ public:
 
     virtual void use();
     virtual void reset();
+    virtual void accept(Visitor& v);
 
     glm::mat4 projection;
     glm::mat4 modelview;

@@ -15,7 +15,7 @@ public:
     TexturedRectangle(const std::string& resourcepath);
 
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
-    void accept(Visitor& v) override { v.visit(*this);  }
+    void accept(Visitor& v) override;
 
     std::string getResourcePath() { return texturepath_; }
 };
@@ -36,7 +36,7 @@ public:
 
     void update ( float dt ) override;
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
-    void accept(Visitor& v) override { v.visit(*this); }
+    void accept(Visitor& v) override;
 
     std::string getMediaPath() { return mediapath_; }
     MediaPlayer *getMediaPlayer() { return mediaplayer_;  }
@@ -49,7 +49,7 @@ class LineStrip : public Primitive {
 public:
     LineStrip(std::vector<glm::vec3> points, glm::vec3 color);
 
-    void accept(Visitor& v) override { v.visit(*this);  }
+    void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }
     glm::vec3 getColor() { return colors_[0]; }

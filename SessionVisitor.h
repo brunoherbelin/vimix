@@ -13,14 +13,19 @@ class SessionVisitor : public Visitor {
 public:
     SessionVisitor(std::string filename);
 
+    // Elements of Scene
     void visit(Node& n) override;
-    void visit(Primitive& n) override;
     void visit(Group& n) override;
+    void visit(Primitive& n) override;
+    void visit(Scene& n) override;
     void visit(TexturedRectangle& n) override;
     void visit(MediaRectangle& n) override;
     void visit(LineStrip& n) override;
-    void visit(Scene& n) override;
 
+    // Elements with attributes
+    void visit(MediaPlayer& n) override;
+    void visit(Shader& n) override;
+    void visit(ImageShader& n) override;
 };
 
 #endif // XMLVISITOR_H
