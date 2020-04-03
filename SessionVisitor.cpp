@@ -13,16 +13,18 @@
 using namespace tinyxml2;
 
 
-SessionVisitor::SessionVisitor(std::string filename) : filename_(filename)
+SessionVisitor::SessionVisitor()
 {    
     xmlDoc_ = new XMLDocument;
+
     xmlCurrent_ = nullptr;
+    xmlRoot_ = nullptr;
 }
 
 void SessionVisitor::visit(Node &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("Node");
-//    xmlCurrent_->SetAttribute("type", "Undefined");
+    newelement->SetAttribute("visible", n.visible_);
 
     XMLElement *transform = XMLElementFromGLM(xmlDoc_, n.transform_);
     newelement->InsertEndChild(transform);
@@ -47,6 +49,7 @@ void SessionVisitor::visit(Group &n)
         // revert to group as current
         xmlCurrent_ = group;
     }
+    n.visible_;
 }
 
 void SessionVisitor::visit(Switch &n)
@@ -73,37 +76,31 @@ void SessionVisitor::visit(Primitive &n)
 }
 
 
-void SessionVisitor::visit(TexturedRectangle &n)
+void SessionVisitor::visit(ImageSurface &n)
 {
     // Node of a different type
-    xmlCurrent_->SetAttribute("type", "TexturedRectangle");
+    xmlCurrent_->SetAttribute("type", "ImageSurface");
 
-    XMLText *filename = xmlDoc_->NewText( n.getResourcePath().c_str() );
+    XMLText *filename = xmlDoc_->NewText( n.getFilename().c_str() );
     XMLElement *image = xmlDoc_->NewElement("filename");
     image->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(image);
 }
 
-void SessionVisitor::visit(MediaRectangle &n)
+void SessionVisitor::visit(MediaSurface &n)
 {
     // Node of a different type
-    xmlCurrent_->SetAttribute("type", "MediaRectangle");
-
-    XMLText *filename = xmlDoc_->NewText( n.getMediaPath().c_str() );
-    XMLElement *media = xmlDoc_->NewElement("filename");
-    media->InsertEndChild(filename);
-    xmlCurrent_->InsertEndChild(media);
+    xmlCurrent_->SetAttribute("type", "MediaSurface");
 
     n.getMediaPlayer()->accept(*this);
-
 }
 
 void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("play", n.isPlaying());
-    newelement->SetAttribute("loop", (int) n.Loop());
-    newelement->SetAttribute("speed", n.PlaySpeed());
+    newelement->SetAttribute("loop", (int) n.loop());
+    newelement->SetAttribute("speed", n.playSpeed());
     xmlCurrent_->InsertEndChild(newelement);
 }
 
@@ -152,23 +149,48 @@ void SessionVisitor::visit(LineStrip &n)
     }
 }
 
+void SessionVisitor::visit(LineSquare &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "LineSquare");
+
+}
+
+void SessionVisitor::visit(LineCircle &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "LineCircle");
+
+    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.getColor());
+    color->SetAttribute("type", "RGBA");
+    xmlCurrent_->InsertEndChild(color);
+}
+
+
 void SessionVisitor::visit(Scene &n)
+{
+    std::string s = "Capture time " + GstToolkit::date_time_string();
+    XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
+    xmlDoc_->InsertEndChild(pComment);
+
+    xmlRoot_ = xmlDoc_->NewElement("Scene");
+    xmlDoc_->InsertEndChild(xmlRoot_);
+
+    // start recursive traverse from root node
+    xmlCurrent_ = xmlRoot_;
+    n.getRoot()->accept(*this);
+}
+
+void SessionVisitor::save(std::string filename)
 {
     XMLDeclaration *pDec = xmlDoc_->NewDeclaration();
     xmlDoc_->InsertFirstChild(pDec);
 
-    XMLElement *pRoot = xmlDoc_->NewElement("Scene");
-    xmlDoc_->InsertEndChild(pRoot);
-
-    std::string s = "Saved on " + GstToolkit::date_time_string();
+    std::string s = "Save time " + GstToolkit::date_time_string();
     XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
-    pRoot->InsertEndChild(pComment);
+    xmlDoc_->InsertEndChild(pComment);
 
-    // start recursive traverse from root node
-    xmlCurrent_ = pRoot;
-    n.getRoot()->accept(*this);
-
-    // save scene
-    XMLError eResult = xmlDoc_->SaveFile(filename_.c_str());
+    // save session
+    XMLError eResult = xmlDoc_->SaveFile(filename.c_str());
     XMLCheckResult(eResult);
 }

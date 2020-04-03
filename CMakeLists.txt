@@ -224,6 +224,7 @@ set(VMIX_SRCS
     Resource.cpp
     FileDialog.cpp
     MediaPlayer.cpp
+    FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
     ImGuiToolkit.cpp
@@ -243,6 +244,7 @@ set(VMIX_RSC_FILES
     ./rsc/fonts/fa-regular-400.ttf
     ./rsc/fonts/fa-solid-900.ttf
     ./rsc/images/v-mix_256x256.png
+    ./rsc/images/busy.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
 )

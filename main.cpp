@@ -58,14 +58,14 @@ void drawMediaBackgound()
     //
     // RENDER SOURCE
     //
-    testmedia2.Update();
+    testmedia2.update();
 
     // use the shader
     rendering_shader.projection = Rendering::manager().Projection();
     rendering_shader.modelview = glm::identity<glm::mat4>();;
     rendering_shader.use();
     // use the media
-    testmedia2.Bind();
+    testmedia2.bind();
     // draw the vertex array
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);
@@ -126,12 +126,12 @@ void drawMediaPlayer()
     if ( !testmedia.isOpen() )
         return;
 
-    testmedia.Update();
+    testmedia.update();
 
     if ( begin == GST_CLOCK_TIME_NONE) {
 
-        begin = testmedia.Duration() / 5;
-        end = testmedia.Duration() / 3;
+        begin = testmedia.duration() / 5;
+        end = testmedia.duration() / 3;
 //        if ( testmedia.addPlaySegment(begin, end) )
 //            std::cerr << " - first segment " << std::endl;
 
@@ -146,11 +146,11 @@ void drawMediaPlayer()
     float width = ImGui::GetContentRegionAvail().x;
     float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
-    ImVec2 imagesize ( width, width / testmedia.AspectRatio());
-    ImGui::Image((void*)(intptr_t)testmedia.Texture(), imagesize);
+    ImVec2 imagesize ( width, width / testmedia.aspectRatio());
+    ImGui::Image((void*)(intptr_t)testmedia.texture(), imagesize);
 
     if (ImGui::Button(ICON_FA_FAST_BACKWARD))
-        testmedia.Rewind();
+        testmedia.rewind();
     ImGui::SameLine(0, spacing);
 
     // remember playing mode of the GUI
@@ -165,7 +165,7 @@ void drawMediaPlayer()
 
         ImGui::PushButtonRepeat(true);
          if (ImGui::Button(ICON_FA_FORWARD))
-            testmedia.FastForward ();
+            testmedia.fastForward ();
         ImGui::PopButtonRepeat();
     }
     else {
@@ -176,7 +176,7 @@ void drawMediaPlayer()
 
         ImGui::PushButtonRepeat(true);
         if (ImGui::Button(ICON_FA_STEP_FORWARD))
-            testmedia.SeekNextFrame();
+            testmedia.seekNextFrame();
         ImGui::PopButtonRepeat();
     }
 
@@ -195,23 +195,23 @@ void drawMediaPlayer()
     if ( ImGui::SliderInt("", &current_loop, 0, 2, current_loop_name) )
         testmedia.setLoop( (MediaPlayer::LoopMode) current_loop );
 
-    float speed = static_cast<float>(testmedia.PlaySpeed());
+    float speed = static_cast<float>(testmedia.playSpeed());
     ImGui::SameLine(0, spacing);
     ImGui::SetNextItemWidth(270);
     // ImGui::SetNextItemWidth(width - 90.0);
     if (ImGui::SliderFloat( "Speed", &speed, -10.f, 10.f, "x %.1f", 2.f))
-        testmedia.SetPlaySpeed( static_cast<double>(speed) );
+        testmedia.setPlaySpeed( static_cast<double>(speed) );
     ImGui::SameLine(0, spacing);
     if (ImGuiToolkit::ButtonIcon(19, 15)) {
         speed = 1.f;
-        testmedia.SetPlaySpeed( static_cast<double>(speed) );
+        testmedia.setPlaySpeed( static_cast<double>(speed) );
     }
 
-    guint64 current_t = testmedia.Position();
+    guint64 current_t = testmedia.position();
     guint64 seek_t = current_t;
 
     bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
-                                                        testmedia.Duration(), testmedia.FrameDuration());
+                                                        testmedia.duration(), testmedia.frameDuration());
 
 //    std::list<std::pair<guint64, guint64> > segments = testmedia.getPlaySegments();
 //    bool slider_pressed = ImGuiToolkit::TimelineSliderEdit( "timeline", &seek_t, testmedia.Duration(),
@@ -231,10 +231,10 @@ void drawMediaPlayer()
 
     // if the seek target time is different from the current position time
     // (i.e. the difference is less than one frame)
-    if ( ABS_DIFF (current_t, seek_t) > testmedia.FrameDuration() ) {
+    if ( ABS_DIFF (current_t, seek_t) > testmedia.frameDuration() ) {
 
         // request seek (ASYNC)
-        testmedia.SeekTo(seek_t);
+        testmedia.seekTo(seek_t);
     }
 
     // play/stop command should be following the playing mode (buttons)
@@ -245,12 +245,12 @@ void drawMediaPlayer()
     // NB: The seek command performed an ASYNC state change, but
     // gst_element_get_state called in isPlaying() will wait for the state change to complete.
     if ( testmedia.isPlaying() != media_play ) {
-        testmedia.Play( media_play );
+        testmedia.play( media_play );
     }
 
     // display info
-    ImGui::Text("%s %d x %d", testmedia.Codec().c_str(), testmedia.Width(), testmedia.Height());
-    ImGui::Text("Framerate %.2f / %.2f", testmedia.UpdateFrameRate() , testmedia.FrameRate() );
+    ImGui::Text("%s %d x %d", testmedia.codec().c_str(), testmedia.width(), testmedia.height());
+    ImGui::Text("Framerate %.2f / %.2f", testmedia.updateFrameRate() , testmedia.frameRate() );
 
     ImGui::End();
 }
@@ -331,27 +331,23 @@ int main(int, char**)
 
     // init the scene
     scene.root_.init();
-    Rendering::manager().AddDrawCallback(drawScene);
+    Rendering::manager().PushBackDrawCallback(drawScene);
 
     // create and add a elements to the scene
 
-    MediaRectangle testnode1("file:///home/bhbn/Videos/iss.mov");
+    MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
     testnode1.init();
 
-    MediaRectangle testnode2("file:///home/bhbn/Videos/fish.mp4");
+    MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
     testnode2.init();
 
-    TexturedRectangle testnode3("images/v-mix_256x256.png");
+    ImageSurface testnode3("images/v-mix_256x256.png");
     testnode3.init();
-    testnode3.getShader()->blending = Shader::BLEND_SUBSTRACT;
+    testnode3.getShader()->blending = Shader::BLEND_ADD;
 
-    std::vector<glm::vec3> points;
-    points.push_back( glm::vec3( -1.f, -1.f, 0.f ) );
-    points.push_back( glm::vec3( -1.f, 1.f, 0.f ) );
-    points.push_back( glm::vec3( 1.f, 1.f, 0.f ) );
-    points.push_back( glm::vec3( 1.f, -1.f, 0.f ) );
     glm::vec3 color( 1.f, 1.f, 0.f );
-    LineStrip border(points, color);
+    LineCircle border(color);
+//    LineSquare border(color);
     border.init();
 
     Group g1;
@@ -364,11 +360,12 @@ int main(int, char**)
 
 
     // build tree
-    g1.addChild(&testnode1);
     g1.addChild(&testnode3);
+    g1.addChild(&border);
     scene.root_.addChild(&g1);
+
+    g2.addChild(&testnode1);
     g2.addChild(&testnode2);
-    g2.addChild(&border);
     g2.setActiveIndex(1);
     scene.root_.addChild(&g2);
 
@@ -380,11 +377,13 @@ int main(int, char**)
         Rendering::manager().Draw();
     }
 
-    testmedia.Close();
-    testmedia2.Close();
+    testmedia.close();
+    testmedia2.close();
 
-    SessionVisitor savetoxml("/home/bhbn/test.vmx");
+    SessionVisitor savetoxml;
     scene.accept(savetoxml);
+    scene.accept(savetoxml);
+    savetoxml.save("/home/bhbn/test.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();

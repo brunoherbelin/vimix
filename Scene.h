@@ -37,7 +37,7 @@ public:
 class Primitive : public Node {
 
 public:
-    Primitive() : Node(), shader_(nullptr), vao_(0), arrayBuffer_(0), elementBuffer_(0), drawingPrimitive_(0) {}
+    Primitive() : Node(), shader_(nullptr), vao_(0), drawingPrimitive_(0) {}
     virtual ~Primitive();
 
     virtual void init () override;
@@ -49,15 +49,13 @@ public:
 
 protected:
     Shader*   shader_;
-    unsigned int vao_;
-    unsigned int arrayBuffer_;
-    unsigned int elementBuffer_;
-    unsigned int drawingPrimitive_;
+    uint vao_;
+    uint drawingPrimitive_;
     std::vector<glm::vec3>     points_;
     std::vector<glm::vec3>     colors_;
     std::vector<glm::vec2>     texCoords_;
-    std::vector<unsigned int>  indices_;
-    void   deleteGLBuffers_();
+    std::vector<uint>  indices_;
+    virtual void deleteGLBuffers_();
 };
 
 // Other Nodes establish hierarchy with a group of nodes

@@ -16,8 +16,8 @@
 #define EXP100(val) (exp(log(10.0)/50.0*(float)(val))-1.0)
 #define EUCLIDEAN(P1, P2) sqrt((P1.x() - P2.x()) * (P1.x() - P2.x()) + (P1.y() - P2.y()) * (P1.y() - P2.y()))
 
-#define SOURCE_UNIT 10.0
-#define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SOURCE_UNIT * SOURCE_UNIT * CIRCLE_SIZE * CIRCLE_SIZE) )
+#define SCENE_UNIT 10.0
+#define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SCENE_UNIT * SCENE_UNIT * SCENE_UNIT * SCENE_UNIT) )
 
 #define TEXTURE_REQUIRED_MAXIMUM 2048
 #define CATALOG_TEXTURE_HEIGHT 96
@@ -54,6 +54,5 @@
 #define COLOR_FRAME_MOVE 230, 30, 230
 #define COLOR_CURSOR 10, 100, 255
 
-#define XML_PREFERENCE_FILE "vlmixer.xml"
 
 #endif // VMIX_DEFINES_H

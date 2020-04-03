@@ -25,12 +25,12 @@ Node::Node() : parent_(nullptr), visible_(false)
 void Node::update( float dt )
 {
     if ( parent_ ) {
-      localToWorld_ = dynamic_cast<Group*>(parent_)->getLocalToWorldMatrix() * transform_;
-      worldToLocal_ = glm::inverse(transform_) * dynamic_cast<Group*>(parent_)->getWorldToLocalMatrix();
+        localToWorld_ = dynamic_cast<Group*>(parent_)->getLocalToWorldMatrix() * transform_;
+        worldToLocal_ = glm::inverse(transform_) * dynamic_cast<Group*>(parent_)->getWorldToLocalMatrix();
     }
     else {
-      localToWorld_ = transform_;
-      worldToLocal_ = glm::inverse(transform_);
+        localToWorld_ = transform_;
+        worldToLocal_ = glm::inverse(transform_);
     }
 }
 
@@ -49,6 +49,7 @@ Primitive::~Primitive()
     colors_.clear();
     texCoords_.clear();
     indices_.clear();
+
 }
 
 void Primitive::init()
@@ -58,6 +59,8 @@ void Primitive::init()
     // Vertex Array
     glGenVertexArrays( 1, &vao_ );
     // Create and initialize buffer objects
+    uint arrayBuffer_;
+    uint elementBuffer_;
     glGenBuffers( 1, &arrayBuffer_ );
     glGenBuffers( 1, &elementBuffer_);
     glBindVertexArray( vao_ );
@@ -77,7 +80,7 @@ void Primitive::init()
 
     // setup the element array for the triangle indices
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer_);
-    int sizeofIndices = indices_.size()*sizeof(unsigned int);
+    int sizeofIndices = indices_.size()*sizeof(uint);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeofIndices, &(indices_[0]), GL_STATIC_DRAW);
 
     // explain how to read attributes 0, 1 and 2 (for point, color and textcoord respectively)
@@ -94,25 +97,30 @@ void Primitive::init()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    // delete temporary buffers
+    if ( arrayBuffer_ )  glDeleteBuffers ( 1, &arrayBuffer_);
+    if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);
+
     visible_ = true;
 }
 
 void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( visible_ ) {
-
-      if (shader_) {
-          shader_->projection = projection;
-          shader_->modelview = modelview * transform_;
-          shader_->use();
-      }
-
-      //
-      // draw vertex array object
-      //
-      glBindVertexArray( vao_ );
-      glDrawElements( drawingPrimitive_, indices_.size(), GL_UNSIGNED_INT, 0  );
-      glBindVertexArray(0);
+        //
+        // prepare and use shader
+        //
+        if (shader_) {
+            shader_->projection = projection;
+            shader_->modelview = modelview * transform_;
+            shader_->use();
+        }
+        //
+        // draw vertex array object
+        //
+        glBindVertexArray( vao_ );
+        glDrawElements( drawingPrimitive_, indices_.size(), GL_UNSIGNED_INT, 0  );
+        glBindVertexArray(0);
     }
 }
 
@@ -125,9 +133,8 @@ void Primitive::accept(Visitor& v)
 
 void Primitive::deleteGLBuffers_()
 {
-    if ( arrayBuffer_ ) glDeleteBuffers ( 1, &arrayBuffer_);
-    if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);
-    if ( vao_ ) glDeleteVertexArrays ( 1, &vao_);
+    if ( vao_ )
+        glDeleteVertexArrays ( 1, &vao_);
 }
 
 // Group

@@ -9,9 +9,11 @@ class Group;
 class Switch;
 class Primitive;
 class Scene;
-class TexturedRectangle;
-class MediaRectangle;
+class ImageSurface;
+class MediaSurface;
 class LineStrip;
+class LineSquare;
+class LineCircle;
 class MediaPlayer;
 class Shader;
 class ImageShader;
@@ -21,14 +23,16 @@ class Visitor {
 
 public:
     // Declare overloads for each kind of Node to visit
+    virtual void visit(Scene& n) = 0;
     virtual void visit(Node& n) = 0;
     virtual void visit(Group& n) = 0;
     virtual void visit(Switch& n) = 0;
     virtual void visit(Primitive& n) = 0;
-    virtual void visit(Scene& n) = 0;
-    virtual void visit(TexturedRectangle& n) = 0;
-    virtual void visit(MediaRectangle& n) = 0;
+    virtual void visit(ImageSurface& n) = 0;
+    virtual void visit(MediaSurface& n) = 0;
     virtual void visit(LineStrip& n) = 0;
+    virtual void visit(LineSquare& n) = 0;
+    virtual void visit(LineCircle& n) = 0;
     virtual void visit(MediaPlayer& n) = 0;
     virtual void visit(Shader& n) = 0;
     virtual void visit(ImageShader& n) = 0;
