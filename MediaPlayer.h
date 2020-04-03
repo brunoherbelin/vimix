@@ -28,7 +28,7 @@ public:
     TimeCounter();
     void tic();
     void reset();
-    float framerate() const;
+    float frameRate() const;
 };
 
 struct MediaSegment
@@ -101,7 +101,7 @@ public:
     /** 
      * Open a media using gstreamer URI 
      * */
-    void Open( std::string uri);
+    void open( std::string uri_);
     /**
      * True if a media was oppenned
      * */
@@ -109,17 +109,17 @@ public:
     /**
      * Close the Media
      * */
-    void Close();
+    void close();
     /**
      * Update status
      * Must be called in update loop
      * */
-    void Update();
+    void update();
     /**
      * Pause / Play
      * Can play backward if play speed is negative
      * */
-    void Play(bool on);
+    void play(bool on);
     /**
      * Get Pause / Play
      * */
@@ -128,12 +128,12 @@ public:
      * Speed factor for playing
      * Can be negative.
      * */
-    double PlaySpeed() const;
+    double playSpeed() const;
     /**
      * Set the speed factor for playing
      * Can be negative.
      * */
-    void SetPlaySpeed(double s);
+    void setPlaySpeed(double s);
     /**
      * True if the player will loop when at begin or end
      * */
@@ -142,7 +142,7 @@ public:
         LOOP_REWIND = 1,
         LOOP_BIDIRECTIONAL = 2
     } LoopMode;
-    LoopMode Loop() const;
+    LoopMode loop() const;
     /**
      * Set the player to loop
      * */
@@ -150,58 +150,58 @@ public:
     /**
      * Restart from zero
      * */
-    void Rewind();
+    void rewind();
     /**
      * Seek to next frame when paused
      * Can go backward if play speed is negative
      * */
-    void SeekNextFrame();
+    void seekNextFrame();
     /**
      * Seek to any position in media
      * pos in nanoseconds.
      * */
-    void SeekTo(GstClockTime pos);
+    void seekTo(GstClockTime pos);
     /**
      * Jump by 10% of the duration
      * */
-    void FastForward();
+    void fastForward();
     /**
      * Get position time
      * */
-    GstClockTime Position();
+    GstClockTime position();
     /**
      * Get total duration time
      * */
-    GstClockTime Duration();
+    GstClockTime duration();
     /**
      * Get duration of one frame
      * */
-    GstClockTime FrameDuration();
+    GstClockTime frameDuration();
     /**
      * Get framerate of the media
      * */
-    double FrameRate() const;    
+    double frameRate() const;
     /**
      * Get name of Codec of the media
      * */
-    std::string Codec() const;
+    std::string codec() const;
     /**
      * Get rendering update framerate
      * measured during play
      * */
-    double UpdateFrameRate() const;
+    double updateFrameRate() const;
     /**
      * Bind / Get the OpenGL texture 
      * Must be called in OpenGL context
      * */
-    void Bind();
-    guint Texture() const;
+    void bind();
+    guint texture() const;
     /**
      * Get Image properties
      * */
-    guint Width() const;
-    guint Height() const;
-    float AspectRatio() const;
+    guint width() const;
+    guint height() const;
+    float aspectRatio() const;
 
     /**
      * Accept visitors
@@ -216,37 +216,37 @@ private:
     bool removeAllPlaySegmentOverlap(MediaSegment s);
     std::list< std::pair<guint64, guint64> > getPlaySegments() const;
 
-    std::string id;
-    std::string uri;
-    guint textureindex;  
-    guint width;  
-    guint height;  
-    guint par_width;  // width to match pixel aspect ratio
-    GstClockTime position;
-    GstClockTime start_position;
-    GstClockTime duration;
-    GstClockTime frame_duration;
-    gdouble rate;
-    LoopMode loop;
-    TimeCounter timecount;
-    gdouble framerate;
-    GstState desired_state;
-    GstElement *pipeline;
-    GstDiscoverer *discoverer;
-    std::stringstream discoverer_message;
-    std::string codec_name;
-    GstVideoFrame v_frame;
-    GstVideoInfo v_frame_video_info;
-    std::atomic<bool> v_frame_is_full;
-    std::atomic<bool> need_loop;
+    std::string id_;
+    std::string uri_;
+    guint textureindex_;
+    guint width_;
+    guint height_;
+    guint par_width_;  // width to match pixel aspect ratio
+    GstClockTime position_;
+    GstClockTime start_position_;
+    GstClockTime duration_;
+    GstClockTime frame_duration_;
+    gdouble rate_;
+    LoopMode loop_;
+    TimeCounter timecount_;
+    gdouble framerate_;
+    GstState desired_state_;
+    GstElement *pipeline_;
+    GstDiscoverer *discoverer_;
+    std::stringstream discoverer_message_;
+    std::string codec_name_;
+    GstVideoFrame v_frame_;
+    GstVideoInfo v_frame_video_info_;
+    std::atomic<bool> v_frame_is_full_;
+    std::atomic<bool> need_loop_;
 
-    MediaSegmentSet segments;
-    MediaSegmentSet::iterator current_segment;
+    MediaSegmentSet segments_;
+    MediaSegmentSet::iterator current_segment_;
 
-    bool ready;
-    bool seekable;
-    bool isimage;
-    bool interlaced;
+    bool ready_;
+    bool seekable_;
+    bool isimage_;
+    bool interlaced_;
 
     void execute_open();
     void execute_loop_command();
@@ -255,8 +255,8 @@ private:
 
     static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);
     static void callback_end_of_video (GstElement *bin, MediaPlayer *m);
-    static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
-    static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
+    static void callback_discoverer_process (GstDiscoverer *discoverer_, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
+    static void callback_discoverer_finished(GstDiscoverer *discoverer_, MediaPlayer *m);
 
 };
 
