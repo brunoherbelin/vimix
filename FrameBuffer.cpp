@@ -5,28 +5,30 @@
 
 #include <glad/glad.h>
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer) : width_(width), height_(height)
 {
     // create a renderbuffer object to store depth info
     GLuint rboId;
     if (useDepthBuffer){
         glGenRenderbuffers(1, &rboId);
         glBindRenderbuffer(GL_RENDERBUFFER, rboId);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,  width, height);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,  width_, height_);
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
     // create a framebuffer object
     glGenFramebuffers(1, &framebufferid_);
-    bind();
+    glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 
-    // attach the texture to FBO color attachment point
+    // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
+    // attach the texture to FBO color attachment point
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                            GL_TEXTURE_2D, textureid_, 0);
 
@@ -52,6 +54,13 @@ float FrameBuffer::aspectRatio() const
 void FrameBuffer::bind()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
+
+    // handle window resize
+    glViewport(0, 0, width_, height_);
+
+    // GL Colors+
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void FrameBuffer::release()
@@ -105,7 +114,7 @@ void FrameBuffer::checkFramebufferStatus()
             Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
             break;
         case GL_FRAMEBUFFER_COMPLETE:
-            Log::Warning("Framebuffer complete");
+            Log::Info("Framebuffer created.");
             break;
     }
 }

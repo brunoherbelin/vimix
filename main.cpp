@@ -26,6 +26,7 @@
 #include "ImageShader.h"
 #include "Settings.h"
 #include "Resource.h"
+#include "FrameBuffer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 
@@ -40,6 +41,7 @@
 #define PI 3.14159265358979323846
 
 Scene scene;
+FrameBuffer *output;
 MediaPlayer testmedia;
 MediaPlayer testmedia2("testmedia2");
 ImageShader rendering_shader;
@@ -262,17 +264,37 @@ void drawScene()
     gint64 current_time = gst_util_get_timestamp ();
     gint64 dt = current_time - last_time;
 
-    glm::mat4 mv = glm::identity<glm::mat4>();
+    glm::mat4 MV = glm::identity<glm::mat4>();
+    glm::mat4 P = Rendering::manager().Projection();
 //    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(0, 0, 0.f));
 //    View = glm::rotate(View, 0.f, glm::vec3(0.0f, 0.0f, 1.0f));
 //    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1, 1, 1));
 //    mv = View * Model;
 
     scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
-    scene.root_.draw(mv, Rendering::manager().Projection());
+
+    output->bind();
+    scene.root_.draw(MV, P);
+    FrameBuffer::release();
 
     last_time = current_time;
 }
+
+
+void drawPreview()
+{
+    if (output)
+    {
+        ImGui::Begin("Preview");
+        float width = ImGui::GetContentRegionAvail().x;
+
+        ImVec2 imagesize ( width, width / output->aspectRatio());
+        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 0.f), ImVec2(1.f, -1.f));
+
+        ImGui::End();
+    }
+}
+
 
 int main(int, char**)
 {
@@ -329,12 +351,12 @@ int main(int, char**)
 //     test text editor
 //    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
+
     // init the scene
     scene.root_.init();
     Rendering::manager().PushBackDrawCallback(drawScene);
 
     // create and add a elements to the scene
-
     MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
     testnode1.init();
 
@@ -358,7 +380,6 @@ int main(int, char**)
     g2.init();
     g2.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, -1.f, 0.f));
 
-
     // build tree
     g1.addChild(&testnode3);
     g1.addChild(&border);
@@ -368,6 +389,10 @@ int main(int, char**)
     g2.addChild(&testnode2);
     g2.setActiveIndex(1);
     scene.root_.addChild(&g2);
+
+    // init output FBO
+    output = new FrameBuffer(1280, 720);
+    Rendering::manager().PushBackDrawCallback(drawPreview);
 
     ///
     /// Main LOOP
