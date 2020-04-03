@@ -186,11 +186,14 @@ bool Rendering::isActive()
 }
 
 
-void Rendering::AddDrawCallback(RenderingCallback function)
+void Rendering::PushFrontDrawCallback(RenderingCallback function)
 {
+    drawCallbacks.push_front(function);
+}
 
+void Rendering::PushBackDrawCallback(RenderingCallback function)
+{
     drawCallbacks.push_back(function);
-
 }
 
 void Rendering::Draw()

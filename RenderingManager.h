@@ -67,7 +67,8 @@ public:
 
     // add function to call during Draw
     typedef void (* RenderingCallback)(void);
-    void AddDrawCallback(RenderingCallback function);
+    void PushFrontDrawCallback(RenderingCallback function);
+    void PushBackDrawCallback(RenderingCallback function);
 
     // request screenshot
     void RequestScreenshot();
