@@ -2,6 +2,8 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <chrono>
+
 using namespace std;
 
 #include <gst/gst.h>
@@ -10,18 +12,23 @@ using namespace std;
 
 string GstToolkit::date_time_string()
 {
-    std::time_t t = std::time(0);   // get time now
-    std::tm* now = std::localtime(&t);
+    chrono::system_clock::time_point now = chrono::system_clock::now();
+    time_t t = chrono::system_clock::to_time_t(now);
+    std::tm* datetime = std::localtime(&t);
+
+    auto duration = now.time_since_epoch();
+    auto millis = chrono::duration_cast<chrono::milliseconds>(duration).count() % 1000;
 
     ostringstream oss;
-    oss << std::to_string(now->tm_year + 1900);
-    oss <<  std::to_string(now->tm_mon + 1);
-    oss << setw(2) << setfill('0') << std::to_string(now->tm_mday );
-    oss << setw(2) << setfill('0') << std::to_string(now->tm_hour );
-    oss << setw(2) << setfill('0') << std::to_string(now->tm_min );
-    oss << setw(2) << setfill('0') << std::to_string(now->tm_sec );
-    // TODO : add milisecond precision
+    oss << setw(4) << setfill('0') << std::to_string(datetime->tm_year + 1900);
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mon + 1);
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mday );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_hour );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_min );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_sec );
+    oss << setw(3) << setfill('0') << std::to_string(millis);
 
+    // fixed length string (17 chars) YYYYMMDDHHmmssiii
     return oss.str();
 }
 
@@ -41,6 +48,7 @@ string GstToolkit::time_to_string(guint64 t)
     oss << setw(2) << setfill('0') << (s % 3600) % 60 << '.';
     oss << setw(2) << setfill('0') << (ms % 1000) / 10;
 
+    // fixed length string (11 chars) HH:mm:ss.ii"
     return oss.str();
 }
 
