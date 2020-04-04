@@ -21,8 +21,25 @@
 CMRC_DECLARE(vmix);
 
 
-std::map<std::string, unsigned int> textureIndex;
+std::map<std::string, uint> textureIndex;
 std::map<std::string, float> textureAspectRatio;
+
+// opengl texture
+uint Resource::getTextureBlack()
+{
+    static uint tex_index_black = 0;
+
+    // generate texture (once) & clear
+    if (tex_index_black == 0) {
+        glGenTextures(1, &tex_index_black);
+        glBindTexture( GL_TEXTURE_2D, tex_index_black);
+        unsigned char clearColor[3] = {0};
+        // texture with one black pixel
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, clearColor);
+    }
+
+    return tex_index_black;
+}
 
 const char *Resource::getData(const std::string& path, size_t* out_file_size){
 
@@ -66,7 +83,7 @@ std::string Resource::getText(const std::string& path){
 #define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
 #define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
 
-unsigned int Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
+uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 {
 	GLuint textureID = 0;
 
@@ -92,21 +109,21 @@ unsigned int Resource::getTextureDDS(const std::string& path, float *aspect_rati
 
 	// get the surface desc = bytes [4 - 127]
     const char *header = fp + 4;
-	unsigned int height      = *(unsigned int*)&(header[8 ]);
-	unsigned int width	     = *(unsigned int*)&(header[12]);
-	unsigned int linearSize	 = *(unsigned int*)&(header[16]);
-	unsigned int mipMapCount = *(unsigned int*)&(header[24]);
-	unsigned int fourCC      = *(unsigned int*)&(header[80]);
+    uint height      = *(uint*)&(header[8 ]);
+    uint width	     = *(uint*)&(header[12]);
+    uint linearSize	 = *(uint*)&(header[16]);
+    uint mipMapCount = *(uint*)&(header[24]);
+    uint fourCC      = *(uint*)&(header[80]);
 
 	// how big is it going to be including all mipmaps?
-	unsigned int bufsize;
+    uint bufsize;
 	bufsize = mipMapCount > 1 ? linearSize * 2 : linearSize;
 
 	// get the buffer = bytes [128 - ]
 	const char *buffer = fp + 128;
 
-	unsigned int components  = (fourCC == FOURCC_DXT1) ? 3 : 4;
-    unsigned int format = 0;
+    uint components  = (fourCC == FOURCC_DXT1) ? 3 : 4;
+    uint format = 0;
 	switch(fourCC)
 	{
 	case FOURCC_DXT1:
@@ -139,13 +156,13 @@ unsigned int Resource::getTextureDDS(const std::string& path, float *aspect_rati
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-	unsigned int blockSize = (format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT) ? 8 : 16;
-	unsigned int offset = 0;
+    uint blockSize = (format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT) ? 8 : 16;
+    uint offset = 0;
 
 	// load the mipmaps
-	for (unsigned int level = 0; level < mipMapCount && (width || height); ++level)
+    for (uint level = 0; level < mipMapCount && (width || height); ++level)
 	{
-		unsigned int size = ((width+3)/4)*((height+3)/4)*blockSize;
+        uint size = ((width+3)/4)*((height+3)/4)*blockSize;
 		glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height,
 			0, size, buffer + offset);
 		glGenerateMipmap(GL_TEXTURE_2D);
@@ -170,7 +187,7 @@ unsigned int Resource::getTextureDDS(const std::string& path, float *aspect_rati
 }
 
 
-unsigned int Resource::getTextureImage(const std::string& path, float *aspect_ratio)
+uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 {
 	GLuint textureID = 0;
 

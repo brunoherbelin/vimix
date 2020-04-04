@@ -23,22 +23,7 @@
 #define MEDIA_PLAYER_DEBUG
 #endif
 
-// opengl texture
-static GLuint tex_index_black = 0;
 
-GLuint blackTexture()
-{
-    // generate texture (once) & clear
-    if (tex_index_black == 0) {
-        glGenTextures(1, &tex_index_black);
-        glBindTexture( GL_TEXTURE_2D, tex_index_black);
-        unsigned char clearColor[3] = {0};
-        // texture with one black pixel
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, clearColor);
-    }
-
-    return tex_index_black;
-}
 
 MediaPlayer::MediaPlayer(string name) : id_(name)
 {
@@ -90,7 +75,7 @@ void MediaPlayer::bind()
 guint MediaPlayer::texture() const
 {
     if (textureindex_ == 0)
-        return blackTexture();
+        return Resource::getTextureBlack();
 
     return textureindex_;
 }
@@ -222,7 +207,7 @@ void MediaPlayer::close()
     }
 
     // nothing to display
-    textureindex_ = blackTexture();
+    textureindex_ = Resource::getTextureBlack();
 
     // un-ready the media player
     ready_ = false;

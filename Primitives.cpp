@@ -23,16 +23,12 @@ static const std::vector<glm::vec3> square_points { glm::vec3( -1.f, -1.f, 0.f )
                                                    glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ) };
 static uint square_vao = 0;
 static uint circle_vao = 0;
-static const std::string default_texture = "images/busy.png";
 
 
-ImageSurface::ImageSurface(const std::string& path) : Primitive()
+ImageSurface::ImageSurface(const std::string& path) : Primitive(), textureindex_(0)
 {
+    // for image texture
     filename_ = path;
-
-    float ar = 1.0;
-    textureindex_ = Resource::getTextureImage(filename_, &ar);
-    transform_ = glm::scale(glm::identity<glm::mat4>(), glm::vec3(ar, 1.f, 1.f));
 
     // geometry
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
@@ -42,15 +38,23 @@ ImageSurface::ImageSurface(const std::string& path) : Primitive()
     texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
             glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
     indices_ = std::vector<uint> { 0, 1, 2, 3 };
-
-    // setup shader for textured image
-    shader_ = new ImageShader();
     drawingPrimitive_ = GL_TRIANGLE_STRIP;
 }
 
 
 void ImageSurface::init()
 {
+    // load image if specified
+    if ( filename_.empty())
+        textureindex_ = Resource::getTextureBlack();
+    else {
+        float ar = 1.0;
+        textureindex_ = Resource::getTextureImage(filename_, &ar);
+        transform_ = glm::scale(glm::identity<glm::mat4>(), glm::vec3(ar, 1.f, 1.f));
+    }
+    // create shader for textured image
+    shader_ = new ImageShader();
+
     // use static global vertex array object
     if (square_vao)
         // if set, use the global vertex array object
@@ -63,7 +67,9 @@ void ImageSurface::init()
         // 3. vao_ will not be deleted because deleteGLBuffers_() is empty
     }
 
+    // all good
     visible_ = true;
+    initialized_ = true;
 }
 
 void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -81,17 +87,26 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& path) : ImageSurface(default_texture)
+MediaSurface::MediaSurface(const std::string& path) : ImageSurface()
 {
     filename_ = path;
     mediaplayer_ = new MediaPlayer;
-    mediaplayer_->open(filename_);
-    mediaplayer_->play(true);
 }
 
 MediaSurface::~MediaSurface()
 {
     delete mediaplayer_;
+}
+
+void MediaSurface::init()
+{
+    std::string tmp = filename_;
+    filename_ = "";
+    ImageSurface::init();
+    filename_ = tmp;
+
+    mediaplayer_->open(filename_);
+    mediaplayer_->play(true);
 }
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)

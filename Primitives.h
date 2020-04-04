@@ -11,7 +11,7 @@ class ImageSurface : public Primitive {
     void deleteGLBuffers_() {}
 
 public:
-    ImageSurface(const std::string& path);
+    ImageSurface(const std::string& path = "" );
 
     void init() override;
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
@@ -36,6 +36,7 @@ public:
     MediaSurface(const std::string& path);
     ~MediaSurface();
 
+    void init() override;
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
     void accept(Visitor& v) override;
     void update ( float dt ) override;
