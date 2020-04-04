@@ -205,6 +205,7 @@ void Shader::reset()
 
 void Shader::setModelview(float x, float y, float angle, float scale, float aspect_ratio)
 {
+
     glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(x, y, 0.f));
     View = glm::rotate(View, angle, glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale * aspect_ratio, scale, scale));

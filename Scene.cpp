@@ -17,6 +17,17 @@
 #include <chrono>
 #include <ctime>
 
+
+glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
+{
+    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), translation);
+    View = glm::rotate(View, rotation.x, glm::vec3(1.f, 0.f, 0.f));
+    View = glm::rotate(View, rotation.y, glm::vec3(0.f, 1.f, 0.f));
+    View = glm::rotate(View, rotation.z, glm::vec3(0.f, 0.f, 1.f));
+    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), scale);
+    return View * Model;
+}
+
 // Node
 Node::Node() : parent_(nullptr), visible_(false), initialized_(false)
 {
@@ -27,10 +38,14 @@ Node::Node() : parent_(nullptr), visible_(false), initialized_(false)
     worldToLocal_ = glm::identity<glm::mat4>();
     localToWorld_ = glm::identity<glm::mat4>();
     transform_ = glm::identity<glm::mat4>();
+    scale_ = glm::vec3(1.f);
+    rotation_ = glm::vec3(0.f);
+    translation_ = glm::vec3(0.f);
 }
 
 void Node::update( float dt )
 {
+    transform_ = transform(translation_, rotation_, scale_);
     if ( parent_ ) {
         localToWorld_ = dynamic_cast<Group*>(parent_)->getLocalToWorldMatrix() * transform_;
         worldToLocal_ = glm::inverse(transform_) * dynamic_cast<Group*>(parent_)->getWorldToLocalMatrix();
@@ -114,6 +129,9 @@ void Primitive::init()
 
 void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     if ( visible_ ) {
         //
         // prepare and use shader
@@ -171,6 +189,9 @@ void Group::update( float dt )
 
 void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     if ( visible_ ) {
 
         // append the instance transform to the ctm
@@ -220,6 +241,9 @@ void Switch::update( float dt )
 
 void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     if ( visible_ ) {
         // append the instance transform to the ctm
         glm::mat4 ctm = modelview * transform_;

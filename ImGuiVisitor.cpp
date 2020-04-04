@@ -31,31 +31,35 @@ void ImGuiVisitor::visit(Group &n)
     std::string id = std::to_string(n.id());
     if (ImGui::TreeNode(id.c_str(), "Group"))
     {
+        // MODEL VIEW
+        if (ImGuiToolkit::ButtonIcon(6, 15)) {
+            n.translation_.x = 0.f;
+            n.translation_.y = 0.f;
+        }
+        ImGui::SameLine(0, 10);
+        float translation[2] = { n.translation_.x, n.translation_.y};
+        if ( ImGui::SliderFloat2("position", translation, -5.0, 5.0) )
+        {
+            n.translation_.x = translation[0];
+            n.translation_.y = translation[1];
+        }
 
-        //    n.transform_
-            // MODEL VIEW
-            float translation[2] = { n.transform_[3][0], n.transform_[3][1]};
-            if (ImGuiToolkit::ButtonIcon(6, 15)) {
-                translation[0] = 0.f;
-                translation[1] = 0.f;
-            }
-            ImGui::SameLine(0, 10);
-            ImGui::SliderFloat2("position", translation, -5.0, 5.0);
+        if (ImGuiToolkit::ButtonIcon(4, 15))
+            n.rotation_.z = 0.f;
+        ImGui::SameLine(0, 10);
+        ImGui::SliderAngle("slider angle", &(n.rotation_.z), -180.f, 180.f) ;
 
-            float rotation = asin(n.transform_[0][1]);
-            if (ImGuiToolkit::ButtonIcon(4, 15)) rotation = 0.f;
-            ImGui::SameLine(0, 10);
-            ImGui::SliderFloat("rotation", &rotation, 0, glm::two_pi<float>());
-
-            float scale = n.transform_[2][2];
-            if (ImGuiToolkit::ButtonIcon(3, 15))  scale = 1.f;
-            ImGui::SameLine(0, 10);
-            ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f);
-
-            glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(translation[0], translation[1], 0.f));
-            View = glm::rotate(View, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-            glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, scale, scale));
-            n.transform_ = View * Model;
+        if (ImGuiToolkit::ButtonIcon(3, 15))  {
+            n.scale_.x = 1.f;
+            n.scale_.y = 1.f;
+        }
+        ImGui::SameLine(0, 10);
+        float scale = n.scale_.y;
+        if ( ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f) )
+        {
+            n.scale_.x = scale;
+            n.scale_.y = scale;
+        }
 
         // loop over members of a group
         for (int i = 0; i < n.numChildren(); ++i)
@@ -77,8 +81,10 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PushID(n.id());
     ImGui::Text("Primitive");
 
+    if (n.getShader())
+        n.getShader()->accept(*this);
 
-    n.getShader()->accept(*this);
+
     ImGui::PopID();
 }
 
@@ -90,7 +96,9 @@ void ImGuiVisitor::visit(ImageSurface &n)
 void ImGuiVisitor::visit(MediaSurface &n)
 {
     ImGui::Text("%s", n.getFilename().c_str());
-    n.getMediaPlayer()->accept(*this);
+
+    if (n.getMediaPlayer())
+        n.getMediaPlayer()->accept(*this);
 }
 
 void ImGuiVisitor::visit(MediaPlayer &n)

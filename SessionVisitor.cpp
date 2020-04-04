@@ -26,8 +26,12 @@ void SessionVisitor::visit(Node &n)
     XMLElement *newelement = xmlDoc_->NewElement("Node");
     newelement->SetAttribute("visible", n.visible_);
 
-    XMLElement *transform = XMLElementFromGLM(xmlDoc_, n.transform_);
-    newelement->InsertEndChild(transform);
+    XMLElement *scale = XMLElementFromGLM(xmlDoc_, n.scale_);
+    newelement->InsertEndChild(scale);
+    XMLElement *translation = XMLElementFromGLM(xmlDoc_, n.translation_);
+    newelement->InsertEndChild(translation);
+    XMLElement *rotation = XMLElementFromGLM(xmlDoc_, n.rotation_);
+    newelement->InsertEndChild(rotation);
 
     // insert into hierarchy
     xmlCurrent_->InsertEndChild(newelement);

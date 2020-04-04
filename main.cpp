@@ -252,29 +252,22 @@ int main(int, char**)
 //    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
     // init the scene
-    scene.root_.init();
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
-    testnode1.init();
-    testnode2.init();
-    testnode3.init();
-    testnode3.getShader()->blending = Shader::BLEND_ADD;
+    //testnode3.getShader()->blending = Shader::BLEND_OPACITY;
 
     glm::vec3 color( 1.f, 1.f, 0.f );
     LineCircle border(color);
 //    LineSquare border(color);
-    border.init();
 
     Group g1;
-    g1.init();
-    g1.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, 1.f, 0.f));
-    g1.transform_ = glm::scale(g1.transform_, glm::vec3(2.f, 2.f, 2.f));
+    g1.translation_ = glm::vec3(1.f, 1.f, 0.f);
+    g1.scale_ = glm::vec3(2.f, 2.f, 1.f);
 
     Switch g2;
-    g2.init();
-    g2.transform_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, -1.f, 0.f));
-    g2.transform_ = glm::rotate(g2.transform_, 0.672f, glm::vec3(0.0f, 0.0f, 1.0f));
+    g2.translation_ = glm::vec3(-1.f, -1.f, 0.f);
+//    g2.rotation_ = glm::vec3(0.0f, 0.0f, 1.0f);
 
     // build tree
     g1.addChild(&testnode3);

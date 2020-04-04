@@ -66,6 +66,7 @@ class LineStrip : public Primitive {
 public:
     LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewidth = 1);
 
+    virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 

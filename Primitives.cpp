@@ -50,7 +50,7 @@ void ImageSurface::init()
     else {
         float ar = 1.0;
         textureindex_ = Resource::getTextureImage(filename_, &ar);
-        transform_ = glm::scale(glm::identity<glm::mat4>(), glm::vec3(ar, 1.f, 1.f));
+        scale_.x = ar;
     }
     // create shader for textured image
     shader_ = new ImageShader();
@@ -74,6 +74,9 @@ void ImageSurface::init()
 
 void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     glBindTexture(GL_TEXTURE_2D, textureindex_);
 
     Primitive::draw(modelview, projection);
@@ -111,6 +114,9 @@ void MediaSurface::init()
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     if ( mediaplayer_->isOpen() )
         mediaplayer_->bind();
     else
@@ -126,7 +132,7 @@ void MediaSurface::update( float dt )
     if ( mediaplayer_->isOpen() )
         mediaplayer_->update();
 
-    transform_ = glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
+    scale_.x = mediaplayer_->aspectRatio();
 
     Primitive::update( dt );
 }
@@ -146,14 +152,21 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewi
         indices_.push_back ( i );
     }
 
-    shader_ = new Shader();
-
     drawingPrimitive_ = GL_LINE_LOOP;
     linewidth_ = linewidth;
 }
 
+void LineStrip::init()
+{
+    Primitive::init();
+    shader_ = new Shader();
+}
+
 void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    if ( !initialized_ )
+        init();
+
     glLineWidth(linewidth_);
     Primitive::draw(modelview, projection);
 }
@@ -201,7 +214,10 @@ void LineCircle::init()
         // 3. vao_ will not be deleted because deleteGLBuffers_() is empty
     }
 
+    shader_ = new Shader();
+
     visible_ = true;
+    initialized_ = true;
 }
 
 void LineCircle::accept(Visitor& v)

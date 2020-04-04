@@ -4,6 +4,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 
 // Forward declare classes referenced
 class Shader;
@@ -33,6 +34,7 @@ public:
     glm::mat4 worldToLocal_;
     glm::mat4 localToWorld_;
     glm::mat4 transform_;
+    glm::vec3 scale_, rotation_, translation_;
 };
 
 
