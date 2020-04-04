@@ -228,6 +228,7 @@ set(VMIX_SRCS
     RenderingManager.cpp
     UserInterfaceManager.cpp
     ImGuiToolkit.cpp
+    ImGuiVisitor.cpp
     GstToolkit.cpp
     tinyxml2Toolkit.cpp
 )

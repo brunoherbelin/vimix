@@ -15,18 +15,21 @@ class Node {
 
 public:
     Node();
-    virtual ~Node() {}
+    virtual ~Node() {}    
+    inline int id() { return id_; }
 
     virtual void init() = 0;
     virtual void draw( glm::mat4 modelview,  glm::mat4 projection) = 0;
     virtual void accept(Visitor& v);
     virtual void update( float dt );
-
-    virtual glm::mat4 getWorldToLocalMatrix() {return worldToLocal_;}
-    virtual glm::mat4 getLocalToWorldMatrix() {return localToWorld_;}
+    virtual bool initialized() { return initialized_; }
+    virtual glm::mat4 getWorldToLocalMatrix() { return worldToLocal_; }
+    virtual glm::mat4 getLocalToWorldMatrix() { return localToWorld_; }
 
     Node*     parent_;
     bool      visible_;
+    bool      initialized_;
+    int       id_;
     glm::mat4 worldToLocal_;
     glm::mat4 localToWorld_;
     glm::mat4 transform_;

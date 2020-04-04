@@ -14,9 +14,16 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <chrono>
+#include <ctime>
+
 // Node
-Node::Node() : parent_(nullptr), visible_(false)
+Node::Node() : parent_(nullptr), visible_(false), initialized_(false)
 {
+    // create unique id
+    auto duration = std::chrono::system_clock::now().time_since_epoch();
+    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
+
     worldToLocal_ = glm::identity<glm::mat4>();
     localToWorld_ = glm::identity<glm::mat4>();
     transform_ = glm::identity<glm::mat4>();
@@ -101,6 +108,7 @@ void Primitive::init()
     if ( arrayBuffer_ )  glDeleteBuffers ( 1, &arrayBuffer_);
     if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);
 
+    initialized_ = true;
     visible_ = true;
 }
 
@@ -147,6 +155,7 @@ Group::~Group()
 void Group::init()
 {
     visible_ = true;
+    initialized_ = true;
 }
 
 void Group::update( float dt )
