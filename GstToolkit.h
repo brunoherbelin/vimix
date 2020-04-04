@@ -4,12 +4,11 @@
 #include <string>
 #include <list>
 
-
 namespace GstToolkit
 {
 
     std::string date_time_string();
-    std::string time_to_string(guint64 t);
+    std::string time_to_string(ulong t);
 
     std::string gst_version();
     std::list<std::string> all_plugins();

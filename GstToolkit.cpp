@@ -32,7 +32,7 @@ string GstToolkit::date_time_string()
     return oss.str();
 }
 
-string GstToolkit::time_to_string(guint64 t)
+string GstToolkit::time_to_string(ulong t)
 {
     if (t == GST_CLOCK_TIME_NONE)
         return "00:00:00.00";
