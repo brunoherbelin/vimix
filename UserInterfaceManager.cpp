@@ -186,17 +186,14 @@ void UserInterface::NewFrame()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // Main window
+    mainwindow.Render();
+
 }
 
 void UserInterface::Render()
 {	
     ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
-
-    // Main window
-    mainwindow.Render();
-
-    // warning modal dialog
-    Log::Render();
 
     // file modal dialog
     geometry.x *= 0.4f;
@@ -209,6 +206,9 @@ void UserInterface::Render()
         }
         FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
     }
+
+    // warning modal dialog
+    Log::Render();
 
     // Rendering 
     ImGui::Render();
@@ -609,7 +609,7 @@ void MainWindow::Render()
     ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
 
 
-    ImGui::Begin( ICON_FA_CIRCLE_NOTCH " v-mix", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin(IMGUI_TITLE_MAINWINDOW, NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
 
     // Menu Bar
     if (ImGui::BeginMenuBar())
@@ -661,12 +661,11 @@ void MainWindow::Render()
     }
 
     // content
-    ImGuiToolkit::Icon(7, 1);
-    ImGui::SameLine(0, 10);
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-    ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-    ImGui::PopFont();
+//    ImGuiToolkit::Icon(7, 1);
+//    ImGui::SameLine(0, 10);
+//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+//    ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+//    ImGui::PopFont();
 
     if( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File" ) && !loadThread.joinable())
     {        
@@ -773,7 +772,7 @@ void UserInterface::OpenTextEditor(std::string text)
 void MainWindow::drawTextEditor(bool* p_open)
 {
     static bool show_statusbar = true;
-    ImGui::Begin( ICON_FA_CODE " Shader Editor", p_open, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, p_open, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGui::BeginMenuBar())
     {
