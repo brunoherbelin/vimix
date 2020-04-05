@@ -221,6 +221,7 @@ set(VMIX_SRCS
     Primitives.cpp
     SessionVisitor.cpp
     Settings.cpp
+    Screenshot.cpp
     Resource.cpp
     FileDialog.cpp
     MediaPlayer.cpp

@@ -5,14 +5,18 @@
 
 #include <glad/glad.h>
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer) : width_(width), height_(height)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer)
 {
+    attrib_.viewport.x = width;
+    attrib_.viewport.y = height;
+    attrib_.clear_color = glm::vec3(0.f);
+
     // create a renderbuffer object to store depth info
     GLuint rboId;
     if (useDepthBuffer){
         glGenRenderbuffers(1, &rboId);
         glBindRenderbuffer(GL_RENDERBUFFER, rboId);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,  width_, height_);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,  width, height);
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
@@ -23,7 +27,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer) : width_(
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -38,6 +42,8 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer) : width_(
                               GL_RENDERBUFFER, rboId);
     }
     checkFramebufferStatus();
+
+    FrameBuffer::release();
 }
 
 
@@ -48,19 +54,28 @@ FrameBuffer::~FrameBuffer()
 
 float FrameBuffer::aspectRatio() const
 {
-    return static_cast<float>(width_) / static_cast<float>(height_);
+    return static_cast<float>(width()) / static_cast<float>(height());
 }
 
 void FrameBuffer::bind()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
+}
 
-    // handle window resize
-    glViewport(0, 0, width_, height_);
+void FrameBuffer::begin()
+{
+    bind();
 
-    // GL Colors+
-    glClearColor(0.f, 0.f, 0.f, 1.f);
+    Rendering::manager().PushAttrib(attrib_);
+
     glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void FrameBuffer::end()
+{
+    Rendering::manager().PopAttrib();
+
+    FrameBuffer::release();
 }
 
 void FrameBuffer::release()
@@ -71,13 +86,13 @@ void FrameBuffer::release()
 
 bool FrameBuffer::blit(FrameBuffer *other)
 {
-    if (width_ != other->width() || height_ != other->height())
+    if (attrib_.viewport.x != other->width() || attrib_.viewport.y != other->height())
         return false;
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
     // blit to the frame buffer object
-    glBlitFramebuffer(0, height_, width_, 0, 0, 0,
+    glBlitFramebuffer(0, attrib_.viewport.y, attrib_.viewport.x, 0, 0, 0,
                     other->width(), other->height(),
                     GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);

@@ -215,7 +215,6 @@ void LineCircle::init()
     }
 
     shader_ = new Shader();
-
     visible_ = true;
     initialized_ = true;
 }

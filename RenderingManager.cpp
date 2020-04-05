@@ -62,10 +62,8 @@ static void WindowRefreshCallback( GLFWwindow* window )
 
 Rendering::Rendering()
 {
-    window = nullptr;
-    render_width = 0;
-    render_height = 0;
-    request_screenshot = false;
+    main_window_ = nullptr;
+    request_screenshot_ = false;
 }
 
 bool Rendering::Init()
@@ -90,8 +88,8 @@ bool Rendering::Init()
 
     // Create window with graphics context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    window = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
-    if (window == NULL){
+    main_window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
+    if (main_window_ == NULL){
         Log::Error("Failed to Create GLFW Window.");
         return false;
     }
@@ -102,14 +100,14 @@ bool Rendering::Init()
     if (fp != nullptr) {
         GLFWimage icon;
         icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
-        glfwSetWindowIcon( window, 1, &icon );
+        glfwSetWindowIcon( main_window_, 1, &icon );
         free( icon.pixels );
     }
 
-    glfwSetWindowPos(window, winset.x, winset.y);
-    glfwMakeContextCurrent(window);
+    glfwSetWindowPos(main_window_, winset.x, winset.y);
+    glfwMakeContextCurrent(main_window_);
     glfwSwapInterval(1); // Enable vsync3
-    glfwSetWindowRefreshCallback( window, WindowRefreshCallback );
+    glfwSetWindowRefreshCallback( main_window_, WindowRefreshCallback );
 
     // Initialize OpenGL loader
     bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
@@ -119,14 +117,15 @@ bool Rendering::Init()
     }
 
     // show window
-    glfwShowWindow(window);
+    glfwShowWindow(main_window_);
     // restore fullscreen
     if (winset.fullscreen)
         ToggleFullscreen();
 
-    // Rendering area (not necessarily same as window)
-	glfwGetFramebufferSize(window, &render_width, &render_height);
-	glViewport(0, 0, render_width, render_height);
+    // Rendering area (here same as window)
+    glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
+    glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+    main_window_attributes_.clear_color = glm::vec3(COLOR_BGROUND);
 
     // Gstreamer link to context
     g_setenv ("GST_GL_API", "opengl3", FALSE);
@@ -153,10 +152,10 @@ bool Rendering::Init()
     global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
 
     global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                        (guintptr) glfwGetGLXContext(window),
+                                        (guintptr) glfwGetGLXContext(main_window_),
                                         GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
 
-    global_window_handle =  (guintptr) glfwGetX11Window(window);
+    global_window_handle =  (guintptr) glfwGetX11Window(main_window_);
 
 #endif
 
@@ -173,25 +172,25 @@ bool Rendering::Init()
     //     gst_plugin_feature_set_rank (GST_PLUGIN_FEATURE(vdpaumpegdec), GST_RANK_PRIMARY);
 
     // file drop callback
-    glfwSetDropCallback(window, Rendering::FileDropped);
+    glfwSetDropCallback(main_window_, Rendering::FileDropped);
 
     return true;
 }
 
 bool Rendering::isActive()
 {
-    return !glfwWindowShouldClose(window);
+    return !glfwWindowShouldClose(main_window_);
 }
 
 
 void Rendering::PushFrontDrawCallback(RenderingCallback function)
 {
-    drawCallbacks.push_front(function);
+    draw_callbacks_.push_front(function);
 }
 
 void Rendering::PushBackDrawCallback(RenderingCallback function)
 {
-    drawCallbacks.push_back(function);
+    draw_callbacks_.push_back(function);
 }
 
 void Rendering::Draw()
@@ -201,7 +200,7 @@ void Rendering::Draw()
         UserInterface::manager().NewFrame();
 
 		std::list<Rendering::RenderingCallback>::iterator iter;
-		for (iter=drawCallbacks.begin(); iter != drawCallbacks.end(); iter++)
+        for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); iter++)
 		{
             (*iter)();
         }
@@ -224,19 +223,20 @@ bool Rendering::Begin()
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
 
-    glfwMakeContextCurrent(window);
-    if( glfwGetWindowAttrib( window, GLFW_ICONIFIED ) )
+    glfwMakeContextCurrent(main_window_);
+    if( glfwGetWindowAttrib( main_window_, GLFW_ICONIFIED ) )
     {
         std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
         return false;
     }
 
     // handle window resize
-    glfwGetFramebufferSize(window, &render_width, &render_height);
-	glViewport(0, 0, render_width, render_height);
+    glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
+    glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
 
     // GL Colors
-    glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+    glClearColor(main_window_attributes_.clear_color.r, main_window_attributes_.clear_color.g,
+                 main_window_attributes_.clear_color.b, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     return true;
@@ -244,16 +244,16 @@ bool Rendering::Begin()
 
 void Rendering::End()
 {
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(main_window_);
 
     // perform screenshot if requested
-    if (request_screenshot) {
-        window_screenshot.CreateFromCaptureGL(0, 0, render_width, render_height);
-        request_screenshot = false;
+    if (request_screenshot_) {
+        screenshot_.CreateFromCaptureGL(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+        request_screenshot_ = false;
     }
 
     // swap GL buffers
-    glfwSwapBuffers(window);
+    glfwSwapBuffers(main_window_);
 }
 
 
@@ -262,23 +262,51 @@ void Rendering::Terminate()
     // settings
     if ( !Settings::application.windows.front().fullscreen) {
         int x, y;
-        glfwGetWindowPos(window, &x, &y);
+        glfwGetWindowPos(main_window_, &x, &y);
         Settings::application.windows.front().x = x;
         Settings::application.windows.front().y = y;
-        glfwGetWindowSize(window,&x, &y);
+        glfwGetWindowSize(main_window_,&x, &y);
         Settings::application.windows.front().w = x;
         Settings::application.windows.front().h = y;
     }
 
     // close window
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(main_window_);
     glfwTerminate();
 }
 
 
 void Rendering::Close()
 {
-    glfwSetWindowShouldClose(window, true);
+    glfwSetWindowShouldClose(main_window_, true);
+}
+
+
+void Rendering::PushAttrib(RenderingAttrib ra)
+{
+    // push it to top of pile
+    draw_attributes_.push_front(ra);
+
+    // apply Changes to OpenGL
+    glViewport(0, 0, ra.viewport.x, ra.viewport.y);
+    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, 1.f);
+}
+
+void Rendering::PopAttrib()
+{
+    // pops the top of the pile
+    if (draw_attributes_.size() > 0)
+        draw_attributes_.pop_front();
+
+    // set attribute element to default
+    RenderingAttrib ra = main_window_attributes_;
+    // if there is an element at top, use it
+    if (draw_attributes_.size() > 0)
+        ra = draw_attributes_.front();
+
+    // apply Changes to OpenGL
+    glViewport(0, 0, ra.viewport.x, ra.viewport.y);
+    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, 1.f);
 }
 
 
@@ -290,12 +318,15 @@ glm::mat4 Rendering::Projection()
     return projection * scale;
 }
 
+float Rendering::Width() { return main_window_attributes_.viewport.x; }
+float Rendering::Height() { return main_window_attributes_.viewport.y; }
+
 void Rendering::ToggleFullscreen()
 {
     // if in fullscreen mode
-    if (glfwGetWindowMonitor(window) != nullptr) {
+    if (glfwGetWindowMonitor(main_window_) != nullptr) {
         // set to window mode
-        glfwSetWindowMonitor( window, nullptr,  Settings::application.windows.front().x,
+        glfwSetWindowMonitor( main_window_, nullptr,  Settings::application.windows.front().x,
                                                 Settings::application.windows.front().y,
                                                 Settings::application.windows.front().w,
                                                 Settings::application.windows.front().h, 0 );
@@ -305,10 +336,10 @@ void Rendering::ToggleFullscreen()
     else {
         // remember window geometry
         int x, y;
-        glfwGetWindowPos(window, &x, &y);
+        glfwGetWindowPos(main_window_, &x, &y);
         Settings::application.windows.front().x = x;
         Settings::application.windows.front().y = y;
-        glfwGetWindowSize(window,&x, &y);
+        glfwGetWindowSize(main_window_,&x, &y);
         Settings::application.windows.front().w = x;
         Settings::application.windows.front().h = y;
 
@@ -317,7 +348,7 @@ void Rendering::ToggleFullscreen()
         const GLFWvidmode * mode = glfwGetVideoMode(monitor);
 
         // set to fullscreen mode
-        glfwSetWindowMonitor( window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor( main_window_, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
         Settings::application.windows.front().fullscreen = true;
     }
 
@@ -325,7 +356,7 @@ void Rendering::ToggleFullscreen()
 
 float Rendering::AspectRatio()
 {
-    return static_cast<float>(render_width) / static_cast<float>(render_height);
+    return static_cast<float>(main_window_attributes_.viewport.x) / static_cast<float>(main_window_attributes_.viewport.y);
 }
 
 void Rendering::FileDropped(GLFWwindow* window, int path_count, const char* paths[])
@@ -339,13 +370,13 @@ void Rendering::FileDropped(GLFWwindow* window, int path_count, const char* path
 
 Screenshot *Rendering::CurrentScreenshot()
 {
-    return &window_screenshot;
+    return &screenshot_;
 }
 
 void Rendering::RequestScreenshot() 
 { 
-    window_screenshot.Clear();
-    request_screenshot = true; 
+    screenshot_.Clear();
+    request_screenshot_ = true;
 }
 
 

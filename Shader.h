@@ -59,11 +59,10 @@ public:
     } BlendMode;
     BlendMode blending;
 
-    void setModelview(float x, float y, float angle, float scale, float aspect_ratio);
-
 protected:
     ShadingProgram *program_;
 
 };
+
 
 #endif /* __SHADER_H_ */

@@ -73,7 +73,7 @@ UserInterface::UserInterface()
 
 bool UserInterface::Init()
 {
-    if (Rendering::manager().window == nullptr)
+    if (Rendering::manager().main_window_ == nullptr)
         return false;
 
     // Setup Dear ImGui context
@@ -84,7 +84,7 @@ bool UserInterface::Init()
     io.MouseDrawCursor = true;
 
     // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().window, true);
+    ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().main_window_, true);
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
 
     // Setup Dear ImGui style

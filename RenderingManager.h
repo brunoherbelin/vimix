@@ -12,7 +12,7 @@
 struct RenderingAttrib
 {
     RenderingAttrib() {}
-    glm::ivec4 viewport;
+    glm::ivec2 viewport;
     glm::vec3 clear_color;
 };
 
@@ -22,11 +22,8 @@ class Rendering
     friend class UserInterface;
 
     // GLFW integration in OS window management
-    class GLFWwindow* window;
-    Screenshot window_screenshot;
+    class GLFWwindow* main_window_;
     std::string glsl_version;
-    int render_width, render_height;
-    bool request_screenshot;
 
     // Private Constructor
     Rendering();
@@ -59,7 +56,7 @@ public:
     void PushBackDrawCallback(RenderingCallback function);
 
     // push and pop rendering attributes
-    void PushAttrib(glm::ivec4 viewport, glm::vec3 color);
+    void PushAttrib(RenderingAttrib ra);
     void PopAttrib();
 
     // request screenshot
@@ -70,9 +67,9 @@ public:
     // request fullscreen
     void ToggleFullscreen();
     // get width of rendering area
-    float Width() { return render_width; }
+    float Width();
     // get height of rendering area
-    float Height() { return render_height; }
+    float Height();
     // get aspect ratio of rendering area
     float AspectRatio();
 
@@ -90,13 +87,17 @@ private:
     void End();
 
     // list of rendering attributes
-    std::list<RenderingAttrib> drawAttributes;
+    std::list<RenderingAttrib> draw_attributes_;
+    RenderingAttrib main_window_attributes_;
 
     // list of functions to call at each Draw
-    std::list<RenderingCallback> drawCallbacks;
+    std::list<RenderingCallback> draw_callbacks_;
 
     // file drop callback
-    static void FileDropped(GLFWwindow* window, int path_count, const char* paths[]);
+    static void FileDropped(GLFWwindow* main_window_, int path_count, const char* paths[]);
+
+    Screenshot screenshot_;
+    bool request_screenshot_;
 
 
 };

@@ -178,26 +178,21 @@ void drawScene()
     last_time = current_time;
 
     // recursive update from root of scene
-    glm::mat4 MV = glm::identity<glm::mat4>();
-    glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
-
-//    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), glm::vec3(0, 0, 0.f));
-//    View = glm::rotate(View, 0.f, glm::vec3(0.0f, 0.0f, 1.0f));
-//    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1, 1, 1));
-//    mv = View * Model;
     scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
 
     // draw in output frame buffer
-    output->bind();
-    scene.root_.draw(MV, P);
-    FrameBuffer::release();
+    glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
+    output->begin();
+    scene.root_.draw(glm::identity<glm::mat4>(), P);
+    output->end();
+
+    // draw in main view
+    scene.root_.draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
-
     static ImGuiVisitor v;
     scene.accept(v);
-
     ImGui::End();
 }
 

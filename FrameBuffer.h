@@ -2,7 +2,7 @@
 #define FRAMEBUFFER_H
 
 #include "Scene.h"
-
+#include "RenderingManager.h"
 
 class FrameBuffer {
 
@@ -12,20 +12,23 @@ public:
 
     // bind the FrameBuffer as current to draw into
     void bind();
-    // releases the framebuffer object
+    void begin();
+    void end();
+
+    // release any framebuffer object
     static void release();
+
     // blit copy to another, returns true on success
     bool blit(FrameBuffer *other);
 
-    inline uint width() const { return width_; }
-    inline uint height() const { return height_; }
+    inline uint width() const { return attrib_.viewport.x; }
+    inline uint height() const { return attrib_.viewport.y; }
     inline uint texture() const { return textureid_; }
     float aspectRatio() const;
 
 private:
     void checkFramebufferStatus();
-    uint width_;
-    uint height_;
+    RenderingAttrib attrib_;
     uint textureid_;
     uint framebufferid_;
 };
