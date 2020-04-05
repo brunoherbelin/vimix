@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <algorithm>
 
 
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
@@ -29,7 +30,7 @@ glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 }
 
 // Node
-Node::Node() : parent_(nullptr), visible_(false), initialized_(false)
+Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
 {
     // create unique id
     auto duration = std::chrono::system_clock::now().time_since_epoch();
@@ -123,13 +124,12 @@ void Primitive::init()
     if ( arrayBuffer_ )  glDeleteBuffers ( 1, &arrayBuffer_);
     if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);
 
-    initialized_ = true;
-    visible_ = true;
+    Node::init();
 }
 
 void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     if ( visible_ ) {
@@ -172,13 +172,12 @@ Group::~Group()
 
 void Group::init()
 {
-    for (std::vector<Node*>::iterator node = children_.begin();
+    for (NodeSet::iterator node = children_.begin();
          node != children_.end(); node++) {
         (*node)->init();
     }
 
-    visible_ = true;
-    initialized_ = true;
+    Node::init();
 }
 
 void Group::update( float dt )
@@ -186,7 +185,7 @@ void Group::update( float dt )
     Node::update(dt);
 
     // update every child node
-    for (std::vector<Node*>::iterator node = children_.begin();
+    for (NodeSet::iterator node = children_.begin();
          node != children_.end(); node++) {
         (*node)->update ( dt );
     }
@@ -194,7 +193,7 @@ void Group::update( float dt )
 
 void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     if ( visible_ ) {
@@ -203,7 +202,7 @@ void Group::draw(glm::mat4 modelview, glm::mat4 projection)
         glm::mat4 ctm = modelview * transform_;
 
         // draw every child node
-        for (std::vector<Node*>::iterator node = children_.begin();
+        for (NodeSet::iterator node = children_.begin();
              node != children_.end(); node++) {
             (*node)->draw ( ctm, projection );
         }
@@ -216,19 +215,31 @@ void Group::accept(Visitor& v)
     v.visit(*this);
 }
 
-
 void Group::addChild(Node *child)
 {
-    children_.push_back( child );
+    children_.insert(child);
     child->parent_ = this;
 }
 
-Node *Group::getChild(uint i)
+void Group::removeChild(Node *child)
 {
-    if ( i >= 0 && i < children_.size() )
-        return children_[i];
-    else
-        return nullptr;
+    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
+
+    if ( it != children_.end())
+    {
+        children_.erase(it);
+        child->parent_ = nullptr;
+    }
+}
+
+NodeSet::iterator Group::begin()
+{
+    return children_.begin();
+}
+
+NodeSet::iterator Group::end()
+{
+    return children_.end();
 }
 
 uint Group::numChildren() const
@@ -241,20 +252,22 @@ void Switch::update( float dt )
     Node::update(dt);
 
     // update active child node
-    children_[active_]->update( dt );
+    if (active_ != children_.end())
+        (*active_)->update( dt );
 }
 
 void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     if ( visible_ ) {
         // append the instance transform to the ctm
         glm::mat4 ctm = modelview * transform_;
 
-        // draw current child
-        children_[active_]->draw(ctm, projection);
+        // draw current child        
+        if (active_ != children_.end())
+            (*active_)->draw(ctm, projection);
     }
 }
 
@@ -264,18 +277,60 @@ void Switch::accept(Visitor& v)
     v.visit(*this);
 }
 
-void Switch::setActiveIndex(uint index)
+void Switch::addChild(Node *child)
 {
-    active_ = CLAMP( index, 0, children_.size() - 1);
+    Group::addChild(child);
+    setActiveChild(child);
 }
 
-Node* Switch::activeNode()
+void Switch::removeChild(Node *child)
 {
-    if ( children_.empty() )
-        return nullptr;
-
-    return children_[active_];
+    Group::removeChild(child);
+    active_ = children_.begin();
 }
+
+
+void Switch::setActiveChild(Node *child)
+{
+    setActiveChild( std::find_if(children_.begin(), children_.end(), hasId(child->id())) );
+}
+
+void Switch::setActiveChild(NodeSet::iterator n)
+{
+    if ( n != children_.end())
+        active_ = n;
+    else
+        active_ = children_.begin();
+}
+
+NodeSet::iterator Switch::activeChild() const
+{
+    return active_;
+}
+
+void Switch::setIndexActiveChild(int index)
+{
+    int i = 0;
+    for (NodeSet::iterator node = children_.begin();
+         node != children_.end(); node++, i++) {
+        if ( i == index ) {
+            active_ = node;
+            break;
+        }
+    }
+}
+
+int Switch::getIndexActiveChild() const
+{
+    int index = 0;
+    for (NodeSet::iterator node = children_.begin();
+         node != children_.end(); node++, index++) {
+        if (node == active_)
+            break;
+    }
+    return index;
+}
+
 
 void Scene::accept(Visitor& v)
 {

@@ -62,9 +62,8 @@ void ImGuiVisitor::visit(Group &n)
         }
 
         // loop over members of a group
-        for (int i = 0; i < n.numChildren(); ++i)
-        {
-            n.getChild(i)->accept(*this);
+        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+            (*node)->accept(*this);
         }
 
         ImGui::TreePop();

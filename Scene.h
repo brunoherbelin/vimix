@@ -1,6 +1,9 @@
 #ifndef SCENE_H
 #define SCENE_H
 
+#define INVALID_ID -1
+
+#include <set>
 #include <vector>
 #include <glm/glm.hpp>
 
@@ -14,28 +17,61 @@ class Visitor;
 // Manages modelview transformations and culling
 class Node {
 
+    int       id_;
+    bool      initialized_;
+
 public:
     Node();
-    virtual ~Node() {}    
-    inline int id() { return id_; }
+    virtual ~Node () {}
 
-    virtual void init() = 0;
-    virtual void draw( glm::mat4 modelview,  glm::mat4 projection) = 0;
-    virtual void accept(Visitor& v);
-    virtual void update( float dt );
-    virtual bool initialized() { return initialized_; }
-    virtual glm::mat4 getWorldToLocalMatrix() { return worldToLocal_; }
-    virtual glm::mat4 getLocalToWorldMatrix() { return localToWorld_; }
+    // unique identifyer generated at instanciation
+    inline int id () const { return id_; }
 
+    // must initialize the node before draw
+    virtual void init() { initialized_ = true; }
+    virtual bool initialized () { return initialized_; }
+
+    // pure virtual draw : to be instanciated to define node behavior
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) = 0;
+
+    // update every frame
+    virtual void update (float dt);
+
+    // accept all kind of visitors
+    virtual void accept (Visitor& v);
+
+    virtual glm::mat4 getWorldToLocalMatrix () { return worldToLocal_; }
+    virtual glm::mat4 getLocalToWorldMatrix () { return localToWorld_; }
+
+    // public members, to manipulate with care
     Node*     parent_;
     bool      visible_;
-    bool      initialized_;
-    int       id_;
     glm::mat4 worldToLocal_;
     glm::mat4 localToWorld_;
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 };
+
+
+struct z_comparator
+{
+    inline bool operator () (const Node *a, const Node *b) const
+    {
+        //Sort Furthest to Closest
+        return (a && b && a->translation_.z < b->translation_.z);
+    }
+};
+struct hasId: public std::unary_function<Node*, bool>
+{
+    inline bool operator()(const Node* e) const
+    {
+       return (e && e->id() == _id);
+    }
+    hasId(int id) : _id(id) { }
+private:
+    int _id;
+};
+typedef std::multiset<Node*, z_comparator> NodeSet;
 
 
 // Leaf Nodes are primitives that can be rendered
@@ -46,8 +82,8 @@ public:
     virtual ~Primitive();
 
     virtual void init () override;
-    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
-    virtual void accept(Visitor& v) override;
+    virtual void accept (Visitor& v) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     Shader *getShader() { return shader_; }
     void setShader( Shader* e ) { shader_ = e; }
@@ -71,33 +107,42 @@ public:
     virtual ~Group();
 
     virtual void init () override;
-    virtual void update ( float dt ) override;
-    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
-    virtual void accept(Visitor& v) override;
+    virtual void update (float dt) override;
+    virtual void accept (Visitor& v) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    void addChild ( Node *child );
-    Node* getChild ( uint i );
+    virtual void addChild (Node *child);
+    virtual void removeChild (Node *child);
+
+    NodeSet::iterator begin();
+    NodeSet::iterator end();
     uint numChildren() const;
 
 protected:
-    std::vector< Node* > children_;
+    NodeSet children_;
 };
 
 class Switch : public Group {
 
 public:
-    Switch() : Group(), active_(0) {}
+    Switch() : Group(), active_(end()) {}
 
     virtual void update ( float dt ) override;
+    virtual void accept (Visitor& v) override;
     virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
-    virtual void accept(Visitor& v) override;
 
-    void setActiveIndex(uint index);
-    uint activeIndex() const { return active_; }
-    Node* activeNode();
+    void addChild (Node *child) override;
+    void removeChild (Node *child) override;
+
+    void setActiveChild (Node *child);
+    void setActiveChild (NodeSet::iterator n);
+    NodeSet::iterator activeChild () const;
+
+    void setIndexActiveChild (int index);
+    int getIndexActiveChild () const;
 
 protected:
-    uint active_;
+    NodeSet::iterator active_;
 };
 
 // A scene contains a root node and gives a simplified API to add nodes

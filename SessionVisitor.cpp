@@ -45,11 +45,8 @@ void SessionVisitor::visit(Group &n)
 
     // loop over members of a group
     XMLElement *group = xmlCurrent_;
-    for (int i = 0; i < n.numChildren(); ++i)
-    {
-        // recursive
-        n.getChild(i)->accept(*this);
-        xmlCurrent_->SetAttribute("index", i);
+    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+        (*node)->accept(*this);
         // revert to group as current
         xmlCurrent_ = group;
     }
@@ -60,7 +57,7 @@ void SessionVisitor::visit(Switch &n)
 {
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Switch");
-    xmlCurrent_->SetAttribute("active", n.activeIndex());
+    xmlCurrent_->SetAttribute("active", n.getIndexActiveChild());
 }
 
 void SessionVisitor::visit(Primitive &n)

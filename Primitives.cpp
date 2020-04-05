@@ -56,25 +56,24 @@ void ImageSurface::init()
     shader_ = new ImageShader();
 
     // use static global vertex array object
-    if (square_vao)
+    if (square_vao) {
+        // only init Node (not the primitive vao
+        Node::init();
         // if set, use the global vertex array object
         vao_ = square_vao;
+    }
     else {
         // 1. init as usual (only once)
         Primitive::init();
         // 2. remember global vao
         square_vao = vao_;
-        // 3. vao_ will not be deleted because deleteGLBuffers_() is empty
+        // 3. vao_ will NOT be deleted because deleteGLBuffers_() is empty
     }
-
-    // all good
-    visible_ = true;
-    initialized_ = true;
 }
 
 void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     glBindTexture(GL_TEXTURE_2D, textureindex_);
@@ -114,7 +113,7 @@ void MediaSurface::init()
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     if ( mediaplayer_->isOpen() )
@@ -164,7 +163,7 @@ void LineStrip::init()
 
 void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized_ )
+    if ( !initialized() )
         init();
 
     glLineWidth(linewidth_);
@@ -203,9 +202,11 @@ LineCircle::LineCircle(glm::vec3 color, uint linewidth) : LineStrip(square_point
 void LineCircle::init()
 {
     // use static global vertex array object
-    if (circle_vao)
+    if (circle_vao) {
+        Node::init();
         // if set, use the global vertex array object
         vao_ = square_vao;
+    }
     else {
         // 1. init as usual (only once)
         Primitive::init();
@@ -215,8 +216,6 @@ void LineCircle::init()
     }
 
     shader_ = new Shader();
-    visible_ = true;
-    initialized_ = true;
 }
 
 void LineCircle::accept(Visitor& v)
