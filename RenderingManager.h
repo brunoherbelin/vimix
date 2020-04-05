@@ -7,27 +7,15 @@
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp> 
 
-class Screenshot
+#include "Screenshot.h"
+
+struct RenderingAttrib
 {
-    int             Width, Height;
-    unsigned int *  Data;
-
-public:
-    Screenshot()    { Width = Height = 0; Data = nullptr; }
-    ~Screenshot()   { Clear(); }
-
-    bool IsFull()   { return Data != nullptr; }
-    void Clear()    { if (IsFull()) free(Data); Data = nullptr; }
-
-    void CreateEmpty(int w, int h);
-    void CreateFromCaptureGL(int x, int y, int w, int h);
-
-    void RemoveAlpha();
-    void FlipVertical();
-
-    void SaveFile(const char* filename);
-    void BlitTo(Screenshot* dst, int src_x, int src_y, int dst_x, int dst_y, int w, int h) const;
+    RenderingAttrib() {}
+    glm::ivec4 viewport;
+    glm::vec3 clear_color;
 };
+
 
 class Rendering
 {
@@ -70,10 +58,14 @@ public:
     void PushFrontDrawCallback(RenderingCallback function);
     void PushBackDrawCallback(RenderingCallback function);
 
+    // push and pop rendering attributes
+    void PushAttrib(glm::ivec4 viewport, glm::vec3 color);
+    void PopAttrib();
+
     // request screenshot
     void RequestScreenshot();
     // get Screenshot
-    Screenshot *CurrentScreenshot();
+    class Screenshot *CurrentScreenshot();
     
     // request fullscreen
     void ToggleFullscreen();
@@ -96,6 +88,9 @@ private:
     bool Begin();
     // loop update end frame
     void End();
+
+    // list of rendering attributes
+    std::list<RenderingAttrib> drawAttributes;
 
     // list of functions to call at each Draw
     std::list<RenderingCallback> drawCallbacks;
