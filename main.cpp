@@ -183,11 +183,11 @@ void drawScene()
     // draw in output frame buffer
     glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
     output->begin();
-    scene.root_.draw(glm::identity<glm::mat4>(), P);
+    scene.root_.draw(P);
     output->end();
 
     // draw in main view
-    scene.root_.draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+    scene.root_.draw(Rendering::manager().Projection());
 
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);

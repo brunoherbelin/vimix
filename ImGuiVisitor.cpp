@@ -80,6 +80,10 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PushID(n.id());
     ImGui::Text("Primitive");
 
+    // test compute coordinate
+    glm::vec3 center(0.f);
+
+
     n.getShader()->accept(*this);
 
     ImGui::PopID();

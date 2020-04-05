@@ -71,14 +71,14 @@ void ImageSurface::init()
     }
 }
 
-void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
+void ImageSurface::draw(glm::mat4 projection)
 {
     if ( !initialized() )
         init();
 
     glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    Primitive::draw(modelview, projection);
+    Primitive::draw(projection);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -111,7 +111,7 @@ void MediaSurface::init()
     mediaplayer_->play(true);
 }
 
-void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
+void MediaSurface::draw(glm::mat4 projection)
 {
     if ( !initialized() )
         init();
@@ -121,17 +121,17 @@ void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
     else
         glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    Primitive::draw(modelview, projection);
+    Primitive::draw(projection);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void MediaSurface::update( float dt )
 {
-    if ( mediaplayer_->isOpen() )
+    if ( mediaplayer_->isOpen() ) {
         mediaplayer_->update();
-
-    scale_.x = mediaplayer_->aspectRatio();
+        scale_.x = mediaplayer_->aspectRatio();
+    }
 
     Primitive::update( dt );
 }
@@ -161,13 +161,13 @@ void LineStrip::init()
     shader_ = new Shader();
 }
 
-void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
+void LineStrip::draw(glm::mat4 projection)
 {
     if ( !initialized() )
         init();
 
     glLineWidth(linewidth_);
-    Primitive::draw(modelview, projection);
+    Primitive::draw(projection);
 }
 
 void LineStrip::accept(Visitor& v)

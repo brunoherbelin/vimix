@@ -13,9 +13,9 @@ class ImageSurface : public Primitive {
 public:
     ImageSurface(const std::string& path = "" );
 
-    void init() override;
-    void draw(glm::mat4 modelview, glm::mat4 projection) override;
-    void accept(Visitor& v) override;
+    void init () override;
+    void draw (glm::mat4 projection) override;
+    void accept (Visitor& v) override;
 
     std::string getFilename() { return filename_; }
 
@@ -36,9 +36,9 @@ public:
     MediaSurface(const std::string& path);
     ~MediaSurface();
 
-    void init() override;
-    void draw(glm::mat4 modelview, glm::mat4 projection) override;
-    void accept(Visitor& v) override;
+    void init () override;
+    void draw (glm::mat4 projection) override;
+    void accept (Visitor& v) override;
     void update ( float dt ) override;
 
     MediaPlayer *getMediaPlayer() { return mediaplayer_; }
@@ -67,7 +67,7 @@ public:
     LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewidth = 1);
 
     virtual void init() override;
-    virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void draw(glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }

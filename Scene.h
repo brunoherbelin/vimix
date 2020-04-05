@@ -32,7 +32,7 @@ public:
     virtual bool initialized () { return initialized_; }
 
     // pure virtual draw : to be instanciated to define node behavior
-    virtual void draw (glm::mat4 modelview, glm::mat4 projection) = 0;
+    virtual void draw (glm::mat4 projection) = 0;
 
     // update every frame
     virtual void update (float dt);
@@ -40,15 +40,12 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    virtual glm::mat4 getWorldToLocalMatrix () { return worldToLocal_; }
-    virtual glm::mat4 getLocalToWorldMatrix () { return localToWorld_; }
-
     // public members, to manipulate with care
     Node*     parent_;
     bool      visible_;
-    glm::mat4 worldToLocal_;
-    glm::mat4 localToWorld_;
-    glm::mat4 transform_;
+
+    glm::mat4 localToRender_;
+    glm::mat4 renderToLocal_;
     glm::vec3 scale_, rotation_, translation_;
 };
 
@@ -83,7 +80,7 @@ public:
 
     virtual void init () override;
     virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void draw (glm::mat4 projection) override;
 
     Shader *getShader() { return shader_; }
     void setShader( Shader* e ) { shader_ = e; }
@@ -109,7 +106,7 @@ public:
     virtual void init () override;
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void draw (glm::mat4 projection) override;
 
     virtual void addChild (Node *child);
     virtual void removeChild (Node *child);
@@ -127,9 +124,9 @@ class Switch : public Group {
 public:
     Switch() : Group(), active_(end()) {}
 
-    virtual void update ( float dt ) override;
+    virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
-    virtual void draw ( glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void draw (glm::mat4 projection) override;
 
     void addChild (Node *child) override;
     void removeChild (Node *child) override;
