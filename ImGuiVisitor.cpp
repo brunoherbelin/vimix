@@ -81,9 +81,7 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PushID(n.id());
     ImGui::Text("Primitive");
 
-    if (n.getShader())
-        n.getShader()->accept(*this);
-
+    n.getShader()->accept(*this);
 
     ImGui::PopID();
 }

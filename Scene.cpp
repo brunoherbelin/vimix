@@ -172,6 +172,11 @@ Group::~Group()
 
 void Group::init()
 {
+    for (std::vector<Node*>::iterator node = children_.begin();
+         node != children_.end(); node++) {
+        (*node)->init();
+    }
+
     visible_ = true;
     initialized_ = true;
 }
