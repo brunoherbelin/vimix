@@ -19,6 +19,11 @@
 // multiplatform
 #include <tinyfiledialogs.h>
 
+#include <glm/glm.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+
 // generic image loader
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -155,7 +160,7 @@ void UserInterface::handleMouse()
     ImGuiIO& io = ImGui::GetIO(); 
 
     // if not on any window
-    if ( !ImGui::IsAnyWindowHovered() )
+    if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
         // Mouse wheel over background
         if ( io.MouseWheel > 0) {
@@ -165,6 +170,22 @@ void UserInterface::handleMouse()
 
         if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
+            Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+
+            glm::mat4 mv = glm::identity<glm::mat4>();
+            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y), mv);
+
+            Log::Info("            (%.1f,%.1f)", point.x, point.y);
+
+        }
+
+        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 10.0f) )
+        {
+            Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
+            ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[0], io.MousePos,
+                    ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+            ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[0], io.MousePos,
+                    ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
         }
 
         if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
@@ -177,14 +198,14 @@ void UserInterface::handleMouse()
 
 void UserInterface::NewFrame()
 {
-    // deal with keyboard and mouse events
-    handleKeyboard();
-    handleMouse();
-
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    // deal with keyboard and mouse events
+    handleKeyboard();
+    handleMouse();
 
     // Main window
     mainwindow.Render();

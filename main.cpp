@@ -271,7 +271,6 @@ int main(int, char**)
 
     g2.addChild(&testnode1);
     g2.addChild(&testnode2);
-    g2.setActiveIndex(1);
     scene.root_.addChild(&g2);
 
     // init output FBO

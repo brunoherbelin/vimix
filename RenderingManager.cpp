@@ -21,6 +21,7 @@
 #include <GLFW/glfw3native.h>
 
 #include <glm/ext/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
+#include <glm/ext/matrix_projection.hpp> // glm::unproject
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
 
 // Include GStreamer
@@ -316,6 +317,18 @@ glm::mat4 Rendering::Projection()
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.f, AspectRatio(), 1.f));
 
     return projection * scale;
+}
+
+
+glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
+{
+    glm::vec3 point;
+    glm::vec3 coordinates = glm::vec3( glm::vec2(screen_coordinate), 0.f);
+    glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+
+    point = glm::unProject(coordinates, modelview, Projection(), viewport);
+
+    return point;
 }
 
 float Rendering::Width() { return main_window_attributes_.viewport.x; }
