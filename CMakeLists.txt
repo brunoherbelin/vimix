@@ -162,20 +162,11 @@ add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
 message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolkit/tinyfiledialogs.git -- ${TINYFD_INCLUDE_DIR}.")
 
 #
-# BOXER - NATIVE MESSAGE DIALOG
+# OBJ LOADER
 #
-#add_subdirectory(ext/Boxer)
-#set(BOXER_INCLUDE_DIR ${Boxer_SOURCE_DIR}/include)
-#set(BOXER_LIBRARY Boxer)
-#message(STATUS "Including 'Boxer' from https://github.com/aaronmjacobs/Boxer.git -- ${BOXER_INCLUDE_DIR}.")
-
-#
-# NATIVE FILE DIALOG
-#
-# add_subdirectory(ext/nfd)
-# set(NFD_INCLUDE_DIR ${NFD_SOURCE_DIR}/include)
-# set(NFD_LIBRARY NFD)
-# message(STATUS "Including 'NativeFileDialog' from http://www.frogtoss.com/labs -- ${NFD_INCLUDE_DIR}.")
+set(OBJLOADER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/obj)
+add_library(OBJLOADER "${CMAKE_CURRENT_SOURCE_DIR}/ext/obj/ObjLoader.cpp")
+message(STATUS "Compiling 'ObjLoader' from https://github.com/mortennobel/OpenGL_3_2_Utils -- ${OBJLOADER_INCLUDE_DIR}.")
 
 # find_package(PkgConfig REQUIRED)
 # pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
@@ -183,11 +174,6 @@ message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolki
 #
 #  Application
 #
-
-#
-# SCENE GRAPH
-#
-
 
 # Setup the environment
 include_directories(
@@ -249,6 +235,9 @@ set(VMIX_RSC_FILES
     ./rsc/images/busy.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
+    ./rsc/images/shadow.jpg
+    ./rsc/models/square_border.obj
+    ./rsc/models/shadow.mtl
 )
 
 add_executable(${VMIX_BINARY}
@@ -282,6 +271,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${NFD_LIBRARY}
     ${PNG_LIBRARY}
     ${THREAD_LIBRARY}
+    OBJLOADER
     TINYXML2
     TINYFD
     IMGUI

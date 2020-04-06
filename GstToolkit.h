@@ -1,7 +1,7 @@
 #ifndef __GSTGUI_TOOLKIT_H_
 #define __GSTGUI_TOOLKIT_H_
 
-#include <glibconfig.h>
+#include <gst/gst.h>
 
 #include <string>
 #include <list>

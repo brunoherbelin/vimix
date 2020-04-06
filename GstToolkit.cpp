@@ -6,7 +6,6 @@
 
 using namespace std;
 
-#include <gst/gst.h>
 
 #include "GstToolkit.h"
 

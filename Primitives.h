@@ -93,4 +93,22 @@ public:
 };
 
 
+//// Draw a Rectangle (triangle strip) with a texture
+//class ObjModel : public Primitive {
+
+//public:
+//    ObjModel(const std::string& path = "" );
+
+//    void init () override;
+//    void draw (glm::mat4 projection) override;
+//    void accept (Visitor& v) override;
+
+//    std::string getFilename() { return filename_; }
+
+//protected:
+//    std::string filename_;
+//    uint textureindex_;
+//};
+
+
 #endif // PRIMITIVES_H

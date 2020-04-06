@@ -51,11 +51,13 @@
 ////    ("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
 ////    ("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
 ////    ("file:///home/bhbn/Videos/iss.mov");
+////    ("file:///home/bhbn/Videos//iss.mov");
+////    ("file:///Users/Herbelin/Movies/mp2test.mpg");
 ///
 Scene scene;
 FrameBuffer *output;
-MediaSurface testnode1("file:///Users/Herbelin/Movies/iss.mov");
-MediaSurface testnode2("file:///Users/Herbelin/Movies/mp2test.mpg");
+MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
+MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
 ImageSurface testnode3("images/v-mix_256x256.png");
 
 
