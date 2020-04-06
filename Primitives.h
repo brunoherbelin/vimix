@@ -8,7 +8,7 @@
 // Draw a Rectangle (triangle strip) with a texture
 class ImageSurface : public Primitive {
 
-    void deleteGLBuffers_() {}
+    void deleteGLBuffers_() override {}
 
 public:
     ImageSurface(const std::string& path = "" );
@@ -83,7 +83,7 @@ public:
 
 class LineCircle : public LineStrip {
 
-    void deleteGLBuffers_() {}
+    void deleteGLBuffers_() override {}
 
 public:
     LineCircle(glm::vec3 color, uint linewidth = 1);

@@ -83,7 +83,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
     }
 }
 
-void tinyxml2::XMLCheckResult(uint r)
+void tinyxml2::XMLCheckResult(int r)
 {
     XMLError result = (XMLError) r;
     if ( result != XML_SUCCESS)

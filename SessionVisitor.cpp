@@ -50,7 +50,6 @@ void SessionVisitor::visit(Group &n)
         // revert to group as current
         xmlCurrent_ = group;
     }
-    n.visible_;
 }
 
 void SessionVisitor::visit(Switch &n)
@@ -150,7 +149,7 @@ void SessionVisitor::visit(LineStrip &n)
     }
 }
 
-void SessionVisitor::visit(LineSquare &n)
+void SessionVisitor::visit(LineSquare &)
 {
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineSquare");

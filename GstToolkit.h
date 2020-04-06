@@ -1,6 +1,8 @@
 #ifndef __GSTGUI_TOOLKIT_H_
 #define __GSTGUI_TOOLKIT_H_
 
+#include <glibconfig.h>
+
 #include <string>
 #include <list>
 
@@ -8,7 +10,7 @@ namespace GstToolkit
 {
 
     std::string date_time_string();
-    std::string time_to_string(ulong t);
+    std::string time_to_string(guint64 t);
 
     std::string gst_version();
     std::list<std::string> all_plugins();

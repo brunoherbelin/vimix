@@ -3,6 +3,9 @@
 
 #include <string>
 #include <map>
+#ifdef __APPLE__
+#include <sys/types.h>
+#endif
 
 namespace Resource
 {

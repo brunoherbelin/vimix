@@ -24,7 +24,7 @@ public:
     void visit(ImageSurface& n) override;
     void visit(MediaSurface& n) override;
     void visit(LineStrip& n) override;
-    void visit(LineSquare& n) override;
+    void visit(LineSquare&) override;
     void visit(LineCircle& n) override;
 
     // Elements with attributes

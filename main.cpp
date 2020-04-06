@@ -54,8 +54,8 @@
 ///
 Scene scene;
 FrameBuffer *output;
-MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
-MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
+MediaSurface testnode1("file:///Users/Herbelin/Movies/iss.mov");
+MediaSurface testnode2("file:///Users/Herbelin/Movies/mp2test.mpg");
 ImageSurface testnode3("images/v-mix_256x256.png");
 
 

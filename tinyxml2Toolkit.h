@@ -16,7 +16,7 @@ void XMLElementToGLM(XMLElement *elem, glm::vec3 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec4 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix);
 
-void XMLCheckResult(uint r);
+void XMLCheckResult(int r);
 
 }
 
