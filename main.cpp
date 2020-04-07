@@ -58,7 +58,7 @@ Scene scene;
 FrameBuffer *output;
 MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
 MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
-ImageSurface testnode3("images/v-mix_256x256.png");
+ImageSurface testnode3("images/seed_512.jpg");
 
 
 void drawMediaPlayer()
@@ -183,13 +183,14 @@ void drawScene()
     scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
 
     // draw in output frame buffer
+    glm::mat4 MV = glm::identity<glm::mat4>();
     glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
     output->begin();
-    scene.root_.draw(P);
+    scene.root_.draw(MV, P);
     output->end();
 
     // draw in main view
-    scene.root_.draw(Rendering::manager().Projection());
+    scene.root_.draw(MV, Rendering::manager().Projection());
 
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
@@ -254,25 +255,28 @@ int main(int, char**)
     // init elements to the scene
     //testnode3.getShader()->blending = Shader::BLEND_OPACITY;
 
-    glm::vec3 color( 1.f, 1.f, 0.f );
-    LineCircle border(color);
-//    LineSquare border(color);
+    glm::vec3 color( 0.8f, 0.8f, 0.f );
+//    LineCircle border(color);
+    LineSquare border(color, 2);
+    ObjModel shadow("models/square_border.obj");
 
     Group g1;
     g1.translation_ = glm::vec3(1.f, 1.f, 0.f);
-    g1.scale_ = glm::vec3(2.f, 2.f, 1.f);
+    g1.scale_ = glm::vec3(1.2f, 1.2f, 1.f);
 
-    Switch g2;
+    Group g2;
     g2.translation_ = glm::vec3(-1.f, -1.f, 0.f);
 //    g2.rotation_ = glm::vec3(0.0f, 0.0f, 1.0f);
 
     // build tree
+    g1.addChild(&shadow);
     g1.addChild(&testnode3);
     g1.addChild(&border);
     scene.root_.addChild(&g1);
 
+    g2.addChild(&shadow);
     g2.addChild(&testnode1);
-    g2.addChild(&testnode2);
+    g2.addChild(&border);
     scene.root_.addChild(&g2);
 
     // init output FBO

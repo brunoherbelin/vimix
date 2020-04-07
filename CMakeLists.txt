@@ -194,6 +194,7 @@ include_directories(
     ${TINYFD_INCLUDE_DIR}
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
+    ${OBJLOADER_INCLUDE_DIR}
 )
 
 
@@ -235,7 +236,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/busy.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
-    ./rsc/images/shadow.jpg
+    ./rsc/models/shadow.png
     ./rsc/models/square_border.obj
     ./rsc/models/shadow.mtl
 )

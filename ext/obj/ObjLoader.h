@@ -34,49 +34,55 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <glm/glm.hpp>
 
 
 struct Material
 {
-Material() :
-    ambient (0.1, 0.1, 0.1, 1.0),
-    diffuse (0.8, 0.8, 0.8, 1.0),
-    specular(1.0, 1.0, 1.0, 1.0 ),
-    shininess(75.0)
-  {}
-  virtual ~Material() {  }
+    Material() :
+        ambient (0.1, 0.1, 0.1),
+        diffuse (0.8, 0.8, 0.8),
+        specular(1.0, 1.0, 1.0),
+        shininess(75.0)
+    {}
+    virtual ~Material() {  }
 
-  glm::vec4 ambient;
-  glm::vec4 diffuse;
-  glm::vec4 specular;
-  float shininess;
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    float shininess;
 
-  std::string diffuseTexture;
-  std::string bumpTexture;
+    std::string diffuseTexture;
+    std::string bumpTexture;
 };
 
 
 // The original version, modified for glm.
 // Load an OBJ model into the out parameters.
 // Note only simple OBJ files are supported.
-bool loadObject (std::string filename,
-                std::vector<glm::vec3> &outPositions,
-		std::vector<glm::vec3> &outNormal,
-		std::vector<glm::vec2> &outUv,
-                std::vector<int> &outIndices,
-                Material *outMaterial,
-		float scale = 1.0f
- );
+bool loadObject (std::string objText,
+                 std::vector<glm::vec3> &outPositions,
+                 std::vector<glm::vec3> &outNormal,
+                 std::vector<glm::vec2> &outUv,
+                 std::vector<unsigned int> &outIndices,
+                 std::string &outMtlfilename,
+                 float scale = 1.0f
+        );
+
+
+bool loadMaterialLibrary ( std::string mtlText,
+                           std::map<std::string,Material*> &outMaterials
+                           );
 
 // this tries to handle multiple materials (w/textures) and groups of faces as per pcl_kinfu_largeScale, etc
 bool loadObjectGroups (std::string filename,
-		std::vector<glm::vec3> &outPositions, 
-		std::vector<glm::vec3> &outNormal, 
-		std::vector<glm::vec2> &outUv,
-                std::vector<std::vector<int> > &outIndices, // per group
-                std::vector<Material *> &outMaterials,  // per group (w/textures)
-		float scale=1.0f
-);
+                       std::vector<glm::vec3> &outPositions,
+                       std::vector<glm::vec3> &outNormal,
+                       std::vector<glm::vec2> &outUv,
+                       std::vector<std::vector<unsigned int> > &outIndices, // per group
+                       std::vector<Material *> &outMaterials,  // per group (w/textures)
+                       float scale=1.0f
+        );
 
 #endif

@@ -14,10 +14,10 @@ public:
     ImageSurface(const std::string& path = "" );
 
     void init () override;
-    void draw (glm::mat4 projection) override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    std::string getFilename() { return filename_; }
+    inline std::string getFilename() const { return filename_; }
 
 protected:
     std::string filename_;
@@ -37,7 +37,7 @@ public:
     ~MediaSurface();
 
     void init () override;
-    void draw (glm::mat4 projection) override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
     void update ( float dt ) override;
 
@@ -67,12 +67,14 @@ public:
     LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewidth = 1);
 
     virtual void init() override;
-    virtual void draw(glm::mat4 projection) override;
+    virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }
     glm::vec3 getColor() { return colors_[0]; }
-    uint getLineWidth() { return linewidth_; }
+
+    inline void setLineWidth(uint v) { linewidth_ = v; }
+    inline uint getLineWidth() const { return linewidth_; }
 };
 
 class LineSquare : public LineStrip {
@@ -93,22 +95,23 @@ public:
 };
 
 
-//// Draw a Rectangle (triangle strip) with a texture
-//class ObjModel : public Primitive {
+// Draw a Rectangle (triangle strip) with a texture
+class ObjModel : public Primitive {
 
-//public:
-//    ObjModel(const std::string& path = "" );
+public:
+    ObjModel(const std::string& path = "" );
 
-//    void init () override;
-//    void draw (glm::mat4 projection) override;
-//    void accept (Visitor& v) override;
+    void init () override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
 
-//    std::string getFilename() { return filename_; }
+    inline std::string getFilename() const { return filename_; }
 
-//protected:
-//    std::string filename_;
-//    uint textureindex_;
-//};
+protected:
+    std::string filename_;
+    std::string texture_filename_;
+    uint textureindex_;
+};
 
 
 #endif // PRIMITIVES_H

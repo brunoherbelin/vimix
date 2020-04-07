@@ -139,21 +139,11 @@ makeMtlFilename ( std::string mtlfile, std::string objfile )
 }
 
 
-bool loadMaterialLibrary ( string mtlfilename,
-                           string objfilename,
+bool loadMaterialLibrary ( string mtlText,
                            map<string,Material*> &outMaterials)
 {
-
-    string filename = makeMtlFilename( mtlfilename, objfilename );
-    string path = filename;
-    ifstream ifs ( path.c_str(), ifstream::in );
-    if (!ifs) {
-        std::cout << "can't open " << filename << std::endl;
-        // create a default texture
-        Material *m = new Material();
-        outMaterials["dummy1"] = m;
-        return false;
-    }
+    Material *mat = nullptr;
+    stringstream ifs(mtlText);
     char buffer[512];
     while (ifs.good()) {
         ifs.getline(buffer,512);
@@ -161,64 +151,45 @@ bool loadMaterialLibrary ( string mtlfilename,
         istringstream iss(line);
         string token;
         vec3 color;
-        Material *mat;
         iss >> token;
         if (token.compare("newmtl") ==0) {
             // create a new material and store in map
             mat = new Material;
             iss >> token;
             outMaterials[token] = mat;
-        } else if (token.compare("Ka") == 0) {
-            mat->ambient = vec4 ( toVec3 ( iss ), 1.0 );
-        } else if (token.compare("Kd") == 0) {
-            mat->diffuse = vec4 ( toVec3 ( iss ), 1.0);
-        } else if (token.compare("Ks") == 0) {
-            mat->specular = vec4 ( toVec3 ( iss ), 1.0);
-        } else if (token.compare("Ns") == 0) {
-            float shininess;
+        } else if (token.compare("Ka") == 0 && mat) {
+            mat->ambient = toVec3 ( iss );
+        } else if (token.compare("Kd") == 0 && mat) {
+            mat->diffuse = toVec3 ( iss );
+        } else if (token.compare("Ks") == 0 && mat) {
+            mat->specular = toVec3 ( iss );
+        } else if (token.compare("Ns") == 0 && mat) {
             iss >> mat->shininess;
-        } else if (token.compare("map_Kd") == 0) {
-            string filename,path;
-            iss >> filename;
-            if (filename[0] == '/') {
-                mat->diffuseTexture =  filename; // diffuse in unit 0
-            } else {
-                path = makeMtlFilename ( filename, objfilename );
-                mat->diffuseTexture = path; // diffuse in unit 0
-            }
-            if (DEBUG)
-                std::cout << "map_Kd from " << filename << std::endl;
-        } else if (token.compare("map_Disp") == 0) {
-            string filename, path;
-            iss >> filename;
-            if ( filename[0] == '/' ) {
-                mat->bumpTexture = filename; // bump in unit 1
-            } else {
-                path = makeMtlFilename ( filename, objfilename );
-                mat->bumpTexture = path; // diffuse in unit 0
-            }
+        } else if (token.compare("map_Kd") == 0 && mat) {
+            iss >> mat->diffuseTexture;
+        } else if (token.compare("map_Disp") == 0 && mat) {
+            iss >> mat->bumpTexture;
         }
     }
 
-    return true;
+    return (mat != nullptr);
 }
 
-bool loadObject(string filename,
+bool loadObject(string objText,
                 vector<vec3> &outPositions,
                 vector<vec3> &outNormal,
                 vector<vec2> &outUv,
                 vector<unsigned int> &outIndices,
-                Material *outMaterial,
+                std::string &outMtlfilename,
                 float scale)
 {
 
     vector<vec3> positions;
     vector<vec3> normals;
     vector<vec2> uvs;
-
-
     vector<TriangleString> triangles;
-    ifstream ifs ( filename , ifstream::in );
+
+    stringstream ifs(objText);
     char buffer[512];
     while (ifs.good()){
         ifs.getline(buffer,512);
@@ -231,14 +202,8 @@ bool loadObject(string filename,
             // does not support multiple objects
         } else if (token.compare("g")==0){
         } else if (token.compare("mtllib")==0){
-            // read the .mtl file and create the Materials
-            map<string,Material*> materials;
-            string mtlfile;
-            iss >> mtlfile;
-            loadMaterialLibrary( mtlfile.c_str(),
-                                  filename,
-                                  materials);
-            outMaterial = materials[0];
+            // read the name of .mtl file
+            iss >> outMtlfilename;
         } else if (token.compare("usemtl")==0){
             // does not support multiple materials
         } else if (token.compare("v")==0){
@@ -266,8 +231,6 @@ bool loadObject(string filename,
             }
         }
     }
-    ifs.close();
-
 
     map<TriangleIndex,int> cache;
     for (int i=0;i<triangles.size();i++){
@@ -303,9 +266,9 @@ Material *
 makeDefaultMaterial()
 {
     Material *m = new Material;
-    m->ambient = vec4 ( 0.1, 0.1, 0.1, 1.0 );
-    m->diffuse = vec4 ( 0.8, 0.8, 0.8, 1.0 );
-    m->specular = vec4 ( 1.0, 1.0, 1.0, 1.0 );
+    m->ambient = vec3 ( 0.1, 0.1, 0.1 );
+    m->diffuse = vec3 ( 0.8, 0.8, 0.8 );
+    m->specular = vec3 ( 1.0, 1.0, 1.0 );
     m->shininess = 200.0f;
     return m;
 }
@@ -371,9 +334,9 @@ bool loadObjectGroups ( string filename,
             // read the .mtl file and create the Materials
             string mtlfile;
             iss >> mtlfile;
-            loadMaterialLibrary( mtlfile.c_str(),
-                                  filename,
-                                  materials);
+//            loadMaterialLibrary( mtlfile.c_str(),
+//                                  filename,
+//                                  materials);
         } else if (token.compare("usemtl")==0){
             // create group if none exists, or if this is a "usemtl" line without a preceding "g" line
             if ( currentGroupName=="" || groups[currentGroupName]->triangles.size() ) {

@@ -36,9 +36,7 @@ Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
     auto duration = std::chrono::system_clock::now().time_since_epoch();
     id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
 
-    localToRender_ = glm::identity<glm::mat4>();
-    renderToLocal_ = glm::identity<glm::mat4>();
-
+    transform_ = glm::identity<glm::mat4>();
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
@@ -47,16 +45,8 @@ Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
 void Node::update( float dt )
 {
     // update transform matrix from attributes
-    glm::mat4 T = transform(translation_, rotation_, scale_);
+    transform_ = transform(translation_, rotation_, scale_);
 
-    if ( parent_ ) {
-        localToRender_ = parent_->localToRender_ * T;
-        renderToLocal_ = glm::inverse(T) * parent_->renderToLocal_;
-    }
-    else {
-        localToRender_ = T;
-        renderToLocal_ = glm::inverse(T);
-    }
 }
 
 
@@ -130,7 +120,7 @@ void Primitive::init()
     Node::init();
 }
 
-void Primitive::draw(glm::mat4 projection)
+void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
@@ -141,7 +131,7 @@ void Primitive::draw(glm::mat4 projection)
         //
         if (shader_) {
             shader_->projection = projection;
-            shader_->modelview  = localToRender_;
+            shader_->modelview  = modelview * transform_;
             shader_->use();
         }
         //
@@ -194,17 +184,20 @@ void Group::update( float dt )
     }
 }
 
-void Group::draw(glm::mat4 projection)
+void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
 
     if ( visible_ ) {
 
+        // append the instance transform to the ctm
+        glm::mat4 ctm = modelview * transform_;
+
         // draw every child node
         for (NodeSet::iterator node = children_.begin();
              node != children_.end(); node++) {
-            (*node)->draw (projection );
+            (*node)->draw ( ctm, projection );
         }
     }
 }
@@ -256,7 +249,7 @@ void Switch::update( float dt )
         (*active_)->update( dt );
 }
 
-void Switch::draw(glm::mat4 projection)
+void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
@@ -264,7 +257,7 @@ void Switch::draw(glm::mat4 projection)
     if ( visible_ ) {
         // draw current child        
         if (active_ != children_.end())
-            (*active_)->draw(projection);
+            (*active_)->draw( modelview * transform_, projection);
     }
 }
 

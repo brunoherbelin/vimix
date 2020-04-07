@@ -35,7 +35,7 @@ public:
     virtual bool initialized () { return initialized_; }
 
     // pure virtual draw : to be instanciated to define node behavior
-    virtual void draw (glm::mat4 projection) = 0;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) = 0;
 
     // update every frame
     virtual void update (float dt);
@@ -47,8 +47,7 @@ public:
     Node*     parent_;
     bool      visible_;
 
-    glm::mat4 localToRender_;
-    glm::mat4 renderToLocal_;
+    glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 };
 
@@ -83,10 +82,10 @@ public:
 
     virtual void init () override;
     virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 projection) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    Shader *getShader() { return shader_; }
-    void setShader( Shader* e ) { shader_ = e; }
+    inline Shader *getShader() const { return shader_; }
+    inline void setShader( Shader* e ) { shader_ = e; }
 
 protected:
     Shader*   shader_;
@@ -109,7 +108,7 @@ public:
     virtual void init () override;
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 projection) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     virtual void addChild (Node *child);
     virtual void removeChild (Node *child);
@@ -129,7 +128,7 @@ public:
 
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 projection) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     void addChild (Node *child) override;
     void removeChild (Node *child) override;

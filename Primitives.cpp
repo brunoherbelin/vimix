@@ -4,6 +4,7 @@
 #include "MediaPlayer.h"
 #include "Visitor.h"
 #include "Log.h"
+#include "ObjLoader.h"
 
 #include <glad/glad.h>
 
@@ -71,14 +72,14 @@ void ImageSurface::init()
     }
 }
 
-void ImageSurface::draw(glm::mat4 projection)
+void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
 
     glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    Primitive::draw(projection);
+    Primitive::draw(modelview, projection);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -111,7 +112,7 @@ void MediaSurface::init()
     mediaplayer_->play(true);
 }
 
-void MediaSurface::draw(glm::mat4 projection)
+void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
@@ -121,7 +122,7 @@ void MediaSurface::draw(glm::mat4 projection)
     else
         glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    Primitive::draw(projection);
+    Primitive::draw(modelview, projection);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -130,7 +131,13 @@ void MediaSurface::update( float dt )
 {
     if ( mediaplayer_->isOpen() ) {
         mediaplayer_->update();
-        scale_.x = mediaplayer_->aspectRatio();
+
+        if (parent_ != nullptr) {
+            parent_->transform_ = parent_->transform_ * glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
+            scale_.x = 1.0;
+        }
+        else
+            scale_.x = mediaplayer_->aspectRatio();
     }
 
     Primitive::update( dt );
@@ -161,13 +168,14 @@ void LineStrip::init()
     shader_ = new Shader();
 }
 
-void LineStrip::draw(glm::mat4 projection)
+void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
         init();
 
     glLineWidth(linewidth_);
-    Primitive::draw(projection);
+
+    Primitive::draw(modelview, projection);
 }
 
 void LineStrip::accept(Visitor& v)
@@ -219,6 +227,77 @@ void LineCircle::init()
 }
 
 void LineCircle::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
+
+
+ObjModel::ObjModel(const std::string& path) : Primitive(), textureindex_(0)
+{
+    // for obj model
+    filename_ = path;
+
+    // load geometry
+    std::vector<glm::vec3> normals; // ignored
+    std::string material_filename;
+    bool okay = loadObject( Resource::getText(filename_), points_, normals, texCoords_, indices_, material_filename, 1.0 );
+    if ( !okay ) {
+        Log::Warning("Failed to load OBJ model %s", path.c_str());
+    }
+
+    // prepend path to the name of other files
+    std::string rsc_path = filename_.substr(0, filename_.rfind('/')) + "/";
+
+    // load materials
+    std::map<std::string,Material*> material_library;
+    okay = loadMaterialLibrary(Resource::getText( rsc_path + material_filename ), material_library);
+    if (okay) {
+        Material *material_ = material_library.begin()->second; // default use first material
+
+        // fill colors
+        for (int i = 0; i < points_.size(); i++)
+            colors_.push_back(material_->diffuse);
+
+        if (!material_->diffuseTexture.empty()) {
+            texture_filename_ = rsc_path + material_->diffuseTexture;
+        }
+        delete material_;
+    }
+
+    drawingPrimitive_ = GL_TRIANGLES;
+}
+
+void ObjModel::init()
+{
+    Primitive::init();
+
+    if (!texture_filename_.empty())
+    {
+        // create shader for textured image
+        textureindex_ = Resource::getTextureImage(texture_filename_);
+        shader_ = new ImageShader();
+    }
+    else {
+        shader_ = new Shader();
+    }
+
+}
+
+void ObjModel::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() )
+        init();
+
+    if (textureindex_)
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
+
+    Primitive::draw(modelview, projection);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void ObjModel::accept(Visitor& v)
 {
     Primitive::accept(v);
     v.visit(*this);
