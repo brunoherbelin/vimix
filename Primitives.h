@@ -17,10 +17,10 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    inline std::string getFilename() const { return filename_; }
+    inline std::string getResource() const { return resource_; }
 
 protected:
-    std::string filename_;
+    std::string resource_;
     uint textureindex_;
 };
 
@@ -39,7 +39,7 @@ public:
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
-    void update ( float dt ) override;
+    void update (float dt) override;
 
     MediaPlayer *getMediaPlayer() { return mediaplayer_; }
 };
@@ -58,20 +58,40 @@ public:
 
 //};
 
-// Draw a line strip
-class LineStrip : public Primitive {
 
-    uint linewidth_;
+// Draw a Point
+class Points : public Primitive {
+
+    uint pointsize_;
 
 public:
-    LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewidth = 1);
+    Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize = 10);
 
     virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }
-    glm::vec3 getColor() { return colors_[0]; }
+    glm::vec4 getColor() { return colors_[0]; }
+
+    inline void setPointSize(uint v) { pointsize_ = v; }
+    inline uint getPointSize() const { return pointsize_; }
+};
+
+// Draw a line strip
+class LineStrip : public Primitive {
+
+    uint linewidth_;
+
+public:
+    LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth = 1);
+
+    virtual void init() override;
+    virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void accept(Visitor& v) override;
+
+    std::vector<glm::vec3> getPoints() { return points_; }
+    glm::vec4 getColor() { return colors_[0]; }
 
     inline void setLineWidth(uint v) { linewidth_ = v; }
     inline uint getLineWidth() const { return linewidth_; }
@@ -80,7 +100,7 @@ public:
 class LineSquare : public LineStrip {
 
 public:
-    LineSquare(glm::vec3 color, uint linewidth = 1);
+    LineSquare(glm::vec4 color, uint linewidth = 1);
 };
 
 class LineCircle : public LineStrip {
@@ -88,14 +108,13 @@ class LineCircle : public LineStrip {
     void deleteGLBuffers_() override {}
 
 public:
-    LineCircle(glm::vec3 color, uint linewidth = 1);
+    LineCircle(glm::vec4 color, uint linewidth = 1);
 
     void init() override;
     void accept(Visitor& v) override;
 };
 
 
-// Draw a Rectangle (triangle strip) with a texture
 class ObjModel : public Primitive {
 
 public:
@@ -105,10 +124,10 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    inline std::string getFilename() const { return filename_; }
+    inline std::string getResource() const { return resource_; }
 
 protected:
-    std::string filename_;
+    std::string resource_;
     std::string texture_filename_;
     uint textureindex_;
 };

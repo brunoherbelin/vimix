@@ -66,8 +66,7 @@ bool loadObject (std::string objText,
                  std::vector<glm::vec3> &outNormal,
                  std::vector<glm::vec2> &outUv,
                  std::vector<unsigned int> &outIndices,
-                 std::string &outMtlfilename,
-                 float scale = 1.0f
+                 std::string &outMtlfilename
         );
 
 
@@ -81,8 +80,7 @@ bool loadObjectGroups (std::string filename,
                        std::vector<glm::vec3> &outNormal,
                        std::vector<glm::vec2> &outUv,
                        std::vector<std::vector<unsigned int> > &outIndices, // per group
-                       std::vector<Material *> &outMaterials,  // per group (w/textures)
-                       float scale=1.0f
+                       std::vector<Material *> &outMaterials  // per group (w/textures)
         );
 
 #endif

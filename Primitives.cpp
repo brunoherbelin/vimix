@@ -21,7 +21,8 @@
 
 
 static const std::vector<glm::vec3> square_points { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-                                                   glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ) };
+                                                   glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ),
+                                                  glm::vec3( -1.f, -1.f, 0.f )};
 static uint square_vao = 0;
 static uint circle_vao = 0;
 
@@ -29,13 +30,13 @@ static uint circle_vao = 0;
 ImageSurface::ImageSurface(const std::string& path) : Primitive(), textureindex_(0)
 {
     // for image texture
-    filename_ = path;
+    resource_ = path;
 
     // geometry
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
             glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
-    colors_ = std::vector<glm::vec3> { glm::vec3( 1.f, 1.f, 1.f ), glm::vec3(  1.f, 1.f, 1.f ),
-            glm::vec3( 1.f, 1.f, 1.f  ), glm::vec3( 1.f, 1.f, 1.f ) };
+    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
     texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
             glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
     indices_ = std::vector<uint> { 0, 1, 2, 3 };
@@ -46,11 +47,11 @@ ImageSurface::ImageSurface(const std::string& path) : Primitive(), textureindex_
 void ImageSurface::init()
 {
     // load image if specified
-    if ( filename_.empty())
+    if ( resource_.empty())
         textureindex_ = Resource::getTextureBlack();
     else {
         float ar = 1.0;
-        textureindex_ = Resource::getTextureImage(filename_, &ar);
+        textureindex_ = Resource::getTextureImage(resource_, &ar);
         scale_.x = ar;
     }
     // create shader for textured image
@@ -58,17 +59,17 @@ void ImageSurface::init()
 
     // use static global vertex array object
     if (square_vao) {
-        // only init Node (not the primitive vao
+        // 1. only init Node (not the primitive vao)
         Node::init();
-        // if set, use the global vertex array object
+        // 2. use the global vertex array object
         vao_ = square_vao;
     }
     else {
-        // 1. init as usual (only once)
+        // 1. init the Primitive (only once)
         Primitive::init();
-        // 2. remember global vao
+        // 2. remember global vertex array object
         square_vao = vao_;
-        // 3. vao_ will NOT be deleted because deleteGLBuffers_() is empty
+        // 3. square_vao_ will NOT be deleted because ImageSurface::deleteGLBuffers_() is empty
     }
 }
 
@@ -92,7 +93,7 @@ void ImageSurface::accept(Visitor& v)
 
 MediaSurface::MediaSurface(const std::string& path) : ImageSurface()
 {
-    filename_ = path;
+    resource_ = path;
     mediaplayer_ = new MediaPlayer;
 }
 
@@ -103,12 +104,12 @@ MediaSurface::~MediaSurface()
 
 void MediaSurface::init()
 {
-    std::string tmp = filename_;
-    filename_ = "";
+    std::string tmp = resource_;
+    resource_ = "";
     ImageSurface::init();
-    filename_ = tmp;
+    resource_ = tmp;
 
-    mediaplayer_->open(filename_);
+    mediaplayer_->open(resource_);
     mediaplayer_->play(true);
 }
 
@@ -149,7 +150,8 @@ void MediaSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewidth) : Primitive()
+
+Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) : Primitive()
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
@@ -158,7 +160,42 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec3 color, uint linewi
         indices_.push_back ( i );
     }
 
-    drawingPrimitive_ = GL_LINE_LOOP;
+    drawingPrimitive_ = GL_POINTS;
+    pointsize_ = pointsize;
+}
+
+void Points::init()
+{
+    Primitive::init();
+    shader_ = new Shader();
+}
+
+void Points::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() )
+        init();
+
+    glPointSize(pointsize_);
+
+    Primitive::draw(modelview, projection);
+}
+
+void Points::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
+
+LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive()
+{
+    for(size_t i = 0; i < points.size(); ++i)
+    {
+        points_.push_back( points[i] );
+        colors_.push_back( color );
+        indices_.push_back ( i );
+    }
+
+    drawingPrimitive_ = GL_LINE_STRIP;
     linewidth_ = linewidth;
 }
 
@@ -185,18 +222,14 @@ void LineStrip::accept(Visitor& v)
 }
 
 
-LineSquare::LineSquare(glm::vec3 color, uint linewidth) : LineStrip(square_points, color, linewidth)
+LineSquare::LineSquare(glm::vec4 color, uint linewidth) : LineStrip(square_points, color, linewidth)
 {
 }
 
-LineCircle::LineCircle(glm::vec3 color, uint linewidth) : LineStrip(square_points, color, linewidth)
+LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<glm::vec3>(), color, linewidth)
 {
-    points_.clear();
-    colors_.clear();
-    indices_.clear();
-
-    int N = 72;
-    float a =  glm::two_pi<float>() / static_cast<float>(N);
+    static int N = 72;
+    static float a =  glm::two_pi<float>() / static_cast<float>(N);
     glm::vec3 P(1.f, 0.f, 0.f);
     for (int i = 0; i < N ; i++ ){
         points_.push_back( glm::vec3(P) );
@@ -205,6 +238,10 @@ LineCircle::LineCircle(glm::vec3 color, uint linewidth) : LineStrip(square_point
 
         P = glm::rotateZ(P, a);
     }
+    // loop
+    points_.push_back( glm::vec3(1.f, 0.f, 0.f) );
+    colors_.push_back( color );
+    indices_.push_back ( N );
 }
 
 void LineCircle::init()
@@ -236,33 +273,32 @@ void LineCircle::accept(Visitor& v)
 ObjModel::ObjModel(const std::string& path) : Primitive(), textureindex_(0)
 {
     // for obj model
-    filename_ = path;
+    resource_ = path;
 
     // load geometry
     std::vector<glm::vec3> normals; // ignored
     std::string material_filename;
-    bool okay = loadObject( Resource::getText(filename_), points_, normals, texCoords_, indices_, material_filename, 1.0 );
-    if ( !okay ) {
-        Log::Warning("Failed to load OBJ model %s", path.c_str());
-    }
+    bool okay = loadObject( Resource::getText(resource_), points_,
+                            normals, texCoords_, indices_, material_filename );
+    if ( okay ) {
+        // prepend path to the name of other files
+        std::string rsc_path = resource_.substr(0, resource_.rfind('/')) + "/";
 
-    // prepend path to the name of other files
-    std::string rsc_path = filename_.substr(0, filename_.rfind('/')) + "/";
+        // load materials
+        std::map<std::string,Material*> material_library;
+        okay = loadMaterialLibrary(Resource::getText( rsc_path + material_filename ), material_library);
+        if (okay) {
+            Material *material_ = material_library.begin()->second; // default use first material
 
-    // load materials
-    std::map<std::string,Material*> material_library;
-    okay = loadMaterialLibrary(Resource::getText( rsc_path + material_filename ), material_library);
-    if (okay) {
-        Material *material_ = material_library.begin()->second; // default use first material
+            // fill colors
+            for (int i = 0; i < points_.size(); i++)
+                colors_.push_back( glm::vec4( material_->diffuse, 1.0) );
 
-        // fill colors
-        for (int i = 0; i < points_.size(); i++)
-            colors_.push_back(material_->diffuse);
-
-        if (!material_->diffuseTexture.empty()) {
-            texture_filename_ = rsc_path + material_->diffuseTexture;
+            if (!material_->diffuseTexture.empty()) {
+                texture_filename_ = rsc_path + material_->diffuseTexture;
+            }
+            delete material_;
         }
-        delete material_;
     }
 
     drawingPrimitive_ = GL_TRIANGLES;

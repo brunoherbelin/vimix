@@ -81,8 +81,8 @@ void SessionVisitor::visit(ImageSurface &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "ImageSurface");
 
-    XMLText *filename = xmlDoc_->NewText( n.getFilename().c_str() );
-    XMLElement *image = xmlDoc_->NewElement("filename");
+    XMLText *filename = xmlDoc_->NewText( n.getResource().c_str() );
+    XMLElement *image = xmlDoc_->NewElement("resource");
     image->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(image);
 }
@@ -166,6 +166,16 @@ void SessionVisitor::visit(LineCircle &n)
     xmlCurrent_->InsertEndChild(color);
 }
 
+void SessionVisitor::visit(ObjModel &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "ObjModel");
+
+    XMLText *filename = xmlDoc_->NewText( n.getResource().c_str() );
+    XMLElement *obj = xmlDoc_->NewElement("resource");
+    obj->InsertEndChild(filename);
+    xmlCurrent_->InsertEndChild(obj);
+}
 
 void SessionVisitor::visit(Scene &n)
 {

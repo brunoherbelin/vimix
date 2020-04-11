@@ -10,9 +10,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/random.hpp>
 
 #include <chrono>
 #include <ctime>
@@ -82,8 +84,8 @@ void Primitive::init()
     glBindVertexArray( vao_ );
 
     // compute the memory needs for points normals and indicies
-    std::size_t sizeofPoints = sizeof(glm::vec3)*points_.size();
-    std::size_t sizeofColors = sizeof(glm::vec3)*colors_.size();
+    std::size_t sizeofPoints = sizeof(glm::vec3) * points_.size();
+    std::size_t sizeofColors = sizeof(glm::vec4) * colors_.size();
     std::size_t sizeofTexCoords = sizeof(glm::vec2) * texCoords_.size();
 
     // setup the array buffers for vertices
@@ -102,7 +104,7 @@ void Primitive::init()
     // explain how to read attributes 0, 1 and 2 (for point, color and textcoord respectively)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0 );
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)(sizeofPoints) );
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void *)(sizeofPoints) );
     glEnableVertexAttribArray(1);
     if ( sizeofTexCoords ) {
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void *)(sizeofPoints + sizeofColors) );
@@ -319,6 +321,38 @@ int Switch::getIndexActiveChild() const
             break;
     }
     return index;
+}
+
+
+void Animation::init()
+{
+    Group::init();
+
+    animation_ = glm::identity<glm::mat4>();
+//    animation_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(2.f, 0.f, 0.f));
+}
+
+void Animation::update( float dt )
+{
+    Group::update(dt);
+
+    // incremental rotation
+    animation_ = glm::rotate(animation_, speed_ * dt, axis_);
+
+    // calculate translation of a point at distance radius_ after rotation by animation_
+    static glm::vec3 any = glm::linearRand( glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 1.f));
+    glm::vec3 pos = glm::normalize( glm::cross(any, axis_) ) * radius_;
+    glm::vec4 delta = glm::vec4(pos, 0.f) * animation_;
+
+    // apply this translation to the Group transform
+    transform_ *= glm::translate(glm::identity<glm::mat4>(), glm::vec3(delta.x, delta.y, 0.f));
+
+}
+
+void Animation::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
 }
 
 

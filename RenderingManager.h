@@ -58,6 +58,7 @@ public:
     // push and pop rendering attributes
     void PushAttrib(RenderingAttrib ra);
     void PopAttrib();
+    RenderingAttrib currentAttrib();
 
     // request screenshot
     void RequestScreenshot();

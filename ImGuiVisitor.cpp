@@ -96,7 +96,7 @@ void ImGuiVisitor::visit(ImageSurface &n)
 
 void ImGuiVisitor::visit(MediaSurface &n)
 {
-    ImGui::Text("%s", n.getFilename().c_str());
+    ImGui::Text("%s", n.getResource().c_str());
 
     if (n.getMediaPlayer())
         n.getMediaPlayer()->accept(*this);
@@ -104,7 +104,6 @@ void ImGuiVisitor::visit(MediaSurface &n)
 
 void ImGuiVisitor::visit(MediaPlayer &n)
 {
-
     ImGui::Text("Media Player");
 }
 
@@ -130,6 +129,11 @@ void ImGuiVisitor::visit(LineSquare &n)
 void ImGuiVisitor::visit(LineCircle &n)
 {
     ImGui::Text("Circle");
+}
+
+void ImGuiVisitor::visit(ObjModel &n)
+{
+    ImGui::Text("ObjModel");
 }
 
 void ImGuiVisitor::visit(Scene &n)

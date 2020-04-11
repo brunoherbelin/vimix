@@ -207,6 +207,7 @@ void MediaPlayer::close()
     }
 
     // nothing to display
+    glDeleteTextures(1, &textureindex_);
     textureindex_ = Resource::getTextureBlack();
 
     // un-ready the media player

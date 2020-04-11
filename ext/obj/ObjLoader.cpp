@@ -139,8 +139,7 @@ makeMtlFilename ( std::string mtlfile, std::string objfile )
 }
 
 
-bool loadMaterialLibrary ( string mtlText,
-                           map<string,Material*> &outMaterials)
+bool loadMaterialLibrary ( string mtlText, map<string,Material*> &outMaterials)
 {
     Material *mat = nullptr;
     stringstream ifs(mtlText);
@@ -180,10 +179,9 @@ bool loadObject(string objText,
                 vector<vec3> &outNormal,
                 vector<vec2> &outUv,
                 vector<unsigned int> &outIndices,
-                std::string &outMtlfilename,
-                float scale)
+                std::string &outMtlfilename
+                )
 {
-
     vector<vec3> positions;
     vector<vec3> normals;
     vector<vec2> uvs;
@@ -242,7 +240,7 @@ bool loadObject(string objText,
                 outIndices.push_back(cachedIndex->second);
             } else {
                 int vertexIndex = outPositions.size();
-                outPositions.push_back(positions[index.position-1] * scale);
+                outPositions.push_back(positions[index.position-1]);
                 if (index.normal != -1){
                     outNormal.push_back(normals[index.normal-1]);
                 }
@@ -254,25 +252,9 @@ bool loadObject(string objText,
             }
         }
     }
-    //cout <<"Indices "<< outIndices.size() << endl;
-    //cout <<"Positions "<< outPositions.size() << endl;
-    //printDebug(outPositions, outIndices);
-    return true;
+
+    return (outPositions.size()>0);
 }
-
-
-
-Material *
-makeDefaultMaterial()
-{
-    Material *m = new Material;
-    m->ambient = vec3 ( 0.1, 0.1, 0.1 );
-    m->diffuse = vec3 ( 0.8, 0.8, 0.8 );
-    m->specular = vec3 ( 1.0, 1.0, 1.0 );
-    m->shininess = 200.0f;
-    return m;
-}
-
 
 
 struct Group {
@@ -288,30 +270,17 @@ bool loadObjectGroups ( string filename,
                         vector<vec3> &outNormal,
                         vector<vec2> &outUv,
                         vector< vector<unsigned int> > &outIndices, // per group
-                        vector< Material* >&outMaterials, // per group
-                        float scale)
+                        vector< Material* >&outMaterials // per group
+                       )
 {
-
+    map<string,Material*> materials;
     vector<vec3> positions;
     vector<vec3> normals;
     vector<vec2> uvs;
 
     map<string,Group*> groups;
     string currentGroupName("");
-
-
-    map<string,Material*> materials;
-    vector<string>      diffuseTextures;
-    vector<string>      bumpTextures;
-
     static int groupnum = 1;
-    //  currentGroupName = "dummy1";
-    //  groups[currentGroupName] = new Group;
-    //  Material* defaultMaterial = makeDefaultMaterial();
-    //  groups[currentGroupName]->mat = defaultMaterial;
-    //  materials[currentGroupName] = defaultMaterial;
-    //  outMaterials.push_back ( defaultMaterial );
-
 
     string path = std::string( filename );
     ifstream ifs ( path.c_str() , ifstream::in );
@@ -359,7 +328,7 @@ bool loadObjectGroups ( string filename,
                 std::cout << "materials[token] == " << materials[token] << std::endl;
             }
             if ( materials[token] == 0 ) {
-                materials[token] = makeDefaultMaterial();
+                materials[token] = new Material;
             }
             printDebug ( materials[token] );
             groups[currentGroupName]->mat = materials[token];
@@ -391,7 +360,7 @@ bool loadObjectGroups ( string filename,
                 oss << "dummy" << groupnum++;
                 currentGroupName=oss.str();
                 groups[currentGroupName] = new Group;
-                outMaterials.push_back( groups[currentGroupName]->mat = makeDefaultMaterial() );
+                outMaterials.push_back( groups[currentGroupName]->mat = new Material );
             }
 
 
@@ -427,7 +396,7 @@ bool loadObjectGroups ( string filename,
                     groupIndices.push_back(cachedIndex->second);
                 } else {
                     int vertexIndex = outPositions.size();
-                    outPositions.push_back(positions[index.position-1] * scale);
+                    outPositions.push_back(positions[index.position-1]);
                     if (index.normal != -1){
                         outNormal.push_back(normals[index.normal-1]);
                     }
@@ -473,73 +442,3 @@ void printDebug(Material *m){
     cout << "bump texture " << m->bumpTexture << endl;
 }
 
-
-////
-//// ObjFilePrimitive
-////
-
-//ObjFilePrimitive::ObjFilePrimitive ( const char *filename )
-//{
-
-//    bool okay = loadObjectGroups( filename,
-//                                  points_,
-//                                  normals_,
-//                                  texCoords_,
-//                                  groupIndices_,
-//                                  materials_,
-//                                  1.0 );
-//    if ( !okay ) {
-//        std::cout << "load error\n" ;
-//    } else {
-//        if (DEBUG)
-//            std::cout << "loaded " << filename << std::endl
-//                      << points_.size() << " points\n"
-//                      << normals_.size() << " normals\n"
-//                      << texCoords_.size() << " tex coords\n"
-//                      << groupIndices_.size() << " groups\n";
-//    }
-//    // // copy to unsigned ints. *sigh*
-//    // for (int i = 0; i < tmp_indices.size(); i++ )
-//    //   indices_.push_back( static_cast<unsigned int> (tmp_indices[i]) );
-
-//    drawingPrimitive_ = GL_TRIANGLES;
-
-//    generateAndLoadArrayBuffer();
-
-//    // generate the element buffers
-//    for ( int i = 0; i < groupIndices_.size(); i++ ) {
-//        groupElementArrayIds_.push_back(0);
-//        glGenBuffers(1, &groupElementArrayIds_[i] );
-//        int sizeofIndices = groupIndices_[i].size()*sizeof(unsigned int);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, groupElementArrayIds_[i] );
-//        glBufferData ( GL_ELEMENT_ARRAY_BUFFER, sizeofIndices, &(groupIndices_[i][0]), GL_STATIC_DRAW);
-//    }
-
-//    glBindVertexArray(0);
-//}
-
-
-//void
-//ObjFilePrimitive::draw ( glm::mat4 modelview,
-//                         glm::mat4 projection,
-//                         Ptr<Material> material) {
-
-//    // loop over all groups as they have different materials.
-//    for (int i = 0; i < groupIndices_.size(); i++ ) {
-
-//        if (!material.get()) {
-//            setupShader ( modelview, projection, materials_[i] );
-//        } else {
-//            setupShader ( modelview, projection, material );
-//        }
-
-//        //
-//        // draw
-//        //
-//        glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, groupElementArrayIds_[i] );
-//        glDrawElements( drawingPrimitive_, groupIndices_[i].size(), GL_UNSIGNED_INT, 0  );
-//        glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, 0 );
-
-//        endShader();
-//    }
-//}

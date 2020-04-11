@@ -132,6 +132,15 @@ bool Rendering::Init()
     g_setenv ("GST_GL_API", "opengl3", FALSE);
     gst_init (NULL, NULL);
 
+    // Antialiasing
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+    // This hint can improve the speed of shading when dFdx dFdy aren't needed in GLSL
+    glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_FASTEST);
+
+
 #if GST_GL_HAVE_PLATFORM_WGL
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
                                                     GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
@@ -300,16 +309,22 @@ void Rendering::PopAttrib()
         draw_attributes_.pop_front();
 
     // set attribute element to default
-    RenderingAttrib ra = main_window_attributes_;
-    // if there is an element at top, use it
-    if (draw_attributes_.size() > 0)
-        ra = draw_attributes_.front();
+    RenderingAttrib ra = currentAttrib();
 
     // apply Changes to OpenGL
     glViewport(0, 0, ra.viewport.x, ra.viewport.y);
     glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, 1.f);
 }
 
+RenderingAttrib Rendering::currentAttrib()
+{
+    // default rendering attrib is the main window's
+    RenderingAttrib ra = main_window_attributes_;
+    // but if there is an element at top, return it
+    if (draw_attributes_.size() > 0)
+        ra = draw_attributes_.front();
+    return ra;
+}
 
 glm::mat4 Rendering::Projection()
 {

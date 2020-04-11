@@ -51,6 +51,32 @@ public:
     glm::vec3 scale_, rotation_, translation_;
 };
 
+// Leaf Nodes are primitives that can be rendered
+class Primitive : public Node {
+
+public:
+    Primitive() : Node(), shader_(nullptr), vao_(0), drawingPrimitive_(0) {}
+    virtual ~Primitive();
+
+    virtual void init () override;
+    virtual void accept (Visitor& v) override;
+    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
+
+    inline Shader *getShader() const { return shader_; }
+    inline void setShader( Shader* e ) { shader_ = e; }
+
+protected:
+    Shader*   shader_;
+    uint vao_;
+    uint drawingPrimitive_;
+    std::vector<glm::vec3>     points_;
+    std::vector<glm::vec4>     colors_;
+    std::vector<glm::vec2>     texCoords_;
+    std::vector<uint>  indices_;
+    virtual void deleteGLBuffers_();
+};
+
+// Other Nodes establish hierarchy with a group of nodes
 
 struct z_comparator
 {
@@ -73,32 +99,6 @@ private:
 typedef std::multiset<Node*, z_comparator> NodeSet;
 
 
-// Leaf Nodes are primitives that can be rendered
-class Primitive : public Node {
-
-public:
-    Primitive() : Node(), shader_(nullptr), vao_(0), drawingPrimitive_(0) {}
-    virtual ~Primitive();
-
-    virtual void init () override;
-    virtual void accept (Visitor& v) override;
-    virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
-
-    inline Shader *getShader() const { return shader_; }
-    inline void setShader( Shader* e ) { shader_ = e; }
-
-protected:
-    Shader*   shader_;
-    uint vao_;
-    uint drawingPrimitive_;
-    std::vector<glm::vec3>     points_;
-    std::vector<glm::vec3>     colors_;
-    std::vector<glm::vec2>     texCoords_;
-    std::vector<uint>  indices_;
-    virtual void deleteGLBuffers_();
-};
-
-// Other Nodes establish hierarchy with a group of nodes
 class Group : public Node {
 
 public:
@@ -143,6 +143,28 @@ public:
 protected:
     NodeSet::iterator active_;
 };
+
+// Animation Nodes
+class Animation : public Group {
+
+public:
+    Animation() : Group(), axis_(glm::vec3(0.f, 0.f, 1.f)), speed_(0.f), radius_(1.f) { }
+
+    virtual void init () override;
+    virtual void update (float dt) override;
+    virtual void accept (Visitor& v) override;
+
+    // circular path
+    glm::vec3 axis_;
+    float speed_;
+    float radius_;
+
+protected:
+    Node *child_;
+    glm::mat4 animation_;
+};
+
+
 
 // A scene contains a root node and gives a simplified API to add nodes
 class Scene  {

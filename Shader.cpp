@@ -121,6 +121,12 @@ void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 va
 }
 
 template<>
+void ShadingProgram::setUniform<glm::vec3>(const std::string& name, glm::vec3 val) {
+    glm::vec3 v(val);
+    glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+}
+
+template<>
 void ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 val) {
     glm::mat4 m(val);
 	glUniformMatrix4fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, glm::value_ptr(m));
@@ -184,6 +190,9 @@ void Shader::use()
     program_->setUniform("modelview", modelview);
     program_->setUniform("color", color);
 
+    resolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
+    program_->setUniform("resolution", resolution);
+
     // Blending Function
     if ( blending != BLEND_NONE) {
         glEnable(GL_BLEND);
@@ -199,6 +208,7 @@ void Shader::reset()
 {
     projection =  glm::identity<glm::mat4>();
     modelview =  glm::identity<glm::mat4>();
+    resolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 }
 

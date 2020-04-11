@@ -219,6 +219,7 @@ set(VMIX_SRCS
     ImGuiVisitor.cpp
     GstToolkit.cpp
     tinyxml2Toolkit.cpp
+    ColladaToolkit.cpp
 )
 
 set(VMIX_RSC_FILES
@@ -239,6 +240,9 @@ set(VMIX_RSC_FILES
     ./rsc/models/shadow.png
     ./rsc/models/square_border.obj
     ./rsc/models/shadow.mtl
+    ./rsc/models/disk.png
+    ./rsc/models/disk.obj
+    ./rsc/models/disk.mtl
 )
 
 add_executable(${VMIX_BINARY}

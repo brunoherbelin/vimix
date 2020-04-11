@@ -47,6 +47,7 @@ public:
 
     glm::mat4 projection;
     glm::mat4 modelview;
+    glm::vec3 resolution;
     glm::vec4 color;
 
     typedef enum {

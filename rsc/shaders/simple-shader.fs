@@ -2,11 +2,12 @@
 
 out vec4 FragColor;
 
-in vec3 vertexColor;
+in vec4 vertexColor;
 
-uniform vec4 color;
+uniform vec4 color;            // drawing color
+uniform vec3 resolution;      // viewport resolution (in pixels)
 
 void main()
-{		
-    FragColor = color * vec4(vertexColor,1.0);
+{
+    FragColor = color * vertexColor;
 }

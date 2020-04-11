@@ -26,6 +26,7 @@ public:
     void visit(LineStrip& n) override;
     void visit(LineSquare&) override;
     void visit(LineCircle& n) override;
+    void visit(ObjModel& n) override;
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;
