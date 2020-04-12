@@ -164,9 +164,9 @@ message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolki
 #
 # OBJ LOADER
 #
-set(OBJLOADER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/obj)
-add_library(OBJLOADER "${CMAKE_CURRENT_SOURCE_DIR}/ext/obj/ObjLoader.cpp")
-message(STATUS "Compiling 'ObjLoader' from https://github.com/mortennobel/OpenGL_3_2_Utils -- ${OBJLOADER_INCLUDE_DIR}.")
+#set(OBJLOADER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/obj)
+#add_library(OBJLOADER "${CMAKE_CURRENT_SOURCE_DIR}/ext/obj/ObjLoader.cpp")
+#message(STATUS "Compiling 'ObjLoader' from https://github.com/mortennobel/OpenGL_3_2_Utils -- ${OBJLOADER_INCLUDE_DIR}.")
 
 # find_package(PkgConfig REQUIRED)
 # pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
@@ -206,6 +206,7 @@ set(VMIX_SRCS
     ImageShader.cpp
     Scene.cpp
     Primitives.cpp
+    Mesh.cpp
     SessionVisitor.cpp
     Settings.cpp
     Screenshot.cpp
@@ -219,7 +220,6 @@ set(VMIX_SRCS
     ImGuiVisitor.cpp
     GstToolkit.cpp
     tinyxml2Toolkit.cpp
-    ColladaToolkit.cpp
 )
 
 set(VMIX_RSC_FILES
@@ -237,12 +237,11 @@ set(VMIX_RSC_FILES
     ./rsc/images/busy.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
-    ./rsc/models/shadow.png
-    ./rsc/models/square_border.obj
-    ./rsc/models/shadow.mtl
-    ./rsc/models/disk.png
-    ./rsc/models/disk.obj
-    ./rsc/models/disk.mtl
+    ./rsc/images/transparencygrid.png
+    ./rsc/mesh/point.ply
+    ./rsc/mesh/disk.ply
+    ./rsc/mesh/shadow.ply
+    ./rsc/mesh/shadow.png
 )
 
 add_executable(${VMIX_BINARY}
@@ -276,7 +275,6 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${NFD_LIBRARY}
     ${PNG_LIBRARY}
     ${THREAD_LIBRARY}
-    OBJLOADER
     TINYXML2
     TINYFD
     IMGUI

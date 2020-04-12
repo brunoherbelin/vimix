@@ -55,7 +55,7 @@ public:
 class Primitive : public Node {
 
 public:
-    Primitive() : Node(), shader_(nullptr), vao_(0), drawingPrimitive_(0) {}
+    Primitive() : Node(), shader_(nullptr), vao_(0), drawMode_(0), drawCount_(0) {}
     virtual ~Primitive();
 
     virtual void init () override;
@@ -67,8 +67,7 @@ public:
 
 protected:
     Shader*   shader_;
-    uint vao_;
-    uint drawingPrimitive_;
+    uint vao_, drawMode_, drawCount_;
     std::vector<glm::vec3>     points_;
     std::vector<glm::vec4>     colors_;
     std::vector<glm::vec2>     texCoords_;

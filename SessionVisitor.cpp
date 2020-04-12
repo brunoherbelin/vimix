@@ -3,6 +3,7 @@
 #include "Log.h"
 #include "Scene.h"
 #include "Primitives.h"
+#include "Mesh.h"
 #include "ImageShader.h"
 #include "MediaPlayer.h"
 #include "GstToolkit.h"
@@ -166,15 +167,20 @@ void SessionVisitor::visit(LineCircle &n)
     xmlCurrent_->InsertEndChild(color);
 }
 
-void SessionVisitor::visit(ObjModel &n)
+void SessionVisitor::visit(Mesh &n)
 {
     // Node of a different type
-    xmlCurrent_->SetAttribute("type", "ObjModel");
+    xmlCurrent_->SetAttribute("type", "Mesh");
 
     XMLText *filename = xmlDoc_->NewText( n.getResource().c_str() );
     XMLElement *obj = xmlDoc_->NewElement("resource");
     obj->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(obj);
+
+    filename = xmlDoc_->NewText( n.getTexture().c_str() );
+    XMLElement *tex = xmlDoc_->NewElement("texture");
+    tex->InsertEndChild(filename);
+    xmlCurrent_->InsertEndChild(tex);
 }
 
 void SessionVisitor::visit(Scene &n)

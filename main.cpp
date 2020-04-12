@@ -36,6 +36,7 @@
 #include "MediaPlayer.h"
 #include "Scene.h"
 #include "Primitives.h"
+#include "Mesh.h"
 #include "ImGuiVisitor.h"
 #include "SessionVisitor.h"
 
@@ -255,29 +256,32 @@ int main(int, char**)
     // init elements to the scene
     //testnode3.getShader()->blending = Shader::BLEND_OPACITY;
 
-    ObjModel disk("models/disk.obj");
+    Mesh disk("mesh/disk.ply", "images/transparencygrid.png");
+
     glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
     LineCircle circle(pink, 5);
 
     glm::vec4 color( 0.8f, 0.8f, 0.f, 1.f);
     LineSquare border(color, 5);
-    ObjModel shadow("models/square_border.obj");
+//    ObjModel shadow("models/square_border.obj");
+    Mesh shadow("mesh/shadow.ply", "mesh/shadow.png");
 
     Group g1;
     g1.translation_ = glm::vec3(1.f, 1.f, 0.2f);
     g1.scale_ = glm::vec3(1.2f, 1.2f, 1.f);
 
-
     Group g2;
     g2.translation_ = glm::vec3(-1.f, -1.f, 0.4f);
 
     Animation A;
-    A.speed_ = 0.01f;
+    A.speed_ = 0.08f;
     A.axis_ = glm::vec3(1.f, 1.f, 1.f);
 
-    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
-    Points P(pts, pink);
-    P.setPointSize(60);
+//    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
+//    Points P(pts, pink);
+//    P.setPointSize(60);
+    Mesh P("mesh/point.ply");
+    P.scale_ = glm::vec3(0.05f);
 
     // build tree
     scene.root_.addChild(&disk);
@@ -291,10 +295,9 @@ int main(int, char**)
     g2.addChild(&shadow);
     g2.addChild(&testnode1);
     g2.addChild(&border);
+    scene.root_.addChild(&g2);
 
-//    A.addChild(&g2);
     A.addChild(&P);
-
     scene.root_.addChild(&A);
 
     // init output FBO

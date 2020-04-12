@@ -99,8 +99,13 @@ public:
 
 class LineSquare : public LineStrip {
 
+    void deleteGLBuffers_() override {}
+
 public:
     LineSquare(glm::vec4 color, uint linewidth = 1);
+
+    void init() override;
+    void accept(Visitor& v) override;
 };
 
 class LineCircle : public LineStrip {
@@ -114,23 +119,6 @@ public:
     void accept(Visitor& v) override;
 };
 
-
-class ObjModel : public Primitive {
-
-public:
-    ObjModel(const std::string& path = "" );
-
-    void init () override;
-    void draw (glm::mat4 modelview, glm::mat4 projection) override;
-    void accept (Visitor& v) override;
-
-    inline std::string getResource() const { return resource_; }
-
-protected:
-    std::string resource_;
-    std::string texture_filename_;
-    uint textureindex_;
-};
 
 
 #endif // PRIMITIVES_H

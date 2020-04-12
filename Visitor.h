@@ -14,7 +14,7 @@ class MediaSurface;
 class LineStrip;
 class LineSquare;
 class LineCircle;
-class ObjModel;
+class Mesh;
 class MediaPlayer;
 class Shader;
 class ImageShader;
@@ -34,7 +34,7 @@ public:
     virtual void visit(LineStrip& n) = 0;
     virtual void visit(LineSquare& n) = 0;
     virtual void visit(LineCircle& n) = 0;
-    virtual void visit(ObjModel& n) = 0;
+    virtual void visit(Mesh& n) = 0;
     virtual void visit(MediaPlayer& n) = 0;
     virtual void visit(Shader& n) = 0;
     virtual void visit(ImageShader& n) = 0;

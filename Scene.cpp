@@ -63,10 +63,10 @@ Primitive::~Primitive()
 {
     deleteGLBuffers_();
 
-    points_.clear();
-    colors_.clear();
-    texCoords_.clear();
-    indices_.clear();
+//    points_.clear();
+//    colors_.clear();
+//    texCoords_.clear();
+//    indices_.clear();
 
 }
 
@@ -115,9 +115,16 @@ void Primitive::init()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    // drawing indications
+    drawCount_ = indices_.size();
+
     // delete temporary buffers
     if ( arrayBuffer_ )  glDeleteBuffers ( 1, &arrayBuffer_);
-    if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);
+    if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);    
+    points_.clear();
+    colors_.clear();
+    texCoords_.clear();
+    indices_.clear();
 
     Node::init();
 }
@@ -139,9 +146,11 @@ void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
         //
         // draw vertex array object
         //
-        glBindVertexArray( vao_ );
-        glDrawElements( drawingPrimitive_, indices_.size(), GL_UNSIGNED_INT, 0  );
-        glBindVertexArray(0);
+        if (drawMode_) {
+            glBindVertexArray( vao_ );
+            glDrawElements( drawMode_, drawCount_, GL_UNSIGNED_INT, 0  );
+            glBindVertexArray(0);
+        }
     }
 }
 

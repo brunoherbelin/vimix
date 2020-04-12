@@ -80,10 +80,6 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PushID(n.id());
     ImGui::Text("Primitive");
 
-    // test compute coordinate
-    glm::vec3 center(0.f);
-
-
     n.getShader()->accept(*this);
 
     ImGui::PopID();
@@ -109,7 +105,11 @@ void ImGuiVisitor::visit(MediaPlayer &n)
 
 void ImGuiVisitor::visit(Shader &n)
 {
+    ImGui::PushID(n.id());
+
     ImGui::ColorEdit3("color", glm::value_ptr(n.color) ) ;
+
+    ImGui::PopID();
 }
 
 void ImGuiVisitor::visit(ImageShader &n)
@@ -131,9 +131,9 @@ void ImGuiVisitor::visit(LineCircle &n)
     ImGui::Text("Circle");
 }
 
-void ImGuiVisitor::visit(ObjModel &n)
+void ImGuiVisitor::visit(Mesh &n)
 {
-    ImGui::Text("ObjModel");
+    ImGui::Text("Mesh");
 }
 
 void ImGuiVisitor::visit(Scene &n)

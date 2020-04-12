@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <chrono>
+#include <ctime>
 
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
@@ -168,6 +170,10 @@ void ShadingProgram::checkLinkingErr()
 
 Shader::Shader() : blending(BLEND_OPACITY)
 {
+    // create unique id
+    auto duration = std::chrono::system_clock::now().time_since_epoch();
+    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
+
     program_ = &simpleShadingProgram;
     reset();
 }

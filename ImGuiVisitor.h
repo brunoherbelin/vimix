@@ -19,7 +19,7 @@ public:
     void visit(LineStrip& n) override;
     void visit(LineSquare& n) override;
     void visit(LineCircle& n) override;
-    void visit(ObjModel& n) override;
+    void visit(Mesh& n) override;
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;

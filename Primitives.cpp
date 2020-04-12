@@ -4,7 +4,6 @@
 #include "MediaPlayer.h"
 #include "Visitor.h"
 #include "Log.h"
-#include "ObjLoader.h"
 
 #include <glad/glad.h>
 
@@ -20,18 +19,17 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 
-static const std::vector<glm::vec3> square_points { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-                                                   glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ),
-                                                  glm::vec3( -1.f, -1.f, 0.f )};
-static uint square_vao = 0;
-static uint circle_vao = 0;
+static const std::vector<glm::vec3> square_points {
+            glm::vec3( -0.99f, -1.f, 0.f ), glm::vec3( -1.f, -0.99f, 0.f ),
+            glm::vec3( -1.f, 0.99f, 0.f ), glm::vec3( -0.99f, 1.f, 0.f ),
+            glm::vec3( 0.99f, 1.f, 0.f ), glm::vec3( 1.f, 0.99f, 0.f ),
+            glm::vec3( 1.f, -0.99f, 0.f ), glm::vec3( 0.99f, -1.f, 0.f ),
+            glm::vec3( -0.99f, -1.f, 0.f )
+};
 
 
-ImageSurface::ImageSurface(const std::string& path) : Primitive(), textureindex_(0)
+ImageSurface::ImageSurface(const std::string& path) : Primitive(), resource_(path), textureindex_(0)
 {
-    // for image texture
-    resource_ = path;
-
     // geometry
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
             glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
@@ -40,7 +38,7 @@ ImageSurface::ImageSurface(const std::string& path) : Primitive(), textureindex_
     texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
             glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
     indices_ = std::vector<uint> { 0, 1, 2, 3 };
-    drawingPrimitive_ = GL_TRIANGLE_STRIP;
+    drawMode_ = GL_TRIANGLE_STRIP;
 }
 
 
@@ -54,22 +52,26 @@ void ImageSurface::init()
         textureindex_ = Resource::getTextureImage(resource_, &ar);
         scale_.x = ar;
     }
-    // create shader for textured image
+    // a new shader for a new image
     shader_ = new ImageShader();
 
-    // use static global vertex array object
-    if (square_vao) {
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
         // 1. only init Node (not the primitive vao)
         Node::init();
         // 2. use the global vertex array object
-        vao_ = square_vao;
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
     }
     else {
         // 1. init the Primitive (only once)
         Primitive::init();
         // 2. remember global vertex array object
-        square_vao = vao_;
-        // 3. square_vao_ will NOT be deleted because ImageSurface::deleteGLBuffers_() is empty
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted because ImageSurface::deleteGLBuffers_() is empty
     }
 }
 
@@ -160,7 +162,7 @@ Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) :
         indices_.push_back ( i );
     }
 
-    drawingPrimitive_ = GL_POINTS;
+    drawMode_ = GL_POINTS;
     pointsize_ = pointsize;
 }
 
@@ -186,7 +188,7 @@ void Points::accept(Visitor& v)
     v.visit(*this);
 }
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive()
+LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive(), linewidth_(linewidth)
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
@@ -195,8 +197,7 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewi
         indices_.push_back ( i );
     }
 
-    drawingPrimitive_ = GL_LINE_STRIP;
-    linewidth_ = linewidth;
+    drawMode_ = GL_LINE_STRIP;
 }
 
 void LineStrip::init()
@@ -226,6 +227,38 @@ LineSquare::LineSquare(glm::vec4 color, uint linewidth) : LineStrip(square_point
 {
 }
 
+void LineSquare::init()
+{
+    // a new shader for a new line
+    shader_ = new Shader();
+
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
+        // 1. only init Node (not the primitive vao)
+        Node::init();
+        // 2. use the global vertex array object
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
+    }
+    else {
+        // 1. init the Primitive (only once)
+        Primitive::init();
+        // 2. remember global vertex array object
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted because LineCircle::deleteGLBuffers_() is empty
+    }
+}
+
+void LineSquare::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
+
+
 LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<glm::vec3>(), color, linewidth)
 {
     static int N = 72;
@@ -246,21 +279,27 @@ LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<
 
 void LineCircle::init()
 {
-    // use static global vertex array object
-    if (circle_vao) {
+    // a new shader for a new line
+    shader_ = new Shader();
+
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
+        // 1. only init Node (not the primitive vao)
         Node::init();
-        // if set, use the global vertex array object
-        vao_ = square_vao;
+        // 2. use the global vertex array object
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
     }
     else {
-        // 1. init as usual (only once)
+        // 1. init the Primitive (only once)
         Primitive::init();
-        // 2. remember global vao
-        circle_vao = vao_;
-        // 3. vao_ will not be deleted because deleteGLBuffers_() is empty
+        // 2. remember global vertex array object
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted because LineCircle::deleteGLBuffers_() is empty
     }
-
-    shader_ = new Shader();
 }
 
 void LineCircle::accept(Visitor& v)
@@ -269,72 +308,3 @@ void LineCircle::accept(Visitor& v)
     v.visit(*this);
 }
 
-
-ObjModel::ObjModel(const std::string& path) : Primitive(), textureindex_(0)
-{
-    // for obj model
-    resource_ = path;
-
-    // load geometry
-    std::vector<glm::vec3> normals; // ignored
-    std::string material_filename;
-    bool okay = loadObject( Resource::getText(resource_), points_,
-                            normals, texCoords_, indices_, material_filename );
-    if ( okay ) {
-        // prepend path to the name of other files
-        std::string rsc_path = resource_.substr(0, resource_.rfind('/')) + "/";
-
-        // load materials
-        std::map<std::string,Material*> material_library;
-        okay = loadMaterialLibrary(Resource::getText( rsc_path + material_filename ), material_library);
-        if (okay) {
-            Material *material_ = material_library.begin()->second; // default use first material
-
-            // fill colors
-            for (int i = 0; i < points_.size(); i++)
-                colors_.push_back( glm::vec4( material_->diffuse, 1.0) );
-
-            if (!material_->diffuseTexture.empty()) {
-                texture_filename_ = rsc_path + material_->diffuseTexture;
-            }
-            delete material_;
-        }
-    }
-
-    drawingPrimitive_ = GL_TRIANGLES;
-}
-
-void ObjModel::init()
-{
-    Primitive::init();
-
-    if (!texture_filename_.empty())
-    {
-        // create shader for textured image
-        textureindex_ = Resource::getTextureImage(texture_filename_);
-        shader_ = new ImageShader();
-    }
-    else {
-        shader_ = new Shader();
-    }
-
-}
-
-void ObjModel::draw(glm::mat4 modelview, glm::mat4 projection)
-{
-    if ( !initialized() )
-        init();
-
-    if (textureindex_)
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
-
-    Primitive::draw(modelview, projection);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void ObjModel::accept(Visitor& v)
-{
-    Primitive::accept(v);
-    v.visit(*this);
-}
