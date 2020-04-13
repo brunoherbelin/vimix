@@ -16,3 +16,6 @@
 [submodule "ext/tfd"]
 	path = ext/tfd
 	url = https://github.com/native-toolkit/tinyfiledialogs.git
+[submodule "ext/glm"]
+	path = ext/glm
+	url = https://github.com/g-truc/glm.git

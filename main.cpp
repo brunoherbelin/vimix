@@ -180,7 +180,7 @@ void drawScene()
     scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
 
     // draw in output frame buffer
-    glm::mat4 MV = glm::mat4(1.f);
+    glm::mat4 MV = glm::identity<glm::mat4>();
     glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
     output->begin();
     scene.root_.draw(MV, P);
@@ -211,7 +211,6 @@ void drawPreview()
 
         ImGui::End();
     }
-
 
 }
 

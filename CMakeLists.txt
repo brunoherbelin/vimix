@@ -82,7 +82,6 @@ set(THREAD_LIBRARY Threads::Threads)
 find_package(PNG REQUIRED)
 set(PNG_LIBRARY PNG::PNG)
 
-
 #
 # GLFW3
 #
@@ -95,9 +94,9 @@ find_package(OpenGL REQUIRED)
 #
 # GLM
 #
-find_package(glm REQUIRED)
-macro_log_feature(glm_FOUND "GLM" "OpenGL Mathematics" "https://glm.g-truc.net" TRUE)
-set(GLM_LIBRARY glm)
+set(BUILD_STATIC_LIBS ON)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
+message(STATUS "Compiling 'GLM' OpenGL Mathematics https://glm.g-truc.net.")
 
 #
 # GLAD
@@ -130,7 +129,6 @@ set(IMGUITEXTEDIT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp
 )
 message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}.")
-
 
 #
 # TINY XML 2
@@ -265,7 +263,6 @@ message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE 
     ${GLFW_LIBRARY}
     ${OPENGL_LIBRARY}
-    ${GLM_LIBRARY}
     GLAD
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
@@ -282,6 +279,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     TINYXML2
     TINYFD
     IMGUI
+    glm::glm
     vmix::rc
 )
 
