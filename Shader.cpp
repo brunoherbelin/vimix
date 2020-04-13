@@ -13,9 +13,7 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 
-#include <glm/glm.hpp> 
-#include <glm/ext/vector_float4.hpp>
-#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>

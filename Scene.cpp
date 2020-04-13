@@ -8,10 +8,6 @@
 #include <glad/glad.h>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/ext/vector_float3.hpp>
-#include <glm/ext/vector_float4.hpp>
-#include <glm/ext/vector_float4.hpp>
-#include <glm/ext/matrix_float4x4.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
