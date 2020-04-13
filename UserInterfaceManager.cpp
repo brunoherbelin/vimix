@@ -473,7 +473,7 @@ void MainWindow::StartScreenshot()
 
 static void ShowAboutOpengl(bool* p_open)
 {
-    if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -481,7 +481,6 @@ static void ShowAboutOpengl(bool* p_open)
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
     ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
-    ImGui::Text("%s %s", glGetString(GL_RENDERER), glGetString(GL_VENDOR));
     ImGui::PopFont();
     ImGui::Separator();
     ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
@@ -513,7 +512,9 @@ static void ShowAboutOpengl(bool* p_open)
             ImGui::LogText("```\n");
         }
 
-        ImGui::Text("OpenGL Extensions (runtime) :");
+        ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
+        ImGui::Text("%s %s", glGetString(GL_RENDERER), glGetString(GL_VENDOR));
+        ImGui::Text("Extensions (runtime) :");
 
         GLint numExtensions = 0;
         glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
@@ -539,7 +540,7 @@ static void ShowAboutOpengl(bool* p_open)
 
 static void ShowAboutGStreamer(bool* p_open)
 {
-    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -576,7 +577,8 @@ static void ShowAboutGStreamer(bool* p_open)
             ImGui::LogText("```\n");
         }
 
-        ImGui::Text("GStreamer Plugins & features (runtime) :");
+        ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
+        ImGui::Text("Plugins & features (runtime) :");
 
         std::list<std::string> filteredlist;
 
