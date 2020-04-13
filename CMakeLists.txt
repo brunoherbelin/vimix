@@ -86,7 +86,7 @@ set(PNG_LIBRARY PNG::PNG)
 #
 # GLFW3
 #
-find_package(glfw3 3.3 REQUIRED)
+find_package(glfw3 3.2 REQUIRED)
 macro_log_feature(glfw3_FOUND "GLFW3" "Open Source, multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
 set(GLFW_LIBRARY glfw)
 

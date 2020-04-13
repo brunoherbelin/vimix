@@ -19,11 +19,11 @@
 
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
-    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), translation);
+    glm::mat4 View = glm::translate(glm::mat4(1.f), translation);
     View = glm::rotate(View, rotation.x, glm::vec3(1.f, 0.f, 0.f));
     View = glm::rotate(View, rotation.y, glm::vec3(0.f, 1.f, 0.f));
     View = glm::rotate(View, rotation.z, glm::vec3(0.f, 0.f, 1.f));
-    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), scale);
+    glm::mat4 Model = glm::scale(glm::mat4(1.f), scale);
     return View * Model;
 }
 
@@ -34,7 +34,7 @@ Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
     auto duration = std::chrono::system_clock::now().time_since_epoch();
     id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
 
-    transform_ = glm::identity<glm::mat4>();
+    transform_ = glm::mat4(1.f);
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
@@ -321,8 +321,8 @@ void Animation::init()
 {
     Group::init();
 
-    animation_ = glm::identity<glm::mat4>();
-//    animation_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(2.f, 0.f, 0.f));
+    animation_ = glm::mat4(1.f);
+//    animation_ = glm::translate(glm::mat4(1.f), glm::vec3(2.f, 0.f, 0.f));
 }
 
 void Animation::update( float dt )
@@ -338,7 +338,7 @@ void Animation::update( float dt )
     glm::vec4 delta = glm::vec4(pos, 0.f) * animation_;
 
     // apply this translation to the Group transform
-    transform_ *= glm::translate(glm::identity<glm::mat4>(), glm::vec3(delta.x, delta.y, 0.f));
+    transform_ *= glm::translate(glm::mat4(1.f), glm::vec3(delta.x, delta.y, 0.f));
 
 }
 

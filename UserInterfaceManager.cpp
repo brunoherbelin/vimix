@@ -170,7 +170,7 @@ void UserInterface::handleMouse()
 
             Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
 
-            glm::mat4 mv = glm::identity<glm::mat4>();
+            glm::mat4 mv = glm::mat4(1.f);
             glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y), mv);
 
             Log::Info("            (%.1f,%.1f)", point.x, point.y);

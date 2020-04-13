@@ -138,7 +138,7 @@ void MediaSurface::update( float dt )
         mediaplayer_->update();
 
 //        if (parent_ != nullptr) {
-//            parent_->transform_ = parent_->transform_ * glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
+//            parent_->transform_ = parent_->transform_ * glm::scale(glm::mat4(1.f), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
 //            scale_.x = 1.0;
 //        }
 //        else

@@ -210,8 +210,8 @@ void Shader::use()
 
 void Shader::reset()
 {
-    projection =  glm::identity<glm::mat4>();
-    modelview =  glm::identity<glm::mat4>();
+    projection =  glm::mat4(1.f);
+    modelview =  glm::mat4(1.f);
     resolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 }
