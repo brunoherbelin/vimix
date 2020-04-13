@@ -98,9 +98,9 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& path) : ImageSurface()
+MediaSurface::MediaSurface(const std::string& uri) : ImageSurface()
 {
-    resource_ = path;
+    resource_ = uri;
     mediaplayer_ = new MediaPlayer;
 }
 
@@ -140,12 +140,12 @@ void MediaSurface::update( float dt )
     if ( mediaplayer_->isOpen() ) {
         mediaplayer_->update();
 
-        if (parent_ != nullptr) {
-            parent_->transform_ = parent_->transform_ * glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
-            scale_.x = 1.0;
-        }
-        else
-            scale_.x = mediaplayer_->aspectRatio();
+//        if (parent_ != nullptr) {
+//            parent_->transform_ = parent_->transform_ * glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
+//            scale_.x = 1.0;
+//        }
+//        else
+        scale_.x = mediaplayer_->aspectRatio();
     }
 
     Primitive::update( dt );

@@ -47,7 +47,7 @@ void ImGuiVisitor::visit(Group &n)
         if (ImGuiToolkit::ButtonIcon(4, 15))
             n.rotation_.z = 0.f;
         ImGui::SameLine(0, 10);
-        ImGui::SliderAngle("slider angle", &(n.rotation_.z), -180.f, 180.f) ;
+        ImGui::SliderAngle("angle", &(n.rotation_.z), -180.f, 180.f) ;
 
         if (ImGuiToolkit::ButtonIcon(3, 15))  {
             n.scale_.x = 1.f;
@@ -114,6 +114,20 @@ void ImGuiVisitor::visit(Shader &n)
 
 void ImGuiVisitor::visit(ImageShader &n)
 {
+    ImGui::PushID(n.id());
+
+    if (ImGuiToolkit::ButtonIcon(2, 1)) {
+        n.brightness = 0.f;
+        n.contrast = 0.f;
+    }
+    ImGui::SameLine(0, 10);
+    float bc[2] = { n.brightness, n.contrast};
+    if ( ImGui::SliderFloat2("filter", bc, -1.0, 1.0) )
+    {
+        n.brightness = bc[0];
+        n.contrast = bc[1];
+    }
+    ImGui::PopID();
 }
 
 void ImGuiVisitor::visit(LineStrip &n)

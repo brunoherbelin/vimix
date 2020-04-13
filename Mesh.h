@@ -22,7 +22,6 @@ public:
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
-//    void update (float dt) override;
 
     inline std::string getResource() const { return resource_; }
     inline std::string getTexture() const { return texturefilename_; }

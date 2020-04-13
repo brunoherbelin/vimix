@@ -4,8 +4,14 @@
 #include <string>
 
 #include "Scene.h"
+class MediaPlayer;
 
-// Draw a Rectangle (triangle strip) with a texture
+/**
+ * @brief The ImageSurface class is a Primitive to draw an image
+ *
+ * Image is read from the Ressouces (not an external file)
+ * Height = 1.0, Width is set by the aspect ratio of the image
+ */
 class ImageSurface : public Primitive {
 
     void deleteGLBuffers_() override {}
@@ -26,15 +32,18 @@ protected:
 };
 
 
-// Draw a Rectangle with a media as animated texture
-class MediaPlayer;
-
+/**
+ * @brief The MediaSurface class is an ImageSurface to draw a video
+ *
+ * URI is passed to a Media Player to handle the video playback
+ * Height = 1.0, Width is set by the aspect ratio of the image
+ */
 class MediaSurface : public ImageSurface {
 
     MediaPlayer *mediaplayer_;
 
 public:
-    MediaSurface(const std::string& path);
+    MediaSurface(const std::string& uri);
     ~MediaSurface();
 
     void init () override;
@@ -45,22 +54,10 @@ public:
     MediaPlayer *getMediaPlayer() { return mediaplayer_; }
 };
 
-//// Draw a Frame Buffer
-//class FrameBufferSurface : public Primitive {
 
-//    void deleteGLBuffers_() {}
-
-//public:
-//    FrameBufferSurface();
-
-//    void init () override;
-//    void draw(glm::mat4 modelview, glm::mat4 projection) override;
-//    void accept(Visitor& v) override;
-
-//};
-
-
-// Draw a Point
+/**
+ * @brief The Points class is a Primitive to draw Points
+ */
 class Points : public Primitive {
 
     uint pointsize_;
@@ -80,7 +77,10 @@ public:
     inline uint getPointSize() const { return pointsize_; }
 };
 
-// Draw a line strip
+
+/**
+ * @brief The LineStrip class is a Primitive to draw lines
+ */
 class LineStrip : public Primitive {
 
     uint linewidth_;
@@ -101,6 +101,9 @@ public:
 };
 
 
+/**
+ * @brief The LineSquare class is a square LineStrip (width & height = 1.0)
+ */
 class LineSquare : public LineStrip {
 
     void deleteGLBuffers_() override {}
@@ -113,6 +116,9 @@ public:
 };
 
 
+/**
+ * @brief The LineCircle class is a circular LineStrip (diameter = 1.0)
+ */
 class LineCircle : public LineStrip {
 
     void deleteGLBuffers_() override {}

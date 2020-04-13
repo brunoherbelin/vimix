@@ -280,7 +280,7 @@ int main(int, char**)
 //    Points P(pts, pink);
 //    P.setPointSize(60);
     Mesh P("mesh/target.ply");
-    P.scale_ = glm::vec3(0.5f);
+    P.scale_ = glm::vec3(0.15f);
 
     Mesh meshicon("mesh/icon_video.ply");
 

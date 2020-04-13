@@ -778,3 +778,4 @@ void ToggleButton( const char* label, bool& toggle )
     if( ImGui::Button( label ) ) toggle = !toggle;
     if( active ) ImGui::PopStyleColor( 3 );
 }
+

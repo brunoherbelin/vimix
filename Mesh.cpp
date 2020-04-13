@@ -373,8 +373,3 @@ void Mesh::accept(Visitor& v)
     Primitive::accept(v);
     v.visit(*this);
 }
-
-//void Mesh::update( float dt )
-//{
-//    scale_.x = scale_.y;
-//}

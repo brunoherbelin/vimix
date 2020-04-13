@@ -16,8 +16,27 @@ glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 class Shader;
 class Visitor;
 
-// Base virtual class for all Node types
-// Manages modelview transformations and culling
+
+/**
+ * @brief The Node class is the base virtual class for all Node types
+ *
+ * Every Node is given a unique id at instanciation
+ *
+ * Every Node has geometric operations for translation,
+ * scale and rotation. The update() function computes the
+ * transform_ matrix from these components.
+ *
+ * draw() shall be defined by the subclass.
+ * The visible flag can be used to show/hide a Node.
+ * To apply geometrical transformation, draw() can multiplying the
+ * modelview by the transform_ matrix.
+ *
+ * init() shall be called on the first call of draw():
+ *     if ( !initialized() )
+ *        init();
+ *
+ * accept() allows visitors to parse the graph.
+ */
 class Node {
 
     int       id_;
@@ -51,7 +70,22 @@ public:
     glm::vec3 scale_, rotation_, translation_;
 };
 
-// Leaf Nodes are primitives that can be rendered
+
+
+/**
+ * @brief The Primitive class is a leaf Node that can be rendered
+ *
+ * Primitive generates a STATIC vertex array object from
+ * a list of points, colors and texture coordinates.
+ * The vertex array is deleted in the Primitive destructor.
+ *
+ * Primitive class itself does not define any geometry: subclasses
+ * should fill the points, colors and texture coordinates
+ * in their constructor.
+ *
+ * Primitive can be given a shader that is used during draw.
+ *
+ */
 class Primitive : public Node {
 
 public:
@@ -75,8 +109,9 @@ protected:
     virtual void deleteGLBuffers_();
 };
 
-// Other Nodes establish hierarchy with a group of nodes
-
+//
+// Other Nodes establish hierarchy with a set of nodes
+//
 struct z_comparator
 {
     inline bool operator () (const Node *a, const Node *b) const
@@ -97,7 +132,19 @@ private:
 };
 typedef std::multiset<Node*, z_comparator> NodeSet;
 
-
+/**
+ * @brief The Group class contains a list of pointers to Nodes.
+ *
+ * A Group defines the hierarchy in the scene graph.
+ *
+ * The list of Nodes* is a NodeSet, a depth-sorted set
+ * accepting multiple nodes at the same depth (multiset)
+ *
+ * update() will update all children
+ * draw() will draw all children
+ *
+ * When a group is deleted, the children are NOT deleted.
+ */
 class Group : public Node {
 
 public:
@@ -119,6 +166,13 @@ protected:
     NodeSet children_;
 };
 
+/**
+ * @brief The Switch class is a Group to selectively update & draw ONE selected child
+ *
+ * update() will update only the active child
+ * draw() will draw only the active child
+ *
+ */
 class Switch : public Group {
 
 public:
@@ -142,7 +196,13 @@ protected:
     NodeSet::iterator active_;
 };
 
-// Animation Nodes
+/**
+ * @brief The Animation class is a Group with an update() function
+ *
+ * The update() computes a transformation of the Group to apply a movement
+ * which is applied to all children.
+ *
+ */
 class Animation : public Group {
 
 public:

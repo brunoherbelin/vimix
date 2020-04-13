@@ -164,6 +164,7 @@ void Primitive::deleteGLBuffers_()
         glDeleteVertexArrays ( 1, &vao_);
 }
 
+
 // Group
 
 Group::~Group()
