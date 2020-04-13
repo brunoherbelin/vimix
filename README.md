@@ -1,18 +1,27 @@
 # v-mix
 Live Video Mixer
 
-## Clone
+Work in progress
+v-mix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
+
+
+### Clone
 
 git clone --recursive https://github.com/brunoherbelin/v-mix.git
 
-## Compile
+### Compile
 
-## Dependencies
+cmake -G Ninja
+
+ninja
+
+### Dependencies
 
 Compiling tools:
+
 gcc, cmake & Ninja
 
-Libraries:2
+Libraries:
+
 libpng
 libglfw3-dev
-libgml-dev
