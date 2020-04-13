@@ -51,7 +51,6 @@ void Node::update( float dt )
 
 }
 
-
 void Node::accept(Visitor& v)
 {
     v.visit(*this);
@@ -62,12 +61,6 @@ void Node::accept(Visitor& v)
 Primitive::~Primitive()
 {
     deleteGLBuffers_();
-
-//    points_.clear();
-//    colors_.clear();
-//    texCoords_.clear();
-//    indices_.clear();
-
 }
 
 void Primitive::init()
@@ -119,8 +112,12 @@ void Primitive::init()
     drawCount_ = indices_.size();
 
     // delete temporary buffers
-    if ( arrayBuffer_ )  glDeleteBuffers ( 1, &arrayBuffer_);
-    if ( elementBuffer_ ) glDeleteBuffers ( 1, &elementBuffer_);    
+    if ( arrayBuffer_ )
+        glDeleteBuffers ( 1, &arrayBuffer_);
+    if ( elementBuffer_ )
+        glDeleteBuffers ( 1, &elementBuffer_);
+
+    // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
     points_.clear();
     colors_.clear();
     texCoords_.clear();
@@ -146,7 +143,7 @@ void Primitive::draw(glm::mat4 modelview, glm::mat4 projection)
         //
         // draw vertex array object
         //
-        if (drawMode_) {
+        if (vao_) {
             glBindVertexArray( vao_ );
             glDrawElements( drawMode_, drawCount_, GL_UNSIGNED_INT, 0  );
             glBindVertexArray(0);
@@ -172,16 +169,6 @@ void Primitive::deleteGLBuffers_()
 Group::~Group()
 {
     children_.clear();
-}
-
-void Group::init()
-{
-    for (NodeSet::iterator node = children_.begin();
-         node != children_.end(); node++) {
-        (*node)->init();
-    }
-
-    Node::init();
 }
 
 void Group::update( float dt )

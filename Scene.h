@@ -104,7 +104,6 @@ public:
     Group() : Node() {}
     virtual ~Group();
 
-    virtual void init () override;
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;

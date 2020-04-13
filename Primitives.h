@@ -12,6 +12,7 @@ class ImageSurface : public Primitive {
 
 public:
     ImageSurface(const std::string& path = "" );
+    ~ImageSurface();
 
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
@@ -25,7 +26,7 @@ protected:
 };
 
 
-// Draw a Rectangle (triangle strip) with a media as animated texture
+// Draw a Rectangle with a media as animated texture
 class MediaPlayer;
 
 class MediaSurface : public ImageSurface {
@@ -66,6 +67,7 @@ class Points : public Primitive {
 
 public:
     Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize = 10);
+    ~Points();
 
     virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
@@ -85,6 +87,7 @@ class LineStrip : public Primitive {
 
 public:
     LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth = 1);
+    ~LineStrip();
 
     virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
@@ -97,6 +100,7 @@ public:
     inline uint getLineWidth() const { return linewidth_; }
 };
 
+
 class LineSquare : public LineStrip {
 
     void deleteGLBuffers_() override {}
@@ -107,6 +111,7 @@ public:
     void init() override;
     void accept(Visitor& v) override;
 };
+
 
 class LineCircle : public LineStrip {
 

@@ -336,7 +336,7 @@ Mesh::Mesh(const std::string& path, const std::string& texture) : Primitive(), r
 
 Mesh::~Mesh()
 {
-
+    delete shader_;
 }
 
 void Mesh::init()
@@ -373,3 +373,8 @@ void Mesh::accept(Visitor& v)
     Primitive::accept(v);
     v.visit(*this);
 }
+
+//void Mesh::update( float dt )
+//{
+//    scale_.x = scale_.y;
+//}

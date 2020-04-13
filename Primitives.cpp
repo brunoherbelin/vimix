@@ -41,6 +41,11 @@ ImageSurface::ImageSurface(const std::string& path) : Primitive(), resource_(pat
     drawMode_ = GL_TRIANGLE_STRIP;
 }
 
+ImageSurface::~ImageSurface()
+{
+    if (shader_)
+        delete shader_;
+}
 
 void ImageSurface::init()
 {
@@ -166,6 +171,12 @@ Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) :
     pointsize_ = pointsize;
 }
 
+Points::~Points()
+{
+    if (shader_)
+        delete shader_;
+}
+
 void Points::init()
 {
     Primitive::init();
@@ -198,6 +209,12 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewi
     }
 
     drawMode_ = GL_LINE_STRIP;
+}
+
+LineStrip::~LineStrip()
+{
+    if (shader_)
+        delete shader_;
 }
 
 void LineStrip::init()

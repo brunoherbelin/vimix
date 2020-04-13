@@ -242,6 +242,10 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/shadow.png
+    ./rsc/mesh/target.ply
+    ./rsc/mesh/border.ply
+    ./rsc/mesh/icon_video.ply
+    ./rsc/mesh/icon_image.ply
 )
 
 add_executable(${VMIX_BINARY}
