@@ -318,9 +318,9 @@ int main(int, char**)
     }
 
 
-    SessionVisitor savetoxml;
-    scene.accept(savetoxml);
-    savetoxml.save("/home/bhbn/test.vmx");
+    //    SessionVisitor savetoxml;
+    //    scene.accept(savetoxml);
+    //    savetoxml.save("/home/bhbn/test.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();
