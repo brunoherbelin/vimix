@@ -366,9 +366,6 @@ void MediaPlayer::seekTo(GstClockTime pos)
     if (!seekable_)
         return;
 
-    // remember pos
-    GstClockTime previous_pos = position();
-
     // apply seek
     GstClockTime target = CLAMP(pos, 0, duration_);
     execute_seek_command(target);
@@ -674,7 +671,7 @@ GstFlowReturn MediaPlayer::callback_pull_sample_video (GstElement *bin, MediaPla
     return ret;
 }
 
-void MediaPlayer::callback_end_of_video (GstElement *bin, MediaPlayer *m)
+void MediaPlayer::callback_end_of_video (GstElement *, MediaPlayer *m)
 {
     if (m) {
         // reached end of stream (eos) : might need to loop !
@@ -684,7 +681,7 @@ void MediaPlayer::callback_end_of_video (GstElement *bin, MediaPlayer *m)
 
 void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m)
 {
-    if (!m)
+    if (!discoverer || !m)
         return;
 
     // handle general errors
@@ -775,7 +772,7 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
 void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m)
 {
     // finished the discoverer : finalize open status
-    if (m) {
+    if (discoverer && m) {
         // no error message, open media
         if ( m->discoverer_message_.str().empty())
             m->execute_open();

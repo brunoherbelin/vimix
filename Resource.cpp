@@ -122,7 +122,6 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 	// get the buffer = bytes [128 - ]
 	const char *buffer = fp + 128;
 
-    uint components  = (fourCC == FOURCC_DXT1) ? 3 : 4;
     uint format = 0;
 	switch(fourCC)
 	{
@@ -163,8 +162,7 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
     for (uint level = 0; level < mipMapCount && (width || height); ++level)
 	{
         uint size = ((width+3)/4)*((height+3)/4)*blockSize;
-		glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height,
-			0, size, buffer + offset);
+        glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height, 0, size, buffer + offset);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		offset += size;

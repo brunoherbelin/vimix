@@ -254,9 +254,9 @@ private:
     bool fill_v_frame(GstBuffer *buf);
 
     static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);
-    static void callback_end_of_video (GstElement *bin, MediaPlayer *m);
-    static void callback_discoverer_process (GstDiscoverer *discoverer_, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
-    static void callback_discoverer_finished(GstDiscoverer *discoverer_, MediaPlayer *m);
+    static void callback_end_of_video (GstElement *, MediaPlayer *m);
+    static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
+    static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 
 };
 
