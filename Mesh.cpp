@@ -84,7 +84,6 @@ bool parsePLY(string ascii,
         return false;
     }
     if ((magic[0] != 'p') || (magic[1] != 'l') || (magic[2] != 'y')){
-
         Log::Warning("Parse error line %d: not PLY format", line_number_);
         return false;
     }
@@ -114,7 +113,7 @@ bool parsePLY(string ascii,
                 std::string format_string, version;
                 char space_format_format_string, space_format_string_version;
                 stringstream >> space_format_format_string >> std::ws >> format_string >> space_format_string_version >> std::ws >> version >> std::ws;
-                if (!stringstream || !stringstream.eof() ||
+                if (!stringstream.eof() ||
                         !std::isspace(space_format_format_string) ||
                         !std::isspace(space_format_string_version)) {
                     Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
@@ -135,7 +134,7 @@ bool parsePLY(string ascii,
                 std::size_t count;
                 char space_element_name, space_name_count;
                 stringstream >> space_element_name >> std::ws >> name >> space_name_count >> std::ws >> count >> std::ws;
-                if (!stringstream || !stringstream.eof() ||
+                if (!stringstream.eof() ||
                         !std::isspace(space_element_name) ||
                         !std::isspace(space_name_count)) {
                     Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
@@ -150,7 +149,7 @@ bool parsePLY(string ascii,
                 std::string type_or_list;
                 char space_property_type_or_list;
                 stringstream >> space_property_type_or_list >> std::ws >> type_or_list;
-                if (!stringstream || !std::isspace(space_property_type_or_list)) {
+                if (!std::isspace(space_property_type_or_list)) {
                     Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
                   return false;
                 }
@@ -161,7 +160,7 @@ bool parsePLY(string ascii,
                     std::string& type = type_or_list;
                     char space_type_name;
                     stringstream >> space_type_name >> std::ws >> name >> std::ws;
-                    if (!stringstream || !std::isspace(space_type_name)) {
+                    if (!std::isspace(space_type_name)) {
                         Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
                         return false;
                     }
@@ -174,7 +173,7 @@ bool parsePLY(string ascii,
                     std::string size_type_string, scalar_type_string;
                     char space_list_size_type, space_size_type_scalar_type, space_scalar_type_name;
                     stringstream >> space_list_size_type >> std::ws >> size_type_string >> space_size_type_scalar_type >> std::ws >> scalar_type_string >> space_scalar_type_name >> std::ws >> name >> std::ws;
-                    if (!stringstream || !std::isspace(space_list_size_type) ||
+                    if (!std::isspace(space_list_size_type) ||
                             !std::isspace(space_size_type_scalar_type) ||
                             !std::isspace(space_scalar_type_name)) {
                       Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
@@ -194,7 +193,7 @@ bool parsePLY(string ascii,
 
     uint num_vertex_per_face = 0;
     // loop over elements
-    for (int i=0; i< elements.size(); ++i)
+    for (uint i=0; i< elements.size(); ++i)
     {
         std::string elem = elements[i].first;
         int num_data = elements[i].second;
@@ -218,7 +217,7 @@ bool parsePLY(string ascii,
             bool has_uv = false;
 
             // read each property of the element
-            for (int j = 0; j < elementsProperties[elem].size(); ++j)
+            for (uint j = 0; j < elementsProperties[elem].size(); ++j)
             {
                 plyProperty prop = elementsProperties[elem][j];
 
