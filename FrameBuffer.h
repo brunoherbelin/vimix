@@ -23,14 +23,17 @@ public:
 
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
-    inline uint texture() const { return textureid_; }
+    uint texture() const;
     float aspectRatio() const;
 
 private:
+    void init();
     void checkFramebufferStatus();
+
     RenderingAttrib attrib_;
     uint textureid_;
     uint framebufferid_;
+    bool usedepth_;
 };
 
 

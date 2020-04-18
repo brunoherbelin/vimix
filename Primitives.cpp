@@ -1,6 +1,7 @@
 #include "Primitives.h"
 #include "ImageShader.h"
 #include "Resource.h"
+#include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "Visitor.h"
 #include "Log.h"
@@ -25,7 +26,7 @@ static const std::vector<glm::vec3> square_points {
 };
 
 
-ImageSurface::ImageSurface(const std::string& path) : Primitive(), resource_(path), textureindex_(0)
+Surface::Surface(Shader *s) : Primitive(s)
 {
     // geometry
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
@@ -38,25 +39,9 @@ ImageSurface::ImageSurface(const std::string& path) : Primitive(), resource_(pat
     drawMode_ = GL_TRIANGLE_STRIP;
 }
 
-ImageSurface::~ImageSurface()
-{
-    if (shader_)
-        delete shader_;
-}
 
-void ImageSurface::init()
+void Surface::init()
 {
-    // load image if specified
-    if ( resource_.empty())
-        textureindex_ = Resource::getTextureBlack();
-    else {
-        float ar = 1.0;
-        textureindex_ = Resource::getTextureImage(resource_, &ar);
-        scale_.x = ar;
-    }
-    // a new shader for a new image
-    shader_ = new ImageShader();
-
     // use static unique vertex array object
     static uint unique_vao_ = 0;
     static uint unique_drawCount = 0;
@@ -77,6 +62,34 @@ void ImageSurface::init()
     }
 }
 
+void Surface::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
+
+ImageSurface::ImageSurface(const std::string& path, Shader *s) : Surface(s), resource_(path), textureindex_(0)
+{
+
+}
+
+void ImageSurface::init()
+{
+    Surface::init();
+
+    // load image if specified (should always be the case)
+    if ( resource_.empty())
+        textureindex_ = Resource::getTextureBlack();
+    else {
+        float ar = 1.0;
+        textureindex_ = Resource::getTextureImage(resource_, &ar);
+        scale_.x = ar;
+    }
+
+    // a new shader for a new image
+    shader_ = new ImageShader();
+}
+
 void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() )
@@ -95,9 +108,9 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& uri) : ImageSurface()
+MediaSurface::MediaSurface(const std::string& uri, Shader *s) : Surface(s)
 {
-    resource_ = uri;
+    uri_ = uri;
     mediaplayer_ = new MediaPlayer;
 }
 
@@ -108,12 +121,9 @@ MediaSurface::~MediaSurface()
 
 void MediaSurface::init()
 {
-    std::string tmp = resource_;
-    resource_ = "";
-    ImageSurface::init();
-    resource_ = tmp;
+    Surface::init();
 
-    mediaplayer_->open(resource_);
+    mediaplayer_->open(uri_);
     mediaplayer_->play(true);
 }
 
@@ -123,9 +133,9 @@ void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
         init();
 
     if ( mediaplayer_->isOpen() )
-        mediaplayer_->bind();
+        glBindTexture(GL_TEXTURE_2D, mediaplayer_->texture());
     else
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
+        glBindTexture(GL_TEXTURE_2D, Resource::getTextureBlack());
 
     Primitive::draw(modelview, projection);
 
@@ -136,12 +146,6 @@ void MediaSurface::update( float dt )
 {
     if ( mediaplayer_->isOpen() ) {
         mediaplayer_->update();
-
-//        if (parent_ != nullptr) {
-//            parent_->transform_ = parent_->transform_ * glm::scale(glm::identity<glm::mat4>(), glm::vec3(mediaplayer_->aspectRatio(), 1.f, 1.f));
-//            scale_.x = 1.0;
-//        }
-//        else
         scale_.x = mediaplayer_->aspectRatio();
     }
 
@@ -150,12 +154,47 @@ void MediaSurface::update( float dt )
 
 void MediaSurface::accept(Visitor& v)
 {
-    ImageSurface::accept(v);
+    Primitive::accept(v);
     v.visit(*this);
 }
 
 
-Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) : Primitive()
+FrameBufferSurface::FrameBufferSurface(FrameBuffer *fb, Shader *s) : Surface(s), frame_buffer_(fb)
+{
+
+}
+
+void FrameBufferSurface::init()
+{
+    Surface::init();
+
+    // set aspect ratio
+    scale_.x = frame_buffer_->aspectRatio();
+
+    // a new shader for a new image
+    shader_ = new ImageShader();
+}
+
+void FrameBufferSurface::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() )
+        init();
+
+    glBindTexture(GL_TEXTURE_2D, frame_buffer_->texture());
+
+    Primitive::draw(modelview, projection);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void FrameBufferSurface::accept(Visitor& v)
+{
+    Primitive::accept(v);
+    v.visit(*this);
+}
+
+
+Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) : Primitive(new Shader)
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
@@ -168,17 +207,7 @@ Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) :
     pointsize_ = pointsize;
 }
 
-Points::~Points()
-{
-    if (shader_)
-        delete shader_;
-}
 
-void Points::init()
-{
-    Primitive::init();
-    shader_ = new Shader();
-}
 
 void Points::draw(glm::mat4 modelview, glm::mat4 projection)
 {
@@ -196,7 +225,7 @@ void Points::accept(Visitor& v)
     v.visit(*this);
 }
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive(), linewidth_(linewidth)
+LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive(new Shader), linewidth_(linewidth)
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
@@ -206,18 +235,6 @@ LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewi
     }
 
     drawMode_ = GL_LINE_STRIP;
-}
-
-LineStrip::~LineStrip()
-{
-    if (shader_)
-        delete shader_;
-}
-
-void LineStrip::init()
-{
-    Primitive::init();
-    shader_ = new Shader();
 }
 
 void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -243,9 +260,6 @@ LineSquare::LineSquare(glm::vec4 color, uint linewidth) : LineStrip(square_point
 
 void LineSquare::init()
 {
-    // a new shader for a new line
-    shader_ = new Shader();
-
     // use static unique vertex array object
     static uint unique_vao_ = 0;
     static uint unique_drawCount = 0;
@@ -293,9 +307,6 @@ LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<
 
 void LineCircle::init()
 {
-    // a new shader for a new line
-    shader_ = new Shader();
-
     // use static unique vertex array object
     static uint unique_vao_ = 0;
     static uint unique_drawCount = 0;

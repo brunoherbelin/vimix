@@ -16,24 +16,27 @@
 #include <gst/gst.h>
 #include <gst/gstbin.h>
 #include <gst/gl/gl.h>
+#include "GstToolkit.h"
+
+// imgui
+#include "imgui.h"
+#include "ImGuiToolkit.h"
+#include "ImGuiVisitor.h"
 
 // vmix
 #include "defines.h"
-#include "ImageShader.h"
 #include "Settings.h"
-#include "Resource.h"
-#include "FrameBuffer.h"
+
+// mixing
+#include "Mixer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 
-#include "imgui.h"
-#include "ImGuiToolkit.h"
-#include "GstToolkit.h"
+
 #include "MediaPlayer.h"
 #include "Scene.h"
 #include "Primitives.h"
 #include "Mesh.h"
-#include "ImGuiVisitor.h"
 #include "SessionVisitor.h"
 
 #define PI 3.14159265358979323846
@@ -50,9 +53,8 @@
 ////    ("file:///home/bhbn/Videos/iss.mov");
 ////    ("file:///home/bhbn/Videos//iss.mov");
 ////    ("file:///Users/Herbelin/Movies/mp2test.mpg");
-///
-Scene scene;
-FrameBuffer *output;
+
+
 MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
 MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
 ImageSurface testnode3("images/seed_512.jpg");
@@ -170,35 +172,42 @@ void drawMediaPlayer()
 
 void drawScene()
 {
-    // compute dt
-    static gint64 last_time = gst_util_get_timestamp ();
-    gint64 current_time = gst_util_get_timestamp ();
-    gint64 dt = current_time - last_time;
-    last_time = current_time;
+//    // compute dt
+//    static gint64 last_time = gst_util_get_timestamp ();
+//    gint64 current_time = gst_util_get_timestamp ();
+//    gint64 dt = current_time - last_time;
+//    last_time = current_time;
 
-    // recursive update from root of scene
-    scene.root_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
+//    // recursive update from root of scene
+//    scene.root()->update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
 
-    // draw in output frame buffer
-    glm::mat4 MV = glm::identity<glm::mat4>();
-    glm::mat4 P  = glm::scale( glm::ortho(-5.f, 5.f, -5.f, 5.f), glm::vec3(1.f, output->aspectRatio(), 1.f));
-    output->begin();
-    scene.root_.draw(MV, P);
-    output->end();
+//    // draw in output frame buffer
+//    glm::mat4 MV = glm::identity<glm::mat4>();
 
-    // draw in main view
-    scene.root_.draw(MV, Rendering::manager().Projection());
+//    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 0.f);
+//    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f, output->aspectRatio(), 1.f));
+//    output->begin();
+//    scene.root()->draw(MV, P);
+//    output->end();
+
+//    // draw in main view
+//    scene.root()->draw(MV, Rendering::manager().Projection());
+
+    Mixer::manager().update();
+
+    Mixer::manager().draw();
 
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
     static ImGuiVisitor v;
-    scene.accept(v);
+    Mixer::manager().currentView()->scene.accept(v);
     ImGui::End();
 }
 
 
 void drawPreview()
 {
+    FrameBuffer *output = Mixer::manager().frame();
     if (output)
     {
         ImGui::SetNextWindowPos(ImVec2(100, 300), ImGuiCond_FirstUseEver);
@@ -246,6 +255,7 @@ int main(int, char**)
 //    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
     // init the scene
+    Mixer::manager().setCurrentView(Mixer::MIXING);
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
@@ -256,53 +266,51 @@ int main(int, char**)
     glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
     LineCircle circle(pink, 5);
 
-    glm::vec4 color( 0.8f, 0.8f, 0.f, 1.f);
-    LineSquare border(color, 5);
-    Mesh shadow("mesh/shadow.ply", "mesh/shadow.png");
+//    glm::vec4 color( 0.8f, 0.8f, 0.f, 1.f);
+//    LineSquare border(color, 5);
+//    Mesh shadow("mesh/shadow.ply", "mesh/shadow.png");
+//    Mesh meshicon("mesh/icon_video.ply");
+
+    Frame frame;
+    frame.scale_ = glm::vec3(1.7777778f, 1.f, 1.f);
 
     Group g1;
-    g1.translation_ = glm::vec3(1.f, 1.f, 0.2f);
+    g1.translation_ = glm::vec3(1.f, 1.f, 1.f);
     g1.scale_ = glm::vec3(0.8f, 0.8f, 1.f);
 
     Group g2;
-    g2.translation_ = glm::vec3(-1.f, -1.f, 0.4f);
+    g2.translation_ = glm::vec3(-1.f, -1.f, 2.f);
 
     Animation A;
-    A.speed_ = 0.05f;
+    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
+    A.speed_ = 0.1f;
     A.axis_ = glm::vec3(1.f, 1.f, 1.f);
 
 //    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
 //    Points P(pts, pink);
 //    P.setPointSize(60);
-    Mesh P("mesh/target.ply");
+    Mesh P("mesh/point.ply");
     P.scale_ = glm::vec3(0.15f);
 
-    Mesh meshicon("mesh/icon_video.ply");
-
     // build tree
-    scene.root_.addChild(&disk);
-    scene.root_.addChild(&circle);
+    Mixer::manager().currentView()->scene.root()->addChild(&disk);
+    Mixer::manager().currentView()->scene.root()->addChild(&circle);
 
     g1.addChild(&testnode3);
-    g1.addChild(&border);
-    g1.addChild(&shadow);
-    scene.root_.addChild(&g1);
+    Mixer::manager().currentView()->scene.root()->addChild(&g1);
 
     g2.addChild(&testnode1);
-    g2.addChild(&border);
-    g2.addChild(&shadow);
-    g2.addChild(&meshicon);
-    scene.root_.addChild(&g2);
+    g2.addChild(&frame);
+    Mixer::manager().currentView()->scene.root()->addChild(&g2);
 
     A.addChild(&P);
-    scene.root_.addChild(&A);
+    Mixer::manager().currentView()->scene.root()->addChild(&A);
 
     // init output FBO
-    output = new FrameBuffer(1280, 720);
     Rendering::manager().PushBackDrawCallback(drawPreview);
 
     // add media player
-    Rendering::manager().PushBackDrawCallback(drawMediaPlayer);
+//    Rendering::manager().PushBackDrawCallback(drawMediaPlayer);
 
     ///
     /// Main LOOP
@@ -312,10 +320,6 @@ int main(int, char**)
         Rendering::manager().Draw();
     }
 
-
-        SessionVisitor savetoxml;
-        scene.accept(savetoxml);
-        savetoxml.save("/home/bhbn/test.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();

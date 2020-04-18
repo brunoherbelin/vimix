@@ -191,10 +191,9 @@ public:
      * */
     double updateFrameRate() const;
     /**
-     * Bind / Get the OpenGL texture 
+     * Get the OpenGL texture
      * Must be called in OpenGL context
      * */
-    void bind();
     guint texture() const;
     /**
      * Get Image properties

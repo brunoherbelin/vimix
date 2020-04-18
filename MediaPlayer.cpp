@@ -67,11 +67,6 @@ void MediaPlayer::accept(Visitor& v) {
     v.visit(*this);
 }
 
-void MediaPlayer::bind()
-{
-    glBindTexture(GL_TEXTURE_2D, texture());
-}
-
 guint MediaPlayer::texture() const
 {
     if (textureindex_ == 0)

@@ -16,7 +16,8 @@
 #define EXP100(val) (exp(log(10.0)/50.0*(float)(val))-1.0)
 #define EUCLIDEAN(P1, P2) sqrt((P1.x() - P2.x()) * (P1.x() - P2.x()) + (P1.y() - P2.y()) * (P1.y() - P2.y()))
 
-#define SCENE_UNIT 10.0
+#define SCENE_UNIT 5.f
+#define SCENE_DEPTH -10.f
 #define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SCENE_UNIT * SCENE_UNIT * SCENE_UNIT * SCENE_UNIT) )
 
 #define IMGUI_TITLE_MAINWINDOW ICON_FA_CIRCLE_NOTCH " v-mix"

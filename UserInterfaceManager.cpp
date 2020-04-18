@@ -38,6 +38,7 @@
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
+#include "Mixer.h"
 
 static std::thread loadThread;
 static bool loadThreadDone = false;
@@ -161,9 +162,25 @@ void UserInterface::handleMouse()
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
         // Mouse wheel over background
-        if ( io.MouseWheel > 0) {
+        if ( io.MouseWheel != 0) {
 
+            Mixer::manager().currentView()->zoom( io.MouseWheel );
 
+            Log::Info(" wheel %.1f", io.MouseWheel);
+        }
+
+        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
+        {
+//            Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseDelta.x, io.MouseDelta.y, io.MousePos.x, io.MousePos.y);
+
+            Mixer::manager().currentView()->drag( glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x, io.MouseClickedPos[ImGuiMouseButton_Right].y), glm::vec2(io.MousePos.x, io.MousePos.y));
+
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+
+        }
+        else {
+
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
         }
 
         if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {

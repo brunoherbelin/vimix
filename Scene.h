@@ -6,6 +6,7 @@
 #ifdef __APPLE__
 #include <sys/types.h>
 #endif
+
 #include <set>
 #include <vector>
 #include <glm/glm.hpp>
@@ -89,15 +90,15 @@ public:
 class Primitive : public Node {
 
 public:
-    Primitive() : Node(), shader_(nullptr), vao_(0), drawMode_(0), drawCount_(0) {}
+    Primitive(Shader *s = nullptr) : Node(), shader_(s), vao_(0), drawMode_(0), drawCount_(0) {}
     virtual ~Primitive();
 
     virtual void init () override;
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    inline Shader *getShader() const { return shader_; }
-    inline void setShader( Shader* e ) { shader_ = e; }
+    inline Shader *shader () const { return shader_; }
+    void replaceShader (Shader* newshader);
 
 protected:
     Shader*   shader_;
@@ -120,6 +121,8 @@ struct z_comparator
         return (a && b && a->translation_.z < b->translation_.z);
     }
 };
+typedef std::multiset<Node*, z_comparator> NodeSet;
+
 struct hasId: public std::unary_function<Node*, bool>
 {
     inline bool operator()(const Node* e) const
@@ -130,7 +133,6 @@ struct hasId: public std::unary_function<Node*, bool>
 private:
     int _id;
 };
-typedef std::multiset<Node*, z_comparator> NodeSet;
 
 /**
  * @brief The Group class contains a list of pointers to Nodes.
@@ -227,14 +229,18 @@ protected:
 // A scene contains a root node and gives a simplified API to add nodes
 class Scene  {
 
+    Group root_;
+
 public:
     Scene() {}
 
-    Group *getRoot() { return &root_; }
+    void accept (Visitor& v);
 
-    void accept(Visitor& v);
+    Group *root() { return &root_; }
 
-    Group root_;
+    // Node *find(int id);
+    // void remove(Node *n);
+    //
 
 };
 

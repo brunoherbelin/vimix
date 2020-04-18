@@ -77,7 +77,7 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PushID(n.id());
     ImGui::Text("Primitive");
 
-    n.getShader()->accept(*this);
+    n.shader()->accept(*this);
 
     ImGui::PopID();
 }
@@ -89,7 +89,7 @@ void ImGuiVisitor::visit(ImageSurface &n)
 
 void ImGuiVisitor::visit(MediaSurface &n)
 {
-    ImGui::Text("%s", n.getResource().c_str());
+    ImGui::Text("%s", n.getUri().c_str());
 
     if (n.getMediaPlayer())
         n.getMediaPlayer()->accept(*this);
@@ -152,7 +152,7 @@ void ImGuiVisitor::visit(Scene &n)
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::CollapsingHeader("Scene Property Tree"))
     {
-        n.getRoot()->accept(*this);
+        n.root()->accept(*this);
     }
 }
 

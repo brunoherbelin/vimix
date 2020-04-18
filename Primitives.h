@@ -4,21 +4,43 @@
 #include <string>
 
 #include "Scene.h"
+#include "ImageShader.h"
+
 class MediaPlayer;
+class FrameBuffer;
+
 
 /**
- * @brief The ImageSurface class is a Primitive to draw an image
+ * @brief The Surface class is a Primitive to draw an flat square
+ * surface with texture coordinates.
  *
- * Image is read from the Ressouces (not an external file)
- * Height = 1.0, Width is set by the aspect ratio of the image
+ * It uses a unique vertex array object to draw all surfaces.
+ *
  */
-class ImageSurface : public Primitive {
+class Surface : public Primitive {
 
     void deleteGLBuffers_() override {}
 
 public:
-    ImageSurface(const std::string& path = "" );
-    ~ImageSurface();
+    Surface(Shader *s = new ImageShader);
+
+    void init () override;
+    void accept (Visitor& v) override;
+};
+
+
+/**
+ * @brief The ImageSurface class is a Surface to draw an image
+ *
+ * It creates an ImageShader for rendering.
+ *
+ * Image is read from the Ressouces (not an external file)
+ * Height = 1.0, Width is set by the aspect ratio of the image
+ */
+class ImageSurface : public Surface {
+
+public:
+    ImageSurface(const std::string& path, Shader *s = new ImageShader);
 
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
@@ -33,17 +55,15 @@ protected:
 
 
 /**
- * @brief The MediaSurface class is an ImageSurface to draw a video
+ * @brief The MediaSurface class is a Surface to draw a video
  *
  * URI is passed to a Media Player to handle the video playback
  * Height = 1.0, Width is set by the aspect ratio of the image
  */
-class MediaSurface : public ImageSurface {
-
-    MediaPlayer *mediaplayer_;
+class MediaSurface : public Surface {
 
 public:
-    MediaSurface(const std::string& uri);
+    MediaSurface(const std::string& uri, Shader *s = new ImageShader);
     ~MediaSurface();
 
     void init () override;
@@ -51,9 +71,34 @@ public:
     void accept (Visitor& v) override;
     void update (float dt) override;
 
+    inline std::string getUri() const { return uri_; }
     MediaPlayer *getMediaPlayer() { return mediaplayer_; }
+
+protected:
+    std::string uri_;
+    MediaPlayer *mediaplayer_;
 };
 
+/**
+ * @brief The FrameBufferSurface class is a Surface to draw a framebuffer
+ *
+ * URI is passed to a Media Player to handle the video playback
+ * Height = 1.0, Width is set by the aspect ratio of the image
+ */
+class FrameBufferSurface : public Surface {
+
+public:
+    FrameBufferSurface(FrameBuffer *fb, Shader *s = new ImageShader);
+
+    void init () override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
+
+    inline FrameBuffer *getFrameBuffer() const { return frame_buffer_; }
+
+protected:
+    FrameBuffer *frame_buffer_;
+};
 
 /**
  * @brief The Points class is a Primitive to draw Points
@@ -64,9 +109,7 @@ class Points : public Primitive {
 
 public:
     Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize = 10);
-    ~Points();
 
-    virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
@@ -87,9 +130,7 @@ class LineStrip : public Primitive {
 
 public:
     LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth = 1);
-    ~LineStrip();
 
-    virtual void init() override;
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 

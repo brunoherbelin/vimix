@@ -77,7 +77,7 @@ public:
     // get projection matrix (for sharers) => Views
     glm::mat4 Projection();
     // unproject from window coordinate
-    glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview);
+    glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview = glm::mat4(1.f));
 
     // for opengl pipeline in gstreamer
     void LinkPipeline( GstPipeline *pipeline );

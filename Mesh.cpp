@@ -321,36 +321,31 @@ bool parsePLY(string ascii,
 }
 
 
-Mesh::Mesh(const std::string& path, const std::string& texture) : Primitive(), resource_(path), texturefilename_(texture), textureindex_(0)
+Mesh::Mesh(const std::string& ply_path, const std::string& tex_path) : Primitive(), mesh_resource_(ply_path), texture_resource_(tex_path), textureindex_(0)
 {
-    if ( !parsePLY( Resource::getText(resource_), points_, colors_, texCoords_, indices_, drawMode_) )
+    if ( !parsePLY( Resource::getText(mesh_resource_), points_, colors_, texCoords_, indices_, drawMode_) )
     {
         points_.clear();
         colors_.clear();
         texCoords_.clear();
         indices_.clear();
-        Log::Warning("Mesh could not be created from %s", path.c_str());
+        Log::Warning("Mesh could not be created from %s", ply_path.c_str());
     }
+
+    // selective creation of the shader (deleted in Primitive)
+    if (texture_resource_.empty())
+        shader_ = new Shader;
+    else
+        shader_ = new ImageShader;
 }
 
-Mesh::~Mesh()
-{
-    delete shader_;
-}
 
 void Mesh::init()
 {
     Primitive::init();
 
-    if (!texturefilename_.empty())
-    {
-        // create shader for textured image
-        textureindex_ = Resource::getTextureImage(texturefilename_);
-        shader_ = new ImageShader();
-    }
-    else {
-        shader_ = new Shader();
-    }
+    if (!texture_resource_.empty())
+        textureindex_ = Resource::getTextureImage(texture_resource_);
 
 }
 
@@ -372,3 +367,43 @@ void Mesh::accept(Visitor& v)
     Primitive::accept(v);
     v.visit(*this);
 }
+
+Frame::Frame() : Node()
+{
+    icon_   = new Mesh("mesh/icon_video.ply");
+    border_ = new Mesh("mesh/border.ply");
+    shadow_ = new Mesh("mesh/shadow.ply", "mesh/shadow.png");
+    color   = glm::vec4( 0.8f, 0.8f, 0.f, 1.f);
+}
+
+void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() ) {
+        icon_->init();
+        border_->init();
+        shadow_->init();
+        init();
+    }
+
+    // shadow
+    shadow_->draw( modelview * transform_, projection);
+
+    // right side
+    float ar = scale_.x / scale_.y;
+    glm::vec3 s(scale_.y, scale_.y, 1.0);
+    glm::vec3 t(translation_.x - 1.0 +ar, translation_.y, translation_.z);
+    glm::mat4 ctm = modelview * transform(t, rotation_, s);
+
+    border_->shader()->color = color;
+    border_->draw( ctm, projection );
+    icon_->shader()->color = color;
+    icon_->draw( ctm, projection );
+
+    // left side
+    t.x = -t.x;
+    s.x = -s.x;
+    ctm = modelview * transform(t, rotation_, s);
+    border_->draw( ctm, projection );
+
+}
+

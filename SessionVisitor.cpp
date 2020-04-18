@@ -69,7 +69,7 @@ void SessionVisitor::visit(Primitive &n)
     XMLElement *Primitive = xmlCurrent_;
 
     xmlCurrent_ = xmlDoc_->NewElement("Shader");
-    n.getShader()->accept(*this);
+    n.shader()->accept(*this);
     Primitive->InsertEndChild(xmlCurrent_);
 
     // revert to primitive as current
@@ -172,12 +172,12 @@ void SessionVisitor::visit(Mesh &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Mesh");
 
-    XMLText *filename = xmlDoc_->NewText( n.getResource().c_str() );
+    XMLText *filename = xmlDoc_->NewText( n.meshPath().c_str() );
     XMLElement *obj = xmlDoc_->NewElement("resource");
     obj->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(obj);
 
-    filename = xmlDoc_->NewText( n.getTexture().c_str() );
+    filename = xmlDoc_->NewText( n.texturePath().c_str() );
     XMLElement *tex = xmlDoc_->NewElement("texture");
     tex->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(tex);
@@ -194,7 +194,7 @@ void SessionVisitor::visit(Scene &n)
 
     // start recursive traverse from root node
     xmlCurrent_ = xmlRoot_;
-    n.getRoot()->accept(*this);
+    n.root()->accept(*this);
 }
 
 void SessionVisitor::save(std::string filename)

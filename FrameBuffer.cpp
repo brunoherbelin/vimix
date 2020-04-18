@@ -1,22 +1,26 @@
 #include "FrameBuffer.h"
 #include "ImageShader.h"
+#include "Resource.h"
 #include "Log.h"
 
 
 #include <glad/glad.h>
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer): textureid_(0), framebufferid_(0), usedepth_(useDepthBuffer)
 {
     attrib_.viewport.x = width;
     attrib_.viewport.y = height;
     attrib_.clear_color = glm::vec3(0.f);
+}
 
+void FrameBuffer::init()
+{
     // create a renderbuffer object to store depth info
     GLuint rboId;
-    if (useDepthBuffer){
+    if (usedepth_){
         glGenRenderbuffers(1, &rboId);
         glBindRenderbuffer(GL_RENDERBUFFER, rboId);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,  width, height);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, attrib_.viewport.x, attrib_.viewport.y);
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
@@ -27,7 +31,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer)
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, attrib_.viewport.x, attrib_.viewport.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -37,19 +41,26 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer)
                            GL_TEXTURE_2D, textureid_, 0);
 
     // attach the renderbuffer to depth attachment point
-    if (useDepthBuffer){
+    if (usedepth_){
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                               GL_RENDERBUFFER, rboId);
     }
     checkFramebufferStatus();
-
-    FrameBuffer::release();
 }
-
 
 FrameBuffer::~FrameBuffer()
 {
-    glDeleteFramebuffers(1, &framebufferid_);
+    if (framebufferid_)
+        glDeleteFramebuffers(1, &framebufferid_);
+}
+
+
+uint FrameBuffer::texture() const
+{
+    if (framebufferid_ == 0)
+        return Resource::getTextureBlack();
+
+    return textureid_;
 }
 
 float FrameBuffer::aspectRatio() const
@@ -59,6 +70,9 @@ float FrameBuffer::aspectRatio() const
 
 void FrameBuffer::bind()
 {
+    if (!framebufferid_)
+        init();
+
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 }
 
@@ -86,6 +100,9 @@ void FrameBuffer::release()
 
 bool FrameBuffer::blit(FrameBuffer *other)
 {
+    if (!framebufferid_)
+        return false;
+
     if (attrib_.viewport.x != other->width() || attrib_.viewport.y != other->height())
         return false;
 

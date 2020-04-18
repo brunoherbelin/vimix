@@ -57,6 +57,8 @@ void Node::accept(Visitor& v)
 Primitive::~Primitive()
 {
     deleteGLBuffers_();
+    if (shader_)
+        delete shader_;
 }
 
 void Primitive::init()
@@ -153,6 +155,14 @@ void Primitive::accept(Visitor& v)
     v.visit(*this);
 }
 
+void Primitive::replaceShader( Shader *newshader )
+{
+    if (newshader) {
+        if (shader_)
+            delete shader_;
+        shader_ = newshader;
+    }
+}
 
 void Primitive::deleteGLBuffers_()
 {

@@ -9,6 +9,8 @@
 
 namespace ImGuiToolkit
 {
+
+
     // Icons from resource icon.dds
     void Icon(int i, int j); 
     bool ButtonIcon(int i, int j);
