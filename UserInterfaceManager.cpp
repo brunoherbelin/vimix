@@ -21,6 +21,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 // generic image loader
 #define STB_IMAGE_IMPLEMENTATION
@@ -161,34 +162,47 @@ void UserInterface::handleMouse()
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
+        ImGui::FocusWindow(0);
+        //
         // Mouse wheel over background
+        //
         if ( io.MouseWheel != 0) {
-
+            // scroll => zoom current view
             Mixer::manager().currentView()->zoom( io.MouseWheel );
+        }
+        //
+        // RIGHT Mouse button
+        //
+        if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
 
-            Log::Info(" wheel %.1f", io.MouseWheel);
+            Log::Info("Right Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+
+            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y),
+                                                          Mixer::manager().currentView()->scene.root()->transform_ );
+
+            Log::Info("                  (%.1f,%.1f)", point.x, point.y);
+
         }
 
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
-//            Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseDelta.x, io.MouseDelta.y, io.MousePos.x, io.MousePos.y);
-
+            // right mouse drag => drag current view
             Mixer::manager().currentView()->drag( glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x, io.MouseClickedPos[ImGuiMouseButton_Right].y), glm::vec2(io.MousePos.x, io.MousePos.y));
 
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-
         }
-        else {
-
+        else
             ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
-        }
 
+        //
+        // RIGHT Mouse button
+        //
         if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
             Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
 
-            glm::mat4 mv = glm::identity<glm::mat4>();
-            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y), mv);
+            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y),
+                                                             Mixer::manager().currentView()->scene.root()->transform_ );
 
             Log::Info("            (%.1f,%.1f)", point.x, point.y);
 

@@ -14,8 +14,8 @@ class Mixer
 {
     // Private Constructor
     Mixer();
-    Mixer(Rendering const& copy);            // Not Implemented
-    Mixer& operator=(Rendering const& copy); // Not Implemented
+    Mixer(Mixer const& copy);            // Not Implemented
+    Mixer& operator=(Mixer const& copy); // Not Implemented
 
 public:
 
@@ -40,9 +40,8 @@ public:
     Source *currentSource();
 
     // management of view
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, INVALID=4 } viewMode;
-    View *getView(viewMode m);
-    void setCurrentView(viewMode m);
+    View *getView(View::Mode m);
+    void setCurrentView(View::Mode m);
     View *currentView();
 
     inline FrameBuffer *frame() const { return render_.frameBuffer(); }

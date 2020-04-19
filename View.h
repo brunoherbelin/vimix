@@ -11,6 +11,8 @@ class View
 public:
     View();
 
+    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, INVALID=4 } Mode;
+
     virtual void update (float dt);
     virtual void draw () = 0;
     virtual void zoom (float) {}
@@ -20,7 +22,6 @@ public:
 
 protected:
     Group backgound_;
-    Group foreground_;
 };
 
 
@@ -33,6 +34,7 @@ public:
     void draw () override;
     void zoom (float factor);
     void drag (glm::vec2 from, glm::vec2 to);
+
 };
 
 class RenderView : public View

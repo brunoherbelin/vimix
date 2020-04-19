@@ -175,7 +175,11 @@ void Primitive::deleteGLBuffers_()
 
 Group::~Group()
 {
-    children_.clear();
+//    for(auto it = children_.begin(); it != children_.end(); )
+//        it = children_.erase(it);
+    // TODO vrify that desctructor of node is called
+    children_.erase(children_.begin(), children_.end());
+
 }
 
 void Group::update( float dt )
@@ -354,7 +358,7 @@ void Animation::update( float dt )
 
 void Animation::accept(Visitor& v)
 {
-    Node::accept(v);
+    Group::accept(v);
     v.visit(*this);
 }
 

@@ -69,7 +69,12 @@ void ImGuiVisitor::visit(Group &n)
 
 void ImGuiVisitor::visit(Switch &n)
 {
+    // TODO : display selection of active child
+}
 
+void ImGuiVisitor::visit(Animation &n)
+{
+    // TODO : display group and animation parameters
 }
 
 void ImGuiVisitor::visit(Primitive &n)
@@ -82,9 +87,9 @@ void ImGuiVisitor::visit(Primitive &n)
     ImGui::PopID();
 }
 
-void ImGuiVisitor::visit(ImageSurface &n)
+void ImGuiVisitor::visit(FrameBufferSurface &n)
 {
-
+    ImGui::Text("Framebuffer");
 }
 
 void ImGuiVisitor::visit(MediaSurface &n)
@@ -125,26 +130,6 @@ void ImGuiVisitor::visit(ImageShader &n)
         n.contrast = bc[1];
     }
     ImGui::PopID();
-}
-
-void ImGuiVisitor::visit(LineStrip &n)
-{
-    ImGui::Text("Lines");
-}
-
-void ImGuiVisitor::visit(LineSquare &n)
-{
-    ImGui::Text("Square");
-}
-
-void ImGuiVisitor::visit(LineCircle &n)
-{
-    ImGui::Text("Circle");
-}
-
-void ImGuiVisitor::visit(Mesh &n)
-{
-    ImGui::Text("Mesh");
 }
 
 void ImGuiVisitor::visit(Scene &n)

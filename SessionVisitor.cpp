@@ -60,6 +60,19 @@ void SessionVisitor::visit(Switch &n)
     xmlCurrent_->SetAttribute("active", n.getIndexActiveChild());
 }
 
+void SessionVisitor::visit(Animation &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "Animation");
+
+    XMLElement *anim = xmlDoc_->NewElement("Movement");
+    anim->SetAttribute("speed", n.speed_);
+    anim->SetAttribute("radius", n.radius_);
+    XMLElement *axis = XMLElementFromGLM(xmlDoc_, n.axis_);
+    anim->InsertEndChild(axis);
+    xmlCurrent_->InsertEndChild(anim);
+}
+
 void SessionVisitor::visit(Primitive &n)
 {
     // Node of a different type
@@ -86,6 +99,12 @@ void SessionVisitor::visit(ImageSurface &n)
     XMLElement *image = xmlDoc_->NewElement("resource");
     image->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(image);
+}
+
+void SessionVisitor::visit(FrameBufferSurface &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "FrameBufferSurface");
 }
 
 void SessionVisitor::visit(MediaSurface &n)

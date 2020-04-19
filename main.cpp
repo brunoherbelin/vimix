@@ -31,7 +31,7 @@
 #include "Mixer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
-
+#include "FrameBuffer.h"
 
 #include "MediaPlayer.h"
 #include "Scene.h"
@@ -55,9 +55,9 @@
 ////    ("file:///Users/Herbelin/Movies/mp2test.mpg");
 
 
-MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
+//MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
 MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
-ImageSurface testnode3("images/seed_512.jpg");
+//ImageSurface testnode3("images/seed_512.jpg");
 
 
 void drawMediaPlayer()
@@ -200,7 +200,8 @@ void drawScene()
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
     static ImGuiVisitor v;
-    Mixer::manager().currentView()->scene.accept(v);
+//    Mixer::manager().currentView()->scene.accept(v);
+    Mixer::manager().getView(View::RENDERING)->scene.accept(v);
     ImGui::End();
 }
 
@@ -255,56 +256,56 @@ int main(int, char**)
 //    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
 
     // init the scene
-    Mixer::manager().setCurrentView(Mixer::MIXING);
+    Mixer::manager().setCurrentView(View::MIXING);
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
     //testnode3.getShader()->blending = Shader::BLEND_OPACITY;
 
-    Mesh disk("mesh/disk.ply", "images/transparencygrid.png");
+    Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
+    Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
 
-    glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
-    LineCircle circle(pink, 5);
+//    Mesh disk("mesh/disk.ply", "images/transparencygrid.png");
+
+//    glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
+//    LineCircle circle(pink, 5);
 
 //    glm::vec4 color( 0.8f, 0.8f, 0.f, 1.f);
 //    LineSquare border(color, 5);
 //    Mesh shadow("mesh/shadow.ply", "mesh/shadow.png");
 //    Mesh meshicon("mesh/icon_video.ply");
 
-    Frame frame;
-    frame.scale_ = glm::vec3(1.7777778f, 1.f, 1.f);
+//    Frame frame;
+//    frame.scale_ = glm::vec3(1.7777778f, 1.f, 1.f);
 
-    Group g1;
-    g1.translation_ = glm::vec3(1.f, 1.f, 1.f);
-    g1.scale_ = glm::vec3(0.8f, 0.8f, 1.f);
+//    Group g1;
+//    g1.translation_ = glm::vec3(1.f, 1.f, 1.f);
+//    g1.scale_ = glm::vec3(0.8f, 0.8f, 1.f);
 
-    Group g2;
-    g2.translation_ = glm::vec3(-1.f, -1.f, 2.f);
+//    Group g2;
+//    g2.translation_ = glm::vec3(-1.f, -1.f, 2.f);
 
-    Animation A;
-    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
-    A.speed_ = 0.1f;
-    A.axis_ = glm::vec3(1.f, 1.f, 1.f);
+//    Animation A;
+//    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
+//    A.speed_ = 0.1f;
+//    A.axis_ = glm::vec3(1.f, 1.f, 1.f);
 
-//    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
-//    Points P(pts, pink);
-//    P.setPointSize(60);
-    Mesh P("mesh/point.ply");
-    P.scale_ = glm::vec3(0.15f);
+////    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
+////    Points P(pts, pink);
+////    P.setPointSize(60);
+//    Mesh P("mesh/point.ply");
+//    P.scale_ = glm::vec3(0.15f);
 
-    // build tree
-    Mixer::manager().currentView()->scene.root()->addChild(&disk);
-    Mixer::manager().currentView()->scene.root()->addChild(&circle);
 
-    g1.addChild(&testnode3);
-    Mixer::manager().currentView()->scene.root()->addChild(&g1);
+//    g1.addChild(&testnode3);
+//    Mixer::manager().currentView()->scene.root()->addChild(&g1);
 
-    g2.addChild(&testnode1);
-    g2.addChild(&frame);
-    Mixer::manager().currentView()->scene.root()->addChild(&g2);
+//    g2.addChild(&testnode1);
+//    g2.addChild(&frame);
+//    Mixer::manager().currentView()->scene.root()->addChild(&g2);
 
-    A.addChild(&P);
-    Mixer::manager().currentView()->scene.root()->addChild(&A);
+//    A.addChild(&P);
+//    Mixer::manager().currentView()->scene.root()->addChild(&A);
 
     // init output FBO
     Rendering::manager().PushBackDrawCallback(drawPreview);

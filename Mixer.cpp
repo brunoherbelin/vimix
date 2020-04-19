@@ -21,7 +21,7 @@ void Mixer::update()
     if (update_time_ == GST_CLOCK_TIME_NONE)
         update_time_ = gst_util_get_timestamp ();
     gint64 current_time = gst_util_get_timestamp ();
-    gint64 dt = current_time - update_time_;
+    float dt = static_cast<float>( GST_TIME_AS_MSECONDS(current_time - update_time_) ) * 0.001f;
     update_time_ = current_time;
 
     // render of all sources
@@ -29,8 +29,9 @@ void Mixer::update()
         (*it)->render();
     }
 
-    // recursive update of all views
-    mixing_.update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
+    // recursive update of ALL views
+    render_.update(dt);
+    mixing_.update(dt);
     // TODO other views
 
 
@@ -49,6 +50,15 @@ void Mixer::draw()
 // manangement of sources
 void Mixer::createSourceMedia(std::string uri)
 {
+    // create source
+    MediaSource *m = new MediaSource("s", uri);
+
+    // add Nodes to ALL views
+    //
+    // Render Node
+    render_.scene.root()->addChild(m->group(View::RENDERING));
+    // Mixing Node
+    mixing_.scene.root()->addChild(m->group(View::MIXING));
 
 }
 
@@ -72,10 +82,10 @@ Source *Mixer::currentSource()
 }
 
 // management of view
-void Mixer::setCurrentView(viewMode m)
+void Mixer::setCurrentView(View::Mode m)
 {
     switch (m) {
-    case MIXING:
+    case View::MIXING:
         current_view_ = &mixing_;
         break;
     default:
@@ -84,12 +94,12 @@ void Mixer::setCurrentView(viewMode m)
     }
 }
 
-View *Mixer::getView(viewMode m)
+View *Mixer::getView(View::Mode m)
 {
     switch (m) {
-    case RENDERING:
+    case View::RENDERING:
         return &render_;
-    case MIXING:
+    case View::MIXING:
         return &mixing_;
     default:
         return nullptr;

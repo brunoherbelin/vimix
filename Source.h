@@ -2,11 +2,16 @@
 #define SOURCE_H
 
 #include <string>
+#include <map>
 #include <list>
 
-#include "FrameBuffer.h"
-#include "ImageShader.h"
-#include "Primitives.h"
+#include "View.h"
+
+class ImageShader;
+class Surface;
+class FrameBuffer;
+class MediaPlayer;
+class MediaSurface;
 
 class Source;
 // TODO : source set sorted by shader
@@ -17,6 +22,7 @@ class Source
 {
 public:
     // create a source and add it to the list
+    // only subclasses of sources can actually be instanciated
     Source(std::string name);
     virtual ~Source();
 
@@ -24,13 +30,13 @@ public:
     inline std::string name () const { return name_; }
     std::string rename (std::string newname);
 
-    // void setCustomShader();
-    inline Shader *shader() const { return shader_; }
+    // get handle on the node used to manipulate the source in a view
+    inline Group *group(View::Mode m) { return groups_[m]; }
 
-    // for scene
-    inline FrameBufferSurface *surface() const { return surface_; }
+    // every Source have a shader to control visual effects
+    virtual Shader *shader() const = 0;
 
-    // only subclasses of sources can actually be instanciated
+    // every Source shall be rendered before draw
     virtual void render() = 0;
 
     // global management of list of sources
@@ -42,12 +48,8 @@ protected:
     // name
     std::string name_;
 
-    // a source draws in a frame buffer an input using a given shader
-    FrameBuffer *buffer_;
-    ImageShader *shader_;
-
-    // a surface is used to draw in the scenes
-    FrameBufferSurface *surface_;
+    // nodes
+    std::map<View::Mode, Group*> groups_;
 
     // static global list of sources
     static SourceList sources_;
@@ -67,5 +69,26 @@ private:
     std::string _n;
 
 };
+
+class MediaSource : public Source
+{
+public:
+    MediaSource(std::string name, std::string uri);
+    ~MediaSource();
+
+    void render();
+
+    // Source interface
+    Shader *shader() const;
+
+    // Media specific interface
+    std::string uri() const;
+    MediaPlayer *mediaplayer() const;
+
+protected:
+
+    MediaSurface *surface_;
+};
+
 
 #endif // SOURCE_H

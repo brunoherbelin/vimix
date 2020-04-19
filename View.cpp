@@ -23,6 +23,7 @@ void View::update(float dt)
 
 MixingView::MixingView() : View()
 {
+    // Mixing scene
     Mesh *disk = new Mesh("mesh/disk.ply", "images/transparencygrid.png");
     backgound_.addChild(disk);
 
@@ -30,26 +31,18 @@ MixingView::MixingView() : View()
     LineCircle *circle = new LineCircle(pink, 5);
     backgound_.addChild(circle);
 
-
     scene.root()->addChild(&backgound_);
-    scene.root()->addChild(&foreground_);
-
-    // make sure there is no depth fight
-//    foreground.translation_ = glm::vec3(0.f, 0.f, 0.1f);
 }
 
 MixingView::~MixingView()
 {
-    // delete background
-    for (NodeSet::iterator node = backgound_.begin(); node != backgound_.end(); node++) {
-        delete (*node);
-    }
+
 
 }
 
 void MixingView::draw()
 {
-    // draw in main view
+    // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 }
 
@@ -104,7 +97,7 @@ void RenderView::setResolution(uint width, uint height)
 void RenderView::draw()
 {
     static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 0.f);
-    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f, frame_buffer_->aspectRatio(), 1.f));
+    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
     frame_buffer_->begin();
     scene.root()->draw(glm::identity<glm::mat4>(), P);
     frame_buffer_->end();

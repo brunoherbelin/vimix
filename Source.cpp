@@ -3,14 +3,32 @@
 
 #include "Source.h"
 
+#include "FrameBuffer.h"
+#include "ImageShader.h"
+#include "Primitives.h"
+#include "Mesh.h"
+#include "MediaPlayer.h"
+
+
 // gobal static list of all sources
 SourceList Source::sources_;
 
-
-Source::Source(std::string name = "") : name_(""), buffer_(nullptr), shader_(nullptr), surface_(nullptr)
+Source::Source(std::string name = "") : name_("")
 {
     // set a name
     rename(name);
+
+    // create groups for each view
+
+    // default rendering node
+    groups_[View::RENDERING] = new Group;
+    groups_[View::RENDERING]->scale_ = glm::vec3(5.f, 5.f, 1.f); // fit height full window
+
+    // default mixing nodes
+    groups_[View::MIXING] = new Group;
+    Frame *frame = new Frame;
+    groups_[View::MIXING]->addChild(frame);
+    groups_[View::MIXING]->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
 
     // add source to the list
     sources_.push_back(this);
@@ -18,6 +36,12 @@ Source::Source(std::string name = "") : name_(""), buffer_(nullptr), shader_(nul
 
 Source::~Source()
 {
+    // delete groups and their children
+    delete groups_[View::RENDERING];
+    delete groups_[View::MIXING];
+    groups_.clear();
+
+    // remove this source from the list
     sources_.remove(this);
 }
 
@@ -46,7 +70,6 @@ std::string Source::rename (std::string newname)
     return name_;
 }
 
-
 SourceList::iterator Source::begin()
 {
     return sources_.begin();
@@ -60,4 +83,48 @@ SourceList::iterator Source::end()
 uint Source::numSource()
 {
     return sources_.size();
+}
+
+MediaSource::MediaSource(std::string name, std::string uri) : Source(name)
+{
+    surface_ = new MediaSurface(uri);
+
+    // add the surface to draw in the views
+    groups_[View::RENDERING]->addChild(surface_);
+    groups_[View::MIXING]->addChild(surface_);
+
+}
+
+MediaSource::~MediaSource()
+{
+    // TODO verify that surface_ node is deleted in Source destructor
+}
+
+Shader *MediaSource::shader() const
+{
+    return surface_->shader();
+}
+
+std::string MediaSource::uri() const
+{
+    return surface_->getUri();
+}
+
+MediaPlayer *MediaSource::mediaplayer() const
+{
+    return surface_->getMediaPlayer();
+}
+
+void MediaSource::render()
+{
+//    surface_->shader()
+
+    // scalle all mixing nodes to match scale of surface
+    for (NodeSet::iterator node = groups_[View::MIXING]->begin();
+         node != groups_[View::MIXING]->end(); node++) {
+        (*node)->scale_ = surface_->scale_;
+    }
+
+    // read position of the mixing node and interpret this as transparency change
+
 }

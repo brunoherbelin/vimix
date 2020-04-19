@@ -337,11 +337,8 @@ glm::mat4 Rendering::Projection()
 
 glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
 {
-    glm::vec3 coordinates = glm::vec3( screen_coordinate.x, -screen_coordinate.y, 0.f);
+    glm::vec3 coordinates = glm::vec3( screen_coordinate.x, main_window_attributes_.viewport.y - screen_coordinate.y, 0.f);
     glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
-
-//    glm::mat4 mv = glm::scale(modelview, glm::vec3(1.f, -1.f, 1.f));
-//    glm::mat4 mv = glm::inverse(modelview);
     glm::vec3 point = glm::unProject(coordinates, modelview, Projection(), viewport);
 
     return point;

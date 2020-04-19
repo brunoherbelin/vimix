@@ -7,10 +7,12 @@
 class Node;
 class Group;
 class Switch;
+class Animation;
 class Primitive;
 class Scene;
 class ImageSurface;
 class MediaSurface;
+class FrameBufferSurface;
 class LineStrip;
 class LineSquare;
 class LineCircle;
@@ -24,20 +26,23 @@ class Visitor {
 
 public:
     // Declare overloads for each kind of Node to visit
-    virtual void visit(Scene& n) = 0;
-    virtual void visit(Node& n) = 0;
-    virtual void visit(Group& n) = 0;
-    virtual void visit(Switch& n) = 0;
-    virtual void visit(Primitive& n) = 0;
-    virtual void visit(ImageSurface& n) = 0;
-    virtual void visit(MediaSurface& n) = 0;
-    virtual void visit(LineStrip& n) = 0;
-    virtual void visit(LineSquare& n) = 0;
-    virtual void visit(LineCircle& n) = 0;
-    virtual void visit(Mesh& n) = 0;
-    virtual void visit(MediaPlayer& n) = 0;
-    virtual void visit(Shader& n) = 0;
-    virtual void visit(ImageShader& n) = 0;
+    virtual void visit (Scene&) = 0;
+    virtual void visit (Node&) = 0;
+    virtual void visit (Group&) = 0;
+    virtual void visit (Switch&) = 0;
+    virtual void visit (Animation&) = 0;
+    virtual void visit (Primitive&) = 0;
+    virtual void visit (ImageSurface&) = 0;
+    virtual void visit (MediaSurface&) = 0;
+    virtual void visit (FrameBufferSurface&) = 0;
+    virtual void visit (LineStrip&) = 0;
+    virtual void visit (LineSquare&) = 0;
+    virtual void visit (LineCircle&) = 0;
+    virtual void visit (Mesh&) = 0;
+
+    virtual void visit (MediaPlayer&) = 0;
+    virtual void visit (Shader&) = 0;
+    virtual void visit (ImageShader&) = 0;
 
 };
 
