@@ -14,7 +14,7 @@
 using namespace tinyxml2;
 
 
-SessionVisitor::SessionVisitor()
+SessionVisitor::SessionVisitor() : Visitor()
 {    
     xmlDoc_ = new XMLDocument;
 
@@ -58,11 +58,19 @@ void SessionVisitor::visit(Switch &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Switch");
     xmlCurrent_->SetAttribute("active", n.getIndexActiveChild());
+
+    // loop over members of the group
+    XMLElement *group = xmlCurrent_;
+    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+        (*node)->accept(*this);
+        // revert to group as current
+        xmlCurrent_ = group;
+    }
 }
 
 void SessionVisitor::visit(Animation &n)
 {
-    // Node of a different type
+    // Group of a different type
     xmlCurrent_->SetAttribute("type", "Animation");
 
     XMLElement *anim = xmlDoc_->NewElement("Movement");

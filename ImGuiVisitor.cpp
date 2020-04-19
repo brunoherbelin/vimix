@@ -70,11 +70,13 @@ void ImGuiVisitor::visit(Group &n)
 void ImGuiVisitor::visit(Switch &n)
 {
     // TODO : display selection of active child
+    (*n.activeChild())->accept(*this);
 }
 
 void ImGuiVisitor::visit(Animation &n)
 {
     // TODO : display group and animation parameters
+
 }
 
 void ImGuiVisitor::visit(Primitive &n)

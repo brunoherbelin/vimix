@@ -29,6 +29,7 @@
 
 // mixing
 #include "Mixer.h"
+#include "Source.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 #include "FrameBuffer.h"
@@ -55,20 +56,22 @@
 ////    ("file:///Users/Herbelin/Movies/mp2test.mpg");
 
 
-//MediaSurface testnode1("file:///home/bhbn/Videos/iss.mov");
-MediaSurface testnode2("file:///home/bhbn/Videos/fish.mp4");
-//ImageSurface testnode3("images/seed_512.jpg");
-
 
 void drawMediaPlayer()
 {
     static GstClockTime begin = GST_CLOCK_TIME_NONE;
     static GstClockTime end = GST_CLOCK_TIME_NONE;
 
-    if ( !testnode2.getMediaPlayer() || !testnode2.getMediaPlayer()->isOpen() )
+    if ( !Mixer::manager().currentSource())
         return;
 
-    MediaPlayer *mp = testnode2.getMediaPlayer();
+    MediaSource *s = static_cast<MediaSource *>(Mixer::manager().currentSource());
+    if ( !s )
+        return;
+
+    MediaPlayer *mp = s->mediaplayer();
+    if ( !mp || !mp->isOpen() )
+        return;
 
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
@@ -172,27 +175,6 @@ void drawMediaPlayer()
 
 void drawScene()
 {
-//    // compute dt
-//    static gint64 last_time = gst_util_get_timestamp ();
-//    gint64 current_time = gst_util_get_timestamp ();
-//    gint64 dt = current_time - last_time;
-//    last_time = current_time;
-
-//    // recursive update from root of scene
-//    scene.root()->update( static_cast<float>( GST_TIME_AS_MSECONDS(dt)) * 0.001f );
-
-//    // draw in output frame buffer
-//    glm::mat4 MV = glm::identity<glm::mat4>();
-
-//    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 0.f);
-//    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f, output->aspectRatio(), 1.f));
-//    output->begin();
-//    scene.root()->draw(MV, P);
-//    output->end();
-
-//    // draw in main view
-//    scene.root()->draw(MV, Rendering::manager().Projection());
-
     Mixer::manager().update();
 
     Mixer::manager().draw();
@@ -265,53 +247,21 @@ int main(int, char**)
     Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
     Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
 
-//    Mesh disk("mesh/disk.ply", "images/transparencygrid.png");
-
-//    glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
-//    LineCircle circle(pink, 5);
-
-//    glm::vec4 color( 0.8f, 0.8f, 0.f, 1.f);
-//    LineSquare border(color, 5);
-//    Mesh shadow("mesh/shadow.ply", "mesh/shadow.png");
-//    Mesh meshicon("mesh/icon_video.ply");
-
-//    Frame frame;
-//    frame.scale_ = glm::vec3(1.7777778f, 1.f, 1.f);
-
-//    Group g1;
-//    g1.translation_ = glm::vec3(1.f, 1.f, 1.f);
-//    g1.scale_ = glm::vec3(0.8f, 0.8f, 1.f);
-
-//    Group g2;
-//    g2.translation_ = glm::vec3(-1.f, -1.f, 2.f);
 
 //    Animation A;
 //    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
 //    A.speed_ = 0.1f;
 //    A.axis_ = glm::vec3(1.f, 1.f, 1.f);
-
-////    std::vector<glm::vec3> pts = std::vector<glm::vec3> { glm::vec3( 0.f, 0.f, 0.f ) };
-////    Points P(pts, pink);
-////    P.setPointSize(60);
 //    Mesh P("mesh/point.ply");
 //    P.scale_ = glm::vec3(0.15f);
-
-
-//    g1.addChild(&testnode3);
-//    Mixer::manager().currentView()->scene.root()->addChild(&g1);
-
-//    g2.addChild(&testnode1);
-//    g2.addChild(&frame);
-//    Mixer::manager().currentView()->scene.root()->addChild(&g2);
-
 //    A.addChild(&P);
 //    Mixer::manager().currentView()->scene.root()->addChild(&A);
 
-    // init output FBO
+    // preview window
     Rendering::manager().PushBackDrawCallback(drawPreview);
 
     // add media player
-//    Rendering::manager().PushBackDrawCallback(drawMediaPlayer);
+    Rendering::manager().PushBackDrawCallback(drawMediaPlayer);
 
     ///
     /// Main LOOP

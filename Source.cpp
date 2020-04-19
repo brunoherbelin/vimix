@@ -27,11 +27,12 @@ Source::Source(std::string name = "") : name_("")
     // default mixing nodes
     groups_[View::MIXING] = new Group;
     Frame *frame = new Frame;
+    frame->translation_.z = 0.1;
     groups_[View::MIXING]->addChild(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
 
     // add source to the list
-    sources_.push_back(this);
+    sources_.push_front(this);
 }
 
 Source::~Source()

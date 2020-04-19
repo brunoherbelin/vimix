@@ -60,6 +60,8 @@ void Mixer::createSourceMedia(std::string uri)
     // Mixing Node
     mixing_.scene.root()->addChild(m->group(View::MIXING));
 
+    // set source as current
+    current_source_ = Source::begin();
 }
 
 void Mixer::setCurrentSource(std::string namesource)

@@ -217,6 +217,7 @@ set(VMIX_SRCS
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
+    PickingVisitor.cpp
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
     GstToolkit.cpp

@@ -272,7 +272,7 @@ void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
 
 void Switch::accept(Visitor& v)
 {
-    Group::accept(v);
+    Node::accept(v);
     v.visit(*this);
 }
 
