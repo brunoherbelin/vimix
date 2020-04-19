@@ -104,7 +104,7 @@ void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 
 void ImageSurface::accept(Visitor& v)
 {
-    Primitive::accept(v);
+    Surface::accept(v);
     v.visit(*this);
 }
 
@@ -154,7 +154,7 @@ void MediaSurface::update( float dt )
 
 void MediaSurface::accept(Visitor& v)
 {
-    Primitive::accept(v);
+    Surface::accept(v);
     v.visit(*this);
 }
 
@@ -189,7 +189,7 @@ void FrameBufferSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 
 void FrameBufferSurface::accept(Visitor& v)
 {
-    Primitive::accept(v);
+    Surface::accept(v);
     v.visit(*this);
 }
 

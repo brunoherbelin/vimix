@@ -98,6 +98,11 @@ void SessionVisitor::visit(Primitive &n)
 }
 
 
+void SessionVisitor::visit(Surface &n)
+{
+
+}
+
 void SessionVisitor::visit(ImageSurface &n)
 {
     // Node of a different type

@@ -10,6 +10,7 @@ class Switch;
 class Animation;
 class Primitive;
 class Scene;
+class Surface;
 class ImageSurface;
 class MediaSurface;
 class FrameBufferSurface;
@@ -32,6 +33,7 @@ public:
     virtual void visit (Switch&) = 0;
     virtual void visit (Animation&) = 0;
     virtual void visit (Primitive&) = 0;
+    virtual void visit (Surface&) = 0;
     virtual void visit (ImageSurface&) = 0;
     virtual void visit (MediaSurface&) = 0;
     virtual void visit (FrameBufferSurface&) = 0;

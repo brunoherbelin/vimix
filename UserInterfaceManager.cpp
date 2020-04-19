@@ -40,6 +40,7 @@
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
+#include "PickingVisitor.h"
 
 static std::thread loadThread;
 static bool loadThreadDone = false;
@@ -195,31 +196,54 @@ void UserInterface::handleMouse()
             ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
 
         //
-        // RIGHT Mouse button
+        // LEFT Mouse button
         //
+        static Node *current = nullptr;
+
         if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
-            Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+//            Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
 
             glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y),
                                                              Mixer::manager().currentView()->scene.root()->transform_ );
 
             Log::Info("            (%.1f,%.1f)", point.x, point.y);
+            PickingVisitor pv(point);
+            Mixer::manager().currentView()->scene.accept(pv);
+
+            if (pv.picked().empty())
+                current = nullptr;
+            else {
+                current = pv.picked().back();
+            }
+
+
+//            Log::Info(" %d picked", pv.picked().size());
 
         }
 
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 10.0f) )
         {
-            Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
-            ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[0], io.MousePos,
-                    ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
-            ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[0], io.MousePos,
-                    ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+            if (current)
+            {
+//                // drag current
+//                Log::Info("Dragging %d", current->id());
+//                current->translation_.x += io.MouseDelta.x * 0.1f;
+
+            }
+            else {
+
+                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
+                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[0], io.MousePos,
+                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[0], io.MousePos,
+                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+            }
         }
 
         if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
-
+            current = nullptr;
         }
 
     }

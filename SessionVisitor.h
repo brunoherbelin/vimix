@@ -22,6 +22,7 @@ public:
     void visit(Switch& n);
     void visit(Animation& n);
     void visit(Primitive& n);
+    void visit(Surface& n);
     void visit(ImageSurface& n);
     void visit(MediaSurface& n);
     void visit(FrameBufferSurface& n);
