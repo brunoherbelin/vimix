@@ -182,8 +182,8 @@ void drawScene()
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
     static ImGuiVisitor v;
-//    Mixer::manager().currentView()->scene.accept(v);
-    Mixer::manager().getView(View::RENDERING)->scene.accept(v);
+    Mixer::manager().currentView()->scene.accept(v);
+//    Mixer::manager().getView(View::RENDERING)->scene.accept(v);
     ImGui::End();
 }
 

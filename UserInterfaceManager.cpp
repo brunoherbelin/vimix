@@ -207,7 +207,7 @@ void UserInterface::handleMouse()
             glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y),
                                                              Mixer::manager().currentView()->scene.root()->transform_ );
 
-            Log::Info("            (%.1f,%.1f)", point.x, point.y);
+//            Log::Info("            (%.1f,%.1f)", point.x, point.y);
             PickingVisitor pv(point);
             Mixer::manager().currentView()->scene.accept(pv);
 
@@ -217,8 +217,7 @@ void UserInterface::handleMouse()
                 current = pv.picked().back();
             }
 
-
-//            Log::Info(" %d picked", pv.picked().size());
+            Log::Info(" %d picked", pv.picked().size());
 
         }
 
@@ -233,7 +232,8 @@ void UserInterface::handleMouse()
             }
             else {
 
-                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
+//                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
+                // Selection area
                 ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[0], io.MousePos,
                         ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
                 ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[0], io.MousePos,

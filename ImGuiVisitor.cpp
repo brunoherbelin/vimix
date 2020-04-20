@@ -26,7 +26,7 @@ void ImGuiVisitor::visit(Node &n)
 void ImGuiVisitor::visit(Group &n)
 {
     std::string id = std::to_string(n.id());
-    if (ImGui::TreeNode(id.c_str(), "Group"))
+    if (ImGui::TreeNode(id.c_str(), "Group %d", n.id()))
     {
         // MODEL VIEW
         if (ImGuiToolkit::ButtonIcon(6, 15)) {
@@ -82,7 +82,7 @@ void ImGuiVisitor::visit(Animation &n)
 void ImGuiVisitor::visit(Primitive &n)
 {
     ImGui::PushID(n.id());
-    ImGui::Text("Primitive");
+    ImGui::Text("Primitive %d", n.id());
 
     n.shader()->accept(*this);
 

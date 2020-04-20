@@ -24,14 +24,12 @@ void PickingVisitor::visit(Node &n)
 
 void PickingVisitor::visit(Group &n)
 {
-//    Log::Info("Group %d", n.id());
     glm::mat4 mv = modelview_;
 
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
         (*node)->accept(*this);
         modelview_ = mv;
     }
-
 }
 
 void PickingVisitor::visit(Switch &n)
@@ -53,29 +51,42 @@ void PickingVisitor::visit(Primitive &n)
 
 void PickingVisitor::visit(Surface &n)
 {
-    // test if point is inside rectangle
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
     // lower left corner
-    glm::vec4 LL = modelview_ * glm::vec4( -1.f, -1.f, 0.f, 0.f );
+    glm::vec3 LL = glm::vec3( -1.f, -1.f, 0.f );
     // up right corner
-    glm::vec4 UR = modelview_ * glm::vec4( 1.f, 1.f, 0.f, 0.f );
+    glm::vec3 UR = glm::vec3( 1.f, 1.f, 0.f );
 
-//    Log::Info("Surface %d", n.id());
-//    Log::Info("LL %s", glm::to_string(LL).c_str());
-//    Log::Info("UR %s", glm::to_string(UR).c_str());
-
-    if ( point_.x > LL.x && point_.x < UR.x && point_.y > LL.y && point_.y < UR.y )
+    // if P is inside [LL UR] rectangle:
+    if ( P.x > LL.x && P.x < UR.x && P.y > LL.y && P.y < UR.y )
+        // add this surface to the nodes picked
         nodes_.push_back(&n);
 }
 
 void PickingVisitor::visit(LineSquare &)
 {
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
+    // lower left corner
+    glm::vec3 LL = glm::vec3( -1.f, -1.f, 0.f );
+    // up right corner
+    glm::vec3 UR = glm::vec3( 1.f, 1.f, 0.f );
+
+    // if P is over a line [LL UR] rectangle:
+    // TODO
 }
 
 void PickingVisitor::visit(LineCircle &n)
 {
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
+    float r = glm::length( glm::vec2(P) );
+    if ( r < 1.02 && r > 0.98)
+        nodes_.push_back(&n);
 }
 
 void PickingVisitor::visit(Scene &n)
