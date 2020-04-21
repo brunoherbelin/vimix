@@ -228,6 +228,8 @@ void UserInterface::handleMouse()
 //                // drag current
 //                Log::Info("Dragging %d", current->id());
 //                current->translation_.x += io.MouseDelta.x * 0.1f;
+Mixer::manager().currentView()->grab( glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x, io.MouseClickedPos[ImGuiMouseButton_Left].y), glm::vec2(io.MousePos.x, io.MousePos.y), current);
+
 
             }
             else {

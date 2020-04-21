@@ -74,6 +74,27 @@ void MixingView::drag (glm::vec2 from, glm::vec2 to)
 
 }
 
+
+void MixingView::grab (glm::vec2 from, glm::vec2 to, Node *node)
+{
+    static glm::vec3 start_translation = glm::vec3(0.f);
+    static glm::vec2 start_position = glm::vec2(0.f);
+
+    if ( start_position != from ) {
+        start_position = from;
+        start_translation = node->translation_;
+    }
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, node->transform_);
+    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, node->transform_);
+
+    // compute delta translation
+    node->translation_ = start_translation + gl_Position_to - gl_Position_from;
+
+
+}
+
 RenderView::RenderView() : View(), frame_buffer_(nullptr)
 {
     setResolution(1280, 720);
