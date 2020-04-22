@@ -5,6 +5,7 @@
 
 #include "defines.h"
 #include "View.h"
+#include "Source.h"
 #include "Primitives.h"
 #include "Mesh.h"
 #include "FrameBuffer.h"
@@ -75,23 +76,31 @@ void MixingView::drag (glm::vec2 from, glm::vec2 to)
 }
 
 
-void MixingView::grab (glm::vec2 from, glm::vec2 to, Node *node)
+void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s)
 {
+    if (!s)
+        return;
+
+    Group *sourceNode = s->group(View::MIXING);
+
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
 
     if ( start_position != from ) {
         start_position = from;
-        start_translation = node->translation_;
+        start_translation = sourceNode->translation_;
     }
 
     // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, node->transform_);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, node->transform_);
+//    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->transform_);
+//    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->transform_);
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->parent_->transform_);
+    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->parent_->transform_);
 
     // compute delta translation
-    node->translation_ = start_translation + gl_Position_to - gl_Position_from;
+ //   node->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
+    sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
 }
 

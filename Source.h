@@ -31,7 +31,7 @@ public:
     std::string rename (std::string newname);
 
     // get handle on the node used to manipulate the source in a view
-    inline Group *group(View::Mode m) { return groups_[m]; }
+    inline Group *group(View::Mode m) const { return groups_.at(m); }
 
     // every Source have a shader to control visual effects
     virtual Shader *shader() const = 0;
@@ -42,6 +42,9 @@ public:
     // global management of list of sources
     static SourceList::iterator begin();
     static SourceList::iterator end();
+    static SourceList::iterator find(Source *s);
+    static SourceList::iterator find(std::string name);
+    static SourceList::iterator find(Node *node);
     static uint numSource();
 
 protected:
@@ -58,16 +61,22 @@ protected:
 
 struct hasName: public std::unary_function<Source*, bool>
 {
-    inline bool operator()(const Source* elem) const
-    {
+    inline bool operator()(const Source* elem) const {
        return (elem && elem->name() == _n);
     }
-
     hasName(std::string n) : _n(n) { }
 
 private:
     std::string _n;
+};
 
+struct hasNode: public std::unary_function<Source*, bool>
+{
+    bool operator()(const Source* elem) const;
+    hasNode(Node *n) : _n(n) { }
+
+private:
+    Node *_n;
 };
 
 class MediaSource : public Source

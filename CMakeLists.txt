@@ -218,6 +218,7 @@ set(VMIX_SRCS
     RenderingManager.cpp
     UserInterfaceManager.cpp
     PickingVisitor.cpp
+    SearchVisitor.cpp
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
     GstToolkit.cpp

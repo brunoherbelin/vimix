@@ -5,6 +5,7 @@
 
 #include "Scene.h"
 class FrameBuffer;
+class Source;
 
 class View
 {
@@ -17,7 +18,7 @@ public:
     virtual void draw () = 0;
     virtual void zoom (float) {}
     virtual void drag (glm::vec2, glm::vec2) {}
-    virtual void grab (glm::vec2, glm::vec2, Node*) {}
+    virtual void grab (glm::vec2, glm::vec2, Source*) {}
 
     Scene scene;
 
@@ -35,7 +36,7 @@ public:
     void draw () override;
     void zoom (float factor);
     void drag (glm::vec2 from, glm::vec2 to);
-    void grab (glm::vec2 from, glm::vec2 to, Node *node);
+    void grab (glm::vec2 from, glm::vec2 to, Source *s);
 
 };
 

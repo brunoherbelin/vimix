@@ -8,6 +8,7 @@
 #include "Primitives.h"
 #include "Mesh.h"
 #include "MediaPlayer.h"
+#include "SearchVisitor.h"
 
 
 // gobal static list of all sources
@@ -46,6 +47,21 @@ Source::~Source()
     sources_.remove(this);
 }
 
+bool hasNode::operator()(const Source* elem) const
+{
+    if (elem)
+    {
+        SearchVisitor sv(_n);
+        elem->group(View::MIXING)->accept(sv);
+        if (sv.found())
+            return true;
+        elem->group(View::RENDERING)->accept(sv);
+        return sv.found();
+    }
+
+    return false;
+}
+
 std::string Source::rename (std::string newname)
 {
     // tentative new name
@@ -79,6 +95,21 @@ SourceList::iterator Source::begin()
 SourceList::iterator Source::end()
 {
     return sources_.end();
+}
+
+SourceList::iterator Source::find(Source *s)
+{
+    return std::find(sources_.begin(), sources_.end(), s);
+}
+
+SourceList::iterator Source::find(std::string namesource)
+{
+    return std::find_if(Source::begin(), Source::end(), hasName(namesource));
+}
+
+SourceList::iterator Source::find(Node *node)
+{
+    return std::find_if(Source::begin(), Source::end(), hasNode(node));
 }
 
 uint Source::numSource()
@@ -127,5 +158,7 @@ void MediaSource::render()
     }
 
     // read position of the mixing node and interpret this as transparency change
+    float alpha = 1.0 - ABS( groups_[View::MIXING]->translation_.x );
+    surface_->shader()->color.a = alpha;
 
 }

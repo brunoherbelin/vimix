@@ -17,7 +17,9 @@ PickingVisitor::PickingVisitor(glm::vec2 coordinates) : Visitor(), point_(coordi
 
 void PickingVisitor::visit(Node &n)
 {
-    modelview_ *= n.transform_;
+
+      modelview_ *= n.transform_;
+//      modelview_ = modelview_ * transform(n.translation_, n.rotation_, n.scale_);
 //    Log::Info("Node %d", n.id());
 //    Log::Info("%s", glm::to_string(modelview_).c_str());
 }
@@ -25,7 +27,7 @@ void PickingVisitor::visit(Node &n)
 void PickingVisitor::visit(Group &n)
 {
     glm::mat4 mv = modelview_;
-
+//Log::Info("Group %d", n.id());
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
         (*node)->accept(*this);
         modelview_ = mv;
@@ -51,6 +53,7 @@ void PickingVisitor::visit(Primitive &n)
 
 void PickingVisitor::visit(Surface &n)
 {
+//    Log::Info("Surface %d", n.id());
     // apply inverse transform to the point of interest
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 

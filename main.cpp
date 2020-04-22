@@ -59,23 +59,30 @@
 
 void drawMediaPlayer()
 {
+    static bool opened = true;
     static GstClockTime begin = GST_CLOCK_TIME_NONE;
     static GstClockTime end = GST_CLOCK_TIME_NONE;
 
-    if ( !Mixer::manager().currentSource())
-        return;
-
-    MediaSource *s = static_cast<MediaSource *>(Mixer::manager().currentSource());
-    if ( !s )
-        return;
-
-    MediaPlayer *mp = s->mediaplayer();
-    if ( !mp || !mp->isOpen() )
-        return;
+    bool show = false;
+    MediaPlayer *mp = nullptr;
+    if ( Mixer::manager().currentSource()) {
+        MediaSource *s = static_cast<MediaSource *>(Mixer::manager().currentSource());
+        if (s) {
+            mp = s->mediaplayer();
+            if (mp && mp->isOpen())
+                show = true;
+        }
+    }
 
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
-    ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER);
+
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &opened) || !show)
+    {
+        ImGui::End();
+        return;
+    }
+
     float width = ImGui::GetContentRegionAvail().x;
     float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 

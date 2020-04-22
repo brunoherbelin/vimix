@@ -64,14 +64,24 @@ void Mixer::createSourceMedia(std::string uri)
     current_source_ = Source::begin();
 }
 
-void Mixer::setCurrentSource(std::string namesource)
+void Mixer::setCurrentSource(Node *node)
 {
-    current_source_ = std::find_if(Source::begin(), Source::end(), hasName(namesource)) ;
+    current_source_ = Source::find(node);
 }
 
-void Mixer::setcurrentSource(Source *s)
+void Mixer::setCurrentSource(std::string namesource)
 {
-//    current_source_ = Source::
+    current_source_ = Source::find(namesource);
+}
+
+void Mixer::setCurrentSource(Source *s)
+{
+    current_source_ = Source::find(s);
+}
+
+void Mixer::unsetCurrentSource()
+{
+    current_source_ = Source::end();
 }
 
 Source *Mixer::currentSource()

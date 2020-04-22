@@ -36,7 +36,10 @@ public:
     void createSourceMedia(std::string uri);
 
     void setCurrentSource(std::string namesource);
-    void setcurrentSource(Source *s);
+    void setCurrentSource(Node *node);
+    void setCurrentSource(Source *s);
+    void unsetCurrentSource();
+
     Source *currentSource();
 
     // management of view
