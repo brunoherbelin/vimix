@@ -14,7 +14,7 @@
 // gobal static list of all sources
 SourceList Source::sources_;
 
-Source::Source(std::string name = "") : name_("")
+Source::Source(std::string name) : name_("")
 {
     // set a name
     rename(name);

@@ -23,7 +23,7 @@ class Source
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source(std::string name);
+    Source(std::string name = "");
     virtual ~Source();
 
     // manipulate name of source

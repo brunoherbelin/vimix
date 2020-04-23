@@ -34,9 +34,9 @@ public:
     ~MixingView();
 
     void draw () override;
-    void zoom (float factor);
-    void drag (glm::vec2 from, glm::vec2 to);
-    void grab (glm::vec2 from, glm::vec2 to, Source *s);
+    void zoom (float factor) override;
+    void drag (glm::vec2 from, glm::vec2 to) override;
+    void grab (glm::vec2 from, glm::vec2 to, Source *s) override;
 
 };
 

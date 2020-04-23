@@ -49,14 +49,14 @@
 // local statics
 static GstGLContext *global_gl_context = NULL;
 static GstGLDisplay *global_display = NULL;
-static guintptr global_window_handle = 0;
+//static guintptr global_window_handle = 0;
 
 static void glfw_error_callback(int error, const char* description)
 {
     Log::Error("Glfw Error %d: %s",  error, description);
 }
 
-static void WindowRefreshCallback( GLFWwindow* window )
+static void WindowRefreshCallback( GLFWwindow* )
 {
     Rendering::manager().Draw();
 }
@@ -127,6 +127,8 @@ bool Rendering::Init()
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
     glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
     main_window_attributes_.clear_color = glm::vec3(COLOR_BGROUND);
+
+    Log::Info("viewport %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
 
     // Gstreamer link to context
     g_setenv ("GST_GL_API", "opengl3", FALSE);
@@ -339,6 +341,9 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
 {
     glm::vec3 coordinates = glm::vec3( screen_coordinate.x, main_window_attributes_.viewport.y - screen_coordinate.y, 0.f);
     glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+
+    Log::Info("unproject %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+
     glm::vec3 point = glm::unProject(coordinates, modelview, Projection(), viewport);
 
     return point;

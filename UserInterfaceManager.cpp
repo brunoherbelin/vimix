@@ -158,7 +158,11 @@ void UserInterface::handleKeyboard()
 void UserInterface::handleMouse()
 {
 
-    ImGuiIO& io = ImGui::GetIO(); 
+    ImGuiIO& io = ImGui::GetIO();
+    glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.y, io.MousePos.y* io.DisplayFramebufferScale.x);
+    static glm::vec2 mouseclic[2];
+    mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
+    mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
 
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
@@ -178,7 +182,7 @@ void UserInterface::handleMouse()
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
             // right mouse drag => drag current view
-            Mixer::manager().currentView()->drag( glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x, io.MouseClickedPos[ImGuiMouseButton_Right].y), glm::vec2(io.MousePos.x, io.MousePos.y));
+            Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
 
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
         }
@@ -188,12 +192,8 @@ void UserInterface::handleMouse()
             if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
 
                 // TODO CONTEXT MENU
-                //            Log::Info("Right Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
 
-                glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y),
-                                                                 Mixer::manager().currentView()->scene.root()->transform_ );
-
-                Log::Info("                  (%.1f,%.1f)", point.x, point.y);
+//                glm::vec3 point = Rendering::manager().unProject(mousepos, Mixer::manager().currentView()->scene.root()->transform_ );
 
 
             }
@@ -208,7 +208,7 @@ void UserInterface::handleMouse()
             if (current)
             {
                 // drag current source
-                Mixer::manager().currentView()->grab( glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x, io.MouseClickedPos[ImGuiMouseButton_Left].y), glm::vec2(io.MousePos.x, io.MousePos.y), current);
+                Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current);
 
             }
             else {
@@ -224,7 +224,7 @@ void UserInterface::handleMouse()
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
             // get coordinate in world view of mouse cursor
-            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y));
+            glm::vec3 point = Rendering::manager().unProject(mousepos);
 
             // picking visitor traverses the scene
             PickingVisitor pv(point);
@@ -239,18 +239,7 @@ void UserInterface::handleMouse()
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
-            //            Log::Info("Mouse press (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
-//            glm::vec3 point = Rendering::manager().unProject(glm::vec2(io.MousePos.x, io.MousePos.y));
-//            //            Log::Info("            (%.1f,%.1f)", point.x, point.y);
-//            PickingVisitor pv(point);
-//            Mixer::manager().currentView()->scene.accept(pv);
 
-//            if (pv.picked().empty())
-//                Mixer::manager().unsetCurrentSource();
-//            else
-//                Mixer::manager().setCurrentSource(pv.picked().back());
-
-//            //            Log::Info(" %d picked", pv.picked().size());
 
         }
 
