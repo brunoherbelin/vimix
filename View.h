@@ -38,6 +38,8 @@ public:
     void drag (glm::vec2 from, glm::vec2 to) override;
     void grab (glm::vec2 from, glm::vec2 to, Source *s) override;
 
+private:
+    uint textureMixingQuadratic();
 };
 
 class RenderView : public View
@@ -52,6 +54,7 @@ public:
 
     void setResolution (uint width, uint height);
     inline FrameBuffer *frameBuffer () const { return frame_buffer_; }
+
 
 };
 #endif // VIEW_H

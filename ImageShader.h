@@ -16,6 +16,7 @@ public:
 
     float brightness;
     float contrast;
+    float stipple;
 };
 
 #endif // IMAGESHADER_H

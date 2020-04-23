@@ -125,6 +125,8 @@ void MediaSurface::init()
 
     mediaplayer_->open(uri_);
     mediaplayer_->play(true);
+
+
 }
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)

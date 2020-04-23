@@ -332,20 +332,31 @@ Mesh::Mesh(const std::string& ply_path, const std::string& tex_path) : Primitive
         Log::Warning("Mesh could not be created from %s", ply_path.c_str());
     }
 
-    // selective creation of the shader (deleted in Primitive)
-    if (texture_resource_.empty())
-        shader_ = new Shader;
-    else
-        shader_ = new ImageShader;
+    // default non texture shader (deleted in Primitive)
+    shader_ = new Shader;
 }
 
+
+void Mesh::setTexture(uint textureindex)
+{
+    if (textureindex) {
+
+        // replace previous shader with a new Image Shader
+        if (shader_)
+            delete shader_;
+        shader_ = new ImageShader;
+
+        textureindex_ = textureindex;
+    }
+
+}
 
 void Mesh::init()
 {
     Primitive::init();
 
     if (!texture_resource_.empty())
-        textureindex_ = Resource::getTextureImage(texture_resource_);
+        setTexture(Resource::getTextureImage(texture_resource_));
 
 }
 

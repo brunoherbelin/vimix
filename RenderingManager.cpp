@@ -49,7 +49,6 @@
 // local statics
 static GstGLContext *global_gl_context = NULL;
 static GstGLDisplay *global_display = NULL;
-//static guintptr global_window_handle = 0;
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -166,8 +165,6 @@ bool Rendering::Init()
     global_gl_context = gst_gl_context_new_wrapped (global_display,
                                         (guintptr) glfwGetGLXContext(main_window_),
                                         GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
-
-    global_window_handle =  (guintptr) glfwGetX11Window(main_window_);
 
 #endif
 

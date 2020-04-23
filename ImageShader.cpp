@@ -16,6 +16,7 @@ void ImageShader::use()
 
     program_->setUniform("brightness", brightness);
     program_->setUniform("contrast", contrast);
+    program_->setUniform("stipple", stipple);
 }
 
 
@@ -25,6 +26,7 @@ void ImageShader::reset()
 
     brightness = 0.f;
     contrast = 0.f;
+    stipple = 0.f;
 }
 
 void ImageShader::accept(Visitor& v) {

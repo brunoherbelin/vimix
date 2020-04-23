@@ -3,6 +3,7 @@
 
 #include "Source.h"
 
+#include "defines.h"
 #include "FrameBuffer.h"
 #include "ImageShader.h"
 #include "Primitives.h"
@@ -14,7 +15,7 @@
 // gobal static list of all sources
 SourceList Source::sources_;
 
-Source::Source(std::string name) : name_("")
+Source::Source(std::string name) : name_(""), initialized_(false)
 {
     // set a name
     rename(name);
@@ -30,7 +31,7 @@ Source::Source(std::string name) : name_("")
     Frame *frame = new Frame;
     frame->translation_.z = 0.1;
     groups_[View::MIXING]->addChild(frame);
-    groups_[View::MIXING]->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    groups_[View::MIXING]->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
 
     // add source to the list
     sources_.push_front(this);
@@ -147,8 +148,19 @@ MediaPlayer *MediaSource::mediaplayer() const
     return surface_->getMediaPlayer();
 }
 
+void MediaSource::init()
+{
+    ImageShader *is = static_cast<ImageShader *>(surface_->shader());
+    if (is)
+        is->stipple = 1.0;
+
+    initialized_ = true;
+}
+
 void MediaSource::render()
 {
+    if (!initialized_)
+        init();
 //    surface_->shader()
 
     // scalle all mixing nodes to match scale of surface
@@ -158,7 +170,9 @@ void MediaSource::render()
     }
 
     // read position of the mixing node and interpret this as transparency change
-    float alpha = 1.0 - ABS( groups_[View::MIXING]->translation_.x );
+    float alpha = 1.0 - SQUARE( glm::length(groups_[View::MIXING]->translation_) );
     surface_->shader()->color.a = alpha;
+
+
 
 }

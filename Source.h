@@ -51,6 +51,10 @@ protected:
     // name
     std::string name_;
 
+    // every Source shall be initialized on first draw
+    bool initialized_;
+    virtual void init() = 0;
+
     // nodes
     std::map<View::Mode, Group*> groups_;
 
@@ -95,6 +99,8 @@ public:
     MediaPlayer *mediaplayer() const;
 
 protected:
+
+    virtual void init();
 
     MediaSurface *surface_;
 };
