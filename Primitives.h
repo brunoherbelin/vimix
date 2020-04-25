@@ -25,7 +25,14 @@ public:
     Surface(Shader *s = new ImageShader);
 
     void init () override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
+
+    inline void setTextureIndex(uint t) { textureindex_ = t; }
+    inline uint textureIndex() const { return textureindex_; }
+
+protected:
+    uint textureindex_;
 };
 
 
@@ -43,14 +50,12 @@ public:
     ImageSurface(const std::string& path, Shader *s = new ImageShader);
 
     void init () override;
-    void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    inline std::string getResource() const { return resource_; }
+    inline std::string resource() const { return resource_; }
 
 protected:
     std::string resource_;
-    uint textureindex_;
 };
 
 
@@ -71,8 +76,8 @@ public:
     void accept (Visitor& v) override;
     void update (float dt) override;
 
-    inline std::string getUri() const { return uri_; }
-    MediaPlayer *getMediaPlayer() { return mediaplayer_; }
+    inline std::string uri() const { return uri_; }
+    inline MediaPlayer *mediaPlayer() const { return mediaplayer_; }
 
 protected:
     std::string uri_;

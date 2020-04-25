@@ -241,12 +241,14 @@ set(VMIX_RSC_FILES
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg
     ./rsc/images/transparencygrid.png
+    ./rsc/images/shadow.png
+    ./rsc/images/shadow_dark.png
     ./rsc/mesh/point.ply
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
-    ./rsc/mesh/shadow.png
     ./rsc/mesh/target.ply
     ./rsc/mesh/border.ply
+    ./rsc/mesh/circle.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
 )

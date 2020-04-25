@@ -187,6 +187,7 @@ public:
     void addChild (Node *child) override;
     void removeChild (Node *child) override;
 
+    void unsetActiveChild ();
     void setActiveChild (Node *child);
     void setActiveChild (NodeSet::iterator n);
     NodeSet::iterator activeChild () const;

@@ -39,7 +39,9 @@ MixingView::MixingView() : View()
     backgound_.addChild(disk);
 
     glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
-    LineCircle *circle = new LineCircle(pink, 5);
+//    LineCircle *circle = new LineCircle(pink, 5);
+    Mesh *circle = new Mesh("mesh/circle.ply");
+    circle->shader()->color = pink;
     backgound_.addChild(circle);
 
     scene.root()->addChild(&backgound_);
@@ -102,14 +104,10 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s)
     }
 
     // unproject
-//    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->transform_);
-//    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->transform_);
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->parent_->transform_);
     glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->parent_->transform_);
 
     // compute delta translation
- //   node->translation_ = start_translation + gl_Position_to - gl_Position_from;
-
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
 }

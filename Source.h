@@ -11,7 +11,8 @@ class ImageShader;
 class Surface;
 class FrameBuffer;
 class MediaPlayer;
-class MediaSurface;
+class FrameBufferSurface;
+class Frame;
 
 class Source;
 // TODO : source set sorted by shader
@@ -34,10 +35,10 @@ public:
     inline Group *group(View::Mode m) const { return groups_.at(m); }
 
     // every Source have a shader to control visual effects
-    virtual Shader *shader() const = 0;
+    virtual ImageShader *shader() const = 0;
 
     // every Source shall be rendered before draw
-    virtual void render() = 0;
+    virtual void render(bool current) = 0;
 
     // global management of list of sources
     static SourceList::iterator begin();
@@ -57,6 +58,15 @@ protected:
 
     // nodes
     std::map<View::Mode, Group*> groups_;
+
+    // render() fills in the renderbuffer at every frame
+    // NB: additional shader (custom) are applied inside render()
+    FrameBuffer *renderbuffer_;
+
+    // the rendersurface draws the renderbuffer in the scene
+    // It is associated to the sourceshader for mixing effects
+    // (aka visual effect applied in scene, not in render() )
+    FrameBufferSurface *rendersurface_;
 
     // static global list of sources
     static SourceList sources_;
@@ -89,10 +99,10 @@ public:
     MediaSource(std::string name, std::string uri);
     ~MediaSource();
 
-    void render();
+    void render(bool current);
 
     // Source interface
-    Shader *shader() const;
+    ImageShader *shader() const;
 
     // Media specific interface
     std::string uri() const;
@@ -102,7 +112,10 @@ protected:
 
     virtual void init();
 
-    MediaSurface *surface_;
+    Frame *mixingoverlay_;
+    Surface *mediasurface_;
+    std::string uri_;
+    MediaPlayer *mediaplayer_;
 };
 
 

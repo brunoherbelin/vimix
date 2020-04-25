@@ -96,10 +96,10 @@ void ImGuiVisitor::visit(FrameBufferSurface &n)
 
 void ImGuiVisitor::visit(MediaSurface &n)
 {
-    ImGui::Text("%s", n.getUri().c_str());
+    ImGui::Text("%s", n.uri().c_str());
 
-    if (n.getMediaPlayer())
-        n.getMediaPlayer()->accept(*this);
+    if (n.mediaPlayer())
+        n.mediaPlayer()->accept(*this);
 }
 
 void ImGuiVisitor::visit(MediaPlayer &n)

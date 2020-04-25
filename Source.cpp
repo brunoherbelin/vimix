@@ -1,11 +1,13 @@
 
 #include <algorithm>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "Source.h"
 
 #include "defines.h"
 #include "FrameBuffer.h"
 #include "ImageShader.h"
+#include "Resource.h"
 #include "Primitives.h"
 #include "Mesh.h"
 #include "MediaPlayer.h"
@@ -28,7 +30,7 @@ Source::Source(std::string name) : name_(""), initialized_(false)
 
     // default mixing nodes
     groups_[View::MIXING] = new Group;
-    Frame *frame = new Frame;
+    Frame *frame = new Frame(Frame::MIXING);
     frame->translation_.z = 0.1;
     groups_[View::MIXING]->addChild(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
@@ -118,61 +120,117 @@ uint Source::numSource()
     return sources_.size();
 }
 
-MediaSource::MediaSource(std::string name, std::string uri) : Source(name)
+MediaSource::MediaSource(std::string name, std::string uri) : Source(name), uri_(uri)
 {
-    surface_ = new MediaSurface(uri);
+    // create media player
+    mediaplayer_ = new MediaPlayer;
+    mediaplayer_->open(uri_);
+    mediaplayer_->play(true);
 
-    // add the surface to draw in the views
-    groups_[View::RENDERING]->addChild(surface_);
-    groups_[View::MIXING]->addChild(surface_);
+    // create media surface:
+    // - textured with original texture from media player
+    // - crop & repeat UV can be managed here
+    // - additional custom shader can be associated
+    mediasurface_ = new Surface;
+
+    // extra overlay for mixing view
+    mixingoverlay_ = new Frame(Frame::MIXING_OVERLAY);
+    groups_[View::MIXING]->addChild(mixingoverlay_);
+    mixingoverlay_->translation_.z = 0.1;
+    mixingoverlay_->visible_ = false;
 
 }
 
 MediaSource::~MediaSource()
 {
-    // TODO verify that surface_ node is deleted in Source destructor
+    delete mediasurface_;
+    delete mediaplayer_;
+    // TODO verify that all surfaces and node is deleted in Source destructor
 }
 
-Shader *MediaSource::shader() const
+ImageShader *MediaSource::shader() const
 {
-    return surface_->shader();
+    if (!rendersurface_)
+        return nullptr;
+
+    return static_cast<ImageShader *>(rendersurface_->shader());
 }
 
 std::string MediaSource::uri() const
 {
-    return surface_->getUri();
+    return uri_;
 }
 
 MediaPlayer *MediaSource::mediaplayer() const
 {
-    return surface_->getMediaPlayer();
+    return mediaplayer_;
 }
 
 void MediaSource::init()
 {
-    ImageShader *is = static_cast<ImageShader *>(surface_->shader());
-    if (is)
-        is->stipple = 1.0;
+    if ( mediaplayer_->isOpen() ) {
 
-    initialized_ = true;
+        // update video
+        mediaplayer_->update();
+
+        // once the texture of media player is created
+        if (mediaplayer_->texture() != Resource::getTextureBlack()) {
+
+            // get the texture index from media player, apply it to the media surface
+            mediasurface_->setTextureIndex( mediaplayer_->texture() );
+
+            // create Frame buffer matching size of media player
+            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), mediaplayer()->height());
+
+            // create the surfaces to draw the frame buffer in the views
+            // TODO Provide the source specific effect shader
+            rendersurface_ = new FrameBufferSurface(renderbuffer_);
+            groups_[View::RENDERING]->addChild(rendersurface_);
+            groups_[View::MIXING]->addChild(rendersurface_);
+
+            // for mixing view, add another surface to overlay (for stippled view in transparency)
+            Surface *surfacemix = new Surface();
+            surfacemix->setTextureIndex( mediaplayer_->texture() );
+            ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
+            if (is)  is->stipple = 1.0;
+            groups_[View::MIXING]->addChild(surfacemix);
+
+            // scale all mixing nodes to match aspect ratio of the media
+            for (NodeSet::iterator node = groups_[View::MIXING]->begin();
+                 node != groups_[View::MIXING]->end(); node++) {
+                (*node)->scale_.x = mediaplayer_->aspectRatio();
+            }
+
+            // done init once and for all
+            initialized_ = true;
+        }
+    }
+
 }
 
-void MediaSource::render()
+void MediaSource::render(bool current)
 {
     if (!initialized_)
         init();
-//    surface_->shader()
+    else {
+        // update video
+        mediaplayer_->update();
 
-    // scalle all mixing nodes to match scale of surface
-    for (NodeSet::iterator node = groups_[View::MIXING]->begin();
-         node != groups_[View::MIXING]->end(); node++) {
-        (*node)->scale_ = surface_->scale_;
+        // render the media player into frame buffer
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
+        renderbuffer_->begin();
+        mediasurface_->draw(glm::identity<glm::mat4>(), projection);
+        renderbuffer_->end();
+
+
+        // read position of the mixing node and interpret this as transparency of render output
+        float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
+        rendersurface_->shader()->color.a = alpha;
+
+
+        // make Mixing Overlay visible if it is current source
+        mixingoverlay_->visible_ = current;
     }
-
-    // read position of the mixing node and interpret this as transparency change
-    float alpha = 1.0 - SQUARE( glm::length(groups_[View::MIXING]->translation_) );
-    surface_->shader()->color.a = alpha;
-
-
-
 }
+
+

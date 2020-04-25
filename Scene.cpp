@@ -289,6 +289,11 @@ void Switch::removeChild(Node *child)
 }
 
 
+void Switch::unsetActiveChild ()
+{
+    active_ == children_.end();
+}
+
 void Switch::setActiveChild(Node *child)
 {
     setActiveChild( std::find_if(children_.begin(), children_.end(), hasId(child->id())) );

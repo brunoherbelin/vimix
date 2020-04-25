@@ -37,11 +37,14 @@ protected:
 class Frame : public Node
 {
     Mesh *border_;
-    Mesh *icon_;
+    Mesh *overlay_;
     Mesh *shadow_;
 
 public:
-    Frame();
+
+    typedef enum { MIXING = 0, MIXING_OVERLAY } Style;
+    Frame(Style style);
+    ~Frame();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
 

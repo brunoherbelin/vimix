@@ -108,7 +108,7 @@ void SessionVisitor::visit(ImageSurface &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "ImageSurface");
 
-    XMLText *filename = xmlDoc_->NewText( n.getResource().c_str() );
+    XMLText *filename = xmlDoc_->NewText( n.resource().c_str() );
     XMLElement *image = xmlDoc_->NewElement("resource");
     image->InsertEndChild(filename);
     xmlCurrent_->InsertEndChild(image);
@@ -125,7 +125,7 @@ void SessionVisitor::visit(MediaSurface &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "MediaSurface");
 
-    n.getMediaPlayer()->accept(*this);
+    n.mediaPlayer()->accept(*this);
 }
 
 void SessionVisitor::visit(MediaPlayer &n)

@@ -379,42 +379,67 @@ void Mesh::accept(Visitor& v)
     v.visit(*this);
 }
 
-Frame::Frame() : Node()
+Frame::Frame(Style style) : Node()
 {
-    icon_   = new Mesh("mesh/icon_video.ply");
-    border_ = new Mesh("mesh/border.ply");
-    shadow_ = new Mesh("mesh/shadow.ply", "mesh/shadow.png");
+    switch (style) {
+    case MIXING_OVERLAY:
+        overlay_ = new Mesh("mesh/icon_video.ply");
+        border_  = nullptr;
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+        break;
+    default:
+    case MIXING:
+        overlay_ = nullptr;
+        border_  = new Mesh("mesh/border.ply");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+        break;
+    }
     color   = glm::vec4( 0.8f, 0.8f, 0.f, 1.f);
+}
+
+Frame::~Frame()
+{
+    if(overlay_) delete overlay_;
+    if(border_) delete border_;
+    delete shadow_;
 }
 
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        icon_->init();
-        border_->init();
+        if(overlay_) overlay_->init();
+        if(border_) border_->init();
         shadow_->init();
         init();
     }
 
-    // shadow
-    shadow_->draw( modelview * transform_, projection);
+    if ( visible_ ) { // not absolutely necessary but saves some CPU time..
 
-    // right side
-    float ar = scale_.x / scale_.y;
-    glm::vec3 s(scale_.y, scale_.y, 1.0);
-    glm::vec3 t(translation_.x - 1.0 +ar, translation_.y, translation_.z);
-    glm::mat4 ctm = modelview * transform(t, rotation_, s);
+        // shadow
+        shadow_->draw( modelview * transform_, projection);
 
-    border_->shader()->color = color;
-    border_->draw( ctm, projection );
-    icon_->shader()->color = color;
-    icon_->draw( ctm, projection );
+        // right side
+        float ar = scale_.x / scale_.y;
+        glm::vec3 s(scale_.y, scale_.y, 1.0);
+        glm::vec3 t(translation_.x - 1.0 +ar, translation_.y, translation_.z);
+        glm::mat4 ctm = modelview * transform(t, rotation_, s);
 
-    // left side
-    t.x = -t.x;
-    s.x = -s.x;
-    ctm = modelview * transform(t, rotation_, s);
-    border_->draw( ctm, projection );
+        if(overlay_) {
+            overlay_->shader()->color = color;
+            overlay_->draw( ctm, projection );
+        }
 
+        if(border_) {
+            // right side
+            border_->shader()->color = color;
+            border_->draw( ctm, projection );
+            // left side
+            t.x = -t.x;
+            s.x = -s.x;
+            ctm = modelview * transform(t, rotation_, s);
+            border_->draw( ctm, projection );
+        }
+
+    }
 }
 

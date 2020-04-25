@@ -26,7 +26,7 @@ void Mixer::update()
 
     // render of all sources
     for( SourceList::iterator it = Source::begin(); it != Source::end(); it++){
-        (*it)->render();
+        (*it)->render( it == current_source_ );
     }
 
     // recursive update of ALL views

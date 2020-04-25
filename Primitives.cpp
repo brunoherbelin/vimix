@@ -26,7 +26,7 @@ static const std::vector<glm::vec3> square_points {
 };
 
 
-Surface::Surface(Shader *s) : Primitive(s)
+Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
 {
     // geometry
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
@@ -68,7 +68,22 @@ void Surface::accept(Visitor& v)
     v.visit(*this);
 }
 
-ImageSurface::ImageSurface(const std::string& path, Shader *s) : Surface(s), resource_(path), textureindex_(0)
+void Surface::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() )
+        init();
+
+    if ( textureindex_ )
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
+    else
+        glBindTexture(GL_TEXTURE_2D, Resource::getTextureBlack());
+
+    Primitive::draw(modelview, projection);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+ImageSurface::ImageSurface(const std::string& path, Shader *s) : Surface(s), resource_(path)
 {
 
 }
@@ -78,28 +93,12 @@ void ImageSurface::init()
     Surface::init();
 
     // load image if specified (should always be the case)
-    if ( resource_.empty())
-        textureindex_ = Resource::getTextureBlack();
-    else {
+    if ( !resource_.empty()) {
         float ar = 1.0;
         textureindex_ = Resource::getTextureImage(resource_, &ar);
         scale_.x = ar;
     }
 
-    // a new shader for a new image
-    shader_ = new ImageShader();
-}
-
-void ImageSurface::draw(glm::mat4 modelview, glm::mat4 projection)
-{
-    if ( !initialized() )
-        init();
-
-    glBindTexture(GL_TEXTURE_2D, textureindex_);
-
-    Primitive::draw(modelview, projection);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void ImageSurface::accept(Visitor& v)
@@ -126,7 +125,6 @@ void MediaSurface::init()
     mediaplayer_->open(uri_);
     mediaplayer_->play(true);
 
-
 }
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -134,14 +132,13 @@ void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() )
         init();
 
+    // set the texture to the media player once openned
+    // TODO: avoid to repeat with a static flag?
     if ( mediaplayer_->isOpen() )
-        glBindTexture(GL_TEXTURE_2D, mediaplayer_->texture());
-    else
-        glBindTexture(GL_TEXTURE_2D, Resource::getTextureBlack());
+        textureindex_ = mediaplayer_->texture();
 
-    Primitive::draw(modelview, projection);
+    Surface::draw(modelview, projection);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void MediaSurface::update( float dt )
@@ -173,8 +170,6 @@ void FrameBufferSurface::init()
     // set aspect ratio
     scale_.x = frame_buffer_->aspectRatio();
 
-    // a new shader for a new image
-    shader_ = new ImageShader();
 }
 
 void FrameBufferSurface::draw(glm::mat4 modelview, glm::mat4 projection)
