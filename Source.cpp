@@ -7,6 +7,7 @@
 #include "defines.h"
 #include "FrameBuffer.h"
 #include "ImageShader.h"
+#include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Primitives.h"
 #include "Mesh.h"
@@ -23,7 +24,6 @@ Source::Source(std::string name) : name_(""), initialized_(false)
     rename(name);
 
     // create groups for each view
-
     // default rendering node
     groups_[View::RENDERING] = new Group;
     groups_[View::RENDERING]->scale_ = glm::vec3(5.f, 5.f, 1.f); // fit height full window
@@ -35,12 +35,18 @@ Source::Source(std::string name) : name_(""), initialized_(false)
     groups_[View::MIXING]->addChild(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
 
+    // will be associated to nodes later
+    rendershader_ = new ImageProcessingShader();
+
     // add source to the list
     sources_.push_front(this);
 }
 
 Source::~Source()
 {
+    // delete shader
+    delete rendershader_;
+
     // delete groups and their children
     delete groups_[View::RENDERING];
     delete groups_[View::MIXING];
@@ -148,14 +154,6 @@ MediaSource::~MediaSource()
     // TODO verify that all surfaces and node is deleted in Source destructor
 }
 
-ImageShader *MediaSource::shader() const
-{
-    if (!rendersurface_)
-        return nullptr;
-
-    return static_cast<ImageShader *>(rendersurface_->shader());
-}
-
 std::string MediaSource::uri() const
 {
     return uri_;
@@ -182,9 +180,12 @@ void MediaSource::init()
             // create Frame buffer matching size of media player
             renderbuffer_ = new FrameBuffer(mediaplayer()->width(), mediaplayer()->height());
 
+            // setup shader resolution for texture 0
+            rendershader_->iChannelResolution[0] = glm::vec3(mediaplayer()->width(), mediaplayer()->height(), 0.f);
+
             // create the surfaces to draw the frame buffer in the views
             // TODO Provide the source specific effect shader
-            rendersurface_ = new FrameBufferSurface(renderbuffer_);
+            rendersurface_ = new FrameBufferSurface(renderbuffer_, rendershader_);
             groups_[View::RENDERING]->addChild(rendersurface_);
             groups_[View::MIXING]->addChild(rendersurface_);
 
@@ -225,7 +226,7 @@ void MediaSource::render(bool current)
 
         // read position of the mixing node and interpret this as transparency of render output
         float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
-        rendersurface_->shader()->color.a = alpha;
+        rendershader_->color.a = alpha;
 
 
         // make Mixing Overlay visible if it is current source

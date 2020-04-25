@@ -20,7 +20,7 @@
 
 // Globals
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
-ShadingProgram simpleShadingProgram("shaders/simple-shader.vs", "shaders/simple-shader.fs");
+ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
 // Blending presets for matching with Shader::BlendMode
 GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
@@ -194,8 +194,8 @@ void Shader::use()
     program_->setUniform("modelview", modelview);
     program_->setUniform("color", color);
 
-    resolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
-    program_->setUniform("resolution", resolution);
+    iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
+    program_->setUniform("iResolution", iResolution);
 
     // Blending Function
     if ( blending != BLEND_NONE) {
@@ -212,7 +212,7 @@ void Shader::reset()
 {
     projection = glm::identity<glm::mat4>();
     modelview  = glm::identity<glm::mat4>();
-    resolution = glm::vec3(1280.f, 720.f, 0.f);
+    iResolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 }
 

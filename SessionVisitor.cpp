@@ -5,6 +5,7 @@
 #include "Primitives.h"
 #include "Mesh.h"
 #include "ImageShader.h"
+#include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "GstToolkit.h"
 
@@ -157,10 +158,43 @@ void SessionVisitor::visit(ImageShader &n)
     // Shader of a textured type
     xmlCurrent_->SetAttribute("type", "ImageShader");
 
-    XMLElement *filter = xmlDoc_->NewElement("filter");
+    XMLElement *filter = xmlDoc_->NewElement("uniforms");
     filter->SetAttribute("brightness", n.brightness);
     filter->SetAttribute("contrast", n.contrast);
+    filter->SetAttribute("stipple", n.stipple);
     xmlCurrent_->InsertEndChild(filter);
+
+}
+
+void SessionVisitor::visit(ImageProcessingShader &n)
+{
+    // Shader of a textured type
+    xmlCurrent_->SetAttribute("type", "ImageProcessingShader");
+
+    XMLElement *filter = xmlDoc_->NewElement("uniforms");
+    filter->SetAttribute("brightness", n.brightness);
+    filter->SetAttribute("contrast", n.contrast);
+    filter->SetAttribute("saturation", n.saturation);
+    filter->SetAttribute("hueshift", n.hueshift);
+    filter->SetAttribute("threshold", n.threshold);
+    filter->SetAttribute("lumakey", n.lumakey);
+    filter->SetAttribute("nbColors", n.nbColors);
+    filter->SetAttribute("invertMode", n.invert);
+    filter->SetAttribute("chromadelta", n.chromadelta);
+    filter->SetAttribute("filter", n.filter);
+    xmlCurrent_->InsertEndChild(filter);
+
+    XMLElement *gamma = XMLElementFromGLM(xmlDoc_, n.gamma);
+    gamma->SetAttribute("type", "gamma");
+    xmlCurrent_->InsertEndChild(gamma);
+
+    XMLElement *levels = XMLElementFromGLM(xmlDoc_, n.levels);
+    levels->SetAttribute("type", "levels");
+    xmlCurrent_->InsertEndChild(levels);
+
+    XMLElement *chromakey = XMLElementFromGLM(xmlDoc_, n.chromakey);
+    chromakey->SetAttribute("type", "chromakey");
+    xmlCurrent_->InsertEndChild(chromakey);
 
 }
 

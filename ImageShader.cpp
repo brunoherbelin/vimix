@@ -2,7 +2,7 @@
 #include "Visitor.h"
 #include "ImageShader.h"
 
-ShadingProgram imageShadingProgram("shaders/texture-shader.vs", "shaders/texture-shader.fs");
+ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 
 ImageShader::ImageShader()
 {

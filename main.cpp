@@ -33,6 +33,7 @@
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 #include "FrameBuffer.h"
+#include "ImageProcessingShader.h"
 
 #include "MediaPlayer.h"
 #include "Scene.h"
@@ -189,8 +190,14 @@ void drawScene()
     // draw GUI tree scene
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
     static ImGuiVisitor v;
-    Mixer::manager().currentView()->scene.accept(v);
+//    Mixer::manager().currentView()->scene.accept(v);
 //    Mixer::manager().getView(View::RENDERING)->scene.accept(v);
+
+    Source *s = Mixer::manager().currentSource();
+    if ( s != nullptr) {
+        s->shader()->accept(v);
+    }
+
     ImGui::End();
 }
 

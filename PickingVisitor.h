@@ -31,11 +31,6 @@ public:
     void visit(LineSquare&);
     void visit(LineCircle& n);
     void visit(Mesh&){}
-
-    // not picking other Elements with attributes
-    void visit(MediaPlayer&) {}
-    void visit(Shader&) {}
-    void visit(ImageShader&) {}
 };
 
 #endif // PICKINGVISITOR_H

@@ -33,10 +33,6 @@ public:
     void visit(LineCircle&) {}
     void visit(Mesh&) {}
 
-    // not nodes
-    void visit(MediaPlayer&) {}
-    void visit(Shader&) {}
-    void visit(ImageShader&) {}
 };
 
 #endif // SEARCHVISITOR_H

@@ -25,9 +25,10 @@ public:
     void visit(Mesh&) {}
 
     // Elements with attributes
-    void visit(MediaPlayer& n);
-    void visit(Shader& n);
-    void visit(ImageShader& n);
+    void visit(MediaPlayer& n) override;
+    void visit(Shader& n) override;
+    void visit(ImageShader& n) override;
+    void visit(ImageProcessingShader& n) override;
 };
 
 #endif // IMGUIVISITOR_H

@@ -7,7 +7,7 @@
 
 #include "View.h"
 
-class ImageShader;
+class ImageProcessingShader;
 class Surface;
 class FrameBuffer;
 class MediaPlayer;
@@ -35,7 +35,7 @@ public:
     inline Group *group(View::Mode m) const { return groups_.at(m); }
 
     // every Source have a shader to control visual effects
-    virtual ImageShader *shader() const = 0;
+    inline ImageProcessingShader *shader() const { return rendershader_; }
 
     // every Source shall be rendered before draw
     virtual void render(bool current) = 0;
@@ -64,9 +64,13 @@ protected:
     FrameBuffer *renderbuffer_;
 
     // the rendersurface draws the renderbuffer in the scene
-    // It is associated to the sourceshader for mixing effects
+    // It is associated to the rendershader for mixing effects
     // (aka visual effect applied in scene, not in render() )
     FrameBufferSurface *rendersurface_;
+
+    // rendershader provides all image processing controls for
+    // mixing sources in the scene
+    ImageProcessingShader *rendershader_;
 
     // static global list of sources
     static SourceList sources_;
@@ -100,9 +104,6 @@ public:
     ~MediaSource();
 
     void render(bool current);
-
-    // Source interface
-    ImageShader *shader() const;
 
     // Media specific interface
     std::string uri() const;

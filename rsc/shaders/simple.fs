@@ -5,7 +5,7 @@ out vec4 FragColor;
 in vec4 vertexColor;
 
 uniform vec4 color;            // drawing color
-uniform vec3 resolution;      // viewport resolution (in pixels)
+uniform vec3 iResolution;      // viewport resolution (in pixels)
 
 void main()
 {

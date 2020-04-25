@@ -66,7 +66,7 @@ public:
 
 protected:
     ShadingProgram *program_;
-    glm::vec3 resolution;
+    glm::vec3 iResolution;
 
 };
 

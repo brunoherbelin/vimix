@@ -21,6 +21,7 @@ class Mesh;
 class MediaPlayer;
 class Shader;
 class ImageShader;
+class ImageProcessingShader;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -42,9 +43,11 @@ public:
     virtual void visit (LineCircle&) = 0;
     virtual void visit (Mesh&) = 0;
 
-    virtual void visit (MediaPlayer&) = 0;
-    virtual void visit (Shader&) = 0;
-    virtual void visit (ImageShader&) = 0;
+    // not mandatory
+    virtual void visit (MediaPlayer&) {}
+    virtual void visit (Shader&) {}
+    virtual void visit (ImageShader&) {}
+    virtual void visit (ImageProcessingShader&) {}
 
 };
 

@@ -202,6 +202,7 @@ set(VMIX_SRCS
     Log.cpp
     Shader.cpp
     ImageShader.cpp
+    ImageProcessingShader.cpp
     Scene.cpp
     Primitives.cpp
     Mesh.cpp
@@ -226,10 +227,11 @@ set(VMIX_SRCS
 )
 
 set(VMIX_RSC_FILES
-    ./rsc/shaders/simple-shader.fs
-    ./rsc/shaders/simple-shader.vs
-    ./rsc/shaders/texture-shader.fs
-    ./rsc/shaders/texture-shader.vs
+    ./rsc/shaders/simple.fs
+    ./rsc/shaders/simple.vs
+    ./rsc/shaders/image.fs
+    ./rsc/shaders/image.vs
+    ./rsc/shaders/imageprocessing.fs
     ./rsc/fonts/Hack-Regular.ttf
     ./rsc/fonts/Roboto-Regular.ttf
     ./rsc/fonts/Roboto-Bold.ttf

@@ -35,6 +35,7 @@ public:
     void visit(MediaPlayer& n);
     void visit(Shader& n);
     void visit(ImageShader& n);
+    void visit(ImageProcessingShader& n);
 };
 
 #endif // XMLVISITOR_H
