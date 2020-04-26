@@ -24,8 +24,8 @@ ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
 // Blending presets for matching with Shader::BlendMode
 GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
-GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,};
-GLenum blending_destination_function[6] = {GL_ONE, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
+GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA};
+GLenum blending_destination_function[6] = {GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
 
 
 
@@ -198,7 +198,7 @@ void Shader::use()
     program_->setUniform("iResolution", iResolution);
 
     // Blending Function
-    if ( blending != BLEND_NONE) {
+    if ( blending != BLEND_CUSTOM) {
         glEnable(GL_BLEND);
         glBlendEquation(blending_equation[blending]);
         glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);

@@ -55,12 +55,12 @@ public:
     glm::vec4 color;
 
     typedef enum {
-        BLEND_NONE = 0,
+        BLEND_OPACITY = 0,
         BLEND_ADD,
         BLEND_SUBSTRACT,
         BLEND_LAYER_ADD,
         BLEND_LAYER_SUBSTRACT,
-        BLEND_OPACITY
+        BLEND_CUSTOM
     } BlendMode;
     BlendMode blending;
 
