@@ -536,15 +536,14 @@ static void ShowAboutOpengl(bool* p_open)
     ImGui::PopFont();
     ImGui::Separator();
     ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
-
-    if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://www.opengl.org") )
-        ImGuiToolkit::OpenWebpage("https://www.opengl.org");
+    ImGuiToolkit::ButtonOpenWebpage("https://www.opengl.org");
     ImGui::SameLine();
 
 //    static std::string allextensions( glGetString(GL_EXTENSIONS) );
 
     static bool show_opengl_info = false;
-    ImGui::Checkbox(  "Show details " ICON_FA_CHEVRON_DOWN, &show_opengl_info);
+    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_opengl_info);
+    ImGui::SameLine(); ImGui::Text("Details");
     if (show_opengl_info)
     {
         ImGui::Separator();
@@ -604,13 +603,12 @@ static void ShowAboutGStreamer(bool* p_open)
     ImGui::Separator();
     ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
     ImGui::Text("GStreamer is licensed under the LGPL License.");
-
-    if ( ImGui::Button( ICON_FA_EXTERNAL_LINK_ALT " https://gstreamer.freedesktop.org") )
-        ImGuiToolkit::OpenWebpage("https://gstreamer.freedesktop.org/");
+    ImGuiToolkit::ButtonOpenWebpage("https://gstreamer.freedesktop.org/");
     ImGui::SameLine();
 
     static bool show_config_info = false;
-    ImGui::Checkbox("Show details " ICON_FA_CHEVRON_DOWN , &show_config_info);
+    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_config_info);
+    ImGui::SameLine(); ImGui::Text("Details");
     if (show_config_info)
     {
         ImGui::Separator();
@@ -691,11 +689,14 @@ void MainWindow::Render()
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem( ICON_FA_FILE "  New")) {
-
-            }
             if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
                 UserInterface::manager().OpenFileMedia();
+            }
+            if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
+                UserInterface::manager().OpenFileMedia();
+            }
+            if (ImGui::MenuItem( ICON_FA_FILE "  Close", "Ctrl+W")) {
+
             }
             if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
                 Rendering::manager().Close();
@@ -736,7 +737,10 @@ void MainWindow::Render()
     }
 
     // content
-//    ImGuiToolkit::Icon(7, 1);
+//    static bool on;
+//    ImGuiToolkit::ButtonToggle("Active", &on);
+//    ImGui::SameLine();
+//    ImGuiToolkit::ButtonIconToggle(12,11,14,1,&on);
 //    ImGui::SameLine(0, 10);
 //    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
 //    ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)

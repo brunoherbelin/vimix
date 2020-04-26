@@ -4,18 +4,25 @@
 #include <glib.h>
 #include <string>
 #include <list>
+#include <vector>
 #include <utility>
 #include "rsc/fonts/IconsFontAwesome5.h"
 
 namespace ImGuiToolkit
 {
 
-
     // Icons from resource icon.dds
-    void Icon(int i, int j); 
-    bool ButtonIcon(int i, int j);
+    void Icon(int i, int j);
     void ShowIconsWindow(bool* p_open);
-    void ToggleButton( const char* label, bool& toggle );
+
+    // utility buttons
+    bool ButtonIcon(int i, int j);
+    bool ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle);
+    bool ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state);
+    void ButtonToggle( const char* label, bool* toggle );
+    void ButtonOpenWebpage( const char* url );
+
+    // utility sliders
     void Bar(float value, float in, float out, float min, float max, const char* title, bool expand);
     bool TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step);
     bool TimelineSliderEdit(const char* label, guint64 *time, guint64 duration, guint64 step,
@@ -39,7 +46,6 @@ namespace ImGuiToolkit
     } accent_color;
     void SetAccentColor(accent_color color);
 
-    void OpenWebpage( const char* url );
 }
 
 #endif // __IMGUI_TOOLKIT_H_

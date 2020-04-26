@@ -1,5 +1,6 @@
 
 #include <map>
+#include <algorithm>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -24,20 +25,65 @@ unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
 
-void ImGuiToolkit::OpenWebpage( const char* url )
+void ImGuiToolkit::ButtonOpenWebpage( const char* url )
 {
+    char label[512];
+    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, url );
+
+    if ( ImGui::Button(label) )
+    {
+
 #ifdef _WIN32
-    ShellExecuteA( nullptr, nullptr, url, nullptr, nullptr, 0 );
+        ShellExecuteA( nullptr, nullptr, url, nullptr, nullptr, 0 );
 #elif defined __APPLE__
-    char buf[1024];
-    sprintf( buf, "open %s", url );
-    system( buf );
+        char buf[1024];
+        sprintf( buf, "open %s", url );
+        system( buf );
 #else
-    char buf[1024];
-    sprintf( buf, "xdg-open %s", url );
-    system( buf );
+        char buf[1024];
+        sprintf( buf, "xdg-open %s", url );
+        system( buf );
 #endif
+
+    }
 }
+
+void ImGuiToolkit::ButtonToggle(const char* str_id, bool* toggle)
+{
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    float height = ImGui::GetFrameHeight() * 0.75f;
+    float width = height * 1.6f;
+    float radius = height * 0.50f;
+
+    ImGui::InvisibleButton(str_id, ImVec2(width, height));
+    if (ImGui::IsItemClicked())
+        *toggle = !*toggle;
+
+    float t = *toggle ? 1.0f : 0.0f;
+
+    ImGuiContext& g = *GImGui;
+    float ANIM_SPEED = 0.1f;
+    if (g.LastActiveId == g.CurrentWindow->GetID(str_id))// && g.LastActiveIdTimer < ANIM_SPEED)
+    {
+        float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
+        t = *toggle ? (t_anim) : (1.0f - t_anim);
+    }
+
+    ImU32 col_bg;
+    if (ImGui::IsItemHovered())
+        col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
+    else
+        col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
+
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
+    ImGui::SameLine(0,10);
+    ImGui::Text(str_id);
+}
+
 
 void ImGuiToolkit::Icon(int i, int j)
 {
@@ -65,6 +111,55 @@ bool ImGuiToolkit::ButtonIcon(int i, int j)
 
     return ret;
 }
+
+bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle)
+{
+    bool ret = false;
+    ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
+
+    if (*toggle) {
+        if ( ButtonIcon(i_toggle, j_toggle)) {
+            *toggle = false;
+            ret = true;
+        }
+    }
+    else {
+        if ( ButtonIcon(i, j)) {
+            *toggle = true;
+            ret = true;
+        }
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
+struct Sum
+{
+    void operator()(std::pair<int, int> n) { sum += n.first * 20 + n.second; }
+    int sum{0};
+};
+
+bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state)
+{
+    bool ret = false;
+    Sum id = std::for_each(icons.begin(), icons.end(), Sum());
+    ImGui::PushID( id.sum );
+
+    int s = CLAMP(*state, 0, icons.size() - 1);
+    if ( ButtonIcon( icons[s].first, icons[s].second ) ){
+        ++s;
+        if (s > icons.size() -1)
+            *state = 0;
+        else
+            *state = s;
+        ret = true;
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
 
 void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 {

@@ -116,10 +116,6 @@ void ImGuiVisitor::visit(Shader &n)
 
     ImGui::PushID(n.id());
 
-//    if (ImGuiToolkit::ButtonIcon(14, 8)) n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-//    ImGui::SameLine(0, 10);
-//    ImGui::ColorEdit3("Color", glm::value_ptr(n.color) ) ;
-
     if (ImGuiToolkit::ButtonIcon(10, 2)) {
         n.blending = Shader::BLEND_OPACITY;
         n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);

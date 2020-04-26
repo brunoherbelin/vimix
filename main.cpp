@@ -43,20 +43,6 @@
 
 #define PI 3.14159265358979323846
 
-// test scene
-
-////    ("file:///home/bhbn/Videos/MOV001.MOD");
-////    ("file:///home/bhbn/Videos/TestFormats/Commodore64GameReviewMoondust.flv");
-////    ("file:///home/bhbn/Videos/fish.mp4");
-////    ("file:///home/bhbn/Videos/jean/Solitude1080p.mov");
-////    ("file:///home/bhbn/Videos/TearsOfSteel_720p_h265.mkv");
-////    ("file:///home/bhbn/Videos/TestFormats/_h264GoldenLamps.mkv");
-////    ("file:///home/bhbn/Videos/TestEncoding/vpxvp9high.webm");
-////    ("file:///home/bhbn/Videos/iss.mov");
-////    ("file:///home/bhbn/Videos//iss.mov");
-////    ("file:///Users/Herbelin/Movies/mp2test.mpg");
-
-
 
 void drawMediaPlayer()
 {
@@ -95,7 +81,7 @@ void drawMediaPlayer()
     ImGui::SameLine(0, spacing);
 
     // remember playing mode of the GUI
-    static bool media_playing_mode = mp->isPlaying();
+    bool media_playing_mode = mp->isPlaying();
 
     // display buttons Play/Stop depending on current playing mode
     if (media_playing_mode) {
@@ -121,31 +107,26 @@ void drawMediaPlayer()
         ImGui::PopButtonRepeat();
     }
 
-    ImGui::SameLine(0, spacing * 2.f);
-    ImGui::Dummy(ImVec2(width - 700.0, 0));  // right align
+    ImGui::SameLine(0, spacing * 4.f);
+//    ImGui::Dummy(ImVec2(width - 700.0, 0));  // right align
 
-    static int current_loop = 1;
-    static const char* loop_names[3] = { "Stop", "Rewind", "Bounce" };
-    const char* current_loop_name = loop_names[current_loop];
-    ImGui::SameLine(0, spacing);
-    if (current_loop == 0)  ImGuiToolkit::Icon(0, 15);
-    else if (current_loop == 1)  ImGuiToolkit::Icon(1, 15);
-    else ImGuiToolkit::Icon(19, 14);
-    ImGui::SameLine(0, spacing);
-    ImGui::SetNextItemWidth(90);
-    if ( ImGui::SliderInt("", &current_loop, 0, 2, current_loop_name) )
+    static int current_loop = 0;
+    static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
+    current_loop = (int) mp->loop();
+    if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
         mp->setLoop( (MediaPlayer::LoopMode) current_loop );
 
     float speed = static_cast<float>(mp->playSpeed());
     ImGui::SameLine(0, spacing);
-    ImGui::SetNextItemWidth(270);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
     // ImGui::SetNextItemWidth(width - 90.0);
-    if (ImGui::SliderFloat( "Speed", &speed, -10.f, 10.f, "x %.1f", 2.f))
+    if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
         mp->setPlaySpeed( static_cast<double>(speed) );
     ImGui::SameLine(0, spacing);
-    if (ImGuiToolkit::ButtonIcon(19, 15)) {
+    if (ImGuiToolkit::ButtonIcon(12, 14)) {
         speed = 1.f;
         mp->setPlaySpeed( static_cast<double>(speed) );
+        mp->setLoop( MediaPlayer::LOOP_REWIND );
     }
 
     guint64 current_t = mp->position();
@@ -174,8 +155,8 @@ void drawMediaPlayer()
     }
 
     // display info
-    ImGui::Text("%s %d x %d", mp->codec().c_str(), mp->width(), mp->height());
-    ImGui::Text("Framerate %.2f / %.2f", mp->updateFrameRate() , mp->frameRate() );
+//    ImGui::Text("%s %d x %d", mp->codec().c_str(), mp->width(), mp->height());
+//    ImGui::Text("Framerate %.2f / %.2f", mp->updateFrameRate() , mp->frameRate() );
 
     ImGui::End();
 }
@@ -183,7 +164,7 @@ void drawMediaPlayer()
 
 void drawScene()
 {
-    Mixer::manager().update();
+//    Mixer::manager().update();
 
     Mixer::manager().draw();
 
@@ -256,8 +237,6 @@ int main(int, char**)
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
-    //testnode3.getShader()->blending = Shader::BLEND_OPACITY;
-
     Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
     Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
 
@@ -282,6 +261,8 @@ int main(int, char**)
     ///
     while ( Rendering::manager().isActive() )
     {
+        Mixer::manager().update();
+
         Rendering::manager().Draw();
     }
 
