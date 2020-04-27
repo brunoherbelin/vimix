@@ -7,9 +7,26 @@
 
 ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 
+const char* ImageShader::mask_names[10] = { "None", "Vignette", "Halo", "Circle", "Round", "Top", "Botton", "Left", "Right", "Custom" };
+std::vector< uint > ImageShader::mask_presets;
+
 ImageShader::ImageShader()
 {
+    // first initialization
+    if ( mask_presets.empty() ) {
+        mask_presets.push_back(Resource::getTextureWhite());
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_vignette.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_halo.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_circle.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_roundcorner.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_top.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_bottom.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_left.dds"));
+        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_right.dds"));
+    }
+    // static program shader
     program_ = &imageShadingProgram;
+    // reset instance
     reset();
 }
 
@@ -37,7 +54,7 @@ void ImageShader::reset()
     program_->enduse();
 
     // default mask (channel1)
-    mask = Resource::getTextureWhite();
+    mask = mask_presets[0];
 
     // no stippling
     stipple = 0.f;

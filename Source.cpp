@@ -206,7 +206,7 @@ void MediaSource::init()
                 (*node)->scale_.x = mediaplayer_->aspectRatio();
             }
 
-//            mixingshader_->mask = Resource::getTextureImage("images/mask_vignette.png");
+//            mixingshader_->mask = ImageShader::mask_presets["Halo"];
 
             // done init once and for all
             initialized_ = true;

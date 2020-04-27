@@ -238,7 +238,14 @@ set(VMIX_RSC_FILES
     ./rsc/fonts/Roboto-Italic.ttf
     ./rsc/fonts/fa-regular-400.ttf
     ./rsc/fonts/fa-solid-900.ttf
-    ./rsc/images/mask_vignette.png
+    ./rsc/images/mask_vignette.dds
+    ./rsc/images/mask_halo.dds
+    ./rsc/images/mask_circle.dds
+    ./rsc/images/mask_roundcorner.dds
+    ./rsc/images/mask_linear_top.dds
+    ./rsc/images/mask_linear_bottom.dds
+    ./rsc/images/mask_linear_left.dds
+    ./rsc/images/mask_linear_right.dds
     ./rsc/images/v-mix_256x256.png
     ./rsc/images/rgb.png
     ./rsc/images/busy.png

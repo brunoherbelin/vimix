@@ -1,5 +1,8 @@
 #include "ImGuiVisitor.h"
 
+#include <vector>
+#include <algorithm>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
@@ -133,7 +136,25 @@ void ImGuiVisitor::visit(Shader &n)
 
 void ImGuiVisitor::visit(ImageShader &n)
 {
+    ImGui::PushID(n.id());
 
+    // get index of the mask used in this ImageShader
+    int item_current = 9; // default to Custom mask (i.e. not in the list)
+    auto it{ find(ImageShader::mask_presets.begin(), ImageShader::mask_presets.end(), n.mask) };
+    if ( it != std::end(ImageShader::mask_presets)) {
+        item_current = std::distance(ImageShader::mask_presets.begin(), it);
+    }
+
+    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = ImageShader::mask_presets[0];;
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    // combo list of masks
+    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, ImageShader::mask_presets.size()) )
+    {
+        n.mask = ImageShader::mask_presets[item_current];
+    }
+
+    ImGui::PopID();
 }
 
 void ImGuiVisitor::visit(ImageProcessingShader &n)
