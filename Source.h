@@ -7,11 +7,12 @@
 
 #include "View.h"
 
+class ImageShader;
 class ImageProcessingShader;
-class Surface;
 class FrameBuffer;
-class MediaPlayer;
 class FrameBufferSurface;
+class MediaPlayer;
+class Surface;
 class Frame;
 
 class Source;
@@ -34,8 +35,14 @@ public:
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
 
-    // every Source have a shader to control visual effects
-    inline ImageProcessingShader *shader() const { return rendershader_; }
+    // every Source has a shader to control image processing effects
+    inline ImageProcessingShader *processingShader() const { return rendershader_; }
+
+    // every Source has a shader to control mixing effects
+    inline ImageShader *mixingShader() const { return mixingshader_; }
+
+    // every Source shall have a frame buffer
+    virtual FrameBuffer *frame() const = 0;
 
     // every Source shall be rendered before draw
     virtual void render(bool current) = 0;
@@ -60,17 +67,20 @@ protected:
     std::map<View::Mode, Group*> groups_;
 
     // render() fills in the renderbuffer at every frame
-    // NB: additional shader (custom) are applied inside render()
+    // NB: rendershader_ is applied at render()
     FrameBuffer *renderbuffer_;
 
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
-    // (aka visual effect applied in scene, not in render() )
     FrameBufferSurface *rendersurface_;
 
-    // rendershader provides all image processing controls for
-    // mixing sources in the scene
+    // rendershader provides image processing controls
     ImageProcessingShader *rendershader_;
+
+    // mixingshader provides mixing controls
+    ImageShader *mixingshader_;
+
+    Frame *mixingoverlay_;
 
     // static global list of sources
     static SourceList sources_;
@@ -103,6 +113,8 @@ public:
     MediaSource(std::string name, std::string uri);
     ~MediaSource();
 
+    FrameBuffer *frame() const;
+    ImageShader *mixingShader() const;
     void render(bool current);
 
     // Media specific interface
@@ -113,7 +125,6 @@ protected:
 
     virtual void init();
 
-    Frame *mixingoverlay_;
     Surface *mediasurface_;
     std::string uri_;
     MediaPlayer *mediaplayer_;

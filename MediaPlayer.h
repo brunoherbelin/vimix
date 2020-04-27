@@ -123,7 +123,7 @@ public:
     /**
      * Get Pause / Play
      * */
-    bool isPlaying() const;
+    bool isPlaying(bool testpipeline = false) const;
     /**
      * Speed factor for playing
      * Can be negative.

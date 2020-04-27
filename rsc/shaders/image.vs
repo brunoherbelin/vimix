@@ -19,3 +19,4 @@ void main()
     vertexColor = color;
     vertexUV = texCoord;
 }
+

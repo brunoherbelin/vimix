@@ -29,16 +29,32 @@ uint Resource::getTextureBlack()
 {
     static uint tex_index_black = 0;
 
-    // generate texture (once) & clear
+    // generate texture (once)
     if (tex_index_black == 0) {
         glGenTextures(1, &tex_index_black);
         glBindTexture( GL_TEXTURE_2D, tex_index_black);
-        unsigned char clearColor[4] = {0};
+        unsigned char clearColor[4] = {0, 0, 0, 0};
         // texture with one black pixel
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
     }
 
     return tex_index_black;
+}
+
+uint Resource::getTextureWhite()
+{
+    static uint tex_index_white = 0;
+
+    // generate texture (once)
+    if (tex_index_white == 0) {
+        glGenTextures(1, &tex_index_white);
+        glBindTexture( GL_TEXTURE_2D, tex_index_white);
+        unsigned char clearColor[4] = {255, 255, 255, 255};
+        // texture with one black pixel
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+    }
+
+    return tex_index_white;
 }
 
 const char *Resource::getData(const std::string& path, size_t* out_file_size){

@@ -31,7 +31,7 @@ void View::update(float dt)
 MixingView::MixingView() : View()
 {
     // default settings
-    scene.root()->scale_ = glm::vec3(1.4, 1.4, 1.0);
+    scene.root()->scale_ = glm::vec3(1.6, 1.6, 1.0);
 
     // Mixing scene
     Mesh *disk = new Mesh("mesh/disk.ply");

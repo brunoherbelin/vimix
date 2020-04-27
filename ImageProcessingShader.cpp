@@ -15,8 +15,8 @@ void ImageProcessingShader::use()
 {
     Shader::use();
 
-    program_->setUniform("iChannelResolution[0]", iChannelResolution[0].x, iChannelResolution[0].y, iChannelResolution[0].z);
-    program_->setUniform("iChannelResolution[1]", iChannelResolution[1].x, iChannelResolution[1].y, iChannelResolution[1].z);
+//    program_->setUniform("iChannelResolution[0]", iChannelResolution[0].x, iChannelResolution[0].y, iChannelResolution[0].z);
+//    program_->setUniform("iChannelResolution[1]", iChannelResolution[1].x, iChannelResolution[1].y, iChannelResolution[1].z);
 
     program_->setUniform("brightness", brightness);
     program_->setUniform("contrast", contrast);
@@ -41,9 +41,9 @@ void ImageProcessingShader::reset()
 {
     Shader::reset();
 
-    // no texture resolution yet
-    iChannelResolution[0] = glm::vec3(1.f);
-    iChannelResolution[1] = glm::vec3(1.f);
+//    // no texture resolution yet
+//    iChannelResolution[0] = glm::vec3(1.f);
+//    iChannelResolution[1] = glm::vec3(1.f);
 
     // default values for image processing
     brightness = 0.f;
@@ -63,6 +63,6 @@ void ImageProcessingShader::reset()
 }
 
 void ImageProcessingShader::accept(Visitor& v) {
-    Shader::accept(v);
+//    Shader::accept(v);
     v.visit(*this);
 }

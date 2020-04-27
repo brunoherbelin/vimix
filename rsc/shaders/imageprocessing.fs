@@ -31,7 +31,7 @@ uniform vec4 color;
 // image processing specific
 uniform sampler2D iChannel0;  // input channel (texture id).
 uniform sampler2D iChannel1;
-uniform vec3      iChannelResolution[2]; // input channel resolution (in pixels)
+//uniform vec3      iChannelResolution[2]; // input channel resolution (in pixels)
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 
 uniform float contrast;
@@ -183,8 +183,7 @@ vec3 convolution(mat3 kernel, vec2 filter_step)
 
 vec3 apply_filter() {
 
-    vec2 filter_step = vec2( 1.f / iChannelResolution[0].x, 1.f / iChannelResolution[0].y);
-//    vec2 filter_step = vec2( 1.f / 1280.0, 1.f / 720.0);
+    vec2 filter_step = 1.f / textureSize(iChannel0, 0);
 
     if (filter < 1 || filter > 10)
         return texture(iChannel0, vertexUV).rgb;

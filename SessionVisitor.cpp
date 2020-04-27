@@ -159,8 +159,6 @@ void SessionVisitor::visit(ImageShader &n)
     xmlCurrent_->SetAttribute("type", "ImageShader");
 
     XMLElement *filter = xmlDoc_->NewElement("uniforms");
-    filter->SetAttribute("brightness", n.brightness);
-    filter->SetAttribute("contrast", n.contrast);
     filter->SetAttribute("stipple", n.stipple);
     xmlCurrent_->InsertEndChild(filter);
 

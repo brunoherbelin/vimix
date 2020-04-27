@@ -33,10 +33,13 @@ Source::Source(std::string name) : name_(""), initialized_(false)
     Frame *frame = new Frame(Frame::MIXING);
     frame->translation_.z = 0.1;
     groups_[View::MIXING]->addChild(frame);
-    groups_[View::MIXING]->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
+    groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
 
     // will be associated to nodes later
+    mixingshader_ = new ImageShader();
     rendershader_ = new ImageProcessingShader();
+    renderbuffer_ = nullptr;
+    rendersurface_ = nullptr;
 
     // add source to the list
     sources_.push_front(this);
@@ -44,8 +47,10 @@ Source::Source(std::string name) : name_(""), initialized_(false)
 
 Source::~Source()
 {
-    // delete shader
+    // delete render objects
     delete rendershader_;
+    if (renderbuffer_)
+        delete renderbuffer_;
 
     // delete groups and their children
     delete groups_[View::RENDERING];
@@ -137,7 +142,7 @@ MediaSource::MediaSource(std::string name, std::string uri) : Source(name), uri_
     // - textured with original texture from media player
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
-    mediasurface_ = new Surface;
+    mediasurface_ = new Surface(rendershader_);
 
     // extra overlay for mixing view
     mixingoverlay_ = new Frame(Frame::MIXING_OVERLAY);
@@ -180,18 +185,17 @@ void MediaSource::init()
             // create Frame buffer matching size of media player
             renderbuffer_ = new FrameBuffer(mediaplayer()->width(), mediaplayer()->height());
 
-            // setup shader resolution for texture 0
-            rendershader_->iChannelResolution[0] = glm::vec3(mediaplayer()->width(), mediaplayer()->height(), 0.f);
+//            // setup shader resolution for texture 0
+//            rendershader_->iChannelResolution[0] = glm::vec3(mediaplayer()->width(), mediaplayer()->height(), 0.f);
 
             // create the surfaces to draw the frame buffer in the views
             // TODO Provide the source specific effect shader
-            rendersurface_ = new FrameBufferSurface(renderbuffer_, rendershader_);
+            rendersurface_ = new FrameBufferSurface(renderbuffer_, mixingshader_);
             groups_[View::RENDERING]->addChild(rendersurface_);
             groups_[View::MIXING]->addChild(rendersurface_);
 
             // for mixing view, add another surface to overlay (for stippled view in transparency)
-            Surface *surfacemix = new Surface();
-            surfacemix->setTextureIndex( mediaplayer_->texture() );
+            Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
             ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
             if (is)  is->stipple = 1.0;
             groups_[View::MIXING]->addChild(surfacemix);
@@ -201,6 +205,8 @@ void MediaSource::init()
                  node != groups_[View::MIXING]->end(); node++) {
                 (*node)->scale_.x = mediaplayer_->aspectRatio();
             }
+
+//            mixingshader_->mask = Resource::getTextureImage("images/mask_vignette.png");
 
             // done init once and for all
             initialized_ = true;
@@ -223,15 +229,24 @@ void MediaSource::render(bool current)
         mediasurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
 
-
         // read position of the mixing node and interpret this as transparency of render output
         float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
-        rendershader_->color.a = alpha;
-
+        mixingshader_->color.a = alpha;
 
         // make Mixing Overlay visible if it is current source
         mixingoverlay_->visible_ = current;
     }
 }
 
+FrameBuffer *MediaSource::frame() const
+{
+    if (initialized_ && renderbuffer_)
+    {
+        return renderbuffer_;
+    }
+    else {
+        static FrameBuffer *black = new FrameBuffer(640,480);
+        return black;
+    }
 
+}

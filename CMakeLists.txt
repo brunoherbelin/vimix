@@ -238,7 +238,9 @@ set(VMIX_RSC_FILES
     ./rsc/fonts/Roboto-Italic.ttf
     ./rsc/fonts/fa-regular-400.ttf
     ./rsc/fonts/fa-solid-900.ttf
+    ./rsc/images/mask_vignette.png
     ./rsc/images/v-mix_256x256.png
+    ./rsc/images/rgb.png
     ./rsc/images/busy.png
     ./rsc/images/icons.dds
     ./rsc/images/seed_512.jpg

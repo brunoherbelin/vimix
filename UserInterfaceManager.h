@@ -31,8 +31,7 @@ public:
 
 class UserInterface
 {
-    // own implementation of ImGui 
-    unsigned int textureicons;
+    friend class MainWindow;
     MainWindow mainwindow;
     std::string currentFileDialog;
     std::string currentTextEdit;
@@ -72,6 +71,12 @@ public:
 
     //
     void OpenTextEditor(std::string text);
+
+protected:
+    bool show_preview;
+    void RenderPreview();
+    bool show_media_player;
+    void RenderMediaPlayer();
 
 };
 

@@ -6,22 +6,23 @@ in vec4 vertexColor;
 in vec2 vertexUV;
 
 uniform sampler2D iChannel0;             // input channel (texture id).
+uniform sampler2D iChannel1;             // input mask
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 
 uniform vec4 color;
-uniform float contrast;
-uniform float brightness;
 uniform float stipple;
 
 void main()
 {
     // color is a mix of texture (manipulated with brightness & contrast), vertex and uniform colors
     vec4 textureColor = texture(iChannel0, vertexUV);
-    vec3 RGB = mix(vec3(0.62), textureColor.rgb, contrast + 1.0) + brightness;
-    RGB *= vertexColor.rgb * color.rgb;
+    vec3 RGB = textureColor.rgb * vertexColor.rgb * color.rgb;
 
     // alpha is a mix of texture alpha, vertex alpha, and uniform alpha affected by stippling
-    float A = textureColor.a * vertexColor.a * color.a;
+    vec4 maskColor = texture(iChannel1, vertexUV);
+    float maskIntensity = (maskColor.r + maskColor.g + maskColor.b) / 3.0;
+
+    float A = textureColor.a * vertexColor.a * color.a * maskIntensity;
     A *= int(gl_FragCoord.x + gl_FragCoord.y) % 2 > (1 - int(stipple)) ? 0.0 : 1.0;
 
     // output RGBA

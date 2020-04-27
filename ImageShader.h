@@ -10,12 +10,11 @@ public:
     ImageShader();
     virtual ~ImageShader() {}
 
-    virtual void use();
-    virtual void reset();
-    virtual void accept(Visitor& v);
+    void use() override;
+    void reset() override;
+    void accept(Visitor& v) override;
 
-    float brightness;
-    float contrast;
+    uint mask;
     float stipple;
 };
 

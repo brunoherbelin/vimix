@@ -296,14 +296,14 @@ void MediaPlayer::play(bool on)
         timecount_.reset();
 }
 
-bool MediaPlayer::isPlaying() const
+bool MediaPlayer::isPlaying(bool testpipeline) const
 {
     // image cannot play
     if (isimage_)
         return false;
 
     // if not ready yet, answer with requested state
-    if ( pipeline_ == nullptr )
+    if ( !testpipeline || pipeline_ == nullptr )
         return desired_state_ == GST_STATE_PLAYING;
 
     // if ready, answer with actual state

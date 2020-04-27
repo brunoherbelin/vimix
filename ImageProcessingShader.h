@@ -12,12 +12,12 @@ public:
     ImageProcessingShader();
     virtual ~ImageProcessingShader() {}
 
-    virtual void use();
-    virtual void reset();
-    virtual void accept(Visitor& v);
+    void use() override;
+    void reset() override;
+    void accept(Visitor& v) override;
 
-    // textures resolution
-    glm::vec3 iChannelResolution[2];
+//    // textures resolution
+//    glm::vec3 iChannelResolution[2];
 
     // color effects
     float brightness; // [-1 1]

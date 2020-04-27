@@ -12,19 +12,26 @@ public:
 
     // bind the FrameBuffer as current to draw into
     void bind();
-    void begin();
-    void end();
-
-    // release any framebuffer object
+    // unbind any framebuffer object
     static void release();
+    // Bind & push attribs to prepare draw
+    void begin();
+    // pop attrib and unbind to end draw
+    void end();
 
     // blit copy to another, returns true on success
     bool blit(FrameBuffer *other);
 
+    // clear color
+    inline void setClearColor(glm::vec3 color) { attrib_.clear_color = color; }
+    inline glm::vec3 clearColor() const { return attrib_.clear_color; }
+
+    // width & height
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
-    uint texture() const;
     float aspectRatio() const;
+    // texture index for draw
+    uint texture() const;
 
 private:
     void init();
