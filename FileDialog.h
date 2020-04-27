@@ -67,7 +67,16 @@ public:
 		return _instance;
 	}
 
+    static void RenderCurrent();
+    // Open an Open File dialog for TEXT file
+    static void SetCurrentOpenText();
+    // Open an Open File dialog for IMAGE file
+    static void SetCurrentOpenImage();
+    // Open an Open File dialog for MEDIA file
+    static void SetCurrentOpenMedia();
+
 protected:
+
 	FileDialog(); // Prevent construction
 	FileDialog(const FileDialog&) {}; // Prevent construction by copying
 	FileDialog& operator =(const FileDialog&) { return *this; }; // Prevent assignment

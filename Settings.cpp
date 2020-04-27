@@ -48,9 +48,12 @@ void Settings::Save()
         pRoot->InsertEndChild(windowsNode);
 	}
 
-	XMLElement *applicationNode = xmlDoc.NewElement( "Application" );  
-	applicationNode->SetAttribute("scale", application.scale);
-	applicationNode->SetAttribute("color", application.color);
+    XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
+    applicationNode->SetAttribute("scale", application.scale);
+    applicationNode->SetAttribute("accent_color", application.accent_color);
+    applicationNode->SetAttribute("preview", application.preview);
+    applicationNode->SetAttribute("media_player", application.media_player);
+    applicationNode->SetAttribute("shader_editor", application.shader_editor);
     pRoot->InsertEndChild(applicationNode);
 
     XMLError eResult = xmlDoc.SaveFile(filename.c_str());
@@ -102,7 +105,10 @@ void Settings::Load()
 	XMLElement * pElement = pRoot->FirstChildElement("Application");
 	if (pElement == nullptr) return;
 	pElement->QueryFloatAttribute("scale", &application.scale);
-	pElement->QueryIntAttribute("color", &application.color);
+    pElement->QueryIntAttribute("accent_color", &application.accent_color);
+    pElement->QueryBoolAttribute("preview", &application.preview);
+    pElement->QueryBoolAttribute("media_player", &application.media_player);
+    pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
 
 }
 

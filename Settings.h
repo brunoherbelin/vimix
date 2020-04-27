@@ -18,14 +18,28 @@ struct Window
 
 };
 
+
 struct Application
 {
+    // Verification
     std::string name;
+
+    // Global settings Application interface
     float scale;
-    int color;
+    int accent_color;
+    bool preview;
+    bool media_player;
+    bool shader_editor;
+
+    // multiple windows handling
     std::list<Window> windows;
 
-    Application() : name(APP_NAME), scale(1.f), color(0){
+    Application() : name(APP_NAME){
+        scale = 1.f;
+        accent_color = 0;
+        preview = true;
+        media_player = false;
+        shader_editor = false;
         windows.push_back(Window());
     }
 

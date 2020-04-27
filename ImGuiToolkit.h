@@ -20,6 +20,7 @@ namespace ImGuiToolkit
     bool ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle);
     bool ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state);
     void ButtonToggle( const char* label, bool* toggle );
+    void ButtonSwitch( const char* label, bool* toggle );
     void ButtonOpenWebpage( const char* url );
 
     // utility sliders
@@ -45,6 +46,7 @@ namespace ImGuiToolkit
         ACCENT_GREY
     } accent_color;
     void SetAccentColor(accent_color color);
+
 
 }
 

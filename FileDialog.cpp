@@ -1,6 +1,16 @@
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
 
+#include <fstream>
+#include <iostream>
+#include <cstring>
+#include <sstream>
+#include <cstdlib>
+#include <algorithm>
+#include <iostream>
+
+#include <glad/glad.h>
+
 #ifdef WIN32
 #include <include/dirent.h>
 #define PATH_SEP '\\'
@@ -19,11 +29,11 @@
 #endif
 #include "imgui_internal.h"
 
-#include <cstdlib>
-#include <algorithm>
-#include <iostream>
+#include <stb_image.h>
+
 
 static std::string s_fs_root(1u, PATH_SEP);
+static std::string currentFileDialog;
 
 inline bool replaceString(::std::string& str, const ::std::string& oldStr, const ::std::string& newStr)
 {
@@ -1031,3 +1041,178 @@ void FileDialog::ClearFilterColor()
 {
     m_FilterColor.clear();
 }
+
+
+
+// template info panel
+inline void InfosPane(std::string vFilter, bool *vCantContinue)
+// if vCantContinue is false, the user cant validate the dialog
+{
+    ImGui::TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
+
+    ImGui::Text("Selected Filter : %s", vFilter.c_str());
+
+    // File Manager information pannel
+    bool canValidateDialog = false;
+    ImGui::Checkbox("if not checked you cant validate the dialog", &canValidateDialog);
+
+    if (vCantContinue)
+        *vCantContinue = canValidateDialog;
+}
+
+inline void TextInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
+{
+    ImGui::TextColored(ImVec4(0, 1, 1, 1), "Text");
+
+    static std::string filepathcurrent;
+    static std::string text;
+
+    // if different file selected
+    if ( filepathcurrent.compare(FileDialog::Instance()->GetFilepathName()) != 0)
+    {
+        filepathcurrent = FileDialog::Instance()->GetFilepathName();
+
+        // fill text with file content
+        std::ifstream textfilestream(filepathcurrent, std::ios::in);
+        if(textfilestream.is_open()){
+            std::stringstream sstr;
+            sstr << textfilestream.rdbuf();
+            text = sstr.str();
+            textfilestream.close();
+        }
+        else
+        {
+            // empty text
+            text = "";
+        }
+
+    }
+
+    // show text
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 340);
+    ImGui::Text("%s", text.c_str());
+
+    // release Ok button if text is not empty
+    if (vCantContinue)
+        *vCantContinue = text.size() > 0;
+}
+
+inline void ImageInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
+{
+    // opengl texture
+    static GLuint tex = 0;
+    static std::string filepathcurrent;
+    static std::string message = "Please select an image (" + vFilter + ").";
+    static unsigned char* img = NULL;
+    static ImVec2 image_size(330, 330);
+
+    // generate texture (once) & clear
+    if (tex == 0) {
+        glGenTextures(1, &tex);
+        glBindTexture( GL_TEXTURE_2D, tex);
+        unsigned char clearColor[4] = {0};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+    }
+
+    // if different file selected
+    if ( filepathcurrent.compare(FileDialog::Instance()->GetFilepathName()) != 0)
+    {
+        // remember path
+        filepathcurrent = FileDialog::Instance()->GetFilepathName();
+
+        // prepare texture
+        glBindTexture( GL_TEXTURE_2D, tex);
+
+        // load image
+        int w, h, n;
+        img = stbi_load(filepathcurrent.c_str(), &w, &h, &n, 4);
+        if (img != NULL) {
+
+            // apply img to texture
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
+
+            // adjust image display aspect ratio
+            image_size.y =  image_size.x * static_cast<float>(h) / static_cast<float>(w);
+
+            // free loaded image
+            stbi_image_free(img);
+
+            message = FileDialog::Instance()->GetCurrentFileName() + "(" + std::to_string(w) + "x" + std::to_string(h) + ")";
+        }
+        else {
+            // clear image
+            unsigned char clearColor[4] = {0};
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+
+            message = "Please select an image (" + vFilter + ").";
+        }
+
+    }
+
+    // draw text and image
+    ImGui::TextColored(ImVec4(0, 1, 1, 1), "%s", message.c_str());
+    ImGui::Image((void*)(intptr_t)tex, image_size);
+
+    // release Ok button if image is not null
+    if (vCantContinue)
+        *vCantContinue = img!=NULL;
+}
+
+void FileDialog::RenderCurrent()
+{
+    ImVec2 geometry(1200.0, 640.0);
+
+    if ( !currentFileDialog.empty() && FileDialog::Instance()->Render(currentFileDialog.c_str(), geometry)) {
+        if (FileDialog::Instance()->IsOk == true) {
+            std::string filePathNameText = FileDialog::Instance()->GetFilepathName();
+            // done
+            currentFileDialog = "";
+        }
+        FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
+    }
+}
+
+
+void FileDialog::SetCurrentOpenText()
+{
+    currentFileDialog = "ChooseFileText";
+
+    FileDialog::Instance()->ClearFilterColor();
+    FileDialog::Instance()->SetFilterColor(".cpp", ImVec4(1,1,0,0.5));
+    FileDialog::Instance()->SetFilterColor(".h", ImVec4(0,1,0,0.5));
+    FileDialog::Instance()->SetFilterColor(".hpp", ImVec4(0,0,1,0.5));
+
+    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Text File", ".cpp\0.h\0.hpp\0\0", ".", "",
+            std::bind(&TextInfosPane, std::placeholders::_1, std::placeholders::_2), 350, "Text info");
+
+}
+
+void FileDialog::SetCurrentOpenImage()
+{
+    currentFileDialog = "ChooseFileImage";
+
+    FileDialog::Instance()->ClearFilterColor();
+    FileDialog::Instance()->SetFilterColor(".png", ImVec4(0,1,1,1.0));
+    FileDialog::Instance()->SetFilterColor(".jpg", ImVec4(0,1,1,1.0));
+    FileDialog::Instance()->SetFilterColor(".gif", ImVec4(0,1,1,1.0));
+
+    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Image File", ".*\0.png\0.jpg\0.gif\0\0", ".", "",
+            std::bind(&ImageInfosPane, std::placeholders::_1, std::placeholders::_2), 350, "Image info");
+
+}
+
+void FileDialog::SetCurrentOpenMedia()
+{
+    currentFileDialog = "ChooseFileMedia";
+
+    FileDialog::Instance()->ClearFilterColor();
+    FileDialog::Instance()->SetFilterColor(".mp4", ImVec4(0,1,1,1.0));
+    FileDialog::Instance()->SetFilterColor(".avi", ImVec4(0,1,1,1.0));
+    FileDialog::Instance()->SetFilterColor(".mov", ImVec4(0,1,1,1.0));
+
+    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Media File", ".*\0.mp4\0.avi\0.mov\0\0", ".", "", "Media");
+
+}
+

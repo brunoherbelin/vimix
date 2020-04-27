@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstring>
-#include <fstream>
 #include <sstream>
+#include <thread>
 
 // ImGui
 #include "imgui.h"
@@ -35,8 +35,8 @@
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
 #include "Resource.h"
-#include "Settings.h"
 #include "FileDialog.h"
+#include "Settings.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
@@ -75,10 +75,7 @@ static void NativeOpenFile(std::string ext)
 
 UserInterface::UserInterface()
 {
-    currentFileDialog = "";
     currentTextEdit = "";
-    show_preview = true;
-    show_media_player = false;
 }
 
 bool UserInterface::Init()
@@ -98,7 +95,7 @@ bool UserInterface::Init()
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
 
     // Setup Dear ImGui style
-    ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.color));
+    ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     // Load Fonts (using resource manager, a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", 22);
@@ -141,11 +138,17 @@ void UserInterface::handleKeyboard()
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  
             Rendering::manager().Close();
         else if (ImGui::IsKeyPressed( GLFW_KEY_O ))
-            UserInterface::OpenFileMedia();
+        {
+
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S ))
-            std::cerr <<" Save File " << std::endl;  
+        {
+            std::cerr <<" Save File " << std::endl;
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_W ))
-            std::cerr <<" Close File " << std::endl; 
+        {
+            std::cerr <<" Close File " << std::endl;
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L ))
             mainwindow.ToggleLogs();
 
@@ -270,30 +273,34 @@ void UserInterface::NewFrame()
 
 void UserInterface::Render()
 {
-    ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
+//    ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
 
-    // file modal dialog
-    geometry.x *= 0.4f;
-    geometry.y *= 0.4f;
-    if ( !currentFileDialog.empty() && FileDialog::Instance()->Render(currentFileDialog.c_str(), geometry)) {
-        if (FileDialog::Instance()->IsOk == true) {
-            std::string filePathNameText = FileDialog::Instance()->GetFilepathName();
-            // done
-            currentFileDialog = "";
-        }
-        FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
-    }
+//    // file modal dialog
+//    geometry.x *= 0.4f;
+//    geometry.y *= 0.4f;
+//    if ( !currentFileDialog.empty() && FileDialog::Instance()->Render(currentFileDialog.c_str(), geometry)) {
+//        if (FileDialog::Instance()->IsOk == true) {
+//            std::string filePathNameText = FileDialog::Instance()->GetFilepathName();
+//            // done
+//            currentFileDialog = "";
+//        }
+//        FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
+//    }
+
+    FileDialog::RenderCurrent();
 
     // warning modal dialog
     Log::Render();
 
     // windows
-    if (show_preview)
+    if (Settings::application.preview)
         RenderPreview();
-    if (show_media_player)
+    if (Settings::application.media_player)
         RenderMediaPlayer();
+    if (Settings::application.shader_editor)
+        RenderShaderEditor();
 
-    // Rendering 
+    // all IMGUI Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -306,162 +313,6 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
-// template info panel
-inline void InfosPane(std::string vFilter, bool *vCantContinue) 
-// if vCantContinue is false, the user cant validate the dialog
-{
-	ImGui::TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
-	
-	ImGui::Text("Selected Filter : %s", vFilter.c_str());
-
-    // File Manager information pannel
-    bool canValidateDialog = false;
-	ImGui::Checkbox("if not checked you cant validate the dialog", &canValidateDialog);
-
-	if (vCantContinue)
-	    *vCantContinue = canValidateDialog;
-}
-
-inline void TextInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
-{
-	ImGui::TextColored(ImVec4(0, 1, 1, 1), "Text");
-	
-    static std::string filepathcurrent;
-    static std::string text;
-
-    // if different file selected
-    if ( filepathcurrent.compare(FileDialog::Instance()->GetFilepathName()) != 0)
-    {
-        filepathcurrent = FileDialog::Instance()->GetFilepathName();	
-        
-        // fill text with file content
-        std::ifstream textfilestream(filepathcurrent, std::ios::in);
-        if(textfilestream.is_open()){
-            std::stringstream sstr;
-            sstr << textfilestream.rdbuf();
-            text = sstr.str();
-            textfilestream.close();
-        } 
-        else
-        {
-            // empty text
-            text = "";
-        }
-        
-    }
-
-    // show text
-    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 340);
-    ImGui::Text("%s", text.c_str());
-
-    // release Ok button if text is not empty
-	if (vCantContinue)
-	    *vCantContinue = text.size() > 0;
-}
-
-inline void ImageInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
-{
-    // opengl texture
-    static GLuint tex = 0;
-    static std::string filepathcurrent;
-    static std::string message = "Please select an image (" + vFilter + ").";
-    static unsigned char* img = NULL;
-    static ImVec2 image_size(330, 330);
-
-    // generate texture (once) & clear
-    if (tex == 0) {
-        glGenTextures(1, &tex);
-        glBindTexture( GL_TEXTURE_2D, tex);
-        unsigned char clearColor[4] = {0};
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
-    }
-
-    // if different file selected
-    if ( filepathcurrent.compare(FileDialog::Instance()->GetFilepathName()) != 0)
-    {
-        // remember path
-        filepathcurrent = FileDialog::Instance()->GetFilepathName();	
-
-        // prepare texture 
-        glBindTexture( GL_TEXTURE_2D, tex);
-
-        // load image
-        int w, h, n;
-        img = stbi_load(filepathcurrent.c_str(), &w, &h, &n, 4);
-        if (img != NULL) {
-            
-            // apply img to texture
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
-
-            // adjust image display aspect ratio
-            image_size.y =  image_size.x * static_cast<float>(h) / static_cast<float>(w);
-
-            // free loaded image
-            stbi_image_free(img);
-
-            message = FileDialog::Instance()->GetCurrentFileName() + "(" + std::to_string(w) + "x" + std::to_string(h) + ")";
-        }
-        else {
-            // clear image
-            unsigned char clearColor[4] = {0};
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
-
-            message = "Please select an image (" + vFilter + ").";
-        }
-
-    }
-
-    // draw text and image
-	ImGui::TextColored(ImVec4(0, 1, 1, 1), "%s", message.c_str());
-    ImGui::Image((void*)(intptr_t)tex, image_size);
-
-    // release Ok button if image is not null
-	if (vCantContinue)
-	    *vCantContinue = img!=NULL;
-}
-
-void UserInterface::OpenFileText()
-{
-    currentFileDialog = "ChooseFileText";
-
-    FileDialog::Instance()->ClearFilterColor();
-    FileDialog::Instance()->SetFilterColor(".cpp", ImVec4(1,1,0,0.5));
-    FileDialog::Instance()->SetFilterColor(".h", ImVec4(0,1,0,0.5));
-    FileDialog::Instance()->SetFilterColor(".hpp", ImVec4(0,0,1,0.5));
-
-    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Text File", ".cpp\0.h\0.hpp\0\0", ".", "", 
-            std::bind(&TextInfosPane, std::placeholders::_1, std::placeholders::_2), 350, "Text info");
-
-}
-
-void UserInterface::OpenFileImage()
-{
-    currentFileDialog = "ChooseFileImage";
-
-    FileDialog::Instance()->ClearFilterColor();
-    FileDialog::Instance()->SetFilterColor(".png", ImVec4(0,1,1,1.0));
-    FileDialog::Instance()->SetFilterColor(".jpg", ImVec4(0,1,1,1.0));
-    FileDialog::Instance()->SetFilterColor(".gif", ImVec4(0,1,1,1.0));
-
-    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Image File", ".*\0.png\0.jpg\0.gif\0\0", ".", "", 
-            std::bind(&ImageInfosPane, std::placeholders::_1, std::placeholders::_2), 350, "Image info");
-
-}
-
-void UserInterface::OpenFileMedia()
-{
-    currentFileDialog = "ChooseFileMedia";
-
-    FileDialog::Instance()->ClearFilterColor();
-    FileDialog::Instance()->SetFilterColor(".mp4", ImVec4(0,1,1,1.0));
-    FileDialog::Instance()->SetFilterColor(".avi", ImVec4(0,1,1,1.0));
-    FileDialog::Instance()->SetFilterColor(".mov", ImVec4(0,1,1,1.0));
-
-    FileDialog::Instance()->OpenDialog(currentFileDialog.c_str(), "Open Media File", ".*\0.mp4\0.avi\0.mov\0\0", ".", "", "Media");
-
-}
 
 
 MainWindow::MainWindow()
@@ -473,7 +324,6 @@ MainWindow::MainWindow()
     show_demo_window = false;
     show_logs_window = false;
     show_icons_window = false;
-    show_editor_window = false;
     screenshot_step = 0;
 }
 
@@ -521,11 +371,6 @@ void MainWindow::ShowStats(bool* p_open)
 void MainWindow::ToggleLogs() 
 {
     show_logs_window = !show_logs_window;
-}
-
-void MainWindow::ToggleStats() 
-{
-    show_overlay_stats = !show_overlay_stats;
 }
 
 void MainWindow::StartScreenshot()
@@ -699,10 +544,10 @@ void MainWindow::Render()
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
-                UserInterface::manager().OpenFileMedia();
+//                UserInterface::manager().OpenFileMedia();
             }
             if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
-                UserInterface::manager().OpenFileMedia();
+//                UserInterface::manager().OpenFileMedia();
             }
             if (ImGui::MenuItem( ICON_FA_FILE "  Close", "Ctrl+W")) {
 
@@ -714,17 +559,17 @@ void MainWindow::Render()
         }
         if (ImGui::BeginMenu("Windows"))
         {
-            ImGui::MenuItem( IMGUI_TITLE_PREVIEW, NULL, &UserInterface::manager().show_preview);
-            ImGui::MenuItem( IMGUI_TITLE_MEDIAPLAYER, NULL, &UserInterface::manager().show_media_player);
-            ImGui::MenuItem( IMGUI_TITLE_SHADEREDITOR, NULL, &show_editor_window);
+            ImGui::MenuItem( IMGUI_TITLE_PREVIEW, NULL, &Settings::application.preview);
+            ImGui::MenuItem( IMGUI_TITLE_MEDIAPLAYER, NULL, &Settings::application.media_player);
+            ImGui::MenuItem( IMGUI_TITLE_SHADEREDITOR, NULL, &Settings::application.shader_editor);
             ImGui::MenuItem("Appearance", NULL, false, false);
             ImGui::SetNextItemWidth(200);
             if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
                 ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
             ImGui::SetNextItemWidth(200);
-            if ( ImGui::Combo("Color", &Settings::application.color, "Blue\0Orange\0Grey\0\0"))
-                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.color));
+            if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools"))
@@ -753,7 +598,9 @@ void MainWindow::Render()
 //    ImGuiToolkit::ButtonToggle("Active", &on);
 //    ImGui::SameLine();
 //    ImGuiToolkit::ButtonIconToggle(12,11,14,1,&on);
-//    ImGui::SameLine(0, 10);
+//    ImGui::SameLine();
+//    ImGuiToolkit::ButtonSwitch("switch", &on);
+////    ImGui::SameLine(0, 10);
 //    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
 //    ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
 //    ImGui::PopFont();
@@ -776,8 +623,6 @@ void MainWindow::Render()
         Log::ShowLogWindow(&show_logs_window);
     if (show_overlay_stats)
         ShowStats(&show_overlay_stats);
-    if (show_editor_window)
-        drawTextEditor(&show_editor_window);
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
@@ -830,7 +675,7 @@ void UserInterface::RenderPreview()
     {
         ImGui::SetNextWindowPos(ImVec2(100, 300), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(640, 480), ImGuiCond_FirstUseEver);
-        ImGui::Begin(ICON_FA_LAPTOP " Preview", &show_preview,  ImGuiWindowFlags_NoScrollbar);
+        ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.preview,  ImGuiWindowFlags_NoScrollbar);
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / output->aspectRatio());
@@ -857,7 +702,7 @@ void UserInterface::RenderMediaPlayer()
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
 
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &show_media_player,  ImGuiWindowFlags_NoScrollbar) || !show)
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player,  ImGuiWindowFlags_NoScrollbar) || !show)
     {
         ImGui::End();
         return;
@@ -953,47 +798,53 @@ void UserInterface::RenderMediaPlayer()
     ImGui::End();
 }
 
-void UserInterface::OpenTextEditor(std::string text)
+void UserInterface::fillShaderEditor(std::string text)
 {
-    currentTextEdit = text;
+    static bool initialized = false;
+    if (!initialized) {
+        auto lang = TextEditor::LanguageDefinition::GLSL();
 
-    auto lang = TextEditor::LanguageDefinition::GLSL();
+        static const char* const keywords[] = {
+            "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
+            "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
+            "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
+            "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
+            "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
+        };
+        for (auto& k : keywords)
+            lang.mKeywords.insert(k);
 
-    static const char* const keywords[] = {
-        "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
-        "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
-        "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
-        "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
-        "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
-    };
-    for (auto& k : keywords)
-        lang.mKeywords.insert(k);
-
-    static const char* const identifiers[] = {
-        "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
-        "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
-        "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
-        "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
-        "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
-        "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
-        "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
-        "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
-    };
-    for (auto& k : identifiers)
-    {
-        TextEditor::Identifier id;
-        id.mDeclaration = "Added function";
-        lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+        static const char* const identifiers[] = {
+            "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
+            "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
+            "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
+            "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
+            "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
+            "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
+            "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
+            "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
+        };
+        for (auto& k : identifiers)
+        {
+            TextEditor::Identifier id;
+            id.mDeclaration = "Added function";
+            lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+        }
+        // init editor
+        editor.SetLanguageDefinition(lang);
     }
 
-	editor.SetLanguageDefinition(lang);
+    // remember text
+    currentTextEdit = text;
+    // fill editor
     editor.SetText(currentTextEdit);
 }
 
-void MainWindow::drawTextEditor(bool* p_open)
+void UserInterface::RenderShaderEditor()
 {
     static bool show_statusbar = true;
-    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, p_open, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+
+    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGui::BeginMenuBar())
     {
@@ -1048,7 +899,7 @@ void MainWindow::drawTextEditor(bool* p_open)
     }
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-    editor.Render("TextEditor");
+    editor.Render("ShaderEditor");
     ImGui::PopFont();
 
     ImGui::End();

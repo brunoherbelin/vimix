@@ -33,6 +33,7 @@
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 #include "FrameBuffer.h"
+#include "Resource.h"
 #include "ImageProcessingShader.h"
 
 #include "MediaPlayer.h"
@@ -125,7 +126,7 @@ int main(int, char**)
 #endif
 
 //     test text editor
-//    UserInterface::manager().OpenTextEditor( Resource::getText("shaders/texture-shader.fs") );
+    UserInterface::manager().fillShaderEditor( Resource::getText("shaders/image.fs") );
 
     // init the scene
     Mixer::manager().setCurrentView(View::MIXING);

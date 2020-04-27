@@ -18,6 +18,7 @@
 #define MINUTE 60000000000L
 
 #include "Resource.h"
+#include "FileDialog.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 
@@ -48,7 +49,22 @@ void ImGuiToolkit::ButtonOpenWebpage( const char* url )
     }
 }
 
-void ImGuiToolkit::ButtonToggle(const char* str_id, bool* toggle)
+
+void ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
+{
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    const auto active = *toggle;
+    if( active ) {
+        ImGui::PushStyleColor( ImGuiCol_Button, colors[ImGuiCol_TabActive] );
+        ImGui::PushStyleColor( ImGuiCol_ButtonHovered, colors[ImGuiCol_TabHovered] );
+        ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
+    }
+    if( ImGui::Button( label ) ) *toggle = !*toggle;
+    if( active ) ImGui::PopStyleColor( 3 );
+}
+
+
+void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle)
 {
     ImVec4* colors = ImGui::GetStyle().Colors;
     ImVec2 p = ImGui::GetCursorScreenPos();
@@ -58,7 +74,7 @@ void ImGuiToolkit::ButtonToggle(const char* str_id, bool* toggle)
     float width = height * 1.6f;
     float radius = height * 0.50f;
 
-    ImGui::InvisibleButton(str_id, ImVec2(width, height));
+    ImGui::InvisibleButton(label, ImVec2(width, height));
     if (ImGui::IsItemClicked())
         *toggle = !*toggle;
 
@@ -66,7 +82,7 @@ void ImGuiToolkit::ButtonToggle(const char* str_id, bool* toggle)
 
     ImGuiContext& g = *GImGui;
     float ANIM_SPEED = 0.1f;
-    if (g.LastActiveId == g.CurrentWindow->GetID(str_id))// && g.LastActiveIdTimer < ANIM_SPEED)
+    if (g.LastActiveId == g.CurrentWindow->GetID(label))// && g.LastActiveIdTimer < ANIM_SPEED)
     {
         float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
         t = *toggle ? (t_anim) : (1.0f - t_anim);
@@ -81,7 +97,7 @@ void ImGuiToolkit::ButtonToggle(const char* str_id, bool* toggle)
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
     ImGui::SameLine(0,10);
-    ImGui::Text(str_id);
+    ImGui::Text(label);
 }
 
 
@@ -856,21 +872,5 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
     }
 
-}
-
-
-void SetButtonHighlightColor()
-{
-    ImGui::PushStyleColor( ImGuiCol_Button, (ImVec4)ImColor::HSV( 0.35f, 0.6f, 0.6f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV( 0.35f, 0.8f, 0.8f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV( 0.35f, 0.7f, 0.7f ) );
-}
-
-void ToggleButton( const char* label, bool& toggle )
-{
-    const auto active = toggle;
-    if( active ) SetButtonHighlightColor();
-    if( ImGui::Button( label ) ) toggle = !toggle;
-    if( active ) ImGui::PopStyleColor( 3 );
 }
 
