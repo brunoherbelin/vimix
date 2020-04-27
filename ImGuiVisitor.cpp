@@ -149,9 +149,13 @@ void ImGuiVisitor::visit(ImageShader &n)
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
     // combo list of masks
-    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, ImageShader::mask_presets.size()) )
+    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, ImageShader::mask_presets.size()+1 ) )
     {
-        n.mask = ImageShader::mask_presets[item_current];
+        if (item_current < ImageShader::mask_presets.size())
+            n.mask = ImageShader::mask_presets[item_current];
+        else {
+            // TODO ask for custom mask
+        }
     }
 
     ImGui::PopID();

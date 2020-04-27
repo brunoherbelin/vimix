@@ -17,7 +17,7 @@ public:
     void accept(Visitor& v) override;
 
 //    // textures resolution
-//    glm::vec3 iChannelResolution[2];
+//    glm::vec3 iChannelResolution[1];
 
     // color effects
     float brightness; // [-1 1]

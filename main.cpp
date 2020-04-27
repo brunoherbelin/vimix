@@ -120,7 +120,7 @@ int main(int, char**)
     /// GStreamer
     ///
 #ifndef NDEBUG
-    gst_debug_set_default_threshold (GST_LEVEL_WARNING);
+    gst_debug_set_default_threshold (GST_LEVEL_ERROR);
     gst_debug_set_active(TRUE);
 #endif
 

@@ -30,8 +30,7 @@ uniform vec4 color;
 
 // image processing specific
 uniform sampler2D iChannel0;  // input channel (texture id).
-uniform sampler2D iChannel1;
-//uniform vec3      iChannelResolution[2]; // input channel resolution (in pixels)
+//uniform vec3      iChannelResolution[1]; // replaced by textureSize(iChannel0, 0);
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 
 uniform float contrast;
