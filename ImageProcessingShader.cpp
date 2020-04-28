@@ -5,6 +5,10 @@
 
 ShadingProgram imageProcessingShadingProgram("shaders/image.vs", "shaders/imageprocessing.fs");
 
+const char* ImageProcessingShader::filter_names[12] = { "None", "Blur", "Sharpen", "Edge", "Emboss", "Denoising",
+                                                        "Erosion 3x3", "Erosion 5x5", "Erosion 7x7", "Dilation 3x3", "Dilation 5x5", "Dilation 7x7" };
+
+
 ImageProcessingShader::ImageProcessingShader()
 {
     program_ = &imageProcessingShadingProgram;

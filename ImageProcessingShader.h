@@ -5,6 +5,7 @@
 
 #include "Shader.h"
 
+
 class ImageProcessingShader : public Shader
 {
 public:
@@ -41,6 +42,7 @@ public:
     // [5] 1 x convolution opening (denoising)
     // [6 11] 6 x convolutions: erosion 3x3, 5x5, 7x7, dilation 3x3, 5x5, 7x7
     int filterid;
+    static const char* filter_names[12];
 
 };
 

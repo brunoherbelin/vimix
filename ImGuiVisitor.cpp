@@ -115,8 +115,6 @@ void ImGuiVisitor::visit(MediaPlayer &n)
 
 void ImGuiVisitor::visit(Shader &n)
 {
-    float width = ImGui::GetContentRegionAvail().x;
-
     ImGui::PushID(n.id());
 
     if (ImGuiToolkit::ButtonIcon(10, 2)) {
@@ -149,9 +147,9 @@ void ImGuiVisitor::visit(ImageShader &n)
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
     // combo list of masks
-    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, ImageShader::mask_presets.size()+1 ) )
+    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
     {
-        if (item_current < ImageShader::mask_presets.size())
+        if (item_current < (int) ImageShader::mask_presets.size())
             n.mask = ImageShader::mask_presets[item_current];
         else {
             // TODO ask for custom mask
@@ -206,14 +204,11 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
-    ImGui::Combo("Filter", &n.filterid, "None\0Blur\0Sharpen\0Edge\0Emboss\0Denoising\0Erode 3x3\0Erode 5x5\0Erode 7x7\0Dilate 3x3\0Dilate 5x5\0Dilate 7x7\0");
+    ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
 
     if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
-//    static const char* invert_names[3] = { "None", "Color", "Luminance" };
-//    const char* current_invert_name = invert_names[n.invert];
-//    ImGui::SliderInt("Invert", &n.invert, 0, 2, current_invert_name);
     ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
 
     if (ImGuiToolkit::ButtonIcon(13, 4)) {

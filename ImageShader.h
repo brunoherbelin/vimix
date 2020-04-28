@@ -25,7 +25,7 @@ public:
     uint mask;
     float stipple;
 
-    static const char* mask_names[];
+    static const char* mask_names[10];
     static std::vector< uint > mask_presets;
 };
 
