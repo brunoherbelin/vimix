@@ -258,7 +258,11 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/target.ply
-    ./rsc/mesh/border.ply
+    ./rsc/mesh/border_round.ply
+    ./rsc/mesh/border_sharp.ply
+    ./rsc/mesh/border_large_round.ply
+    ./rsc/mesh/border_large_sharp.ply
+    ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/circle.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply

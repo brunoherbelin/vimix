@@ -4,20 +4,27 @@
 #include "defines.h"
 
 #include <string>
-#include <list>
+#include <vector>
 
 namespace Settings {
 
-struct Window
+struct WindowConfig
 {
     std::string name;
     int x,y,w,h;
     bool fullscreen;
 
-    Window() : name(APP_TITLE), x(15), y(15), w(1280), h(720), fullscreen(false) { }
+    WindowConfig(std::string n) : name(n), x(15), y(15), w(1280), h(720), fullscreen(false) { }
 
 };
 
+struct ViewConfig
+{
+    std::string name;
+
+    ViewConfig(std::string n) : name(n) { }
+
+};
 
 struct Application
 {
@@ -31,8 +38,12 @@ struct Application
     bool media_player;
     bool shader_editor;
 
+    // Settings of Views
+    int current_view;
+    std::vector<ViewConfig> views;
+
     // multiple windows handling
-    std::list<Window> windows;
+    std::vector<WindowConfig> windows;
 
     Application() : name(APP_NAME){
         scale = 1.f;
@@ -40,10 +51,12 @@ struct Application
         preview = true;
         media_player = false;
         shader_editor = false;
-        windows.push_back(Window());
+        current_view = 1;
+        windows.push_back(WindowConfig(APP_TITLE));
     }
 
 };
+
 
 // minimal implementation of settings
 // Can be accessed r&w anywhere

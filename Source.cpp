@@ -26,14 +26,17 @@ Source::Source(std::string name) : name_(""), initialized_(false)
     // create groups for each view
     // default rendering node
     groups_[View::RENDERING] = new Group;
-    groups_[View::RENDERING]->scale_ = glm::vec3(5.f, 5.f, 1.f); // fit height full window
 
     // default mixing nodes
     groups_[View::MIXING] = new Group;
-    Frame *frame = new Frame(Frame::MIXING);
+    Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
+    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 0.9f);
     groups_[View::MIXING]->addChild(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
+
+    // default geometry nodes
+    groups_[View::GEOMETRY] = new Group;
 
     // will be associated to nodes later
     mixingshader_ = new ImageShader();
@@ -55,6 +58,7 @@ Source::~Source()
     // delete groups and their children
     delete groups_[View::RENDERING];
     delete groups_[View::MIXING];
+    delete groups_[View::GEOMETRY];
     groups_.clear();
 
     // remove this source from the list
@@ -67,6 +71,9 @@ bool hasNode::operator()(const Source* elem) const
     {
         SearchVisitor sv(_n);
         elem->group(View::MIXING)->accept(sv);
+        if (sv.found())
+            return true;
+        elem->group(View::GEOMETRY)->accept(sv);
         if (sv.found())
             return true;
         elem->group(View::RENDERING)->accept(sv);
@@ -145,10 +152,12 @@ MediaSource::MediaSource(std::string name, std::string uri) : Source(name), uri_
     mediasurface_ = new Surface(rendershader_);
 
     // extra overlay for mixing view
-    mixingoverlay_ = new Frame(Frame::MIXING_OVERLAY);
-    groups_[View::MIXING]->addChild(mixingoverlay_);
+    mixingoverlay_ = new Frame(Frame::ROUND_LARGE);
+    mixingoverlay_->overlay_ = new Mesh("mesh/icon_video.ply");
     mixingoverlay_->translation_.z = 0.1;
+    mixingoverlay_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
     mixingoverlay_->visible_ = false;
+    groups_[View::MIXING]->addChild(mixingoverlay_);
 
 }
 
@@ -192,6 +201,7 @@ void MediaSource::init()
             // TODO Provide the source specific effect shader
             rendersurface_ = new FrameBufferSurface(renderbuffer_, mixingshader_);
             groups_[View::RENDERING]->addChild(rendersurface_);
+            groups_[View::GEOMETRY]->addChild(rendersurface_);
             groups_[View::MIXING]->addChild(rendersurface_);
 
             // for mixing view, add another surface to overlay (for stippled view in transparency)
@@ -233,7 +243,10 @@ void MediaSource::render(bool current)
         float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
         mixingshader_->color.a = alpha;
 
-        // make Mixing Overlay visible if it is current source
+        // TODO modify geometry
+        groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
+
+        // make Overlay visible if it is current source
         mixingoverlay_->visible_ = current;
     }
 }

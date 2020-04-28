@@ -84,7 +84,7 @@ bool Rendering::Init()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
 
-    Settings::Window winset = Settings::application.windows.front();
+    Settings::WindowConfig winset = Settings::application.windows.front();
 
     // Create window with graphics context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -328,7 +328,7 @@ RenderingAttrib Rendering::currentAttrib()
 
 glm::mat4 Rendering::Projection()
 {
-    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 0.f);
+    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 1.f);
     glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, AspectRatio(), 1.f));
 
     return projection * scale;

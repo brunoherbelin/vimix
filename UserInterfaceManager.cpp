@@ -155,6 +155,10 @@ void UserInterface::handleKeyboard()
     }
 
     // Application F-Keys
+    if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
+        Mixer::manager().setCurrentView(View::MIXING);
+    if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
+        Mixer::manager().setCurrentView(View::GEOMETRY);
     if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
         Rendering::manager().ToggleFullscreen();
     else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
@@ -593,29 +597,44 @@ void MainWindow::Render()
         ImGui::EndMenuBar();
     }
 
-    // content
-//    static bool on;
-//    ImGuiToolkit::ButtonToggle("Active", &on);
-//    ImGui::SameLine();
-//    ImGuiToolkit::ButtonIconToggle(12,11,14,1,&on);
-//    ImGui::SameLine();
-//    ImGuiToolkit::ButtonSwitch("switch", &on);
-////    ImGui::SameLine(0, 10);
-//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-//    ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-//    ImGui::PopFont();
+    // Select view
 
-    if( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File" ) && !loadThread.joinable())
-    {        
-        loadThreadDone = false;
-        loadThread = std::thread(NativeOpenFile, "hello");
-    }
+    bool selected_view[4] = { false, false, false, false };
+    selected_view[ Settings::application.current_view ] = true;
 
-    if( loadThreadDone && loadThread.joinable() ) { 
-        loadThread.join(); 
-        
-        // TODO : deal with filename    
+//    if ( ImGuiToolkit::ButtonToggle())
+    float width = ImGui::GetContentRegionAvail().x / 3;
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.50f, 0.50f));
+    if (ImGui::Selectable( ICON_FA_BULLSEYE " Mixing View", &selected_view[1], 0, ImVec2(width,50)))
+    {
+        Mixer::manager().setCurrentView(View::MIXING);
     }
+    ImGui::SameLine();
+    if (ImGui::Selectable( ICON_FA_SIGN " Geometry View", &selected_view[2], 0, ImVec2(width,50)))
+    {
+        Mixer::manager().setCurrentView(View::GEOMETRY);
+    }
+    ImGui::SameLine();
+    if (ImGui::Selectable( ICON_FA_BARS " Layers View", &selected_view[3], 0, ImVec2(width,50)))
+    {
+
+    }
+    ImGui::PopStyleVar();
+
+
+
+
+    // TEMPLATE CODE FOR FILE BROWSER
+//    if( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File" ) && !loadThread.joinable())
+//    {
+//        loadThreadDone = false;
+//        loadThread = std::thread(NativeOpenFile, "hello");
+//    }
+
+//    if( loadThreadDone && loadThread.joinable() ) {
+//        loadThread.join();
+//        // TODO : deal with filename
+//    }
 
     ImGui::End(); // "v-mix"
 

@@ -57,4 +57,21 @@ public:
 
 
 };
+
+class GeometryView : public View
+{
+public:
+    GeometryView();
+    ~GeometryView();
+
+    void draw () override;
+    void zoom (float factor) override;
+    void drag (glm::vec2 from, glm::vec2 to) override;
+    void grab (glm::vec2 from, glm::vec2 to, Source *s) override;
+
+private:
+
+};
+
+
 #endif // VIEW_H

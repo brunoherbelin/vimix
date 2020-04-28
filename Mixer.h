@@ -52,6 +52,7 @@ public:
 protected:
     RenderView render_;
     MixingView mixing_;
+    GeometryView geometry_;
     View *current_view_;
     gint64 update_time_;
 

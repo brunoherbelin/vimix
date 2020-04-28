@@ -33,7 +33,7 @@ uint Resource::getTextureBlack()
     if (tex_index_black == 0) {
         glGenTextures(1, &tex_index_black);
         glBindTexture( GL_TEXTURE_2D, tex_index_black);
-        unsigned char clearColor[4] = {0, 0, 0, 0};
+        unsigned char clearColor[4] = {0, 0, 0, 255};
         // texture with one black pixel
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
     }

@@ -30,10 +30,10 @@ void Settings::Save()
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
-        list<Settings::Window>::iterator iter;
+        vector<Settings::WindowConfig>::iterator iter;
 		for (iter=application.windows.begin(); iter != application.windows.end(); iter++)
 		{
-            const Settings::Window& w=*iter;
+            const Settings::WindowConfig& w=*iter;
 
 			XMLElement *window = xmlDoc.NewElement( "Window" );            
 			window->SetAttribute("name", w.name.c_str());
@@ -87,10 +87,9 @@ void Settings::Load()
 
 		XMLElement* pWindowNode = pElement->FirstChildElement("Window");
 		for( ; pWindowNode ; pWindowNode=pWindowNode->NextSiblingElement())
-		{
-            Settings::Window w;
-			const char *pName=pWindowNode->Attribute("name");
-			if (pName) w.name=pName;
+        {
+            const char *pName = pWindowNode->Attribute("name");
+            Settings::WindowConfig w(pName);
 			
 			pWindowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
 			pWindowNode->QueryIntAttribute("y", &w.y);

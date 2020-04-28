@@ -382,34 +382,38 @@ void Mesh::accept(Visitor& v)
 Frame::Frame(Style style) : Node()
 {
     switch (style) {
-    case MIXING_OVERLAY:
-        overlay_ = new Mesh("mesh/icon_video.ply");
-        border_  = nullptr;
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+    case SHARP_LARGE:
+        border_  = new Mesh("mesh/border_large_sharp.ply");
+        break;
+    case SHARP_THIN:
+        border_  = new Mesh("mesh/border_sharp.ply");
+        break;
+    case ROUND_LARGE:
+        border_  = new Mesh("mesh/border_large_round.ply");
         break;
     default:
-    case MIXING:
-        overlay_ = nullptr;
-        border_  = new Mesh("mesh/border.ply");
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+    case ROUND_THIN:
+        border_  = new Mesh("mesh/border_round.ply");
         break;
     }
-    color   = glm::vec4( 0.8f, 0.8f, 0.f, 1.f);
+    overlay_ = nullptr;
+    shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
 Frame::~Frame()
 {
     if(overlay_) delete overlay_;
-    if(border_) delete border_;
-    delete shadow_;
+    if(border_)  delete border_;
+    if(shadow_)  delete shadow_;
 }
 
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
         if(overlay_) overlay_->init();
-        if(border_) border_->init();
-        shadow_->init();
+        if(border_)  border_->init();
+        if(shadow_)  shadow_->init();
         init();
     }
 
@@ -418,16 +422,17 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
         // shadow
         shadow_->draw( modelview * transform_, projection);
 
+        if (overlay_) {
+            // overlat is not altered
+            overlay_->shader()->color = color;
+            overlay_->draw( modelview, projection );
+        }
+
         // right side
         float ar = scale_.x / scale_.y;
         glm::vec3 s(scale_.y, scale_.y, 1.0);
         glm::vec3 t(translation_.x - 1.0 +ar, translation_.y, translation_.z);
         glm::mat4 ctm = modelview * transform(t, rotation_, s);
-
-        if(overlay_) {
-            overlay_->shader()->color = color;
-            overlay_->draw( ctm, projection );
-        }
 
         if(border_) {
             // right side

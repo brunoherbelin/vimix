@@ -6,10 +6,12 @@
 #include "Mesh.h"
 #include "FrameBuffer.h"
 #include "Mixer.h"
+#include "Settings.h"
 
 Mixer::Mixer()
 {
-    current_view_ = &mixing_;
+    setCurrentView( (View::Mode) Settings::application.current_view );
+
     current_source_ = Source::end();
     update_time_ = GST_CLOCK_TIME_NONE;
 }
@@ -32,6 +34,7 @@ void Mixer::update()
     // recursive update of ALL views
     render_.update(dt);
     mixing_.update(dt);
+    geometry_.update(dt);
     // TODO other views
 
 
@@ -59,6 +62,8 @@ void Mixer::createSourceMedia(std::string uri)
     render_.scene.root()->addChild(m->group(View::RENDERING));
     // Mixing Node
     mixing_.scene.root()->addChild(m->group(View::MIXING));
+    // Geometry Node
+    geometry_.scene.root()->addChild(m->group(View::GEOMETRY));
 
     // set source as current
     current_source_ = Source::begin();
@@ -97,13 +102,16 @@ Source *Mixer::currentSource()
 void Mixer::setCurrentView(View::Mode m)
 {
     switch (m) {
-    case View::MIXING:
-        current_view_ = &mixing_;
+    case View::GEOMETRY:
+        current_view_ = &geometry_;
         break;
+    case View::MIXING:
     default:
         current_view_ = &mixing_;
         break;
     }
+
+    Settings::application.current_view = (int) m;
 }
 
 View *Mixer::getView(View::Mode m)
@@ -111,6 +119,8 @@ View *Mixer::getView(View::Mode m)
     switch (m) {
     case View::RENDERING:
         return &render_;
+    case View::GEOMETRY:
+        return &geometry_;
     case View::MIXING:
         return &mixing_;
     default:
