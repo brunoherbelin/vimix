@@ -9,20 +9,20 @@ public:
     ImGuiVisitor();
 
     // Elements of Scene
-    void visit(Scene& n);
-    void visit(Node& n);
-    void visit(Group& n);
-    void visit(Switch& n);
-    void visit(Animation& n);
-    void visit(Primitive& n);
-    void visit(Surface&) {}
-    void visit(ImageSurface&) {}
-    void visit(MediaSurface& n);
-    void visit(FrameBufferSurface& n);
-    void visit(LineStrip&) {}
-    void visit(LineSquare&) {}
-    void visit(LineCircle&) {}
-    void visit(Mesh&) {}
+    void visit(Scene& n) override;
+    void visit(Node& n) override;
+    void visit(Group& n) override;
+    void visit(Switch& n) override;
+    void visit(Animation& n) override;
+    void visit(Primitive& n) override;
+    void visit(Surface&) override {}
+    void visit(ImageSurface&) override {}
+    void visit(MediaSurface& n) override;
+    void visit(FrameBufferSurface& n) override;
+    void visit(LineStrip&) override {}
+    void visit(LineSquare&) override {}
+    void visit(LineCircle&) override {}
+    void visit(Mesh&) override {}
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;
