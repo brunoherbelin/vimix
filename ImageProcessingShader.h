@@ -38,7 +38,8 @@ public:
     // filter identifyer
     // [0] No filter
     // [1 4] 4 x kernel operations;  Blur, Sharpen, Edge, Emboss
-    // [5 10] 6 x convolutions: erosion 3, 5, 7, dilation 3, 5, 7
+    // [5] 1 x convolution opening (denoising)
+    // [6 11] 6 x convolutions: erosion 3x3, 5x5, 7x7, dilation 3x3, 5x5, 7x7
     int filterid;
 
 };
