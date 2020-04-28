@@ -179,7 +179,7 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     filter->SetAttribute("nbColors", n.nbColors);
     filter->SetAttribute("invertMode", n.invert);
     filter->SetAttribute("chromadelta", n.chromadelta);
-    filter->SetAttribute("filter", n.filter);
+    filter->SetAttribute("filter", n.filterid);
     xmlCurrent_->InsertEndChild(filter);
 
     XMLElement *gamma = XMLElementFromGLM(xmlDoc_, n.gamma);

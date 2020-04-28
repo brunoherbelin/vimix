@@ -1,4 +1,4 @@
-#include "Shader.h"
+    #include "Shader.h"
 #include "Resource.h"
 #include "Log.h"
 #include "Visitor.h"
@@ -145,12 +145,12 @@ void ShadingProgram::checkCompileErr()
     glGetShaderiv(vertex_id_, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vertex_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Vertex ShadingProgram:\n%s \n%s", infoLog, vertex_code_.c_str());
+        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
     }
     glGetShaderiv(fragment_id_, GL_COMPILE_STATUS, &success);
 	if (!success) {
         glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Fragment ShadingProgram:\n%s \n%s", infoLog, vertex_code_.c_str());
+        Log::Warning("Error compiling Fragment ShadingProgram:\n%s", infoLog);
 	}
 }
 
@@ -161,7 +161,7 @@ void ShadingProgram::checkLinkingErr()
 	glGetProgramiv(id_, GL_LINK_STATUS, &success);
 	if (!success) {
 		glGetProgramInfoLog(id_, 1024, NULL, infoLog);
-        Log::Warning("Error linking ShadingProgram Program:\n%s \n%s", infoLog);
+        Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
 	}
 }
 

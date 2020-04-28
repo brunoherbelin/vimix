@@ -35,11 +35,11 @@ public:
     // chroma key
     glm::vec4 chromakey;
     float chromadelta;
-    // filter
+    // filter identifyer
     // [0] No filter
     // [1 4] 4 x kernel operations;  Blur, Sharpen, Edge, Emboss
     // [5 10] 6 x convolutions: erosion 3, 5, 7, dilation 3, 5, 7
-    int filter;
+    int filterid;
 
 };
 

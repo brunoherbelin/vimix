@@ -45,7 +45,7 @@ uniform float threshold;
 uniform float lumakey;
 uniform int   nbColors;
 uniform int   invert;
-uniform int   filter;
+uniform int   filterid;
 
 // conversion between rgb and YUV
 const mat4 RGBtoYUV = mat4(0.257,  0.439, -0.148, 0.0,
@@ -74,47 +74,47 @@ vec3 erosion(int N, vec2 filter_step)
 {
     vec3 minValue = vec3(1.0);
 
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0,0.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0,-1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0, 0.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (1.0, 0.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0,0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0,-1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (1.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0, 1.0) * filter_step ).rgb, minValue);
     if (N == 3)
         return minValue;
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0, -2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0,-2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (1.0,-2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0,2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0, 2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (1.0, 2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-2.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 1.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-2.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 1.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 2.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-2.0, 0.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0, -2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0,-2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (1.0,-2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0,2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0, 2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (1.0, 2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-2.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 1.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 2.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-2.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 1.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 2.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-2.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 2.0, 0.0) * filter_step ).rgb, minValue);
     if (N == 5)
         return minValue;
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0, -3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0,-3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (1.0,-3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-1.0,3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (0.0, 3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (1.0, 3.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-2.0, 2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-2.0, -2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 2.0, -2.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-3.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (3.0, -1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-3.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 3.0, 1.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 (-3.0, 0.0) * filter_step ).rgb, minValue);
-    minValue = min(texture2D(iChannel0, vertexUV + vec2 ( 3.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0, -3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0,-3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (1.0,-3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-1.0,3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (0.0, 3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (1.0, 3.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-2.0, 2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 2.0, 2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-2.0, -2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 2.0, -2.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-3.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (3.0, -1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-3.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 3.0, 1.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 (-3.0, 0.0) * filter_step ).rgb, minValue);
+    minValue = min(texture(iChannel0, vertexUV + vec2 ( 3.0, 0.0) * filter_step ).rgb, minValue);
 
     return minValue;
 }
@@ -123,47 +123,47 @@ vec3 dilation(int N, vec2 filter_step)
 {
     vec3 maxValue = vec3(0.0);
 
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0, 0.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0,-1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0, 0.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (1.0, 0.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0,-1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (1.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0, 1.0) * filter_step ).rgb, maxValue);
     if (N == 3)
         return maxValue;
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0, -2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0,-2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (1.0,-2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0,2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0, 2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (1.0, 2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-2.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 1.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-2.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 1.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 2.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-2.0, 0.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0, -2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0,-2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (1.0,-2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0,2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0, 2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (1.0, 2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-2.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 1.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 2.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-2.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 1.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 2.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-2.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 2.0, 0.0) * filter_step ).rgb, maxValue);
     if (N == 5)
         return maxValue;
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0, -3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0,-3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (1.0,-3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-1.0,3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (0.0, 3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (1.0, 3.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-2.0, 2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 2.0, 2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-2.0, -2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 2.0, -2.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-3.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (3.0, -1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-3.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 3.0, 1.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 (-3.0, 0.0) * filter_step ).rgb, maxValue);
-    maxValue = max(texture2D(iChannel0, vertexUV + vec2 ( 3.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0, -3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0,-3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (1.0,-3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-1.0,3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (0.0, 3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (1.0, 3.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-2.0, 2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 2.0, 2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-2.0, -2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 2.0, -2.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-3.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (3.0, -1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-3.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 3.0, 1.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 (-3.0, 0.0) * filter_step ).rgb, maxValue);
+    maxValue = max(texture(iChannel0, vertexUV + vec2 ( 3.0, 0.0) * filter_step ).rgb, maxValue);
 
     return maxValue;
 }
@@ -184,14 +184,14 @@ vec3 apply_filter() {
 
     vec2 filter_step = 1.f / textureSize(iChannel0, 0);
 
-    if (filter < 1 || filter > 10)
+    if (filterid < 1 || filterid > 10)
         return texture(iChannel0, vertexUV).rgb;
-    else if (filter < 5)
-        return convolution( KERNEL[filter], filter_step);
-    else if (filter < 8)
-        return erosion( 3 + (filter -5) * 2, filter_step);
+    else if (filterid < 5)
+        return convolution( KERNEL[filterid], filter_step);
+    else if (filterid < 8)
+        return erosion( 3 + (filterid -5) * 2, filter_step);
     else
-        return dilation( 3 + (filter -8) * 2, filter_step);
+        return dilation( 3 + (filterid -8) * 2, filter_step);
 }
 
 /*
@@ -278,7 +278,7 @@ void main(void)
 //    float ma = texture(maskTexture, vertexUV).a * texture(iChannel0, vertexUV).a;
     float alpha = clamp(ma * color.a, 0.0, 1.0);
 
-    // read color & apply basic filter
+    // read color & apply basic filterid
     vec3 transformedRGB;
     transformedRGB = apply_filter();
 

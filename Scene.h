@@ -58,7 +58,7 @@ public:
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) = 0;
 
     // update every frame
-    virtual void update (float dt);
+    virtual void update (float);
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);

@@ -26,7 +26,7 @@ void ImageProcessingShader::use()
     program_->setUniform("lumakey", lumakey);
     program_->setUniform("nbColors", nbColors);
     program_->setUniform("invert", invert);
-    program_->setUniform("filter", filter);
+    program_->setUniform("filterid", filterid);
 
     program_->setUniform("gamma", gamma);
     program_->setUniform("levels", levels);
@@ -52,7 +52,7 @@ void ImageProcessingShader::reset()
     lumakey = 0.f;
     nbColors = 0;
     invert = 0;
-    filter = 0;
+    filterid = 0;
     gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     levels = glm::vec4(0.f, 1.f, 0.f, 1.f);
     chromakey = glm::vec4(0.f, 1.f, 0.f, 0.f);

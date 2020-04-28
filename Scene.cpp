@@ -40,7 +40,7 @@ Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
     translation_ = glm::vec3(0.f);
 }
 
-void Node::update( float dt )
+void Node::update( float )
 {
     // update transform matrix from attributes
     transform_ = transform(translation_, rotation_, scale_);
@@ -291,7 +291,7 @@ void Switch::removeChild(Node *child)
 
 void Switch::unsetActiveChild ()
 {
-    active_ == children_.end();
+    active_ = children_.end();
 }
 
 void Switch::setActiveChild(Node *child)

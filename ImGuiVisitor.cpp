@@ -203,10 +203,10 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
     ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, "%d colors");
 
-    if (ImGuiToolkit::ButtonIcon(1, 7)) n.filter = 0;
+    if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(RIGHT_ALIGN);
-    ImGui::Combo("Filter", &n.filter, "None\0Blur\0Sharpen\0Edge\0Emboss\0Erode 3x3\0Erode 5x5\0Erode 7x7\0Dilate 3x3\0Dilate 5x5\0Dilate 7x7\0");
+    ImGui::Combo("Filter", &n.filterid, "None\0Blur\0Sharpen\0Edge\0Emboss\0Erode 3x3\0Erode 5x5\0Erode 7x7\0Dilate 3x3\0Dilate 5x5\0Dilate 7x7\0");
 
     if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
     ImGui::SameLine(0, 10);

@@ -4,6 +4,10 @@
 #include <string>
 #include <map>
 
+#ifdef __APPLE__
+#include <sys/types.h>
+#endif
+
 #include "Shader.h"
 
 class ImageShader : public Shader
