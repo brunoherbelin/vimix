@@ -605,17 +605,17 @@ void MainWindow::Render()
 //    if ( ImGuiToolkit::ButtonToggle())
     float width = ImGui::GetContentRegionAvail().x / 3;
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.50f, 0.50f));
-    if (ImGui::Selectable( ICON_FA_BULLSEYE " Mixing View", &selected_view[1], 0, ImVec2(width,50)))
+    if (ImGui::Selectable( ICON_FA_BULLSEYE " Mixing", &selected_view[1], 0, ImVec2(width,50)))
     {
         Mixer::manager().setCurrentView(View::MIXING);
     }
     ImGui::SameLine();
-    if (ImGui::Selectable( ICON_FA_SIGN " Geometry View", &selected_view[2], 0, ImVec2(width,50)))
+    if (ImGui::Selectable( ICON_FA_SIGN " Geometry", &selected_view[2], 0, ImVec2(width,50)))
     {
         Mixer::manager().setCurrentView(View::GEOMETRY);
     }
     ImGui::SameLine();
-    if (ImGui::Selectable( ICON_FA_BARS " Layers View", &selected_view[3], 0, ImVec2(width,50)))
+    if (ImGui::Selectable( ICON_FA_BARS " Layers", &selected_view[3], 0, ImVec2(width,50)))
     {
 
     }
@@ -642,6 +642,7 @@ void MainWindow::Render()
         Log::ShowLogWindow(&show_logs_window);
     if (show_overlay_stats)
         ShowStats(&show_overlay_stats);
+
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)

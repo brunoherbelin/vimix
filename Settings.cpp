@@ -1,10 +1,10 @@
 #include "Settings.h"
-#include "tinyxml2Toolkit.h"
 
 #include <iostream>
 using namespace std;
 
 #include <tinyxml2.h>
+#include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 
@@ -56,6 +56,33 @@ void Settings::Save()
     applicationNode->SetAttribute("shader_editor", application.shader_editor);
     pRoot->InsertEndChild(applicationNode);
 
+    // block: views
+    {
+        XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
+        viewsNode->SetAttribute("current", application.current_view);
+
+        map<int, Settings::ViewConfig>::iterator iter;
+        for (iter=application.views.begin(); iter != application.views.end(); iter++)
+        {
+            const Settings::ViewConfig& v = iter->second;
+
+            XMLElement *view = xmlDoc.NewElement( "View" );
+            view->SetAttribute("name", v.name.c_str());
+            view->SetAttribute("id", iter->first);
+
+            XMLElement *scale = xmlDoc.NewElement("scale");
+            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.scale) );
+            view->InsertEndChild(scale);
+            XMLElement *translation = xmlDoc.NewElement("translation");
+            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.translation) );
+            view->InsertEndChild(translation);
+
+            viewsNode->InsertEndChild(view);
+        }
+
+        pRoot->InsertEndChild(viewsNode);
+    }
+
     XMLError eResult = xmlDoc.SaveFile(filename.c_str());
     XMLCheckResult(eResult);
 }
@@ -85,17 +112,17 @@ void Settings::Load()
         XMLElement * pElement = pRoot->FirstChildElement("Windows");
         if (pElement == nullptr) return;
 
-		XMLElement* pWindowNode = pElement->FirstChildElement("Window");
-		for( ; pWindowNode ; pWindowNode=pWindowNode->NextSiblingElement())
+        XMLElement* windowNode = pElement->FirstChildElement("Window");
+        for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
         {
-            const char *pName = pWindowNode->Attribute("name");
+            const char *pName = windowNode->Attribute("name");
             Settings::WindowConfig w(pName);
 			
-			pWindowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
-			pWindowNode->QueryIntAttribute("y", &w.y);
-			pWindowNode->QueryIntAttribute("w", &w.w);
-			pWindowNode->QueryIntAttribute("h", &w.h);
-			pWindowNode->QueryBoolAttribute("f", &w.fullscreen);
+            windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
+            windowNode->QueryIntAttribute("y", &w.y);
+            windowNode->QueryIntAttribute("w", &w.w);
+            windowNode->QueryIntAttribute("h", &w.h);
+            windowNode->QueryBoolAttribute("f", &w.fullscreen);
 
 			application.windows.push_back(w);
 		}
@@ -108,6 +135,32 @@ void Settings::Load()
     pElement->QueryBoolAttribute("preview", &application.preview);
     pElement->QueryBoolAttribute("media_player", &application.media_player);
     pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
+
+    // block: views
+    {
+        application.views.clear(); // trash existing list
+        XMLElement * pElement = pRoot->FirstChildElement("Views");
+        if (pElement == nullptr) return;
+
+        pElement->QueryIntAttribute("current", &application.current_view);
+
+        XMLElement* viewNode = pElement->FirstChildElement("View");
+        for( ; viewNode ; viewNode=viewNode->NextSiblingElement())
+        {
+            int id = 0;
+            viewNode->QueryIntAttribute("id", &id);
+            application.views[id].name = viewNode->Attribute("name");
+
+            XMLElement* scaleNode = viewNode->FirstChildElement("scale");
+            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
+                                       application.views[id].scale);
+
+            XMLElement* translationNode = viewNode->FirstChildElement("translation");
+            tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
+                                       application.views[id].translation);
+
+        }
+    }
 
 }
 

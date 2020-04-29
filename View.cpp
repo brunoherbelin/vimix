@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "defines.h"
+#include "Settings.h"
 #include "View.h"
 #include "Source.h"
 #include "Primitives.h"
@@ -32,7 +33,15 @@ void View::update(float dt)
 MixingView::MixingView() : View()
 {
     // default settings
-    scene.root()->scale_ = glm::vec3(1.6f, 1.6f, 1.0f);
+    if ( Settings::application.views[View::MIXING].name.empty() ) {
+        Settings::application.views[View::MIXING].name = "Mixing";
+        scene.root()->scale_ = glm::vec3(1.6f, 1.6f, 1.0f);
+    }
+    // restore settings
+    else {
+        scene.root()->scale_ = Settings::application.views[View::MIXING].scale;
+        scene.root()->translation_ = Settings::application.views[View::MIXING].translation;
+    }
 
     // Mixing scene
     Mesh *disk = new Mesh("mesh/disk.ply");
@@ -66,6 +75,7 @@ void MixingView::zoom( float factor )
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 
+    Settings::application.views[View::MIXING].scale = scene.root()->scale_;
 }
 
 void MixingView::drag (glm::vec2 from, glm::vec2 to)
@@ -84,7 +94,7 @@ void MixingView::drag (glm::vec2 from, glm::vec2 to)
 
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
-
+    Settings::application.views[View::MIXING].translation = scene.root()->translation_;
 }
 
 
@@ -164,6 +174,11 @@ uint MixingView::textureMixingQuadratic()
 RenderView::RenderView() : View(), frame_buffer_(nullptr)
 {
     setResolution(1280, 720);
+
+    // default settings
+    if ( Settings::application.views[View::RENDERING].name.empty() ) {
+        Settings::application.views[View::RENDERING].name = "Render";
+    }
 }
 
 RenderView::~RenderView()
@@ -193,6 +208,18 @@ void RenderView::draw()
 
 GeometryView::GeometryView() : View()
 {
+    // default settings
+    if ( Settings::application.views[View::GEOMETRY].name.empty() ) {
+        Settings::application.views[View::GEOMETRY].name = "Geometry";
+        scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.0f);
+    }
+    // restore settings
+    else {
+        scene.root()->scale_ = Settings::application.views[View::GEOMETRY].scale;
+        scene.root()->translation_ = Settings::application.views[View::GEOMETRY].translation;
+    }
+
+
     // Scene
     Surface *rect = new Surface;
     backgound_.addChild(rect);
@@ -205,8 +232,6 @@ GeometryView::GeometryView() : View()
 
     scene.root()->addChild(&backgound_);
 
-    // default settings
-    scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.f);
 
 }
 
@@ -237,6 +262,7 @@ void GeometryView::zoom( float factor )
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 
+    Settings::application.views[View::GEOMETRY].scale = scene.root()->scale_;
 }
 
 void GeometryView::drag (glm::vec2 from, glm::vec2 to)
@@ -255,7 +281,7 @@ void GeometryView::drag (glm::vec2 from, glm::vec2 to)
 
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
-
+    Settings::application.views[View::GEOMETRY].translation = scene.root()->translation_;
 }
 
 

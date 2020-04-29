@@ -43,7 +43,7 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::mat4 matrix)
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
 {
-    if ( std::string(elem->Name()).find("vec3") == std::string::npos )
+    if ( !elem || std::string(elem->Name()).find("vec3") == std::string::npos )
         return;
     elem->QueryFloatAttribute("x", &vector.x); // If this fails, original value is left as-is
     elem->QueryFloatAttribute("y", &vector.y);
@@ -52,7 +52,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec4 &vector)
 {
-    if ( std::string(elem->Name()).find("vec4") == std::string::npos )
+    if ( !elem || std::string(elem->Name()).find("vec4") == std::string::npos )
         return;
     elem->QueryFloatAttribute("x", &vector.x); // If this fails, original value is left as-is
     elem->QueryFloatAttribute("y", &vector.y);
@@ -62,7 +62,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec4 &vector)
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
 {
-    if ( std::string(elem->Name()).find("mat4") == std::string::npos )
+    if ( !elem || std::string(elem->Name()).find("mat4") == std::string::npos )
         return;
 
     // loop over rows of vec4

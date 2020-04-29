@@ -4,7 +4,9 @@
 #include "defines.h"
 
 #include <string>
+#include <map>
 #include <vector>
+#include <glm/glm.hpp>
 
 namespace Settings {
 
@@ -21,8 +23,13 @@ struct WindowConfig
 struct ViewConfig
 {
     std::string name;
+    glm::vec3 scale;
+    glm::vec3 translation;
 
-    ViewConfig(std::string n) : name(n) { }
+    ViewConfig() : name("") {
+        scale = glm::vec3(1.f);
+        translation = glm::vec3(0.f);
+    }
 
 };
 
@@ -40,7 +47,7 @@ struct Application
 
     // Settings of Views
     int current_view;
-    std::vector<ViewConfig> views;
+    std::map<int, ViewConfig> views;
 
     // multiple windows handling
     std::vector<WindowConfig> windows;
