@@ -31,6 +31,7 @@
 
 #include "defines.h"
 #include "Log.h"
+#include "SystemToolkit.h"
 #include "TextEditor.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
@@ -124,6 +125,12 @@ bool UserInterface::Init()
 
     // prevent bug with imgui clipboard (null at start)
     ImGui::SetClipboardText("");
+
+    // setup settings filename
+    std::string inifile = SystemToolkit::settingsFileCompletePath("imgui.ini");
+    char *inifilepath = (char *) malloc( (inifile.size() + 1) * sizeof(char) );
+    std::sprintf(inifilepath, "%s", inifile.c_str() );
+    io.IniFilename = inifilepath;
 
     return true;
 }

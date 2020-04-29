@@ -1,4 +1,7 @@
 #include "Settings.h"
+#include "SystemToolkit.h"
+
+#define SETTINGS_BASEFILENAME "vmix.xml"
 
 #include <iostream>
 using namespace std;
@@ -9,7 +12,7 @@ using namespace tinyxml2;
 
 
 Settings::Application Settings::application;
-string filename = string("./") + APP_NAME + ".xml";
+static string settingsFilename = "";
 
 void Settings::Save()
 {
@@ -83,14 +86,19 @@ void Settings::Save()
         pRoot->InsertEndChild(viewsNode);
     }
 
-    XMLError eResult = xmlDoc.SaveFile(filename.c_str());
+    if (settingsFilename.empty())
+        settingsFilename = SystemToolkit::settingsFileCompletePath(SETTINGS_BASEFILENAME);
+
+    XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
     XMLCheckResult(eResult);
 }
 
 void Settings::Load()
 {
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
+    if (settingsFilename.empty())
+        settingsFilename = SystemToolkit::settingsFileCompletePath(SETTINGS_BASEFILENAME);
+    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
     if (eResult == XML_ERROR_FILE_NOT_FOUND)
@@ -170,7 +178,7 @@ void Settings::Check()
 	Settings::Save();
 
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
+    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
     XMLCheckResult(eResult);
 
 	xmlDoc.Print();
