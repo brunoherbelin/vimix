@@ -10,7 +10,7 @@ ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 const char* ImageShader::mask_names[10] = { "None", "Vignette", "Halo", "Circle", "Round", "Top", "Botton", "Left", "Right", "Custom" };
 std::vector< uint > ImageShader::mask_presets;
 
-ImageShader::ImageShader()
+ImageShader::ImageShader(): Shader(), custom_textureindex(0)
 {
     // first initialization
     if ( mask_presets.empty() ) {
@@ -37,7 +37,10 @@ void ImageShader::use()
     program_->setUniform("stipple", stipple);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, mask);
+    if ( mask < 9 )
+        glBindTexture(GL_TEXTURE_2D, mask_presets[mask]);
+    else
+        glBindTexture(GL_TEXTURE_2D, custom_textureindex);
     glActiveTexture(GL_TEXTURE0);
 
 }
@@ -53,9 +56,9 @@ void ImageShader::reset()
     program_->setUniform("iChannel1", 1);
     program_->enduse();
 
-    // default mask (channel1)
-    mask = mask_presets[0];
-
+    // default mask
+    mask = 0;
+    custom_textureindex = mask_presets[0];
     // no stippling
     stipple = 0.f;
 }

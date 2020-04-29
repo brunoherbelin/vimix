@@ -15,12 +15,14 @@
 using namespace tinyxml2;
 
 
-SessionVisitor::SessionVisitor() : Visitor()
+SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc, tinyxml2::XMLElement *root) : Visitor()
 {    
-    xmlDoc_ = new XMLDocument;
+    if (doc == nullptr)
+        xmlDoc_ = new XMLDocument;
+    else
+        xmlDoc_ = doc;
 
-    xmlCurrent_ = nullptr;
-    xmlRoot_ = nullptr;
+    xmlCurrent_ = root;
 }
 
 void SessionVisitor::visit(Node &n)
@@ -160,6 +162,7 @@ void SessionVisitor::visit(ImageShader &n)
 
     XMLElement *filter = xmlDoc_->NewElement("uniforms");
     filter->SetAttribute("stipple", n.stipple);
+    filter->SetAttribute("mask", n.mask);
     xmlCurrent_->InsertEndChild(filter);
 
 }
@@ -253,11 +256,11 @@ void SessionVisitor::visit(Scene &n)
     XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
     xmlDoc_->InsertEndChild(pComment);
 
-    xmlRoot_ = xmlDoc_->NewElement("Scene");
-    xmlDoc_->InsertEndChild(xmlRoot_);
+    XMLElement *xmlRoot = xmlDoc_->NewElement("Scene");
+    xmlDoc_->InsertEndChild(xmlRoot);
 
     // start recursive traverse from root node
-    xmlCurrent_ = xmlRoot_;
+    xmlCurrent_ = xmlRoot;
     n.root()->accept(*this);
 }
 

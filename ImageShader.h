@@ -12,6 +12,7 @@
 
 class ImageShader : public Shader
 {
+
 public:
 
     ImageShader();
@@ -23,6 +24,7 @@ public:
 
 
     uint mask;
+    uint custom_textureindex;
     float stipple;
 
     static const char* mask_names[10];

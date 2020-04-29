@@ -8,12 +8,10 @@ class SessionVisitor : public Visitor {
 
     tinyxml2::XMLDocument *xmlDoc_;
     tinyxml2::XMLElement *xmlCurrent_;
-    tinyxml2::XMLElement *xmlRoot_;
 
 public:
-    SessionVisitor();
+    SessionVisitor(tinyxml2::XMLDocument *doc = nullptr, tinyxml2::XMLElement *root = nullptr);
     void save(std::string filename);
-    tinyxml2::XMLElement *root() {return xmlRoot_;}
 
     // Elements of Scene
     void visit(Scene& n) override;
