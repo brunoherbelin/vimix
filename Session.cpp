@@ -74,6 +74,17 @@ SourceList::iterator Session::end()
     return sources_.end();
 }
 
+SourceList::iterator Session::find(int index)
+{
+    int i = 0;
+    SourceList::iterator it = sources_.begin();
+    while ( i < index && it != sources_.end() ){
+        i++;
+        it++;
+    }
+    return it;
+}
+
 SourceList::iterator Session::find(Source *s)
 {
     return std::find(sources_.begin(), sources_.end(), s);

@@ -23,6 +23,8 @@ namespace ImGuiToolkit
     void ButtonSwitch( const char* label, bool* toggle );
     void ButtonOpenWebpage( const char* url );
 
+    void HelpMarker(const char* desc);
+
     // utility sliders
     void Bar(float value, float in, float out, float min, float max, const char* title, bool expand);
     bool TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step);
@@ -34,7 +36,8 @@ namespace ImGuiToolkit
         FONT_DEFAULT =0,
         FONT_BOLD,
         FONT_ITALIC,
-        FONT_MONO
+        FONT_MONO,
+        FONT_LARGE
     } font_style;
     void SetFont(font_style type, const std::string &ttf_font_name, int pointsize);
     void PushFont(font_style type);
@@ -47,6 +50,7 @@ namespace ImGuiToolkit
     } accent_color;
     void SetAccentColor(accent_color color);
 
+    void ShowStats(bool* p_open, int* p_corner);
 
 }
 

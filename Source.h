@@ -24,8 +24,9 @@ public:
     virtual ~Source();
 
     // manipulate name of source
-    inline void setName (const std::string &name) { name_ = name; }
+    void setName (const std::string &name);
     inline std::string name () const { return name_; }
+    inline const char *initials() const { return initials_; }
 
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
@@ -52,6 +53,7 @@ public:
 protected:
     // name
     std::string name_;
+    char initials_[3];
 
     // every Source shall be initialized on first draw
     bool initialized_;

@@ -17,6 +17,8 @@
 
 Source::Source(const std::string &name) : name_(name), initialized_(false)
 {
+    sprintf(initials_, "__");
+
     // create groups for each view
     // default rendering node
     groups_[View::RENDERING] = new Group;
@@ -53,6 +55,14 @@ Source::~Source()
     delete groups_[View::GEOMETRY];
     groups_.clear();
 
+}
+
+void Source::setName (const std::string &name)
+{
+    name_ = name;
+
+    initials_[0] = std::toupper( name_.front() );
+    initials_[1] = std::toupper( name_.back() );
 }
 
 void Source::accept(Visitor& v)

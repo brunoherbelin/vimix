@@ -96,7 +96,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle)
 
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
-    ImGui::SameLine(0,10);
+    ImGui::SameLine(0,22);
     ImGui::Text(label);
 }
 
@@ -213,6 +213,20 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::End();
 }
 
+// Helper to display a little (?) mark which shows a tooltip when hovered.
+// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.txt)
+void ImGuiToolkit::HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled( ICON_FA_QUESTION_CIRCLE );
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
 
 // Draws a timeline showing
 // 1) a cursor at position *time in the range [0 duration]
@@ -712,6 +726,51 @@ void ImGuiToolkit::PushFont(ImGuiToolkit::font_style style)
         ImGui::PushFont( fontmap[style] );
     else
         ImGui::PushFont( NULL );    
+}
+
+
+void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
+{
+    if (!p_corner || !p_open)
+        return;
+
+    const float DISTANCE = 10.0f;
+    int corner = *p_corner;
+    ImGuiIO& io = ImGui::GetIO();
+    if (corner != -1)
+    {
+        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
+        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    }
+
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+
+    if (ImGui::Begin("v-mix statistics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        if (ImGui::IsMousePosValid())
+            ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+        else
+            ImGui::Text("Mouse  <invalid>");
+
+        ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
+        ImGui::Text("Rendering %.1f FPS", io.Framerate);
+        ImGui::PopFont();
+
+        if (ImGui::BeginPopupContextWindow())
+        {
+            if (ImGui::MenuItem("Custom",       NULL, corner == -1)) *p_corner = -1;
+//            if (ImGui::MenuItem("Top-left",     NULL, corner == 0)) corner = 0;
+            if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;
+//            if (ImGui::MenuItem("Bottom-left",  NULL, corner == 2)) corner = 2;
+            if (ImGui::MenuItem("Bottom", NULL, corner == 3)) *p_corner = 3;
+            if (p_open && ImGui::MenuItem("Close")) *p_open = false;
+            ImGui::EndPopup();
+        }
+    }
+    ImGui::End();
 }
 
 void ImGuiToolkit::SetAccentColor(accent_color color)

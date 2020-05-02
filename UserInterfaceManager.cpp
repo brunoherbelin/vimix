@@ -39,11 +39,14 @@
 #include "FileDialog.h"
 #include "Settings.h"
 #include "ImGuiToolkit.h"
+#include "ImGuiVisitor.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "PickingVisitor.h"
+#include "ImageShader.h"
+#include "ImageProcessingShader.h"
 
 static std::thread loadThread;
 static bool loadThreadDone = false;
@@ -103,6 +106,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", 22);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", 22);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", 20);
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", 40);
     io.FontGlobalScale = Settings::application.scale;
 
     // Style
@@ -279,6 +283,7 @@ void UserInterface::NewFrame()
 
     // Main window
     mainwindow.Render();
+    navigator.Render();
 
 }
 
@@ -310,6 +315,10 @@ void UserInterface::Render()
         RenderMediaPlayer();
     if (Settings::application.shader_editor)
         RenderShaderEditor();
+    if (Settings::application.stats)
+        ImGuiToolkit::ShowStats(&Settings::application.stats, &Settings::application.stats_corner);
+    if (Settings::application.logs)
+        Log::ShowLogWindow(&Settings::application.logs);
 
     // all IMGUI Rendering
     ImGui::Render();
@@ -324,64 +333,20 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
-
-
 MainWindow::MainWindow()
 {
-    show_overlay_stats = false;
     show_app_about = false;
     show_gst_about = false;
     show_opengl_about = false;
     show_demo_window = false;
-    show_logs_window = false;
+//    show_logs_window = false;
     show_icons_window = false;
     screenshot_step = 0;
 }
 
-void MainWindow::ShowStats(bool* p_open)
-{
-    const float DISTANCE = 10.0f;
-    static int corner = 1;
-    ImGuiIO& io = ImGui::GetIO();
-    if (corner != -1)
-    {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
-        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    }
-
-    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-
-    if (ImGui::Begin("v-mix statistics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        if (ImGui::IsMousePosValid())
-            ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
-        else
-            ImGui::Text("Mouse  <invalid>");
-
-        ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
-        ImGui::Text("Rendering %.1f FPS", io.Framerate);
-        ImGui::PopFont();
-
-        if (ImGui::BeginPopupContextWindow())
-        {
-            if (ImGui::MenuItem("Custom",       NULL, corner == -1)) corner = -1;
-            if (ImGui::MenuItem("Top-left",     NULL, corner == 0)) corner = 0;
-            if (ImGui::MenuItem("Top-right",    NULL, corner == 1)) corner = 1;
-            if (ImGui::MenuItem("Bottom-left",  NULL, corner == 2)) corner = 2;
-            if (ImGui::MenuItem("Bottom-right", NULL, corner == 3)) corner = 3;
-            if (p_open && ImGui::MenuItem("Close")) *p_open = false;
-            ImGui::EndPopup();
-        }
-    }
-    ImGui::End();
-}
-
 void MainWindow::ToggleLogs() 
 {
-    show_logs_window = !show_logs_window;
+    Settings::application.logs = !Settings::application.logs;
 }
 
 void MainWindow::StartScreenshot()
@@ -543,9 +508,9 @@ static void ShowAboutGStreamer(bool* p_open)
 
 void MainWindow::Render()
 {
-    // We specify a default position/size in case there's no data in the .ini file. Typically this isn't required! We only do it to make the Demo applications a little more welcoming.
+    // first run
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
 
     ImGui::Begin(IMGUI_TITLE_MAINWINDOW, NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
 
@@ -568,25 +533,25 @@ void MainWindow::Render()
             }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Windows"))
-        {
-            ImGui::MenuItem( IMGUI_TITLE_PREVIEW, NULL, &Settings::application.preview);
-            ImGui::MenuItem( IMGUI_TITLE_MEDIAPLAYER, NULL, &Settings::application.media_player);
-            ImGui::MenuItem( IMGUI_TITLE_SHADEREDITOR, NULL, &Settings::application.shader_editor);
-            ImGui::MenuItem("Appearance", NULL, false, false);
-            ImGui::SetNextItemWidth(200);
-            if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
-                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+//        if (ImGui::BeginMenu("Windows"))
+//        {
+////            ImGui::MenuItem( IMGUI_TITLE_PREVIEW, NULL, &Settings::application.preview);
+////            ImGui::MenuItem( IMGUI_TITLE_MEDIAPLAYER, NULL, &Settings::application.media_player);
+////            ImGui::MenuItem( IMGUI_TITLE_SHADEREDITOR, NULL, &Settings::application.shader_editor);
+//            ImGui::MenuItem("Appearance", NULL, false, false);
+//            ImGui::SetNextItemWidth(200);
+//            if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
+//                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
-            ImGui::SetNextItemWidth(200);
-            if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
-                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-            ImGui::EndMenu();
-        }
+//            ImGui::SetNextItemWidth(200);
+//            if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+//                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+//            ImGui::EndMenu();
+//        }
         if (ImGui::BeginMenu("Tools"))
         {
-            ImGui::MenuItem( ICON_FA_LIST "  Logs", "Ctrl+L", &show_logs_window);
-            ImGui::MenuItem( ICON_FA_TACHOMETER_ALT " Metrics", NULL, &show_overlay_stats);
+//            ImGui::MenuItem( ICON_FA_LIST "  Logs", "Ctrl+L", &show_logs_window);
+//            ImGui::MenuItem( ICON_FA_TACHOMETER_ALT " Metrics", NULL, &Settings::application.stats);
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", NULL) )
                 StartScreenshot();
 
@@ -628,7 +593,9 @@ void MainWindow::Render()
     }
     ImGui::PopStyleVar();
 
-
+//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+//    ImGui::Text("Some text");
+//    ImGui::PopFont();
 
 
     // TEMPLATE CODE FOR FILE BROWSER
@@ -645,11 +612,10 @@ void MainWindow::Render()
 
     ImGui::End(); // "v-mix"
 
-    if (show_logs_window)
-        Log::ShowLogWindow(&show_logs_window);
-    if (show_overlay_stats)
-        ShowStats(&show_overlay_stats);
+//    if (show_logs_window)
+//        Log::ShowLogWindow(&show_logs_window);
 
+    // About and other utility windows
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
@@ -933,3 +899,207 @@ void UserInterface::RenderShaderEditor()
 
 }
 
+
+SourceNavigator::SourceNavigator()
+{
+    clearSelection();
+}
+
+void SourceNavigator::toggle(int index)
+{
+    bool s = selected_button[index];
+    clearSelection();
+    selected_button[index] = s;
+    if (s)
+        selected_source_index = index - 1;
+    else
+        selected_source_index = -1;
+}
+
+void SourceNavigator::clearSelection()
+{
+    for(int i=0; i<NAV_MAX; ++i)
+        selected_button[i] = false;
+    selected_source_index = -1;
+}
+
+void SourceNavigator::Render()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(COLOR_NAVIGATOR, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(COLOR_NAVIGATOR, 1.f));
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+    float window_width = 2.f *  ImGui::GetTextLineHeightWithSpacing();
+    ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize(ImVec2( window_width, io.DisplaySize.y), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
+
+    float icon_width = window_width - 2.f * style.WindowPadding.x;
+    ImVec2 iconsize(icon_width, icon_width);
+
+    if (ImGui::Begin("##navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.50f, 0.50f));
+
+        // the "=" icon for menu
+        if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
+        {
+            toggle(NAV_MENU);
+        }
+
+        int index = 1;
+        SourceList::iterator iter;
+        for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
+        {
+            if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
+            {
+                toggle(index);
+            }
+        }
+        // the "+" icon for action of creating new source
+        if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
+        {
+            toggle(NAV_NEW);
+        }
+        ImGui::PopStyleVar();
+
+    }
+    ImGui::End();
+    ImGui::PopFont();
+
+    // window menu
+    if (selected_button[NAV_MENU])
+    {
+        Mixer::manager().unsetCurrentSource();
+
+        // Next window is a side pannel
+        ImGui::SetNextWindowPos( ImVec2(window_width, 0), ImGuiCond_Always );
+        ImGui::SetNextWindowSize(ImVec2( 5.f * window_width, io.DisplaySize.y), ImGuiCond_Always );
+        ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+        if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        {
+            // TITLE
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("vimix");
+            ImGui::PopFont();
+
+            ImGui::Text("Windows");
+            ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview);
+            ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player);
+            ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
+            ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
+            ImGuiToolkit::ButtonSwitch( ICON_FA_LIST "  Logs", &Settings::application.logs);
+
+            ImGui::Text("Appearance");
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
+                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+
+        }
+        ImGui::End();
+    }
+    // window to create a source
+    else if (selected_button[NAV_NEW])
+    {
+        Mixer::manager().unsetCurrentSource();
+
+        // Next window is a side pannel
+        ImGui::SetNextWindowPos( ImVec2(window_width, 0), ImGuiCond_Always );
+        ImGui::SetNextWindowSize(ImVec2( 5.f * window_width, io.DisplaySize.y), ImGuiCond_Always );
+        ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+        if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        {
+            // TITLE
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("New Source");
+            ImGui::PopFont();
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            static int new_source_type = 0;
+            ImGui::Combo("Type", &new_source_type, "Media\0Render\0Clone\0");
+            if (new_source_type == 0) {
+
+                static char filename[128];
+                if (ImGuiToolkit::ButtonIcon(2, 5)) {
+
+                }
+                ImGui::SameLine(0, 10);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::InputText("Filename", filename, 64, ImGuiInputTextFlags_CharsNoBlank);
+
+                // Description
+                ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
+
+            }
+            else if (new_source_type == 1){
+
+                ImGuiToolkit::HelpMarker("A Render source replicates the rendering of the output.");
+            }
+            else {
+
+                ImGuiToolkit::HelpMarker("A Clone source duplicates the content of another source.");
+            }
+
+            if ( ImGui::Button("Create !", ImVec2(5.f * window_width - 2.f * style.WindowPadding.x, 0)) ) {
+
+                selected_button[NAV_NEW] = false;
+            }
+
+        }
+        ImGui::End();
+    }
+    // window to configure a selected source
+    else if (selected_source_index > -1)
+    {
+        static ImGuiVisitor v;
+        Mixer::manager().setCurrentSource(selected_source_index);
+        Source *s = Mixer::manager().currentSource();
+        if (s)
+        {
+            // Next window is a side pannel
+            ImGui::SetNextWindowPos( ImVec2(window_width, 0), ImGuiCond_Always );
+            ImGui::SetNextWindowSize(ImVec2( 5.f * window_width, io.DisplaySize.y), ImGuiCond_Always );
+            ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+            if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+            {
+                // TITLE
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+                ImGui::Text("Source");
+                ImGui::PopFont();
+
+                static char buf5[128];
+                sprintf ( buf5, "%s", s->name().c_str() );
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
+                    Mixer::manager().renameSource(s, buf5);
+                }
+                // blending pannel
+                s->blendingShader()->accept(v);
+                // preview
+                float width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+                ImVec2 imagesize ( width, width / s->frame()->aspectRatio());
+                ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
+                // image processing pannel
+                s->processingShader()->accept(v);
+
+            }
+            ImGui::End();
+
+        }
+
+    }
+
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(1);
+
+
+}

@@ -50,6 +50,8 @@ public:
     // Post-loop termination
     void Terminate();
 
+    void GrabWindow(int dx, int dy);
+
     // add function to call during Draw
     typedef void (* RenderingCallback)(void);
     void PushFrontDrawCallback(RenderingCallback function);

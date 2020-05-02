@@ -40,7 +40,10 @@ struct Application
 
     // Global settings Application interface
     float scale;
-    int accent_color;
+    int  accent_color;
+    bool stats;
+    int  stats_corner;
+    bool logs;
     bool preview;
     bool media_player;
     bool shader_editor;
@@ -56,6 +59,9 @@ struct Application
     Application() : name(APP_NAME){
         scale = 1.f;
         accent_color = 0;
+        stats = false;
+        stats_corner = 1;
+        logs = false;
         preview = true;
         media_player = false;
         shader_editor = false;

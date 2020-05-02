@@ -5,18 +5,32 @@
 #include <list>
 using namespace std;
 
+#define NAV_MENU 0
+#define NAV_NEW 63
+#define NAV_MAX 64
+
+class SourceNavigator
+{
+    int selected_source_index;
+    bool selected_button[NAV_MAX];
+    void clearSelection();
+    void toggle(int index);
+
+public:
+    SourceNavigator();
+
+    void Render();
+};
+
 class MainWindow
 {
-    bool show_overlay_stats;
     bool show_app_about;
     bool show_gst_about;
     bool show_opengl_about;
     bool show_demo_window;
-    bool show_logs_window;
+//    bool show_logs_window;
     bool show_icons_window;
     unsigned int screenshot_step;
-
-    void ShowStats(bool* p_open);
 
 public:
     MainWindow();
@@ -30,6 +44,7 @@ class UserInterface
 {
     friend class MainWindow;
     MainWindow mainwindow;
+    SourceNavigator navigator;
     std::string currentTextEdit;
 
     void handleKeyboard();

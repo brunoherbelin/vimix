@@ -131,6 +131,11 @@ void Mixer::setCurrentSource(Source *s)
     setCurrentSource( session_->find(s) );
 }
 
+void Mixer::setCurrentSource(int index)
+{
+    setCurrentSource( session_->find(index) );
+}
+
 void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source
@@ -293,4 +298,8 @@ void Mixer::newSession(Session *newsession)
 
     // reset timer
     update_time_ = GST_CLOCK_TIME_NONE;
+
+    // default views
+    mixing_.restoreSettings();
+    geometry_.restoreSettings();
 }

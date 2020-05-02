@@ -24,13 +24,13 @@ View::View(Mode m) : mode_(m)
 {
 }
 
-void View::restoreDefaultSettings()
+void View::restoreSettings()
 {
     scene.root()->scale_ = Settings::application.views[mode_].default_scale;
     scene.root()->translation_ = Settings::application.views[mode_].default_translation;
 }
 
-void View::setCurrentSettingsAsDefault()
+void View::saveSettings()
 {
     Settings::application.views[mode_].default_scale = scene.root()->scale_;
     Settings::application.views[mode_].default_translation = scene.root()->translation_;
@@ -49,13 +49,14 @@ MixingView::MixingView() : View(MIXING)
         // no settings found: store application default
         Settings::application.views[View::MIXING].name = "Mixing";
         scene.root()->scale_ = glm::vec3(1.6f, 1.6f, 1.0f);
-        setCurrentSettingsAsDefault();
+        saveSettings();
     }
     else
-        restoreDefaultSettings();
+        restoreSettings();
 
     // Mixing scene
     backgound_ = new Group;
+    scene.root()->addChild(backgound_);
 
     Mesh *disk = new Mesh("mesh/disk.ply");
     disk->setTexture(textureMixingQuadratic());
@@ -66,7 +67,6 @@ MixingView::MixingView() : View(MIXING)
     circle->shader()->color = pink;
     backgound_->addChild(circle);
 
-    scene.root()->addChild(backgound_);
 }
 
 MixingView::~MixingView()
@@ -183,12 +183,22 @@ uint MixingView::textureMixingQuadratic()
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr)
 {
-    setResolution(1280, 720);
+    // application default
+    glm::vec3 resolution(1280.f, 720.f, 0.f);
 
-    // default settings
+    // read default settings
     if ( Settings::application.views[View::RENDERING].name.empty() ) {
+        // no settings found: store application default
         Settings::application.views[View::RENDERING].name = "Render";
+        // store default setting
+        Settings::application.views[View::RENDERING].default_scale = resolution;
     }
+    else
+        resolution = Settings::application.views[View::RENDERING].default_scale;
+
+    // set resolution to settings or default
+    setResolution( int(resolution.x), int(resolution.y));
+
 }
 
 RenderView::~RenderView()
@@ -223,13 +233,14 @@ GeometryView::GeometryView() : View(GEOMETRY)
         // no settings found: store application default
         Settings::application.views[View::GEOMETRY].name = "Geometry";
         scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.0f);
-        setCurrentSettingsAsDefault();
+        saveSettings();
     }
     else
-        restoreDefaultSettings();
+        restoreSettings();
 
     // Geometry Scene
     backgound_ = new Group;
+    scene.root()->addChild(backgound_);
 
     Surface *rect = new Surface;
     backgound_->addChild(rect);
@@ -238,8 +249,6 @@ GeometryView::GeometryView() : View(GEOMETRY)
     border->overlay_ = new Mesh("mesh/border_vertical_overlay.ply");
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
     backgound_->addChild(border);
-
-    scene.root()->addChild(backgound_);
 
 }
 

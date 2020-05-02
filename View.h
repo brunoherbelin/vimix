@@ -22,8 +22,8 @@ public:
     virtual void drag (glm::vec2, glm::vec2) {}
     virtual void grab (glm::vec2, glm::vec2, Source*) {}
 
-    virtual void restoreDefaultSettings();
-    virtual void setCurrentSettingsAsDefault();
+    virtual void restoreSettings();
+    virtual void saveSettings();
 
     Scene scene;
 

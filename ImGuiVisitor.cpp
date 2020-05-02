@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
 
+#include "defines.h"
 #include "Log.h"
 #include "Scene.h"
 #include "Primitives.h"
@@ -17,7 +18,6 @@
 #include "imgui.h"
 #include "ImGuiToolkit.h"
 
-#define RIGHT_ALIGN -100
 
 ImGuiVisitor::ImGuiVisitor()
 {
@@ -124,7 +124,7 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::SameLine(0, 10);
     ImGui::ColorEdit3("Color", glm::value_ptr(n.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel ) ;
     ImGui::SameLine(0, 5);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int mode = n.blending;
     if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Inverse\0Addition\0Subtract\0") )
         n.blending = Shader::BlendMode(mode);
@@ -141,7 +141,7 @@ void ImGuiVisitor::visit(ImageShader &n)
 
     if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     // combo list of masks
     if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
     {
@@ -164,7 +164,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.contrast = 0.f;
     }
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float bc[2] = { n.brightness, n.contrast};
     if ( ImGui::SliderFloat2("B & C", bc, -1.0, 1.0) )
     {
@@ -174,37 +174,37 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
     if (ImGuiToolkit::ButtonIcon(2, 1)) n.saturation = 0.f;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
 
     if (ImGuiToolkit::ButtonIcon(12, 4)) n.hueshift = 0.f;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
 
     if (ImGuiToolkit::ButtonIcon(8, 1)) n.threshold = 0.f;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0);
 
     if (ImGuiToolkit::ButtonIcon(3, 1)) n.lumakey = 0.f;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
 
     if (ImGuiToolkit::ButtonIcon(18, 1)) n.nbColors = 0;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, "%d colors");
 
     if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
 
     if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
     ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
 
     if (ImGuiToolkit::ButtonIcon(13, 4)) {
@@ -214,7 +214,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SameLine(0, 10);
     ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;
     ImGui::SameLine(0, 5);
-    ImGui::SetNextItemWidth(RIGHT_ALIGN);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, "%.2f tolerance");
 
     ImGui::PopID();

@@ -42,9 +42,12 @@ public:
     // current source
     void setCurrentSource(std::string namesource);
     void setCurrentSource(Node *node);
+    void setCurrentSource(int index);
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
     Source *currentSource();
+
+
 
     // management of view
     View *getView(View::Mode m);

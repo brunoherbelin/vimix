@@ -88,6 +88,7 @@ bool Rendering::Init()
 
     // Create window with graphics context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+//    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     main_window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
     if (main_window_ == NULL){
         Log::Error("Failed to Create GLFW Window.");
@@ -192,6 +193,13 @@ bool Rendering::isActive()
     return !glfwWindowShouldClose(main_window_);
 }
 
+void Rendering::GrabWindow(int dx, int dy)
+{
+    int xpos = 0;
+    int ypos = 0;
+    glfwGetWindowPos(main_window_, &xpos, &ypos);
+    glfwSetWindowPos(main_window_, xpos + dx, ypos + dy);
+}
 
 void Rendering::PushFrontDrawCallback(RenderingCallback function)
 {

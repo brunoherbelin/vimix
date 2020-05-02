@@ -27,8 +27,10 @@
 #define IMGUI_TITLE_MEDIAPLAYER ICON_FA_FILM "  Media Player"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
 #define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Preview"
+#define IMGUI_RIGHT_ALIGN -100
 
-#define COLOR_BGROUND 0.2, 0.2, 0.2
+#define COLOR_BGROUND 0.2f, 0.2f, 0.2f
+#define COLOR_NAVIGATOR 0.1f, 0.1f, 0.1f
 
 // from glmixer
 #define TEXTURE_REQUIRED_MAXIMUM 2048

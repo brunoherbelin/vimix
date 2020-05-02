@@ -18,6 +18,7 @@ public:
     // management of list of sources
     SourceList::iterator begin();
     SourceList::iterator end();
+    SourceList::iterator find(int index);
     SourceList::iterator find(Source *s);
     SourceList::iterator find(std::string name);
     SourceList::iterator find(Node *node);

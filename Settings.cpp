@@ -55,6 +55,9 @@ void Settings::Save()
     applicationNode->SetAttribute("preview", application.preview);
     applicationNode->SetAttribute("media_player", application.media_player);
     applicationNode->SetAttribute("shader_editor", application.shader_editor);
+    applicationNode->SetAttribute("stats", application.stats);
+    applicationNode->SetAttribute("stats_corner", application.stats_corner);
+    applicationNode->SetAttribute("logs", application.logs);
     pRoot->InsertEndChild(applicationNode);
 
     // block: views
@@ -142,6 +145,9 @@ void Settings::Load()
     pElement->QueryBoolAttribute("preview", &application.preview);
     pElement->QueryBoolAttribute("media_player", &application.media_player);
     pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
+    pElement->QueryBoolAttribute("stats", &application.stats);
+    pElement->QueryBoolAttribute("logs", &application.logs);
+    pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
 
     // block: views
     {
