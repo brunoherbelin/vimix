@@ -1,8 +1,3 @@
-#include "Settings.h"
-#include "SystemToolkit.h"
-
-#define SETTINGS_BASEFILENAME "vmix.xml"
-
 #include <iostream>
 using namespace std;
 
@@ -10,23 +5,26 @@ using namespace std;
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
+#include "Settings.h"
+#include "SystemToolkit.h"
+
+#define SETTINGS_BASEFILENAME "vmix.xml"
+
 
 Settings::Application Settings::application;
 static string settingsFilename = "";
 
 void Settings::Save()
 {
-	XMLDocument xmlDoc;
-	string s;
- 
+    XMLDocument xmlDoc;
     XMLDeclaration *pDec = xmlDoc.NewDeclaration();
     xmlDoc.InsertFirstChild(pDec);
 
     XMLElement *pRoot = xmlDoc.NewElement(application.name.c_str());
     xmlDoc.InsertEndChild(pRoot);
 
-	s="Settings for "+application.name;
-    XMLComment *pComment = xmlDoc.NewComment(s.c_str());
+    string comment = "Settings for " + application.name;
+    XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
 	// block: windows
@@ -73,11 +71,11 @@ void Settings::Save()
             view->SetAttribute("name", v.name.c_str());
             view->SetAttribute("id", iter->first);
 
-            XMLElement *scale = xmlDoc.NewElement("scale");
-            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.scale) );
+            XMLElement *scale = xmlDoc.NewElement("default_scale");
+            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_scale) );
             view->InsertEndChild(scale);
-            XMLElement *translation = xmlDoc.NewElement("translation");
-            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.translation) );
+            XMLElement *translation = xmlDoc.NewElement("default_translation");
+            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_translation) );
             view->InsertEndChild(translation);
 
             viewsNode->InsertEndChild(view);
@@ -87,24 +85,25 @@ void Settings::Save()
     }
 
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settingsFileCompletePath(SETTINGS_BASEFILENAME);
+        settingsFilename = SystemToolkit::settings_prepend_path(SETTINGS_BASEFILENAME);
 
     XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
-    XMLCheckResult(eResult);
+    XMLResultError(eResult);
 }
 
 void Settings::Load()
 {
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settingsFileCompletePath(SETTINGS_BASEFILENAME);
+        settingsFilename = SystemToolkit::settings_prepend_path(SETTINGS_BASEFILENAME);
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
     if (eResult == XML_ERROR_FILE_NOT_FOUND)
         return;
-	// warn on other errors
-    XMLCheckResult(eResult);
+    // warn and return on other error
+    else if (XMLResultError(eResult))
+        return;
 
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
     if (pRoot == nullptr) return;
@@ -159,13 +158,13 @@ void Settings::Load()
             viewNode->QueryIntAttribute("id", &id);
             application.views[id].name = viewNode->Attribute("name");
 
-            XMLElement* scaleNode = viewNode->FirstChildElement("scale");
+            XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
             tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
-                                       application.views[id].scale);
+                                       application.views[id].default_scale);
 
-            XMLElement* translationNode = viewNode->FirstChildElement("translation");
+            XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
             tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
-                                       application.views[id].translation);
+                                       application.views[id].default_translation);
 
         }
     }
@@ -179,7 +178,8 @@ void Settings::Check()
 
     XMLDocument xmlDoc;
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
-    XMLCheckResult(eResult);
+    if (XMLResultError(eResult))
+        return;
 
 	xmlDoc.Print();
 }

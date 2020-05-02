@@ -8,6 +8,7 @@
 
 
 #include "View.h"
+#include "Session.h"
 #include "Source.h"
 
 class Mixer
@@ -26,20 +27,23 @@ public:
         return _instance;
     }
 
-    // update all sources and all views
+    // update session and all views
     void update();
 
-    // draw render view and current view
+    // draw session and current view
     void draw();
 
     // manangement of sources
     void createSourceMedia(std::string uri);
 
+    // operations on sources
+    void renameSource(Source *s, const std::string &newname);
+
+    // current source
     void setCurrentSource(std::string namesource);
     void setCurrentSource(Node *node);
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
-
     Source *currentSource();
 
     // management of view
@@ -47,16 +51,29 @@ public:
     void setCurrentView(View::Mode m);
     View *currentView();
 
-    inline FrameBuffer *frame() const { return render_.frameBuffer(); }
+    void setSession(Session *s) { session_ = s; }
+    Session *session() { return session_; }
+
+    // load and save session
+    bool open(const std::string& filename);
+    void save(const std::string& filename);
+    void newSession(Session *newsession = nullptr);
+
 
 protected:
-    RenderView render_;
+
+    void insertSource(Source *s);
+    void setCurrentSource(SourceList::iterator it);
+
+    Session *session_;
+    SourceList::iterator current_source_;
+
     MixingView mixing_;
     GeometryView geometry_;
     View *current_view_;
+
     gint64 update_time_;
 
-    SourceList::iterator current_source_;
 };
 
 #endif // MIXER_H

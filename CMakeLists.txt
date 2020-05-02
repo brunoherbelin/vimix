@@ -206,9 +206,11 @@ set(VMIX_SRCS
     Scene.cpp
     Primitives.cpp
     Mesh.cpp
-    SessionVisitor.cpp
     View.cpp
     Source.cpp
+    Session.cpp
+    SessionVisitor.cpp
+    SessionCreator.cpp
     Mixer.cpp
     Settings.cpp
     Screenshot.cpp

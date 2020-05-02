@@ -1,7 +1,8 @@
-#include "tinyxml2Toolkit.h"
+#include "SystemToolkit.h"
 #include "Log.h"
 
 #include <tinyxml2.h>
+#include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include <glm/gtc/matrix_access.hpp>
@@ -80,11 +81,27 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
     }
 }
 
-void tinyxml2::XMLCheckResult(int r)
+void tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
 {
-    XMLError result = (XMLError) r;
-    if ( result != XML_SUCCESS)
+    XMLDeclaration *pDec = doc->NewDeclaration();
+    doc->InsertFirstChild(pDec);
+
+    std::string s = "Save time " + SystemToolkit::date_time_string();
+    XMLComment *pComment = doc->NewComment(s.c_str());
+    doc->InsertEndChild(pComment);
+
+    // save session
+    XMLError eResult = doc->SaveFile(filename.c_str());
+    XMLResultError(eResult);
+}
+
+bool tinyxml2::XMLResultError(int result)
+{
+    XMLError xmlresult = (XMLError) result;
+    if ( xmlresult != XML_SUCCESS)
     {
-        Log::Error("XML error %i: %s", r, tinyxml2::XMLDocument::ErrorIDToName(result));
+        Log::Warning("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
+        return true;
     }
+    return false;
 }

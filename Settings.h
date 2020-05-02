@@ -23,12 +23,12 @@ struct WindowConfig
 struct ViewConfig
 {
     std::string name;
-    glm::vec3 scale;
-    glm::vec3 translation;
+    glm::vec3 default_scale;
+    glm::vec3 default_translation;
 
     ViewConfig() : name("") {
-        scale = glm::vec3(1.f);
-        translation = glm::vec3(0.f);
+        default_scale = glm::vec3(1.f);
+        default_translation = glm::vec3(0.f);
     }
 
 };
@@ -50,6 +50,7 @@ struct Application
     std::map<int, ViewConfig> views;
 
     // multiple windows handling
+    // TODO: maybe keep map of multiple windows, widn id=0 for main window
     std::vector<WindowConfig> windows;
 
     Application() : name(APP_NAME){

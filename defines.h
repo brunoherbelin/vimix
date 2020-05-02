@@ -4,6 +4,8 @@
 #define APP_NAME "vmix"
 #define APP_TITLE "v-mix -- Video Live Mixer" 
 #define APP_VERSION "0.0.1"
+#define XML_VERSION_MAJOR 0
+#define XML_VERSION_MINOR 1
 
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))

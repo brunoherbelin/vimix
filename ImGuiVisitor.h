@@ -23,6 +23,7 @@ public:
     void visit(LineSquare&) override {}
     void visit(LineCircle&) override {}
     void visit(Mesh&) override {}
+    void visit(Frame&) override {}
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;

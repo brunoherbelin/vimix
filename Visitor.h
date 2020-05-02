@@ -18,10 +18,13 @@ class LineStrip;
 class LineSquare;
 class LineCircle;
 class Mesh;
+class Frame;
 class MediaPlayer;
 class Shader;
 class ImageShader;
 class ImageProcessingShader;
+class Source;
+class MediaSource;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -42,12 +45,17 @@ public:
     virtual void visit (LineSquare&) = 0;
     virtual void visit (LineCircle&) = 0;
     virtual void visit (Mesh&) = 0;
+    virtual void visit (Frame&) = 0;
 
     // not mandatory
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
     virtual void visit (ImageProcessingShader&) {}
+
+    // utility
+    virtual void visit (Source&) {}
+    virtual void visit (MediaSource&) {}
 
 };
 

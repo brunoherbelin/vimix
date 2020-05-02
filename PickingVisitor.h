@@ -31,6 +31,7 @@ public:
     void visit(LineSquare&);
     void visit(LineCircle& n);
     void visit(Mesh&){}
+    void visit(Frame&){}
 };
 
 #endif // PICKINGVISITOR_H

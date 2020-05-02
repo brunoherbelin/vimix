@@ -8,6 +8,7 @@
 #include "Resource.h"
 #include "Visitor.h"
 #include "UserInterfaceManager.h"
+#include "SystemToolkit.h"
 #include "GstToolkit.h"
 
 //  Desktop OpenGL function loader
@@ -28,7 +29,7 @@
 MediaPlayer::MediaPlayer(string name) : id_(name)
 {
     if (std::empty(id_))
-        id_ = GstToolkit::date_time_string();
+        id_ = SystemToolkit::date_time_string();
 
     uri_ = "undefined";
     pipeline_ = nullptr;

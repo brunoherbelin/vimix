@@ -28,7 +28,7 @@ glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 }
 
 // Node
-Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
+Node::Node() : initialized_(false), visible_(true)
 {
     // create unique id
     auto duration = std::chrono::system_clock::now().time_since_epoch();
@@ -38,6 +38,11 @@ Node::Node() : initialized_(false), parent_(nullptr), visible_(true)
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
+}
+
+Node::~Node ()
+{
+
 }
 
 void Node::update( float )
@@ -172,14 +177,35 @@ void Primitive::deleteGLBuffers_()
 
 
 // Group
-
 Group::~Group()
 {
-//    for(auto it = children_.begin(); it != children_.end(); )
-//        it = children_.erase(it);
-    // TODO vrify that desctructor of node is called
-    children_.erase(children_.begin(), children_.end());
+    for(auto it = children_.begin(); it != children_.end(); ) {
+        // this group is not parent of that node anymore
+        (*it)->parents_.remove(this);
+        // if this group was the only remaining parent
+        if ( (*it)->parents_.size() < 1 )
+            // delete the child
+            delete (*it);
+        // erase this iterator from the list
+        it = children_.erase(it);
+    }
+}
 
+void Group::addChild(Node *child)
+{
+    children_.insert(child);
+    child->parents_.push_back(this);
+}
+
+void Group::detatchChild(Node *child)
+{
+    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
+
+    if ( it != children_.end())
+    {
+        child->parents_.remove(this);
+        children_.erase(it);
+    }
 }
 
 void Group::update( float dt )
@@ -215,23 +241,6 @@ void Group::accept(Visitor& v)
 {
     Node::accept(v);
     v.visit(*this);
-}
-
-void Group::addChild(Node *child)
-{
-    children_.insert(child);
-    child->parent_ = this;
-}
-
-void Group::removeChild(Node *child)
-{
-    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
-
-    if ( it != children_.end())
-    {
-        children_.erase(it);
-        child->parent_ = nullptr;
-    }
 }
 
 NodeSet::iterator Group::begin()
@@ -282,9 +291,9 @@ void Switch::addChild(Node *child)
     setActiveChild(child);
 }
 
-void Switch::removeChild(Node *child)
+void Switch::detatchChild(Node *child)
 {
-    Group::removeChild(child);
+    Group::detatchChild(child);
     active_ = children_.begin();
 }
 
@@ -335,7 +344,6 @@ int Switch::getIndexActiveChild() const
     return index;
 }
 
-
 void Animation::init()
 {
     Group::init();
@@ -367,6 +375,15 @@ void Animation::accept(Visitor& v)
     v.visit(*this);
 }
 
+Scene::Scene()
+{
+    root_ = new Group;
+}
+
+Scene::~Scene()
+{
+    delete root_;
+}
 
 void Scene::accept(Visitor& v)
 {

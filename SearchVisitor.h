@@ -32,6 +32,7 @@ public:
     void visit(LineSquare&) {}
     void visit(LineCircle&) {}
     void visit(Mesh&) {}
+    void visit(Frame&) {}
 
 };
 

@@ -1,35 +1,8 @@
-
 #include <sstream>
 #include <iomanip>
-#include <ctime>
-#include <chrono>
-
 using namespace std;
 
-
 #include "GstToolkit.h"
-
-string GstToolkit::date_time_string()
-{
-    chrono::system_clock::time_point now = chrono::system_clock::now();
-    time_t t = chrono::system_clock::to_time_t(now);
-    std::tm* datetime = std::localtime(&t);
-
-    auto duration = now.time_since_epoch();
-    auto millis = chrono::duration_cast<chrono::milliseconds>(duration).count() % 1000;
-
-    ostringstream oss;
-    oss << setw(4) << setfill('0') << std::to_string(datetime->tm_year + 1900);
-    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mon + 1);
-    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mday );
-    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_hour );
-    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_min );
-    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_sec );
-    oss << setw(3) << setfill('0') << std::to_string(millis);
-
-    // fixed length string (17 chars) YYYYMMDDHHmmssiii
-    return oss.str();
-}
 
 string GstToolkit::time_to_string(guint64 t)
 {

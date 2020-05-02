@@ -20,8 +20,20 @@
 #define CIRCLE_PIXELS 64
 #define CIRCLE_PIXEL_RADIUS 1024.0
 
-View::View()
+View::View(Mode m) : mode_(m)
 {
+}
+
+void View::restoreDefaultSettings()
+{
+    scene.root()->scale_ = Settings::application.views[mode_].default_scale;
+    scene.root()->translation_ = Settings::application.views[mode_].default_translation;
+}
+
+void View::setCurrentSettingsAsDefault()
+{
+    Settings::application.views[mode_].default_scale = scene.root()->scale_;
+    Settings::application.views[mode_].default_translation = scene.root()->translation_;
 }
 
 void View::update(float dt)
@@ -30,35 +42,36 @@ void View::update(float dt)
     scene.root()->update( dt );
 }
 
-MixingView::MixingView() : View()
+MixingView::MixingView() : View(MIXING)
 {
-    // default settings
+    // read default settings
     if ( Settings::application.views[View::MIXING].name.empty() ) {
+        // no settings found: store application default
         Settings::application.views[View::MIXING].name = "Mixing";
         scene.root()->scale_ = glm::vec3(1.6f, 1.6f, 1.0f);
+        setCurrentSettingsAsDefault();
     }
-    // restore settings
-    else {
-        scene.root()->scale_ = Settings::application.views[View::MIXING].scale;
-        scene.root()->translation_ = Settings::application.views[View::MIXING].translation;
-    }
+    else
+        restoreDefaultSettings();
 
     // Mixing scene
+    backgound_ = new Group;
+
     Mesh *disk = new Mesh("mesh/disk.ply");
     disk->setTexture(textureMixingQuadratic());
-    backgound_.addChild(disk);
+    backgound_->addChild(disk);
 
     glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
     Mesh *circle = new Mesh("mesh/circle.ply");
     circle->shader()->color = pink;
-    backgound_.addChild(circle);
+    backgound_->addChild(circle);
 
-    scene.root()->addChild(&backgound_);
+    scene.root()->addChild(backgound_);
 }
 
 MixingView::~MixingView()
 {
-
+    // TODO  : verify that scene is deleted, and all children with it
 
 }
 
@@ -74,8 +87,6 @@ void MixingView::zoom( float factor )
     z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
-
-    Settings::application.views[View::MIXING].scale = scene.root()->scale_;
 }
 
 void MixingView::drag (glm::vec2 from, glm::vec2 to)
@@ -94,7 +105,6 @@ void MixingView::drag (glm::vec2 from, glm::vec2 to)
 
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
-    Settings::application.views[View::MIXING].translation = scene.root()->translation_;
 }
 
 
@@ -114,8 +124,8 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s)
     }
 
     // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->parent_->transform_);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->parent_->transform_);
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
@@ -171,7 +181,7 @@ uint MixingView::textureMixingQuadratic()
     return texid;
 }
 
-RenderView::RenderView() : View(), frame_buffer_(nullptr)
+RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr)
 {
     setResolution(1280, 720);
 
@@ -206,47 +216,45 @@ void RenderView::draw()
 }
 
 
-GeometryView::GeometryView() : View()
+GeometryView::GeometryView() : View(GEOMETRY)
 {
-    // default settings
+    // read default settings
     if ( Settings::application.views[View::GEOMETRY].name.empty() ) {
+        // no settings found: store application default
         Settings::application.views[View::GEOMETRY].name = "Geometry";
         scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.0f);
+        setCurrentSettingsAsDefault();
     }
-    // restore settings
-    else {
-        scene.root()->scale_ = Settings::application.views[View::GEOMETRY].scale;
-        scene.root()->translation_ = Settings::application.views[View::GEOMETRY].translation;
-    }
+    else
+        restoreDefaultSettings();
 
+    // Geometry Scene
+    backgound_ = new Group;
 
-    // Scene
     Surface *rect = new Surface;
-    backgound_.addChild(rect);
+    backgound_->addChild(rect);
 
-//    Mesh *shadow = new Mesh("mesh/shadow.ply", "images/shadow.png");
     Frame *border = new Frame(Frame::SHARP_THIN);
     border->overlay_ = new Mesh("mesh/border_vertical_overlay.ply");
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
-    backgound_.addChild(border);
+    backgound_->addChild(border);
 
-    scene.root()->addChild(&backgound_);
-
+    scene.root()->addChild(backgound_);
 
 }
 
 GeometryView::~GeometryView()
 {
-
+    // TODO  : verify that scene is deleted, and all children with it
 
 }
 
 void GeometryView::draw()
 {
     // update rendering of render frame
-    FrameBuffer *output = Mixer::manager().frame();
+    FrameBuffer *output = Mixer::manager().session()->frame();
     if (output){
-        for (NodeSet::iterator node = backgound_.begin(); node != backgound_.end(); node++) {
+        for (NodeSet::iterator node = backgound_->begin(); node != backgound_->end(); node++) {
             (*node)->scale_.x = output->aspectRatio();
         }
     }
@@ -261,8 +269,6 @@ void GeometryView::zoom( float factor )
     z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
-
-    Settings::application.views[View::GEOMETRY].scale = scene.root()->scale_;
 }
 
 void GeometryView::drag (glm::vec2 from, glm::vec2 to)
@@ -281,7 +287,6 @@ void GeometryView::drag (glm::vec2 from, glm::vec2 to)
 
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
-    Settings::application.views[View::GEOMETRY].translation = scene.root()->translation_;
 }
 
 
@@ -301,8 +306,8 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s)
     }
 
     // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, sourceNode->parent_->transform_);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, sourceNode->parent_->transform_);
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;

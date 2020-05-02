@@ -448,3 +448,9 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 }
 
+
+void Frame::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}

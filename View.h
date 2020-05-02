@@ -10,9 +10,11 @@ class Source;
 class View
 {
 public:
-    View();
 
     typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, INVALID=4 } Mode;
+
+    View(Mode m);
+    inline Mode mode() const { return mode_; }
 
     virtual void update (float dt);
     virtual void draw () = 0;
@@ -20,10 +22,14 @@ public:
     virtual void drag (glm::vec2, glm::vec2) {}
     virtual void grab (glm::vec2, glm::vec2, Source*) {}
 
+    virtual void restoreDefaultSettings();
+    virtual void setCurrentSettingsAsDefault();
+
     Scene scene;
 
 protected:
-    Group backgound_;
+    Mode mode_;
+    Group *backgound_;
 };
 
 
@@ -54,7 +60,6 @@ public:
 
     void setResolution (uint width, uint height);
     inline FrameBuffer *frameBuffer () const { return frame_buffer_; }
-
 
 };
 

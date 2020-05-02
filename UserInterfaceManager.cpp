@@ -127,7 +127,7 @@ bool UserInterface::Init()
     ImGui::SetClipboardText("");
 
     // setup settings filename
-    std::string inifile = SystemToolkit::settingsFileCompletePath("imgui.ini");
+    std::string inifile = SystemToolkit::settings_prepend_path("imgui.ini");
     char *inifilepath = (char *) malloc( (inifile.size() + 1) * sizeof(char) );
     std::sprintf(inifilepath, "%s", inifile.c_str() );
     io.IniFilename = inifilepath;
@@ -680,7 +680,7 @@ void MainWindow::Render()
                 if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
                     std::time_t t = std::time(0);   // get time now
                     std::tm* now = std::localtime(&t);
-                    std::string filename =  GstToolkit::date_time_string() + "_vmixcapture.png";
+                    std::string filename =  SystemToolkit::date_time_string() + "_vmixcapture.png";
                     Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
                     Rendering::manager().CurrentScreenshot()->Clear();
                 }
@@ -697,7 +697,7 @@ void MainWindow::Render()
 
 void UserInterface::RenderPreview()
 {
-    FrameBuffer *output = Mixer::manager().frame();
+    FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
         ImGui::SetNextWindowPos(ImVec2(100, 300), ImGuiCond_FirstUseEver);

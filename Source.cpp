@@ -15,14 +15,8 @@
 #include "SearchVisitor.h"
 
 
-// gobal static list of all sources
-SourceList Source::sources_;
-
-Source::Source(std::string name) : name_(""), initialized_(false)
+Source::Source(const std::string &name) : name_(name), initialized_(false)
 {
-    // set a name
-    rename(name);
-
     // create groups for each view
     // default rendering node
     groups_[View::RENDERING] = new Group;
@@ -39,13 +33,11 @@ Source::Source(std::string name) : name_(""), initialized_(false)
     groups_[View::GEOMETRY] = new Group;
 
     // will be associated to nodes later
-    mixingshader_ = new ImageShader();
+    blendingshader_ = new ImageShader();
     rendershader_ = new ImageProcessingShader();
     renderbuffer_ = nullptr;
     rendersurface_ = nullptr;
-
-    // add source to the list
-    sources_.push_front(this);
+    overlay_ = nullptr;
 }
 
 Source::~Source()
@@ -61,8 +53,17 @@ Source::~Source()
     delete groups_[View::GEOMETRY];
     groups_.clear();
 
-    // remove this source from the list
-    sources_.remove(this);
+}
+
+void Source::accept(Visitor& v)
+{
+    v.visit(*this);
+}
+
+void Source::setOverlayVisible(bool on)
+{
+    if (overlay_)
+        overlay_->visible_ = on;
 }
 
 bool hasNode::operator()(const Source* elem) const
@@ -83,67 +84,10 @@ bool hasNode::operator()(const Source* elem) const
     return false;
 }
 
-std::string Source::rename (std::string newname)
-{
-    // tentative new name
-    std::string tentativename = newname;
-
-    // refuse to rename to an empty name
-    if ( newname.empty() )
-        tentativename = "source";
-
-    // trivial case : same name as current
-    if ( tentativename == name_ )
-        return name_;
-
-    // search for a source of the name 'tentativename'
-    std::string basename = tentativename;
-    int count = 1;
-    while ( std::find_if(sources_.begin(), sources_.end(), hasName(tentativename)) != sources_.end() ) {
-        tentativename = basename + std::to_string(++count);
-    }
-
-    // ok to rename
-    name_ = tentativename;
-    return name_;
-}
-
-SourceList::iterator Source::begin()
-{
-    return sources_.begin();
-}
-
-SourceList::iterator Source::end()
-{
-    return sources_.end();
-}
-
-SourceList::iterator Source::find(Source *s)
-{
-    return std::find(sources_.begin(), sources_.end(), s);
-}
-
-SourceList::iterator Source::find(std::string namesource)
-{
-    return std::find_if(Source::begin(), Source::end(), hasName(namesource));
-}
-
-SourceList::iterator Source::find(Node *node)
-{
-    return std::find_if(Source::begin(), Source::end(), hasNode(node));
-}
-
-uint Source::numSource()
-{
-    return sources_.size();
-}
-
-MediaSource::MediaSource(std::string name, std::string uri) : Source(name), uri_(uri)
+MediaSource::MediaSource(const std::string &name) : Source(name), uri_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
-    mediaplayer_->open(uri_);
-    mediaplayer_->play(true);
 
     // create media surface:
     // - textured with original texture from media player
@@ -152,12 +96,12 @@ MediaSource::MediaSource(std::string name, std::string uri) : Source(name), uri_
     mediasurface_ = new Surface(rendershader_);
 
     // extra overlay for mixing view
-    mixingoverlay_ = new Frame(Frame::ROUND_LARGE);
-    mixingoverlay_->overlay_ = new Mesh("mesh/icon_video.ply");
-    mixingoverlay_->translation_.z = 0.1;
-    mixingoverlay_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    mixingoverlay_->visible_ = false;
-    groups_[View::MIXING]->addChild(mixingoverlay_);
+    overlay_ = new Frame(Frame::ROUND_LARGE);
+    overlay_->overlay_ = new Mesh("mesh/icon_video.ply");
+    overlay_->translation_.z = 0.1;
+    overlay_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    overlay_->visible_ = false;
+    groups_[View::MIXING]->addChild(overlay_);
 
 }
 
@@ -166,6 +110,13 @@ MediaSource::~MediaSource()
     delete mediasurface_;
     delete mediaplayer_;
     // TODO verify that all surfaces and node is deleted in Source destructor
+}
+
+void MediaSource::setURI(const std::string &uri)
+{
+    uri_ = uri;
+    mediaplayer_->open(uri_);
+    mediaplayer_->play(true);
 }
 
 std::string MediaSource::uri() const
@@ -199,7 +150,7 @@ void MediaSource::init()
 
             // create the surfaces to draw the frame buffer in the views
             // TODO Provide the source specific effect shader
-            rendersurface_ = new FrameBufferSurface(renderbuffer_, mixingshader_);
+            rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
             groups_[View::RENDERING]->addChild(rendersurface_);
             groups_[View::GEOMETRY]->addChild(rendersurface_);
             groups_[View::MIXING]->addChild(rendersurface_);
@@ -225,7 +176,7 @@ void MediaSource::init()
 
 }
 
-void MediaSource::render(bool current)
+void MediaSource::render()
 {
     if (!initialized_)
         init();
@@ -241,13 +192,11 @@ void MediaSource::render(bool current)
 
         // read position of the mixing node and interpret this as transparency of render output
         float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
-        mixingshader_->color.a = alpha;
+        blendingshader_->color.a = alpha;
 
         // TODO modify geometry
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
 
-        // make Overlay visible if it is current source
-        mixingoverlay_->visible_ = current;
     }
 }
 
@@ -262,4 +211,10 @@ FrameBuffer *MediaSource::frame() const
         return black;
     }
 
+}
+
+void MediaSource::accept(Visitor& v)
+{
+    Source::accept(v);
+    v.visit(*this);
 }

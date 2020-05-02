@@ -86,10 +86,10 @@ void drawScene()
             sprintf ( buf5, "%s", s->name().c_str() );
             ImGui::SetNextItemWidth(-100);
             if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
-                s->rename(buf5);
+                Mixer::manager().renameSource(s, buf5);
             }
 
-            s->mixingShader()->accept(v);
+            s->blendingShader()->accept(v);
 
             float width = ImGui::GetContentRegionAvail().x - 100;
             ImVec2 imagesize ( width, width / s->frame()->aspectRatio());
@@ -140,9 +140,11 @@ int main(int, char**)
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
-    Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
-    Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
-
+    if ( !Mixer::manager().open("./testsession.vmx") )
+    {
+        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
+        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
+    }
 
 //    Animation A;
 //    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
@@ -167,11 +169,13 @@ int main(int, char**)
         Rendering::manager().Draw();
     }
 
+    Mixer::manager().save("./testsession.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();
 
     Settings::Save();
+
 
     return 0;
 }

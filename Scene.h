@@ -8,6 +8,7 @@
 #endif
 
 #include <set>
+#include <list>
 #include <vector>
 #include <glm/glm.hpp>
 
@@ -16,6 +17,7 @@ glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 // Forward declare classes referenced
 class Shader;
 class Visitor;
+class Group;
 
 
 /**
@@ -44,8 +46,8 @@ class Node {
     bool      initialized_;
 
 public:
-    Node();
-    virtual ~Node () {}
+    Node ();
+    virtual ~Node ();
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
@@ -64,7 +66,7 @@ public:
     virtual void accept (Visitor& v);
 
     // public members, to manipulate with care
-    Node*     parent_;
+    std::list<Group*> parents_;
     bool      visible_;
 
     glm::mat4 transform_;
@@ -158,7 +160,7 @@ public:
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     virtual void addChild (Node *child);
-    virtual void removeChild (Node *child);
+    virtual void detatchChild (Node *child);
 
     NodeSet::iterator begin();
     NodeSet::iterator end();
@@ -185,7 +187,7 @@ public:
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     void addChild (Node *child) override;
-    void removeChild (Node *child) override;
+    void detatchChild (Node *child) override;
 
     void unsetActiveChild ();
     void setActiveChild (Node *child);
@@ -221,7 +223,6 @@ public:
     float radius_;
 
 protected:
-    Node *child_;
     glm::mat4 animation_;
 };
 
@@ -230,14 +231,15 @@ protected:
 // A scene contains a root node and gives a simplified API to add nodes
 class Scene  {
 
-    Group root_;
+    Group *root_;
 
 public:
-    Scene() {}
+    Scene();
+    ~Scene();
 
     void accept (Visitor& v);
 
-    Group *root() { return &root_; }
+    Group *root() { return root_; }
 
     // Node *find(int id);
     // void remove(Node *n);

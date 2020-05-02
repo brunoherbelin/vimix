@@ -9,7 +9,6 @@
 namespace GstToolkit
 {
 
-    std::string date_time_string();
     std::string time_to_string(guint64 t);
 
     std::string gst_version();

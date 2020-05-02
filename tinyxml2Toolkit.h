@@ -1,6 +1,7 @@
 #ifndef TINYXML2TOOLKIT_H
 #define TINYXML2TOOLKIT_H
 
+#include <string>
 #include <glm/glm.hpp>
 
 namespace tinyxml2 {
@@ -16,7 +17,9 @@ void XMLElementToGLM(XMLElement *elem, glm::vec3 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec4 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix);
 
-void XMLCheckResult(int r);
+
+void XMLSaveDoc(tinyxml2::XMLDocument * const doc, std::string filename);
+bool XMLResultError(int result);
 
 }
 

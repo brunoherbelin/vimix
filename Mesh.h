@@ -46,6 +46,7 @@ public:
     ~Frame();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
 
     Mesh *overlay_;
     glm::vec4 color;

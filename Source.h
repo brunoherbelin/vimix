@@ -15,45 +15,39 @@ class MediaPlayer;
 class Surface;
 class Frame;
 
-class Source;
-// TODO : source set sorted by shader
-// so that the render loop avoid switching
-typedef std::list<Source *> SourceList;
-
 class Source
 {
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source(std::string name = "");
+    Source(const std::string &name = "");
     virtual ~Source();
 
     // manipulate name of source
+    inline void setName (const std::string &name) { name_ = name; }
     inline std::string name () const { return name_; }
-    std::string rename (std::string newname);
 
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
+    inline Node *node(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
 
     // every Source has a shader to control image processing effects
     inline ImageProcessingShader *processingShader() const { return rendershader_; }
 
     // every Source has a shader to control mixing effects
-    inline ImageShader *mixingShader() const { return mixingshader_; }
+    inline ImageShader *blendingShader() const { return blendingshader_; }
 
     // every Source shall have a frame buffer
     virtual FrameBuffer *frame() const = 0;
 
     // every Source shall be rendered before draw
-    virtual void render(bool current) = 0;
+    virtual void render() = 0;
 
-    // global management of list of sources
-    static SourceList::iterator begin();
-    static SourceList::iterator end();
-    static SourceList::iterator find(Source *s);
-    static SourceList::iterator find(std::string name);
-    static SourceList::iterator find(Node *node);
-    static uint numSource();
+    // an overlay can be displayed on top of the source
+    virtual void setOverlayVisible(bool on);
+
+    // accept all kind of visitors
+    virtual void accept (Visitor& v);
 
 protected:
     // name
@@ -78,13 +72,15 @@ protected:
     ImageProcessingShader *rendershader_;
 
     // mixingshader provides mixing controls
-    ImageShader *mixingshader_;
+    ImageShader *blendingshader_;
 
-    Frame *mixingoverlay_;
-
-    // static global list of sources
-    static SourceList sources_;
+    // overlay to be displayed on top of source
+    Frame *overlay_;
 };
+
+// TODO : source set sorted by shader
+// so that the render loop avoid switching
+typedef std::list<Source *> SourceList;
 
 
 struct hasName: public std::unary_function<Source*, bool>
@@ -110,20 +106,22 @@ private:
 class MediaSource : public Source
 {
 public:
-    MediaSource(std::string name, std::string uri);
+    MediaSource(const std::string &name = "");
     ~MediaSource();
 
+    // implementation of source API
     FrameBuffer *frame() const;
-    ImageShader *mixingShader() const;
-    void render(bool current);
+    void render();
+    void accept (Visitor& v);
 
     // Media specific interface
+    void setURI(const std::string &uri);
     std::string uri() const;
     MediaPlayer *mediaplayer() const;
 
 protected:
 
-    virtual void init();
+    void init();
 
     Surface *mediasurface_;
     std::string uri_;

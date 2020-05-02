@@ -4,10 +4,10 @@
 #include "Scene.h"
 #include "Primitives.h"
 #include "Mesh.h"
+#include "Source.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
-#include "GstToolkit.h"
 
 #include <iostream>
 
@@ -15,31 +15,45 @@
 using namespace tinyxml2;
 
 
-SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc, tinyxml2::XMLElement *root) : Visitor()
+SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
+                               tinyxml2::XMLElement *root,
+                               bool recursive) : Visitor(), xmlCurrent_(root), recursive_(recursive)
 {    
     if (doc == nullptr)
         xmlDoc_ = new XMLDocument;
     else
         xmlDoc_ = doc;
+}
 
-    xmlCurrent_ = root;
+tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *doc)
+{
+    XMLElement *newelement = doc->NewElement("Node");
+    newelement->SetAttribute("visible", n.visible_);
+
+    XMLElement *scale = doc->NewElement("scale");
+    scale->InsertEndChild( XMLElementFromGLM(doc, n.scale_) );
+    newelement->InsertEndChild(scale);
+
+    XMLElement *translation = doc->NewElement("translation");
+    translation->InsertEndChild( XMLElementFromGLM(doc, n.translation_) );
+    newelement->InsertEndChild(translation);
+
+    XMLElement *rotation = doc->NewElement("rotation");
+    rotation->InsertEndChild( XMLElementFromGLM(doc, n.rotation_) );
+    newelement->InsertEndChild(rotation);
+
+    return newelement;
 }
 
 void SessionVisitor::visit(Node &n)
 {
-    XMLElement *newelement = xmlDoc_->NewElement("Node");
-    newelement->SetAttribute("visible", n.visible_);
-
-    XMLElement *scale = XMLElementFromGLM(xmlDoc_, n.scale_);
-    newelement->InsertEndChild(scale);
-    XMLElement *translation = XMLElementFromGLM(xmlDoc_, n.translation_);
-    newelement->InsertEndChild(translation);
-    XMLElement *rotation = XMLElementFromGLM(xmlDoc_, n.rotation_);
-    newelement->InsertEndChild(rotation);
+    XMLElement *newelement = NodeToXML(n, xmlDoc_);
 
     // insert into hierarchy
     xmlCurrent_->InsertEndChild(newelement);
-    xmlCurrent_ = newelement;  // parent for next visits
+
+    // parent for next visits
+    xmlCurrent_ = newelement;
 }
 
 void SessionVisitor::visit(Group &n)
@@ -47,12 +61,14 @@ void SessionVisitor::visit(Group &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Group");
 
-    // loop over members of a group
-    XMLElement *group = xmlCurrent_;
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-        (*node)->accept(*this);
-        // revert to group as current
-        xmlCurrent_ = group;
+    if (recursive_) {
+        // loop over members of a group
+        XMLElement *group = xmlCurrent_;
+        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+            (*node)->accept(*this);
+            // revert to group as current
+            xmlCurrent_ = group;
+        }
     }
 }
 
@@ -62,12 +78,14 @@ void SessionVisitor::visit(Switch &n)
     xmlCurrent_->SetAttribute("type", "Switch");
     xmlCurrent_->SetAttribute("active", n.getIndexActiveChild());
 
-    // loop over members of the group
-    XMLElement *group = xmlCurrent_;
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-        (*node)->accept(*this);
-        // revert to group as current
-        xmlCurrent_ = group;
+    if (recursive_) {
+        // loop over members of the group
+        XMLElement *group = xmlCurrent_;
+        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+            (*node)->accept(*this);
+            // revert to group as current
+            xmlCurrent_ = group;
+        }
     }
 }
 
@@ -89,15 +107,17 @@ void SessionVisitor::visit(Primitive &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Primitive");
 
-    // go over members of a primitive
-    XMLElement *Primitive = xmlCurrent_;
+    if (recursive_) {
+        // go over members of a primitive
+        XMLElement *Primitive = xmlCurrent_;
 
-    xmlCurrent_ = xmlDoc_->NewElement("Shader");
-    n.shader()->accept(*this);
-    Primitive->InsertEndChild(xmlCurrent_);
+        xmlCurrent_ = xmlDoc_->NewElement("Shader");
+        n.shader()->accept(*this);
+        Primitive->InsertEndChild(xmlCurrent_);
 
-    // revert to primitive as current
-    xmlCurrent_ = Primitive;
+        // revert to primitive as current
+        xmlCurrent_ = Primitive;
+    }
 }
 
 
@@ -137,16 +157,19 @@ void SessionVisitor::visit(MediaPlayer &n)
     newelement->SetAttribute("play", n.isPlaying());
     newelement->SetAttribute("loop", (int) n.loop());
     newelement->SetAttribute("speed", n.playSpeed());
+
+ // TODO Segments
+
     xmlCurrent_->InsertEndChild(newelement);
 }
 
 void SessionVisitor::visit(Shader &n)
 {
     // Shader of a simple type
-    xmlCurrent_->SetAttribute("type", "DefaultShader");
+    xmlCurrent_->SetAttribute("type", "Shader");
 
-    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.color);
-    color->SetAttribute("type", "RGBA");
+    XMLElement *color = xmlDoc_->NewElement("color");
+    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.color) );
     xmlCurrent_->InsertEndChild(color);
 
     XMLElement *blend = xmlDoc_->NewElement("blending");
@@ -160,10 +183,10 @@ void SessionVisitor::visit(ImageShader &n)
     // Shader of a textured type
     xmlCurrent_->SetAttribute("type", "ImageShader");
 
-    XMLElement *filter = xmlDoc_->NewElement("uniforms");
-    filter->SetAttribute("stipple", n.stipple);
-    filter->SetAttribute("mask", n.mask);
-    xmlCurrent_->InsertEndChild(filter);
+    XMLElement *uniforms = xmlDoc_->NewElement("uniforms");
+    uniforms->SetAttribute("stipple", n.stipple);
+    uniforms->SetAttribute("mask", n.mask);
+    xmlCurrent_->InsertEndChild(uniforms);
 
 }
 
@@ -180,21 +203,21 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     filter->SetAttribute("threshold", n.threshold);
     filter->SetAttribute("lumakey", n.lumakey);
     filter->SetAttribute("nbColors", n.nbColors);
-    filter->SetAttribute("invertMode", n.invert);
+    filter->SetAttribute("invert", n.invert);
     filter->SetAttribute("chromadelta", n.chromadelta);
-    filter->SetAttribute("filter", n.filterid);
+    filter->SetAttribute("filterid", n.filterid);
     xmlCurrent_->InsertEndChild(filter);
 
-    XMLElement *gamma = XMLElementFromGLM(xmlDoc_, n.gamma);
-    gamma->SetAttribute("type", "gamma");
+    XMLElement *gamma = xmlDoc_->NewElement("gamma");
+    gamma->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.gamma) );
     xmlCurrent_->InsertEndChild(gamma);
 
-    XMLElement *levels = XMLElementFromGLM(xmlDoc_, n.levels);
-    levels->SetAttribute("type", "levels");
+    XMLElement *levels = xmlDoc_->NewElement("levels");
+    levels->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.levels) );
     xmlCurrent_->InsertEndChild(levels);
 
-    XMLElement *chromakey = XMLElementFromGLM(xmlDoc_, n.chromakey);
-    chromakey->SetAttribute("type", "chromakey");
+    XMLElement *chromakey = xmlDoc_->NewElement("chromakey");
+    chromakey->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.chromakey) );
     xmlCurrent_->InsertEndChild(chromakey);
 
 }
@@ -204,8 +227,8 @@ void SessionVisitor::visit(LineStrip &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineStrip");
 
-    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.getColor());
-    color->SetAttribute("type", "RGBA");
+    XMLElement *color = xmlDoc_->NewElement("color");
+    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
     xmlCurrent_->InsertEndChild(color);
 
     std::vector<glm::vec3> points = n.getPoints();
@@ -229,8 +252,8 @@ void SessionVisitor::visit(LineCircle &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineCircle");
 
-    XMLElement *color = XMLElementFromGLM(xmlDoc_, n.getColor());
-    color->SetAttribute("type", "RGBA");
+    XMLElement *color = xmlDoc_->NewElement("color");
+    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
     xmlCurrent_->InsertEndChild(color);
 }
 
@@ -250,30 +273,63 @@ void SessionVisitor::visit(Mesh &n)
     xmlCurrent_->InsertEndChild(tex);
 }
 
+void SessionVisitor::visit(Frame &n)
+{
+    // Node of a different type
+    xmlCurrent_->SetAttribute("type", "Frame");
+
+    XMLElement *color = xmlDoc_->NewElement("color");
+    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.color) );
+    xmlCurrent_->InsertEndChild(color);
+
+}
+
 void SessionVisitor::visit(Scene &n)
 {
-    std::string s = "Capture time " + GstToolkit::date_time_string();
-    XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
-    xmlDoc_->InsertEndChild(pComment);
-
     XMLElement *xmlRoot = xmlDoc_->NewElement("Scene");
     xmlDoc_->InsertEndChild(xmlRoot);
 
     // start recursive traverse from root node
+    recursive_ = true;
     xmlCurrent_ = xmlRoot;
     n.root()->accept(*this);
 }
 
-void SessionVisitor::save(std::string filename)
+void SessionVisitor::visit (Source& s)
 {
-    XMLDeclaration *pDec = xmlDoc_->NewDeclaration();
-    xmlDoc_->InsertFirstChild(pDec);
+    XMLElement *sourceNode = xmlDoc_->NewElement( "Source" );
+    sourceNode->SetAttribute("name", s.name().c_str() );
 
-    std::string s = "Save time " + GstToolkit::date_time_string();
-    XMLComment *pComment = xmlDoc_->NewComment(s.c_str());
-    xmlDoc_->InsertEndChild(pComment);
+    // insert into hierarchy
+    xmlCurrent_->InsertEndChild(sourceNode);
 
-    // save session
-    XMLError eResult = xmlDoc_->SaveFile(filename.c_str());
-    XMLCheckResult(eResult);
+    xmlCurrent_ = xmlDoc_->NewElement( "Mixing" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.node(View::MIXING)->accept(*this);
+
+    xmlCurrent_ = xmlDoc_->NewElement( "Geometry" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.node(View::GEOMETRY)->accept(*this);
+
+    xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.blendingShader()->accept(*this);
+
+    xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.processingShader()->accept(*this);
+
+    xmlCurrent_ = sourceNode;  // parent for next visits (other subtypes of Source)
+}
+
+void SessionVisitor::visit (MediaSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "MediaSource");
+
+    XMLElement *uri = xmlDoc_->NewElement("uri");
+    xmlCurrent_->InsertEndChild(uri);
+    XMLText *text = xmlDoc_->NewText( s.uri().c_str() );
+    uri->InsertEndChild( text );
+
+    s.mediaplayer()->accept(*this);
 }

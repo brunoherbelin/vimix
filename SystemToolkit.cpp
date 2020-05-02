@@ -1,6 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sstream>
+#include <iomanip>
+#include <ctime>
+#include <chrono>
+
+using namespace std;
 
 #ifdef WIN32
 #include <windows.h>
@@ -25,7 +31,42 @@
 
 #include "SystemToolkit.h"
 
-std::string SystemToolkit::settingsPath()
+
+
+string SystemToolkit::date_time_string()
+{
+    chrono::system_clock::time_point now = chrono::system_clock::now();
+    time_t t = chrono::system_clock::to_time_t(now);
+    std::tm* datetime = std::localtime(&t);
+
+    auto duration = now.time_since_epoch();
+    auto millis = chrono::duration_cast<chrono::milliseconds>(duration).count() % 1000;
+
+    ostringstream oss;
+    oss << setw(4) << setfill('0') << std::to_string(datetime->tm_year + 1900);
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mon + 1);
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_mday );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_hour );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_min );
+    oss << setw(2) << setfill('0') << std::to_string(datetime->tm_sec );
+    oss << setw(3) << setfill('0') << std::to_string(millis);
+
+    // fixed length string (17 chars) YYYYMMDDHHmmssiii
+    return oss.str();
+}
+
+std::string SystemToolkit::base_filename(const std::string& uri)
+{
+    std::string basefilename = uri.substr(uri.find_last_of("/\\") + 1);
+    const size_t period_idx = basefilename.rfind('.');
+    if (std::string::npos != period_idx)
+    {
+        basefilename.erase(period_idx);
+    }
+    return basefilename;
+}
+
+string SystemToolkit::settings_path()
 {
     // 1. find home
     char *mHomePath;
@@ -38,18 +79,18 @@ std::string SystemToolkit::settingsPath()
         // try the $HOME environment variable
         mHomePath = getenv("HOME");
     }
-    std::string home(mHomePath);
+    string home(mHomePath);
 
     // 2. try to access user settings folder
-    std::string settingspath = home + PATH_SETTINGS;
-    if (SystemToolkit::fileExists(settingspath)) {
+    string settingspath = home + PATH_SETTINGS;
+    if (SystemToolkit::file_exists(settingspath)) {
         // good, we have a place to put the settings file
         // settings should be in 'vmix' subfolder
         settingspath += "vmix";
 
         // 3. create the vmix subfolder in settings folder if not existing already
-        if ( !SystemToolkit::fileExists(settingspath)) {
-            if ( !SystemToolkit::createDirectory(settingspath) )
+        if ( !SystemToolkit::file_exists(settingspath)) {
+            if ( !SystemToolkit::create_directory(settingspath) )
                 // fallback to home if settings path cannot be created
                 settingspath = home;
         }
@@ -63,16 +104,16 @@ std::string SystemToolkit::settingsPath()
 
 }
 
-std::string SystemToolkit::settingsFileCompletePath(std::string basefilename)
+string SystemToolkit::settings_prepend_path(const string &basefilename)
 {
-    std::string path = SystemToolkit::settingsPath();
+    string path = SystemToolkit::settings_path();
     path += PATH_SEP;
     path += basefilename;
 
     return path;
 }
 
-bool SystemToolkit::fileExists(const std::string& path)
+bool SystemToolkit::file_exists(const string& path)
 {
     return access(path.c_str(), R_OK) == 0;
 
@@ -80,7 +121,7 @@ bool SystemToolkit::fileExists(const std::string& path)
 }
 
 
-bool SystemToolkit::createDirectory(const std::string& path)
+bool SystemToolkit::create_directory(const string& path)
 {
     return !mkdir(path.c_str(), 0755) || errno == EEXIST;
 
