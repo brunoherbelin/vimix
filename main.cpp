@@ -68,40 +68,6 @@ void drawScene()
 
     Mixer::manager().draw();
 
-    // draw GUI tree scene
-    ImGui::Begin(IMGUI_TITLE_MAINWINDOW);
-
-
-
-    static ImGuiVisitor v;
-    //    Mixer::manager().currentView()->scene.accept(v);
-    //    Mixer::manager().getView(View::RENDERING)->scene.accept(v);
-
-    Source *s = Mixer::manager().currentSource();
-    if ( s != nullptr) {
-
-        if (ImGui::TreeNode("Current Source"))
-        {
-            static char buf5[128];
-            sprintf ( buf5, "%s", s->name().c_str() );
-            ImGui::SetNextItemWidth(-100);
-            if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
-                Mixer::manager().renameSource(s, buf5);
-            }
-
-            s->blendingShader()->accept(v);
-
-            float width = ImGui::GetContentRegionAvail().x - 100;
-            ImVec2 imagesize ( width, width / s->frame()->aspectRatio());
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
-
-            s->processingShader()->accept(v);
-
-            ImGui::TreePop();
-        }
-    }
-
-    ImGui::End();
 }
 
 

@@ -47,6 +47,7 @@ struct Application
     bool preview;
     bool media_player;
     bool shader_editor;
+    bool toolbox;
 
     // Settings of Views
     int current_view;
@@ -62,9 +63,10 @@ struct Application
         stats = false;
         stats_corner = 1;
         logs = false;
-        preview = true;
+        preview = false;
         media_player = false;
         shader_editor = false;
+        toolbox = false;
         current_view = 1;
         windows.push_back(WindowConfig(APP_TITLE));
     }

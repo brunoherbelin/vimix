@@ -58,6 +58,7 @@ void Settings::Save()
     applicationNode->SetAttribute("stats", application.stats);
     applicationNode->SetAttribute("stats_corner", application.stats_corner);
     applicationNode->SetAttribute("logs", application.logs);
+    applicationNode->SetAttribute("toolbox", application.toolbox);
     pRoot->InsertEndChild(applicationNode);
 
     // block: views
@@ -147,6 +148,7 @@ void Settings::Load()
     pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
     pElement->QueryBoolAttribute("stats", &application.stats);
     pElement->QueryBoolAttribute("logs", &application.logs);
+    pElement->QueryBoolAttribute("toolbox", &application.toolbox);
     pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
 
     // block: views

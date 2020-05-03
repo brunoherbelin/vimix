@@ -52,6 +52,9 @@ static std::thread loadThread;
 static bool loadThreadDone = false;
 static TextEditor editor;
 
+void ShowAboutGStreamer(bool* p_open);
+void ShowAboutOpengl(bool* p_open);
+void ShowAbout(bool* p_open);
 
 static void NativeOpenFile(std::string ext) 
 { 
@@ -79,6 +82,10 @@ static void NativeOpenFile(std::string ext)
 
 UserInterface::UserInterface()
 {
+    show_about = false;
+    show_imgui_about = false;
+    show_gst_about = false;
+    show_opengl_about = false;
     currentTextEdit = "";
 }
 
@@ -146,22 +153,37 @@ void UserInterface::handleKeyboard()
     // Application "CTRL +"" Shortcuts
     if ( io.KeyCtrl ) {
 
-        if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  
+        if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
+            // Quit
             Rendering::manager().Close();
-        else if (ImGui::IsKeyPressed( GLFW_KEY_O ))
-        {
-
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_S ))
-        {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
+            // Open session
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
+            // Save Session
             std::cerr <<" Save File " << std::endl;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_W ))
-        {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
+            // New Session
             std::cerr <<" Close File " << std::endl;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_L ))
-            mainwindow.ToggleLogs();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
+            // Logs
+            Settings::application.logs = !Settings::application.logs;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_T )) {
+            // Logs
+            Settings::application.toolbox = !Settings::application.toolbox;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
+            // Logs
+            Settings::application.preview = !Settings::application.preview;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
+            // Logs
+            Settings::application.media_player = !Settings::application.media_player;
+        }
 
     }
 
@@ -173,7 +195,7 @@ void UserInterface::handleKeyboard()
     if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
         Rendering::manager().ToggleFullscreen();
     else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
-        mainwindow.StartScreenshot();
+        toolbox.StartScreenshot();
             
 }
 
@@ -281,8 +303,7 @@ void UserInterface::NewFrame()
     handleKeyboard();
     handleMouse();
 
-    // Main window
-    mainwindow.Render();
+    // navigator bar first
     navigator.Render();
 
 }
@@ -309,6 +330,8 @@ void UserInterface::Render()
     Log::Render();
 
     // windows
+    if (Settings::application.toolbox)
+        toolbox.Render();
     if (Settings::application.preview)
         RenderPreview();
     if (Settings::application.media_player)
@@ -319,6 +342,16 @@ void UserInterface::Render()
         ImGuiToolkit::ShowStats(&Settings::application.stats, &Settings::application.stats_corner);
     if (Settings::application.logs)
         Log::ShowLogWindow(&Settings::application.logs);
+
+    // about
+    if (show_about)
+        ShowAbout(&show_about);
+    if (show_imgui_about)
+        ImGui::ShowAboutWindow(&show_imgui_about);
+    if (show_gst_about)
+        ShowAboutGStreamer(&show_gst_about);
+    if (show_opengl_about)
+        ShowAboutOpengl(&show_opengl_about);
 
     // all IMGUI Rendering
     ImGui::Render();
@@ -333,176 +366,38 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
+void UserInterface::showMenuFile()
+{
+    // TODO : New
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
+
+    }
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
+//                UserInterface::manager().OpenFileMedia();
+    }
+    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
+//                UserInterface::manager().OpenFileMedia();
+    }
+    // TODO : Save As...
+
+    ImGui::Separator();
+    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
+        Rendering::manager().Close();
+    }
+}
+
+
 ToolBox::ToolBox()
 {
-    show_app_about = false;
-    show_gst_about = false;
-    show_opengl_about = false;
     show_demo_window = false;
-//    show_logs_window = false;
     show_icons_window = false;
     screenshot_step = 0;
 }
 
-void ToolBox::ToggleLogs()
-{
-    Settings::application.logs = !Settings::application.logs;
-}
 
 void ToolBox::StartScreenshot()
 {
     screenshot_step = 1;
-}
-
-static void ShowAboutOpengl(bool* p_open)
-{
-    if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::End();
-        return;
-    }
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
-    ImGui::PopFont();
-    ImGui::Separator();
-    ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
-    ImGuiToolkit::ButtonOpenWebpage("https://www.opengl.org");
-    ImGui::SameLine();
-
-//    static std::string allextensions( glGetString(GL_EXTENSIONS) );
-
-    static bool show_opengl_info = false;
-    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_opengl_info);
-    ImGui::SameLine(); ImGui::Text("Details");
-    if (show_opengl_info)
-    {
-        ImGui::Separator();
-        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
-        ImGui::SameLine(0.f, 60.f);
-        static char _openglfilter[64] = "";
-        ImGui::InputText("Filter", _openglfilter, 64);
-        ImGui::SameLine();
-        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
-            _openglfilter[0] = '\0';
-        std::string filter(_openglfilter);
-
-        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
-        if (copy_to_clipboard)
-        {
-            ImGui::LogToClipboard();
-            ImGui::LogText("```\n");
-        }
-
-        ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
-        ImGui::Text("%s %s", glGetString(GL_RENDERER), glGetString(GL_VENDOR));
-        ImGui::Text("Extensions (runtime) :");
-
-        GLint numExtensions = 0;
-        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
-        for (int i = 0; i < numExtensions; ++i){
-            std::string ext( (char*) glGetStringi(GL_EXTENSIONS, i) );
-            if ( filter.empty() || ext.find(filter) != std::string::npos )
-                ImGui::Text("%s", ext.c_str());
-        }
-
-
-        if (copy_to_clipboard)
-        {
-            ImGui::LogText("\n```\n");
-            ImGui::LogFinish();
-        }
-
-        ImGui::EndChildFrame();
-    }
-    ImGui::End();
-}
-
-
-
-static void ShowAboutGStreamer(bool* p_open)
-{
-    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::End();
-        return;
-    }
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
-    ImGui::PopFont();
-    ImGui::Separator();
-    ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
-    ImGui::Text("GStreamer is licensed under the LGPL License.");
-    ImGuiToolkit::ButtonOpenWebpage("https://gstreamer.freedesktop.org/");
-    ImGui::SameLine();
-
-    static bool show_config_info = false;
-    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_config_info);
-    ImGui::SameLine(); ImGui::Text("Details");
-    if (show_config_info)
-    {
-        ImGui::Separator();
-        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
-        ImGui::SameLine(0.f, 60.f);
-        static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
-        ImGui::SameLine();
-        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
-            _filter[0] = '\0';
-        std::string filter(_filter);
-
-        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
-        if (copy_to_clipboard)
-        {
-            ImGui::LogToClipboard();
-            ImGui::LogText("```\n");
-        }
-
-        ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
-        ImGui::Text("Plugins & features (runtime) :");
-
-        std::list<std::string> filteredlist;
-
-        // filter
-        if ( filter.empty() )
-            filteredlist = GstToolkit::all_plugins();
-        else {
-            std::list<std::string> plist = GstToolkit::all_plugins();
-            for (auto const& i: plist) {
-                // add plugin if plugin name match
-                if ( i.find(filter) != std::string::npos )
-                    filteredlist.push_back( i.c_str() );
-                // check in features
-                std::list<std::string> flist = GstToolkit::all_plugin_features(i);
-                for (auto const& j: flist) {
-                    // add plugin if feature name matches
-                    if ( j.find(filter) != std::string::npos )
-                        filteredlist.push_back( i.c_str() );
-                }
-            }
-        }
-
-        // display list
-        for (auto const& t: filteredlist) {
-            ImGui::Text("> %s", t.c_str());
-            std::list<std::string> flist = GstToolkit::all_plugin_features(t);
-            for (auto const& j: flist) {
-                if ( j.find(filter) != std::string::npos )
-                {
-                    ImGui::Text(" -   %s", j.c_str());
-                }
-            }
-        }
-
-        if (copy_to_clipboard)
-        {
-            ImGui::LogText("\n```\n");
-            ImGui::LogFinish();
-        }
-
-        ImGui::EndChildFrame();
-    }
-    ImGui::End();
 }
 
 
@@ -511,54 +406,19 @@ void ToolBox::Render()
     // first run
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-
-    ImGui::Begin(IMGUI_TITLE_MAINWINDOW, NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
+    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox,  ImGuiWindowFlags_MenuBar) )
+    {
+        ImGui::End();
+        return;
+    }
 
     // Menu Bar
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
-//                UserInterface::manager().OpenFileMedia();
-            }
-            if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
-//                UserInterface::manager().OpenFileMedia();
-            }
-            if (ImGui::MenuItem( ICON_FA_FILE "  Close", "Ctrl+W")) {
-
-            }
-            if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
-                Rendering::manager().Close();
-            }
-            ImGui::EndMenu();
-        }
-//        if (ImGui::BeginMenu("Windows"))
-//        {
-////            ImGui::MenuItem( IMGUI_TITLE_PREVIEW, NULL, &Settings::application.preview);
-////            ImGui::MenuItem( IMGUI_TITLE_MEDIAPLAYER, NULL, &Settings::application.media_player);
-////            ImGui::MenuItem( IMGUI_TITLE_SHADEREDITOR, NULL, &Settings::application.shader_editor);
-//            ImGui::MenuItem("Appearance", NULL, false, false);
-//            ImGui::SetNextItemWidth(200);
-//            if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
-//                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-
-//            ImGui::SetNextItemWidth(200);
-//            if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
-//                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-//            ImGui::EndMenu();
-//        }
         if (ImGui::BeginMenu("Tools"))
         {
-//            ImGui::MenuItem( ICON_FA_LIST "  Logs", "Ctrl+L", &show_logs_window);
-//            ImGui::MenuItem( ICON_FA_TACHOMETER_ALT " Metrics", NULL, &Settings::application.stats);
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", NULL) )
                 StartScreenshot();
-
-            ImGui::MenuItem("About", NULL, false, false);
-            ImGui::MenuItem("About ImGui", NULL, &show_app_about);
-            ImGui::MenuItem("About OpenGL", NULL, &show_opengl_about);
-            ImGui::MenuItem("About GStreamer", NULL, &show_gst_about);
 
             ImGui::MenuItem("Dev", NULL, false, false);
             ImGui::MenuItem("Icons", NULL, &show_icons_window);
@@ -583,20 +443,12 @@ void ToolBox::Render()
 
     ImGui::End(); // "v-mix"
 
-//    if (show_logs_window)
-//        Log::ShowLogWindow(&show_logs_window);
 
     // About and other utility windows
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
-    if (show_app_about)
-        ImGui::ShowAboutWindow(&show_app_about);
-    if (show_gst_about)
-        ShowAboutGStreamer(&show_gst_about);
-    if (show_opengl_about)
-        ShowAboutOpengl(&show_opengl_about);
 
     // taking screenshot is in 3 steps
     // 1) wait 1 frame that the menu / action showing button to take screenshot disapears
@@ -664,8 +516,7 @@ void UserInterface::RenderMediaPlayer()
     }
 
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-
+    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player,  ImGuiWindowFlags_NoScrollbar) || !show)
     {
         ImGui::End();
@@ -976,7 +827,7 @@ void Navigator::Render()
         {
             Mixer::manager().setCurrentView(View::GEOMETRY);
         }
-        if (ImGui::Selectable( ICON_FA_CUBE, &selected_view[3], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             // TODO : Layers view
         }
@@ -1008,7 +859,6 @@ void Navigator::Render()
 
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
-
 
 }
 
@@ -1107,26 +957,226 @@ void Navigator::RenderMainPannel()
     {
         // TITLE
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("vimix");
+        ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
+        if (ImGui::BeginMenu("Session"))
+        {
+            UserInterface::manager().showMenuFile();
+            ImGui::EndMenu();
+        }
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        static int recent_session = 0;
+        if ( ImGui::Combo("Recent", &recent_session, "Select\0") ) {
+
+        }
+
+        ImGui::Text(" ");
         ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview);
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player);
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox, "Ctrl + T");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview, "Ctrl + P");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, "Ctrl + M");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, "Ctrl + L");
 
+        ImGui::Text("  ");
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::Combo("Color", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+        if ( ImGui::Combo("Accent", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+
+        // Bottom aligned
+        ImGui::SetCursorPosY(height - 4.f * ImGui::GetTextLineHeightWithSpacing());
+        ImGui::Text("About");
+        if ( ImGui::Button( " About vimix", ImVec2(5.f * width - padding_width, 0)) )
+            UserInterface::manager().show_about = true;
+        if ( ImGui::Button("About ImGui"))
+            UserInterface::manager().show_imgui_about = true;
+        ImGui::SameLine();
+        if ( ImGui::Button("About GStreamer"))
+            UserInterface::manager().show_gst_about = true;
+        ImGui::SameLine();
+        if ( ImGui::Button("About OpenGL"))
+            UserInterface::manager().show_opengl_about = true;
 
     }
     ImGui::End();
 }
 
+
+void ShowAbout(bool* p_open)
+{
+    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin(APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("%s %d.%d", APP_NAME, APP_VERSION_MAJOR, APP_VERSION_MINOR);
+    ImGui::PopFont();
+    ImGui::Separator();
+    ImGui::Text("vimix is a video mixing software for live performance.");
+    ImGui::Text("vimix is licensed under the GNU GPL version 3. Copyright 2019-2020 Bruno Herbelin.");
+    ImGuiToolkit::ButtonOpenWebpage("https://github.com/brunoherbelin/v-mix");
+
+    ImGui::End();
+}
+
+void ShowAboutOpengl(bool* p_open)
+{
+    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
+    ImGui::PopFont();
+    ImGui::Separator();
+    ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
+    ImGuiToolkit::ButtonOpenWebpage("https://www.opengl.org");
+    ImGui::SameLine();
+
+    static bool show_opengl_info = false;
+    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_opengl_info);
+    ImGui::SameLine(); ImGui::Text("Details");
+    if (show_opengl_info)
+    {
+        ImGui::Separator();
+        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+        ImGui::SameLine(0.f, 60.f);
+        static char _openglfilter[64] = "";
+        ImGui::InputText("Filter", _openglfilter, 64);
+        ImGui::SameLine();
+        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+            _openglfilter[0] = '\0';
+        std::string filter(_openglfilter);
+
+        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
+        if (copy_to_clipboard)
+        {
+            ImGui::LogToClipboard();
+            ImGui::LogText("```\n");
+        }
+
+        ImGui::Text("OpenGL %s", glGetString(GL_VERSION) );
+        ImGui::Text("%s %s", glGetString(GL_RENDERER), glGetString(GL_VENDOR));
+        ImGui::Text("Extensions (runtime) :");
+
+        GLint numExtensions = 0;
+        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+        for (int i = 0; i < numExtensions; ++i){
+            std::string ext( (char*) glGetStringi(GL_EXTENSIONS, i) );
+            if ( filter.empty() || ext.find(filter) != std::string::npos )
+                ImGui::Text("%s", ext.c_str());
+        }
+
+
+        if (copy_to_clipboard)
+        {
+            ImGui::LogText("\n```\n");
+            ImGui::LogFinish();
+        }
+
+        ImGui::EndChildFrame();
+    }
+    ImGui::End();
+}
+
+
+
+void ShowAboutGStreamer(bool* p_open)
+{
+
+    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
+    ImGui::PopFont();
+    ImGui::Separator();
+    ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
+    ImGui::Text("GStreamer is licensed under the LGPL License.");
+    ImGuiToolkit::ButtonOpenWebpage("https://gstreamer.freedesktop.org/");
+    ImGui::SameLine();
+
+    static bool show_config_info = false;
+    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_config_info);
+    ImGui::SameLine(); ImGui::Text("Details");
+    if (show_config_info)
+    {
+        ImGui::Separator();
+        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+        ImGui::SameLine(0.f, 60.f);
+        static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
+        ImGui::SameLine();
+        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+            _filter[0] = '\0';
+        std::string filter(_filter);
+
+        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
+        if (copy_to_clipboard)
+        {
+            ImGui::LogToClipboard();
+            ImGui::LogText("```\n");
+        }
+
+        ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
+        ImGui::Text("Plugins & features (runtime) :");
+
+        std::list<std::string> filteredlist;
+
+        // filter
+        if ( filter.empty() )
+            filteredlist = GstToolkit::all_plugins();
+        else {
+            std::list<std::string> plist = GstToolkit::all_plugins();
+            for (auto const& i: plist) {
+                // add plugin if plugin name match
+                if ( i.find(filter) != std::string::npos )
+                    filteredlist.push_back( i.c_str() );
+                // check in features
+                std::list<std::string> flist = GstToolkit::all_plugin_features(i);
+                for (auto const& j: flist) {
+                    // add plugin if feature name matches
+                    if ( j.find(filter) != std::string::npos )
+                        filteredlist.push_back( i.c_str() );
+                }
+            }
+        }
+
+        // display list
+        for (auto const& t: filteredlist) {
+            ImGui::Text("> %s", t.c_str());
+            std::list<std::string> flist = GstToolkit::all_plugin_features(t);
+            for (auto const& j: flist) {
+                if ( j.find(filter) != std::string::npos )
+                {
+                    ImGui::Text(" -   %s", j.c_str());
+                }
+            }
+        }
+
+        if (copy_to_clipboard)
+        {
+            ImGui::LogText("\n```\n");
+            ImGui::LogFinish();
+        }
+
+        ImGui::EndChildFrame();
+    }
+    ImGui::End();
+}

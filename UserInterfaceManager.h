@@ -40,32 +40,33 @@ public:
 
 class ToolBox
 {
-    bool show_app_about;
-    bool show_gst_about;
-    bool show_opengl_about;
     bool show_demo_window;
-//    bool show_logs_window;
     bool show_icons_window;
     unsigned int screenshot_step;
 
 public:
     ToolBox();
 
-    void ToggleLogs();
     void StartScreenshot();
     void Render();
 };
 
 class UserInterface
 {
-    friend class ToolBox;
+    friend class Navigator;
     Navigator navigator;
-    ToolBox mainwindow;
+    ToolBox toolbox;
+
+    bool show_about;
+    bool show_imgui_about;
+    bool show_gst_about;
+    bool show_opengl_about;
 
     std::string currentTextEdit;
 
     void handleKeyboard();
     void handleMouse();
+    void showMenuFile();
 
     // Private Constructor
     UserInterface();
