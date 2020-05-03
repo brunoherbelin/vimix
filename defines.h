@@ -1,9 +1,11 @@
 #ifndef VMIX_DEFINES_H
 #define VMIX_DEFINES_H
 
-#define APP_NAME "vmix"
-#define APP_TITLE "v-mix -- Video Live Mixer" 
-#define APP_VERSION "0.0.1"
+#define APP_NAME "vimix"
+#define APP_TITLE "vimix -- Video Live Mixer"
+#define APP_SETTINGS "vimix.xml"
+#define APP_VERSION_MAJOR 0
+#define APP_VERSION_MINOR 1
 #define XML_VERSION_MAJOR 0
 #define XML_VERSION_MINOR 1
 
@@ -23,7 +25,7 @@
 #define SCENE_DEPTH -10.f
 #define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SCENE_UNIT * SCENE_UNIT * SCENE_UNIT * SCENE_UNIT) )
 
-#define IMGUI_TITLE_MAINWINDOW ICON_FA_CIRCLE_NOTCH " v-mix"
+#define IMGUI_TITLE_MAINWINDOW ICON_FA_CIRCLE_NOTCH "  vimix"
 #define IMGUI_TITLE_MEDIAPLAYER ICON_FA_FILM "  Media Player"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
 #define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Preview"

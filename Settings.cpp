@@ -5,10 +5,9 @@ using namespace std;
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
+#include "defines.h"
 #include "Settings.h"
 #include "SystemToolkit.h"
-
-#define SETTINGS_BASEFILENAME "vmix.xml"
 
 
 Settings::Application Settings::application;
@@ -24,6 +23,7 @@ void Settings::Save()
     xmlDoc.InsertEndChild(pRoot);
 
     string comment = "Settings for " + application.name;
+    comment += "Version " + std::to_string(APP_VERSION_MAJOR) + "." + std::to_string(APP_VERSION_MINOR);
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
@@ -88,7 +88,7 @@ void Settings::Save()
     }
 
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settings_prepend_path(SETTINGS_BASEFILENAME);
+        settingsFilename = SystemToolkit::settings_prepend_path(APP_SETTINGS);
 
     XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
     XMLResultError(eResult);
@@ -98,7 +98,7 @@ void Settings::Load()
 {
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settings_prepend_path(SETTINGS_BASEFILENAME);
+        settingsFilename = SystemToolkit::settings_prepend_path(APP_SETTINGS);
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file

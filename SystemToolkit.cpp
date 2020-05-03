@@ -29,6 +29,7 @@ using namespace std;
 #define PATH_SETTINGS "/.config/"
 #endif
 
+#include "defines.h"
 #include "SystemToolkit.h"
 
 
@@ -86,7 +87,7 @@ string SystemToolkit::settings_path()
     if (SystemToolkit::file_exists(settingspath)) {
         // good, we have a place to put the settings file
         // settings should be in 'vmix' subfolder
-        settingspath += "vmix";
+        settingspath += APP_NAME;
 
         // 3. create the vmix subfolder in settings folder if not existing already
         if ( !SystemToolkit::file_exists(settingspath)) {

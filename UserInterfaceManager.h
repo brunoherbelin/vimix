@@ -10,20 +10,35 @@ using namespace std;
 #define NAV_NEW 65
 #define NAV_MENU 66
 
-class SourceNavigator
+struct ImVec2;
+class Source;
+
+class Navigator
 {
+    // top items : group of buttons openning a pannel
     int selected_source_index;
     bool selected_button[NAV_COUNT];
     void clearSelection();
     void toggle(int index);
 
+    // bottom items : individual buttons
+
+    float width;
+    float height;
+    float sourcelist_height;
+    float padding_width;
+
+    void RenderSourcePannel(Source *s);
+    void RenderNewPannel();
+    void RenderMainPannel();
+
 public:
-    SourceNavigator();
+    Navigator();
 
     void Render();
 };
 
-class MainWindow
+class ToolBox
 {
     bool show_app_about;
     bool show_gst_about;
@@ -34,7 +49,7 @@ class MainWindow
     unsigned int screenshot_step;
 
 public:
-    MainWindow();
+    ToolBox();
 
     void ToggleLogs();
     void StartScreenshot();
@@ -43,9 +58,10 @@ public:
 
 class UserInterface
 {
-    friend class MainWindow;
-    MainWindow mainwindow;
-    SourceNavigator navigator;
+    friend class ToolBox;
+    Navigator navigator;
+    ToolBox mainwindow;
+
     std::string currentTextEdit;
 
     void handleKeyboard();
