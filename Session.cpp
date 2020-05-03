@@ -76,6 +76,9 @@ SourceList::iterator Session::end()
 
 SourceList::iterator Session::find(int index)
 {
+    if (index<0)
+        return sources_.end();
+
     int i = 0;
     SourceList::iterator it = sources_.begin();
     while ( i < index && it != sources_.end() ){
@@ -105,5 +108,16 @@ uint Session::numSource() const
     return sources_.size();
 }
 
-
+int Session::index(SourceList::iterator it) const
+{
+    int index = -1;
+    int count = 0;
+    for(auto i = sources_.begin(); i != sources_.end(); i++, count++) {
+        if ( i == it ) {
+            index = count;
+            break;
+        }
+    }
+    return index;
+}
 

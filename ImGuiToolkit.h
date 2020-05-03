@@ -20,7 +20,7 @@ namespace ImGuiToolkit
     bool ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle);
     bool ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state);
     void ButtonToggle( const char* label, bool* toggle );
-    void ButtonSwitch( const char* label, bool* toggle );
+    void ButtonSwitch(const char* label, bool* toggle , const char *help = nullptr);
     void ButtonOpenWebpage( const char* url );
 
     void HelpMarker(const char* desc);

@@ -22,7 +22,9 @@ public:
     SourceList::iterator find(Source *s);
     SourceList::iterator find(std::string name);
     SourceList::iterator find(Node *node);
+
     uint numSource() const;
+    int index(SourceList::iterator it) const;
 
     // update all sources
     void update(float dt);

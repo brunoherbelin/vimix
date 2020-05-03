@@ -112,6 +112,7 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     unsetCurrentSource();
     if ( it != session_->end() ) {
         current_source_ = it;
+        current_source_index_ = session_->index(it);
         (*current_source_)->setOverlayVisible(true);
     }
 }
@@ -141,8 +142,15 @@ void Mixer::unsetCurrentSource()
     // discard overlay for previously current source
     if ( current_source_ != session_->end() )
         (*current_source_)->setOverlayVisible(false);
+
     // deselect current source
     current_source_ = session_->end();
+    current_source_index_ = -1;
+}
+
+int Mixer::indexCurrentSource()
+{
+    return current_source_index_;
 }
 
 Source *Mixer::currentSource()
@@ -295,6 +303,7 @@ void Mixer::newSession(Session *newsession)
 
     // no current source
     current_source_ = session_->end();
+    current_source_index_ = -1;
 
     // reset timer
     update_time_ = GST_CLOCK_TIME_NONE;

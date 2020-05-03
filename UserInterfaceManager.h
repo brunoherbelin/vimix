@@ -5,14 +5,15 @@
 #include <list>
 using namespace std;
 
-#define NAV_MENU 0
-#define NAV_NEW 63
+#define NAV_COUNT 67
 #define NAV_MAX 64
+#define NAV_NEW 65
+#define NAV_MENU 66
 
 class SourceNavigator
 {
     int selected_source_index;
-    bool selected_button[NAV_MAX];
+    bool selected_button[NAV_COUNT];
     void clearSelection();
     void toggle(int index);
 

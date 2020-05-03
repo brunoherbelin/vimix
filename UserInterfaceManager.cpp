@@ -903,6 +903,7 @@ void UserInterface::RenderShaderEditor()
 SourceNavigator::SourceNavigator()
 {
     clearSelection();
+    selected_source_index = -1;
 }
 
 void SourceNavigator::toggle(int index)
@@ -911,16 +912,15 @@ void SourceNavigator::toggle(int index)
     clearSelection();
     selected_button[index] = s;
     if (s)
-        selected_source_index = index - 1;
+        selected_source_index = index;
     else
         selected_source_index = -1;
 }
 
 void SourceNavigator::clearSelection()
 {
-    for(int i=0; i<NAV_MAX; ++i)
+    for(int i=0; i<NAV_COUNT; ++i)
         selected_button[i] = false;
-    selected_source_index = -1;
 }
 
 void SourceNavigator::Render()
@@ -952,18 +952,31 @@ void SourceNavigator::Render()
             toggle(NAV_MENU);
         }
 
-        int index = 1;
+        int index = 0;
         SourceList::iterator iter;
         for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
         {
+            // draw an indicator for current source
+            if ( Mixer::manager().indexCurrentSource() == index ){
+
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                const ImVec2 p = ImGui::GetCursorScreenPos() + ImVec2(icon_width,0);
+                const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
+
+                draw_list->AddRect(p, ImVec2(p.x + 2.f, p.y + icon_width), color, 0.0f,  0, 3.f);
+
+            }
+            // draw select box
             if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
             {
                 toggle(index);
+                Mixer::manager().setCurrentSource(selected_source_index);
             }
         }
         // the "+" icon for action of creating new source
         if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
         {
+            Mixer::manager().unsetCurrentSource();
             toggle(NAV_NEW);
         }
         ImGui::PopStyleVar();
@@ -975,8 +988,6 @@ void SourceNavigator::Render()
     // window menu
     if (selected_button[NAV_MENU])
     {
-        Mixer::manager().unsetCurrentSource();
-
         // Next window is a side pannel
         ImGui::SetNextWindowPos( ImVec2(window_width, 0), ImGuiCond_Always );
         ImGui::SetNextWindowSize(ImVec2( 5.f * window_width, io.DisplaySize.y), ImGuiCond_Always );
@@ -993,7 +1004,7 @@ void SourceNavigator::Render()
             ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player);
             ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
             ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
-            ImGuiToolkit::ButtonSwitch( ICON_FA_LIST "  Logs", &Settings::application.logs);
+            ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, "Ctrl + L");
 
             ImGui::Text("Appearance");
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1010,8 +1021,6 @@ void SourceNavigator::Render()
     // window to create a source
     else if (selected_button[NAV_NEW])
     {
-        Mixer::manager().unsetCurrentSource();
-
         // Next window is a side pannel
         ImGui::SetNextWindowPos( ImVec2(window_width, 0), ImGuiCond_Always );
         ImGui::SetNextWindowSize(ImVec2( 5.f * window_width, io.DisplaySize.y), ImGuiCond_Always );
@@ -1060,9 +1069,11 @@ void SourceNavigator::Render()
     // window to configure a selected source
     else if (selected_source_index > -1)
     {
-        static ImGuiVisitor v;
-        Mixer::manager().setCurrentSource(selected_source_index);
+        // manipulate current source, and activate corresponding button
         Source *s = Mixer::manager().currentSource();
+        clearSelection();
+        selected_button[Mixer::manager().indexCurrentSource()] = true;
+
         if (s)
         {
             // Next window is a side pannel
@@ -1083,6 +1094,7 @@ void SourceNavigator::Render()
                     Mixer::manager().renameSource(s, buf5);
                 }
                 // blending pannel
+                static ImGuiVisitor v;
                 s->blendingShader()->accept(v);
                 // preview
                 float width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;

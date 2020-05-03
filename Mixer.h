@@ -46,8 +46,7 @@ public:
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
     Source *currentSource();
-
-
+    int indexCurrentSource();
 
     // management of view
     View *getView(View::Mode m);
@@ -70,6 +69,7 @@ protected:
 
     Session *session_;
     SourceList::iterator current_source_;
+    int current_source_index_;
 
     MixingView mixing_;
     GeometryView geometry_;

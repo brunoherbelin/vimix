@@ -64,22 +64,29 @@ void ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
 }
 
 
-void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle)
+void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
 {
+    // utility style
     ImVec4* colors = ImGui::GetStyle().Colors;
-    ImVec2 p = ImGui::GetCursorScreenPos();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    // draw position when entering
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // layout
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = ImGui::GetContentRegionAvail().x;
     float height = ImGui::GetFrameHeight() * 0.75f;
     float width = height * 1.6f;
     float radius = height * 0.50f;
 
-    ImGui::InvisibleButton(label, ImVec2(width, height));
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
     if (ImGui::IsItemClicked())
         *toggle = !*toggle;
-
     float t = *toggle ? 1.0f : 0.0f;
 
+    // animation
     ImGuiContext& g = *GImGui;
     float ANIM_SPEED = 0.1f;
     if (g.LastActiveId == g.CurrentWindow->GetID(label))// && g.LastActiveIdTimer < ANIM_SPEED)
@@ -88,16 +95,30 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle)
         t = *toggle ? (t_anim) : (1.0f - t_anim);
     }
 
+    // hover
     ImU32 col_bg;
     if (ImGui::IsItemHovered())
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
     else
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
 
+    // draw help text if present
+    if (help) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 1.f));
+        ImGui::RenderText(draw_pos, help);
+        ImGui::PopStyleColor(1);
+    }
+
+    // draw the label right aligned
+    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+    ImVec2 text_pos = draw_pos + ImVec2(frame_width -120.f -label_size.x, 0.f);
+    ImGui::RenderText(text_pos, label);
+
+    // draw switch after the text
+    ImVec2 p = draw_pos + ImVec2(frame_width - 100.f, 0.f);
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
-    ImGui::SameLine(0,22);
-    ImGui::Text(label);
+
 }
 
 
