@@ -792,13 +792,13 @@ void Navigator::Render()
                 const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
 
                 draw_list->AddRect(p, ImVec2(p.x + 2.f, p.y + icon_width), color, 0.0f,  0, 3.f);
-
             }
             // draw select box
             if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
             {
                 toggle(index);
-                Mixer::manager().setCurrentSource(selected_source_index);
+                if (selected_button[index])
+                    Mixer::manager().setCurrentSource(selected_source_index);
             }
         }
         // the "+" icon for action of creating new source
@@ -851,10 +851,9 @@ void Navigator::Render()
     else if (selected_source_index > -1)
     {
         // manipulate current source, and activate corresponding button
-        Source *s = Mixer::manager().currentSource();
         clearSelection();
         selected_button[Mixer::manager().indexCurrentSource()] = true;
-        RenderSourcePannel(s);
+        RenderSourcePannel(Mixer::manager().currentSource());
     }  
 
     ImGui::PopStyleColor(2);
