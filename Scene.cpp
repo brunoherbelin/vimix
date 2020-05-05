@@ -17,6 +17,8 @@
 #include <algorithm>
 
 
+Group *Scene::limbo = new Group;
+
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
     glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), translation);
@@ -179,13 +181,13 @@ void Primitive::deleteGLBuffers_()
 // Group
 Group::~Group()
 {
-    for(auto it = children_.begin(); it != children_.end(); ) {
+    for(NodeSet::iterator it = children_.begin(); it != children_.end(); ) {
         // this group is not parent of that node anymore
         (*it)->parents_.remove(this);
         // if this group was the only remaining parent
         if ( (*it)->parents_.size() < 1 )
-            // delete the child
-            delete (*it);
+            // put the child in limbo
+            Scene::limbo->addChild( *it );
         // erase this iterator from the list
         it = children_.erase(it);
     }
@@ -196,6 +198,7 @@ void Group::addChild(Node *child)
     children_.insert(child);
     child->parents_.push_back(this);
 }
+
 
 void Group::detatchChild(Node *child)
 {
@@ -375,14 +378,31 @@ void Animation::accept(Visitor& v)
     v.visit(*this);
 }
 
-Scene::Scene()
+Scene::Scene(): root_(nullptr)
 {
     root_ = new Group;
 }
 
 Scene::~Scene()
 {
-    delete root_;
+    deleteNode(root_);
+}
+
+
+void Scene::deleteNode(Node *node)
+{
+    for(auto it = node->parents_.begin(); it != node->parents_.end();){
+        (*it)->detatchChild(node);
+    }    
+
+    limbo->addChild(node);
+}
+
+void Scene::update(float dt)
+{
+    root_->update( dt );
+
+    // remove nodes from limbo
 }
 
 void Scene::accept(Visitor& v)

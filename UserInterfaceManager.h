@@ -1,6 +1,7 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
+#include <thread>
 #include <string>
 #include <list>
 using namespace std;
@@ -15,19 +16,19 @@ class Source;
 
 class Navigator
 {
+    // geometry left bar
+    float width;
+    float height;
+    float sourcelist_height;
+    float padding_width;
+
     // top items : group of buttons openning a pannel
     int selected_source_index;
     bool selected_button[NAV_COUNT];
     void clearSelection();
     void toggle(int index);
 
-    // bottom items : individual buttons
-
-    float width;
-    float height;
-    float sourcelist_height;
-    float padding_width;
-
+    // side pannels
     void RenderSourcePannel(Source *s);
     void RenderNewPannel();
     void RenderMainPannel();
@@ -35,6 +36,8 @@ class Navigator
 public:
     Navigator();
 
+    void hidePannel();
+    void showPannelSource(int index);
     void Render();
 };
 
@@ -50,6 +53,8 @@ public:
     void StartScreenshot();
     void Render();
 };
+
+// TODO: class ShaderEditor
 
 class UserInterface
 {
@@ -67,6 +72,16 @@ class UserInterface
     void handleKeyboard();
     void handleMouse();
     void showMenuFile();
+
+//    typedef enum {
+//        FILE_DIALOG_INACTIVE = 0,
+//        FILE_DIALOG_ACTIVE,
+//        FILE_DIALOG_FINISHED
+//    } FileDialogStatus;
+//    FileDialogStatus filestatus_;
+//    std::string filename_;
+//    std::thread filethread_;
+//    void startOpenFileDialog();
 
     // Private Constructor
     UserInterface();

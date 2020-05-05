@@ -36,6 +36,9 @@ public:
     // manangement of sources
     void createSourceMedia(std::string uri);
 
+    // TODO: deleteSource();
+    void deleteSource(Source *s);
+
     // operations on sources
     void renameSource(Source *s, const std::string &newname);
 

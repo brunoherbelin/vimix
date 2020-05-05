@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstring>
 #include <sstream>
-#include <thread>
 
 // ImGui
 #include "imgui.h"
@@ -32,7 +31,6 @@
 #include "defines.h"
 #include "Log.h"
 #include "SystemToolkit.h"
-#include "TextEditor.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
 #include "Resource.h"
@@ -48,34 +46,36 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 
-static std::thread loadThread;
-static bool loadThreadDone = false;
+#include "TextEditor.h"
 static TextEditor editor;
+
+
+static std::thread FileDialogThread_;
+static bool FileDialogFinished_ = false;
+static std::string FileDialogFilename_ = "";
+
 
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowAbout(bool* p_open);
 
-static void NativeOpenFile(std::string ext) 
+static void FileDialogOpen(std::string path)
 { 
-
      char const * lTheOpenFileName;
-     char const * lFilterPatterns[2] = { "*.txt", "*.text" };
+     char const * lFilterPatterns[2] = { "*.vmx" };
 
-     lTheOpenFileName = tinyfd_openFileDialog( "Open a text file", "", 2, lFilterPatterns, nullptr, 0);
+     lTheOpenFileName = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, lFilterPatterns, nullptr, 0);
 
      if (!lTheOpenFileName)
      {
-        tinyfd_messageBox(APP_TITLE, "Open file name is NULL.             ", "ok", "warning", 1);
+        FileDialogFilename_ = "";
      }
      else
      {
-        char buf[1024];
-        sprintf( buf, "he selected file is :\n %s", lTheOpenFileName );
-        tinyfd_messageBox(APP_TITLE, buf, "ok", "info", 1);
+        FileDialogFilename_ = std::string( lTheOpenFileName );
      }
 
-     loadThreadDone = true;
+     FileDialogFinished_ = true;
 }
 
 
@@ -286,11 +286,15 @@ void UserInterface::handleMouse()
 
 
         }
-
-
+        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+        {
+            // display the info on source in left pannel
+            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+        }
 
     }
 }
+
 
 void UserInterface::NewFrame()
 {
@@ -306,6 +310,11 @@ void UserInterface::NewFrame()
     // navigator bar first
     navigator.Render();
 
+    // handle FileDialog
+    if (FileDialogFinished_) {
+        FileDialogFinished_ = false;
+        Mixer::manager().open(FileDialogFilename_);
+    }
 }
 
 void UserInterface::Render()
@@ -370,10 +379,13 @@ void UserInterface::showMenuFile()
 {
     // TODO : New
     if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
-
+        Mixer::manager().newSession();
+        navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
-//                UserInterface::manager().OpenFileMedia();
+        // launch file dialog to open a session file
+        FileDialogThread_ = std::thread(FileDialogOpen, "./");
+        navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
 //                UserInterface::manager().OpenFileMedia();
@@ -406,6 +418,7 @@ void ToolBox::Render()
     // first run
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
     if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox,  ImGuiWindowFlags_MenuBar) )
     {
         ImGui::End();
@@ -428,18 +441,6 @@ void ToolBox::Render()
         }
         ImGui::EndMenuBar();
     }
-
-    // TEMPLATE CODE FOR FILE BROWSER
-//    if( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File" ) && !loadThread.joinable())
-//    {
-//        loadThreadDone = false;
-//        loadThread = std::thread(NativeOpenFile, "hello");
-//    }
-
-//    if( loadThreadDone && loadThread.joinable() ) {
-//        loadThread.join();
-//        // TODO : deal with filename
-//    }
 
     ImGui::End(); // "v-mix"
 
@@ -484,17 +485,26 @@ void ToolBox::Render()
     }
 }
 
+
 void UserInterface::RenderPreview()
 {
+    struct CustomConstraints // Helper functions for aspect-ratio constraints
+    {
+        static void AspectRatio(ImGuiSizeCallbackData* data) { float *ar = (float*) data->UserData; data->DesiredSize.x = (*ar * data->CurrentSize.y) - 70.f; }
+
+    };
+
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
+        float ar = output->aspectRatio();
         ImGui::SetNextWindowPos(ImVec2(850, 450), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(380, 260), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
         ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.preview,  ImGuiWindowFlags_NoScrollbar);
         float width = ImGui::GetContentRegionAvail().x;
 
-        ImVec2 imagesize ( width, width / output->aspectRatio());
+        ImVec2 imagesize ( width, width / ar);
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 0.f), ImVec2(1.f, -1.f));
 
         ImGui::End();
@@ -517,6 +527,7 @@ void UserInterface::RenderMediaPlayer()
 
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
     if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player,  ImGuiWindowFlags_NoScrollbar) || !show)
     {
         ImGui::End();
@@ -748,6 +759,17 @@ void Navigator::clearSelection()
         selected_button[i] = false;
 }
 
+void Navigator::showPannelSource(int index)
+{
+    selected_source_index = index;
+}
+
+void Navigator::hidePannel()
+{
+    clearSelection();
+    selected_source_index = -1;
+}
+
 void Navigator::Render()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -845,7 +867,12 @@ void Navigator::Render()
     // window to create a source
     else if (selected_button[NAV_NEW])
     {
-        RenderNewPannel();
+        // if a source is selected in the meantime, revert to selected source pannel
+        if (Mixer::manager().indexCurrentSource() > -1 )
+            selected_button[NAV_NEW] = false;
+        else
+            // show new source pannel
+            RenderNewPannel();
     }
     // window to configure a selected source
     else if (selected_source_index > -1)
@@ -853,7 +880,11 @@ void Navigator::Render()
         // manipulate current source, and activate corresponding button
         clearSelection();
         selected_button[Mixer::manager().indexCurrentSource()] = true;
-        RenderSourcePannel(Mixer::manager().currentSource());
+        Source *s = Mixer::manager().currentSource();
+        if (s)
+            RenderSourcePannel(s);
+        else
+            selected_source_index = -1;
     }  
 
     ImGui::PopStyleColor(2);
@@ -861,41 +892,43 @@ void Navigator::Render()
 
 }
 
-
+// Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
-    if (s)
+    // Next window is a side pannel
+    ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        // Next window is a side pannel
-        ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
-        ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
-        ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
-        if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-        {
-            // TITLE
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::Text("Source");
-            ImGui::PopFont();
+        // TITLE
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text("Source");
+        ImGui::PopFont();
 
-            static char buf5[128];
-            sprintf ( buf5, "%s", s->name().c_str() );
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
-                Mixer::manager().renameSource(s, buf5);
-            }
-            // blending pannel
-            static ImGuiVisitor v;
-            s->blendingShader()->accept(v);
-            // preview
-            float width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-            ImVec2 imagesize ( width, width / s->frame()->aspectRatio());
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
-            // image processing pannel
-            s->processingShader()->accept(v);
-
+        static char buf5[128];
+        sprintf ( buf5, "%s", s->name().c_str() );
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
+            Mixer::manager().renameSource(s, buf5);
         }
-        ImGui::End();
+        // blending pannel
+        static ImGuiVisitor v;
+        s->blendingShader()->accept(v);
+        // preview
+        float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+        ImVec2 imagesize ( preview_width, preview_width / s->frame()->aspectRatio());
+        ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
+        // image processing pannel
+        s->processingShader()->accept(v);
+        // delete button
+        ImGui::Text(" ");
+        if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+
+            Mixer::manager().deleteSource(s);
+        }
     }
+    ImGui::End();
 }
 
 void Navigator::RenderNewPannel()
@@ -916,9 +949,9 @@ void Navigator::RenderNewPannel()
         ImGui::Combo("Type", &new_source_type, "Media\0Render\0Clone\0");
         if (new_source_type == 0) {
 
-            static char filename[128];
+            static char filename[128] = "file:///home/bhbn/Videos/iss.mov";
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
-
+                // browse file
             }
             ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -927,6 +960,11 @@ void Navigator::RenderNewPannel()
             // Description
             ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
 
+            ImGui::Text(" ");
+            if ( ImGui::Button("Create !", ImVec2(5.f * width - padding_width, 0)) ) {
+                Mixer::manager().createSourceMedia(filename);
+                selected_button[NAV_NEW] = false;
+            }
         }
         else if (new_source_type == 1){
 
@@ -935,11 +973,6 @@ void Navigator::RenderNewPannel()
         else {
 
             ImGuiToolkit::HelpMarker("A Clone source duplicates the content of another source.");
-        }
-
-        if ( ImGui::Button("Create !", ImVec2(5.f * width - padding_width, 0)) ) {
-
-            selected_button[NAV_NEW] = false;
         }
 
     }
@@ -952,14 +985,17 @@ void Navigator::RenderMainPannel()
     ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
-    if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin("##navigatorMain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
-        if (ImGui::BeginMenu("Session"))
+        ImGui::Text("Session");
+        ImGui::SameLine();
+        ImGui::SetCursorPosX( 5.f * width IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginMenu("File"))
         {
             UserInterface::manager().showMenuFile();
             ImGui::EndMenu();

@@ -348,7 +348,7 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
     glm::vec3 coordinates = glm::vec3( screen_coordinate.x, main_window_attributes_.viewport.y - screen_coordinate.y, 0.f);
     glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
 
-    Log::Info("unproject %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
+//    Log::Info("unproject %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
 
     glm::vec3 point = glm::unProject(coordinates, modelview, Projection(), viewport);
 

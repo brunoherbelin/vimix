@@ -45,12 +45,13 @@ class Node {
     int       id_;
     bool      initialized_;
 
+
 public:
     Node ();
-    virtual ~Node ();
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
+//    void detatch();
 
     // must initialize the node before draw
     virtual void init() { initialized_ = true; }
@@ -71,6 +72,9 @@ public:
 
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
+
+protected:
+    virtual ~Node ();
 };
 
 
@@ -91,9 +95,10 @@ public:
  */
 class Primitive : public Node {
 
+
 public:
     Primitive(Shader *s = nullptr) : Node(), shader_(s), vao_(0), drawMode_(0), drawCount_(0) {}
-    virtual ~Primitive();
+
 
     virtual void init () override;
     virtual void accept (Visitor& v) override;
@@ -110,6 +115,7 @@ protected:
     std::vector<glm::vec2>     texCoords_;
     std::vector<uint>  indices_;
     virtual void deleteGLBuffers_();
+    virtual ~Primitive();
 };
 
 //
@@ -151,9 +157,9 @@ private:
  */
 class Group : public Node {
 
+
 public:
     Group() : Node() {}
-    virtual ~Group();
 
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
@@ -168,6 +174,8 @@ public:
 
 protected:
     NodeSet children_;
+    // destructor
+    virtual ~Group();
 };
 
 /**
@@ -239,12 +247,18 @@ public:
 
     void accept (Visitor& v);
 
+    void update(float dt);
+
+//    void addNode(Node *);
+
+
     Group *root() { return root_; }
 
     // Node *find(int id);
     // void remove(Node *n);
     //
-
+    static void deleteNode(Node *node);
+    static Group *limbo;
 };
 
 

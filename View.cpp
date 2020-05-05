@@ -39,7 +39,7 @@ void View::saveSettings()
 void View::update(float dt)
 {
     // recursive update from root of scene
-    scene.root()->update( dt );
+    scene.update( dt );
 }
 
 MixingView::MixingView() : View(MIXING)

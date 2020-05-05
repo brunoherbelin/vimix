@@ -82,6 +82,11 @@ void Mixer::insertSource(Source *s)
     geometry_.scene.root()->addChild(s->group(View::GEOMETRY));
 
 }
+void Mixer::deleteSource(Source *s)
+{
+    unsetCurrentSource();
+    session_->deleteSource(s);
+}
 
 void Mixer::renameSource(Source *s, const std::string &newname)
 {
@@ -290,7 +295,10 @@ bool Mixer::open(const std::string& filename)
 
 void Mixer::newSession(Session *newsession)
 {
-    // TODO : remove roots of scenes for views? done in session
+    // TODO : remove roots of scenes for views?
+//    mixing_.scene.clear();
+//    geometry_.scene.clear();
+
     // delete session : delete all sources
     if (session_)
         delete session_;

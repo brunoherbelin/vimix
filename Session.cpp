@@ -9,13 +9,14 @@ Session::Session()
 }
 Session::~Session()
 {
-    // TODO delete all sources
+    // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // delete source
         delete (*it);
         // erase this iterator from the list
         it = sources_.erase(it);
     }
+
 }
 
 // update all sources
@@ -54,6 +55,7 @@ SourceList::iterator Session::deleteSource(Source *s)
 
         // remove the source and delete it
         sources_.remove(s);
+
         delete s;
 
         // return

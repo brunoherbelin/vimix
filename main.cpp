@@ -106,11 +106,11 @@ int main(int, char**)
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
-    if ( !Mixer::manager().open("./testsession.vmx") )
-    {
-        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
-        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
-    }
+//    if ( !Mixer::manager().open("./testsession.vmx") )
+//    {
+//        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
+//        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
+//    }
 
 //    Animation A;
 //    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
@@ -135,7 +135,7 @@ int main(int, char**)
         Rendering::manager().Draw();
     }
 
-    Mixer::manager().save("./testsession.vmx");
+//    Mixer::manager().save("./testsession.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();

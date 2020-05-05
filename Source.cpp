@@ -45,14 +45,17 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
 Source::~Source()
 {
     // delete render objects
-    delete rendershader_;
     if (renderbuffer_)
         delete renderbuffer_;
 
-    // delete groups and their children
-    delete groups_[View::RENDERING];
-    delete groups_[View::MIXING];
-    delete groups_[View::GEOMETRY];
+    // all groups and their children are deleted in the scene
+    // this includes rendersurface_ , overlay_, blendingshader_ and rendershader_
+//    delete groups_[View::RENDERING];
+//    delete groups_[View::MIXING];
+//    delete groups_[View::GEOMETRY];
+    Scene::deleteNode(groups_[View::RENDERING]);
+    Scene::deleteNode(groups_[View::MIXING]);
+    Scene::deleteNode(groups_[View::GEOMETRY]);
     groups_.clear();
 
 }
