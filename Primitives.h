@@ -19,8 +19,6 @@ class FrameBuffer;
  */
 class Surface : public Primitive {
 
-    void deleteGLBuffers_() override {}
-
 public:
     Surface(Shader *s = new ImageShader);
 
@@ -33,6 +31,7 @@ public:
 
 protected:
     uint textureindex_;
+    virtual ~Surface();
 };
 
 
@@ -152,13 +151,13 @@ public:
  */
 class LineSquare : public LineStrip {
 
-    void deleteGLBuffers_() override {}
-
 public:
     LineSquare(glm::vec4 color, uint linewidth = 1);
 
     void init() override;
     void accept(Visitor& v) override;
+
+    virtual ~LineSquare();
 };
 
 
@@ -167,13 +166,13 @@ public:
  */
 class LineCircle : public LineStrip {
 
-    void deleteGLBuffers_() override {}
-
 public:
     LineCircle(glm::vec4 color, uint linewidth = 1);
 
     void init() override;
     void accept(Visitor& v) override;
+
+    virtual ~LineCircle();
 };
 
 

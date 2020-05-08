@@ -5,7 +5,7 @@
 #include "ImageShader.h"
 #include "Resource.h"
 
-ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
+static ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 
 const char* ImageShader::mask_names[10] = { "None", "Vignette", "Halo", "Circle", "Round", "Top", "Botton", "Left", "Right", "Custom" };
 std::vector< uint > ImageShader::mask_presets;
@@ -50,7 +50,7 @@ void ImageShader::reset()
 {
     Shader::reset();
 
-    // setup double texturing
+    // setup double texturing (TODO : do it only once)
     program_->use();
     program_->setUniform("iChannel0", 0);
     program_->setUniform("iChannel1", 1);

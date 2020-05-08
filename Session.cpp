@@ -1,7 +1,9 @@
 #include <algorithm>
 
 #include "defines.h"
+#include "FrameBuffer.h"
 #include "Session.h"
+#include "GarbageVisitor.h"
 
 Session::Session()
 {
@@ -11,10 +13,8 @@ Session::~Session()
 {
     // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
-        // delete source
-        delete (*it);
-        // erase this iterator from the list
-        it = sources_.erase(it);
+        // erase this source from the list
+        it = deleteSource(*it);
     }
 
 }
@@ -22,14 +22,15 @@ Session::~Session()
 // update all sources
 void Session::update(float dt)
 {
-    // render of all sources
+    // pre-render of all sources
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); it++){
         (*it)->render( );
     }
 
+    // update the scene tree
     render_.update(dt);
 
-    // always draw render view
+    // draw render view in Frame Buffer
     render_.draw();
 }
 
@@ -50,19 +51,24 @@ SourceList::iterator Session::deleteSource(Source *s)
     SourceList::iterator its = find(s);
     // ok, its in the list !
     if (its != sources_.end()) {
-        // iterate backward to previous element in the list (hopefully exist)
-        its--;
 
-        // remove the source and delete it
-        sources_.remove(s);
+        // remove Node from the rendering scene
+//        GarbageVisitor remover(s->group(View::RENDERING));
+//        remover.visit(render_.scene);
 
+        render_.scene.root()->detatchChild( s->group(View::RENDERING) );
+
+        // erase the source from the update list & get next element
+        its = sources_.erase(its);
+
+        // delete the source : safe now
         delete s;
 
-        // return
-        return its;
+        // NB: GarbageVisitor ends here, and deletes the Group RENDERING
     }
 
-    return sources_.end();
+    // return end of next element
+    return its;
 }
 
 

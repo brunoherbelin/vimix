@@ -3,7 +3,10 @@
 #include "Shader.h"
 #include "Primitives.h"
 #include "Visitor.h"
+#include "GarbageVisitor.h"
 #include "Log.h"
+
+#include "SessionVisitor.h"
 
 #include <glad/glad.h>
 
@@ -17,7 +20,7 @@
 #include <algorithm>
 
 
-Group *Scene::limbo = new Group;
+//Group *Scene::limbo = new Group;
 
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
@@ -30,7 +33,7 @@ glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 }
 
 // Node
-Node::Node() : initialized_(false), visible_(true)
+Node::Node() : initialized_(false), visible_(true), refcount_(0)
 {
     // create unique id
     auto duration = std::chrono::system_clock::now().time_since_epoch();
@@ -61,16 +64,19 @@ void Node::accept(Visitor& v)
 
 // Primitive
 
+
 Primitive::~Primitive()
 {
-    deleteGLBuffers_();
+    if ( vao_ )
+        glDeleteVertexArrays ( 1, &vao_);
     if (shader_)
         delete shader_;
 }
 
 void Primitive::init()
 {
-    deleteGLBuffers_();
+    if ( vao_ )
+        glDeleteVertexArrays ( 1, &vao_);
 
     // Vertex Array
     glGenVertexArrays( 1, &vao_ );
@@ -171,23 +177,21 @@ void Primitive::replaceShader( Shader *newshader )
     }
 }
 
-void Primitive::deleteGLBuffers_()
-{
-    if ( vao_ )
-        glDeleteVertexArrays ( 1, &vao_);
-}
-
 
 // Group
 Group::~Group()
 {
+    Log::Info("Delete Group %d ", id());
     for(NodeSet::iterator it = children_.begin(); it != children_.end(); ) {
-        // this group is not parent of that node anymore
-        (*it)->parents_.remove(this);
+        Log::Info(" Child %d (%d)", (*it)->id(), (*it)->refcount_);
+        (*it)->refcount_--;
         // if this group was the only remaining parent
-        if ( (*it)->parents_.size() < 1 )
-            // put the child in limbo
-            Scene::limbo->addChild( *it );
+        if ( (*it)->refcount_ < 1 ) {
+
+            Log::Info(" Deleting %d (%d)", (*it)->id(), (*it)->refcount_);
+            // delete
+            delete (*it);
+        }
         // erase this iterator from the list
         it = children_.erase(it);
     }
@@ -196,19 +200,33 @@ Group::~Group()
 void Group::addChild(Node *child)
 {
     children_.insert(child);
-    child->parents_.push_back(this);
+    child->refcount_++;
+
+//    children_.push_back(child);  // list test
+
+//    child->parents_.push_back(this);
 }
 
 
 void Group::detatchChild(Node *child)
 {
-    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
 
-    if ( it != children_.end())
-    {
-        child->parents_.remove(this);
+    Log::Info("Group %d (N=%d) detaching %d", id(), numChildren(), child->id());
+
+    // find the node with this id, and erase it out of the list of children
+    // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
+    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
+    if ( it != children_.end())  {
+        // detatch child from group parent
         children_.erase(it);
+        child->refcount_--;
+//        // detatch parent from child
+//        (*it)->parents_.remove(this);
     }
+
+//    children_.remove(child);
+    Log::Info("Group %d (N=%d)", id(), numChildren());
+
 }
 
 void Group::update( float dt )
@@ -294,11 +312,11 @@ void Switch::addChild(Node *child)
     setActiveChild(child);
 }
 
-void Switch::detatchChild(Node *child)
-{
-    Group::detatchChild(child);
-    active_ = children_.begin();
-}
+//void Switch::detatchChild(Node *child)
+//{
+//    Group::detatchChild(child);
+//    active_ = children_.begin();
+//}
 
 
 void Switch::unsetActiveChild ()
@@ -385,24 +403,30 @@ Scene::Scene(): root_(nullptr)
 
 Scene::~Scene()
 {
-    deleteNode(root_);
+//    deleteNode(root_);
+
 }
 
 
 void Scene::deleteNode(Node *node)
 {
-    for(auto it = node->parents_.begin(); it != node->parents_.end();){
-        (*it)->detatchChild(node);
-    }    
 
-    limbo->addChild(node);
+    GarbageVisitor remover(node);
+    remover.visit(*this);
+
+//    // remove this node to the list of chidren of all its parents
+//    for(auto parent = node->parents_.begin(); parent != node->parents_.end(); parent++){
+//        (*parent)->children_.erase(node);
+//    }
+//    node->parents_.clear();
+
+//    limbo->addChild(node);
 }
 
 void Scene::update(float dt)
 {
     root_->update( dt );
 
-    // remove nodes from limbo
 }
 
 void Scene::accept(Visitor& v)

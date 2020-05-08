@@ -11,7 +11,7 @@ class ImageProcessingShader : public Shader
 public:
 
     ImageProcessingShader();
-    virtual ~ImageProcessingShader() {}
+//    virtual ~ImageProcessingShader() {}
 
     void use() override;
     void reset() override;

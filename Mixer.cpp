@@ -13,6 +13,7 @@ using namespace tinyxml2;
 #include "Settings.h"
 #include "SystemToolkit.h"
 #include "ImageProcessingShader.h"
+#include "GarbageVisitor.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
 
@@ -84,8 +85,35 @@ void Mixer::insertSource(Source *s)
 }
 void Mixer::deleteSource(Source *s)
 {
+//    SessionVisitor visit;
+//    geometry_.scene.accept(visit);
+//    visit.doc()->SaveFile("./geombefore.xml");
+//    SessionVisitor visitm;
+//    mixing_.scene.accept(visitm);
+//    visitm.doc()->SaveFile("./mixbefore.xml");
+
     unsetCurrentSource();
+
+    // remove source Nodes from views
+//    GarbageVisitor mixingremover(s->group(View::MIXING));
+//    mixingremover.visit(mixing_.scene);
+//    GarbageVisitor geomremover(s->group(View::GEOMETRY));
+//    geomremover.visit(geometry_.scene);
+
+    Log::Info("MIXING");
+    mixing_.scene.root()->detatchChild( s->group(View::MIXING) );
+    Log::Info("GEOMETRY");
+    geometry_.scene.root()->detatchChild( s->group(View::GEOMETRY) );
+
+    // delete source
     session_->deleteSource(s);
+
+//    SessionVisitor visit2;
+//    geometry_.scene.accept(visit2);
+//    visit2.doc()->SaveFile("./geomafter.xml");
+//    SessionVisitor visit2m;
+//    mixing_.scene.accept(visit2m);
+//    visit2m.doc()->SaveFile("./mixmafter.xml");
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -114,12 +142,19 @@ void Mixer::renameSource(Source *s, const std::string &newname)
 
 void Mixer::setCurrentSource(SourceList::iterator it)
 {
-    unsetCurrentSource();
+    // nothing to do if already current
+    if ( current_source_ == it )
+        return;
+
+    // change current
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(it);
         (*current_source_)->setOverlayVisible(true);
     }
+    // default
+    else
+        unsetCurrentSource();
 }
 
 void Mixer::setCurrentSource(Node *node)
@@ -217,6 +252,7 @@ void Mixer::save(const std::string& filename)
     for (iter = session_->begin(); iter != session_->end(); iter++)
     {
         SessionVisitor sv(&xmlDoc, session);
+        // source visitor
         (*iter)->accept(sv);
     }
 
@@ -267,11 +303,11 @@ bool Mixer::open(const std::string& filename)
         newSession( new_session );
 
         // insert nodes of sources into views
-        SourceList::iterator iter;
-        for (iter = new_session->begin(); iter != new_session->end(); iter++)
+        SourceList::iterator source_iter;
+        for (source_iter = new_session->begin(); source_iter != new_session->end(); source_iter++)
         {
-            mixing_.scene.root()->addChild( (*iter)->group(View::MIXING) );
-            geometry_.scene.root()->addChild( (*iter)->group(View::GEOMETRY) );
+            mixing_.scene.root()->addChild( (*source_iter)->group(View::MIXING) );
+            geometry_.scene.root()->addChild( (*source_iter)->group(View::GEOMETRY) );
         }
 
     }
@@ -295,13 +331,25 @@ bool Mixer::open(const std::string& filename)
 
 void Mixer::newSession(Session *newsession)
 {
-    // TODO : remove roots of scenes for views?
-//    mixing_.scene.clear();
-//    geometry_.scene.clear();
 
     // delete session : delete all sources
-    if (session_)
+    if (session_) {
+        // remove nodes from views
+        for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
+        {
+//            GarbageVisitor mixingremover( (*source_iter)->group(View::MIXING) );
+//            mixingremover.visit(mixing_.scene);
+//            GarbageVisitor geomremover( (*source_iter)->group(View::GEOMETRY) );
+//            geomremover.visit(geometry_.scene);
+
+            Log::Info("MIXING");
+            mixing_.scene.root()->detatchChild( (*source_iter)->group(View::MIXING) );
+            Log::Info("GEOMETRY");
+            geometry_.scene.root()->detatchChild( (*source_iter)->group(View::GEOMETRY) );
+        }
+        // clear session
         delete session_;
+    }
 
     // validate new session
     if (newsession)

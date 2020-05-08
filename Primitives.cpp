@@ -40,6 +40,11 @@ Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
 }
 
 
+Surface::~Surface()
+{
+
+}
+
 void Surface::init()
 {
     // use static unique vertex array object
@@ -58,7 +63,7 @@ void Surface::init()
         // 2. remember global vertex array object
         unique_vao_ = vao_;
         unique_drawCount = drawCount_;
-        // 3. unique_vao_ will NOT be deleted because ImageSurface::deleteGLBuffers_() is empty
+        // 3. unique_vao_ will NOT be deleted
     }
 }
 
@@ -283,6 +288,12 @@ void LineSquare::accept(Visitor& v)
     v.visit(*this);
 }
 
+LineSquare::~LineSquare()
+{
+    if (shader_)
+        delete shader_;
+}
+
 
 LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<glm::vec3>(), color, linewidth)
 {
@@ -330,3 +341,9 @@ void LineCircle::accept(Visitor& v)
     v.visit(*this);
 }
 
+
+LineCircle::~LineCircle()
+{
+    if (shader_)
+        delete shader_;
+}

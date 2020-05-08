@@ -45,13 +45,11 @@ class Node {
     int       id_;
     bool      initialized_;
 
-
 public:
     Node ();
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
-//    void detatch();
 
     // must initialize the node before draw
     virtual void init() { initialized_ = true; }
@@ -67,14 +65,14 @@ public:
     virtual void accept (Visitor& v);
 
     // public members, to manipulate with care
-    std::list<Group*> parents_;
     bool      visible_;
+    uint refcount_;
 
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 
-protected:
     virtual ~Node ();
+
 };
 
 
@@ -107,6 +105,7 @@ public:
     inline Shader *shader () const { return shader_; }
     void replaceShader (Shader* newshader);
 
+    virtual ~Primitive();
 protected:
     Shader*   shader_;
     uint vao_, drawMode_, drawCount_;
@@ -114,8 +113,7 @@ protected:
     std::vector<glm::vec4>     colors_;
     std::vector<glm::vec2>     texCoords_;
     std::vector<uint>  indices_;
-    virtual void deleteGLBuffers_();
-    virtual ~Primitive();
+
 };
 
 //
@@ -131,6 +129,8 @@ struct z_comparator
 };
 typedef std::multiset<Node*, z_comparator> NodeSet;
 
+//typedef std::list<Node*> NodeSet;
+
 struct hasId: public std::unary_function<Node*, bool>
 {
     inline bool operator()(const Node* e) const
@@ -141,6 +141,7 @@ struct hasId: public std::unary_function<Node*, bool>
 private:
     int _id;
 };
+
 
 /**
  * @brief The Group class contains a list of pointers to Nodes.
@@ -157,9 +158,11 @@ private:
  */
 class Group : public Node {
 
+    friend class Scene;
 
 public:
     Group() : Node() {}
+    virtual ~Group();
 
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
@@ -172,10 +175,10 @@ public:
     NodeSet::iterator end();
     uint numChildren() const;
 
+
 protected:
     NodeSet children_;
-    // destructor
-    virtual ~Group();
+
 };
 
 /**
@@ -195,7 +198,7 @@ public:
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
     void addChild (Node *child) override;
-    void detatchChild (Node *child) override;
+//    void detatchChild (Node *child) override;
 
     void unsetActiveChild ();
     void setActiveChild (Node *child);
@@ -257,8 +260,9 @@ public:
     // Node *find(int id);
     // void remove(Node *n);
     //
-    static void deleteNode(Node *node);
-    static Group *limbo;
+    void deleteNode(Node *node);
+
+//    static Group *limbo;
 };
 
 

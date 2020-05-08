@@ -50,7 +50,8 @@
 static TextEditor editor;
 
 
-static std::thread FileDialogThread_;
+//static std::thread *FileDialogThread_;
+static bool FileDialogPending_ = false;
 static bool FileDialogFinished_ = false;
 static std::string FileDialogFilename_ = "";
 
@@ -60,7 +61,9 @@ void ShowAboutOpengl(bool* p_open);
 void ShowAbout(bool* p_open);
 
 static void FileDialogOpen(std::string path)
-{ 
+{
+     FileDialogPending_ = true;
+
      char const * lTheOpenFileName;
      char const * lFilterPatterns[2] = { "*.vmx" };
 
@@ -313,6 +316,7 @@ void UserInterface::NewFrame()
     // handle FileDialog
     if (FileDialogFinished_) {
         FileDialogFinished_ = false;
+        FileDialogPending_ = false;
         Mixer::manager().open(FileDialogFilename_);
     }
 }
@@ -320,7 +324,6 @@ void UserInterface::NewFrame()
 void UserInterface::Render()
 {
 //    ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
-
 //    // file modal dialog
 //    geometry.x *= 0.4f;
 //    geometry.y *= 0.4f;
@@ -332,8 +335,7 @@ void UserInterface::Render()
 //        }
 //        FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
 //    }
-
-    FileDialog::RenderCurrent();
+//    FileDialog::RenderCurrent();
 
     // warning modal dialog
     Log::Render();
@@ -378,16 +380,16 @@ void UserInterface::Terminate()
 void UserInterface::showMenuFile()
 {
     // TODO : New
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W", false, !FileDialogPending_)) {
         Mixer::manager().newSession();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O", false, !FileDialogPending_)) {
         // launch file dialog to open a session file
-        FileDialogThread_ = std::thread(FileDialogOpen, "./");
+        std::thread (FileDialogOpen, "./").detach();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S", false, !FileDialogPending_)) {
 //                UserInterface::manager().OpenFileMedia();
     }
     // TODO : Save As...

@@ -210,6 +210,7 @@ set(VMIX_SRCS
     Source.cpp
     Session.cpp
     SessionVisitor.cpp
+    GarbageVisitor.cpp
     SessionCreator.cpp
     Mixer.cpp
     Settings.cpp

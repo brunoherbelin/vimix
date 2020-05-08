@@ -50,12 +50,10 @@ Source::~Source()
 
     // all groups and their children are deleted in the scene
     // this includes rendersurface_ , overlay_, blendingshader_ and rendershader_
-//    delete groups_[View::RENDERING];
-//    delete groups_[View::MIXING];
-//    delete groups_[View::GEOMETRY];
-    Scene::deleteNode(groups_[View::RENDERING]);
-    Scene::deleteNode(groups_[View::MIXING]);
-    Scene::deleteNode(groups_[View::GEOMETRY]);
+    delete groups_[View::RENDERING];
+    delete groups_[View::MIXING];
+    delete groups_[View::GEOMETRY];
+
     groups_.clear();
 
 }
@@ -120,7 +118,9 @@ MediaSource::MediaSource(const std::string &name) : Source(name), uri_("")
 
 MediaSource::~MediaSource()
 {
-    delete mediasurface_;
+    // TODO delete media surface with visitor
+    //delete mediasurface_;
+
     delete mediaplayer_;
     // TODO verify that all surfaces and node is deleted in Source destructor
 }
@@ -162,7 +162,7 @@ void MediaSource::init()
 //            rendershader_->iChannelResolution[0] = glm::vec3(mediaplayer()->width(), mediaplayer()->height(), 0.f);
 
             // create the surfaces to draw the frame buffer in the views
-            // TODO Provide the source specific effect shader
+            // TODO Provide the source custom effect shader
             rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
             groups_[View::RENDERING]->addChild(rendersurface_);
             groups_[View::GEOMETRY]->addChild(rendersurface_);

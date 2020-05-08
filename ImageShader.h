@@ -16,7 +16,7 @@ class ImageShader : public Shader
 public:
 
     ImageShader();
-    virtual ~ImageShader() {}
+//    virtual ~ImageShader() {}
 
     void use() override;
     void reset() override;
