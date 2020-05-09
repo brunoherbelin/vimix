@@ -95,7 +95,7 @@ bool hasNode::operator()(const Source* elem) const
     return false;
 }
 
-MediaSource::MediaSource(const std::string &name) : Source(name), uri_("")
+MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
@@ -125,16 +125,16 @@ MediaSource::~MediaSource()
     // TODO verify that all surfaces and node is deleted in Source destructor
 }
 
-void MediaSource::setURI(const std::string &uri)
+void MediaSource::setPath(const std::string &p)
 {
-    uri_ = uri;
-    mediaplayer_->open(uri_);
+    path_ = p;
+    mediaplayer_->open(path_);
     mediaplayer_->play(true);
 }
 
-std::string MediaSource::uri() const
+std::string MediaSource::path() const
 {
-    return uri_;
+    return path_;
 }
 
 MediaPlayer *MediaSource::mediaplayer() const

@@ -34,7 +34,7 @@ public:
     void draw();
 
     // manangement of sources
-    void createSourceMedia(std::string uri);
+    void createSourceMedia(std::string path);
 
     // TODO: deleteSource();
     void deleteSource(Source *s);

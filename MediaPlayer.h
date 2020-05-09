@@ -101,7 +101,7 @@ public:
     /** 
      * Open a media using gstreamer URI 
      * */
-    void open( std::string uri_);
+    void open( std::string path);
     /**
      * True if a media was oppenned
      * */

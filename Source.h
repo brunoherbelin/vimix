@@ -117,8 +117,8 @@ public:
     void accept (Visitor& v);
 
     // Media specific interface
-    void setURI(const std::string &uri);
-    std::string uri() const;
+    void setPath(const std::string &p);
+    std::string path() const;
     MediaPlayer *mediaplayer() const;
 
 protected:
@@ -126,7 +126,7 @@ protected:
     void init();
 
     Surface *mediasurface_;
-    std::string uri_;
+    std::string path_;
     MediaPlayer *mediaplayer_;
 };
 

@@ -56,9 +56,9 @@ string SystemToolkit::date_time_string()
     return oss.str();
 }
 
-std::string SystemToolkit::base_filename(const std::string& uri)
+std::string SystemToolkit::base_filename(const std::string& filename)
 {
-    std::string basefilename = uri.substr(uri.find_last_of(PATH_SEP) + 1);
+    std::string basefilename = filename.substr(filename.find_last_of(PATH_SEP) + 1);
     const size_t period_idx = basefilename.rfind('.');
     if (std::string::npos != period_idx)
     {
@@ -67,13 +67,26 @@ std::string SystemToolkit::base_filename(const std::string& uri)
     return basefilename;
 }
 
-std::string SystemToolkit::path_filename(const std::string& uri)
+std::string SystemToolkit::path_filename(const std::string& filename)
 {
-    std::string path = uri.substr(0, uri.find_last_of(PATH_SEP) + 1);
+    std::string path = filename.substr(0, filename.find_last_of(PATH_SEP) + 1);
 
     return path;
 }
 
+// TODO : for windows path C:\gstreamer\1.0\x86\bin\pima.mp3 <=> file:///C:/gstreamer/1.0/x86/bin/pima.mp3
+std::string SystemToolkit::path_to_uri(const std::string& path)
+{
+    std::string uri = "file://" + path;
+    return uri;
+}
+
+std::string SystemToolkit::uri_to_path(const std::string& uri)
+{
+    // prefix "file://" of lenght 7
+    std::string path = uri.substr(7);
+    return path;
+}
 
 std::string SystemToolkit::home_path()
 {

@@ -102,7 +102,7 @@ void ImGuiVisitor::visit(FrameBufferSurface &n)
 
 void ImGuiVisitor::visit(MediaSurface &n)
 {
-    ImGui::Text("%s", n.uri().c_str());
+    ImGui::Text("%s", n.path().c_str());
 
     if (n.mediaPlayer())
         n.mediaPlayer()->accept(*this);

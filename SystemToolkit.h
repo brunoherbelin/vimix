@@ -25,10 +25,14 @@ namespace SystemToolkit
     std::string settings_prepend_path(const std::string& basefilename);
 
     // extract the base file name from a full URI (e.g. file:://home/me/toto.mpg -> toto)
-    std::string base_filename(const std::string& uri);
+    std::string base_filename(const std::string& filename);
 
     // extract the path of a file from a full URI (e.g. file:://home/me/toto.mpg -> file:://home/me/)
-    std::string path_filename(const std::string& uri);
+    std::string path_filename(const std::string& filename);
+
+
+    std::string path_to_uri(const std::string& path);
+    std::string uri_to_path(const std::string& uri);
 
     // true of file exists
     bool file_exists(const std::string& path);

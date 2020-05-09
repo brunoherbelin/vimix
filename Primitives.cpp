@@ -113,9 +113,9 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& uri, Shader *s) : Surface(s)
+MediaSurface::MediaSurface(const std::string& p, Shader *s) : Surface(s)
 {
-    uri_ = uri;
+    path_ = p;
     mediaplayer_ = new MediaPlayer;
 }
 
@@ -128,7 +128,7 @@ void MediaSurface::init()
 {
     Surface::init();
 
-    mediaplayer_->open(uri_);
+    mediaplayer_->open(path_);
     mediaplayer_->play(true);
 
 }

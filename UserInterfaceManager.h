@@ -32,12 +32,16 @@ class Navigator
     void RenderNewPannel();
     void RenderMainPannel();
 
+    char uri_[1024];
+
 public:
     Navigator();
 
     void hidePannel();
     void showPannelSource(int index);
     void Render();
+
+    void setMediaUri(std::string path);
 };
 
 class ToolBox

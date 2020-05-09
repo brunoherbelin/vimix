@@ -160,14 +160,14 @@ void Mixer::draw()
 }
 
 // manangement of sources
-void Mixer::createSourceMedia(std::string uri)
+void Mixer::createSourceMedia(std::string path)
 {
     // create source
     MediaSource *m = new MediaSource();
-    m->setURI(uri);
+    m->setPath(path);
 
     // propose a new name based on uri
-    renameSource(m, SystemToolkit::base_filename(uri));
+    renameSource(m, SystemToolkit::base_filename(path));
 
     // add to mixer
     insertSource(m);

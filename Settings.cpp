@@ -107,6 +107,7 @@ void Settings::Save()
         recent->InsertEndChild(recentsession);
 
         XMLElement *recentmedia = xmlDoc.NewElement( "Media" );
+        recentmedia->SetAttribute("path", application.recentMedia.path.c_str());
         for(auto it = application.recentMedia.filenames.begin();
             it != application.recentMedia.filenames.end(); it++) {
 
@@ -240,6 +241,11 @@ void Settings::Load()
             XMLElement * pMedia = pElement->FirstChildElement("Media");
             if (pMedia)
             {
+                const char *path_ = pMedia->Attribute("path");
+                if (path_)
+                    application.recentMedia.path = std::string(path_);
+                else
+                    application.recentMedia.path = SystemToolkit::home_path();
                 application.recentMedia.filenames.clear();
                 XMLElement* path = pMedia->FirstChildElement("path");
                 for( ; path ; path = path->NextSiblingElement())

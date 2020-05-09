@@ -205,7 +205,7 @@ void SessionCreator::visit (MediaSource& s)
     XMLElement* uriNode = xmlCurrent_->FirstChildElement("uri");
     if (uriNode) {
         std::string uri = std::string ( uriNode->GetText() );
-        s.setURI(uri);
+        s.setPath(uri);
     }
 
     // set config media player

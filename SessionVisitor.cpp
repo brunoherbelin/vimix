@@ -328,7 +328,7 @@ void SessionVisitor::visit (MediaSource& s)
 
     XMLElement *uri = xmlDoc_->NewElement("uri");
     xmlCurrent_->InsertEndChild(uri);
-    XMLText *text = xmlDoc_->NewText( s.uri().c_str() );
+    XMLText *text = xmlDoc_->NewText( s.path().c_str() );
     uri->InsertEndChild( text );
 
     s.mediaplayer()->accept(*this);

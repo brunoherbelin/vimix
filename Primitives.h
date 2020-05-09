@@ -67,7 +67,7 @@ protected:
 class MediaSurface : public Surface {
 
 public:
-    MediaSurface(const std::string& uri, Shader *s = new ImageShader);
+    MediaSurface(const std::string& p, Shader *s = new ImageShader);
     ~MediaSurface();
 
     void init () override;
@@ -75,11 +75,11 @@ public:
     void accept (Visitor& v) override;
     void update (float dt) override;
 
-    inline std::string uri() const { return uri_; }
+    inline std::string path() const { return path_; }
     inline MediaPlayer *mediaPlayer() const { return mediaplayer_; }
 
 protected:
-    std::string uri_;
+    std::string path_;
     MediaPlayer *mediaplayer_;
 };
 

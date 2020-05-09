@@ -104,7 +104,25 @@ static void FileDialogSave(std::string path)
      FileDialogSaveFinished_ = true;
 }
 
+static std::atomic<bool> MediaDialogFinished_ = false;
+static std::string MediaDialogUri_ = "";
+static void MediaDialogOpen(std::string path)
+{
+     FileDialogPending_ = true;
+     MediaDialogFinished_ = false;
 
+     char const * open_file_name;
+     char const * open_pattern[1] = { "*.mp4" };
+
+     open_file_name = tinyfd_openFileDialog( "Open a Media file", path.c_str(), 1, open_pattern, nullptr, 0);
+
+     if (!open_file_name)
+        MediaDialogUri_ = "";
+     else
+        MediaDialogUri_ = std::string( open_file_name );
+
+     MediaDialogFinished_ = true;
+}
 
 UserInterface::UserInterface()
 {
@@ -352,6 +370,14 @@ void UserInterface::NewFrame()
             Settings::application.recentSessions.path = SystemToolkit::path_filename(FileDialogFilename_);
         }
     }
+    if (MediaDialogFinished_) {
+        MediaDialogFinished_ = false;
+        FileDialogPending_ = false;
+        if (!MediaDialogUri_.empty()) {
+            navigator.setMediaUri(MediaDialogUri_);
+            Settings::application.recentMedia.path = SystemToolkit::path_filename(MediaDialogUri_);
+        }
+    }
 
     // overlay when disabled
     if (FileDialogPending_){
@@ -439,7 +465,7 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as")) {
-        std::thread (FileDialogSave, "./").detach();
+        std::thread (FileDialogSave, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
 
@@ -982,6 +1008,12 @@ void Navigator::RenderSourcePannel(Source *s)
     ImGui::End();
 }
 
+void Navigator::setMediaUri(std::string path)
+{
+//    std::string uri = SystemToolkit::path_to_uri(path);
+    sprintf(uri_, "%s", path.c_str());
+}
+
 void Navigator::RenderNewPannel()
 {
     // Next window is a side pannel
@@ -999,21 +1031,25 @@ void Navigator::RenderNewPannel()
         static int new_source_type = 0;
         ImGui::Combo("Type", &new_source_type, "Media\0Render\0Clone\0");
         if (new_source_type == 0) {
-
-            static char filename[128] = "file:///home/bhbn/Videos/iss.mov";
+            // browse folder
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
-                // browse file
+                Log::Info("Settings::application.recentMedia.path %s", Settings::application.recentMedia.path.c_str());
+                std::thread (MediaDialogOpen, Settings::application.recentMedia.path).detach();
             }
+            // uri text entry
             ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::InputText("Filename", filename, 64, ImGuiInputTextFlags_CharsNoBlank);
+            if (ImGui::InputText("Uri", uri_, IM_ARRAYSIZE(uri_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
+                Mixer::manager().createSourceMedia(uri_);
+                selected_button[NAV_NEW] = false;
+            }
 
             // Description
             ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
-
+            // Validate button
             ImGui::Text(" ");
             if ( ImGui::Button("Create !", ImVec2(5.f * width - padding_width, 0)) ) {
-                Mixer::manager().createSourceMedia(filename);
+                Mixer::manager().createSourceMedia(uri_);
                 selected_button[NAV_NEW] = false;
             }
         }
@@ -1029,6 +1065,7 @@ void Navigator::RenderNewPannel()
     }
     ImGui::End();
 }
+
 
 void Navigator::RenderMainPannel()
 {

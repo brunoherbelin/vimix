@@ -76,10 +76,10 @@ guint MediaPlayer::texture() const
     return textureindex_;
 }
 
-void MediaPlayer::open(string uri)
+void MediaPlayer::open(string path)
 {
     // set uri to open
-    this->uri_ = uri;
+    uri_ = string( gst_uri_construct("file", path.c_str()) );
 
     // reset
     ready_ = false;
@@ -101,8 +101,8 @@ void MediaPlayer::open(string uri)
     // start discoverer
     gst_discoverer_start(discoverer_);
     // Add the request to process asynchronously the URI 
-    if (!gst_discoverer_discover_uri_async (discoverer_, uri.c_str())) {
-        Log::Warning("MediaPlayer %s Failed to start discovering URI '%s'\n", id_.c_str(), uri.c_str());
+    if (!gst_discoverer_discover_uri_async (discoverer_, uri_.c_str())) {
+        Log::Warning("MediaPlayer %s Failed to start discovering URI '%s'\n", id_.c_str(), uri_.c_str());
         g_object_unref (discoverer_);
         discoverer_ = nullptr;
     }
