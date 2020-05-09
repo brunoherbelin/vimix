@@ -50,12 +50,6 @@ void ImageShader::reset()
 {
     Shader::reset();
 
-    // setup double texturing (TODO : do it only once)
-    program_->use();
-    program_->setUniform("iChannel0", 0);
-    program_->setUniform("iChannel1", 1);
-    program_->enduse();
-
     // default mask
     mask = 0;
     custom_textureindex = mask_presets[0];

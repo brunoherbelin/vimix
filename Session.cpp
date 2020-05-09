@@ -7,8 +7,12 @@
 
 Session::Session()
 {
-
+    config_[View::RENDERING] = new Group;
+    config_[View::GEOMETRY] = new Group;
+    config_[View::MIXING] = new Group;
 }
+
+
 Session::~Session()
 {
     // delete all sources

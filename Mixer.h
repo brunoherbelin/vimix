@@ -60,17 +60,21 @@ public:
     Session *session() { return session_; }
 
     // load and save session
-    bool open(const std::string& filename);
-    void save(const std::string& filename);
-    void newSession(Session *newsession = nullptr);
-
+    void open(const std::string& filename);
+    void saveas(const std::string& filename);
+    void save();
+    void newSession();
 
 protected:
+
+    Session *session_;
+    std::string sessionFilename_;
+    Session *back_session_;
+    void swap();
 
     void insertSource(Source *s);
     void setCurrentSource(SourceList::iterator it);
 
-    Session *session_;
     SourceList::iterator current_source_;
     int current_source_index_;
 

@@ -57,12 +57,14 @@ void ShowAbout(bool* p_open);
 
 // static objects for multithreaded file dialog
 static bool FileDialogPending_ = false;
-static bool FileDialogFinished_ = false;
+static bool FileDialogLoadFinished_ = false;
+static bool FileDialogSaveFinished_ = false;
 static std::string FileDialogFilename_ = "";
 
 static void FileDialogOpen(std::string path)
 {
      FileDialogPending_ = true;
+     FileDialogLoadFinished_ = false;
 
      char const * lTheOpenFileName;
      char const * lFilterPatterns[2] = { "*.vmx" };
@@ -78,7 +80,29 @@ static void FileDialogOpen(std::string path)
         FileDialogFilename_ = std::string( lTheOpenFileName );
      }
 
-     FileDialogFinished_ = true;
+     FileDialogLoadFinished_ = true;
+}
+
+static void FileDialogSave(std::string path)
+{
+     FileDialogPending_ = true;
+     FileDialogSaveFinished_ = false;
+
+     char const * save_file_name;
+     char const * save_pattern[2] = { "*.vmx" };
+
+     save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
+
+     if (!save_file_name)
+     {
+        FileDialogFilename_ = "";
+     }
+     else
+     {
+        FileDialogFilename_ = std::string( save_file_name );
+     }
+
+     FileDialogSaveFinished_ = true;
 }
 
 
@@ -314,10 +338,15 @@ void UserInterface::NewFrame()
     navigator.Render();
 
     // handle FileDialog
-    if (FileDialogFinished_) {
-        FileDialogFinished_ = false;
+    if (FileDialogLoadFinished_) {
+        FileDialogLoadFinished_ = false;
         FileDialogPending_ = false;
         Mixer::manager().open(FileDialogFilename_);
+    }
+    if (FileDialogSaveFinished_) {
+        FileDialogSaveFinished_ = false;
+        FileDialogPending_ = false;
+        Mixer::manager().saveas(FileDialogFilename_);
     }
 }
 
@@ -389,9 +418,13 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S", false, !FileDialogPending_)) {
-//                UserInterface::manager().OpenFileMedia();
+        Mixer::manager().save();
+        navigator.hidePannel();
     }
-    // TODO : Save As...
+    if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as", NULL, false, !FileDialogPending_)) {
+        std::thread (FileDialogSave, "./").detach();
+        navigator.hidePannel();
+    }
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {

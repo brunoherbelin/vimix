@@ -50,26 +50,30 @@ bool ShadingProgram::initialized()
 
 void ShadingProgram::compile()
 {
-	const char* vcode = vertex_code_.c_str();
+    const char* vcode = vertex_code_.c_str();
     vertex_id_ = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_id_, 1, &vcode, NULL);
     glCompileShader(vertex_id_);
 
-	const char* fcode = fragment_code_.c_str();
+    const char* fcode = fragment_code_.c_str();
     fragment_id_ = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_id_, 1, &fcode, NULL);
     glCompileShader(fragment_id_);
 
-	checkCompileErr();
+    checkCompileErr();
 }
 
 void ShadingProgram::link()
 {
-	id_ = glCreateProgram();
+    id_ = glCreateProgram();
     glAttachShader(id_, vertex_id_);
     glAttachShader(id_, fragment_id_);
-	glLinkProgram(id_);
-	checkLinkingErr();
+    glLinkProgram(id_);
+    checkLinkingErr();
+    glUseProgram(id_);
+    glUniform1i(glGetUniformLocation(id_, "iChannel0"), 0);
+    glUniform1i(glGetUniformLocation(id_, "iChannel1"), 1);
+    glUseProgram(0);
     glDeleteShader(vertex_id_);
     glDeleteShader(fragment_id_);
 }

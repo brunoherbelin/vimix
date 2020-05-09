@@ -8,12 +8,17 @@ class Session;
 
 class SessionCreator : public Visitor {
 
+    tinyxml2::XMLDocument *xmlDoc_;
     tinyxml2::XMLElement *xmlCurrent_;
     Session *session_;
 
-public:
-    SessionCreator(tinyxml2::XMLElement *root);
+    void loadSession(tinyxml2::XMLElement *sessionNode);
+    void loadConfig(tinyxml2::XMLElement *viewsNode);
 
+public:
+    SessionCreator(Session *session = nullptr);
+
+    bool load(const std::string& filename);
     inline Session *session() const { return session_; }
 
     // Elements of Scene

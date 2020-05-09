@@ -1,6 +1,7 @@
 #include "SessionCreator.h"
 
 #include "Log.h"
+#include "defines.h"
 #include "Scene.h"
 #include "Primitives.h"
 #include "Mesh.h"
@@ -14,12 +15,48 @@
 using namespace tinyxml2;
 
 
-SessionCreator::SessionCreator(tinyxml2::XMLElement *sessionNode): Visitor()
+SessionCreator::SessionCreator(Session *session): Visitor(), session_(session)
 {
-    session_ = nullptr;
+    xmlDoc_ = new XMLDocument;
 
+}
+
+bool SessionCreator::load(const std::string& filename)
+{
+    XMLError eResult = xmlDoc_->LoadFile(filename.c_str());
+    if ( XMLResultError(eResult))
+        return false;
+
+    XMLElement *version = xmlDoc_->FirstChildElement(APP_NAME);
+    if (version == nullptr) {
+        Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
+        return false;
+    }
+
+    int version_major = -1, version_minor = -1;
+    version->QueryIntAttribute("major", &version_major); // TODO incompatible if major is different?
+    version->QueryIntAttribute("minor", &version_minor);
+    if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
+        Log::Warning("%s is in a different versions of session file. Loading might fail.", filename.c_str());
+        return false;
+    }
+
+    // ok, ready to read sources
+    loadSession( xmlDoc_->FirstChildElement("Session") );
+    // excellent, session was created: load optionnal config
+    if (session_){
+        loadConfig( xmlDoc_->FirstChildElement("Views") );
+    }
+
+    return true;
+}
+
+void SessionCreator::loadSession(XMLElement *sessionNode)
+{
     if (sessionNode != nullptr) {
-        session_ = new Session;
+        // create a session if not provided
+        if (!session_)
+            session_ = new Session;
 
         int counter = 0;
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
@@ -34,16 +71,23 @@ SessionCreator::SessionCreator(tinyxml2::XMLElement *sessionNode): Visitor()
                 new_media_source->accept(*this);
                 session_->addSource(new_media_source);
             }
-            // TODO : else other types of source
+            // TODO : create other types of source
 
         }
         Log::Info("Created %d Sources", counter);
-
     }
     else
         Log::Warning("Session seems empty.");
 }
 
+void SessionCreator::loadConfig(XMLElement *viewsNode)
+{
+    if (viewsNode != nullptr) {
+        // ok, ready to read views
+        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
+        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
+    }
+}
 
 void SessionCreator::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
 {

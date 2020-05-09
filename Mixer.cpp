@@ -22,22 +22,86 @@ using namespace tinyxml2;
 #include "Mixer.h"
 
 // static objects for multithreaded session loading
-static bool sessionLoadPending_ = false;
-static bool sessionLoadFinished_ = false;
-static Session *loadedSession;
+static std::atomic<bool> sessionLoadPending_ = false;
+static std::atomic<bool> sessionLoadFinished_ = false;
+static std::string sessionThreadFilename_ = "";
 
-static void loadSession(const std::string& filename, )
+static void loadSession(const std::string& filename, Session *session)
 {
      sessionLoadPending_ = true;
+     sessionLoadFinished_ = false;
+     sessionThreadFilename_ = "";
 
+     // actual loading of xml file
+     SessionCreator creator( session );
 
+     if (!creator.load(filename)) {
+         // error loading
+         Log::Info("Failed to load Session file %s.", filename.c_str());
+     }
+     else {
+         // loaded ok
+         Log::Info("Session file %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+     }
+
+     sessionThreadFilename_ = filename;
      sessionLoadFinished_ = true;
+     sessionLoadPending_ = false;
 }
 
+// static objects for multithreaded session saving
+static std::atomic<bool> sessionSavePending_ = false;
+static std::atomic<bool> sessionSaveFinished_ = false;
 
+static void saveSession(const std::string& filename, Session *session)
+{
+    // reset
+    sessionSavePending_ = true;
+    sessionSaveFinished_ = false;
+    sessionThreadFilename_ = "";
 
+    // creation of XML doc
+    XMLDocument xmlDoc;
 
-Mixer::Mixer() : session_(nullptr), current_view_(nullptr)
+    XMLElement *version = xmlDoc.NewElement(APP_NAME);
+    version->SetAttribute("major", XML_VERSION_MAJOR);
+    version->SetAttribute("minor", XML_VERSION_MINOR);
+    xmlDoc.InsertEndChild(version);
+
+    // 1. list of sources
+    XMLElement *sessionNode = xmlDoc.NewElement("Session");
+    xmlDoc.InsertEndChild(sessionNode);
+    SourceList::iterator iter;
+    for (iter = session->begin(); iter != session->end(); iter++)
+    {
+        SessionVisitor sv(&xmlDoc, sessionNode);
+        // source visitor
+        (*iter)->accept(sv);
+    }
+
+    // 2. config of views
+    XMLElement *views = xmlDoc.NewElement("Views");
+    xmlDoc.InsertEndChild(views);
+    {
+        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
+        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), &xmlDoc));
+        views->InsertEndChild(mixing);
+
+        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
+        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
+        views->InsertEndChild(geometry);
+    }
+
+    // save file to disk
+    XMLSaveDoc(&xmlDoc, filename);
+
+    // all ok
+    sessionThreadFilename_ = filename;
+    sessionSaveFinished_ = true;
+    sessionSavePending_ = false;
+}
+
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr)
 {
     // this initializes with a new empty session
     newSession();
@@ -49,6 +113,17 @@ Mixer::Mixer() : session_(nullptr), current_view_(nullptr)
 
 void Mixer::update()
 {
+    // swap front and back sessions when loading is finished
+    if (sessionLoadFinished_) {
+        swap();
+        sessionFilename_ = sessionThreadFilename_;
+        sessionLoadFinished_ = false;
+    }
+    if (sessionSaveFinished_) {
+        sessionFilename_ = sessionThreadFilename_;
+        sessionSaveFinished_ = false;
+    }
+
     // compute dt
     if (update_time_ == GST_CLOCK_TIME_NONE)
         update_time_ = gst_util_get_timestamp ();
@@ -244,119 +319,99 @@ View *Mixer::currentView()
     return current_view_;
 }
 
-
-void Mixer::save(const std::string& filename)
+void Mixer::save()
 {
-    XMLDocument xmlDoc;
-
-    XMLElement *version = xmlDoc.NewElement(APP_NAME);
-    version->SetAttribute("major", XML_VERSION_MAJOR);
-    version->SetAttribute("minor", XML_VERSION_MINOR);
-    xmlDoc.InsertEndChild(version);
-
-    // block: list of sources
-    XMLElement *session = xmlDoc.NewElement("Session");
-    xmlDoc.InsertEndChild(session);
-    SourceList::iterator iter;
-    for (iter = session_->begin(); iter != session_->end(); iter++)
-    {
-        SessionVisitor sv(&xmlDoc, session);
-        // source visitor
-        (*iter)->accept(sv);
-    }
-
-    // block: config of views
-    XMLElement *views = xmlDoc.NewElement("Views");
-    xmlDoc.InsertEndChild(views);
-    {
-        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
-        mixing->InsertEndChild( SessionVisitor::NodeToXML(*mixing_.scene.root(), &xmlDoc));
-        views->InsertEndChild(mixing);
-
-        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
-        geometry->InsertEndChild( SessionVisitor::NodeToXML(*geometry_.scene.root(), &xmlDoc));
-        views->InsertEndChild(geometry);
-    }
-
-    // save file
-    XMLSaveDoc(&xmlDoc, filename);
+    if (!sessionFilename_.empty())
+        saveas(sessionFilename_);
 }
 
-bool Mixer::open(const std::string& filename)
+void Mixer::saveas(const std::string& filename)
 {
-    XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
-    if (XMLResultError(eResult))
-        return false;
+    // optional copy of views config
+    session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
+    session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
 
-    XMLElement *version = xmlDoc.FirstChildElement(APP_NAME);
-    if (version == nullptr) {
-        Log::Warning("Not a %s session file: %s", APP_NAME, filename.c_str());
-        return false;
-    }
-    int version_major = -1, version_minor = -1;
-    version->QueryIntAttribute("major", &version_major); // TODO incompatible if major is different?
-    version->QueryIntAttribute("minor", &version_minor);
-    if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
-        Log::Warning("%s is in an older versions of session file format. Data might be lost.", filename.c_str());
-    }
+    // launch a thread to save the session
+    std::thread (saveSession, filename, session_).detach();
 
-    // ok, ready to read sources
-    SessionCreator creator( xmlDoc.FirstChildElement("Session") );
-    Session *new_session = creator.session();
+//    XMLDocument xmlDoc;
 
-    // if all good, change to new session
-    if (new_session) {
+//    XMLElement *version = xmlDoc.NewElement(APP_NAME);
+//    version->SetAttribute("major", XML_VERSION_MAJOR);
+//    version->SetAttribute("minor", XML_VERSION_MINOR);
+//    xmlDoc.InsertEndChild(version);
 
-        // validate new session
-        newSession( new_session );
+//    // block: list of sources
+//    XMLElement *session = xmlDoc.NewElement("Session");
+//    xmlDoc.InsertEndChild(session);
+//    SourceList::iterator iter;
+//    for (iter = session_->begin(); iter != session_->end(); iter++)
+//    {
+//        SessionVisitor sv(&xmlDoc, session);
+//        // source visitor
+//        (*iter)->accept(sv);
+//    }
 
-        // insert nodes of sources into views
-        SourceList::iterator source_iter;
-        for (source_iter = new_session->begin(); source_iter != new_session->end(); source_iter++)
-        {
-            mixing_.scene.fg()->attach( (*source_iter)->group(View::MIXING) );
-            geometry_.scene.fg()->attach( (*source_iter)->group(View::GEOMETRY) );
-        }
+//    // block: config of views
+//    XMLElement *views = xmlDoc.NewElement("Views");
+//    xmlDoc.InsertEndChild(views);
+//    {
+//        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
+//        mixing->InsertEndChild( SessionVisitor::NodeToXML(*mixing_.scene.root(), &xmlDoc));
+//        views->InsertEndChild(mixing);
 
-    }
-    else {
-        Log::Warning("Session file %s not loaded.", filename.c_str());
-        return false;
-    }
+//        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
+//        geometry->InsertEndChild( SessionVisitor::NodeToXML(*geometry_.scene.root(), &xmlDoc));
+//        views->InsertEndChild(geometry);
+//    }
 
-    // config of view settings (optionnal)
-    XMLElement *views = xmlDoc.FirstChildElement("Views");
-    if (views != nullptr) {
-        // ok, ready to read views
-        SessionCreator::XMLToNode( views->FirstChildElement("Mixing"), *mixing_.scene.root());
-        SessionCreator::XMLToNode( views->FirstChildElement("Geometry"), *geometry_.scene.root());
-    }
-
-    Log::Info("Session file %s loaded. %d source(s) created.", filename.c_str(), session_->numSource());
-
-    return true;
+//    // save file
+//    XMLSaveDoc(&xmlDoc, filename);
 }
 
-void Mixer::newSession(Session *newsession)
+void Mixer::open(const std::string& filename)
 {
-    // delete session & detatch nodes from views
+    if (back_session_)
+        delete back_session_;
+
+    // create empty session
+    back_session_ = new Session;
+
+    // launch a thread to load the session into back_session
+    std::thread (loadSession, filename, back_session_).detach();
+
+}
+
+
+void Mixer::swap()
+{
+    if (!back_session_)
+        return;
+
     if (session_) {
-        // remove nodes from views
+        // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         {
             mixing_.scene.fg()->detatch( (*source_iter)->group(View::MIXING) );
             geometry_.scene.fg()->detatch( (*source_iter)->group(View::GEOMETRY) );
         }
-        // clear session: delete all sources
-        delete session_;
     }
 
-    // validate new session
-    if (newsession)
-        session_ = newsession;
-    else
-        session_ = new Session;
+    // swap back and front
+    Session *tmp = session_;
+    session_ = back_session_;
+    back_session_ = tmp;
+
+    // attach new session's nodes to views
+    for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
+    {
+        mixing_.scene.fg()->attach( (*source_iter)->group(View::MIXING) );
+        geometry_.scene.fg()->attach( (*source_iter)->group(View::GEOMETRY) );
+    }
+
+    // optional copy of views config
+    mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );
+    geometry_.scene.root()->copyTransform( session_->config(View::GEOMETRY) );
 
     // no current source
     current_source_ = session_->end();
@@ -364,8 +419,24 @@ void Mixer::newSession(Session *newsession)
 
     // reset timer
     update_time_ = GST_CLOCK_TIME_NONE;
+}
 
-    // default views
+
+void Mixer::newSession()
+{
+    // delete previous back session if needed
+    if (back_session_)
+        delete back_session_;
+
+    // create empty session
+    back_session_ = new Session;
+
+    // swap current with empty
+    swap();
+
+    // default view config
     mixing_.restoreSettings();
     geometry_.restoreSettings();
+
+    sessionFilename_ = "newsession.vmx";
 }

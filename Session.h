@@ -32,9 +32,14 @@ public:
     // result of render
     inline FrameBuffer *frame() const { return render_.frameBuffer(); }
 
+    // configuration for group nodes of views
+    inline Group *config(View::Mode m) const { return config_.at(m); }
+
 protected:
     RenderView render_;
     SourceList sources_;
+
+    std::map<View::Mode, Group*> config_;
 };
 
 #endif // SESSION_H

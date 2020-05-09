@@ -50,6 +50,16 @@ Node::~Node ()
 
 }
 
+void Node::copyTransform(Node *other)
+{
+    if (!other)
+        return;
+    transform_ = glm::identity<glm::mat4>();
+    scale_ = other->scale_;
+    rotation_ = other->rotation_;
+    translation_ = other->translation_;
+}
+
 void Node::update( float )
 {
     // update transform matrix from attributes

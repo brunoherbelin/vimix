@@ -65,13 +65,13 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
+    void copyTransform(Node *other);
+
     // public members, to manipulate with care
     bool      visible_;
     uint refcount_;
-
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
-
 
 };
 
