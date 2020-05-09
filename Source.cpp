@@ -156,7 +156,8 @@ void MediaSource::init()
             mediasurface_->setTextureIndex( mediaplayer_->texture() );
 
             // create Frame buffer matching size of media player
-            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), mediaplayer()->height());
+            float height = float(mediaplayer()->width()) / mediaplayer()->aspectRatio();
+            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), (uint)height);
 
 //            // setup shader resolution for texture 0
 //            rendershader_->iChannelResolution[0] = glm::vec3(mediaplayer()->width(), mediaplayer()->height(), 0.f);
