@@ -14,7 +14,10 @@
 
 #include <string>
 #include <list>
+#include <mutex>
 using namespace std;
+
+static std::mutex mtx;
 
 struct AppLog
 {
@@ -29,13 +32,16 @@ struct AppLog
 
     void Clear()
     {
+        mtx.lock();
         Buf.clear();
         LineOffsets.clear();
         LineOffsets.push_back(0);
+        mtx.unlock();
     }
 
     void AddLog(const char* fmt, va_list args)
     {
+        mtx.lock();
         int old_size = Buf.size();
         Buf.appendfv(fmt, args);
         Buf.append("\n");
@@ -43,6 +49,7 @@ struct AppLog
         for (int new_size = Buf.size(); old_size < new_size; old_size++)
             if (Buf[old_size] == '\n')
                 LineOffsets.push_back(old_size + 1);
+        mtx.unlock();
     }
 
     void Draw(const char* title, bool* p_open = NULL)
@@ -70,8 +77,10 @@ struct AppLog
             ImGui::LogToClipboard();
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+        mtx.lock();
+
         const char* buf = Buf.begin();
         const char* buf_end = Buf.end();
         if (Filter.IsActive())
@@ -112,8 +121,10 @@ struct AppLog
             }
             clipper.End();
         }
-        ImGui::PopStyleVar();
 
+        mtx.unlock();
+
+        ImGui::PopStyleVar();
         ImGui::PopFont();
 
         // Auto scroll
