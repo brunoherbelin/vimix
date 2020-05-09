@@ -57,9 +57,9 @@ void ShowAboutOpengl(bool* p_open);
 void ShowAbout(bool* p_open);
 
 // static objects for multithreaded file dialog
-static bool FileDialogPending_ = false;
-static bool FileDialogLoadFinished_ = false;
-static bool FileDialogSaveFinished_ = false;
+static std::atomic<bool> FileDialogPending_ = false;
+static std::atomic<bool> FileDialogLoadFinished_ = false;
+static std::atomic<bool> FileDialogSaveFinished_ = false;
 static std::string FileDialogFilename_ = "";
 
 static void FileDialogOpen(std::string path)
@@ -67,19 +67,15 @@ static void FileDialogOpen(std::string path)
      FileDialogPending_ = true;
      FileDialogLoadFinished_ = false;
 
-     char const * lTheOpenFileName;
-     char const * lFilterPatterns[2] = { "*.vmx" };
+     char const * open_file_name;
+     char const * open_pattern[1] = { "*.vmx" };
 
-     lTheOpenFileName = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, lFilterPatterns, nullptr, 0);
+     open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, nullptr, 0);
 
-     if (!lTheOpenFileName)
-     {
+     if (!open_file_name)
         FileDialogFilename_ = "";
-     }
      else
-     {
-        FileDialogFilename_ = std::string( lTheOpenFileName );
-     }
+        FileDialogFilename_ = std::string( open_file_name );
 
      FileDialogLoadFinished_ = true;
 }
@@ -90,14 +86,12 @@ static void FileDialogSave(std::string path)
      FileDialogSaveFinished_ = false;
 
      char const * save_file_name;
-     char const * save_pattern[2] = { "*.vmx" };
+     char const * save_pattern[1] = { "*.vmx" };
 
      save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
      if (!save_file_name)
-     {
         FileDialogFilename_ = "";
-     }
      else
      {
         FileDialogFilename_ = std::string( save_file_name );
@@ -191,7 +185,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // Open session
-            std::thread (FileDialogOpen, "./").detach();
+            std::thread (FileDialogOpen, Settings::application.recentSessions.path).detach();
             navigator.hidePannel();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
@@ -341,20 +335,36 @@ void UserInterface::NewFrame()
     handleKeyboard();
     handleMouse();
 
-    // navigator bar first
-    navigator.Render();
-
     // handle FileDialog
     if (FileDialogLoadFinished_) {
         FileDialogLoadFinished_ = false;
         FileDialogPending_ = false;
-        Mixer::manager().open(FileDialogFilename_);
+        if (!FileDialogFilename_.empty()) {
+            Mixer::manager().open(FileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(FileDialogFilename_);
+        }
     }
     if (FileDialogSaveFinished_) {
         FileDialogSaveFinished_ = false;
         FileDialogPending_ = false;
-        Mixer::manager().saveas(FileDialogFilename_);
+        if (!FileDialogFilename_.empty()) {
+            Mixer::manager().saveas(FileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(FileDialogFilename_);
+        }
     }
+
+    // overlay when disabled
+    if (FileDialogPending_){
+        ImGui::OpenPopup("Busy");
+        if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Close dialog to resume...");
+            ImGui::EndPopup();
+        }
+    }
+
+    // navigator bar first
+    navigator.Render();
 }
 
 void UserInterface::Render()
@@ -415,20 +425,20 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuFile()
 {
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W", false, !FileDialogPending_)) {
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
         Mixer::manager().newSession();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O", false, !FileDialogPending_)) {
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
         // launch file dialog to open a session file
-        std::thread (FileDialogOpen, "./").detach();
+        std::thread (FileDialogOpen, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S", false, !FileDialogPending_)) {
+    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
         Mixer::manager().save();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as", NULL, false, !FileDialogPending_)) {
+    if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as")) {
         std::thread (FileDialogSave, "./").detach();
         navigator.hidePannel();
     }
@@ -1049,7 +1059,8 @@ void Navigator::RenderMainPannel()
         {
             std::for_each(Settings::application.recentSessions.filenames.begin(),
                           Settings::application.recentSessions.filenames.end(), [](std::string& filename) {
-                if (ImGui::Selectable( filename.substr( filename.size() - 40 ).c_str() )) {
+                int right = MIN( 40, filename.size());
+                if (ImGui::Selectable( filename.substr( filename.size() - right ).c_str() )) {
                     Mixer::manager().open( filename );
                     recentselected = true;
                 }

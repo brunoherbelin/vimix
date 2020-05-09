@@ -15,6 +15,9 @@ namespace SystemToolkit
     // get fixed length string (17 chars) YYYYMMDDHHmmssiii
     std::string date_time_string();
 
+    // get the OS dependent home path
+    std::string home_path();
+
     // get the OS dependent path where to store settings
     std::string settings_path();
 
@@ -23,6 +26,9 @@ namespace SystemToolkit
 
     // extract the base file name from a full URI (e.g. file:://home/me/toto.mpg -> toto)
     std::string base_filename(const std::string& uri);
+
+    // extract the path of a file from a full URI (e.g. file:://home/me/toto.mpg -> file:://home/me/)
+    std::string path_filename(const std::string& uri);
 
     // true of file exists
     bool file_exists(const std::string& path);

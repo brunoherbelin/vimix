@@ -14,6 +14,7 @@ using namespace tinyxml2;
 Settings::Application Settings::application;
 static string settingsFilename = "";
 
+
 void Settings::Save()
 {
     XMLDocument xmlDoc;
@@ -94,6 +95,7 @@ void Settings::Save()
         XMLElement *recent = xmlDoc.NewElement( "Recent" );
 
         XMLElement *recentsession = xmlDoc.NewElement( "Session" );
+        recentsession->SetAttribute("path", application.recentSessions.path.c_str());
         recentsession->SetAttribute("auto", application.recentSessions.automatic);
         for(auto it = application.recentSessions.filenames.begin();
             it != application.recentSessions.filenames.end(); it++) {
@@ -221,6 +223,11 @@ void Settings::Load()
             XMLElement * pSession = pElement->FirstChildElement("Session");
             if (pSession)
             {
+                const char *path_ = pSession->Attribute("path");
+                if (path_)
+                    application.recentSessions.path = std::string(path_);
+                else
+                    application.recentSessions.path = SystemToolkit::home_path();
                 pSession->QueryBoolAttribute("auto", &application.recentSessions.automatic);
                 application.recentSessions.filenames.clear();
                 XMLElement* path = pSession->FirstChildElement("path");

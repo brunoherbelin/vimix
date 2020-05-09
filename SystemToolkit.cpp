@@ -58,7 +58,7 @@ string SystemToolkit::date_time_string()
 
 std::string SystemToolkit::base_filename(const std::string& uri)
 {
-    std::string basefilename = uri.substr(uri.find_last_of("/\\") + 1);
+    std::string basefilename = uri.substr(uri.find_last_of(PATH_SEP) + 1);
     const size_t period_idx = basefilename.rfind('.');
     if (std::string::npos != period_idx)
     {
@@ -67,7 +67,15 @@ std::string SystemToolkit::base_filename(const std::string& uri)
     return basefilename;
 }
 
-string SystemToolkit::settings_path()
+std::string SystemToolkit::path_filename(const std::string& uri)
+{
+    std::string path = uri.substr(0, uri.find_last_of(PATH_SEP) + 1);
+
+    return path;
+}
+
+
+std::string SystemToolkit::home_path()
 {
     // 1. find home
     char *mHomePath;
@@ -80,7 +88,13 @@ string SystemToolkit::settings_path()
         // try the $HOME environment variable
         mHomePath = getenv("HOME");
     }
-    string home(mHomePath);
+
+    return string(mHomePath) + PATH_SEP;
+}
+
+string SystemToolkit::settings_path()
+{
+    string home(home_path());
 
     // 2. try to access user settings folder
     string settingspath = home + PATH_SETTINGS;

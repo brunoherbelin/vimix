@@ -36,6 +36,7 @@ struct ViewConfig
 
 struct History
 {
+    std::string path;
     std::list<std::string> filenames;
     bool automatic;
 

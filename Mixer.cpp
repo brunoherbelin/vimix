@@ -22,13 +22,13 @@ using namespace tinyxml2;
 #include "Mixer.h"
 
 // static objects for multithreaded session loading
-static std::atomic<bool> sessionLoadPending_ = false;
-static std::atomic<bool> sessionLoadFinished_ = false;
+static std::atomic<bool> sessionThreadActive_ = false;
 static std::string sessionThreadFilename_ = "";
 
+static std::atomic<bool> sessionLoadFinished_ = false;
 static void loadSession(const std::string& filename, Session *session)
 {
-     sessionLoadPending_ = true;
+     sessionThreadActive_ = true;
      sessionLoadFinished_ = false;
      sessionThreadFilename_ = "";
 
@@ -41,22 +41,20 @@ static void loadSession(const std::string& filename, Session *session)
      }
      else {
          // loaded ok
-         Log::Info("Session file %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+         Log::Info("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
      }
 
      sessionThreadFilename_ = filename;
      sessionLoadFinished_ = true;
-     sessionLoadPending_ = false;
+     sessionThreadActive_ = false;
 }
 
 // static objects for multithreaded session saving
-static std::atomic<bool> sessionSavePending_ = false;
 static std::atomic<bool> sessionSaveFinished_ = false;
-
 static void saveSession(const std::string& filename, Session *session)
 {
     // reset
-    sessionSavePending_ = true;
+    sessionThreadActive_ = true;
     sessionSaveFinished_ = false;
     sessionThreadFilename_ = "";
 
@@ -95,10 +93,13 @@ static void saveSession(const std::string& filename, Session *session)
     // save file to disk
     XMLSaveDoc(&xmlDoc, filename);
 
+    // loaded ok
+    Log::Info("Session %s saved.", filename.c_str());
+
     // all ok
     sessionThreadFilename_ = filename;
     sessionSaveFinished_ = true;
-    sessionSavePending_ = false;
+    sessionThreadActive_ = false;
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr)
@@ -318,12 +319,18 @@ View *Mixer::currentView()
 
 void Mixer::save()
 {
+    if (sessionThreadActive_)
+        return;
+
     if (!sessionFilename_.empty())
         saveas(sessionFilename_);
 }
 
 void Mixer::saveas(const std::string& filename)
 {
+    if (sessionThreadActive_)
+        return;
+
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
@@ -335,6 +342,9 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::open(const std::string& filename)
 {
+    if (sessionThreadActive_)
+        return;
+
     if (back_session_)
         delete back_session_;
 
