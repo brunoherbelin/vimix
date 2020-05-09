@@ -38,7 +38,7 @@ void Session::update(float dt)
 SourceList::iterator Session::addSource(Source *s)
 {
     // insert the source in the rendering
-    render_.scene.root()->addChild(s->group(View::RENDERING));
+    render_.scene.fg()->attach(s->group(View::RENDERING));
     // insert the source to the beginning of the list
     sources_.push_front(s);
     // return the iterator to the source created at the beginning
@@ -53,18 +53,13 @@ SourceList::iterator Session::deleteSource(Source *s)
     if (its != sources_.end()) {
 
         // remove Node from the rendering scene
-//        GarbageVisitor remover(s->group(View::RENDERING));
-//        remover.visit(render_.scene);
-
-        render_.scene.root()->detatchChild( s->group(View::RENDERING) );
+        render_.scene.fg()->detatch( s->group(View::RENDERING) );
 
         // erase the source from the update list & get next element
         its = sources_.erase(its);
 
         // delete the source : safe now
         delete s;
-
-        // NB: GarbageVisitor ends here, and deletes the Group RENDERING
     }
 
     // return end of next element

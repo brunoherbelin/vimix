@@ -54,18 +54,16 @@ MixingView::MixingView() : View(MIXING)
     else
         restoreSettings();
 
-    // Mixing scene
-    backgound_ = new Group;
-    scene.root()->addChild(backgound_);
+    // Mixing scene background
 
     Mesh *disk = new Mesh("mesh/disk.ply");
     disk->setTexture(textureMixingQuadratic());
-    backgound_->addChild(disk);
+    scene.bg()->attach(disk);
 
     glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
     Mesh *circle = new Mesh("mesh/circle.ply");
     circle->shader()->color = pink;
-    backgound_->addChild(circle);
+    scene.bg()->attach(circle);
 
 }
 
@@ -238,17 +236,14 @@ GeometryView::GeometryView() : View(GEOMETRY)
     else
         restoreSettings();
 
-    // Geometry Scene
-    backgound_ = new Group;
-    scene.root()->addChild(backgound_);
-
+    // Geometry Scene background
     Surface *rect = new Surface;
-    backgound_->addChild(rect);
+    scene.bg()->attach(rect);
 
     Frame *border = new Frame(Frame::SHARP_THIN);
     border->overlay_ = new Mesh("mesh/border_vertical_overlay.ply");
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
-    backgound_->addChild(border);
+    scene.bg()->attach(border);
 
 }
 
@@ -263,7 +258,7 @@ void GeometryView::draw()
     // update rendering of render frame
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output){
-        for (NodeSet::iterator node = backgound_->begin(); node != backgound_->end(); node++) {
+        for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
             (*node)->scale_.x = output->aspectRatio();
         }
     }

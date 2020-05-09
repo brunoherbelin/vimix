@@ -47,6 +47,7 @@ class Node {
 
 public:
     Node ();
+    virtual ~Node ();
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
@@ -71,7 +72,6 @@ public:
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 
-    virtual ~Node ();
 
 };
 
@@ -96,7 +96,7 @@ class Primitive : public Node {
 
 public:
     Primitive(Shader *s = nullptr) : Node(), shader_(s), vao_(0), drawMode_(0), drawCount_(0) {}
-
+    virtual ~Primitive();
 
     virtual void init () override;
     virtual void accept (Visitor& v) override;
@@ -105,7 +105,6 @@ public:
     inline Shader *shader () const { return shader_; }
     void replaceShader (Shader* newshader);
 
-    virtual ~Primitive();
 protected:
     Shader*   shader_;
     uint vao_, drawMode_, drawCount_;
@@ -168,8 +167,9 @@ public:
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    virtual void addChild (Node *child);
-    virtual void detatchChild (Node *child);
+    virtual void clear();
+    virtual void attach (Node *child);
+    virtual void detatch (Node *child);
 
     NodeSet::iterator begin();
     NodeSet::iterator end();
@@ -197,8 +197,8 @@ public:
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    void addChild (Node *child) override;
-//    void detatchChild (Node *child) override;
+    void attach (Node *child) override;
+    void detatch (Node *child) override;
 
     void unsetActiveChild ();
     void setActiveChild (Node *child);
@@ -238,31 +238,34 @@ protected:
 };
 
 
-
-// A scene contains a root node and gives a simplified API to add nodes
+/**
+ * @brief A Scene holds a root node with two children; a background and a foreground
+ *
+ * Nodes should be added to foreground and background only (not root)
+ * The update() is called on the root (both background and foreground)
+ *
+ */
 class Scene  {
 
     Group *root_;
+    Group *background_;
+    Group *foreground_;
 
 public:
     Scene();
     ~Scene();
 
     void accept (Visitor& v);
-
     void update(float dt);
 
-//    void addNode(Node *);
-
+    void clear();
+    void clearBackground();
+    void clearForeground();
 
     Group *root() { return root_; }
+    Group *bg() { return background_; }
+    Group *fg() { return foreground_; }
 
-    // Node *find(int id);
-    // void remove(Node *n);
-    //
-    void deleteNode(Node *node);
-
-//    static Group *limbo;
 };
 
 

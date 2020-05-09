@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <thread>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
@@ -16,10 +17,25 @@ using namespace tinyxml2;
 #include "GarbageVisitor.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
-
 #include "MediaPlayer.h"
 
 #include "Mixer.h"
+
+// static objects for multithreaded session loading
+static bool sessionLoadPending_ = false;
+static bool sessionLoadFinished_ = false;
+static Session *loadedSession;
+
+static void loadSession(const std::string& filename, )
+{
+     sessionLoadPending_ = true;
+
+
+     sessionLoadFinished_ = true;
+}
+
+
+
 
 Mixer::Mixer() : session_(nullptr), current_view_(nullptr)
 {
@@ -78,9 +94,9 @@ void Mixer::insertSource(Source *s)
 
     // add sources Nodes to ALL views
     // Mixing Node
-    mixing_.scene.root()->addChild(s->group(View::MIXING));
+    mixing_.scene.fg()->attach(s->group(View::MIXING));
     // Geometry Node
-    geometry_.scene.root()->addChild(s->group(View::GEOMETRY));
+    geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
 
 }
 void Mixer::deleteSource(Source *s)
@@ -95,15 +111,8 @@ void Mixer::deleteSource(Source *s)
     unsetCurrentSource();
 
     // remove source Nodes from views
-//    GarbageVisitor mixingremover(s->group(View::MIXING));
-//    mixingremover.visit(mixing_.scene);
-//    GarbageVisitor geomremover(s->group(View::GEOMETRY));
-//    geomremover.visit(geometry_.scene);
-
-    Log::Info("MIXING");
-    mixing_.scene.root()->detatchChild( s->group(View::MIXING) );
-    Log::Info("GEOMETRY");
-    geometry_.scene.root()->detatchChild( s->group(View::GEOMETRY) );
+    mixing_.scene.fg()->detatch( s->group(View::MIXING) );
+    geometry_.scene.fg()->detatch( s->group(View::GEOMETRY) );
 
     // delete source
     session_->deleteSource(s);
@@ -306,8 +315,8 @@ bool Mixer::open(const std::string& filename)
         SourceList::iterator source_iter;
         for (source_iter = new_session->begin(); source_iter != new_session->end(); source_iter++)
         {
-            mixing_.scene.root()->addChild( (*source_iter)->group(View::MIXING) );
-            geometry_.scene.root()->addChild( (*source_iter)->group(View::GEOMETRY) );
+            mixing_.scene.fg()->attach( (*source_iter)->group(View::MIXING) );
+            geometry_.scene.fg()->attach( (*source_iter)->group(View::GEOMETRY) );
         }
 
     }
@@ -331,23 +340,15 @@ bool Mixer::open(const std::string& filename)
 
 void Mixer::newSession(Session *newsession)
 {
-
-    // delete session : delete all sources
+    // delete session & detatch nodes from views
     if (session_) {
         // remove nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         {
-//            GarbageVisitor mixingremover( (*source_iter)->group(View::MIXING) );
-//            mixingremover.visit(mixing_.scene);
-//            GarbageVisitor geomremover( (*source_iter)->group(View::GEOMETRY) );
-//            geomremover.visit(geometry_.scene);
-
-            Log::Info("MIXING");
-            mixing_.scene.root()->detatchChild( (*source_iter)->group(View::MIXING) );
-            Log::Info("GEOMETRY");
-            geometry_.scene.root()->detatchChild( (*source_iter)->group(View::GEOMETRY) );
+            mixing_.scene.fg()->detatch( (*source_iter)->group(View::MIXING) );
+            geometry_.scene.fg()->detatch( (*source_iter)->group(View::GEOMETRY) );
         }
-        // clear session
+        // clear session: delete all sources
         delete session_;
     }
 

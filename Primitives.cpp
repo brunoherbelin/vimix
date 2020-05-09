@@ -42,7 +42,8 @@ Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
 
 Surface::~Surface()
 {
-
+    // do NOT delete vao_ (unique)
+    vao_ = 0;
 }
 
 void Surface::init()
@@ -290,8 +291,8 @@ void LineSquare::accept(Visitor& v)
 
 LineSquare::~LineSquare()
 {
-    if (shader_)
-        delete shader_;
+    // do NOT delete vao_ (unique)
+    vao_ = 0;
 }
 
 
@@ -344,6 +345,6 @@ void LineCircle::accept(Visitor& v)
 
 LineCircle::~LineCircle()
 {
-    if (shader_)
-        delete shader_;
+    // do NOT delete vao_ (unique)
+    vao_ = 0;
 }

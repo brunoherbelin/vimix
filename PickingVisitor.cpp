@@ -94,5 +94,6 @@ void PickingVisitor::visit(LineCircle &n)
 
 void PickingVisitor::visit(Scene &n)
 {
+    // TODO : maybe pick only foreground ?
     n.root()->accept(*this);
 }

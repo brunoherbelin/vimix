@@ -1,7 +1,6 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
-#include <thread>
 #include <string>
 #include <list>
 using namespace std;

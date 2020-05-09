@@ -34,7 +34,7 @@ void GarbageVisitor::visit(Node &n)
 
         // take the node out of the Tree
         if (current_)
-            current_->detatchChild(&n);
+            current_->detatch(&n);
 
     }
 

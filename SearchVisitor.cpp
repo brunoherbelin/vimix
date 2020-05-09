@@ -37,5 +37,6 @@ void SearchVisitor::visit(Switch &n)
 
 void SearchVisitor::visit(Scene &n)
 {
+    // TODO maybe search only forground?
     n.root()->accept(*this);
 }

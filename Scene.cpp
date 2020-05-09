@@ -64,7 +64,6 @@ void Node::accept(Visitor& v)
 
 // Primitive
 
-
 Primitive::~Primitive()
 {
     if ( vao_ )
@@ -181,14 +180,16 @@ void Primitive::replaceShader( Shader *newshader )
 // Group
 Group::~Group()
 {
-    Log::Info("Delete Group %d ", id());
+    clear();
+}
+
+void Group::clear()
+{
     for(NodeSet::iterator it = children_.begin(); it != children_.end(); ) {
-        Log::Info(" Child %d (%d)", (*it)->id(), (*it)->refcount_);
+        // one less ref to this node
         (*it)->refcount_--;
         // if this group was the only remaining parent
         if ( (*it)->refcount_ < 1 ) {
-
-            Log::Info(" Deleting %d (%d)", (*it)->id(), (*it)->refcount_);
             // delete
             delete (*it);
         }
@@ -197,22 +198,15 @@ Group::~Group()
     }
 }
 
-void Group::addChild(Node *child)
+void Group::attach(Node *child)
 {
     children_.insert(child);
     child->refcount_++;
-
-//    children_.push_back(child);  // list test
-
-//    child->parents_.push_back(this);
 }
 
 
-void Group::detatchChild(Node *child)
+void Group::detatch(Node *child)
 {
-
-    Log::Info("Group %d (N=%d) detaching %d", id(), numChildren(), child->id());
-
     // find the node with this id, and erase it out of the list of children
     // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
     NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
@@ -220,12 +214,7 @@ void Group::detatchChild(Node *child)
         // detatch child from group parent
         children_.erase(it);
         child->refcount_--;
-//        // detatch parent from child
-//        (*it)->parents_.remove(this);
     }
-
-//    children_.remove(child);
-    Log::Info("Group %d (N=%d)", id(), numChildren());
 
 }
 
@@ -306,17 +295,17 @@ void Switch::accept(Visitor& v)
     v.visit(*this);
 }
 
-void Switch::addChild(Node *child)
+void Switch::attach(Node *child)
 {
-    Group::addChild(child);
+    Group::attach(child);
     setActiveChild(child);
 }
 
-//void Switch::detatchChild(Node *child)
-//{
-//    Group::detatchChild(child);
-//    active_ = children_.begin();
-//}
+void Switch::detatch(Node *child)
+{
+    Group::detatch(child);
+    active_ = children_.begin();
+}
 
 
 void Switch::unsetActiveChild ()
@@ -396,37 +385,46 @@ void Animation::accept(Visitor& v)
     v.visit(*this);
 }
 
-Scene::Scene(): root_(nullptr)
+Scene::Scene(): root_(nullptr), foreground_(nullptr), background_(nullptr)
 {
     root_ = new Group;
+
+    background_ = new Group;
+    background_->translation_.z = 0;
+    foreground_ = new Group;
+    // TODO Verify depth for foreground
+    foreground_->translation_.z = 1;
+
+    root_->attach(background_);
+    root_->attach(foreground_);
 }
 
 Scene::~Scene()
 {
-//    deleteNode(root_);
-
+    // bg and fg are deleted as children of root
+    delete root_;
 }
 
 
-void Scene::deleteNode(Node *node)
+void Scene::clear()
 {
+    clearForeground();
+    clearBackground();
+}
 
-    GarbageVisitor remover(node);
-    remover.visit(*this);
+void Scene::clearForeground()
+{
+    foreground_->clear();
+}
 
-//    // remove this node to the list of chidren of all its parents
-//    for(auto parent = node->parents_.begin(); parent != node->parents_.end(); parent++){
-//        (*parent)->children_.erase(node);
-//    }
-//    node->parents_.clear();
-
-//    limbo->addChild(node);
+void Scene::clearBackground()
+{
+    background_->clear();
 }
 
 void Scene::update(float dt)
 {
     root_->update( dt );
-
 }
 
 void Scene::accept(Visitor& v)

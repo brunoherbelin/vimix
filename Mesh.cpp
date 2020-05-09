@@ -333,7 +333,7 @@ Mesh::Mesh(const std::string& ply_path, const std::string& tex_path) : Primitive
     }
 
     // default non texture shader (deleted in Primitive)
-    shader_ = new Shader();
+    shader_ = new Shader;
 }
 
 
@@ -341,7 +341,7 @@ void Mesh::setTexture(uint textureindex)
 {
     if (textureindex) {
         // replace previous shader with a new Image Shader
-        replaceShader( new ImageShader() );
+        replaceShader( new ImageShader );
         // set texture
         textureindex_ = textureindex;
     }

@@ -29,7 +29,6 @@ public:
 
 protected:
     Mode mode_;
-    Group *backgound_;
 };
 
 

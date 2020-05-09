@@ -21,6 +21,7 @@ class Surface : public Primitive {
 
 public:
     Surface(Shader *s = new ImageShader);
+    virtual ~Surface();
 
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
@@ -31,7 +32,6 @@ public:
 
 protected:
     uint textureindex_;
-    virtual ~Surface();
 };
 
 

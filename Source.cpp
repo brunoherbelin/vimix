@@ -28,15 +28,15 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
     Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 0.9f);
-    groups_[View::MIXING]->addChild(frame);
+    groups_[View::MIXING]->attach(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
 
     // default geometry nodes
     groups_[View::GEOMETRY] = new Group;
 
     // will be associated to nodes later
-    blendingshader_ = new ImageShader();
-    rendershader_ = new ImageProcessingShader();
+    blendingshader_ = new ImageShader;
+    rendershader_ = new ImageProcessingShader;
     renderbuffer_ = nullptr;
     rendersurface_ = nullptr;
     overlay_ = nullptr;
@@ -112,14 +112,14 @@ MediaSource::MediaSource(const std::string &name) : Source(name), uri_("")
     overlay_->translation_.z = 0.1;
     overlay_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
     overlay_->visible_ = false;
-    groups_[View::MIXING]->addChild(overlay_);
+    groups_[View::MIXING]->attach(overlay_);
 
 }
 
 MediaSource::~MediaSource()
 {
     // TODO delete media surface with visitor
-    //delete mediasurface_;
+    delete mediasurface_;
 
     delete mediaplayer_;
     // TODO verify that all surfaces and node is deleted in Source destructor
@@ -164,15 +164,15 @@ void MediaSource::init()
             // create the surfaces to draw the frame buffer in the views
             // TODO Provide the source custom effect shader
             rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
-            groups_[View::RENDERING]->addChild(rendersurface_);
-            groups_[View::GEOMETRY]->addChild(rendersurface_);
-            groups_[View::MIXING]->addChild(rendersurface_);
+            groups_[View::RENDERING]->attach(rendersurface_);
+            groups_[View::GEOMETRY]->attach(rendersurface_);
+            groups_[View::MIXING]->attach(rendersurface_);
 
             // for mixing view, add another surface to overlay (for stippled view in transparency)
             Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
             ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
             if (is)  is->stipple = 1.0;
-            groups_[View::MIXING]->addChild(surfacemix);
+            groups_[View::MIXING]->attach(surfacemix);
 
             // scale all mixing nodes to match aspect ratio of the media
             for (NodeSet::iterator node = groups_[View::MIXING]->begin();

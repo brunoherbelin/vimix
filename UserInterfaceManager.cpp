@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <sstream>
+#include <thread>
 
 // ImGui
 #include "imgui.h"
@@ -49,16 +50,15 @@
 #include "TextEditor.h"
 static TextEditor editor;
 
-
-//static std::thread *FileDialogThread_;
-static bool FileDialogPending_ = false;
-static bool FileDialogFinished_ = false;
-static std::string FileDialogFilename_ = "";
-
-
+// utility functions
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowAbout(bool* p_open);
+
+// static objects for multithreaded file dialog
+static bool FileDialogPending_ = false;
+static bool FileDialogFinished_ = false;
+static std::string FileDialogFilename_ = "";
 
 static void FileDialogOpen(std::string path)
 {
@@ -379,7 +379,6 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuFile()
 {
-    // TODO : New
     if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W", false, !FileDialogPending_)) {
         Mixer::manager().newSession();
         navigator.hidePannel();
