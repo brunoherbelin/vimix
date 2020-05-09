@@ -79,7 +79,6 @@ class UserInterface
 //    } FileDialogStatus;
 //    FileDialogStatus filestatus_;
 //    std::string filename_;
-//    std::thread filethread_;
 //    void startOpenFileDialog();
 
     // Private Constructor

@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <list>
 #include <glm/glm.hpp>
 
 namespace Settings {
@@ -33,6 +34,22 @@ struct ViewConfig
 
 };
 
+struct History
+{
+    std::list<std::string> filenames;
+    bool automatic;
+
+    History() {
+        automatic = false;
+    }
+    void push(std::string filename) {
+        filenames.remove(filename);
+        filenames.push_front(filename);
+        if (filenames.size() > MAX_RECENT_HISTORY)
+            filenames.pop_back();
+    }
+};
+
 struct Application
 {
     // Verification
@@ -54,8 +71,12 @@ struct Application
     std::map<int, ViewConfig> views;
 
     // multiple windows handling
-    // TODO: maybe keep map of multiple windows, widn id=0 for main window
+    // TODO: manage other windows
     std::vector<WindowConfig> windows;
+
+    // recent files histories
+    History recentSessions;
+    History recentMedia;
 
     Application() : name(APP_NAME){
         scale = 1.f;

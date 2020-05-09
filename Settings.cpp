@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 using namespace std;
 
@@ -61,7 +62,7 @@ void Settings::Save()
     applicationNode->SetAttribute("toolbox", application.toolbox);
     pRoot->InsertEndChild(applicationNode);
 
-    // block: views
+    // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
         viewsNode->SetAttribute("current", application.current_view);
@@ -88,6 +89,37 @@ void Settings::Save()
         pRoot->InsertEndChild(viewsNode);
     }
 
+    // bloc history
+    {
+        XMLElement *recent = xmlDoc.NewElement( "Recent" );
+
+        XMLElement *recentsession = xmlDoc.NewElement( "Session" );
+        recentsession->SetAttribute("auto", application.recentSessions.automatic);
+        for(auto it = application.recentSessions.filenames.begin();
+            it != application.recentSessions.filenames.end(); it++) {
+            XMLElement *fileNode = xmlDoc.NewElement("path");
+            XMLText *text = xmlDoc.NewText( (*it).c_str() );
+            fileNode->InsertEndChild( text );
+            recentsession->InsertEndChild(fileNode);
+        };
+        recent->InsertEndChild(recentsession);
+
+        XMLElement *recentmedia = xmlDoc.NewElement( "Media" );
+        for(auto it = application.recentMedia.filenames.begin();
+            it != application.recentMedia.filenames.end(); it++) {
+
+            XMLElement *fileNode = xmlDoc.NewElement("uri");
+            XMLText *text = xmlDoc.NewText( (*it).c_str() );
+            fileNode->InsertEndChild( text );
+            recentmedia->InsertEndChild(fileNode);
+        }
+        recent->InsertEndChild(recentmedia);
+
+        pRoot->InsertEndChild(recent);
+    }
+
+
+    // First save : create filename
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::settings_prepend_path(APP_SETTINGS);
 
@@ -116,32 +148,9 @@ void Settings::Load()
         // different root name
         return;
 
-	// block: windows
-	{
-		application.windows.clear(); // trash existing list
-
-        XMLElement * pElement = pRoot->FirstChildElement("Windows");
-        if (pElement == nullptr) return;
-
-        XMLElement* windowNode = pElement->FirstChildElement("Window");
-        for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
-        {
-            const char *pName = windowNode->Attribute("name");
-            Settings::WindowConfig w(pName);
-			
-            windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
-            windowNode->QueryIntAttribute("y", &w.y);
-            windowNode->QueryIntAttribute("w", &w.w);
-            windowNode->QueryIntAttribute("h", &w.h);
-            windowNode->QueryBoolAttribute("f", &w.fullscreen);
-
-			application.windows.push_back(w);
-		}
-	}
-
-	XMLElement * pElement = pRoot->FirstChildElement("Application");
-	if (pElement == nullptr) return;
-	pElement->QueryFloatAttribute("scale", &application.scale);
+    XMLElement * pElement = pRoot->FirstChildElement("Application");
+    if (pElement == nullptr) return;
+    pElement->QueryFloatAttribute("scale", &application.scale);
     pElement->QueryIntAttribute("accent_color", &application.accent_color);
     pElement->QueryBoolAttribute("preview", &application.preview);
     pElement->QueryBoolAttribute("media_player", &application.media_player);
@@ -151,31 +160,89 @@ void Settings::Load()
     pElement->QueryBoolAttribute("toolbox", &application.toolbox);
     pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
 
-    // block: views
+    // bloc windows
+	{
+		application.windows.clear(); // trash existing list
+
+        XMLElement * pElement = pRoot->FirstChildElement("Windows");
+        if (pElement)
+        {
+            XMLElement* windowNode = pElement->FirstChildElement("Window");
+            for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
+            {
+                const char *pName = windowNode->Attribute("name");
+                Settings::WindowConfig w(pName);
+
+                windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
+                windowNode->QueryIntAttribute("y", &w.y);
+                windowNode->QueryIntAttribute("w", &w.w);
+                windowNode->QueryIntAttribute("h", &w.h);
+                windowNode->QueryBoolAttribute("f", &w.fullscreen);
+
+                application.windows.push_back(w);
+            }
+        }
+	}
+
+    // bloc views
     {
         application.views.clear(); // trash existing list
         XMLElement * pElement = pRoot->FirstChildElement("Views");
-        if (pElement == nullptr) return;
-
-        pElement->QueryIntAttribute("current", &application.current_view);
-
-        XMLElement* viewNode = pElement->FirstChildElement("View");
-        for( ; viewNode ; viewNode=viewNode->NextSiblingElement())
+        if (pElement)
         {
-            int id = 0;
-            viewNode->QueryIntAttribute("id", &id);
-            application.views[id].name = viewNode->Attribute("name");
+            pElement->QueryIntAttribute("current", &application.current_view);
 
-            XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
-            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
-                                       application.views[id].default_scale);
+            XMLElement* viewNode = pElement->FirstChildElement("View");
+            for( ; viewNode ; viewNode=viewNode->NextSiblingElement())
+            {
+                int id = 0;
+                viewNode->QueryIntAttribute("id", &id);
+                application.views[id].name = viewNode->Attribute("name");
 
-            XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
-            tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
-                                       application.views[id].default_translation);
+                XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
+                tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
+                                           application.views[id].default_scale);
 
+                XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
+                tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
+                                           application.views[id].default_translation);
+
+            }
+        }
+
+    }
+
+    // bloc history of recent
+    {
+        XMLElement * pElement = pRoot->FirstChildElement("Recent");
+        if (pElement)
+        {
+            // recent session filenames
+            XMLElement * pSession = pElement->FirstChildElement("Session");
+            if (pSession)
+            {
+                pSession->QueryBoolAttribute("auto", &application.recentSessions.automatic);
+                application.recentSessions.filenames.clear();
+                XMLElement* path = pSession->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    application.recentSessions.push( std::string (path->GetText()) );
+                }
+            }
+            // recent media uri
+            XMLElement * pMedia = pElement->FirstChildElement("Media");
+            if (pMedia)
+            {
+                application.recentMedia.filenames.clear();
+                XMLElement* path = pMedia->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    application.recentMedia.push( std::string (path->GetText()) );
+                }
+            }
         }
     }
+
 
 }
 

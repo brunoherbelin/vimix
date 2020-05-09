@@ -2,6 +2,7 @@
 #include <cstring>
 #include <sstream>
 #include <thread>
+#include <algorithm>
 
 // ImGui
 #include "imgui.h"
@@ -100,6 +101,10 @@ static void FileDialogSave(std::string path)
      else
      {
         FileDialogFilename_ = std::string( save_file_name );
+        // check extension
+        std::string extension = FileDialogFilename_.substr(FileDialogFilename_.find_last_of(".") + 1);
+        if (extension != "vmx")
+            FileDialogFilename_ += ".vmx";
      }
 
      FileDialogSaveFinished_ = true;
@@ -186,14 +191,16 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // Open session
+            std::thread (FileDialogOpen, "./").detach();
+            navigator.hidePannel();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
-            std::cerr <<" Save File " << std::endl;
+            Mixer::manager().save();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
             // New Session
-            std::cerr <<" Close File " << std::endl;
+            Mixer::manager().newSession();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
@@ -1035,10 +1042,23 @@ void Navigator::RenderMainPannel()
             ImGui::EndMenu();
         }
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        static int recent_session = 0;
-        if ( ImGui::Combo("Recent", &recent_session, "Select\0") ) {
-
+        // combo box with list of recent session files from Settings
+        static bool recentselected = false;
+        recentselected = false;
+        if (ImGui::BeginCombo("Recent", "Select"))
+        {
+            std::for_each(Settings::application.recentSessions.filenames.begin(),
+                          Settings::application.recentSessions.filenames.end(), [](std::string& filename) {
+                if (ImGui::Selectable( filename.substr( filename.size() - 40 ).c_str() )) {
+                    Mixer::manager().open( filename );
+                    recentselected = true;
+                }
+            });
+            ImGui::EndCombo();
         }
+        if (recentselected)
+            hidePannel();
+        ImGuiToolkit::ButtonSwitch( "Load most recent on start", &Settings::application.recentSessions.automatic);
 
         ImGui::Text(" ");
         ImGui::Text("Windows");

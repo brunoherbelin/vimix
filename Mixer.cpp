@@ -106,6 +106,12 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     // this initializes with a new empty session
     newSession();
 
+    // auto load if Settings ask to
+    if ( Settings::application.recentSessions.automatic ) {
+        if ( Settings::application.recentSessions.filenames.size() > 0 )
+            open( Settings::application.recentSessions.filenames.back() );
+    }
+
     // this initializes with the current view
     setCurrentView( (View::Mode) Settings::application.current_view );
 }
@@ -115,13 +121,17 @@ void Mixer::update()
 {
     // swap front and back sessions when loading is finished
     if (sessionLoadFinished_) {
+        // finished loading, swap front and back sessions
         swap();
+        // done
         sessionFilename_ = sessionThreadFilename_;
         sessionLoadFinished_ = false;
+        Settings::application.recentSessions.push(sessionFilename_);
     }
     if (sessionSaveFinished_) {
         sessionFilename_ = sessionThreadFilename_;
         sessionSaveFinished_ = false;
+        Settings::application.recentSessions.push(sessionFilename_);
     }
 
     // compute dt
@@ -176,13 +186,7 @@ void Mixer::insertSource(Source *s)
 }
 void Mixer::deleteSource(Source *s)
 {
-//    SessionVisitor visit;
-//    geometry_.scene.accept(visit);
-//    visit.doc()->SaveFile("./geombefore.xml");
-//    SessionVisitor visitm;
-//    mixing_.scene.accept(visitm);
-//    visitm.doc()->SaveFile("./mixbefore.xml");
-
+    // in case..
     unsetCurrentSource();
 
     // remove source Nodes from views
@@ -191,13 +195,6 @@ void Mixer::deleteSource(Source *s)
 
     // delete source
     session_->deleteSource(s);
-
-//    SessionVisitor visit2;
-//    geometry_.scene.accept(visit2);
-//    visit2.doc()->SaveFile("./geomafter.xml");
-//    SessionVisitor visit2m;
-//    mixing_.scene.accept(visit2m);
-//    visit2m.doc()->SaveFile("./mixmafter.xml");
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -334,39 +331,6 @@ void Mixer::saveas(const std::string& filename)
     // launch a thread to save the session
     std::thread (saveSession, filename, session_).detach();
 
-//    XMLDocument xmlDoc;
-
-//    XMLElement *version = xmlDoc.NewElement(APP_NAME);
-//    version->SetAttribute("major", XML_VERSION_MAJOR);
-//    version->SetAttribute("minor", XML_VERSION_MINOR);
-//    xmlDoc.InsertEndChild(version);
-
-//    // block: list of sources
-//    XMLElement *session = xmlDoc.NewElement("Session");
-//    xmlDoc.InsertEndChild(session);
-//    SourceList::iterator iter;
-//    for (iter = session_->begin(); iter != session_->end(); iter++)
-//    {
-//        SessionVisitor sv(&xmlDoc, session);
-//        // source visitor
-//        (*iter)->accept(sv);
-//    }
-
-//    // block: config of views
-//    XMLElement *views = xmlDoc.NewElement("Views");
-//    xmlDoc.InsertEndChild(views);
-//    {
-//        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
-//        mixing->InsertEndChild( SessionVisitor::NodeToXML(*mixing_.scene.root(), &xmlDoc));
-//        views->InsertEndChild(mixing);
-
-//        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
-//        geometry->InsertEndChild( SessionVisitor::NodeToXML(*geometry_.scene.root(), &xmlDoc));
-//        views->InsertEndChild(geometry);
-//    }
-
-//    // save file
-//    XMLSaveDoc(&xmlDoc, filename);
 }
 
 void Mixer::open(const std::string& filename)
@@ -419,6 +383,10 @@ void Mixer::swap()
 
     // reset timer
     update_time_ = GST_CLOCK_TIME_NONE;
+
+    // delete back
+    delete back_session_;
+    back_session_ = nullptr;
 }
 
 

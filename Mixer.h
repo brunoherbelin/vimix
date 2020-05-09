@@ -68,9 +68,11 @@ public:
 protected:
 
     Session *session_;
-    std::string sessionFilename_;
     Session *back_session_;
     void swap();
+
+//    void validateFilename(const std::string& filename);
+    std::string sessionFilename_;
 
     void insertSource(Source *s);
     void setCurrentSource(SourceList::iterator it);
