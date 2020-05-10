@@ -28,6 +28,9 @@ public:
     inline std::string name () const { return name_; }
     inline const char *initials() const { return initials_; }
 
+    // an overlay can be displayed on top of the source
+    virtual void setOverlayVisible(bool on);
+
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
     inline Node *node(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
@@ -44,11 +47,11 @@ public:
     // every Source shall be rendered before draw
     virtual void render() = 0;
 
-    // an overlay can be displayed on top of the source
-    virtual void setOverlayVisible(bool on);
-
     // accept all kind of visitors
     virtual void accept (Visitor& v);
+
+    // informs if the source failed (and might have to be deleted)
+    virtual bool failed() const { return false; }
 
 protected:
     // name
@@ -112,9 +115,10 @@ public:
     ~MediaSource();
 
     // implementation of source API
-    FrameBuffer *frame() const;
-    void render();
-    void accept (Visitor& v);
+    FrameBuffer *frame() const override;
+    void render() override;
+    void accept (Visitor& v) override;
+    bool failed() const override;
 
     // Media specific interface
     void setPath(const std::string &p);

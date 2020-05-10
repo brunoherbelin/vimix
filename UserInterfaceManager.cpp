@@ -891,6 +891,7 @@ void Navigator::Render()
         // the list of INITIALS for sources
         int index = 0;
         SourceList::iterator iter;
+        Source *source_to_delete = nullptr;
         for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
         {
             // draw an indicator for current source
@@ -909,7 +910,14 @@ void Navigator::Render()
                 if (selected_button[index])
                     Mixer::manager().setCurrentSource(selected_source_index);
             }
+            // delete sources which failed
+            if ( (*iter)->failed() )
+                source_to_delete = *iter;
         }
+        // TODO : general (mixer?) paradigm to delete failed sources (here it looks like a hack)
+        if (source_to_delete != nullptr)
+            Mixer::manager().deleteSource(source_to_delete);
+
         // the "+" icon for action of creating new source
         if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
         {
@@ -1158,15 +1166,15 @@ void Navigator::RenderMainPannel()
         // Bottom aligned
         ImGui::SetCursorPosY(height - 4.f * ImGui::GetTextLineHeightWithSpacing());
         ImGui::Text("About");
-        if ( ImGui::Button( " About vimix", ImVec2(pannel_width - padding_width, 0)) )
+        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().show_about = true;
-        if ( ImGui::Button("About ImGui"))
+        if ( ImGui::Button("ImGui"))
             UserInterface::manager().show_imgui_about = true;
         ImGui::SameLine();
-        if ( ImGui::Button("About GStreamer"))
+        if ( ImGui::Button("GStreamer"))
             UserInterface::manager().show_gst_about = true;
         ImGui::SameLine();
-        if ( ImGui::Button("About OpenGL"))
+        if ( ImGui::Button("OpenGL", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
             UserInterface::manager().show_opengl_about = true;
 
     }

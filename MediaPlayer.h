@@ -107,6 +107,10 @@ public:
      * */
     bool isOpen() const;
     /**
+     * True if problem occured
+     * */
+    bool failed() const;
+    /**
      * Close the Media
      * */
     void close();
@@ -243,6 +247,7 @@ private:
     MediaSegmentSet::iterator current_segment_;
 
     bool ready_;
+    bool failed_;
     bool seekable_;
     bool isimage_;
     bool interlaced_;

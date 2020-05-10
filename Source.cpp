@@ -142,6 +142,11 @@ MediaPlayer *MediaSource::mediaplayer() const
     return mediaplayer_;
 }
 
+bool MediaSource::failed() const
+{
+    return mediaplayer_->failed();
+}
+
 void MediaSource::init()
 {
     if ( mediaplayer_->isOpen() ) {

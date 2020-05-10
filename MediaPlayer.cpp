@@ -36,6 +36,7 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     discoverer_ = nullptr;
 
     ready_ = false;
+    failed_ = false;
     seekable_ = false;
     isimage_ = false;
     interlaced_ = false;
@@ -90,6 +91,7 @@ void MediaPlayer::open(string path)
     if (!discoverer_) {
         Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
         g_clear_error (&err);
+        failed_ = true;
         return;
     }
 
@@ -105,6 +107,7 @@ void MediaPlayer::open(string path)
         Log::Warning("MediaPlayer %s Failed to start discovering URI '%s'\n", id_.c_str(), uri_.c_str());
         g_object_unref (discoverer_);
         discoverer_ = nullptr;
+        failed_ = true;
     }
 
     // and wait for discoverer to finish...
@@ -125,6 +128,7 @@ void MediaPlayer::execute_open()
     if (error != NULL) {
         Log::Warning("MediaPlayer %s Could not construct pipeline %s:\n%s", id_.c_str(), description.c_str(), error->message);
         g_clear_error (&error);
+        failed_ = true;
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", id_.c_str(), NULL);
@@ -134,6 +138,7 @@ void MediaPlayer::execute_open()
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
         Log::Warning("MediaPlayer %s Could not configure video frame info", id_.c_str());
+        failed_ = true;
         return;
     }
 
@@ -159,6 +164,7 @@ void MediaPlayer::execute_open()
     } 
     else {
         Log::Warning("MediaPlayer %s Could not configure  sink", id_.c_str());
+        failed_ = true;
         return;
     }
     gst_caps_unref (caps);
@@ -170,6 +176,7 @@ void MediaPlayer::execute_open()
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Could not open %s", id_.c_str(), uri_.c_str());
+        failed_ = true;
         return;
     }
 
@@ -181,6 +188,11 @@ void MediaPlayer::execute_open()
 bool MediaPlayer::isOpen() const
 {
     return ready_;
+}
+
+bool MediaPlayer::failed() const
+{
+    return failed_;
 }
 
 void MediaPlayer::close()
@@ -284,6 +296,7 @@ void MediaPlayer::play(bool on)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Failed to start", gst_element_get_name(pipeline_));
+        failed_ = true;
     }    
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
@@ -775,6 +788,7 @@ void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaP
         else {
             Log::Warning("MediaPlayer %s Failed to open %s\n%s", m->id_.c_str(), m->uri_.c_str(), m->discoverer_message_.str().c_str());
             m->discoverer_message_.clear();
+            m->failed_ = true;
         }
     }
 }
