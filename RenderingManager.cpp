@@ -358,6 +358,28 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
 float Rendering::Width() { return main_window_attributes_.viewport.x; }
 float Rendering::Height() { return main_window_attributes_.viewport.y; }
 
+float Rendering::MonitorWidth()
+{
+    GLFWmonitor *monitor = glfwGetWindowMonitor (main_window_);
+    if (!monitor)
+        monitor = glfwGetPrimaryMonitor ();
+    int xpos, ypos, width, height;
+    glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+
+    return width;
+}
+
+float Rendering::MonitorHeight()
+{
+    GLFWmonitor *monitor = glfwGetWindowMonitor (main_window_);
+    if (!monitor)
+        monitor = glfwGetPrimaryMonitor ();
+    int xpos, ypos, width, height;
+    glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+
+    return height;
+}
+
 void Rendering::ToggleFullscreen()
 {
     // if in fullscreen mode

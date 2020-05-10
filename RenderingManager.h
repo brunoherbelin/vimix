@@ -84,6 +84,9 @@ public:
     // for opengl pipeline in gstreamer
     void LinkPipeline( GstPipeline *pipeline );
 
+    float MonitorWidth();
+    float MonitorHeight();
+
 private:
 
     // loop update to begin new frame

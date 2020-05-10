@@ -154,8 +154,8 @@ bool UserInterface::Init()
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
-    int base_font_size = int ( Rendering::manager().Height() / 90.f );
-    Log::Info("Base font size %d", base_font_size);
+    int base_font_size = int ( Rendering::manager().MonitorHeight() / 90.f );
+    Log::Info("Base font size %d (%.1f)", base_font_size, Rendering::manager().MonitorHeight());
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", base_font_size);
