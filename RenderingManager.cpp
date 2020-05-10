@@ -126,7 +126,7 @@ bool Rendering::Init()
     // Rendering area (here same as window)
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
     glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
-    main_window_attributes_.clear_color = glm::vec3(COLOR_BGROUND);
+    main_window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.0);
 
     Log::Info("viewport %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
 
@@ -254,7 +254,7 @@ bool Rendering::Begin()
 
     // GL Colors
     glClearColor(main_window_attributes_.clear_color.r, main_window_attributes_.clear_color.g,
-                 main_window_attributes_.clear_color.b, 1.f);
+                 main_window_attributes_.clear_color.b, main_window_attributes_.clear_color.a);
     glClear(GL_COLOR_BUFFER_BIT);
 
     return true;
@@ -307,7 +307,7 @@ void Rendering::PushAttrib(RenderingAttrib ra)
 
     // apply Changes to OpenGL
     glViewport(0, 0, ra.viewport.x, ra.viewport.y);
-    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, 1.f);
+    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, ra.clear_color.a);
 }
 
 void Rendering::PopAttrib()
@@ -321,7 +321,7 @@ void Rendering::PopAttrib()
 
     // apply Changes to OpenGL
     glViewport(0, 0, ra.viewport.x, ra.viewport.y);
-    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, 1.f);
+    glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, ra.clear_color.a);
 }
 
 RenderingAttrib Rendering::currentAttrib()

@@ -23,8 +23,8 @@ public:
     bool blit(FrameBuffer *other);
 
     // clear color
-    inline void setClearColor(glm::vec3 color) { attrib_.clear_color = color; }
-    inline glm::vec3 clearColor() const { return attrib_.clear_color; }
+    inline void setClearColor(glm::vec4 color) { attrib_.clear_color = color; }
+    inline glm::vec4 clearColor() const { return attrib_.clear_color; }
 
     // width & height
     inline uint width() const { return attrib_.viewport.x; }

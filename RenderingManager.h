@@ -13,7 +13,7 @@ struct RenderingAttrib
 {
     RenderingAttrib() {}
     glm::ivec2 viewport;
-    glm::vec3 clear_color;
+    glm::vec4 clear_color;
 };
 
 

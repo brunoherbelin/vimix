@@ -10,7 +10,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer): texturei
 {
     attrib_.viewport.x = width;
     attrib_.viewport.y = height;
-    attrib_.clear_color = glm::vec3(0.f);
+    attrib_.clear_color = glm::vec4(0.f);
 }
 
 void FrameBuffer::init()
@@ -31,7 +31,7 @@ void FrameBuffer::init()
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, attrib_.viewport.x, attrib_.viewport.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, attrib_.viewport.x, attrib_.viewport.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
