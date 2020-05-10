@@ -32,7 +32,7 @@
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
 #define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Preview"
 #define IMGUI_TITLE_DELETE ICON_FA_BROOM " Delete?"
-#define IMGUI_RIGHT_ALIGN -100
+#define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()
 
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
 #define COLOR_NAVIGATOR 0.1f, 0.1f, 0.1f

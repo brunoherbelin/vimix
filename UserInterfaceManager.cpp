@@ -142,8 +142,9 @@ bool UserInterface::Init()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // TODO Enable Keyboard Controls?
     io.MouseDrawCursor = true;
+    io.FontGlobalScale = Settings::application.scale;
 
     // Setup Platform/Renderer bindings
     ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().main_window_, true);
@@ -152,16 +153,20 @@ bool UserInterface::Init()
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-    // Load Fonts (using resource manager, a temporary copy of the raw data is necessary)
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", 22);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", 22);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", 22);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", 20);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", 40);
-    io.FontGlobalScale = Settings::application.scale;
+    // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
+    int base_font_size = int ( Rendering::manager().Height() / 110.f );
+//    Log::Info("Base font size %d / %f", base_font_size, Rendering::manager().Height() );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", base_font_size);
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", base_font_size);
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", base_font_size);
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", base_font_size - 2);
+    // font for Navigator = 1.5 x base size, and less than 38 (unknown imgui bug for fonts larger than 40)
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(base_font_size+base_font_size/2, 38) );
 
     // Style
     ImGuiStyle& style = ImGui::GetStyle();
+
+    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
     style.WindowPadding.x = 12.f;
     style.WindowPadding.y = 6.f;
     style.FramePadding.x = 10.f;
@@ -864,11 +869,12 @@ void Navigator::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.50f, 0.50f));
 
     // calculate size of items based on text size and display dimensions
-    width = 2.f *  ImGui::GetTextLineHeightWithSpacing();
-    padding_width = 2.f * style.WindowPadding.x;
-    height = io.DisplaySize.y;
-    sourcelist_height = height - 6 * ImGui::GetTextLineHeight();
-    float icon_width = width - 2.f * style.WindowPadding.x;
+    width = 2.f *  ImGui::GetTextLineHeightWithSpacing();          // dimension of left bar depends on FONT_LARGE
+    pannel_width = 5.f * width;                                    // pannel is 5x the bar
+    padding_width = 2.f * style.WindowPadding.x;                   // panning for alighment
+    height = io.DisplaySize.y;                                     // cover vertically
+    sourcelist_height = height - 6.f * ImGui::GetTextLineHeight(); // space for 3 icons of view
+    float icon_width = width - 2.f * style.WindowPadding.x;        // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
 
     // Left bar top
@@ -1142,7 +1148,7 @@ void Navigator::RenderMainPannel()
         ImGui::Text("  ");
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::SliderFloat("Scale", &Settings::application.scale, 0.8f, 1.2f, "%.1f"))
+        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.8f, 1.2f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);

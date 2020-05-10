@@ -111,11 +111,11 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // draw the label right aligned
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
-    ImVec2 text_pos = draw_pos + ImVec2(frame_width -120.f -label_size.x, 0.f);
+    ImVec2 text_pos = draw_pos + ImVec2(frame_width -3.5f * ImGui::GetTextLineHeightWithSpacing() -label_size.x, 0.f);
     ImGui::RenderText(text_pos, label);
 
     // draw switch after the text
-    ImVec2 p = draw_pos + ImVec2(frame_width - 100.f, 0.f);
+    ImVec2 p = draw_pos + ImVec2(frame_width -3.1f * ImGui::GetTextLineHeightWithSpacing(), 0.f);
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 
@@ -777,6 +777,8 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
             ImGui::Text("Mouse  <invalid>");
 
         ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
+        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
+//        ImGui::Text("DPI Scale (%.1f,%.1f)", io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
         ImGui::Text("Rendering %.1f FPS", io.Framerate);
         ImGui::PopFont();
 
