@@ -108,7 +108,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     newSession();
 
     // auto load if Settings ask to
-    if ( Settings::application.recentSessions.automatic ) {
+    if ( Settings::application.recentSessions.load_at_start ) {
         if ( Settings::application.recentSessions.filenames.size() > 0 )
             open( Settings::application.recentSessions.filenames.back() );
     }
@@ -120,18 +120,23 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 
 void Mixer::update()
 {
-    // swap front and back sessions when loading is finished
+    // change session when threaded loading is finished
     if (sessionLoadFinished_) {
-        // finished loading, swap front and back sessions
-        swap();
-        // done
-        sessionFilename_ = sessionThreadFilename_;
         sessionLoadFinished_ = false;
-        Settings::application.recentSessions.push(sessionFilename_);
+        // successfully loading
+        if ( back_session_ ) {
+            // swap front and back sessions
+            swap();
+            // set session filename and remember it
+            sessionFilename_ = sessionThreadFilename_;
+            Settings::application.recentSessions.push(sessionFilename_);
+        }
     }
+    // confirm when threaded saving is finished
     if (sessionSaveFinished_) {
-        sessionFilename_ = sessionThreadFilename_;
         sessionSaveFinished_ = false;
+        // set (new) session filename and remember it
+        sessionFilename_ = sessionThreadFilename_;
         Settings::application.recentSessions.push(sessionFilename_);
     }
 
@@ -166,6 +171,9 @@ void Mixer::createSourceMedia(std::string path)
     MediaSource *m = new MediaSource();
     m->setPath(path);
 
+    // remember in recent media
+    Settings::application.recentMedia.push(path);
+
     // propose a new name based on uri
     renameSource(m, SystemToolkit::base_filename(path));
 
@@ -185,6 +193,13 @@ void Mixer::insertSource(Source *s)
     geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
 
 }
+
+
+void Mixer::deleteCurrentSource()
+{
+    deleteSource( currentSource() );
+}
+
 void Mixer::deleteSource(Source *s)
 {
     // in case..
@@ -228,15 +243,14 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     if ( current_source_ == it )
         return;
 
+    unsetCurrentSource();
+
     // change current
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(it);
         (*current_source_)->setOverlayVisible(true);
     }
-    // default
-    else
-        unsetCurrentSource();
 }
 
 void Mixer::setCurrentSource(Node *node)
@@ -416,5 +430,6 @@ void Mixer::newSession()
     mixing_.restoreSettings();
     geometry_.restoreSettings();
 
-    sessionFilename_ = "newsession.vmx";
+    // empty session file name (does not save)
+    sessionFilename_ = "";
 }

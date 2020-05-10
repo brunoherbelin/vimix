@@ -17,6 +17,7 @@ class Navigator
 {
     // geometry left bar
     float width;
+    float pannel_width;
     float height;
     float sourcelist_height;
     float padding_width;
@@ -32,7 +33,7 @@ class Navigator
     void RenderNewPannel();
     void RenderMainPannel();
 
-    char uri_[1024];
+    char media_path_[1024];
 
 public:
     Navigator();

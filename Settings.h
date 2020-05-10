@@ -38,10 +38,12 @@ struct History
 {
     std::string path;
     std::list<std::string> filenames;
-    bool automatic;
+    bool load_at_start;
+    bool save_on_exit;
 
     History() {
-        automatic = false;
+        load_at_start = false;
+        save_on_exit = false;
     }
     void push(std::string filename) {
         filenames.remove(filename);

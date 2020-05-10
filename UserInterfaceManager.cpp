@@ -443,6 +443,9 @@ void UserInterface::Render()
 
 void UserInterface::Terminate()
 {
+    if (Settings::application.recentSessions.save_on_exit)
+        Mixer::manager().save();
+
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -815,6 +818,7 @@ Navigator::Navigator()
     clearSelection();
     selected_source_index = -1;
     width = 100;
+    pannel_width = 5.f * width;
     height = 100;
     padding_width = 100;
 }
@@ -974,13 +978,14 @@ void Navigator::RenderSourcePannel(Source *s)
 {
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width, height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text("Source");
+        ImGui::Text("");
         ImGui::PopFont();
 
         static char buf5[128];
@@ -1001,7 +1006,6 @@ void Navigator::RenderSourcePannel(Source *s)
         // delete button
         ImGui::Text(" ");
         if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
-
             Mixer::manager().deleteSource(s);
         }
     }
@@ -1010,55 +1014,71 @@ void Navigator::RenderSourcePannel(Source *s)
 
 void Navigator::setMediaUri(std::string path)
 {
-//    std::string uri = SystemToolkit::path_to_uri(path);
-    sprintf(uri_, "%s", path.c_str());
+    sprintf(media_path_, "%s", path.c_str());
 }
 
 void Navigator::RenderNewPannel()
 {
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width, height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
     if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text("New Source");
+        ImGui::Text("");
         ImGui::PopFont();
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         static int new_source_type = 0;
         ImGui::Combo("Type", &new_source_type, "Media\0Render\0Clone\0");
         if (new_source_type == 0) {
+            // helper
+            ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
+            ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
             // browse folder
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
                 Log::Info("Settings::application.recentMedia.path %s", Settings::application.recentMedia.path.c_str());
                 std::thread (MediaDialogOpen, Settings::application.recentMedia.path).detach();
             }
-            // uri text entry
+            // combo recent
             ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::InputText("Uri", uri_, IM_ARRAYSIZE(uri_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
-                Mixer::manager().createSourceMedia(uri_);
+            if (ImGui::BeginCombo("##RecentMedia", "Select recent"))
+            {
+                std::for_each(Settings::application.recentMedia.filenames.begin(),
+                              Settings::application.recentMedia.filenames.end(), [](std::string& path) {
+                    int right = MIN( 40, path.size());
+                    if (ImGui::Selectable( path.substr( path.size() - right ).c_str() )) {
+                        UserInterface::manager().navigator.setMediaUri(path);
+                    }
+                });
+                ImGui::EndCombo();
+            }
+            // uri text entry
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::InputText("Path", media_path_, IM_ARRAYSIZE(media_path_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
+                Mixer::manager().createSourceMedia(media_path_);
                 selected_button[NAV_NEW] = false;
             }
 
-            // Description
-            ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
             // Validate button
             ImGui::Text(" ");
-            if ( ImGui::Button("Create !", ImVec2(5.f * width - padding_width, 0)) ) {
-                Mixer::manager().createSourceMedia(uri_);
+            if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
+                Mixer::manager().createSourceMedia(media_path_);
                 selected_button[NAV_NEW] = false;
             }
         }
         else if (new_source_type == 1){
-
+            // helper
+            ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("A Render source replicates the rendering of the output.");
         }
         else {
-
+            // helper
+            ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("A Clone source duplicates the content of another source.");
         }
 
@@ -1071,18 +1091,19 @@ void Navigator::RenderMainPannel()
 {
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2( 5.f * width, height), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width, height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
     if (ImGui::Begin("##navigatorMain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text(APP_NAME);
+        ImGui::Text("");
         ImGui::PopFont();
 
         ImGui::Text("Session");
         ImGui::SameLine();
-        ImGui::SetCursorPosX( 5.f * width IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(pannel_width IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginMenu("File"))
         {
             UserInterface::manager().showMenuFile();
@@ -1092,7 +1113,7 @@ void Navigator::RenderMainPannel()
         // combo box with list of recent session files from Settings
         static bool recentselected = false;
         recentselected = false;
-        if (ImGui::BeginCombo("Recent", "Select"))
+        if (ImGui::BeginCombo("##Recent", "Open recent"))
         {
             std::for_each(Settings::application.recentSessions.filenames.begin(),
                           Settings::application.recentSessions.filenames.end(), [](std::string& filename) {
@@ -1106,7 +1127,8 @@ void Navigator::RenderMainPannel()
         }
         if (recentselected)
             hidePannel();
-        ImGuiToolkit::ButtonSwitch( "Load most recent on start", &Settings::application.recentSessions.automatic);
+        ImGuiToolkit::ButtonSwitch( "Load most recent on start", &Settings::application.recentSessions.load_at_start);
+        ImGuiToolkit::ButtonSwitch( "Save on exit", &Settings::application.recentSessions.save_on_exit);
 
         ImGui::Text(" ");
         ImGui::Text("Windows");
@@ -1130,7 +1152,7 @@ void Navigator::RenderMainPannel()
         // Bottom aligned
         ImGui::SetCursorPosY(height - 4.f * ImGui::GetTextLineHeightWithSpacing());
         ImGui::Text("About");
-        if ( ImGui::Button( " About vimix", ImVec2(5.f * width - padding_width, 0)) )
+        if ( ImGui::Button( " About vimix", ImVec2(pannel_width - padding_width, 0)) )
             UserInterface::manager().show_about = true;
         if ( ImGui::Button("About ImGui"))
             UserInterface::manager().show_imgui_about = true;
