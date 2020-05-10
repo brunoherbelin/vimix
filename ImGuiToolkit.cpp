@@ -130,7 +130,7 @@ void ImGuiToolkit::Icon(int i, int j)
 
     ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(24, 24), uv0, uv1);
+    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1);
 }
 
 bool ImGuiToolkit::ButtonIcon(int i, int j)
@@ -143,7 +143,7 @@ bool ImGuiToolkit::ButtonIcon(int i, int j)
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
 
     ImGui::PushID( i*20 + j);
-    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(24,24), uv0, uv1, 3);
+    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
     ImGui::PopID();
 
     return ret;

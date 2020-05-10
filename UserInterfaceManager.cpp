@@ -154,8 +154,8 @@ bool UserInterface::Init()
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
-    int base_font_size = int ( Rendering::manager().Height() / 110.f );
-//    Log::Info("Base font size %d / %f", base_font_size, Rendering::manager().Height() );
+    int base_font_size = int ( Rendering::manager().Height() / 90.f );
+    Log::Info("Base font size %d", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", base_font_size);
@@ -166,7 +166,7 @@ bool UserInterface::Init()
     // Style
     ImGuiStyle& style = ImGui::GetStyle();
 
-    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
+//    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
     style.WindowPadding.x = 12.f;
     style.WindowPadding.y = 6.f;
     style.FramePadding.x = 10.f;
