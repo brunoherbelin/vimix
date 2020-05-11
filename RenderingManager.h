@@ -24,6 +24,7 @@ class Rendering
     // GLFW integration in OS window management
     class GLFWwindow* main_window_;
     std::string glsl_version;
+    float dpi_scale_;
 
     // Private Constructor
     Rendering();
@@ -86,6 +87,7 @@ public:
 
     float MonitorWidth();
     float MonitorHeight();
+    inline float DPIScale() const { return dpi_scale_; }
 
 private:
 

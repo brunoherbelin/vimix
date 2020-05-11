@@ -149,13 +149,12 @@ bool UserInterface::Init()
     // Setup Platform/Renderer bindings
     ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().main_window_, true);
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
-    ImGui_ImplGlfw_NewFrame();
 
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
-    float base_font_size =  (Rendering::manager().MonitorHeight() * ImGui::GetIO().DisplayFramebufferScale.y) / 100.f ;
+    float base_font_size =  (Rendering::manager().MonitorHeight() * Rendering::manager().DPIScale()) / 100.f ;
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) );
@@ -165,8 +164,8 @@ bool UserInterface::Init()
 
     // info
     Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().MonitorWidth(), Rendering::manager().MonitorHeight());
-    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
-    Log::Info("Font size %d", base_font_size);
+    Log::Info("DPI Scale %.1f", Rendering::manager().DPIScale());
+    Log::Info("Font size %.1f", base_font_size);
 
     // Style
     ImGuiStyle& style = ImGui::GetStyle();

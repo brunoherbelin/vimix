@@ -64,6 +64,7 @@ Rendering::Rendering()
 {
     main_window_ = nullptr;
     request_screenshot_ = false;
+    dpi_scale_ = 1.f;
 }
 
 bool Rendering::Init()
@@ -127,6 +128,9 @@ bool Rendering::Init()
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
     glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
     main_window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.0);
+
+    // DPI scaling (retina)
+    dpi_scale_ = float(main_window_attributes_.viewport.y) / float(winset.h);
 
     // Gstreamer link to context
     g_setenv ("GST_GL_API", "opengl3", FALSE);
