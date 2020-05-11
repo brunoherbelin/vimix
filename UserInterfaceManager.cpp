@@ -160,12 +160,12 @@ bool UserInterface::Init()
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", int(base_font_size) - 2);
-    // font for Navigator = 1.5 x base size, and less than 38 (unknown imgui bug for fonts larger than 40)
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f) , 38) );
+    // font for Navigator = 1.5 x base size (with low oversampling)
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f), 50), 1 );
 
     // info
     Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().MonitorWidth(), Rendering::manager().MonitorHeight());
-    Log::Info("Font size %df", int(base_font_size) );
+    Log::Info("Font size %d", int(base_font_size) );
 
     // Style
     ImGuiStyle& style = ImGui::GetStyle();

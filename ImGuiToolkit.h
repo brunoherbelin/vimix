@@ -39,7 +39,7 @@ namespace ImGuiToolkit
         FONT_MONO,
         FONT_LARGE
     } font_style;
-    void SetFont(font_style type, const std::string &ttf_font_name, int pointsize);
+    void SetFont(font_style type, const std::string &ttf_font_name, int pointsize, int oversample = 2);
     void PushFont(font_style type);
 
     // color of gui items

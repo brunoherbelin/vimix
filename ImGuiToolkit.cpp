@@ -695,7 +695,7 @@ void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, c
 }
 
 
-void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize)
+void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
 {
     // Font Atlas ImGui Management
     ImGuiIO& io = ImGui::GetIO();    
@@ -705,8 +705,9 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
     ImFontConfig font_config;
     fontname.copy(font_config.Name, 40);    
     font_config.FontDataOwnedByAtlas = false; // data will be copied in font atlas
-    font_config.OversampleH = 5;
-    font_config.OversampleV = 5;
+    // TODO : calculate oversampling as function of the maximum texture size
+    font_config.OversampleH = CLAMP( oversample * 2 + 1, 1, 7 );
+    font_config.OversampleV = CLAMP( oversample, 0, 5 );
 
     // read font in Resource manager
     size_t data_size = 0;
