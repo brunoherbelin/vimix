@@ -128,8 +128,6 @@ bool Rendering::Init()
     glViewport(0, 0, main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
     main_window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.0);
 
-    Log::Info("viewport %d x %d", main_window_attributes_.viewport.x, main_window_attributes_.viewport.y);
-
     // Gstreamer link to context
     g_setenv ("GST_GL_API", "opengl3", FALSE);
     gst_init (NULL, NULL);

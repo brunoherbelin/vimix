@@ -155,7 +155,7 @@ bool UserInterface::Init()
 
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     int base_font_size = int ( Rendering::manager().MonitorHeight() / 90.f );
-    Log::Info("Base font size %d (%.1f)", base_font_size, Rendering::manager().MonitorHeight());
+    Log::Info("Base font size %d", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", base_font_size);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", base_font_size);
@@ -1054,7 +1054,6 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
             // browse folder
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
-                Log::Info("Settings::application.recentMedia.path %s", Settings::application.recentMedia.path.c_str());
                 std::thread (MediaDialogOpen, Settings::application.recentMedia.path).detach();
             }
             // combo recent

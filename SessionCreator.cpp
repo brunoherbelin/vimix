@@ -74,7 +74,6 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
             // TODO : create other types of source
 
         }
-        Log::Info("Created %d Sources", counter);
     }
     else
         Log::Warning("Session seems empty.");
