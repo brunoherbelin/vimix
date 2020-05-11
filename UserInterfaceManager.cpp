@@ -153,8 +153,9 @@ bool UserInterface::Init()
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-    // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
+    //  Estalish the base size from the resolution of the monitor
     float base_font_size =  (Rendering::manager().MonitorHeight() * Rendering::manager().DPIScale()) / 100.f ;
+    // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) );
@@ -164,8 +165,7 @@ bool UserInterface::Init()
 
     // info
     Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().MonitorWidth(), Rendering::manager().MonitorHeight());
-    Log::Info("DPI Scale %.1f", Rendering::manager().DPIScale());
-    Log::Info("Font size %.1f", base_font_size);
+    Log::Info("Font size %df", int(base_font_size) );
 
     // Style
     ImGuiStyle& style = ImGui::GetStyle();

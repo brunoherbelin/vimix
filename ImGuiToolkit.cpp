@@ -705,8 +705,8 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
     ImFontConfig font_config;
     fontname.copy(font_config.Name, 40);    
     font_config.FontDataOwnedByAtlas = false; // data will be copied in font atlas
-    font_config.OversampleH = 7;
-    font_config.OversampleV = 3;
+    font_config.OversampleH = 5;
+    font_config.OversampleV = 5;
 
     // read font in Resource manager
     size_t data_size = 0;

@@ -376,6 +376,7 @@ float Rendering::MonitorHeight()
     GLFWmonitor *monitor = glfwGetWindowMonitor (main_window_);
     if (!monitor)
         monitor = glfwGetPrimaryMonitor ();
+    // TODO : detect in which monitor is the main window and return the height for that monitor
     int xpos, ypos, width, height;
     glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
 
