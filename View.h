@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "Scene.h"
-class FrameBuffer;
+#include "FrameBuffer.h"
 class Source;
 
 class View
@@ -57,7 +57,10 @@ public:
 
     void draw () override;
 
-    void setResolution (uint width, uint height);
+    void setResolution (FrameBuffer::ResolutionAspectRatio aspect_ratio, FrameBuffer::ResolutionHeight height) {}
+    void setResolution (glm::vec3 resolution);
+    glm::vec3 resolution() const { return frame_buffer_->resolution(); }
+
     inline FrameBuffer *frameBuffer () const { return frame_buffer_; }
 
 };

@@ -93,7 +93,6 @@ public:
  */
 class Primitive : public Node {
 
-
 public:
     Primitive(Shader *s = nullptr) : Node(), shader_(s), vao_(0), drawMode_(0), drawCount_(0) {}
     virtual ~Primitive();
@@ -156,8 +155,6 @@ private:
  * When a group is deleted, the children are NOT deleted.
  */
 class Group : public Node {
-
-    friend class Scene;
 
 public:
     Group() : Node() {}

@@ -14,7 +14,6 @@ using namespace tinyxml2;
 Settings::Application Settings::application;
 static string settingsFilename = "";
 
-
 void Settings::Save()
 {
     XMLDocument xmlDoc;

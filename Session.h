@@ -12,28 +12,29 @@ public:
     ~Session();
 
     // add or remove sources
-    SourceList::iterator addSource(Source *s);
-    SourceList::iterator deleteSource(Source *s);
+    SourceList::iterator addSource (Source *s);
+    SourceList::iterator deleteSource (Source *s);
 
     // management of list of sources
-    SourceList::iterator begin();
-    SourceList::iterator end();
-    SourceList::iterator find(int index);
-    SourceList::iterator find(Source *s);
-    SourceList::iterator find(std::string name);
-    SourceList::iterator find(Node *node);
+    SourceList::iterator begin ();
+    SourceList::iterator end ();
+    SourceList::iterator find (int index);
+    SourceList::iterator find (Source *s);
+    SourceList::iterator find (std::string name);
+    SourceList::iterator find (Node *node);
 
     uint numSource() const;
-    int index(SourceList::iterator it) const;
+    int index (SourceList::iterator it) const;
 
     // update all sources
-    void update(float dt);
+    void update (float dt);
 
     // result of render
-    inline FrameBuffer *frame() const { return render_.frameBuffer(); }
+    inline FrameBuffer *frame () const { return render_.frameBuffer(); }
+    void setResolution(glm::vec3 resolution);
 
     // configuration for group nodes of views
-    inline Group *config(View::Mode m) const { return config_.at(m); }
+    inline Group *config (View::Mode m) const { return config_.at(m); }
 
 protected:
     RenderView render_;

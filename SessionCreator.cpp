@@ -85,13 +85,17 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
         // ok, ready to read views
         SessionCreator::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
         SessionCreator::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
+        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
     }
 }
 
 void SessionCreator::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
 {
-    XMLElement *node = xml->FirstChildElement("Node");
-    if (node) {
+    if (xml != nullptr){
+        XMLElement *node = xml->FirstChildElement("Node");
+        if ( !node || std::string(node->Name()).find("Node") == std::string::npos )
+            return;
+
         XMLElement *scaleNode = node->FirstChildElement("scale");
         tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), n.scale_);
         XMLElement *translationNode = node->FirstChildElement("translation");

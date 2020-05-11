@@ -1154,6 +1154,13 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, "Ctrl + L");
 
+//        ImGui::Text("  ");
+//        ImGui::Text("Rendering");
+//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//        if ( ImGui::Combo("Aspect ratio", &Settings::application.output.resolution, Settings::resolution_name, IM_ARRAYSIZE(Settings::resolution_name) ) ){
+//            Settings::application.output.update();
+//        }
+
         ImGui::Text("  ");
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);

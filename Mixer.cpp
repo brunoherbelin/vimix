@@ -88,6 +88,10 @@ static void saveSession(const std::string& filename, Session *session)
         XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
         geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
         views->InsertEndChild(geometry);
+
+        XMLElement *render = xmlDoc.NewElement( "Rendering" );
+        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
+        views->InsertEndChild(render);
     }
 
     // save file to disk
@@ -400,6 +404,9 @@ void Mixer::swap()
     // optional copy of views config
     mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );
     geometry_.scene.root()->copyTransform( session_->config(View::GEOMETRY) );
+
+    // set resolution
+    session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
     // no current source
     current_source_ = session_->end();

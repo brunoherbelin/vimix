@@ -6,10 +6,27 @@
 
 #include <glad/glad.h>
 
+const char* FrameBuffer::aspect_ratio_name[4] = { "4:3", "3:2", "16:10", "16:9" };
+glm::vec2 FrameBuffer::aspect_ratio_size[4] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) };
+const char* FrameBuffer::resolution_name[4] = { "720p", "1080p", "1440", "4K" };
+float FrameBuffer::resolution_height[4] = { 720.f, 1080.f, 1440.f, 2160.f };
+
+FrameBuffer::FrameBuffer(ResolutionAspectRatio aspect_ratio, ResolutionHeight height): textureid_(0), framebufferid_(0), usedepth_(false)
+{
+    float width = aspect_ratio_size[aspect_ratio].x * resolution_height[height] / aspect_ratio_size[aspect_ratio].y;
+    attrib_.viewport = glm::ivec2( int(width), resolution_height[height] );
+    attrib_.clear_color = glm::vec4(0.f);
+}
+
+FrameBuffer::FrameBuffer(glm::vec3 resolution): textureid_(0), framebufferid_(0), usedepth_(false)
+{
+    attrib_.viewport = glm::ivec2(resolution);
+    attrib_.clear_color = glm::vec4(0.f);
+}
+
 FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer): textureid_(0), framebufferid_(0), usedepth_(useDepthBuffer)
 {
-    attrib_.viewport.x = width;
-    attrib_.viewport.y = height;
+    attrib_.viewport = glm::ivec2(width, height);
     attrib_.clear_color = glm::vec4(0.f);
 }
 
@@ -68,6 +85,12 @@ float FrameBuffer::aspectRatio() const
     return static_cast<float>(width()) / static_cast<float>(height());
 }
 
+
+glm::vec3 FrameBuffer::resolution() const
+{
+    return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
+}
+
 void FrameBuffer::bind()
 {
     if (!framebufferid_)
@@ -96,7 +119,6 @@ void FrameBuffer::release()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
-
 
 bool FrameBuffer::blit(FrameBuffer *other)
 {

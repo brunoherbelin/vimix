@@ -8,6 +8,7 @@
 Session::Session()
 {
     config_[View::RENDERING] = new Group;
+    config_[View::RENDERING]->scale_ = render_.resolution();
     config_[View::GEOMETRY] = new Group;
     config_[View::MIXING] = new Group;
 }
@@ -71,6 +72,12 @@ SourceList::iterator Session::deleteSource(Source *s)
 }
 
 
+void Session::setResolution(glm::vec3 resolution)
+{
+    render_.setResolution(resolution);
+    config_[View::RENDERING]->scale_ = resolution;
+}
+
 SourceList::iterator Session::begin()
 {
     return sources_.begin();
@@ -127,4 +134,5 @@ int Session::index(SourceList::iterator it) const
     }
     return index;
 }
+
 

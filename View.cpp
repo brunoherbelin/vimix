@@ -182,21 +182,20 @@ uint MixingView::textureMixingQuadratic()
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr)
 {
     // application default
-    glm::vec3 resolution(1280.f, 720.f, 0.f);
+    glm::vec3 default_resolution(1280.f, 720.f, 0.f);
 
     // read default settings
     if ( Settings::application.views[View::RENDERING].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[View::RENDERING].name = "Render";
         // store default setting
-        Settings::application.views[View::RENDERING].default_scale = resolution;
+        Settings::application.views[View::RENDERING].default_scale = default_resolution;
     }
     else
-        resolution = Settings::application.views[View::RENDERING].default_scale;
+        default_resolution = Settings::application.views[View::RENDERING].default_scale;
 
     // set resolution to settings or default
-    setResolution( int(resolution.x), int(resolution.y));
-
+    setResolution( default_resolution );
 }
 
 RenderView::~RenderView()
@@ -206,13 +205,24 @@ RenderView::~RenderView()
 }
 
 
-void RenderView::setResolution(uint width, uint height)
+void RenderView::setResolution(glm::vec3 resolution)
 {
+    if (resolution.x < 100.f || resolution.y < 100)
+        resolution = Settings::application.views[View::RENDERING].default_scale;
+
     if (frame_buffer_)
         delete frame_buffer_;
 
-    frame_buffer_ = new FrameBuffer(width, height);
+    frame_buffer_ = new FrameBuffer(resolution);
 }
+
+//void RenderView::setResolution(glm::vec3 resolution)
+//{
+//    if (frame_buffer_)
+//        delete frame_buffer_;
+
+//    frame_buffer_ = new FrameBuffer(resolution);
+//}
 
 void RenderView::draw()
 {
