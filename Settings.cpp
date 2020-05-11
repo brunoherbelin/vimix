@@ -60,6 +60,8 @@ void Settings::Save()
     applicationNode->SetAttribute("stats_corner", application.stats_corner);
     applicationNode->SetAttribute("logs", application.logs);
     applicationNode->SetAttribute("toolbox", application.toolbox);
+    applicationNode->SetAttribute("framebuffer_ar", application.framebuffer_ar);
+    applicationNode->SetAttribute("framebuffer_h", application.framebuffer_h);
     pRoot->InsertEndChild(applicationNode);
 
     // bloc views
@@ -162,6 +164,8 @@ void Settings::Load()
     pElement->QueryBoolAttribute("logs", &application.logs);
     pElement->QueryBoolAttribute("toolbox", &application.toolbox);
     pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
+    pElement->QueryIntAttribute("framebuffer_ar", &application.framebuffer_ar);
+    pElement->QueryIntAttribute("framebuffer_h", &application.framebuffer_h);
 
     // bloc windows
 	{

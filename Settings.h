@@ -72,6 +72,8 @@ struct Application
     // Settings of Views
     int current_view;
     std::map<int, ViewConfig> views;
+    int framebuffer_ar;
+    int framebuffer_h;
 
     // multiple windows handling
     // TODO: manage other windows
@@ -92,6 +94,8 @@ struct Application
         shader_editor = false;
         toolbox = false;
         current_view = 1;
+        framebuffer_ar = 3;
+        framebuffer_h = 1;
         windows.push_back(WindowConfig(APP_TITLE));
     }
 

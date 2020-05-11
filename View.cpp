@@ -181,21 +181,8 @@ uint MixingView::textureMixingQuadratic()
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr)
 {
-    // application default
-    glm::vec3 default_resolution(1280.f, 720.f, 0.f);
-
-    // read default settings
-    if ( Settings::application.views[View::RENDERING].name.empty() ) {
-        // no settings found: store application default
-        Settings::application.views[View::RENDERING].name = "Render";
-        // store default setting
-        Settings::application.views[View::RENDERING].default_scale = default_resolution;
-    }
-    else
-        default_resolution = Settings::application.views[View::RENDERING].default_scale;
-
     // set resolution to settings or default
-    setResolution( default_resolution );
+    setResolution();
 }
 
 RenderView::~RenderView()
@@ -208,21 +195,13 @@ RenderView::~RenderView()
 void RenderView::setResolution(glm::vec3 resolution)
 {
     if (resolution.x < 100.f || resolution.y < 100)
-        resolution = Settings::application.views[View::RENDERING].default_scale;
+        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.framebuffer_ar, Settings::application.framebuffer_h);
 
     if (frame_buffer_)
         delete frame_buffer_;
 
     frame_buffer_ = new FrameBuffer(resolution);
 }
-
-//void RenderView::setResolution(glm::vec3 resolution)
-//{
-//    if (frame_buffer_)
-//        delete frame_buffer_;
-
-//    frame_buffer_ = new FrameBuffer(resolution);
-//}
 
 void RenderView::draw()
 {

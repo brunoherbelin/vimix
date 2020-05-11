@@ -461,10 +461,6 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuFile()
 {
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
-        Mixer::manager().newSession();
-        navigator.hidePannel();
-    }
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
         // launch file dialog to open a session file
         std::thread (FileDialogOpen, Settings::application.recentSessions.path).detach();
@@ -478,6 +474,18 @@ void UserInterface::showMenuFile()
         std::thread (FileDialogSave, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
+
+    ImGui::Separator();
+
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
+        Mixer::manager().newSession();
+        navigator.hidePannel();
+    }
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
+    ImGui::Combo("##AR", &Settings::application.framebuffer_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
+    ImGui::Combo("##HEIGHT", &Settings::application.framebuffer_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
@@ -1124,10 +1132,11 @@ void Navigator::RenderMainPannel()
             UserInterface::manager().showMenuFile();
             ImGui::EndMenu();
         }
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+
         // combo box with list of recent session files from Settings
         static bool recentselected = false;
         recentselected = false;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginCombo("##Recent", "Open recent"))
         {
             std::for_each(Settings::application.recentSessions.filenames.begin(),
@@ -1153,13 +1162,6 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, "Ctrl + L");
-
-//        ImGui::Text("  ");
-//        ImGui::Text("Rendering");
-//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//        if ( ImGui::Combo("Aspect ratio", &Settings::application.output.resolution, Settings::resolution_name, IM_ARRAYSIZE(Settings::resolution_name) ) ){
-//            Settings::application.output.update();
-//        }
 
         ImGui::Text("  ");
         ImGui::Text("Appearance");

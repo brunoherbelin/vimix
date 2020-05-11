@@ -428,7 +428,7 @@ void Mixer::newSession()
         delete back_session_;
 
     // create empty session
-    back_session_ = new Session;
+    back_session_ = new Session;   
 
     // swap current with empty
     swap();

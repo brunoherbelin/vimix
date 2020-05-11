@@ -57,8 +57,7 @@ public:
 
     void draw () override;
 
-    void setResolution (FrameBuffer::ResolutionAspectRatio aspect_ratio, FrameBuffer::ResolutionHeight height) {}
-    void setResolution (glm::vec3 resolution);
+    void setResolution (glm::vec3 resolution = glm::vec3(0.f));
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
     inline FrameBuffer *frameBuffer () const { return frame_buffer_; }

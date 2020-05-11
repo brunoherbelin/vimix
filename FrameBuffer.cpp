@@ -11,12 +11,15 @@ glm::vec2 FrameBuffer::aspect_ratio_size[4] = { glm::vec2(4.f,3.f), glm::vec2(3.
 const char* FrameBuffer::resolution_name[4] = { "720p", "1080p", "1440", "4K" };
 float FrameBuffer::resolution_height[4] = { 720.f, 1080.f, 1440.f, 2160.f };
 
-FrameBuffer::FrameBuffer(ResolutionAspectRatio aspect_ratio, ResolutionHeight height): textureid_(0), framebufferid_(0), usedepth_(false)
+
+glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
 {
-    float width = aspect_ratio_size[aspect_ratio].x * resolution_height[height] / aspect_ratio_size[aspect_ratio].y;
-    attrib_.viewport = glm::ivec2( int(width), resolution_height[height] );
-    attrib_.clear_color = glm::vec4(0.f);
+    float width = aspect_ratio_size[ar].x * resolution_height[h] / aspect_ratio_size[ar].y;
+    glm::vec3 res = glm::vec3( width, resolution_height[h] , 0.f);
+
+    return res;
 }
+
 
 FrameBuffer::FrameBuffer(glm::vec3 resolution): textureid_(0), framebufferid_(0), usedepth_(false)
 {
