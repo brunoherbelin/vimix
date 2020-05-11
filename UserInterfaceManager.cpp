@@ -149,38 +149,41 @@ bool UserInterface::Init()
     // Setup Platform/Renderer bindings
     ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().main_window_, true);
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
+    ImGui_ImplGlfw_NewFrame();
 
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
-    int base_font_size = int ( Rendering::manager().MonitorHeight() / 90.f );
-    Log::Info("Base font size %d", base_font_size);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", base_font_size);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", base_font_size);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", base_font_size);
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", base_font_size - 2);
+    float base_font_size =  (Rendering::manager().MonitorHeight() * ImGui::GetIO().DisplayFramebufferScale.y) / 100.f ;
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", int(base_font_size) - 2);
     // font for Navigator = 1.5 x base size, and less than 38 (unknown imgui bug for fonts larger than 40)
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(base_font_size+base_font_size/2, 38) );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f) , 38) );
+
+    // info
+    Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().MonitorWidth(), Rendering::manager().MonitorHeight());
+    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
+    Log::Info("Font size %d", base_font_size);
 
     // Style
     ImGuiStyle& style = ImGui::GetStyle();
-
-//    Log::Info("DPI Scale (%.1f,%.1f)", ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplayFramebufferScale.y);
-    style.WindowPadding.x = 12.f;
-    style.WindowPadding.y = 6.f;
-    style.FramePadding.x = 10.f;
-    style.FramePadding.y = 5.f;
-    style.IndentSpacing = 22.f;
-    style.ItemSpacing.x = 12.f;
-    style.ItemSpacing.y = 4.f;
-    style.ItemInnerSpacing.x = 8.f;
-    style.ItemInnerSpacing.y = 3.f;
-    style.WindowRounding = 8.f;
-    style.ChildRounding = 4.f;
-    style.FrameRounding = 4.f;
-    style.GrabRounding = 2.f;
-    style.GrabMinSize = 14.f;
+    style.WindowPadding.x = base_font_size / 2.5f;
+    style.WindowPadding.y = style.WindowPadding.x / 2.f;
+    style.FramePadding.x = base_font_size / 2.5f;
+    style.FramePadding.y = style.FramePadding.x / 2.f;
+    style.IndentSpacing = base_font_size;
+    style.ItemSpacing.x = base_font_size / 2.f;
+    style.ItemSpacing.y = style.ItemSpacing.x / 3.f;
+    style.ItemInnerSpacing.x = base_font_size / 2.5f;
+    style.ItemInnerSpacing.y = style.ItemInnerSpacing.x / 2.f;
+    style.WindowRounding = base_font_size / 2.5f;
+    style.ChildRounding = style.WindowRounding / 2.f;
+    style.FrameRounding = style.WindowRounding / 2.f;
+    style.GrabRounding = style.FrameRounding / 2.f;
+    style.GrabMinSize = base_font_size / 1.5f;
     style.Alpha = 0.92f;
 
     // prevent bug with imgui clipboard (null at start)
