@@ -46,6 +46,7 @@ struct History
         save_on_exit = false;
     }
     void push(std::string filename) {
+        if (filename.empty()) return;
         filenames.remove(filename);
         filenames.push_front(filename);
         if (filenames.size() > MAX_RECENT_HISTORY)

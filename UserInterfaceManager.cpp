@@ -70,7 +70,7 @@ static void FileDialogOpen(std::string path)
      char const * open_file_name;
      char const * open_pattern[1] = { "*.vmx" };
 
-     open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, nullptr, 0);
+     open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
 
      if (!open_file_name)
         FileDialogFilename_ = "";
@@ -112,9 +112,9 @@ static void MediaDialogOpen(std::string path)
      MediaDialogFinished_ = false;
 
      char const * open_file_name;
-     char const * open_pattern[1] = { "*.mp4" };
+     char const * open_pattern[15] = { "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif" };
 
-     open_file_name = tinyfd_openFileDialog( "Open a Media file", path.c_str(), 1, open_pattern, nullptr, 0);
+     open_file_name = tinyfd_openFileDialog( "Open a Media file", path.c_str(), 15, open_pattern, "Video or image", 0);
 
      if (!open_file_name)
         MediaDialogUri_ = "";
@@ -1090,8 +1090,11 @@ void Navigator::RenderNewPannel()
             // Validate button
             ImGui::Text(" ");
             if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
-                Mixer::manager().createSourceMedia(media_path_);
-                selected_button[NAV_NEW] = false;
+
+                if ( SystemToolkit::file_exists(media_path_) ) {
+                    Mixer::manager().createSourceMedia(media_path_);
+                    selected_button[NAV_NEW] = false;
+                }
             }
         }
         else if (new_source_type == 1){

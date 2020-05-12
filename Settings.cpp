@@ -239,7 +239,9 @@ void Settings::Load()
                 XMLElement* path = pSession->FirstChildElement("path");
                 for( ; path ; path = path->NextSiblingElement())
                 {
-                    application.recentSessions.push( std::string (path->GetText()) );
+                    const char *p = path->GetText();
+                    if (p)
+                    application.recentSessions.push( std::string (p) );
                 }
             }
             // recent media uri
@@ -255,7 +257,9 @@ void Settings::Load()
                 XMLElement* path = pMedia->FirstChildElement("path");
                 for( ; path ; path = path->NextSiblingElement())
                 {
-                    application.recentMedia.push( std::string (path->GetText()) );
+                    const char *p = path->GetText();
+                    if (p)
+                    application.recentMedia.push( std::string (p) );
                 }
             }
         }

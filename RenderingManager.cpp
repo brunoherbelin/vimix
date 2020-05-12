@@ -43,6 +43,8 @@
 #include "Log.h"
 #include "Resource.h"
 #include "Settings.h"
+#include "Mixer.h"
+#include "SystemToolkit.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
 
@@ -424,8 +426,21 @@ float Rendering::AspectRatio()
 void Rendering::FileDropped(GLFWwindow* window, int path_count, const char* paths[])
 {
     for (int i = 0; i < path_count; ++i) {
+        std::string filename(paths[i]);
+        if (filename.empty())
+            break;
+        std::string ext = SystemToolkit::extension_filename(filename);
+//        Log::Info("Dropped file %s %s\n", filename.c_str(), ext.c_str());
+        if ( ext == "vmx" )
+        {
+            // try to load a session
+            Mixer::manager().open(filename);
+        }
+        else {
+            // try to create a media source
+            Mixer::manager().createSourceMedia( filename );
+        }
 
-        Log::Info("Dropped file %s\n", paths[i]);
     }
 }
 
