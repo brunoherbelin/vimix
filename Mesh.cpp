@@ -377,24 +377,28 @@ void Mesh::accept(Visitor& v)
 
 Frame::Frame(Style style) : Node()
 {
+    overlay_ = nullptr;
+    shadow_  = nullptr;
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (style) {
-    case SHARP_LARGE:
-        border_  = new Mesh("mesh/border_large_sharp.ply");
+    case SHARP_HANDLES:
+        border_  = new Mesh("mesh/border_handles_sharp.ply");
+        overlay_ = new Mesh("mesh/border_handles_overlay.ply");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case SHARP_THIN:
         border_  = new Mesh("mesh/border_sharp.ply");
         break;
     case ROUND_LARGE:
         border_  = new Mesh("mesh/border_large_round.ply");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     default:
     case ROUND_THIN:
         border_  = new Mesh("mesh/border_round.ply");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     }
-    overlay_ = nullptr;
-    shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
-    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
 Frame::~Frame()
@@ -416,7 +420,8 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( visible_ ) { // not absolutely necessary but saves some CPU time..
 
         // shadow
-        shadow_->draw( modelview * transform_, projection);
+        if(shadow_)
+            shadow_->draw( modelview * transform_, projection);
 
         if (overlay_) {
             // overlat is not altered

@@ -19,7 +19,7 @@ void PickingVisitor::visit(Node &n)
 {
 
       modelview_ *= n.transform_;
-//      modelview_ = modelview_ * transform(n.translation_, n.rotation_, n.scale_);
+//      modelview_ *= transform(n.translation_, n.rotation_, n.scale_);
 //    Log::Info("Node %d", n.id());
 //    Log::Info("%s", glm::to_string(modelview_).c_str());
 }
@@ -65,7 +65,7 @@ void PickingVisitor::visit(Surface &n)
     // if P is inside [LL UR] rectangle:
     if ( P.x > LL.x && P.x < UR.x && P.y > LL.y && P.y < UR.y )
         // add this surface to the nodes picked
-        nodes_.push_back(&n);
+        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
 }
 
 void PickingVisitor::visit(LineSquare &)
@@ -89,7 +89,7 @@ void PickingVisitor::visit(LineCircle &n)
 
     float r = glm::length( glm::vec2(P) );
     if ( r < 1.02 && r > 0.98)
-        nodes_.push_back(&n);
+        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
 }
 
 void PickingVisitor::visit(Scene &n)

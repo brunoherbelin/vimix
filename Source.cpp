@@ -33,13 +33,16 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
 
     // default geometry nodes
     groups_[View::GEOMETRY] = new Group;
+    frame = new Frame(Frame::SHARP_THIN);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 0.9f);
+    groups_[View::GEOMETRY]->attach(frame);
 
     // will be associated to nodes later
     blendingshader_ = new ImageShader;
     rendershader_ = new ImageProcessingShader;
     renderbuffer_ = nullptr;
     rendersurface_ = nullptr;
-    overlay_ = nullptr;
 }
 
 Source::~Source()
@@ -73,8 +76,10 @@ void Source::accept(Visitor& v)
 
 void Source::setOverlayVisible(bool on)
 {
-    if (overlay_)
-        overlay_->visible_ = on;
+//    if (overlay_)
+//        overlay_->visible_ = on;
+    for (auto o = overlays_.begin(); o != overlays_.end(); o++)
+        (*o).second->visible_ = on;
 }
 
 bool hasNode::operator()(const Source* elem) const
@@ -107,13 +112,18 @@ MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
     mediasurface_ = new Surface(rendershader_);
 
     // extra overlay for mixing view
-    overlay_ = new Frame(Frame::ROUND_LARGE);
-    overlay_->overlay_ = new Mesh("mesh/icon_video.ply");
-    overlay_->translation_.z = 0.1;
-    overlay_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    overlay_->visible_ = false;
-    groups_[View::MIXING]->attach(overlay_);
+    overlays_[View::MIXING] = new Frame(Frame::ROUND_LARGE);
+    overlays_[View::MIXING]->translation_.z = 0.1;
+    overlays_[View::MIXING]->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    overlays_[View::MIXING]->visible_ = false;
+    groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
+    // extra overlay for geometry view
+    overlays_[View::GEOMETRY] = new Frame(Frame::SHARP_HANDLES);
+    overlays_[View::GEOMETRY]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    overlays_[View::GEOMETRY]->visible_ = false;
+    groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 }
 
 MediaSource::~MediaSource()
@@ -179,13 +189,20 @@ void MediaSource::init()
             ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
             if (is)  is->stipple = 1.0;
             groups_[View::MIXING]->attach(surfacemix);
+            if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE)
+                overlays_[View::MIXING]->overlay_ = new Mesh("mesh/icon_image.ply");
+            else
+                overlays_[View::MIXING]->overlay_ = new Mesh("mesh/icon_video.ply");
 
             // scale all mixing nodes to match aspect ratio of the media
             for (NodeSet::iterator node = groups_[View::MIXING]->begin();
                  node != groups_[View::MIXING]->end(); node++) {
                 (*node)->scale_.x = mediaplayer_->aspectRatio();
             }
-
+            for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
+                 node != groups_[View::GEOMETRY]->end(); node++) {
+                (*node)->scale_.x = mediaplayer_->aspectRatio();
+            }
 //            mixingshader_->mask = ImageShader::mask_presets["Halo"];
 
             // done init once and for all

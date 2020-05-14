@@ -11,6 +11,7 @@
 #include "View.h"
 #include "Source.h"
 #include "Primitives.h"
+#include "PickingVisitor.h"
 #include "Resource.h"
 #include "Mesh.h"
 #include "Mixer.h"
@@ -69,7 +70,6 @@ MixingView::MixingView() : View(MIXING)
 
 MixingView::~MixingView()
 {
-    // TODO  : verify that scene is deleted, and all children with it
 
 }
 
@@ -123,7 +123,7 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s)
 
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
@@ -238,7 +238,6 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
 GeometryView::~GeometryView()
 {
-    // TODO  : verify that scene is deleted, and all children with it
 
 }
 
@@ -291,19 +290,69 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s)
     Group *sourceNode = s->group(View::GEOMETRY);
 
     static glm::vec3 start_translation = glm::vec3(0.f);
+    static glm::vec3 start_scale = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
+
 
     if ( start_position != from ) {
         start_position = from;
         start_translation = sourceNode->translation_;
+        start_scale = sourceNode->scale_;
     }
 
-    // unproject
+    // unproject in scene coordinates
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    // compute delta translation
-    sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+    // coordinate in source
+    glm::mat4 modelview;
+    glm::vec2 clicpos(0.f);
+    PickingVisitor pv(gl_Position_to);
+    sourceNode->accept(pv);
+    if (!pv.picked().empty()){
+        clicpos = pv.picked().back().second;
+        modelview = pv.picked().back().first->transform_;
+//        Log::Info("clic pos source %.2f. %.2f", clicpos.x, clicpos.y);
+    }
+
+//    glm::vec4 P = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_to,  1.f );
+
+
+    if ( ABS(clicpos.x)>0.9f && ABS(clicpos.y)>0.9f )
+    {
+        // clic inside corner
+        Log::Info("corner %.2f. %.2f", clicpos.x, clicpos.y);
+//        Log::Info("       %.2f. %.2f", P.x, P.y);
+
+//        glm::vec2 topos = clicpos;
+//        PickingVisitor pv(gl_Position_from);
+//        sourceNode->accept(pv);
+
+//        if (!pv.picked().empty()){
+//            topos = pv.picked().back().second;
+////            Log::Info("scale %.2f. %.2f", topos.x, topos.y);
+//        }
+
+        glm::vec4 P = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_from,  1.f );
+
+
+        sourceNode->scale_ = start_scale * (glm::vec3(clicpos, 1.f) / glm::vec3(P) );
+        Log::Info("scale %.2f. %.2f", sourceNode->scale_.x, sourceNode->scale_.y);
+        Log::Info("      %.2f. %.2f", start_scale.x, start_scale.y);
+    }
+    else if ( ABS(clicpos.x)>0.95f && ABS(clicpos.y)<0.05f )
+    {
+        // clic resize horizontal
+        Log::Info("H resize %.2f. %.2f", clicpos.x, clicpos.y);
+    }
+    else if ( ABS(clicpos.x)<0.05f && ABS(clicpos.y)>0.95f )
+    {
+        // clic resize vertical
+        Log::Info("V resize %.2f. %.2f", clicpos.x, clicpos.y);
+    }
+    else
+        // clic inside source: compute delta translation
+        sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
 }
 

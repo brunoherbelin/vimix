@@ -306,10 +306,8 @@ void UserInterface::handleMouse()
             {
                 // drag current source
                 Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current);
-
             }
             else {
-
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
                 // Selection area
                 ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
@@ -318,9 +316,9 @@ void UserInterface::handleMouse()
                         ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
             }
         }
-        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
 
-            // get coordinate in world view of mouse cursor
+            // get coordinate in world coordinate of mouse cursor
             glm::vec3 point = Rendering::manager().unProject(mousepos);
 
             // picking visitor traverses the scene
@@ -331,7 +329,7 @@ void UserInterface::handleMouse()
             if (pv.picked().empty())
                 Mixer::manager().unsetCurrentSource();
             else
-                Mixer::manager().setCurrentSource(pv.picked().back());
+                Mixer::manager().setCurrentSource(pv.picked().back().first);
 
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )

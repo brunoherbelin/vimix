@@ -80,7 +80,7 @@ protected:
     ImageShader *blendingshader_;
 
     // overlay to be displayed on top of source
-    Frame *overlay_;
+    std::map<View::Mode, Frame*> overlays_;
 };
 
 // TODO : source set sorted by shader

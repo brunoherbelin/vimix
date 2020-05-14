@@ -265,6 +265,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_round.ply
     ./rsc/mesh/border_sharp.ply
     ./rsc/mesh/border_large_round.ply
+    ./rsc/mesh/border_handles_sharp.ply
+    ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/circle.ply

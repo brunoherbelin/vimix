@@ -225,6 +225,10 @@ void MediaPlayer::close()
 
 GstClockTime MediaPlayer::duration()
 {
+    // cannot play an image
+    if (isimage_)
+        return GST_CLOCK_TIME_NONE;
+
     if (duration_ == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
         gint64 d = GST_CLOCK_TIME_NONE;
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
