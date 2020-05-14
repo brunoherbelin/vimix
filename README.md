@@ -1,13 +1,14 @@
-# v-mix
+# vimix
 Live Video Mixer
 
-Work in progress
+*/!\ Work in progress*
+
 v-mix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 
 
 ### Clone
 
-git clone --recursive https://github.com/brunoherbelin/v-mix.git
+git clone --recursive https://github.com/brunoherbelin/vimix.git
 
 ### Compile
 
@@ -23,5 +24,6 @@ gcc, cmake & Ninja
 
 Libraries:
 
+gstreamer
 libpng
-libglfw3-dev
+libglfw3
