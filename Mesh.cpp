@@ -421,12 +421,13 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
     if ( visible_ ) {
 
+        // enable antialiasing
+        glEnable(GL_MULTISAMPLE_ARB);
+
         // shadow
         if(shadow_)
             shadow_->draw( modelview * transform_, projection);
 
-        // enable antialiasing
-        glEnable(GL_MULTISAMPLE_ARB);
 
         // right side
         float ar = scale_.x / scale_.y;
@@ -443,7 +444,7 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
             t.x = -t.x;
             s.x = -s.x;
             ctm = modelview * GlmToolkit::transform(t, rotation_, s);
-//            border_->draw( ctm, projection );
+            border_->draw( ctm, projection );
         }
 
         // enable antialiasing
@@ -487,12 +488,28 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         // set color
         handle_->shader()->color = color;
 
-        float ar = scale_.x / scale_.y;
+        float ar = 1.f;//scale_.x / scale_.y;
         glm::mat4 ctm;
+
+
+        glm::vec4 center = modelview * glm::vec4(0.f, 0.f, 0.f, 1.f);
+        glm::vec4 h = modelview * glm::vec4(1.f, 0.f, 0.f, 1.f);
+//        glm::vec3 scale = glm::normalize( diagonal - center );
+        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 1.f / h.x, 1.f / h.y, 1.f) );
+
+//        glm::vec4 t(1.f, 0.f, 0.f, 1.f);
+//        t = modelview * t;
+//        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, 1.f, 1.f) );
 
         if ( type_ == RESIZE ) {
             // 4 corners
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, -1.f, 0.f) );
+            ctm =  modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, -1.f, 0.f) ) ;
+//            ctm *= S;
+
+//            glm::vec4 P = glm::inverse(modelview) * glm::vec4(1.f, 1.f, 0.f, 1.f );
+
+
+//            ctm = glm::translate(glm::identity<glm::mat4>(), glm::vec3(t) );
 
             handle_->draw( ctm, projection );
 
