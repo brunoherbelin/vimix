@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 // memmove
 #include <string.h>
@@ -12,10 +13,10 @@
 #include "Source.h"
 #include "Primitives.h"
 #include "PickingVisitor.h"
-#include "Resource.h"
 #include "Mesh.h"
 #include "Mixer.h"
 #include "FrameBuffer.h"
+#include "UserInterfaceManager.h"
 #include "Log.h"
 
 #define CIRCLE_PIXELS 64
@@ -194,7 +195,7 @@ RenderView::~RenderView()
 
 void RenderView::setResolution(glm::vec3 resolution)
 {
-    if (resolution.x < 100.f || resolution.y < 100)
+    if (resolution.x < 128.f || resolution.y < 128.f)
         resolution = FrameBuffer::getResolutionFromParameters(Settings::application.framebuffer_ar, Settings::application.framebuffer_h);
 
     if (frame_buffer_)
@@ -289,33 +290,38 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
         return;
     Group *sourceNode = s->group(View::GEOMETRY);
 
-    // remember
-    static glm::vec2 start_position = glm::vec2(0.f);
+    // remember source transform at moment of clic at position 'from'
+    static glm::vec2 start_clic_position = glm::vec2(0.f);
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec3 start_scale = glm::vec3(1.f);
-    if ( start_position != from ) {
-        start_position = from;
+    static glm::vec3 start_rotation = glm::vec3(0.f);
+    if ( start_clic_position != from ) {
+        start_clic_position = from;
         start_translation = sourceNode->translation_;
         start_scale = sourceNode->scale_;
+        start_rotation = sourceNode->rotation_;
     }
 
-    // grab coordinates in scene View reference frame
+    // grab coordinates in scene-View reference frame
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    // grab coordinates in source root reference frame
+    // grab coordinates in source-root reference frame
     glm::vec4 S_from = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_from,  1.f );
     glm::vec4 S_to = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_to,  1.f );
     glm::vec3 S_resize = glm::vec3(S_to) / glm::vec3(S_from);
 
 //    Log::Info(" screen coordinates ( %.1f, %.1f ) ", to.x, to.y);
 //    Log::Info(" scene  coordinates ( %.1f, %.1f ) ", gl_Position_to.x, gl_Position_to.y);
-//    Log::Info(" source coordinates ( %.1f, %.1f ) ", P_to.x, P_to.y);
+//    Log::Info(" source coordinates ( %.1f, %.1f, %.1f ) ", S_from.x, S_from.y, S_from.z);
+//    Log::Info("                    ( %.1f, %.1f, %.1f ) ", S_to.x, S_to.y, S_to.z);
 
     // which manipulation to perform?
     if (pick.first)  {
         // picking on the resizing handles in the corners
         if ( pick.first == s->handleNode(Handles::RESIZE) ) {
+            if (UserInterface::manager().keyboardModifier())
+                S_resize.y = S_resize.x;
             sourceNode->scale_ = start_scale * S_resize;
         }
         // picking on the resizing handles left or right
@@ -326,9 +332,10 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
         else if ( pick.first == s->handleNode(Handles::RESIZE_V) ) {
             sourceNode->scale_ = start_scale * glm::vec3(1.f, S_resize.y, 1.f);
         }
-        // TODO picking on the rotating handle
+        // picking on the rotating handle
         else if ( pick.first == s->handleNode(Handles::ROTATE) ) {
-
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
+            sourceNode->rotation_ = start_rotation + glm::vec3(0.f, 0.f, angle);
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
@@ -339,61 +346,6 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
     else {
         sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
     }
-
-//    // coordinate in source
-//    glm::mat4 modelview(1.f);
-//    glm::vec2 clicpos(0.f);
-////    PickingVisitor pv(gl_Position_to);
-////    sourceNode->accept(pv);
-////    if (!pv.picked().empty()){
-////        clicpos = pv.picked().back().second;
-//////        modelview = pv.picked().back().first->transform_;
-//////        Log::Info("clic pos source %.2f. %.2f", clicpos.x, clicpos.y);
-////    }
-
-
-//    glm::vec4 P_from = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_from,  1.f );
-//    glm::vec4 P_to = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_to,  1.f );
-
-
-////    glm::vec4 P = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_to,  1.f );
-
-
-//    if ( pick.first == s->handleNode(Handles::RESIZE) )
-//    {
-//        // clic inside corner
-////        Log::Info("corner %.2f. %.2f", clicpos.x, clicpos.y);
-//////        Log::Info("       %.2f. %.2f", P.x, P.y);
-
-//////        glm::vec2 topos = clicpos;
-//////        PickingVisitor pv(gl_Position_from);
-//////        sourceNode->accept(pv);
-
-//////        if (!pv.picked().empty()){
-//////            topos = pv.picked().back().second;
-////////            Log::Info("scale %.2f. %.2f", topos.x, topos.y);
-//////        }
-
-//////        glm::vec4 P = glm::inverse(sourceNode->transform_ * modelview) * glm::vec4( gl_Position_from,  1.f );
-
-
-//        sourceNode->scale_ = start_scale * (glm::vec3(P_to) / glm::vec3(P_from) );
-////        Log::Info("scale %.2f. %.2f", sourceNode->scale_.x, sourceNode->scale_.y);
-////        Log::Info("      %.2f. %.2f", start_scale.x, start_scale.y);
-//    }
-//    else if ( ABS(clicpos.x)>0.95f && ABS(clicpos.y)<0.05f )
-//    {
-//        // clic resize horizontal
-//        Log::Info("H resize %.2f. %.2f", clicpos.x, clicpos.y);
-//    }
-//    else if ( ABS(clicpos.x)<0.05f && ABS(clicpos.y)>0.95f )
-//    {
-//        // clic resize vertical
-//        Log::Info("V resize %.2f. %.2f", clicpos.x, clicpos.y);
-//    }
-//    else
-        // clic inside source: compute delta translation
-//        sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
 }
 

@@ -90,8 +90,6 @@ void Source::accept(Visitor& v)
 
 void Source::setOverlayVisible(bool on)
 {
-//    if (overlay_)
-//        overlay_->visible_ = on;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = on;
 }
@@ -144,7 +142,7 @@ MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
     frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
     overlays_[View::MIXING]->attach(frame);
 
-    // extra overlay for geometry view
+    // extra overlays for geometry view
     frame = new Frame(Frame::SHARP_LARGE);
     frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
     frame->translation_.z = 0.1;
@@ -161,6 +159,10 @@ MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
     resize_V_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
     resize_V_handle_->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->attach(resize_V_handle_);
+    rotate_handle_ = new Handles(Handles::ROTATE);
+    rotate_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    rotate_handle_->translation_.z = 0.15;
+    overlays_[View::GEOMETRY]->attach(rotate_handle_);
 
 }
 
@@ -263,12 +265,15 @@ void MediaSource::render()
         mediasurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
 
+        // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
         blendingshader_->color.a = alpha;
 
-        // TODO modify geometry
+        // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
+        groups_[View::RENDERING]->scale_ = groups_[View::GEOMETRY]->scale_;
+        groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
 
     }
 }

@@ -99,7 +99,8 @@ void PickingVisitor::visit(Handles &n)
                    bb.translated(glm::vec3(0.f, -1.f, 0.f)).contains( glm::vec3(P) ) );
     }
     else if ( n.type() == Handles::ROTATE ){
-        // TODO Picking Rotation
+        // Picking Rotation icon
+        picked = bb.translated(glm::vec3(1.06f, +1.06f, 0.f)).contains( glm::vec3(P) );
     }
 
     if ( picked )
