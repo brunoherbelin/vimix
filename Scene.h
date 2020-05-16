@@ -10,15 +10,13 @@
 #include <set>
 #include <list>
 #include <vector>
-#include <glm/glm.hpp>
 
-glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
+#include "GlmToolkit.h"
 
 // Forward declare classes referenced
 class Shader;
 class Visitor;
 class Group;
-
 
 /**
  * @brief The Node class is the base virtual class for all Node types
@@ -104,14 +102,16 @@ public:
     inline Shader *shader () const { return shader_; }
     void replaceShader (Shader* newshader);
 
+    GlmToolkit::AxisAlignedBoundingBox bbox() const { return bbox_; }
+
 protected:
     Shader*   shader_;
     uint vao_, drawMode_, drawCount_;
     std::vector<glm::vec3>     points_;
     std::vector<glm::vec4>     colors_;
     std::vector<glm::vec2>     texCoords_;
-    std::vector<uint>  indices_;
-
+    std::vector<uint>          indices_;
+    GlmToolkit::AxisAlignedBoundingBox     bbox_;
 };
 
 //

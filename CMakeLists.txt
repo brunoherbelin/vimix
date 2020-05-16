@@ -226,6 +226,7 @@ set(VMIX_SRCS
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
     GstToolkit.cpp
+    GlmToolkit.cpp
     SystemToolkit.cpp
     tinyxml2Toolkit.cpp
 )

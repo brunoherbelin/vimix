@@ -20,21 +20,17 @@ public:
     std::vector< std::pair<Node *, glm::vec2> > picked() { return nodes_; }
 
     // Elements of Scene
-    void visit(Scene& n);
-    void visit(Node& n);
-    void visit(Group& n);
-    void visit(Switch& n);
-    void visit(Animation& n);
-    void visit(Primitive& n);
-    void visit(Surface& n);
-    void visit(ImageSurface&){}
-    void visit(MediaSurface&){}
-    void visit(FrameBufferSurface&){}
-    void visit(LineStrip&){}
-    void visit(LineSquare&);
-    void visit(LineCircle& n);
-    void visit(Mesh&){}
-    void visit(Frame&){}
+    void visit(Scene& n) override;
+    void visit(Node& n) override;
+    void visit(Group& n) override;
+    void visit(Switch& n) override;
+    void visit(Primitive& n) override;
+    void visit(Surface& n) override;
+    void visit(Frame& n) override;
+    void visit(Handles& n) override;
+    void visit(LineSquare&) override;
+    void visit(LineCircle& n) override;
+
 };
 
 #endif // PICKINGVISITOR_H

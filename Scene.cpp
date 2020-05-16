@@ -5,7 +5,7 @@
 #include "Visitor.h"
 #include "GarbageVisitor.h"
 #include "Log.h"
-
+#include "GlmToolkit.h"
 #include "SessionVisitor.h"
 
 #include <glad/glad.h>
@@ -19,18 +19,6 @@
 #include <ctime>
 #include <algorithm>
 
-
-//Group *Scene::limbo = new Group;
-
-glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
-{
-    glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), translation);
-    View = glm::rotate(View, rotation.x, glm::vec3(1.f, 0.f, 0.f));
-    View = glm::rotate(View, rotation.y, glm::vec3(0.f, 1.f, 0.f));
-    View = glm::rotate(View, rotation.z, glm::vec3(0.f, 0.f, 1.f));
-    glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), scale);
-    return View * Model;
-}
 
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)
@@ -63,7 +51,7 @@ void Node::copyTransform(Node *other)
 void Node::update( float )
 {
     // update transform matrix from attributes
-    transform_ = transform(translation_, rotation_, scale_);
+    transform_ = GlmToolkit::transform(translation_, rotation_, scale_);
 
 }
 
@@ -136,6 +124,9 @@ void Primitive::init()
         glDeleteBuffers ( 1, &arrayBuffer_);
     if ( elementBuffer_ )
         glDeleteBuffers ( 1, &elementBuffer_);
+
+    // compute AxisAlignedBoundingBox
+    bbox_.extend(points_);
 
     // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
     points_.clear();

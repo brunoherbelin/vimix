@@ -66,6 +66,9 @@ void Surface::init()
         unique_drawCount = drawCount_;
         // 3. unique_vao_ will NOT be deleted
     }
+
+    // replace AxisAlignedBoundingBox
+    bbox_.extend(square_points);
 }
 
 void Surface::accept(Visitor& v)
@@ -220,6 +223,8 @@ void Points::draw(glm::mat4 modelview, glm::mat4 projection)
     glPointSize(pointsize_);
 
     Primitive::draw(modelview, projection);
+
+    glPointSize(1);
 }
 
 void Points::accept(Visitor& v)
@@ -248,6 +253,8 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
     glLineWidth(linewidth_);
 
     Primitive::draw(modelview, projection);
+
+    glLineWidth(1);
 }
 
 void LineStrip::accept(Visitor& v)
@@ -272,6 +279,11 @@ void LineSquare::init()
         // 2. use the global vertex array object
         vao_ = unique_vao_;
         drawCount_ = unique_drawCount;
+        // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
     }
     else {
         // 1. init the Primitive (only once)
@@ -279,8 +291,10 @@ void LineSquare::init()
         // 2. remember global vertex array object
         unique_vao_ = vao_;
         unique_drawCount = drawCount_;
-        // 3. unique_vao_ will NOT be deleted because LineCircle::deleteGLBuffers_() is empty
     }
+
+    // compute AxisAlignedBoundingBox
+    bbox_.extend(square_points);
 }
 
 void LineSquare::accept(Visitor& v)
@@ -300,6 +314,7 @@ LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<
 {
     static int N = 72;
     static float a =  glm::two_pi<float>() / static_cast<float>(N);
+    // loop to build a circle
     glm::vec3 P(1.f, 0.f, 0.f);
     for (int i = 0; i < N ; i++ ){
         points_.push_back( glm::vec3(P) );
@@ -308,7 +323,7 @@ LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<
 
         P = glm::rotateZ(P, a);
     }
-    // loop
+    // close loop
     points_.push_back( glm::vec3(1.f, 0.f, 0.f) );
     colors_.push_back( color );
     indices_.push_back ( N );
@@ -324,7 +339,14 @@ void LineCircle::init()
         Node::init();
         // 2. use the global vertex array object
         vao_ = unique_vao_;
-        drawCount_ = unique_drawCount;
+        drawCount_ = unique_drawCount;        
+        // replace AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
     }
     else {
         // 1. init the Primitive (only once)

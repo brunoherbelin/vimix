@@ -37,7 +37,6 @@ public:
     void visit(LineSquare&) override {}
     void visit(LineCircle& n) override {}
     void visit(Mesh& n) override {}
-    void visit(Frame& n) override {}
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;

@@ -1,7 +1,7 @@
 ply
 format ascii 1.0
 comment Created by Blender 2.82 (sub 7) - www.blender.org, source file: 'border_large_sharp.blend'
-element vertex 52
+element vertex 45
 property float x
 property float y
 property float z
@@ -9,7 +9,7 @@ property uchar red
 property uchar green
 property uchar blue
 property uchar alpha
-element face 62
+element face 57
 property list uchar uint vertex_indices
 end_header
 -0.950647 -1.000000 0.000000 255 255 255 255
@@ -57,13 +57,6 @@ end_header
 1.000000 0.000000 0.000000 255 255 255 255
 -0.000064 1.000000 0.000000 255 255 255 255
 -0.995340 1.015000 0.000000 255 255 255 255
-1.012389 -0.007651 0.000000 255 255 255 255
-1.050200 -0.000169 0.000000 255 255 255 255
-1.011916 -0.000169 0.000000 255 255 255 255
-1.050200 0.007965 0.000000 255 255 255 255
-1.011319 -0.007674 0.000000 255 255 255 255
-1.050200 -0.007651 0.000000 255 255 255 255
-1.011401 0.007965 0.000000 255 255 255 255
 3 0 1 2
 3 3 4 1
 3 4 5 1
@@ -121,8 +114,3 @@ end_header
 3 29 31 40
 3 40 44 38
 3 19 14 22
-3 45 46 47
-3 48 47 46
-3 49 45 47
-3 45 50 46
-3 48 51 47

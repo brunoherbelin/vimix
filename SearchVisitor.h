@@ -18,21 +18,9 @@ public:
     // Elements of Scene
     void visit(Scene& n);
     void visit(Node& n);
+    void visit(Primitive&) {}
     void visit(Group& n);
     void visit(Switch& n);
-
-    // already a Node or a Group
-    void visit(Animation&) {}
-    void visit(Primitive&) {}
-    void visit(Surface&) {}
-    void visit(ImageSurface&) {}
-    void visit(MediaSurface&) {}
-    void visit(FrameBufferSurface&) {}
-    void visit(LineStrip&) {}
-    void visit(LineSquare&) {}
-    void visit(LineCircle&) {}
-    void visit(Mesh&) {}
-    void visit(Frame&) {}
 
 };
 

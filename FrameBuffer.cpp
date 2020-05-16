@@ -20,7 +20,6 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
     return res;
 }
 
-
 FrameBuffer::FrameBuffer(glm::vec3 resolution): textureid_(0), framebufferid_(0), usedepth_(false)
 {
     attrib_.viewport = glm::ivec2(resolution);

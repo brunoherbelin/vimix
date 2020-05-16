@@ -6,6 +6,7 @@
 #include <list>
 
 #include "View.h"
+#include "Mesh.h"
 
 class ImageShader;
 class ImageProcessingShader;
@@ -33,7 +34,8 @@ public:
 
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
-    inline Node *node(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+    inline Node *groupNode(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+    Handles *handleNode(Handles::Type t) const;
 
     // every Source has a shader to control image processing effects
     inline ImageProcessingShader *processingShader() const { return rendershader_; }
@@ -50,7 +52,7 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    // informs if the source failed (and might have to be deleted)
+    // every Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed() const { return false; }
 
 protected:
@@ -73,17 +75,18 @@ protected:
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
 
-    // rendershader provides image processing controls
+    // rendershader performs image processing
     ImageProcessingShader *rendershader_;
 
-    // mixingshader provides mixing controls
+    // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
     // overlay to be displayed on top of source
-    std::map<View::Mode, Frame*> overlays_;
+    std::map<View::Mode, Group*> overlays_;
+    Handles *resize_handle_, *resize_H_handle_, *resize_V_handle_, *rotate_handle_;
 };
 
-// TODO : source set sorted by shader
+// TODO SourceSet sorted by shader
 // so that the render loop avoid switching
 typedef std::list<Source *> SourceList;
 
@@ -134,5 +137,6 @@ protected:
     MediaPlayer *mediaplayer_;
 };
 
+// TODO dedicated source .cpp .h files for MediaSource
 
 #endif // SOURCE_H

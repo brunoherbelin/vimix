@@ -8,11 +8,14 @@
 
 #include <glad/glad.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Resource.h"
 #include "ImageShader.h"
 #include "Visitor.h"
 #include "Log.h"
 #include "Mesh.h"
+#include "GlmToolkit.h"
 
 using namespace std;
 using namespace glm;
@@ -321,6 +324,7 @@ bool parsePLY(string ascii,
 }
 
 
+
 Mesh::Mesh(const std::string& ply_path, const std::string& tex_path) : Primitive(), mesh_resource_(ply_path), texture_resource_(tex_path), textureindex_(0)
 {
     if ( !parsePLY( Resource::getText(mesh_resource_), points_, colors_, texCoords_, indices_, drawMode_) )
@@ -361,12 +365,14 @@ void Mesh::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() )
         init();
 
-    if (textureindex_)
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
+    if ( visible_ ) {
+        if (textureindex_)
+            glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    Primitive::draw(modelview, projection);
+        Primitive::draw(modelview, projection);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 void Mesh::accept(Visitor& v)
@@ -375,19 +381,17 @@ void Mesh::accept(Visitor& v)
     v.visit(*this);
 }
 
-Frame::Frame(Style style) : Node()
+Frame::Frame(Type style) : Node()
 {
-    overlay_ = nullptr;
-    shadow_  = nullptr;
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (style) {
-    case SHARP_HANDLES:
-        border_  = new Mesh("mesh/border_handles_sharp.ply");
-        overlay_ = new Mesh("mesh/border_handles_overlay.ply");
+    case SHARP_LARGE:
+        border_  = new Mesh("mesh/border_large_sharp.ply");
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case SHARP_THIN:
         border_  = new Mesh("mesh/border_sharp.ply");
+        shadow_  = nullptr;
         break;
     case ROUND_LARGE:
         border_  = new Mesh("mesh/border_large_round.ply");
@@ -403,7 +407,6 @@ Frame::Frame(Style style) : Node()
 
 Frame::~Frame()
 {
-    if(overlay_) delete overlay_;
     if(border_)  delete border_;
     if(shadow_)  delete shadow_;
 }
@@ -411,29 +414,23 @@ Frame::~Frame()
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(overlay_) overlay_->init();
         if(border_)  border_->init();
         if(shadow_)  shadow_->init();
         init();
     }
 
-    if ( visible_ ) { // not absolutely necessary but saves some CPU time..
+    if ( visible_ ) {
 
         // shadow
         if(shadow_)
             shadow_->draw( modelview * transform_, projection);
 
-        if (overlay_) {
-            // overlat is not altered
-            overlay_->shader()->color = color;
-            overlay_->draw( modelview, projection );
-        }
-
         // right side
         float ar = scale_.x / scale_.y;
-        glm::vec3 s(scale_.y, scale_.y, 1.0);
-        glm::vec3 t(translation_.x - 1.0 +ar, translation_.y, translation_.z);
-        glm::mat4 ctm = modelview * transform(t, rotation_, s);
+        glm::vec3 s(1.f, 1.f, 1.f);
+//        glm::vec3 s(scale_.y, scale_.y, 1.0);
+        glm::vec3 t(translation_.x - 1.0 + ar, translation_.y, translation_.z);
+        glm::mat4 ctm = modelview * GlmToolkit::transform(t, rotation_, s);
 
         if(border_) {
             // right side
@@ -442,7 +439,7 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
             // left side
             t.x = -t.x;
             s.x = -s.x;
-            ctm = modelview * transform(t, rotation_, s);
+            ctm = modelview * GlmToolkit::transform(t, rotation_, s);
             border_->draw( ctm, projection );
         }
 
@@ -451,6 +448,82 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
 
 void Frame::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}
+
+Handles::Handles(Type type) : Node(), type_(type)
+{
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    handle_ = new Mesh("mesh/border_handles_overlay.ply");
+}
+
+Handles::~Handles()
+{
+    if(handle_) delete handle_;
+}
+
+void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() ) {
+        if(handle_) handle_->init();
+        init();
+    }
+
+    if ( visible_ ) {
+        // set color
+        handle_->shader()->color = color;
+
+        float ar = scale_.x / scale_.y;
+        glm::mat4 ctm;
+
+        if ( type_ == RESIZE ) {
+            // 4 corners
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, -1.f, 0.f) );
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, +1.f, 0.f));
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, -1.f, 0.f));
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, +1.f, 0.f));
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == RESIZE_H ){
+            // left and right
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, 0.f, 0.f) );
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, 0.f, 0.f));
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == RESIZE_V ){
+            // top and bottom
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, +1.f, 0.f) );
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, -1.f, 0.f));
+            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == ROTATE ){
+
+        }
+    }
+}
+
+
+void Handles::accept(Visitor& v)
 {
     Node::accept(v);
     v.visit(*this);

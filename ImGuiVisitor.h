@@ -15,15 +15,8 @@ public:
     void visit(Switch& n) override;
     void visit(Animation& n) override;
     void visit(Primitive& n) override;
-    void visit(Surface&) override {}
-    void visit(ImageSurface&) override {}
     void visit(MediaSurface& n) override;
     void visit(FrameBufferSurface& n) override;
-    void visit(LineStrip&) override {}
-    void visit(LineSquare&) override {}
-    void visit(LineCircle&) override {}
-    void visit(Mesh&) override {}
-    void visit(Frame&) override {}
 
     // Elements with attributes
     void visit(MediaPlayer& n) override;

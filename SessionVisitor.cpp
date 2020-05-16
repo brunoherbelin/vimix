@@ -305,11 +305,11 @@ void SessionVisitor::visit (Source& s)
 
     xmlCurrent_ = xmlDoc_->NewElement( "Mixing" );
     sourceNode->InsertEndChild(xmlCurrent_);
-    s.node(View::MIXING)->accept(*this);
+    s.groupNode(View::MIXING)->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Geometry" );
     sourceNode->InsertEndChild(xmlCurrent_);
-    s.node(View::GEOMETRY)->accept(*this);
+    s.groupNode(View::GEOMETRY)->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);

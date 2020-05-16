@@ -187,10 +187,10 @@ void SessionCreator::visit (Source& s)
     s.setName(pName);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
-    s.node(View::MIXING)->accept(*this);
+    s.groupNode(View::MIXING)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Geometry");
-    s.node(View::GEOMETRY)->accept(*this);
+    s.groupNode(View::GEOMETRY)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);

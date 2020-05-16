@@ -239,17 +239,23 @@ void UserInterface::handleKeyboard()
         }
 
     }
+    else {
+        // Normal keys
+        if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ))
+            Mixer::manager().deleteCurrentSource();
+        // Application F-Keys
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
+            Mixer::manager().setCurrentView(View::MIXING);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
+            Mixer::manager().setCurrentView(View::GEOMETRY);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
+            Rendering::manager().ToggleFullscreen();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_PRINT_SCREEN ))
+            toolbox.StartScreenshot();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
+            navigator.toggleMenu();
+    }
 
-    // Application F-Keys
-    if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
-        Mixer::manager().setCurrentView(View::MIXING);
-    if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
-        Mixer::manager().setCurrentView(View::GEOMETRY);
-    if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
-        Rendering::manager().ToggleFullscreen();
-    else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
-        toolbox.StartScreenshot();
-            
 }
 
 void UserInterface::handleMouse()
@@ -260,6 +266,8 @@ void UserInterface::handleMouse()
     static glm::vec2 mouseclic[2];
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
     mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
+
+    static std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
 
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
@@ -305,7 +313,7 @@ void UserInterface::handleMouse()
             if (current)
             {
                 // drag current source
-                Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current);
+                Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, pick);
             }
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
@@ -328,13 +336,15 @@ void UserInterface::handleMouse()
             // picking visitor found nodes?
             if (pv.picked().empty())
                 Mixer::manager().unsetCurrentSource();
-            else
-                Mixer::manager().setCurrentSource(pv.picked().back().first);
+            else {
+                pick = pv.picked().back();
+                Mixer::manager().setCurrentSource( pick.first );
+            }
 
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
-
+            pick = { nullptr, glm::vec2(0.f) };
 
         }
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
@@ -856,6 +866,13 @@ void Navigator::clearSelection()
 void Navigator::showPannelSource(int index)
 {
     selected_source_index = index;
+}
+
+void Navigator::toggleMenu()
+{
+    bool previous = selected_button[NAV_MENU];
+    hidePannel();
+    selected_button[NAV_MENU] = !previous;
 }
 
 void Navigator::hidePannel()

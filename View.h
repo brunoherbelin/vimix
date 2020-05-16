@@ -20,7 +20,7 @@ public:
     virtual void draw () = 0;
     virtual void zoom (float) {}
     virtual void drag (glm::vec2, glm::vec2) {}
-    virtual void grab (glm::vec2, glm::vec2, Source*) {}
+    virtual void grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {}
 
     virtual void restoreSettings();
     virtual void saveSettings();
@@ -41,7 +41,7 @@ public:
     void draw () override;
     void zoom (float factor) override;
     void drag (glm::vec2 from, glm::vec2 to) override;
-    void grab (glm::vec2 from, glm::vec2 to, Source *s) override;
+    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
 
 private:
     uint textureMixingQuadratic();
@@ -73,7 +73,7 @@ public:
     void draw () override;
     void zoom (float factor) override;
     void drag (glm::vec2 from, glm::vec2 to) override;
-    void grab (glm::vec2 from, glm::vec2 to, Source *s) override;
+    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
 private:
 

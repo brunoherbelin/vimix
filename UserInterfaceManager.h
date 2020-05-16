@@ -38,6 +38,7 @@ class Navigator
 public:
     Navigator();
 
+    void toggleMenu();
     void hidePannel();
     void showPannelSource(int index);
     void Render();

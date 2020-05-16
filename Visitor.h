@@ -19,6 +19,7 @@ class LineSquare;
 class LineCircle;
 class Mesh;
 class Frame;
+class Handles;
 class MediaPlayer;
 class Shader;
 class ImageShader;
@@ -30,24 +31,25 @@ class MediaSource;
 class Visitor {
 
 public:
-    // Declare overloads for each kind of Node to visit
+    // Need to declare overloads for basic kind of Nodes to visit
     virtual void visit (Scene&) = 0;
     virtual void visit (Node&) = 0;
-    virtual void visit (Group&) = 0;
-    virtual void visit (Switch&) = 0;
-    virtual void visit (Animation&) = 0;
     virtual void visit (Primitive&) = 0;
-    virtual void visit (Surface&) = 0;
-    virtual void visit (ImageSurface&) = 0;
-    virtual void visit (MediaSurface&) = 0;
-    virtual void visit (FrameBufferSurface&) = 0;
-    virtual void visit (LineStrip&) = 0;
-    virtual void visit (LineSquare&) = 0;
-    virtual void visit (LineCircle&) = 0;
-    virtual void visit (Mesh&) = 0;
-    virtual void visit (Frame&) = 0;
+    virtual void visit (Group&) = 0;
 
-    // not mandatory
+    // not mandatory for all others
+    virtual void visit (Switch&) {}
+    virtual void visit (Animation&) {}
+    virtual void visit (Surface&) {}
+    virtual void visit (ImageSurface&) {}
+    virtual void visit (MediaSurface&) {}
+    virtual void visit (FrameBufferSurface&) {}
+    virtual void visit (LineStrip&)  {}
+    virtual void visit (LineSquare&) {}
+    virtual void visit (LineCircle&) {}
+    virtual void visit (Mesh&) {}
+    virtual void visit (Frame&) {}
+    virtual void visit (Handles&) {}
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
