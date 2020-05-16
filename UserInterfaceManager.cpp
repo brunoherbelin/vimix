@@ -253,13 +253,13 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setCurrentView(View::MIXING);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
             Mixer::manager().setCurrentView(View::GEOMETRY);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().ToggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
             if (Rendering::manager().IsFullscreen())
                 Rendering::manager().ToggleFullscreen();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_PRINT_SCREEN ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             toolbox.StartScreenshot();
     }
 

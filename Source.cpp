@@ -44,7 +44,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
     groups_[View::GEOMETRY]->attach(frame);
 
     overlays_[View::GEOMETRY] = new Group;
-    overlays_[View::GEOMETRY]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
@@ -145,23 +145,22 @@ MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
     // extra overlays for geometry view
     frame = new Frame(Frame::SHARP_LARGE);
     frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    frame->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(frame);
     resize_handle_ = new Handles(Handles::RESIZE);
     resize_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    resize_handle_->translation_.z = 0.15;
+    resize_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_handle_);
     resize_H_handle_ = new Handles(Handles::RESIZE_H);
     resize_H_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    resize_H_handle_->translation_.z = 0.15;
+    resize_H_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_H_handle_);
     resize_V_handle_ = new Handles(Handles::RESIZE_V);
     resize_V_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    resize_V_handle_->translation_.z = 0.15;
+    resize_V_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_V_handle_);
     rotate_handle_ = new Handles(Handles::ROTATE);
     rotate_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
-    rotate_handle_->translation_.z = 0.15;
+    rotate_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(rotate_handle_);
 
 }

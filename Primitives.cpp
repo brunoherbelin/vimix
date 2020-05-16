@@ -251,10 +251,12 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
         init();
 
     glLineWidth(linewidth_);
+    glEnable(GL_LINE_SMOOTH);
 
     Primitive::draw(modelview, projection);
 
     glLineWidth(1);
+    glDisable(GL_LINE_SMOOTH);
 }
 
 void LineStrip::accept(Visitor& v)

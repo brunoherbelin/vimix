@@ -425,6 +425,9 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
         if(shadow_)
             shadow_->draw( modelview * transform_, projection);
 
+        // enable antialiasing
+        glEnable(GL_MULTISAMPLE_ARB);
+
         // right side
         float ar = scale_.x / scale_.y;
         glm::vec3 s(1.f, 1.f, 1.f);
@@ -440,9 +443,11 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
             t.x = -t.x;
             s.x = -s.x;
             ctm = modelview * GlmToolkit::transform(t, rotation_, s);
-            border_->draw( ctm, projection );
+//            border_->draw( ctm, projection );
         }
 
+        // enable antialiasing
+        glDisable(GL_MULTISAMPLE_ARB);
     }
 }
 
@@ -476,6 +481,9 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 
     if ( visible_ ) {
+        // enable antialiasing
+        glEnable(GL_MULTISAMPLE_ARB);
+
         // set color
         handle_->shader()->color = color;
 
@@ -485,47 +493,49 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         if ( type_ == RESIZE ) {
             // 4 corners
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, -1.f, 0.f) );
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, +1.f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, -1.f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, +1.f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
         }
         else if ( type_ == RESIZE_H ){
             // left and right
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, 0.f, 0.f) );
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, 0.f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
         }
         else if ( type_ == RESIZE_V ){
             // top and bottom
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, +1.f, 0.f) );
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, -1.f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
         }
         else if ( type_ == ROTATE ){
             // only once in upper top right corner
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar + 0.06f, +1.06f, 0.f));
-            ctm[0][0] = ctm[1][1] = ctm[2][2] = 1.f;
+
             handle_->draw( ctm, projection );
         }
+
+        glDisable(GL_MULTISAMPLE_ARB);
     }
 }
 

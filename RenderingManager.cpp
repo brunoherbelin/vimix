@@ -87,9 +87,13 @@ bool Rendering::Init()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
 
+
     Settings::WindowConfig winset = Settings::application.windows.front();
 
     // Create window with graphics context
+    // GL Multisampling #3
+    glfwWindowHint(GLFW_SAMPLES, 3);
+    // do not show at creation
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 //    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     main_window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
@@ -139,9 +143,8 @@ bool Rendering::Init()
     gst_init (NULL, NULL);
 
     // Antialiasing
-    glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+    glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     // This hint can improve the speed of shading when dFdx dFdy aren't needed in GLSL
