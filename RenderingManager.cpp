@@ -385,10 +385,17 @@ float Rendering::MonitorHeight()
     return height;
 }
 
+
+
+bool Rendering::IsFullscreen ()
+{
+    return (glfwGetWindowMonitor(main_window_) != nullptr);
+}
+
 void Rendering::ToggleFullscreen()
 {
     // if in fullscreen mode
-    if (glfwGetWindowMonitor(main_window_) != nullptr) {
+    if (IsFullscreen()) {
         // set to window mode
         glfwSetWindowMonitor( main_window_, nullptr,  Settings::application.windows.front().x,
                                                 Settings::application.windows.front().y,

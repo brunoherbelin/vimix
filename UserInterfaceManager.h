@@ -59,7 +59,6 @@ public:
     void Render();
 };
 
-// TODO: class ShaderEditor
 
 class UserInterface
 {
@@ -67,16 +66,12 @@ class UserInterface
     Navigator navigator;
     ToolBox toolbox;
 
+    bool keyboard_modifier_active;
     bool show_about;
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;
 
-    std::string currentTextEdit;
-
-    void handleKeyboard();
-    void handleMouse();
-    void showMenuFile();
 
 //    typedef enum {
 //        FILE_DIALOG_INACTIVE = 0,
@@ -109,14 +104,23 @@ public:
     void Render();
     // Post-loop termination
     void Terminate();
-    //
+
+    // status querries
+    inline bool keyboardModifier() { return keyboard_modifier_active; }
+
+
+    // TODO implement the shader editor
+    std::string currentTextEdit;
     void fillShaderEditor(std::string text);
 
 protected:
 
+    void showMenuFile();
     void RenderPreview();
     void RenderMediaPlayer();
     void RenderShaderEditor();
+    void handleKeyboard();
+    void handleMouse();
 
 };
 

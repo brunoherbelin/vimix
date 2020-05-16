@@ -203,6 +203,7 @@ void UserInterface::handleKeyboard()
 
     // Application "CTRL +"" Shortcuts
     if ( io.KeyCtrl ) {
+        keyboard_modifier_active = true;
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
             // Quit
@@ -240,9 +241,13 @@ void UserInterface::handleKeyboard()
 
     }
     else {
-        // Normal keys
+        keyboard_modifier_active = false;
+
+        // Action keys
         if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ))
             Mixer::manager().deleteCurrentSource();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
+            navigator.toggleMenu();
         // Application F-Keys
         else if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
             Mixer::manager().setCurrentView(View::MIXING);
@@ -250,10 +255,12 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setCurrentView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             Rendering::manager().ToggleFullscreen();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
+            if (Rendering::manager().IsFullscreen())
+                Rendering::manager().ToggleFullscreen();
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_PRINT_SCREEN ))
             toolbox.StartScreenshot();
-        else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
-            navigator.toggleMenu();
     }
 
 }

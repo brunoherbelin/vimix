@@ -69,6 +69,7 @@ public:
     class Screenshot *CurrentScreenshot();
     
     // request fullscreen
+    bool IsFullscreen ();
     void ToggleFullscreen();
     // get width of rendering area
     float Width();
