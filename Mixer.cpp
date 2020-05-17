@@ -450,6 +450,7 @@ void Mixer::newSession()
     // default view config
     mixing_.restoreSettings();
     geometry_.restoreSettings();
+    layer_.restoreSettings();
 
     // empty session file name (does not save)
     sessionFilename_ = "";

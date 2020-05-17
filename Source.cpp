@@ -245,6 +245,7 @@ void MediaSource::init()
             ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
             if (is)  is->stipple = 1.0;
             groups_[View::MIXING]->attach(surfacemix);
+            groups_[View::LAYER]->attach(surfacemix);
             if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE)
                 overlays_[View::MIXING]->attach( new Mesh("mesh/icon_image.ply") );
             else

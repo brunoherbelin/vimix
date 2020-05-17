@@ -65,17 +65,14 @@ void View::drag (glm::vec2 from, glm::vec2 to)
 MixingView::MixingView() : View(MIXING)
 {
     // read default settings
-    if ( Settings::application.views[View::MIXING].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
-        Settings::application.views[View::MIXING].name = "Mixing";
+        Settings::application.views[mode_].name = "Mixing";
         scene.root()->scale_ = glm::vec3(2.0f, 2.0f, 1.0f);
         saveSettings();
     }
-    else
-        restoreSettings();
 
     // Mixing scene background
-
     Mesh *disk = new Mesh("mesh/disk.ply");
     disk->setTexture(textureMixingQuadratic());
     scene.bg()->attach(disk);
@@ -112,7 +109,7 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *
     if (!s)
         return;
 
-    Group *sourceNode = s->group(View::MIXING);
+    Group *sourceNode = s->group(mode_);
 
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
@@ -218,14 +215,12 @@ void RenderView::draw()
 GeometryView::GeometryView() : View(GEOMETRY)
 {
     // read default settings
-    if ( Settings::application.views[View::GEOMETRY].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
-        Settings::application.views[View::GEOMETRY].name = "Geometry";
+        Settings::application.views[mode_].name = "Geometry";
         scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.0f);
         saveSettings();
     }
-    else
-        restoreSettings();
 
     // Geometry Scene background
     Surface *rect = new Surface;
@@ -269,7 +264,7 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
     // work on the given source
     if (!s)
         return;
-    Group *sourceNode = s->group(View::GEOMETRY);
+    Group *sourceNode = s->group(mode_);
 
     // remember source transform at moment of clic at position 'from'
     static glm::vec2 start_clic_position = glm::vec2(0.f);
@@ -333,25 +328,25 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
     // read default settings
-    if ( Settings::application.views[View::LAYER].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
-        Settings::application.views[View::LAYER].name = "Layer";
-        scene.root()->scale_ = glm::vec3(1.0f, 1.0f, 1.0f);
+        Settings::application.views[mode_].name = "Layer";
+        scene.root()->scale_ = glm::vec3(0.8f, 0.8f, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.3f, 0.5f, 0.0f);
         saveSettings();
     }
-    else
-        restoreSettings();
 
     // Geometry Scene background
     Surface *rect = new Surface;
+    rect->shader()->color.a = 0.3f;
     scene.bg()->attach(rect);
 
     Mesh *persp = new Mesh("mesh/perspective_layer.ply");
     persp->translation_.z = -0.1f;
     scene.bg()->attach(persp);
 
-    Frame *border = new Frame(Frame::SHARP_THIN);
-    border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
+    Frame *border = new Frame(Frame::ROUND_SHADOW);
+    border->color = glm::vec4( 0.8f, 0.f, 0.8f, 0.7f );
     scene.bg()->attach(border);
 
 }
@@ -363,6 +358,7 @@ LayerView::~LayerView()
 
 void LayerView::draw ()
 {
+
     // update rendering of render frame
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
@@ -383,6 +379,7 @@ void LayerView::zoom (float factor)
     z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+    Log::Info("scale layer %f", scene.root()->scale_.x );
 }
 
 
@@ -391,7 +388,7 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
     if (!s)
         return;
 
-    Group *sourceNode = s->group(View::LAYER);
+    Group *sourceNode = s->group(mode_);
 
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
