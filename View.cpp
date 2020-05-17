@@ -44,6 +44,24 @@ void View::update(float dt)
     scene.update( dt );
 }
 
+void View::drag (glm::vec2 from, glm::vec2 to)
+{
+    static glm::vec3 start_translation = glm::vec3(0.f);
+    static glm::vec2 start_position = glm::vec2(0.f);
+
+    if ( start_position != from ) {
+        start_position = from;
+        start_translation = scene.root()->translation_;
+    }
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from);
+    glm::vec3 gl_Position_to = Rendering::manager().unProject(to);
+
+    // compute delta translation
+    scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
+}
+
 MixingView::MixingView() : View(MIXING)
 {
     // read default settings
@@ -86,24 +104,6 @@ void MixingView::zoom( float factor )
     z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
-}
-
-void MixingView::drag (glm::vec2 from, glm::vec2 to)
-{
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec2 start_position = glm::vec2(0.f);
-
-    if ( start_position != from ) {
-        start_position = from;
-        start_translation = scene.root()->translation_;
-    }
-
-    // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to);
-
-    // compute delta translation
-    scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
 }
 
 
@@ -264,25 +264,6 @@ void GeometryView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
-void GeometryView::drag (glm::vec2 from, glm::vec2 to)
-{
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec2 start_position = glm::vec2(0.f);
-
-    if ( start_position != from ) {
-        start_position = from;
-        start_translation = scene.root()->translation_;
-    }
-
-    // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to);
-
-    // compute delta translation
-    scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
-}
-
-
 void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
     // work on the given source
@@ -349,7 +330,7 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
 
 }
 
-LayerView::LayerView() : View(LAYER)
+LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
     // read default settings
     if ( Settings::application.views[View::LAYER].name.empty() ) {
@@ -365,9 +346,14 @@ LayerView::LayerView() : View(LAYER)
     Surface *rect = new Surface;
     scene.bg()->attach(rect);
 
+    Mesh *persp = new Mesh("mesh/perspective_layer.ply");
+    persp->translation_.z = -0.1f;
+    scene.bg()->attach(persp);
+
     Frame *border = new Frame(Frame::SHARP_THIN);
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
     scene.bg()->attach(border);
+
 }
 
 LayerView::~LayerView()
@@ -377,6 +363,15 @@ LayerView::~LayerView()
 
 void LayerView::draw ()
 {
+    // update rendering of render frame
+    FrameBuffer *output = Mixer::manager().session()->frame();
+    if (output)
+        aspect_ratio = output->aspectRatio();
+
+    for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+        (*node)->scale_.x = aspect_ratio;
+    }
+
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
@@ -390,13 +385,33 @@ void LayerView::zoom (float factor)
     scene.root()->scale_.y = z;
 }
 
-void LayerView::drag (glm::vec2 from, glm::vec2 to)
-{
-
-}
 
 void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
+    if (!s)
+        return;
+
+    Group *sourceNode = s->group(View::LAYER);
+
+    static glm::vec3 start_translation = glm::vec3(0.f);
+    static glm::vec2 start_position = glm::vec2(0.f);
+
+    if ( start_position != from ) {
+        start_position = from;
+        start_translation = sourceNode->translation_;
+    }
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+
+    // compute delta translation
+    sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+
+    // diagonal movement only
+    sourceNode->translation_.x = CLAMP( sourceNode->translation_.x, -10.f, 0.f);
+    sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
+
 
 }
 

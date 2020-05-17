@@ -247,7 +247,7 @@ bool parsePLY(string ascii,
                         has_uv = true;
                         break;
                     case 't':
-                        uv.y = parseValue<float>(stringstream);
+                        uv.y = -parseValue<float>(stringstream);
                         has_uv = true;
                         break;
                     case 'r':
@@ -403,6 +403,10 @@ Frame::Frame(Type style) : Node()
         border_  = new Mesh("mesh/border_round.ply");
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
+    case ROUND_SHADOW:
+        border_  = new Mesh("mesh/border_round.ply");
+        shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.png");
+        break;
     }
 }
 
@@ -471,7 +475,7 @@ Handles::Handles(Type type) : Node(), type_(type)
         handle_ = new LineSquare(color, 2);
         handle_->scale_ = glm::vec3( 0.05f, 0.05f, 1.f);
     }
-//    handle_ = new Mesh("mesh/border_handles_overlay.ply");
+
 }
 
 Handles::~Handles()

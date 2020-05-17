@@ -50,7 +50,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
 
     // default mixing nodes
     groups_[View::LAYER] = new Group;    
-    frame = new Frame(Frame::ROUND_THIN);
+    frame = new Frame(Frame::ROUND_SHADOW);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
     groups_[View::LAYER]->attach(frame);
@@ -257,6 +257,10 @@ void MediaSource::init()
             }
             for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
                  node != groups_[View::GEOMETRY]->end(); node++) {
+                (*node)->scale_.x = mediaplayer_->aspectRatio();
+            }
+            for (NodeSet::iterator node = groups_[View::LAYER]->begin();
+                 node != groups_[View::LAYER]->end(); node++) {
                 (*node)->scale_.x = mediaplayer_->aspectRatio();
             }
 

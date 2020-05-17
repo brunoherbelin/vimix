@@ -38,7 +38,7 @@ class Frame : public Node
 {
 public:
 
-    typedef enum { ROUND_THIN = 0, ROUND_LARGE, SHARP_THIN, SHARP_LARGE } Type;
+    typedef enum { ROUND_THIN = 0, ROUND_LARGE, SHARP_THIN, SHARP_LARGE, ROUND_SHADOW } Type;
     Frame(Type style);
     ~Frame();
 

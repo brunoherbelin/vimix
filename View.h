@@ -19,7 +19,7 @@ public:
     virtual void update (float dt);
     virtual void draw () = 0;
     virtual void zoom (float) {}
-    virtual void drag (glm::vec2, glm::vec2) {}
+    virtual void drag (glm::vec2, glm::vec2);
     virtual void grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {}
 
     virtual void restoreSettings();
@@ -40,7 +40,6 @@ public:
 
     void draw () override;
     void zoom (float factor) override;
-    void drag (glm::vec2 from, glm::vec2 to) override;
     void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
 
 private:
@@ -72,7 +71,6 @@ public:
 
     void draw () override;
     void zoom (float factor) override;
-    void drag (glm::vec2 from, glm::vec2 to) override;
     void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
 private:
@@ -87,11 +85,10 @@ public:
 
     void draw () override;
     void zoom (float factor) override;
-    void drag (glm::vec2 from, glm::vec2 to) override;
     void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
 private:
-
+    float aspect_ratio;
 };
 
 

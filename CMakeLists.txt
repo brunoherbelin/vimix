@@ -259,6 +259,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.png
     ./rsc/images/shadow_dark.png
+    ./rsc/images/shadow_perspective.png
     ./rsc/mesh/point.ply
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
@@ -270,6 +271,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
+    ./rsc/mesh/perspective_layer.ply
+    ./rsc/mesh/shadow_perspective.ply
     ./rsc/mesh/circle.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
