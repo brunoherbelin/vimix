@@ -349,23 +349,53 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
 
 }
 
+LayerView::LayerView() : View(LAYER)
+{
+    // read default settings
+    if ( Settings::application.views[View::LAYER].name.empty() ) {
+        // no settings found: store application default
+        Settings::application.views[View::LAYER].name = "Layer";
+        scene.root()->scale_ = glm::vec3(1.0f, 1.0f, 1.0f);
+        saveSettings();
+    }
+    else
+        restoreSettings();
 
-void LayersView::draw ()
+    // Geometry Scene background
+    Surface *rect = new Surface;
+    scene.bg()->attach(rect);
+
+    Frame *border = new Frame(Frame::SHARP_THIN);
+    border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
+    scene.bg()->attach(border);
+}
+
+LayerView::~LayerView()
 {
 
 }
 
-void LayersView::zoom (float factor)
+void LayerView::draw ()
+{
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+
+}
+
+void LayerView::zoom (float factor)
+{
+    float z = scene.root()->scale_.x;
+    z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+void LayerView::drag (glm::vec2 from, glm::vec2 to)
 {
 
 }
 
-void LayersView::drag (glm::vec2 from, glm::vec2 to)
-{
-
-}
-
-void LayersView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
 
 }

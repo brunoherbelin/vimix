@@ -49,7 +49,12 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default mixing nodes
-    groups_[View::LAYER] = new Group;
+    groups_[View::LAYER] = new Group;    
+    frame = new Frame(Frame::ROUND_THIN);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
+    groups_[View::LAYER]->attach(frame);
+
     overlays_[View::LAYER] = new Group;
     overlays_[View::LAYER]->translation_.z = 0.15;
     overlays_[View::LAYER]->visible_ = false;

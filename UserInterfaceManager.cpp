@@ -978,7 +978,7 @@ void Navigator::Render()
         }
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
-            // TODO : Layers view
+            Mixer::manager().setCurrentView(View::LAYER);
         }
     }
     ImGui::End();
@@ -1049,7 +1049,6 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
         // image processing pannel
         s->processingShader()->accept(v);
-        ImGui::Text("Geometry");
         s->groupNode(View::GEOMETRY)->accept(v);
         // delete button
         ImGui::Text(" ");

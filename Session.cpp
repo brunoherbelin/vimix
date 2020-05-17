@@ -10,6 +10,7 @@ Session::Session()
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = render_.resolution();
     config_[View::GEOMETRY] = new Group;
+    config_[View::LAYER] = new Group;
     config_[View::MIXING] = new Group;
 }
 

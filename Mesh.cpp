@@ -466,10 +466,9 @@ Handles::Handles(Type type) : Node(), type_(type)
 
     if ( type_ == ROTATE ) {
         handle_ = new Mesh("mesh/border_handles_rotation.ply");
-//        handle_->scale_ = glm::vec3( 0.01f, 0.01f, 1.f);
     }
     else {
-        handle_ = new LineSquare(color, 3);
+        handle_ = new LineSquare(color, 2);
         handle_->scale_ = glm::vec3( 0.05f, 0.05f, 1.f);
     }
 //    handle_ = new Mesh("mesh/border_handles_overlay.ply");
@@ -499,7 +498,6 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // set color
         handle_->shader()->color = color;
-//        handle_->scale_ = glm::vec3( 0.01f, 0.01f, 1.f);
 
         glm::mat4 ctm;
 
@@ -535,7 +533,6 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         }
         else if ( type_ == ROTATE ){
             // only once in upper top right corner
-//            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.08f, +1.08f, 0.f));
             glm::vec4 pos = modelview * glm::vec4(1.08f, 1.08f, 0.f, 1.f);
             ctm = GlmToolkit::transform(glm::vec3(pos), glm::vec3(0.f), glm::vec3(1.f));
             handle_->draw( ctm, projection );

@@ -84,7 +84,7 @@ uint FrameBuffer::texture() const
 
 float FrameBuffer::aspectRatio() const
 {
-    return static_cast<float>(width()) / static_cast<float>(height());
+    return static_cast<float>(attrib_.viewport.x) / static_cast<float>(attrib_.viewport.y);
 }
 
 

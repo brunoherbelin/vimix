@@ -82,6 +82,7 @@ protected:
 
     MixingView mixing_;
     GeometryView geometry_;
+    LayerView layer_;
     View *current_view_;
 
     gint64 update_time_;

@@ -85,6 +85,7 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
         // ok, ready to read views
         SessionCreator::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
         SessionCreator::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
+        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
         SessionCreator::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
     }
 }

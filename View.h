@@ -79,11 +79,11 @@ private:
 
 };
 
-class LayersView : public View
+class LayerView : public View
 {
 public:
-    LayersView();
-    ~LayersView();
+    LayerView();
+    ~LayerView();
 
     void draw () override;
     void zoom (float factor) override;

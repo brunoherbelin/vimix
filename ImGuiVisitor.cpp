@@ -35,37 +35,48 @@ void ImGuiVisitor::visit(Group &n)
 //    if (ImGui::TreeNode(id.c_str(), "Group %d", n.id()))
 //    {
         // MODEL VIEW
-        if (ImGuiToolkit::ButtonIcon(6, 15)) {
-            n.translation_.x = 0.f;
-            n.translation_.y = 0.f;
-        }
-        ImGui::SameLine(0, 10);
-        float translation[2] = { n.translation_.x, n.translation_.y};
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::SliderFloat2("position", translation, -5.0, 5.0) )
-        {
-            n.translation_.x = translation[0];
-            n.translation_.y = translation[1];
-        }
 
-        if (ImGuiToolkit::ButtonIcon(4, 15))
-            n.rotation_.z = 0.f;
-        ImGui::SameLine(0, 10);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderAngle("angle", &(n.rotation_.z), -180.f, 180.f) ;
+    if (ImGuiToolkit::ButtonIcon(1, 16)) {
+        n.translation_.x = 0.f;
+        n.translation_.y = 0.f;
+        n.rotation_.z = 0.f;
+        n.scale_.x = 1.f;
+        n.scale_.y = 1.f;
+    }
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Geometry");
 
-        if (ImGuiToolkit::ButtonIcon(3, 15))  {
-            n.scale_.x = 1.f;
-            n.scale_.y = 1.f;
-        }
-        ImGui::SameLine(0, 10);
-        float scale[2] = { n.scale_.x, n.scale_.y} ;
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::SliderFloat2("scale", scale, -5.0, 5.0, "%.2f") )
-        {
-            n.scale_.x = scale[0];
-            n.scale_.y = scale[1];
-        }
+    if (ImGuiToolkit::ButtonIcon(6, 15)) {
+        n.translation_.x = 0.f;
+        n.translation_.y = 0.f;
+    }
+    ImGui::SameLine(0, 10);
+    float translation[2] = { n.translation_.x, n.translation_.y};
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::SliderFloat2("position", translation, -5.0, 5.0) )
+    {
+        n.translation_.x = translation[0];
+        n.translation_.y = translation[1];
+    }
+
+    if (ImGuiToolkit::ButtonIcon(18, 9))
+        n.rotation_.z = 0.f;
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderAngle("angle", &(n.rotation_.z), -180.f, 180.f) ;
+
+    if (ImGuiToolkit::ButtonIcon(3, 15))  {
+        n.scale_.x = 1.f;
+        n.scale_.y = 1.f;
+    }
+    ImGui::SameLine(0, 10);
+    float scale[2] = { n.scale_.x, n.scale_.y} ;
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::SliderFloat2("scale", scale, -5.0, 5.0, "%.2f") )
+    {
+        n.scale_.x = scale[0];
+        n.scale_.y = scale[1];
+    }
 
 //        // loop over members of a group
 //        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
