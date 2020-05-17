@@ -77,7 +77,7 @@ void PickingVisitor::visit(Handles &n)
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
     // get the bounding box of a handle
-    GlmToolkit::AxisAlignedBoundingBox bb = n.handle()->bbox();
+    GlmToolkit::AxisAlignedBoundingBox bb = n.handle()->bbox().scaled(n.handle()->scale_);
 
     // test picking depending on type of handle
     bool picked = false;
@@ -100,7 +100,12 @@ void PickingVisitor::visit(Handles &n)
     }
     else if ( n.type() == Handles::ROTATE ){
         // Picking Rotation icon
-        picked = bb.translated(glm::vec3(1.06f, +1.06f, 0.f)).contains( glm::vec3(P) );
+        glm::vec4 pos = modelview_ * glm::vec4(1.08f, 1.08f, 0.f, 1.f);
+        glm::mat4 ctm = GlmToolkit::transform(glm::vec3(pos), glm::vec3(0.f), glm::vec3(1.f));
+        glm::vec4 P = glm::inverse(ctm) * glm::vec4( point_, 0.f, 1.f );
+
+        bb = n.handle()->bbox();
+        picked = bb.contains( glm::vec3(P) );
     }
 
     if ( picked )

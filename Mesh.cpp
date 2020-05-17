@@ -10,6 +10,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Primitives.h"
 #include "Resource.h"
 #include "ImageShader.h"
 #include "Visitor.h"
@@ -463,15 +464,26 @@ Handles::Handles(Type type) : Node(), type_(type)
 {
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 
-    if ( type_ == ROTATE )
+    if ( type_ == ROTATE ) {
         handle_ = new Mesh("mesh/border_handles_rotation.ply");
-    else
-        handle_ = new Mesh("mesh/border_handles_overlay.ply");
+//        handle_->scale_ = glm::vec3( 0.01f, 0.01f, 1.f);
+    }
+    else {
+        handle_ = new LineSquare(color, 3);
+        handle_->scale_ = glm::vec3( 0.05f, 0.05f, 1.f);
+    }
+//    handle_ = new Mesh("mesh/border_handles_overlay.ply");
 }
 
 Handles::~Handles()
 {
     if(handle_) delete handle_;
+}
+
+void Handles::update( float dt )
+{
+    Node::update(dt);
+    handle_->update(dt);
 }
 
 void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -487,68 +499,45 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // set color
         handle_->shader()->color = color;
+//        handle_->scale_ = glm::vec3( 0.01f, 0.01f, 1.f);
 
-        float ar = 1.f;//scale_.x / scale_.y;
         glm::mat4 ctm;
-
-
-        glm::vec4 center = modelview * glm::vec4(0.f, 0.f, 0.f, 1.f);
-        glm::vec4 h = modelview * glm::vec4(1.f, 0.f, 0.f, 1.f);
-//        glm::vec3 scale = glm::normalize( diagonal - center );
-        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 1.f / h.x, 1.f / h.y, 1.f) );
-
-//        glm::vec4 t(1.f, 0.f, 0.f, 1.f);
-//        t = modelview * t;
-//        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, 1.f, 1.f) );
 
         if ( type_ == RESIZE ) {
             // 4 corners
             ctm =  modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, -1.f, 0.f) ) ;
-//            ctm *= S;
-
-//            glm::vec4 P = glm::inverse(modelview) * glm::vec4(1.f, 1.f, 0.f, 1.f );
-
-
-//            ctm = glm::translate(glm::identity<glm::mat4>(), glm::vec3(t) );
-
             handle_->draw( ctm, projection );
 
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, +1.f, 0.f));
-
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, +1.f, 0.f));
             handle_->draw( ctm, projection );
 
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, -1.f, 0.f));
-
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, -1.f, 0.f));
             handle_->draw( ctm, projection );
 
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, +1.f, 0.f));
-
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, +1.f, 0.f));
             handle_->draw( ctm, projection );
         }
         else if ( type_ == RESIZE_H ){
             // left and right
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar, 0.f, 0.f) );
-
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.f, 0.f, 0.f) );
             handle_->draw( ctm, projection );
 
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-ar, 0.f, 0.f));
-
+            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(-1.f, 0.f, 0.f));
             handle_->draw( ctm, projection );
         }
         else if ( type_ == RESIZE_V ){
             // top and bottom
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, +1.f, 0.f) );
-
             handle_->draw( ctm, projection );
 
             ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.f, -1.f, 0.f));
-
             handle_->draw( ctm, projection );
         }
         else if ( type_ == ROTATE ){
             // only once in upper top right corner
-            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(ar + 0.06f, +1.06f, 0.f));
-
+//            ctm = modelview * glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.08f, +1.08f, 0.f));
+            glm::vec4 pos = modelview * glm::vec4(1.08f, 1.08f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(glm::vec3(pos), glm::vec3(0.f), glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
 
