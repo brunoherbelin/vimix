@@ -387,7 +387,7 @@ Frame::Frame(Type style) : Node()
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (style) {
     case SHARP_LARGE:
-        border_  = new Mesh("mesh/border_large_sharp.ply");
+        border_  = nullptr; //new Mesh("mesh/border_large_sharp.ply");
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case SHARP_THIN:
@@ -429,25 +429,25 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
         if(shadow_)
             shadow_->draw( modelview * transform_, projection);
 
-
-        // right side
-        float ar = scale_.x / scale_.y;
-        glm::vec3 s(1.f, 1.f, 1.f);
-//        glm::vec3 s(scale_.y, scale_.y, 1.0);
-        glm::vec3 t(translation_.x - 1.0 + ar, translation_.y, translation_.z);
-        glm::mat4 ctm = modelview * GlmToolkit::transform(t, rotation_, s);
-
         if(border_) {
             // right side
-            border_->shader()->color = color;
-            border_->draw( ctm, projection );
-            // left side
-            t.x = -t.x;
-            s.x = -s.x;
-            ctm = modelview * GlmToolkit::transform(t, rotation_, s);
-            border_->draw( ctm, projection );
-        }
+            float ar = scale_.x / scale_.y;
+            glm::vec3 s(1.f, 1.f, 1.f);
+            //        glm::vec3 s(scale_.y, scale_.y, 1.0);
+            glm::vec3 t(translation_.x - 1.0 + ar, translation_.y, translation_.z);
+            glm::mat4 ctm = modelview * GlmToolkit::transform(t, rotation_, s);
 
+            if(border_) {
+                // right side
+                border_->shader()->color = color;
+                border_->draw( ctm, projection );
+                // left side
+                t.x = -t.x;
+                s.x = -s.x;
+                ctm = modelview * GlmToolkit::transform(t, rotation_, s);
+                border_->draw( ctm, projection );
+            }
+        }
         // enable antialiasing
         glDisable(GL_MULTISAMPLE_ARB);
     }

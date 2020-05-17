@@ -349,3 +349,24 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
 
 }
 
+
+void LayersView::draw ()
+{
+
+}
+
+void LayersView::zoom (float factor)
+{
+
+}
+
+void LayersView::drag (glm::vec2 from, glm::vec2 to)
+{
+
+}
+
+void LayersView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+{
+
+}
+

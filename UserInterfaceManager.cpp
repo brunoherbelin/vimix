@@ -1049,6 +1049,8 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
         // image processing pannel
         s->processingShader()->accept(v);
+        ImGui::Text("Geometry");
+        s->groupNode(View::GEOMETRY)->accept(v);
         // delete button
         ImGui::Text(" ");
         if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {

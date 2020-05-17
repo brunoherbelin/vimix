@@ -27,7 +27,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
     groups_[View::MIXING] = new Group;
     Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 0.9f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
     groups_[View::MIXING]->attach(frame);
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
 
@@ -40,13 +40,20 @@ Source::Source(const std::string &name) : name_(name), initialized_(false)
     groups_[View::GEOMETRY] = new Group;
     frame = new Frame(Frame::SHARP_THIN);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 0.9f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
     groups_[View::GEOMETRY]->attach(frame);
 
     overlays_[View::GEOMETRY] = new Group;
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
+
+    // default mixing nodes
+    groups_[View::LAYER] = new Group;
+    overlays_[View::LAYER] = new Group;
+    overlays_[View::LAYER]->translation_.z = 0.15;
+    overlays_[View::LAYER]->visible_ = false;
+    groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // will be associated to nodes later
     blendingshader_ = new ImageShader;
@@ -70,6 +77,7 @@ Source::~Source()
     delete groups_[View::RENDERING];
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
+    delete groups_[View::LAYER];
 
     groups_.clear();
 
@@ -119,6 +127,9 @@ bool hasNode::operator()(const Source* elem) const
         if (sv.found())
             return true;
         elem->group(View::RENDERING)->accept(sv);
+        if (sv.found())
+            return sv.found();
+        elem->group(View::LAYER)->accept(sv);
         return sv.found();
     }
 
@@ -139,27 +150,27 @@ MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
     // extra overlay for mixing view
     Frame *frame = new Frame(Frame::ROUND_LARGE);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     overlays_[View::MIXING]->attach(frame);
 
     // extra overlays for geometry view
     frame = new Frame(Frame::SHARP_LARGE);
-    frame->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     overlays_[View::GEOMETRY]->attach(frame);
     resize_handle_ = new Handles(Handles::RESIZE);
-    resize_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    resize_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     resize_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_handle_);
     resize_H_handle_ = new Handles(Handles::RESIZE_H);
-    resize_H_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    resize_H_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     resize_H_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_H_handle_);
     resize_V_handle_ = new Handles(Handles::RESIZE_V);
-    resize_V_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    resize_V_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     resize_V_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_V_handle_);
     rotate_handle_ = new Handles(Handles::ROTATE);
-    rotate_handle_->color = glm::vec4( 0.8f, 0.8f, 0.0f, 1.f);
+    rotate_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
     rotate_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(rotate_handle_);
 
@@ -222,6 +233,7 @@ void MediaSource::init()
             groups_[View::RENDERING]->attach(rendersurface_);
             groups_[View::GEOMETRY]->attach(rendersurface_);
             groups_[View::MIXING]->attach(rendersurface_);
+            groups_[View::LAYER]->attach(rendersurface_);
 
             // for mixing view, add another surface to overlay (for stippled view in transparency)
             Surface *surfacemix = new FrameBufferSurface(renderbuffer_);

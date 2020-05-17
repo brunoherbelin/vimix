@@ -63,15 +63,16 @@ public:
     Handles(Type type);
     ~Handles();
 
+    void update (float dt) override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
     Type type() const { return type_; }
-    Mesh *handle() const { return handle_; }
+    Primitive *handle() const { return handle_; }
     glm::vec4 color;
 
 protected:
-    Mesh *handle_;
+    Primitive *handle_;
     Type type_;
 
 };

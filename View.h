@@ -79,5 +79,20 @@ private:
 
 };
 
+class LayersView : public View
+{
+public:
+    LayersView();
+    ~LayersView();
+
+    void draw () override;
+    void zoom (float factor) override;
+    void drag (glm::vec2 from, glm::vec2 to) override;
+    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
+
+private:
+
+};
+
 
 #endif // VIEW_H

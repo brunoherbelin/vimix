@@ -797,6 +797,12 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
     ImGui::End();
 }
 
+ImVec4 ImGuiToolkit::GetHighlightColor()
+{
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    return colors[ImGuiCol_CheckMark];
+}
+
 void ImGuiToolkit::SetAccentColor(accent_color color)
 {
     ImVec4* colors = ImGui::GetStyle().Colors;

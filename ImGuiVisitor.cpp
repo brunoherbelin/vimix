@@ -31,9 +31,9 @@ void ImGuiVisitor::visit(Node &n)
 
 void ImGuiVisitor::visit(Group &n)
 {
-    std::string id = std::to_string(n.id());
-    if (ImGui::TreeNode(id.c_str(), "Group %d", n.id()))
-    {
+//    std::string id = std::to_string(n.id());
+//    if (ImGui::TreeNode(id.c_str(), "Group %d", n.id()))
+//    {
         // MODEL VIEW
         if (ImGuiToolkit::ButtonIcon(6, 15)) {
             n.translation_.x = 0.f;
@@ -41,6 +41,7 @@ void ImGuiVisitor::visit(Group &n)
         }
         ImGui::SameLine(0, 10);
         float translation[2] = { n.translation_.x, n.translation_.y};
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::SliderFloat2("position", translation, -5.0, 5.0) )
         {
             n.translation_.x = translation[0];
@@ -50,6 +51,7 @@ void ImGuiVisitor::visit(Group &n)
         if (ImGuiToolkit::ButtonIcon(4, 15))
             n.rotation_.z = 0.f;
         ImGui::SameLine(0, 10);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::SliderAngle("angle", &(n.rotation_.z), -180.f, 180.f) ;
 
         if (ImGuiToolkit::ButtonIcon(3, 15))  {
@@ -57,20 +59,21 @@ void ImGuiVisitor::visit(Group &n)
             n.scale_.y = 1.f;
         }
         ImGui::SameLine(0, 10);
-        float scale = n.scale_.y;
-        if ( ImGui::SliderFloat("scale", &scale, 0.1f, 10.f, "%.3f", 3.f) )
+        float scale[2] = { n.scale_.x, n.scale_.y} ;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::SliderFloat2("scale", scale, -5.0, 5.0, "%.2f") )
         {
-            n.scale_.x = scale;
-            n.scale_.y = scale;
+            n.scale_.x = scale[0];
+            n.scale_.y = scale[1];
         }
 
-        // loop over members of a group
-        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-            (*node)->accept(*this);
-        }
+//        // loop over members of a group
+//        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+//            (*node)->accept(*this);
+//        }
 
-        ImGui::TreePop();
-    }
+//        ImGui::TreePop();
+//    }
 }
 
 void ImGuiVisitor::visit(Switch &n)
