@@ -27,6 +27,9 @@ public:
 
     Scene scene;
 
+    // hack to avoid reordering scene of view if not necessary
+    static bool need_reordering_;
+
 protected:
     Mode mode_;
 };
@@ -60,7 +63,6 @@ public:
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
     inline FrameBuffer *frameBuffer () const { return frame_buffer_; }
-
 };
 
 class GeometryView : public View

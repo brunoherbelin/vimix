@@ -52,7 +52,6 @@ void Node::update( float )
 {
     // update transform matrix from attributes
     transform_ = GlmToolkit::transform(translation_, rotation_, scale_);
-
 }
 
 void Node::accept(Visitor& v)

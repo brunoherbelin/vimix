@@ -125,7 +125,6 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     setCurrentView( (View::Mode) Settings::application.current_view );
 }
 
-
 void Mixer::update()
 {
     // change session when threaded loading is finished
@@ -140,6 +139,7 @@ void Mixer::update()
             Settings::application.recentSessions.push(sessionFilename_);
         }
     }
+
     // confirm when threaded saving is finished
     if (sessionSaveFinished_) {
         sessionSaveFinished_ = false;
@@ -155,16 +155,17 @@ void Mixer::update()
     float dt = static_cast<float>( GST_TIME_AS_MSECONDS(current_time - update_time_) ) * 0.001f;
     update_time_ = current_time;
 
-    // update session and associted sources
+    // update session and associated sources
     session_->update(dt);
 
     // update views
     mixing_.update(dt);
     geometry_.update(dt);
     layer_.update(dt);
-    // TODO other views
+    // TODO other views?
 
-
+    // optimize the reordering in depth for views
+    View::need_reordering_ = false;
 }
 
 void Mixer::draw()
@@ -199,9 +200,7 @@ void Mixer::insertSource(Source *s)
     mixing_.scene.fg()->attach(s->group(View::MIXING));
     geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
     layer_.scene.fg()->attach(s->group(View::LAYER));
-
 }
-
 
 void Mixer::deleteCurrentSource()
 {
@@ -366,7 +365,6 @@ void Mixer::saveas(const std::string& filename)
 
     // launch a thread to save the session
     std::thread (saveSession, filename, session_).detach();
-
 }
 
 void Mixer::open(const std::string& filename)
@@ -382,9 +380,7 @@ void Mixer::open(const std::string& filename)
 
     // launch a thread to load the session into back_session
     std::thread (loadSession, filename, back_session_).detach();
-
 }
-
 
 void Mixer::swap()
 {
@@ -433,7 +429,6 @@ void Mixer::swap()
     delete back_session_;
     back_session_ = nullptr;
 }
-
 
 void Mixer::newSession()
 {

@@ -22,6 +22,8 @@
 #define CIRCLE_PIXELS 64
 #define CIRCLE_PIXEL_RADIUS 1024.0
 
+bool View::need_reordering_ = true;
+
 View::View(Mode m) : mode_(m)
 {
 }
@@ -43,8 +45,9 @@ void View::update(float dt)
     // recursive update from root of scene
     scene.update( dt );
 
-    // reorder depth
-    scene.fg()->sort();
+    // reorder depth if needed
+    if (View::need_reordering_)
+        scene.fg()->sort();
 }
 
 void View::drag (glm::vec2 from, glm::vec2 to)
@@ -84,7 +87,6 @@ MixingView::MixingView() : View(MIXING)
     Mesh *circle = new Mesh("mesh/circle.ply");
     circle->shader()->color = pink;
     scene.bg()->attach(circle);
-
 }
 
 MixingView::~MixingView()
@@ -105,7 +107,6 @@ void MixingView::zoom( float factor )
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }
-
 
 void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
 {
@@ -132,7 +133,6 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *
     // request update
     s->touch();
 }
-
 
 uint MixingView::textureMixingQuadratic()
 {
@@ -193,7 +193,6 @@ RenderView::~RenderView()
     if (frame_buffer_)
         delete frame_buffer_;
 }
-
 
 void RenderView::setResolution(glm::vec3 resolution)
 {
@@ -355,7 +354,6 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     Frame *border = new Frame(Frame::ROUND_SHADOW);
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 0.7f );
     scene.bg()->attach(border);
-
 }
 
 LayerView::~LayerView()
@@ -365,7 +363,6 @@ LayerView::~LayerView()
 
 void LayerView::draw ()
 {
-
     // update rendering of render frame
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
@@ -420,5 +417,8 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
 
     // request update
     s->touch();
+
+    // request reordering
+    View::need_reordering_ = true;
 }
 
