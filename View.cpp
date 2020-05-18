@@ -303,6 +303,15 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
             if (UserInterface::manager().keyboardModifier())
                 S_resize.y = S_resize.x;
             sourceNode->scale_ = start_scale * S_resize;
+
+//            glm::vec3 factor = S_resize * glm::vec3(0.5f, 0.5f, 1.f);
+////            glm::vec3 factor = S_resize * glm::vec3(1.f, 1.f, 1.f);
+////            factor *= glm::sign( glm::vec3(pick.second, 1.f) );
+//            sourceNode->scale_ = start_scale + factor;
+
+//            sourceNode->translation_ = start_translation + factor;
+////            sourceNode->translation_ = start_translation + S_resize * factor;
+
         }
         // picking on the resizing handles left or right
         else if ( pick.first == s->handleNode(Handles::RESIZE_H) ) {

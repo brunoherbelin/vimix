@@ -152,6 +152,26 @@ void Log::ShowLogWindow(bool* p_open)
     logs.Draw( ICON_FA_LIST_UL " Logs", p_open);
 }
 
+static list<string> notifications;
+static float notifications_timeout = 0.f;
+
+void Log::Notify(const char* fmt, ...)
+{
+    ImGuiTextBuffer buf;
+
+    va_list args;
+    va_start(args, fmt);
+    buf.appendfv(fmt, args);
+    va_end(args);
+
+    // will display a notification
+    notifications.push_back(buf.c_str());
+    notifications_timeout = 0.f;
+
+    // always log
+    Log::Info("%s\n", buf.c_str());
+}
+
 
 static list<string> warnings;
 
@@ -164,44 +184,86 @@ void Log::Warning(const char* fmt, ...)
     buf.appendfv(fmt, args);
     va_end(args);
 
+    // will display a warning dialog
     warnings.push_back(buf.c_str());
+
+    // always log
     Log::Info("Warning - %s\n", buf.c_str());
 }
 
-void Log::Render()
+void Log::Render(bool showNofitications, bool showWarnings)
 {
-    if (warnings.empty())
+    bool show_warnings = !warnings.empty() & showWarnings;
+    bool show_notification = !notifications.empty() & showNofitications;
+
+    if (!show_notification && !show_warnings)
         return;
 
     ImGuiIO& io = ImGui::GetIO();
     float width = io.DisplaySize.x * 0.4f;
+    float pos = io.DisplaySize.x * 0.3f;
 
-    ImGui::OpenPopup("Warning");
-    if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGuiToolkit::Icon(9, 4);
-        ImGui::SameLine(0, 10);
-        ImGui::SetNextItemWidth(width);
-        ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", warnings.size());
-        ImGui::Dummy(ImVec2(width, 0));
+    if (show_notification){
+        notifications_timeout += io.DeltaTime;
+        float height = ImGui::GetTextLineHeightWithSpacing() * notifications.size();
+        float y = -height + MIN( notifications_timeout * height * 10.f, height );
 
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
-        for (list<string>::iterator it=warnings.begin(); it != warnings.end(); ++it) {
-            ImGui::Text("%s \n", (*it).c_str());
-            ImGui::Separator();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(COLOR_NAVIGATOR, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(COLOR_NAVIGATOR, 1.f));
+
+        ImGui::SetNextWindowPos( ImVec2(pos, y), ImGuiCond_Always );
+        ImGui::SetNextWindowSize( ImVec2(width, height), ImGuiCond_Always );
+        ImGui::SetNextWindowBgAlpha(0.8f); // Transparent background
+        if (ImGui::Begin("##notification", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav ))
+        {
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
+            for (list<string>::iterator it=notifications.begin(); it != notifications.end(); ++it) {
+                ImGui::Text( ICON_FA_INFO "  %s\n", (*it).c_str());
+            }
+            ImGui::PopTextWrapPos();
+
         }
-        ImGui::PopTextWrapPos();
+        ImGui::End();
 
-        ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
-        if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))) {
-            ImGui::CloseCurrentPopup();
-            // messages have been seen
-            warnings.clear();
-        }
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
 
-        ImGui::SetItemDefaultFocus();
-        ImGui::EndPopup();
+        // stop showing after timeout
+        if ( notifications_timeout > IMGUI_NOTIFICATION_DURATION )
+            notifications.clear();
     }
+
+    if (show_warnings) {
+        ImGui::OpenPopup("Warning");
+        if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGuiToolkit::Icon(9, 4);
+            ImGui::SameLine(0, 10);
+            ImGui::SetNextItemWidth(width);
+            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", warnings.size());
+            ImGui::Dummy(ImVec2(width, 0));
+
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
+            for (list<string>::iterator it=warnings.begin(); it != warnings.end(); ++it) {
+                ImGui::Text("%s \n", (*it).c_str());
+                ImGui::Separator();
+            }
+            ImGui::PopTextWrapPos();
+
+            ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
+            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))) {
+                ImGui::CloseCurrentPopup();
+                // messages have been seen
+                warnings.clear();
+            }
+
+            ImGui::SetItemDefaultFocus();
+            ImGui::EndPopup();
+        }
+    }
+
+
 }
 
 void Log::Error(const char* fmt, ...)

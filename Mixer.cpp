@@ -37,11 +37,11 @@ static void loadSession(const std::string& filename, Session *session)
 
      if (!creator.load(filename)) {
          // error loading
-         Log::Info("Failed to load Session file %s.", filename.c_str());
+         Log::Notify("Failed to load Session file %s.", filename.c_str());
      }
      else {
          // loaded ok
-         Log::Info("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+         Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
      }
 
      sessionThreadFilename_ = filename;
@@ -102,7 +102,7 @@ static void saveSession(const std::string& filename, Session *session)
     XMLSaveDoc(&xmlDoc, filename);
 
     // loaded ok
-    Log::Info("Session %s saved.", filename.c_str());
+    Log::Notify("Session %s saved.", filename.c_str());
 
     // all ok
     sessionThreadFilename_ = filename;
@@ -212,6 +212,9 @@ void Mixer::deleteSource(Source *s)
     // in case..
     unsetCurrentSource();
 
+    // keep name
+    std::string name = s->name();
+
     // remove source Nodes from all views
     mixing_.scene.fg()->detatch( s->group(View::MIXING) );
     geometry_.scene.fg()->detatch( s->group(View::GEOMETRY) );
@@ -219,6 +222,8 @@ void Mixer::deleteSource(Source *s)
 
     // delete source
     session_->deleteSource(s);
+
+    Log::Notify("Source %s deleted.", name.c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
