@@ -409,7 +409,7 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
     // diagonal movement only
-    sourceNode->translation_.x = CLAMP( sourceNode->translation_.x, -10.f, 0.f);
+    sourceNode->translation_.x = CLAMP( sourceNode->translation_.x, SCENE_DEPTH + 2.f, 0.f);
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
 
     // change depth
