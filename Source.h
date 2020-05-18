@@ -37,23 +37,31 @@ public:
     inline Node *groupNode(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
     Handles *handleNode(Handles::Type t) const;
 
-    // every Source has a shader to control image processing effects
+    // a Source has a shader to control image processing effects
     inline ImageProcessingShader *processingShader() const { return rendershader_; }
 
-    // every Source has a shader to control mixing effects
+    // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader() const { return blendingshader_; }
 
-    // every Source shall have a frame buffer
-    virtual FrameBuffer *frame() const = 0;
+    // a Source shall be updated before displayed (Mixing, Geometry and Layer)
+    void update (float dt);
 
-    // every Source shall be rendered before draw
-    virtual void render() = 0;
+    // touch to request update
+    inline void touch() { need_update_ = true; }
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    // every Source shall informs if the source failed (i.e. shall be deleted)
+    // SPECIFIC implementation for subtypes
+
+    // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed() const { return false; }
+
+    // every Source shall have a frame buffer
+    virtual FrameBuffer *frame() const = 0;
+
+    // every Source shall be rendered into the frame buffer
+    virtual void render() = 0;
 
 protected:
     // name
@@ -84,6 +92,9 @@ protected:
     // overlay to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     Handles *resize_handle_, *resize_H_handle_, *resize_V_handle_, *rotate_handle_;
+
+    // update need
+    bool need_update_;
 };
 
 // TODO SourceSet sorted by shader

@@ -193,6 +193,9 @@ void SessionCreator::visit (Source& s)
     xmlCurrent_ = sourceNode->FirstChildElement("Geometry");
     s.groupNode(View::GEOMETRY)->accept(*this);
 
+    xmlCurrent_ = sourceNode->FirstChildElement("Layer");
+    s.groupNode(View::LAYER)->accept(*this);
+
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);
 

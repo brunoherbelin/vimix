@@ -167,11 +167,11 @@ public:
     virtual void clear();
     virtual void attach (Node *child);
     virtual void detatch (Node *child);
+    virtual void sort();
 
     NodeSet::iterator begin();
     NodeSet::iterator end();
     uint numChildren() const;
-
 
 protected:
     NodeSet children_;

@@ -42,6 +42,9 @@ void View::update(float dt)
 {
     // recursive update from root of scene
     scene.update( dt );
+
+    // reorder depth
+    scene.fg()->sort();
 }
 
 void View::drag (glm::vec2 from, glm::vec2 to)
@@ -126,6 +129,8 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *
     // compute delta translation
     sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
+    // request update
+    s->touch();
 }
 
 
@@ -323,6 +328,8 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
         sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
     }
 
+    // request update
+    s->touch();
 }
 
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
@@ -379,7 +386,6 @@ void LayerView::zoom (float factor)
     z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
-    Log::Info("scale layer %f", scene.root()->scale_.x );
 }
 
 
@@ -409,6 +415,10 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
     sourceNode->translation_.x = CLAMP( sourceNode->translation_.x, -10.f, 0.f);
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
 
+    // change depth
+    sourceNode->translation_.z = -sourceNode->translation_.x;
 
+    // request update
+    s->touch();
 }
 

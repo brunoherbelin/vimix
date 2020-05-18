@@ -5,6 +5,8 @@
 #include "Session.h"
 #include "GarbageVisitor.h"
 
+#include "Log.h"
+
 Session::Session()
 {
     config_[View::RENDERING] = new Group;
@@ -30,7 +32,10 @@ void Session::update(float dt)
 {
     // pre-render of all sources
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); it++){
-        (*it)->render( );
+        // render the source
+        (*it)->render();
+        // update the source
+        (*it)->update(dt);
     }
 
     // update the scene tree

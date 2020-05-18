@@ -14,8 +14,9 @@
 #include "MediaPlayer.h"
 #include "SearchVisitor.h"
 
+#include "Log.h"
 
-Source::Source(const std::string &name) : name_(name), initialized_(false)
+Source::Source(const std::string &name) : name_(name), initialized_(false), need_update_(true)
 {
     sprintf(initials_, "__");
 
@@ -105,6 +106,30 @@ void Source::setOverlayVisible(bool on)
 {
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = on;
+}
+
+void Source::update(float dt)
+{
+    if (need_update_)
+    {
+        // ADJUST alpha based on MIXING node
+        // read position of the mixing node and interpret this as transparency of render output
+        glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
+        float alpha = 1.0 - CLAMP( SQUARE( glm::length(dist) ), 0.f, 1.f );
+        blendingshader_->color.a = alpha;
+
+        // MODIFY geometry based on GEOMETRY node
+        groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
+        groups_[View::RENDERING]->scale_ = groups_[View::GEOMETRY]->scale_;
+        groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
+
+        // MODIFY DEPTH
+        groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
+        groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
+        groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
+
+        need_update_ = false;
+    }
 }
 
 Handles *Source::handleNode(Handles::Type t) const
@@ -285,17 +310,6 @@ void MediaSource::render()
         renderbuffer_->begin();
         mediasurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
-
-        // ADJUST alpha based on MIXING node
-        // read position of the mixing node and interpret this as transparency of render output
-        float alpha = 1.0 - CLAMP( SQUARE( glm::length(groups_[View::MIXING]->translation_) ), 0.f, 1.f );
-        blendingshader_->color.a = alpha;
-
-        // MODIFY geometry based on GEOMETRY node
-        groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
-        groups_[View::RENDERING]->scale_ = groups_[View::GEOMETRY]->scale_;
-        groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
-
     }
 }
 

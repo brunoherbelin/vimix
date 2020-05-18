@@ -206,6 +206,15 @@ void Group::attach(Node *child)
 }
 
 
+void Group::sort()
+{
+    // reorder list of nodes
+    NodeSet ordered_children;
+    for(auto it = children_.begin(); it != children_.end(); it++)
+        ordered_children.insert(*it);
+    children_.swap(ordered_children);
+}
+
 void Group::detatch(Node *child)
 {
     // find the node with this id, and erase it out of the list of children
