@@ -395,30 +395,15 @@ void LayerView::zoom (float factor)
 }
 
 
-void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+void LayerView::setDepth (Source *s, float d)
 {
     if (!s)
         return;
 
     Group *sourceNode = s->group(mode_);
 
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec2 start_position = glm::vec2(0.f);
-
-    if ( start_position != from ) {
-        start_position = from;
-        start_translation = sourceNode->translation_;
-    }
-
-    // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
-
-    // compute delta translation
-    sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
-
     // diagonal movement only
-    sourceNode->translation_.x = CLAMP( sourceNode->translation_.x, SCENE_DEPTH + 2.f, 0.f);
+    sourceNode->translation_.x = CLAMP( -d, SCENE_DEPTH + 2.f, 0.f);
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
 
     // change depth
@@ -429,5 +414,29 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
 
     // request reordering
     View::need_reordering_ = true;
+}
+
+void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+{
+    if (!s)
+        return;
+
+    static glm::vec3 start_translation = glm::vec3(0.f);
+    static glm::vec2 start_position = glm::vec2(0.f);
+
+    if ( start_position != from ) {
+        start_position = from;
+        start_translation = s->group(mode_)->translation_;
+    }
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+
+    // compute delta translation
+    glm::vec3 dest_translation = start_translation + gl_Position_to - gl_Position_from;
+
+    // apply change
+    setDepth( s, -dest_translation.x );
 }
 

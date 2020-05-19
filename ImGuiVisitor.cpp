@@ -53,7 +53,7 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SameLine(0, 10);
     float translation[2] = { n.translation_.x, n.translation_.y};
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::SliderFloat2("position", translation, -5.0, 5.0) )
+    if ( ImGui::SliderFloat2("Position", translation, -5.0, 5.0) )
     {
         n.translation_.x = translation[0];
         n.translation_.y = translation[1];
@@ -63,7 +63,7 @@ void ImGuiVisitor::visit(Group &n)
         n.rotation_.z = 0.f;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderAngle("angle", &(n.rotation_.z), -180.f, 180.f) ;
+    ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
 
     if (ImGuiToolkit::ButtonIcon(3, 15))  {
         n.scale_.x = 1.f;
@@ -72,7 +72,7 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SameLine(0, 10);
     float scale[2] = { n.scale_.x, n.scale_.y} ;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::SliderFloat2("scale", scale, -5.0, 5.0, "%.2f") )
+    if ( ImGui::SliderFloat2("Scale", scale, -5.0, 5.0, "%.2f") )
     {
         n.scale_.x = scale[0];
         n.scale_.y = scale[1];
@@ -196,20 +196,20 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
 
-    if (ImGuiToolkit::ButtonIcon(8, 1)) n.threshold = 0.f;
-    ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0);
-
     if (ImGuiToolkit::ButtonIcon(3, 1)) n.lumakey = 0.f;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
 
+    if (ImGuiToolkit::ButtonIcon(8, 1)) n.threshold = 0.f;
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
+
     if (ImGuiToolkit::ButtonIcon(18, 1)) n.nbColors = 0;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, "%d colors");
+    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
 
     if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
     ImGui::SameLine(0, 10);
@@ -229,7 +229,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, "%.2f tolerance");
+    ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
 
     ImGui::PopID();
 }

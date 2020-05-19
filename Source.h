@@ -21,7 +21,7 @@ class Source
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source(const std::string &name = "");
+    Source();
     virtual ~Source();
 
     // manipulate name of source
@@ -125,7 +125,7 @@ private:
 class MediaSource : public Source
 {
 public:
-    MediaSource(const std::string &name = "");
+    MediaSource();
     ~MediaSource();
 
     // implementation of source API

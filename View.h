@@ -89,6 +89,8 @@ public:
     void zoom (float factor) override;
     void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
+    void setDepth (Source *, float d);
+
 private:
     float aspect_ratio;
 };

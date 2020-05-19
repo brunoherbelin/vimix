@@ -580,8 +580,6 @@ void ToolBox::Render()
             case 3:
             {
                 if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
-                    std::time_t t = std::time(0);   // get time now
-                    std::tm* now = std::localtime(&t);
                     std::string filename =  SystemToolkit::date_time_string() + "_vmixcapture.png";
                     Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
                     Rendering::manager().CurrentScreenshot()->Clear();
@@ -1052,6 +1050,8 @@ void Navigator::RenderSourcePannel(Source *s)
         // image processing pannel
         s->processingShader()->accept(v);
         s->groupNode(View::GEOMETRY)->accept(v);
+        // ensure change is applied
+        s->touch();
         // delete button
         ImGui::Text(" ");
         if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {

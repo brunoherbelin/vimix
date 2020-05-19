@@ -16,11 +16,13 @@
 
 #include "Log.h"
 
-Source::Source(const std::string &name) : name_(name), initialized_(false), need_update_(true)
+Source::Source() : initialized_(false), need_update_(true)
 {
     sprintf(initials_, "__");
+    name_ = "Source";
 
-    // create groups for each view
+    // create groups and overlays for each view
+
     // default rendering node
     groups_[View::RENDERING] = new Group;
     groups_[View::RENDERING]->visible_ = false;
@@ -53,7 +55,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false), need
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default mixing nodes
-    groups_[View::LAYER] = new Group;    
+    groups_[View::LAYER] = new Group;
     groups_[View::LAYER]->visible_ = false;
     frame = new Frame(Frame::ROUND_SHADOW);
     frame->translation_.z = 0.1;
@@ -83,13 +85,14 @@ Source::~Source()
         delete renderbuffer_;
 
     // all groups and their children are deleted in the scene
-    // this includes rendersurface_ , overlay_, blendingshader_ and rendershader_
+    // this includes rendersurface_, overlays, blendingshader_ and rendershader_
     delete groups_[View::RENDERING];
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
     delete groups_[View::LAYER];
 
     groups_.clear();
+    overlays_.clear();
 
 }
 
@@ -127,7 +130,7 @@ void Source::update(float dt)
         groups_[View::RENDERING]->scale_ = groups_[View::GEOMETRY]->scale_;
         groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
 
-        // MODIFY DEPTH
+        // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
         groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
         groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
@@ -170,7 +173,7 @@ bool hasNode::operator()(const Source* elem) const
     return false;
 }
 
-MediaSource::MediaSource(const std::string &name) : Source(name), path_("")
+MediaSource::MediaSource() : Source(), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
