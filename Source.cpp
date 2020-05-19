@@ -23,9 +23,11 @@ Source::Source(const std::string &name) : name_(name), initialized_(false), need
     // create groups for each view
     // default rendering node
     groups_[View::RENDERING] = new Group;
+    groups_[View::RENDERING]->visible_ = false;
 
     // default mixing nodes
     groups_[View::MIXING] = new Group;
+    groups_[View::MIXING]->visible_ = false;
     Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
@@ -39,6 +41,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false), need
 
     // default geometry nodes
     groups_[View::GEOMETRY] = new Group;
+    groups_[View::GEOMETRY]->visible_ = false;
     frame = new Frame(Frame::SHARP_THIN);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
@@ -51,6 +54,7 @@ Source::Source(const std::string &name) : name_(name), initialized_(false), need
 
     // default mixing nodes
     groups_[View::LAYER] = new Group;    
+    groups_[View::LAYER]->visible_ = false;
     frame = new Frame(Frame::ROUND_SHADOW);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
@@ -220,6 +224,8 @@ void MediaSource::setPath(const std::string &p)
     path_ = p;
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
+
+    Log::Notify("Opening %s", p.c_str());
 }
 
 std::string MediaSource::path() const
@@ -292,6 +298,11 @@ void MediaSource::init()
 
             // done init once and for all
             initialized_ = true;
+            // make visible
+            groups_[View::RENDERING]->visible_ = true;
+            groups_[View::MIXING]->visible_ = true;
+            groups_[View::GEOMETRY]->visible_ = true;
+            groups_[View::LAYER]->visible_ = true;
         }
     }
 
