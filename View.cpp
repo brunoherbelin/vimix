@@ -400,10 +400,22 @@ void LayerView::setDepth (Source *s, float d)
     if (!s)
         return;
 
+    float depth = d;
+
+    // negative depth given; find the front most depth
+    if ( depth < 0.f ) {
+        Node *front = scene.fg()->front();
+        if (front)
+            depth = front->translation_.z + 0.5f;
+        else
+            depth = 0.5f;
+    }
+
+    // move the layer node of the source
     Group *sourceNode = s->group(mode_);
 
     // diagonal movement only
-    sourceNode->translation_.x = CLAMP( -d, SCENE_DEPTH + 2.f, 0.f);
+    sourceNode->translation_.x = CLAMP( -depth, SCENE_DEPTH + 2.f, 0.f);
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
 
     // change depth

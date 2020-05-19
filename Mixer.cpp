@@ -201,6 +201,7 @@ void Mixer::insertSource(Source *s)
     geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
     layer_.scene.fg()->attach(s->group(View::LAYER));
 
+    layer_.setDepth(s);
 }
 
 void Mixer::deleteCurrentSource()

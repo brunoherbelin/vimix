@@ -171,6 +171,8 @@ public:
 
     NodeSet::iterator begin();
     NodeSet::iterator end();
+    Node *front();
+    Node *back();
     uint numChildren() const;
 
 protected:

@@ -272,6 +272,21 @@ NodeSet::iterator Group::end()
     return children_.end();
 }
 
+
+Node *Group::front()
+{
+    if (!children_.empty())
+        return *children_.rbegin();
+    return nullptr;
+}
+
+Node *Group::back()
+{
+    if (!children_.empty())
+        return *children_.begin();
+    return nullptr;
+}
+
 uint Group::numChildren() const
 {
     return children_.size();
