@@ -10,6 +10,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "RenderingManager.h"
 #include "Primitives.h"
 #include "Resource.h"
 #include "ImageShader.h"
@@ -472,7 +473,7 @@ Handles::Handles(Type type) : Node(), type_(type)
         handle_ = new Mesh("mesh/border_handles_rotation.ply");
     }
     else {
-        handle_ = new LineSquare(color, 2);
+        handle_ = new LineSquare(color, int ( 8.1f /** Rendering::manager().DPIScale()*/) );
         handle_->scale_ = glm::vec3( 0.05f, 0.05f, 1.f);
     }
 

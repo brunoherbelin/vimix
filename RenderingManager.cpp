@@ -143,7 +143,6 @@ bool Rendering::Init()
     gst_init (NULL, NULL);
 
     // Antialiasing
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
@@ -158,12 +157,12 @@ bool Rendering::Init()
 #elif GST_GL_HAVE_PLATFORM_CGL
 
 
-//    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(window) );
-//    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
+//    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_window_) );
+    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
 
-//    global_gl_context = gst_gl_context_new_wrapped (global_display,
-//                                         (guintptr) 0,
-//                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
+    global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                         (guintptr) 0,
+                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
 
 
 #elif GST_GL_HAVE_PLATFORM_GLX
@@ -433,7 +432,7 @@ float Rendering::AspectRatio()
     return static_cast<float>(main_window_attributes_.viewport.x) / static_cast<float>(main_window_attributes_.viewport.y);
 }
 
-void Rendering::FileDropped(GLFWwindow* window, int path_count, const char* paths[])
+void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
 {
     for (int i = 0; i < path_count; ++i) {
         std::string filename(paths[i]);
@@ -475,7 +474,7 @@ void Rendering::RequestScreenshot()
 //
 
 static GstBusSyncReply
-bus_sync_handler (GstBus * bus, GstMessage * msg, gpointer user_data)
+bus_sync_handler (GstBus *, GstMessage * msg, gpointer )
 {
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
         const gchar* contextType;

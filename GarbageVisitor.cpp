@@ -9,7 +9,7 @@ GarbageVisitor::GarbageVisitor(Node *nodetocollect) : Visitor()
 {
     targets_.push_front(nodetocollect);
     current_ = nullptr;
-    found_ == false;
+    found_ = false;
 }
 
 GarbageVisitor::GarbageVisitor(Source *sourcetocollect) : Visitor()
@@ -18,7 +18,7 @@ GarbageVisitor::GarbageVisitor(Source *sourcetocollect) : Visitor()
     targets_.push_front(sourcetocollect->group(View::GEOMETRY));
     targets_.push_front(sourcetocollect->group(View::RENDERING));
     current_ = nullptr;
-    found_ == false;
+    found_ = false;
 }
 
 

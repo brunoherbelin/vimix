@@ -141,7 +141,7 @@ public:
 
 protected:
 
-    void init();
+    void init() override;
 
     Surface *mediasurface_;
     std::string path_;

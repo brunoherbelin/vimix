@@ -200,6 +200,7 @@ void Mixer::insertSource(Source *s)
     mixing_.scene.fg()->attach(s->group(View::MIXING));
     geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
     layer_.scene.fg()->attach(s->group(View::LAYER));
+
 }
 
 void Mixer::deleteCurrentSource()
@@ -422,6 +423,9 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
+
+    // request reordering in depth for views
+    View::need_reordering_ = true;
 
     // no current source
     current_source_ = session_->end();
