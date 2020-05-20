@@ -16,6 +16,8 @@
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
+#include "Settings.h"
+#include "Mixer.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -268,11 +270,13 @@ void ImGuiVisitor::visit (Source& s)
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+    if (ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Settings::application.media_player = !Settings::application.media_player;
 }
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
-    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-    ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+//    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+    if (ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Mixer::manager().open( s.path() );
 }
