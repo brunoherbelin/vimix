@@ -108,10 +108,10 @@ void Settings::Save()
         };
         recent->InsertEndChild(recentsession);
 
-        XMLElement *recentmedia = xmlDoc.NewElement( "Media" );
-        recentmedia->SetAttribute("path", application.recentMedia.path.c_str());
-        for(auto it = application.recentMedia.filenames.begin();
-            it != application.recentMedia.filenames.end(); it++) {
+        XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
+        recentmedia->SetAttribute("path", application.recentImport.path.c_str());
+        for(auto it = application.recentImport.filenames.begin();
+            it != application.recentImport.filenames.end(); it++) {
 
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
@@ -245,21 +245,21 @@ void Settings::Load()
                 }
             }
             // recent media uri
-            XMLElement * pMedia = pElement->FirstChildElement("Media");
-            if (pMedia)
+            XMLElement * pImport = pElement->FirstChildElement("Import");
+            if (pImport)
             {
-                const char *path_ = pMedia->Attribute("path");
+                const char *path_ = pImport->Attribute("path");
                 if (path_)
-                    application.recentMedia.path = std::string(path_);
+                    application.recentImport.path = std::string(path_);
                 else
-                    application.recentMedia.path = SystemToolkit::home_path();
-                application.recentMedia.filenames.clear();
-                XMLElement* path = pMedia->FirstChildElement("path");
+                    application.recentImport.path = SystemToolkit::home_path();
+                application.recentImport.filenames.clear();
+                XMLElement* path = pImport->FirstChildElement("path");
                 for( ; path ; path = path->NextSiblingElement())
                 {
                     const char *p = path->GetText();
                     if (p)
-                    application.recentMedia.push( std::string (p) );
+                    application.recentImport.push( std::string (p) );
                 }
             }
         }

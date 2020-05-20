@@ -6,6 +6,7 @@
 #include "Primitives.h"
 #include "Mesh.h"
 #include "Source.h"
+#include "MediaSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"

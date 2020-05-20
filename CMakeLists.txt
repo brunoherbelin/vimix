@@ -209,6 +209,7 @@ set(VMIX_SRCS
     View.cpp
     Source.cpp
     Session.cpp
+    SessionSource.cpp
     SessionVisitor.cpp
     GarbageVisitor.cpp
     SessionCreator.cpp
@@ -218,6 +219,7 @@ set(VMIX_SRCS
     Resource.cpp
     FileDialog.cpp
     MediaPlayer.cpp
+    MediaSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp

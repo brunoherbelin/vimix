@@ -44,6 +44,7 @@
 #include "Mixer.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
+#include "MediaSource.h"
 #include "PickingVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -58,14 +59,14 @@ void ShowAbout(bool* p_open);
 
 // static objects for multithreaded file dialog
 static std::atomic<bool> FileDialogPending_ = false;
-static std::atomic<bool> FileDialogLoadFinished_ = false;
-static std::atomic<bool> FileDialogSaveFinished_ = false;
-static std::string FileDialogFilename_ = "";
+static std::atomic<bool> SessionFileDialogLoadFinished_ = false;
+static std::atomic<bool> SessionFileDialogSaveFinished_ = false;
+static std::string SessionFileDialogFilename_ = "";
 
-static void FileDialogOpen(std::string path)
+static void SessionFileDialogOpen(std::string path)
 {
      FileDialogPending_ = true;
-     FileDialogLoadFinished_ = false;
+     SessionFileDialogLoadFinished_ = false;
 
      char const * open_file_name;
      char const * open_pattern[1] = { "*.vmx" };
@@ -73,17 +74,17 @@ static void FileDialogOpen(std::string path)
      open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
 
      if (!open_file_name)
-        FileDialogFilename_ = "";
+        SessionFileDialogFilename_ = "";
      else
-        FileDialogFilename_ = std::string( open_file_name );
+        SessionFileDialogFilename_ = std::string( open_file_name );
 
-     FileDialogLoadFinished_ = true;
+     SessionFileDialogLoadFinished_ = true;
 }
 
-static void FileDialogSave(std::string path)
+static void SessionFileDialogSave(std::string path)
 {
      FileDialogPending_ = true;
-     FileDialogSaveFinished_ = false;
+     SessionFileDialogSaveFinished_ = false;
 
      char const * save_file_name;
      char const * save_pattern[1] = { "*.vmx" };
@@ -91,37 +92,32 @@ static void FileDialogSave(std::string path)
      save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
      if (!save_file_name)
-        FileDialogFilename_ = "";
+        SessionFileDialogFilename_ = "";
      else
      {
-        FileDialogFilename_ = std::string( save_file_name );
+        SessionFileDialogFilename_ = std::string( save_file_name );
         // check extension
-        std::string extension = FileDialogFilename_.substr(FileDialogFilename_.find_last_of(".") + 1);
+        std::string extension = SessionFileDialogFilename_.substr(SessionFileDialogFilename_.find_last_of(".") + 1);
         if (extension != "vmx")
-            FileDialogFilename_ += ".vmx";
+            SessionFileDialogFilename_ += ".vmx";
      }
 
-     FileDialogSaveFinished_ = true;
+     SessionFileDialogSaveFinished_ = true;
 }
 
-static std::atomic<bool> MediaDialogFinished_ = false;
-static std::string MediaDialogUri_ = "";
-static void MediaDialogOpen(std::string path)
+static void ImportFileDialogOpen(char *filename, const std::string &path)
 {
-     FileDialogPending_ = true;
-     MediaDialogFinished_ = false;
+    if (FileDialogPending_)
+        return;
+    FileDialogPending_ = true;
 
-     char const * open_file_name;
-     char const * open_pattern[15] = { "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif" };
+    char const * open_pattern[17] = { "*vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.svg" };
+    char const * open_file_name;
 
-     open_file_name = tinyfd_openFileDialog( "Open a Media file", path.c_str(), 15, open_pattern, "Video or image", 0);
+    open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 17, open_pattern, "All supported formats", 0);
+    sprintf(filename, "%s", open_file_name);
 
-     if (!open_file_name)
-        MediaDialogUri_ = "";
-     else
-        MediaDialogUri_ = std::string( open_file_name );
-
-     MediaDialogFinished_ = true;
+    FileDialogPending_ = false;
 }
 
 UserInterface::UserInterface()
@@ -211,7 +207,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // Open session
-            std::thread (FileDialogOpen, Settings::application.recentSessions.path).detach();
+            std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
             navigator.hidePannel();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
@@ -378,37 +374,29 @@ void UserInterface::NewFrame()
     handleMouse();
 
     // handle FileDialog
-    if (FileDialogLoadFinished_) {
-        FileDialogLoadFinished_ = false;
+    if (SessionFileDialogLoadFinished_) {
+        SessionFileDialogLoadFinished_ = false;
         FileDialogPending_ = false;
-        if (!FileDialogFilename_.empty()) {
-            Mixer::manager().open(FileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(FileDialogFilename_);
+        if (!SessionFileDialogFilename_.empty()) {
+            Mixer::manager().open(SessionFileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(SessionFileDialogFilename_);
         }
     }
-    if (FileDialogSaveFinished_) {
-        FileDialogSaveFinished_ = false;
+    if (SessionFileDialogSaveFinished_) {
+        SessionFileDialogSaveFinished_ = false;
         FileDialogPending_ = false;
-        if (!FileDialogFilename_.empty()) {
-            Mixer::manager().saveas(FileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(FileDialogFilename_);
-        }
-    }
-    if (MediaDialogFinished_) {
-        MediaDialogFinished_ = false;
-        FileDialogPending_ = false;
-        if (!MediaDialogUri_.empty()) {
-            navigator.setMediaUri(MediaDialogUri_);
-            Settings::application.recentMedia.path = SystemToolkit::path_filename(MediaDialogUri_);
+        if (!SessionFileDialogFilename_.empty()) {
+            Mixer::manager().saveas(SessionFileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(SessionFileDialogFilename_);
         }
     }
 
-    // overlay when disabled
+    // overlay to ensure file dialog is modal
     if (FileDialogPending_){
         ImGui::OpenPopup("Busy");
         if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::Text("Close dialog to resume...");
+            ImGui::Text("Close file dialog box to resume.");
             ImGui::EndPopup();
         }
     }
@@ -480,7 +468,7 @@ void UserInterface::showMenuFile()
 {
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
         // launch file dialog to open a session file
-        std::thread (FileDialogOpen, Settings::application.recentSessions.path).detach();
+        std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
@@ -488,7 +476,7 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as")) {
-        std::thread (FileDialogSave, Settings::application.recentSessions.path).detach();
+        std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
 
@@ -1061,10 +1049,6 @@ void Navigator::RenderSourcePannel(Source *s)
     ImGui::End();
 }
 
-void Navigator::setMediaUri(std::string path)
-{
-    sprintf(media_path_, "%s", path.c_str());
-}
 
 void Navigator::RenderNewPannel()
 {
@@ -1082,55 +1066,61 @@ void Navigator::RenderNewPannel()
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         static int new_source_type = 0;
-        ImGui::Combo("Type", &new_source_type, "Media\0Render\0Clone\0");
+        ImGui::Combo("Origin", &new_source_type, "File\0Software\0Hardware\0");
+
+        // Media Source creation
         if (new_source_type == 0) {
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("A Media source displays an image or a video file.");
-            // browse folder
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.vmx)\n\nEquivalent to dropping the file in the workspace.");
+
+            // filename of the media to open
+            static char filename[2048];
+
+            // browse for a filename
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
-                std::thread (MediaDialogOpen, Settings::application.recentMedia.path).detach();
+                std::thread (ImportFileDialogOpen, filename, Settings::application.recentImport.path).detach();
             }
-            // combo recent
+            // combo of recent media filenames
             ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##RecentMedia", "Select recent"))
+            if (ImGui::BeginCombo("##RecentImport", "Select recent"))
             {
-                std::for_each(Settings::application.recentMedia.filenames.begin(),
-                              Settings::application.recentMedia.filenames.end(), [](std::string& path) {
+                std::for_each(Settings::application.recentImport.filenames.begin(),
+                              Settings::application.recentImport.filenames.end(), [](std::string& path) {
                     int right = MIN( 40, path.size());
                     if (ImGui::Selectable( path.substr( path.size() - right ).c_str() )) {
-                        UserInterface::manager().navigator.setMediaUri(path);
+                        sprintf(filename, "%s", path.c_str());
                     }
                 });
                 ImGui::EndCombo();
             }
-            // uri text entry
+            // filename text entry - [Return] to validate
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::InputText("Path", media_path_, IM_ARRAYSIZE(media_path_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
-                Mixer::manager().createSourceMedia(media_path_);
+            if (ImGui::InputText("Path", filename, IM_ARRAYSIZE(filename), ImGuiInputTextFlags_EnterReturnsTrue) ) {
+                Mixer::manager().createSourceFile( std::string(filename) );
                 selected_button[NAV_NEW] = false;
             }
-
-            // Validate button
+            // or press Validate button
             ImGui::Text(" ");
             if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
-
-                if ( SystemToolkit::file_exists(media_path_) ) {
-                    Mixer::manager().createSourceMedia(media_path_);
-                    selected_button[NAV_NEW] = false;
-                }
+                Mixer::manager().createSourceFile( std::string(filename) );
+                selected_button[NAV_NEW] = false;
             }
         }
+        // Render Source creator
         else if (new_source_type == 1){
+
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("A Render source replicates the rendering of the output.");
+            ImGuiToolkit::HelpMarker("Create a source from a software algorithm or from vimix objects.");
+
         }
+        // Hardware
         else {
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("A Clone source duplicates the content of another source.");
+            ImGuiToolkit::HelpMarker("Create a source capturing images from an external hardware.");
         }
 
     }

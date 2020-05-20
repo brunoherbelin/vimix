@@ -304,6 +304,7 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
                 S_resize.y = S_resize.x;
             sourceNode->scale_ = start_scale * S_resize;
 
+            Log::Info(" resize            ( %.1f, %.1f ) ", S_resize.x, S_resize.y);
 //            glm::vec3 factor = S_resize * glm::vec3(0.5f, 0.5f, 1.f);
 ////            glm::vec3 factor = S_resize * glm::vec3(1.f, 1.f, 1.f);
 ////            factor *= glm::sign( glm::vec3(pick.second, 1.f) );

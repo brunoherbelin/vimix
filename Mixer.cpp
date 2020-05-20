@@ -1,52 +1,54 @@
 #include <algorithm>
 #include <thread>
+#include <atomic>
+#include <vector>
+#include <chrono>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include "defines.h"
+#include "Settings.h"
 #include "Log.h"
 #include "View.h"
-#include "Primitives.h"
-#include "Mesh.h"
-#include "FrameBuffer.h"
-#include "Settings.h"
 #include "SystemToolkit.h"
-#include "ImageProcessingShader.h"
-#include "GarbageVisitor.h"
+//#include "GarbageVisitor.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
-#include "MediaPlayer.h"
+#include "SessionSource.h"
+#include "MediaSource.h"
 
 #include "Mixer.h"
 
 // static objects for multithreaded session loading
 static std::atomic<bool> sessionThreadActive_ = false;
 static std::string sessionThreadFilename_ = "";
-
 static std::atomic<bool> sessionLoadFinished_ = false;
+
 static void loadSession(const std::string& filename, Session *session)
 {
-     sessionThreadActive_ = true;
-     sessionLoadFinished_ = false;
-     sessionThreadFilename_ = "";
+    while (sessionThreadActive_)
+        std::this_thread::sleep_for( std::chrono::milliseconds(50));
+    sessionThreadActive_ = true;
+    sessionLoadFinished_ = false;
+    sessionThreadFilename_ = "";
 
-     // actual loading of xml file
-     SessionCreator creator( session );
+    // actual loading of xml file
+    SessionCreator creator( session );
 
-     if (!creator.load(filename)) {
-         // error loading
-         Log::Notify("Failed to load Session file %s.", filename.c_str());
-     }
-     else {
-         // loaded ok
-         Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
-     }
+    if (!creator.load(filename)) {
+        // error loading
+        Log::Warning("Failed to load Session file %s.", filename.c_str());
+    }
+    else {
+        // loaded ok
+        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+    }
 
-     sessionThreadFilename_ = filename;
-     sessionLoadFinished_ = true;
-     sessionThreadActive_ = false;
+    sessionThreadFilename_ = filename;
+    sessionLoadFinished_ = true;
+    sessionThreadActive_ = false;
 }
 
 // static objects for multithreaded session saving
@@ -54,6 +56,8 @@ static std::atomic<bool> sessionSaveFinished_ = false;
 static void saveSession(const std::string& filename, Session *session)
 {
     // reset
+    while (sessionThreadActive_)
+        std::this_thread::sleep_for( std::chrono::milliseconds(50));
     sessionThreadActive_ = true;
     sessionSaveFinished_ = false;
     sessionThreadFilename_ = "";
@@ -175,21 +179,43 @@ void Mixer::draw()
 }
 
 // manangement of sources
-void Mixer::createSourceMedia(std::string path)
+void Mixer::createSourceFile(std::string path)
 {
-    // create source
-    MediaSource *m = new MediaSource();
-    m->setPath(path);
+    // sanity check
+    if ( !SystemToolkit::file_exists( path ) ) {
+        Log::Notify("File %s does not exist.", path);
+        return;
+    }
+    // ready to create a source
+    Source *s = nullptr;
+
+    // test type of file by extension
+    std::string ext = SystemToolkit::extension_filename(path);
+    if ( ext == "vmx" )
+    {
+        // create a session source
+        SessionSource *ss = new SessionSource();
+        ss->setPath(path);
+        s = ss;
+    }
+    else {
+        // (try to) create media source by default
+        MediaSource *ms = new MediaSource();
+        ms->setPath(path);
+        s = ms;
+    }
 
     // remember in recent media
-    Settings::application.recentMedia.push(path);
+    Settings::application.recentImport.push(path);
+    Settings::application.recentImport.path = SystemToolkit::path_filename(path);
 
     // propose a new name based on uri
-    renameSource(m, SystemToolkit::base_filename(path));
+    renameSource(s, SystemToolkit::base_filename(path));
 
     // add to mixer
-    insertSource(m);
+    insertSource(s);
 }
+
 
 void Mixer::insertSource(Source *s)
 {
@@ -353,18 +379,12 @@ View *Mixer::currentView()
 
 void Mixer::save()
 {
-    if (sessionThreadActive_)
-        return;
-
     if (!sessionFilename_.empty())
         saveas(sessionFilename_);
 }
 
 void Mixer::saveas(const std::string& filename)
 {
-    if (sessionThreadActive_)
-        return;
-
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
@@ -376,9 +396,6 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::open(const std::string& filename)
 {
-    if (sessionThreadActive_)
-        return;
-
     if (back_session_)
         delete back_session_;
 

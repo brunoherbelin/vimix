@@ -14,6 +14,7 @@ class FrameBuffer;
 class FrameBufferSurface;
 class MediaPlayer;
 class Surface;
+class Session;
 class Frame;
 
 class Source
@@ -43,11 +44,11 @@ public:
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader() const { return blendingshader_; }
 
-    // a Source shall be updated before displayed (Mixing, Geometry and Layer)
-    void update (float dt);
-
     // touch to request update
     inline void touch() { need_update_ = true; }
+
+    // a Source shall be updated before displayed (Mixing, Geometry and Layer)
+    void update (float dt);
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
@@ -95,6 +96,7 @@ protected:
 
     // update need
     bool need_update_;
+    float dt_;
 };
 
 // TODO SourceSet sorted by shader
@@ -122,32 +124,5 @@ private:
     Node *_n;
 };
 
-class MediaSource : public Source
-{
-public:
-    MediaSource();
-    ~MediaSource();
-
-    // implementation of source API
-    FrameBuffer *frame() const override;
-    void render() override;
-    void accept (Visitor& v) override;
-    bool failed() const override;
-
-    // Media specific interface
-    void setPath(const std::string &p);
-    std::string path() const;
-    MediaPlayer *mediaplayer() const;
-
-protected:
-
-    void init() override;
-
-    Surface *mediasurface_;
-    std::string path_;
-    MediaPlayer *mediaplayer_;
-};
-
-// TODO dedicated source .cpp .h files for MediaSource
 
 #endif // SOURCE_H

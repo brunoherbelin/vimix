@@ -1,7 +1,6 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-#include <vector>
 
 //  GStreamer
 #include <gst/gst.h>
@@ -10,6 +9,7 @@
 #include "View.h"
 #include "Session.h"
 #include "Source.h"
+
 
 class Mixer
 {
@@ -34,7 +34,7 @@ public:
     void draw();
 
     // manangement of sources
-    void createSourceMedia(std::string path);
+    void createSourceFile(std::string path);
 
     void deleteSource(Source *s);
     void deleteCurrentSource();

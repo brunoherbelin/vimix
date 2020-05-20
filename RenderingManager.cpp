@@ -438,18 +438,8 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         std::string filename(paths[i]);
         if (filename.empty())
             break;
-        std::string ext = SystemToolkit::extension_filename(filename);
-//        Log::Info("Dropped file %s %s\n", filename.c_str(), ext.c_str());
-        if ( ext == "vmx" )
-        {
-            // try to load a session
-            Mixer::manager().open(filename);
-        }
-        else {
-            // try to create a media source
-            Mixer::manager().createSourceMedia( filename );
-        }
-
+        // try to create a source
+        Mixer::manager().createSourceFile( filename );
     }
 }
 

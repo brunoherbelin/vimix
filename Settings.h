@@ -82,7 +82,7 @@ struct Application
 
     // recent files histories
     History recentSessions;
-    History recentMedia;
+    History recentImport;
 
     Application() : name(APP_NAME){
         scale = 1.f;
