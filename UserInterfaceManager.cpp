@@ -1192,8 +1192,17 @@ void Navigator::RenderMainPannel()
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
         // Bottom aligned
-        ImGui::SetCursorPosY(height - 4.f * ImGui::GetTextLineHeightWithSpacing());
-        ImGui::Text("About");
+        static unsigned int vimixicon = Resource::getTextureImage("images/v-mix_256x256.png");
+        static float h = 4.f * ImGui::GetTextLineHeightWithSpacing();
+        if ( ImGui::GetCursorPosY() + h + 128.f < height ) {
+            ImGui::SetCursorPos(ImVec2(pannel_width / 2.f - 64.f, height -h - 128.f));
+            ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
+            ImGui::Text("");
+        }
+        else {
+            ImGui::SetCursorPosY(height -h);
+            ImGui::Text("About");
+        }
         if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().show_about = true;
         if ( ImGui::Button("ImGui"))
