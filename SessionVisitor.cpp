@@ -6,6 +6,7 @@
 #include "Mesh.h"
 #include "Source.h"
 #include "MediaSource.h"
+#include "SessionSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
@@ -337,4 +338,14 @@ void SessionVisitor::visit (MediaSource& s)
     uri->InsertEndChild( text );
 
     s.mediaplayer()->accept(*this);
+}
+
+void SessionVisitor::visit (SessionSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "SessionSource");
+
+    XMLElement *path = xmlDoc_->NewElement("path");
+    xmlCurrent_->InsertEndChild(path);
+    XMLText *text = xmlDoc_->NewText( s.path().c_str() );
+    path->InsertEndChild( text );
 }

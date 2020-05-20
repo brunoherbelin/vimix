@@ -14,6 +14,8 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
+#include "MediaSource.h"
+#include "SessionSource.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -97,6 +99,15 @@ void ImGuiVisitor::visit(Animation &n)
 {
     // TODO : display group and animation parameters
 
+}
+
+void ImGuiVisitor::visit(Scene &n)
+{
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::CollapsingHeader("Scene Property Tree"))
+    {
+        n.root()->accept(*this);
+    }
 }
 
 void ImGuiVisitor::visit(Primitive &n)
@@ -234,13 +245,34 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::PopID();
 }
 
-void ImGuiVisitor::visit(Scene &n)
+
+void ImGuiVisitor::visit (Source& s)
 {
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-    if (ImGui::CollapsingHeader("Scene Property Tree"))
-    {
-        n.root()->accept(*this);
-    }
+    // blending
+    s.blendingShader()->accept(*this);
+
+    // preview
+    float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    ImVec2 imagesize ( preview_width, preview_width / s.frame()->aspectRatio());
+    ImGui::Image((void*)(uintptr_t) s.frame()->texture(), imagesize);
+
+    // image processing pannel
+    s.processingShader()->accept(*this);
+
+    // geometry direct control
+    s.groupNode(View::GEOMETRY)->accept(*this);
+
+    // Action on source
+    ImGui::Button("Clone", ImVec2(IMGUI_RIGHT_ALIGN, 0));
 }
 
+void ImGuiVisitor::visit (MediaSource& s)
+{
+    ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+}
 
+void ImGuiVisitor::visit (SessionSource& s)
+{
+    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+    ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+}

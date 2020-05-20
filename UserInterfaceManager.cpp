@@ -1028,16 +1028,9 @@ void Navigator::RenderSourcePannel(Source *s)
         if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
             Mixer::manager().renameSource(s, buf5);
         }
-        // blending pannel
+        // Source pannel
         static ImGuiVisitor v;
-        s->blendingShader()->accept(v);
-        // preview
-        float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-        ImVec2 imagesize ( preview_width, preview_width / s->frame()->aspectRatio());
-        ImGui::Image((void*)(uintptr_t) s->frame()->texture(), imagesize);
-        // image processing pannel
-        s->processingShader()->accept(v);
-        s->groupNode(View::GEOMETRY)->accept(v);
+        s->accept(v);
         // ensure change is applied
         s->touch();
         // delete button

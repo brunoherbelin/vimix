@@ -26,6 +26,7 @@ class ImageShader;
 class ImageProcessingShader;
 class Source;
 class MediaSource;
+class SessionSource;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -58,6 +59,7 @@ public:
     // utility
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
+    virtual void visit (SessionSource&) {}
 
 };
 

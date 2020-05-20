@@ -7,6 +7,7 @@
 #include "Mesh.h"
 #include "Source.h"
 #include "MediaSource.h"
+#include "SessionSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -67,10 +68,17 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
             counter++;
 
             const char *pType = xmlCurrent_->Attribute("type");
+            if (!pType)
+                continue;
             if ( std::string(pType) == "MediaSource") {
                 MediaSource *new_media_source = new MediaSource();
                 new_media_source->accept(*this);
                 session_->addSource(new_media_source);
+            }
+            if ( std::string(pType) == "SessionSource") {
+                SessionSource *new_session_source = new SessionSource();
+                new_session_source->accept(*this);
+                session_->addSource(new_session_source);
             }
             // TODO : create other types of source
 
@@ -218,6 +226,17 @@ void SessionCreator::visit (MediaSource& s)
 
     // set config media player
     s.mediaplayer()->accept(*this);
+}
+
+void SessionCreator::visit (SessionSource& s)
+{
+    // set uri
+    XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
+    if (pathNode) {
+        std::string path = std::string ( pathNode->GetText() );
+        s.setPath(path);
+    }
+
 }
 
 

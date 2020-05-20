@@ -23,6 +23,9 @@ public:
     void visit(Shader& n) override;
     void visit(ImageShader& n) override;
     void visit(ImageProcessingShader& n) override;
+    void visit (Source& s) override;
+    void visit (MediaSource& s) override;
+    void visit (SessionSource& s) override;
 };
 
 #endif // IMGUIVISITOR_H
