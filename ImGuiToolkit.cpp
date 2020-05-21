@@ -21,32 +21,19 @@
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
+#include "SystemToolkit.h"
 
 unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
 
-void ImGuiToolkit::ButtonOpenWebpage( const char* url )
+void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
 {
     char label[512];
     sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, url );
 
-    if ( ImGui::Button(label) )
-    {
-
-#ifdef _WIN32
-        ShellExecuteA( nullptr, nullptr, url, nullptr, nullptr, 0 );
-#elif defined __APPLE__
-        char buf[1024];
-        sprintf( buf, "open %s", url );
-        system( buf );
-#else
-        char buf[1024];
-        sprintf( buf, "xdg-open %s", url );
-        system( buf );
-#endif
-
-    }
+    if ( ImGui::Button(label, size_arg) )
+        SystemToolkit::open(url);
 }
 
 

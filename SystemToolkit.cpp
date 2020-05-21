@@ -146,3 +146,18 @@ bool SystemToolkit::create_directory(const string& path)
 
     // TODO : verify WIN32 implementation
 }
+
+void SystemToolkit::open(const std::string& url)
+{
+#ifdef WIN32
+        ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
+#elif defined APPLE
+        char buf[2048];
+        sprintf( buf, "open '%s'", url.c_str() );
+        system( buf );
+#else
+        char buf[2048];
+        sprintf( buf, "xdg-open '%s'", url.c_str() );
+        system( buf );
+#endif
+}

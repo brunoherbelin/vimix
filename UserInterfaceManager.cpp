@@ -58,15 +58,15 @@ void ShowAboutOpengl(bool* p_open);
 void ShowAbout(bool* p_open);
 
 // static objects for multithreaded file dialog
-static std::atomic<bool> FileDialogPending_ = false;
-static std::atomic<bool> SessionFileDialogLoadFinished_ = false;
-static std::atomic<bool> SessionFileDialogSaveFinished_ = false;
-static std::string SessionFileDialogFilename_ = "";
+static std::atomic<bool> fileDialogPending_ = false;
+static std::atomic<bool> sessionFileDialogLoadFinished_ = false;
+static std::atomic<bool> sessionFileDialogSaveFinished_ = false;
+static std::string sessionFileDialogFilename_ = "";
 
 static void SessionFileDialogOpen(std::string path)
 {
-     FileDialogPending_ = true;
-     SessionFileDialogLoadFinished_ = false;
+     fileDialogPending_ = true;
+     sessionFileDialogLoadFinished_ = false;
 
      char const * open_file_name;
      char const * open_pattern[1] = { "*.vmx" };
@@ -74,17 +74,17 @@ static void SessionFileDialogOpen(std::string path)
      open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
 
      if (!open_file_name)
-        SessionFileDialogFilename_ = "";
+        sessionFileDialogFilename_ = "";
      else
-        SessionFileDialogFilename_ = std::string( open_file_name );
+        sessionFileDialogFilename_ = std::string( open_file_name );
 
-     SessionFileDialogLoadFinished_ = true;
+     sessionFileDialogLoadFinished_ = true;
 }
 
 static void SessionFileDialogSave(std::string path)
 {
-     FileDialogPending_ = true;
-     SessionFileDialogSaveFinished_ = false;
+     fileDialogPending_ = true;
+     sessionFileDialogSaveFinished_ = false;
 
      char const * save_file_name;
      char const * save_pattern[1] = { "*.vmx" };
@@ -92,32 +92,32 @@ static void SessionFileDialogSave(std::string path)
      save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
      if (!save_file_name)
-        SessionFileDialogFilename_ = "";
+        sessionFileDialogFilename_ = "";
      else
      {
-        SessionFileDialogFilename_ = std::string( save_file_name );
+        sessionFileDialogFilename_ = std::string( save_file_name );
         // check extension
-        std::string extension = SessionFileDialogFilename_.substr(SessionFileDialogFilename_.find_last_of(".") + 1);
+        std::string extension = sessionFileDialogFilename_.substr(sessionFileDialogFilename_.find_last_of(".") + 1);
         if (extension != "vmx")
-            SessionFileDialogFilename_ += ".vmx";
+            sessionFileDialogFilename_ += ".vmx";
      }
 
-     SessionFileDialogSaveFinished_ = true;
+     sessionFileDialogSaveFinished_ = true;
 }
 
 static void ImportFileDialogOpen(char *filename, const std::string &path)
 {
-    if (FileDialogPending_)
+    if (fileDialogPending_)
         return;
-    FileDialogPending_ = true;
+    fileDialogPending_ = true;
 
-    char const * open_pattern[17] = { "*vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.svg" };
+    char const * open_pattern[18] = { "*vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
 
-    open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 17, open_pattern, "All supported formats", 0);
+    open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
     sprintf(filename, "%s", open_file_name);
 
-    FileDialogPending_ = false;
+    fileDialogPending_ = false;
 }
 
 UserInterface::UserInterface()
@@ -239,17 +239,12 @@ void UserInterface::handleKeyboard()
         }
 
     }
+    // No CTRL modifier
     else {
-        // TODO make sure no entry / window box is active
         keyboard_modifier_active = false;
 
-        // Action keys
-        if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ))
-            Mixer::manager().deleteCurrentSource();
-        else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
-            navigator.toggleMenu();
         // Application F-Keys
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
+        if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
             Mixer::manager().setCurrentView(View::MIXING);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
             Mixer::manager().setCurrentView(View::GEOMETRY);
@@ -257,12 +252,22 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setCurrentView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().ToggleFullscreen();
-        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
-            if (Rendering::manager().IsFullscreen())
-                Rendering::manager().ToggleFullscreen();
-        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             toolbox.StartScreenshot();
+        // normal keys // make sure no entry / window box is active
+        else if ( !ImGui::IsAnyWindowFocused() ){
+            // Backspace to delete source
+            if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ))
+                Mixer::manager().deleteCurrentSource();
+            // button under esc to toggle menu
+            else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
+                navigator.toggleMenu();
+            // esc to exit fullscreen
+            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
+                if (Rendering::manager().IsFullscreen())
+                    Rendering::manager().ToggleFullscreen();
+            }
+        }
     }
 
 }
@@ -327,10 +332,13 @@ void UserInterface::handleMouse()
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
                 // Selection area
-                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
-                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+//                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+//                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+//                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+//                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+
+// TODO Multiple sources selection
+
             }
         }
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
@@ -378,25 +386,25 @@ void UserInterface::NewFrame()
     handleMouse();
 
     // handle FileDialog
-    if (SessionFileDialogLoadFinished_) {
-        SessionFileDialogLoadFinished_ = false;
-        FileDialogPending_ = false;
-        if (!SessionFileDialogFilename_.empty()) {
-            Mixer::manager().open(SessionFileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(SessionFileDialogFilename_);
+    if (sessionFileDialogLoadFinished_) {
+        sessionFileDialogLoadFinished_ = false;
+        fileDialogPending_ = false;
+        if (!sessionFileDialogFilename_.empty()) {
+            Mixer::manager().open(sessionFileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
     }
-    if (SessionFileDialogSaveFinished_) {
-        SessionFileDialogSaveFinished_ = false;
-        FileDialogPending_ = false;
-        if (!SessionFileDialogFilename_.empty()) {
-            Mixer::manager().saveas(SessionFileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(SessionFileDialogFilename_);
+    if (sessionFileDialogSaveFinished_) {
+        sessionFileDialogSaveFinished_ = false;
+        fileDialogPending_ = false;
+        if (!sessionFileDialogFilename_.empty()) {
+            Mixer::manager().saveas(sessionFileDialogFilename_);
+            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
     }
 
     // overlay to ensure file dialog is modal
-    if (FileDialogPending_){
+    if (fileDialogPending_){
         ImGui::OpenPopup("Busy");
         if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
@@ -913,6 +921,7 @@ void Navigator::Render()
         // the "=" icon for menu
         if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
         {
+            Mixer::manager().unsetCurrentSource();
             toggle(NAV_MENU);
         }
         // the list of INITIALS for sources
@@ -984,7 +993,11 @@ void Navigator::Render()
     // window menu
     if (selected_button[NAV_MENU])
     {
-        RenderMainPannel();
+        // if a source is selected in the meantime, revert to selected source pannel
+        if (Mixer::manager().indexCurrentSource() > -1 )
+            selected_button[NAV_MENU] = false;
+        else
+            RenderMainPannel();
     }
     // window to create a source
     else if (selected_button[NAV_NEW])
@@ -1234,7 +1247,7 @@ void ShowAbout(bool* p_open)
     ImGui::Separator();
     ImGui::Text("vimix is a video mixing software for live performance.");
     ImGui::Text("vimix is licensed under the GNU GPL version 3. Copyright 2019-2020 Bruno Herbelin.");
-    ImGuiToolkit::ButtonOpenWebpage("https://github.com/brunoherbelin/v-mix");
+    ImGuiToolkit::ButtonOpenUrl("https://github.com/brunoherbelin/v-mix");
 
     ImGui::End();
 }
@@ -1253,7 +1266,7 @@ void ShowAboutOpengl(bool* p_open)
     ImGui::PopFont();
     ImGui::Separator();
     ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
-    ImGuiToolkit::ButtonOpenWebpage("https://www.opengl.org");
+    ImGuiToolkit::ButtonOpenUrl("https://www.opengl.org");
     ImGui::SameLine();
 
     static bool show_opengl_info = false;
@@ -1320,7 +1333,7 @@ void ShowAboutGStreamer(bool* p_open)
     ImGui::Separator();
     ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
     ImGui::Text("GStreamer is licensed under the LGPL License.");
-    ImGuiToolkit::ButtonOpenWebpage("https://gstreamer.freedesktop.org/");
+    ImGuiToolkit::ButtonOpenUrl("https://gstreamer.freedesktop.org/");
     ImGui::SameLine();
 
     static bool show_config_info = false;

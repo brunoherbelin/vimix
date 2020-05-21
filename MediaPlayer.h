@@ -255,7 +255,7 @@ private:
     void execute_open();
     void execute_loop_command();
     void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);   
-    bool fill_v_frame(GstBuffer *buf);
+    bool fill_v_frame(GstBuffer *buf, bool ignorepts = false);
 
     static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);
     static void callback_end_of_video (GstElement *, MediaPlayer *m);

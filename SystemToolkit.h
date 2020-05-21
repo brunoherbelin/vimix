@@ -39,6 +39,8 @@ namespace SystemToolkit
     // true if directory could be created
     bool create_directory(const std::string& path);
 
+    // try to open the file with system
+    void open(const std::string& path);
 }
 
 #endif // SYSTEMTOOLKIT_H

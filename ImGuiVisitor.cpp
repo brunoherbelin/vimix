@@ -21,6 +21,7 @@
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
+#include "SystemToolkit.h"
 
 
 ImGuiVisitor::ImGuiVisitor()
@@ -278,6 +279,7 @@ void ImGuiVisitor::visit (MediaSource& s)
         if (ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Settings::application.media_player = true;
     }
+    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
 
 void ImGuiVisitor::visit (SessionSource& s)
@@ -286,4 +288,5 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGui::Text("Session");
     if (ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
+    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }

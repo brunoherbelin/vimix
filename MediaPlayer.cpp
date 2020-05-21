@@ -610,7 +610,7 @@ double MediaPlayer::updateFrameRate() const
 
 // CALLBACKS
 
-bool MediaPlayer::fill_v_frame(GstBuffer *buf)
+bool MediaPlayer::fill_v_frame(GstBuffer *buf, bool ignorepts)
 {
     // always empty frame before filling it again
     if (v_frame_.buffer)
@@ -618,7 +618,7 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
 
     // get the frame from buffer
     if ( !gst_video_frame_map (&v_frame_, &v_frame_video_info_, buf, GST_MAP_READ ) ) {
-        Log::Info("MediaPlayer %s Failed to map the video buffer");
+        Log::Info("MediaPlayer %s Failed to map the video buffer", id_.c_str());
         return false;
     }
 
@@ -626,7 +626,8 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
     if( GST_VIDEO_INFO_IS_RGB(&(v_frame_).info) && GST_VIDEO_INFO_N_PLANES(&(v_frame_).info) == 1) {
 
         // validate time
-        if (position_ != buf->pts) {
+        if (ignorepts || position_ != buf->pts)
+        {
 
             // got a new RGB frame !
             v_frame_is_full_ = true;
@@ -664,7 +665,7 @@ GstFlowReturn MediaPlayer::callback_pull_sample_video (GstElement *bin, MediaPla
             GstBuffer *buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
 
             // fill frame from buffer
-            if ( !m->fill_v_frame(buf) )
+            if ( !m->fill_v_frame(buf, m->isimage_) )
                 ret = GST_FLOW_ERROR;
             // free buffer
             gst_buffer_unref (buf);

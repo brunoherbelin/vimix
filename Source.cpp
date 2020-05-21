@@ -143,7 +143,7 @@ void Source::update(float dt)
         // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-        float alpha = 1.0 - CLAMP( SQUARE( glm::length(dist) ), 0.f, 1.f );
+        float alpha = 1.0 - CLAMP( ( dist.x * dist.x ) + ( dist.y * dist.y ), 0.f, 1.f );
         blendingshader_->color.a = alpha;
 
         // MODIFY geometry based on GEOMETRY node
