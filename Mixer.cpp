@@ -119,6 +119,8 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 {
     // unsused initial empty session
     session_ = new Session;
+    current_source_ = session_->end();
+    current_source_index_ = -1;
 
     // auto load if Settings ask to
     if ( Settings::application.recentSessions.load_at_start &&
@@ -163,7 +165,7 @@ void Mixer::update()
     layer_.update(dt);
 
     // optimize the reordering in depth for views
-    View::need_reordering_ = false;
+    View::need_deep_update_ = false;
 }
 
 void Mixer::draw()
@@ -437,7 +439,7 @@ void Mixer::swap()
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
     // request reordering in depth for views
-    View::need_reordering_ = true;
+    View::need_deep_update_ = true;
 
     // no current source
     current_source_ = session_->end();

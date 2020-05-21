@@ -22,7 +22,7 @@
 #define CIRCLE_PIXELS 64
 #define CIRCLE_PIXEL_RADIUS 1024.0
 
-bool View::need_reordering_ = true;
+bool View::need_deep_update_ = true;
 
 View::View(Mode m) : mode_(m)
 {
@@ -40,14 +40,22 @@ void View::saveSettings()
     Settings::application.views[mode_].default_translation = scene.root()->translation_;
 }
 
+void View::draw()
+{
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+}
+
 void View::update(float dt)
 {
     // recursive update from root of scene
     scene.update( dt );
 
-    // reorder depth if needed
-    if (View::need_reordering_)
+    // a more complete update is requested
+    if (View::need_deep_update_) {
+        // reorder sources
         scene.fg()->sort();
+    }
 }
 
 void View::drag (glm::vec2 from, glm::vec2 to)
@@ -89,16 +97,6 @@ MixingView::MixingView() : View(MIXING)
     scene.bg()->attach(circle);
 }
 
-MixingView::~MixingView()
-{
-
-}
-
-void MixingView::draw()
-{
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
-}
 
 void MixingView::zoom( float factor )
 {
@@ -236,23 +234,21 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
 }
 
-GeometryView::~GeometryView()
+void GeometryView::update(float dt)
 {
+    View::update(dt);
 
-}
+    // reorder depth if needed
+    if (View::need_deep_update_) {
 
-void GeometryView::draw()
-{
-    // update rendering of render frame
-    FrameBuffer *output = Mixer::manager().session()->frame();
-    if (output){
-        for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-            (*node)->scale_.x = output->aspectRatio();
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = output->aspectRatio();
+            }
         }
     }
-
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 }
 
 void GeometryView::zoom( float factor )
@@ -366,25 +362,25 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     scene.bg()->attach(border);
 }
 
-LayerView::~LayerView()
+void LayerView::update(float dt)
 {
+    View::update(dt);
 
-}
+    // reorder depth if needed
+    if (View::need_deep_update_) {
 
-void LayerView::draw ()
-{
-    // update rendering of render frame
-    FrameBuffer *output = Mixer::manager().session()->frame();
-    if (output)
-        aspect_ratio = output->aspectRatio();
-
-    for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-        (*node)->scale_.x = aspect_ratio;
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            aspect_ratio = output->aspectRatio();
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = aspect_ratio;
+            }
+            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+                (*node)->translation_.y = (*node)->translation_.x / aspect_ratio;
+            }
+        }
     }
-
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
-
 }
 
 void LayerView::zoom (float factor)
@@ -426,7 +422,7 @@ void LayerView::setDepth (Source *s, float d)
     s->touch();
 
     // request reordering
-    View::need_reordering_ = true;
+    View::need_deep_update_ = true;
 }
 
 void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
@@ -450,6 +446,6 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
     glm::vec3 dest_translation = start_translation + gl_Position_to - gl_Position_from;
 
     // apply change
-    setDepth( s, -dest_translation.x );
+    setDepth( s,  MAX( -dest_translation.x, 0.f) );
 }
 
