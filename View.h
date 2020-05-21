@@ -62,7 +62,7 @@ public:
     void setResolution (glm::vec3 resolution = glm::vec3(0.f));
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
-    inline FrameBuffer *frameBuffer () const { return frame_buffer_; }
+    inline FrameBuffer *frame () const { return frame_buffer_; }
 };
 
 class GeometryView : public View

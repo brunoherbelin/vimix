@@ -29,7 +29,7 @@ public:
     void update (float dt);
 
     // result of render
-    inline FrameBuffer *frame () const { return render_.frameBuffer(); }
+    inline FrameBuffer *frame () const { return render_.frame(); }
     void setResolution(glm::vec3 resolution);
 
     // configuration for group nodes of views

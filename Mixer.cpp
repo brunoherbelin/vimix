@@ -179,7 +179,7 @@ void Mixer::createSourceFile(std::string path)
 {
     // sanity check
     if ( !SystemToolkit::file_exists( path ) ) {
-        Log::Notify("File %s does not exist.", path);
+        Log::Notify("File %s does not exist.", path.c_str());
         return;
     }
     // ready to create a source
@@ -212,6 +212,17 @@ void Mixer::createSourceFile(std::string path)
     insertSource(s);
 }
 
+void Mixer::createSourceRender()
+{
+    // ready to create a source
+    RenderSource *s = new RenderSource;
+
+    // propose a new name based on session name
+    renameSource(s, SystemToolkit::base_filename(session_->filename()));
+
+    // add to mixer
+    insertSource(s);
+}
 
 void Mixer::insertSource(Source *s)
 {

@@ -630,7 +630,7 @@ void UserInterface::RenderMediaPlayer()
     MediaPlayer *mp = nullptr;
     MediaSource *s = nullptr;
     if ( Mixer::manager().currentSource()) {
-        s = static_cast<MediaSource *>(Mixer::manager().currentSource());
+        s = dynamic_cast<MediaSource *>(Mixer::manager().currentSource());
         if (s) {
             mp = s->mediaplayer();
             if (mp && mp->isOpen())
@@ -1127,6 +1127,13 @@ void Navigator::RenderNewPannel()
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source from a software algorithm or from vimix objects.");
+
+            ImGui::Text(" ");
+            if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
+
+                Mixer::manager().createSourceRender();
+                selected_button[NAV_NEW] = false;
+            }
 
         }
         // Hardware

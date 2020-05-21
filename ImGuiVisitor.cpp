@@ -290,3 +290,11 @@ void ImGuiVisitor::visit (SessionSource& s)
         Mixer::manager().set( s.detach() );
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
+
+void ImGuiVisitor::visit (RenderSource& s)
+{
+//    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+    ImGui::Text("Render");
+    if (ImGui::Button("Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        s.reconnect();
+}

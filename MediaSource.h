@@ -10,7 +10,6 @@ public:
     ~MediaSource();
 
     // implementation of source API
-    FrameBuffer *frame() const override;
     void render() override;
     void accept (Visitor& v) override;
     bool failed() const override;

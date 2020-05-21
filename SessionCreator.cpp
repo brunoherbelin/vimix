@@ -75,10 +75,15 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 new_media_source->accept(*this);
                 session_->addSource(new_media_source);
             }
-            if ( std::string(pType) == "SessionSource") {
+            else if ( std::string(pType) == "SessionSource") {
                 SessionSource *new_session_source = new SessionSource();
                 new_session_source->accept(*this);
                 session_->addSource(new_session_source);
+            }
+            else if ( std::string(pType) == "RenderSource") {
+                RenderSource *new_render_source = new RenderSource();
+                new_render_source->accept(*this);
+                session_->addSource(new_render_source);
             }
             // TODO : create other types of source
 
@@ -236,6 +241,11 @@ void SessionCreator::visit (SessionSource& s)
         std::string path = std::string ( pathNode->GetText() );
         s.load(path);
     }
+
+}
+
+void SessionCreator::visit (RenderSource& s)
+{
 
 }
 

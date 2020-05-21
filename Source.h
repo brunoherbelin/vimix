@@ -59,7 +59,7 @@ public:
     virtual bool failed() const { return false; }
 
     // every Source shall have a frame buffer
-    virtual FrameBuffer *frame() const = 0;
+    virtual FrameBuffer *frame() const;
 
     // every Source shall be rendered into the frame buffer
     virtual void render() = 0;
@@ -122,6 +122,25 @@ struct hasNode: public std::unary_function<Source*, bool>
 
 private:
     Node *_n;
+};
+
+
+class RenderSource : public Source
+{
+public:
+    RenderSource();
+    ~RenderSource();
+
+    // implementation of source API
+    void render() override;
+    void accept (Visitor& v) override;
+
+    void reconnect();
+
+protected:
+
+    void init() override;
+    Surface *sessionsurface_;
 };
 
 

@@ -80,6 +80,10 @@ Session *SessionSource::detach()
     // work on a new session
     session_ = new Session;
 
+    // make disabled
+    initialized_ = false;
+    loadFailed_ = true;
+
     return giveaway;
 }
 
@@ -99,10 +103,10 @@ void SessionSource::init()
         // update once
         session_->update(dt_);
 
-        // get the texture index from media player, apply it to the media surface
+        // get the texture index from framebuffer of session, apply it to the surface
         sessionsurface_->setTextureIndex( session_->frame()->texture() );
 
-        // create Frame buffer matching size of media player
+        // create Frame buffer matching size of session
         renderbuffer_ = new FrameBuffer(session_->frame()->resolution());
         renderbuffer_->setClearColor(glm::vec4(0.f, 0.f, 0.f, 1.f));
 
@@ -164,18 +168,6 @@ void SessionSource::render()
         renderbuffer_->begin();
         sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
-    }
-}
-
-FrameBuffer *SessionSource::frame() const
-{
-    if (initialized_ && renderbuffer_)
-    {
-        return renderbuffer_;
-    }
-    else {
-        static FrameBuffer *black = new FrameBuffer(640,480);
-        return black;
     }
 }
 

@@ -35,7 +35,7 @@ public:
 
     // manangement of sources
     void createSourceFile(std::string path);
-    void createSourceRender() {}
+    void createSourceRender();
     void createSourceClone() {}
 
     // operations on sources
@@ -66,16 +66,12 @@ public:
     void import(const std::string& filename) {}
     void import(Session *s) {}
     void set(Session *s);
-//    inline std::string currentSessionFile() { return currentFilename_; }
 
 protected:
 
     Session *session_;
     Session *back_session_;
     void swap();
-
-//    void validateFilename(const std::string& filename);
-//    std::string currentFilename_;
 
     void insertSource(Source *s);
     void setCurrentSource(SourceList::iterator it);

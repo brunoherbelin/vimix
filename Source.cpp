@@ -8,10 +8,13 @@
 #include "FrameBuffer.h"
 #include "Primitives.h"
 #include "Mesh.h"
+#include "Resource.h"
+#include "Session.h"
 #include "SearchVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Log.h"
+#include "Mixer.h"
 
 Source::Source() : initialized_(false), need_update_(true)
 {
@@ -160,6 +163,18 @@ void Source::update(float dt)
     }
 }
 
+FrameBuffer *Source::frame() const
+{
+    if (initialized_ && renderbuffer_)
+    {
+        return renderbuffer_;
+    }
+    else {
+        static FrameBuffer *black = new FrameBuffer(640,480);
+        return black;
+    }
+}
+
 Handles *Source::handleNode(Handles::Type t) const
 {
     if ( t == Handles::ROTATE )
@@ -195,3 +210,95 @@ bool hasNode::operator()(const Source* elem) const
 }
 
 
+RenderSource::RenderSource() : Source()
+{
+    // create  surface:
+    sessionsurface_ = new Surface(rendershader_);
+
+}
+
+RenderSource::~RenderSource()
+{
+    // delete surface
+    delete sessionsurface_;
+}
+
+void RenderSource::reconnect()
+{
+    sessionsurface_->setTextureIndex( Mixer::manager().session()->frame()->texture() );
+}
+
+void RenderSource::init()
+{
+    Session *session = Mixer::manager().session();
+
+    if (session && session->frame()->texture() != Resource::getTextureBlack()) {
+
+        // get the texture index from framebuffer of view, apply it to the surface
+        sessionsurface_->setTextureIndex( session->frame()->texture() );
+
+        // create Frame buffer matching size of session
+        renderbuffer_ = new FrameBuffer( session->frame()->resolution() );
+        renderbuffer_->setClearColor(glm::vec4(0.f, 0.f, 0.f, 1.f));
+
+        // create the surfaces to draw the frame buffer in the views
+        rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
+        groups_[View::RENDERING]->attach(rendersurface_);
+        groups_[View::GEOMETRY]->attach(rendersurface_);
+        groups_[View::MIXING]->attach(rendersurface_);
+        groups_[View::LAYER]->attach(rendersurface_);
+
+        // for mixing view, add another surface to overlay (for stippled view in transparency)
+        Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
+        ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
+        if (is)  is->stipple = 1.0;
+        groups_[View::MIXING]->attach(surfacemix);
+        groups_[View::LAYER]->attach(surfacemix);
+        // TODO icon session
+
+        // scale all mixing nodes to match aspect ratio of the media
+        for (NodeSet::iterator node = groups_[View::MIXING]->begin();
+             node != groups_[View::MIXING]->end(); node++) {
+            (*node)->scale_.x = session->frame()->aspectRatio();
+        }
+        for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
+             node != groups_[View::GEOMETRY]->end(); node++) {
+            (*node)->scale_.x = session->frame()->aspectRatio();
+        }
+        for (NodeSet::iterator node = groups_[View::LAYER]->begin();
+             node != groups_[View::LAYER]->end(); node++) {
+            (*node)->scale_.x = session->frame()->aspectRatio();
+        }
+
+        // done init once and for all
+        initialized_ = true;
+
+        // make visible
+        groups_[View::RENDERING]->visible_ = true;
+        groups_[View::MIXING]->visible_ = true;
+        groups_[View::GEOMETRY]->visible_ = true;
+        groups_[View::LAYER]->visible_ = true;
+
+        Log::Info("Source Render linked to session (%d x %d).", int(session->frame()->resolution().x), int(session->frame()->resolution().y) );
+    }
+}
+
+void RenderSource::render()
+{
+    if (!initialized_)
+        init();
+    else {
+        // render the view into frame buffer
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        renderbuffer_->begin();
+        sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
+        renderbuffer_->end();
+    }
+}
+
+
+void RenderSource::accept(Visitor& v)
+{
+    Source::accept(v);
+    v.visit(*this);
+}

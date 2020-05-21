@@ -23,13 +23,13 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
 FrameBuffer::FrameBuffer(glm::vec3 resolution): textureid_(0), framebufferid_(0), usedepth_(false)
 {
     attrib_.viewport = glm::ivec2(resolution);
-    attrib_.clear_color = glm::vec4(0.f);
+    attrib_.clear_color = glm::vec4(0.f,0.f,0.f,1.f);
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer): textureid_(0), framebufferid_(0), usedepth_(useDepthBuffer)
 {
     attrib_.viewport = glm::ivec2(width, height);
-    attrib_.clear_color = glm::vec4(0.f);
+    attrib_.clear_color = glm::vec4(0.f,0.f,0.f,1.f);
 }
 
 void FrameBuffer::init()
@@ -170,7 +170,9 @@ void FrameBuffer::checkFramebufferStatus()
             Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
             break;
         case GL_FRAMEBUFFER_COMPLETE:
+#ifndef NDEBUG
             Log::Info("Framebuffer created %d x %d.", width(), height());
+#endif
             break;
     }
 }

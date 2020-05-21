@@ -133,19 +133,6 @@ void MediaSource::render()
     }
 }
 
-FrameBuffer *MediaSource::frame() const
-{
-    if (initialized_ && renderbuffer_)
-    {
-        return renderbuffer_;
-    }
-    else {
-        static FrameBuffer *black = new FrameBuffer(640,480);
-        return black;
-    }
-
-}
-
 void MediaSource::accept(Visitor& v)
 {
     Source::accept(v);

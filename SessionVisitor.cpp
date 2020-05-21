@@ -349,3 +349,8 @@ void SessionVisitor::visit (SessionSource& s)
     XMLText *text = xmlDoc_->NewText( s.path().c_str() );
     path->InsertEndChild( text );
 }
+
+void SessionVisitor::visit (RenderSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "RenderSource");
+}
