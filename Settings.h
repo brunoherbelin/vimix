@@ -97,7 +97,7 @@ struct Application
         current_view = 1;
         framebuffer_ar = 3;
         framebuffer_h = 1;
-        windows.push_back(WindowConfig(APP_TITLE));
+        windows.push_back(WindowConfig(APP_NAME APP_TITLE));
     }
 
 };

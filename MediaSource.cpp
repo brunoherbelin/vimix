@@ -26,11 +26,9 @@ MediaSource::MediaSource() : Source(), path_("")
 
 MediaSource::~MediaSource()
 {
-    // TODO delete media surface with visitor
+    // delete media surface & player
     delete mediasurface_;
-
     delete mediaplayer_;
-    // TODO verify that all surfaces and node is deleted in Source destructor
 }
 
 void MediaSource::setPath(const std::string &p)

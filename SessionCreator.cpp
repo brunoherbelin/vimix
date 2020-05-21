@@ -234,7 +234,7 @@ void SessionCreator::visit (SessionSource& s)
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
         std::string path = std::string ( pathNode->GetText() );
-        s.setPath(path);
+        s.load(path);
     }
 
 }

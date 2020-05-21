@@ -35,12 +35,12 @@ public:
 
     // manangement of sources
     void createSourceFile(std::string path);
-
-    void deleteSource(Source *s);
-    void deleteCurrentSource();
+    void createSourceRender() {}
+    void createSourceClone() {}
 
     // operations on sources
     void renameSource(Source *s, const std::string &newname);
+    void deleteSource(Source *s);
 
     // current source
     void setCurrentSource(std::string namesource);
@@ -48,22 +48,25 @@ public:
     void setCurrentSource(int index);
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
+    void deleteCurrentSource();
     Source *currentSource();
     int indexCurrentSource();
 
     // management of view
-    View *getView(View::Mode m);
+    View *view(View::Mode m);
     void setCurrentView(View::Mode m);
     View *currentView();
 
-    void setSession(Session *s) { session_ = s; }
-    Session *session() { return session_; }
-
-    // load and save session
-    void open(const std::string& filename);
-    void saveas(const std::string& filename);
+    // manipulate, load and save sessions
+    inline Session *session() const { return session_; }
+    void clear();
     void save();
-    void newSession();
+    void saveas(const std::string& filename);
+    void open(const std::string& filename);
+    void import(const std::string& filename) {}
+    void import(Session *s) {}
+    void set(Session *s);
+//    inline std::string currentSessionFile() { return currentFilename_; }
 
 protected:
 
@@ -72,11 +75,10 @@ protected:
     void swap();
 
 //    void validateFilename(const std::string& filename);
-    std::string sessionFilename_;
+//    std::string currentFilename_;
 
     void insertSource(Source *s);
     void setCurrentSource(SourceList::iterator it);
-
     SourceList::iterator current_source_;
     int current_source_index_;
 

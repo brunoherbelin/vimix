@@ -21,46 +21,43 @@ using namespace tinyxml2;
 
 #include "Mixer.h"
 
-// static objects for multithreaded session loading
+// static semaphore to prevent multiple threads for load / save
 static std::atomic<bool> sessionThreadActive_ = false;
-static std::string sessionThreadFilename_ = "";
-static std::atomic<bool> sessionLoadFinished_ = false;
+static std::atomic<bool> sessionSwapRequested_ = false;
 
+// static multithreaded session loading
 static void loadSession(const std::string& filename, Session *session)
 {
     while (sessionThreadActive_)
         std::this_thread::sleep_for( std::chrono::milliseconds(50));
     sessionThreadActive_ = true;
-    sessionLoadFinished_ = false;
-    sessionThreadFilename_ = "";
 
     // actual loading of xml file
     SessionCreator creator( session );
 
-    if (!creator.load(filename)) {
+    if (creator.load(filename)) {
+        // loaded ok
+        session->setFilename(filename);
+        sessionSwapRequested_ = true;
+
+        // cosmetics load ok
+        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+    }
+    else {
         // error loading
         Log::Warning("Failed to load Session file %s.", filename.c_str());
     }
-    else {
-        // loaded ok
-        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
-    }
 
-    sessionThreadFilename_ = filename;
-    sessionLoadFinished_ = true;
     sessionThreadActive_ = false;
 }
 
-// static objects for multithreaded session saving
-static std::atomic<bool> sessionSaveFinished_ = false;
+// static multithreaded session saving
 static void saveSession(const std::string& filename, Session *session)
 {
     // reset
     while (sessionThreadActive_)
         std::this_thread::sleep_for( std::chrono::milliseconds(50));
     sessionThreadActive_ = true;
-    sessionSaveFinished_ = false;
-    sessionThreadFilename_ = "";
 
     // creation of XML doc
     XMLDocument xmlDoc;
@@ -103,27 +100,33 @@ static void saveSession(const std::string& filename, Session *session)
     }
 
     // save file to disk
-    XMLSaveDoc(&xmlDoc, filename);
+    if ( XMLSaveDoc(&xmlDoc, filename) ) {
+        // all ok
+        session->setFilename(filename);
+        // cosmetics saved ok
+        Settings::application.recentSessions.push(filename);
+        Log::Notify("Session %s saved.", filename.c_str());
+    }
+    else {
+        // error loading
+        Log::Warning("Failed to save Session file %s.", filename.c_str());
+    }
 
-    // loaded ok
-    Log::Notify("Session %s saved.", filename.c_str());
-
-    // all ok
-    sessionThreadFilename_ = filename;
-    sessionSaveFinished_ = true;
     sessionThreadActive_ = false;
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr)
 {
-    // this initializes with a new empty session
-    newSession();
+    // unsused initial empty session
+    session_ = new Session;
 
     // auto load if Settings ask to
-    if ( Settings::application.recentSessions.load_at_start ) {
-        if ( Settings::application.recentSessions.filenames.size() > 0 )
-            open( Settings::application.recentSessions.filenames.back() );
-    }
+    if ( Settings::application.recentSessions.load_at_start &&
+         Settings::application.recentSessions.filenames.size() > 0 )
+        open( Settings::application.recentSessions.filenames.back() );
+    else
+        // initializes with a new empty session
+        clear();
 
     // this initializes with the current view
     setCurrentView( (View::Mode) Settings::application.current_view );
@@ -132,24 +135,16 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 void Mixer::update()
 {
     // change session when threaded loading is finished
-    if (sessionLoadFinished_) {
-        sessionLoadFinished_ = false;
+    if (sessionSwapRequested_) {
+        sessionSwapRequested_ = false;
         // successfully loading
         if ( back_session_ ) {
             // swap front and back sessions
             swap();
-            // set session filename and remember it
-            sessionFilename_ = sessionThreadFilename_;
-            Settings::application.recentSessions.push(sessionFilename_);
+            // set session filename
+            Rendering::manager().setWindowTitle(session_->filename());
+            Settings::application.recentSessions.push(session_->filename());
         }
-    }
-
-    // confirm when threaded saving is finished
-    if (sessionSaveFinished_) {
-        sessionSaveFinished_ = false;
-        // set (new) session filename and remember it
-        sessionFilename_ = sessionThreadFilename_;
-        Settings::application.recentSessions.push(sessionFilename_);
     }
 
     // compute dt
@@ -166,7 +161,6 @@ void Mixer::update()
     mixing_.update(dt);
     geometry_.update(dt);
     layer_.update(dt);
-    // TODO other views?
 
     // optimize the reordering in depth for views
     View::need_reordering_ = false;
@@ -195,7 +189,7 @@ void Mixer::createSourceFile(std::string path)
     {
         // create a session source
         SessionSource *ss = new SessionSource();
-        ss->setPath(path);
+        ss->load(path);
         s = ss;
     }
     else {
@@ -358,7 +352,7 @@ void Mixer::setCurrentView(View::Mode m)
     Settings::application.current_view = (int) m;
 }
 
-View *Mixer::getView(View::Mode m)
+View *Mixer::view(View::Mode m)
 {
     switch (m) {
     case View::GEOMETRY:
@@ -379,8 +373,8 @@ View *Mixer::currentView()
 
 void Mixer::save()
 {
-    if (!sessionFilename_.empty())
-        saveas(sessionFilename_);
+    if (!session_->filename().empty())
+        saveas(session_->filename());
 }
 
 void Mixer::saveas(const std::string& filename)
@@ -457,7 +451,7 @@ void Mixer::swap()
     back_session_ = nullptr;
 }
 
-void Mixer::newSession()
+void Mixer::clear()
 {
     // delete previous back session if needed
     if (back_session_)
@@ -467,13 +461,21 @@ void Mixer::newSession()
     back_session_ = new Session;   
 
     // swap current with empty
-    swap();
+    sessionSwapRequested_ = true;
+}
 
-    // default view config
-    mixing_.restoreSettings();
-    geometry_.restoreSettings();
-    layer_.restoreSettings();
+void Mixer::set(Session *s)
+{
+    if ( s == nullptr )
+        return;
 
-    // empty session file name (does not save)
-    sessionFilename_ = "";
+    // delete previous back session if needed
+    if (back_session_)
+        delete back_session_;
+
+    // set to new given session
+    back_session_ = s;
+
+    // swap current with given session
+    sessionSwapRequested_ = true;
 }

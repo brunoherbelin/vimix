@@ -45,29 +45,9 @@
 #define PI 3.14159265358979323846
 
 
-void drawCustomGui()
-{
-
-    ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
-
-    if ( !ImGui::Begin("Custom"))
-    {
-        ImGui::End();
-        return;
-    }
-
-
-    ImGui::End();
-}
-
-
 void drawScene()
 {
-//    Mixer::manager().update();
-
     Mixer::manager().draw();
-
 }
 
 
@@ -102,7 +82,7 @@ int main(int, char**)
 //     test text editor
     UserInterface::manager().fillShaderEditor( Resource::getText("shaders/image.fs") );
 
-    // init the scene
+    // draw the scene
     Rendering::manager().PushFrontDrawCallback(drawScene);
 
     // init elements to the scene
@@ -134,8 +114,6 @@ int main(int, char**)
 
         Rendering::manager().Draw();
     }
-
-//    Mixer::manager().save("./testsession.vmx");
 
     UserInterface::manager().Terminate();
     Rendering::manager().Terminate();

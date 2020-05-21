@@ -265,18 +265,25 @@ void ImGuiVisitor::visit (Source& s)
     s.groupNode(View::GEOMETRY)->accept(*this);
 
     // Action on source
-    ImGui::Button("Clone", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+//    ImGui::Button("Clone", ImVec2(IMGUI_RIGHT_ALIGN, 0));
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    if (ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Settings::application.media_player = !Settings::application.media_player;
+    if ( s.mediaplayer()->duration() == GST_CLOCK_TIME_NONE) {
+        ImGui::Text("Image");
+    }
+    else {
+        ImGui::Text("Video");
+        if (ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Settings::application.media_player = true;
+    }
 }
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
 //    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+    ImGui::Text("Session");
     if (ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().open( s.path() );
+        Mixer::manager().set( s.detach() );
 }

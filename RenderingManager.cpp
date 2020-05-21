@@ -207,6 +207,13 @@ void Rendering::GrabWindow(int dx, int dy)
     glfwSetWindowPos(main_window_, xpos + dx, ypos + dy);
 }
 
+
+void Rendering::setWindowTitle(std::string title)
+{
+    std::string window_title = std::string(APP_NAME " -- ") + title;
+    glfwSetWindowTitle(main_window_, window_title.c_str());
+}
+
 void Rendering::PushFrontDrawCallback(RenderingCallback function)
 {
     draw_callbacks_.push_front(function);

@@ -24,12 +24,17 @@ void SessionSource::loadSession(const std::string& filename, SessionSource *sour
     // actual loading of xml file
     SessionCreator creator( source->session_ );
 
-    if (!creator.load(filename)) {
+    if (creator.load(filename)) {
+        // all ok, validate session filename
+        source->session_->setFilename(filename);
+    }
+    else {
         // error loading
         Log::Notify("Failed to load Session file %s.", filename.c_str());
         source->loadFailed_ = true;
     }
 
+    // end thread
     source->loadFinished_ = true;
 }
 
@@ -49,14 +54,15 @@ SessionSource::SessionSource() : Source(), path_("")
 
 SessionSource::~SessionSource()
 {
-    // TODO delete media surface with visitor
+    // delete surface
     delete sessionsurface_;
 
-    // TODO close and delete session
-    delete session_;
+    // delete session
+    if (session_)
+        delete session_;
 }
 
-void SessionSource::setPath(const std::string &p)
+void SessionSource::load(const std::string &p)
 {
     path_ = p;
 
@@ -66,14 +72,15 @@ void SessionSource::setPath(const std::string &p)
     Log::Notify("Opening %s", p.c_str());
 }
 
-std::string SessionSource::path() const
+Session *SessionSource::detach()
 {
-    return path_;
-}
+    // remember pointer to give away
+    Session *giveaway = session_;
 
-Session *SessionSource::session() const
-{
-    return session_;
+    // work on a new session
+    session_ = new Session;
+
+    return giveaway;
 }
 
 bool SessionSource::failed() const
@@ -89,11 +96,15 @@ void SessionSource::init()
         // set resolution
         session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
+        // update once
+        session_->update(dt_);
+
         // get the texture index from media player, apply it to the media surface
         sessionsurface_->setTextureIndex( session_->frame()->texture() );
 
         // create Frame buffer matching size of media player
         renderbuffer_ = new FrameBuffer(session_->frame()->resolution());
+        renderbuffer_->setClearColor(glm::vec4(0.f, 0.f, 0.f, 1.f));
 
         // create the surfaces to draw the frame buffer in the views
         rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
@@ -108,8 +119,8 @@ void SessionSource::init()
         if (is)  is->stipple = 1.0;
         groups_[View::MIXING]->attach(surfacemix);
         groups_[View::LAYER]->attach(surfacemix);
-        // TODO icon session
-//            overlays_[View::MIXING]->attach( new Mesh("mesh/icon_video.ply") );
+        // icon session
+        overlays_[View::MIXING]->attach( new Mesh("mesh/icon_vimix.ply") );
 
         // scale all mixing nodes to match aspect ratio of the media
         for (NodeSet::iterator node = groups_[View::MIXING]->begin();
@@ -141,12 +152,12 @@ void SessionSource::init()
 void SessionSource::render()
 {
     if (!initialized_)
+    {
         init();
+    }
     else {
         // update session
         session_->update(dt_);
-
-        sessionsurface_->setTextureIndex( session_->frame()->texture() );
 
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);

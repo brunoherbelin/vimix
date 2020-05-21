@@ -279,6 +279,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/circle.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
+    ./rsc/mesh/icon_vimix.ply
 )
 
 add_executable(${VMIX_BINARY}

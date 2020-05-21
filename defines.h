@@ -2,7 +2,7 @@
 #define VMIX_DEFINES_H
 
 #define APP_NAME "vimix"
-#define APP_TITLE "vimix -- Video Live Mixer"
+#define APP_TITLE " -- Video Live Mixer"
 #define APP_SETTINGS "vimix.xml"
 #define APP_VERSION_MAJOR 0
 #define APP_VERSION_MINOR 1

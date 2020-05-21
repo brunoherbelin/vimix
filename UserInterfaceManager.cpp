@@ -212,11 +212,14 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
-            Mixer::manager().save();
+            if (Mixer::manager().session()->filename().empty())
+                std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
+            else
+                Mixer::manager().save();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
             // New Session
-            Mixer::manager().newSession();
+            Mixer::manager().clear();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
@@ -237,6 +240,7 @@ void UserInterface::handleKeyboard()
 
     }
     else {
+        // TODO make sure no entry / window box is active
         keyboard_modifier_active = false;
 
         // Action keys
@@ -472,7 +476,10 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
-        Mixer::manager().save();
+        if (Mixer::manager().session()->filename().empty())
+            std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
+        else
+            Mixer::manager().save();
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as")) {
@@ -483,7 +490,7 @@ void UserInterface::showMenuFile()
     ImGui::Separator();
 
     if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
-        Mixer::manager().newSession();
+        Mixer::manager().clear();
         navigator.hidePannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );

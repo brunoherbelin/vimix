@@ -1,19 +1,29 @@
 #include <algorithm>
 
 #include "defines.h"
+#include "Settings.h"
 #include "FrameBuffer.h"
 #include "Session.h"
 #include "GarbageVisitor.h"
 
 #include "Log.h"
 
-Session::Session()
+Session::Session() : filename_("")
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = render_.resolution();
+
     config_[View::GEOMETRY] = new Group;
+    config_[View::GEOMETRY]->scale_ = Settings::application.views[View::GEOMETRY].default_scale;
+    config_[View::GEOMETRY]->translation_ = Settings::application.views[View::GEOMETRY].default_translation;
+
     config_[View::LAYER] = new Group;
+    config_[View::LAYER]->scale_ = Settings::application.views[View::LAYER].default_scale;
+    config_[View::LAYER]->translation_ = Settings::application.views[View::LAYER].default_translation;
+
     config_[View::MIXING] = new Group;
+    config_[View::MIXING]->scale_ = Settings::application.views[View::MIXING].default_scale;
+    config_[View::MIXING]->translation_ = Settings::application.views[View::MIXING].default_translation;
 }
 
 

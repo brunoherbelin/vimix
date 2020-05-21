@@ -81,7 +81,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
     }
 }
 
-void tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
+bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
 {
     XMLDeclaration *pDec = doc->NewDeclaration();
     doc->InsertFirstChild(pDec);
@@ -92,7 +92,7 @@ void tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
 
     // save session
     XMLError eResult = doc->SaveFile(filename.c_str());
-    XMLResultError(eResult);
+    return !XMLResultError(eResult);
 }
 
 bool tinyxml2::XMLResultError(int result)

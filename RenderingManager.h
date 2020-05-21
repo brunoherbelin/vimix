@@ -68,27 +68,26 @@ public:
     // get Screenshot
     class Screenshot *CurrentScreenshot();
     
+    // window management
+    void setWindowTitle(std::string title);
     // request fullscreen
     bool IsFullscreen ();
-    void ToggleFullscreen();
+    void ToggleFullscreen ();
     // get width of rendering area
     float Width();
     // get height of rendering area
     float Height();
     // get aspect ratio of rendering area
     float AspectRatio();
+    // monitor management
+    float MonitorWidth();
+    float MonitorHeight();
+    inline float DPIScale() const { return dpi_scale_; }
 
     // get projection matrix (for sharers) => Views
     glm::mat4 Projection();
     // unproject from window coordinate
     glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview = glm::mat4(1.f));
-
-    // for opengl pipeline in gstreamer
-    void LinkPipeline( GstPipeline *pipeline );
-
-    float MonitorWidth();
-    float MonitorHeight();
-    inline float DPIScale() const { return dpi_scale_; }
 
 private:
 
@@ -110,7 +109,8 @@ private:
     Screenshot screenshot_;
     bool request_screenshot_;
 
-
+    // for opengl pipeline in gstreamer
+    void LinkPipeline( GstPipeline *pipeline );
 };
 
 

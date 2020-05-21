@@ -16,10 +16,12 @@ public:
     void accept (Visitor& v) override;
     bool failed() const override;
 
-    // Media specific interface
-    void setPath(const std::string &p);
-    std::string path() const;
-    Session *session() const;
+    // Session Source specific interface
+    void load(const std::string &p);
+    Session *detach();
+
+    inline std::string path() const { return path_; }
+    inline Session *session() const { return session_; }
 
 protected:
 
