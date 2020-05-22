@@ -238,8 +238,7 @@ void RenderSource::init()
         sessionsurface_->setTextureIndex( session->frame()->texture() );
 
         // create Frame buffer matching size of session
-        renderbuffer_ = new FrameBuffer( session->frame()->resolution() );
-        renderbuffer_->setClearColor(glm::vec4(0.f, 0.f, 0.f, 1.f));
+        renderbuffer_ = new FrameBuffer( session->frame()->resolution());
 
         // create the surfaces to draw the frame buffer in the views
         rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);

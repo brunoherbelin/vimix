@@ -14,8 +14,8 @@ public:
     static float resolution_height[4];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
 
-    FrameBuffer(glm::vec3 resolution);
-    FrameBuffer(uint width, uint height, bool useDepthBuffer = false);
+    FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool useDepthBuffer = false);
+    FrameBuffer(uint width, uint height, bool useAlpha = false, bool useDepthBuffer = false);
     ~FrameBuffer();
 
     // bind the FrameBuffer as current to draw into
@@ -50,7 +50,7 @@ private:
     RenderingAttrib attrib_;
     uint textureid_;
     uint framebufferid_;
-    bool usedepth_;
+    bool usealpha_, usedepth_;
 };
 
 

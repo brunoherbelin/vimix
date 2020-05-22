@@ -20,16 +20,16 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
     return res;
 }
 
-FrameBuffer::FrameBuffer(glm::vec3 resolution): textureid_(0), framebufferid_(0), usedepth_(false)
+FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool useDepthBuffer): textureid_(0), framebufferid_(0), usealpha_(useAlpha), usedepth_(useDepthBuffer)
 {
     attrib_.viewport = glm::ivec2(resolution);
-    attrib_.clear_color = glm::vec4(0.f,0.f,0.f,1.f);
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, usealpha_ ? 0.f : 1.f);
 }
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useDepthBuffer): textureid_(0), framebufferid_(0), usedepth_(useDepthBuffer)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool useDepthBuffer): textureid_(0), framebufferid_(0), usealpha_(useAlpha), usedepth_(useDepthBuffer)
 {
     attrib_.viewport = glm::ivec2(width, height);
-    attrib_.clear_color = glm::vec4(0.f,0.f,0.f,1.f);
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, usealpha_ ? 0.f : 1.f);
 }
 
 void FrameBuffer::init()
@@ -50,9 +50,16 @@ void FrameBuffer::init()
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, attrib_.viewport.x, attrib_.viewport.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    if (usealpha_)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, attrib_.viewport.x, attrib_.viewport.y,
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    else
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
+                     0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // attach the texture to FBO color attachment point

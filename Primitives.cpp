@@ -28,7 +28,13 @@ static const std::vector<glm::vec3> square_points {
 
 Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
 {
-    // geometry
+    // geometry for a trianglulated simple rectangle surface with UV
+    //  (0,0) B +---+ D (1,0)
+    //          |\  |
+    //          | \ |
+    //          |  \|
+    //  (0,1) A +---+ C (1,1)
+
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
             glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
     colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),

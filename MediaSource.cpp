@@ -70,7 +70,7 @@ void MediaSource::init()
 
             // create Frame buffer matching size of media player
             float height = float(mediaplayer()->width()) / mediaplayer()->aspectRatio();
-            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), (uint)height);
+            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), (uint)height, true);
 
             // create the surfaces to draw the frame buffer in the views
             // TODO Provide the source custom effect shader

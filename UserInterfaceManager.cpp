@@ -618,7 +618,7 @@ void UserInterface::RenderPreview()
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / ar);
-        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 0.f), ImVec2(1.f, -1.f));
+        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
 
         ImGui::End();
     }
