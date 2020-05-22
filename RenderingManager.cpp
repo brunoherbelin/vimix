@@ -349,7 +349,7 @@ RenderingAttrib Rendering::currentAttrib()
 
 glm::mat4 Rendering::Projection()
 {
-    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, SCENE_DEPTH, 1.f);
+    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, -SCENE_DEPTH, 1.f);
     glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, AspectRatio(), 1.f));
 
     return projection * scale;

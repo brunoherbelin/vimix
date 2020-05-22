@@ -238,16 +238,16 @@ protected:
 
 
 /**
- * @brief A Scene holds a root node with two children; a background and a foreground
+ * @brief A Scene holds a root node with 3 children; a background, a workspace and a foreground
  *
- * Nodes should be added to foreground and background only (not root)
- * The update() is called on the root (both background and foreground)
+ * The update() is called on the root
  *
  */
 class Scene  {
 
     Group *root_;
     Group *background_;
+    Group *workspace_;
     Group *foreground_;
 
 public:
@@ -259,10 +259,12 @@ public:
 
     void clear();
     void clearBackground();
+    void clearWorkspace();
     void clearForeground();
 
     Group *root() { return root_; }
     Group *bg() { return background_; }
+    Group *ws() { return workspace_; }
     Group *fg() { return foreground_; }
 
 };

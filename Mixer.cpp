@@ -230,9 +230,9 @@ void Mixer::insertSource(Source *s)
     setCurrentSource( session_->addSource(s) );
 
     // add sources Nodes to all views
-    mixing_.scene.fg()->attach(s->group(View::MIXING));
-    geometry_.scene.fg()->attach(s->group(View::GEOMETRY));
-    layer_.scene.fg()->attach(s->group(View::LAYER));
+    mixing_.scene.ws()->attach(s->group(View::MIXING));
+    geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
+    layer_.scene.ws()->attach(s->group(View::LAYER));
 
     layer_.setDepth(s);
 }
@@ -251,9 +251,9 @@ void Mixer::deleteSource(Source *s)
     std::string name = s->name();
 
     // remove source Nodes from all views
-    mixing_.scene.fg()->detatch( s->group(View::MIXING) );
-    geometry_.scene.fg()->detatch( s->group(View::GEOMETRY) );
-    layer_.scene.fg()->detatch( s->group(View::LAYER) );
+    mixing_.scene.ws()->detatch( s->group(View::MIXING) );
+    geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
+    layer_.scene.ws()->detatch( s->group(View::LAYER) );
 
     // delete source
     session_->deleteSource(s);
@@ -422,9 +422,9 @@ void Mixer::swap()
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         {
-            mixing_.scene.fg()->detatch( (*source_iter)->group(View::MIXING) );
-            geometry_.scene.fg()->detatch( (*source_iter)->group(View::GEOMETRY) );
-            layer_.scene.fg()->detatch( (*source_iter)->group(View::LAYER) );
+            mixing_.scene.ws()->detatch( (*source_iter)->group(View::MIXING) );
+            geometry_.scene.ws()->detatch( (*source_iter)->group(View::GEOMETRY) );
+            layer_.scene.ws()->detatch( (*source_iter)->group(View::LAYER) );
         }
     }
 
@@ -436,9 +436,9 @@ void Mixer::swap()
     // attach new session's nodes to views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
     {
-        mixing_.scene.fg()->attach( (*source_iter)->group(View::MIXING) );
-        geometry_.scene.fg()->attach( (*source_iter)->group(View::GEOMETRY) );
-        layer_.scene.fg()->attach( (*source_iter)->group(View::LAYER) );
+        mixing_.scene.ws()->attach( (*source_iter)->group(View::MIXING) );
+        geometry_.scene.ws()->attach( (*source_iter)->group(View::GEOMETRY) );
+        layer_.scene.ws()->attach( (*source_iter)->group(View::LAYER) );
     }
 
     // optional copy of views config

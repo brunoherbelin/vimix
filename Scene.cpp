@@ -414,12 +414,14 @@ Scene::Scene(): root_(nullptr), foreground_(nullptr), background_(nullptr)
     root_ = new Group;
 
     background_ = new Group;
-    background_->translation_.z = 0;
+    background_->translation_.z = 0.f;
+    workspace_  = new Group;
+    workspace_->translation_.z  = 1.f;
     foreground_ = new Group;
-    // TODO Verify depth for foreground
-    foreground_->translation_.z = 1;
+    foreground_->translation_.z = SCENE_DEPTH -0.1f;
 
     root_->attach(background_);
+    root_->attach(workspace_);
     root_->attach(foreground_);
 }
 
@@ -433,10 +435,16 @@ Scene::~Scene()
 void Scene::clear()
 {
     clearForeground();
+    clearWorkspace();
     clearBackground();
 }
 
 void Scene::clearForeground()
+{
+    foreground_->clear();
+}
+
+void Scene::clearWorkspace()
 {
     foreground_->clear();
 }

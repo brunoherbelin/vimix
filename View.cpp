@@ -54,7 +54,7 @@ void View::update(float dt)
     // a more complete update is requested
     if (View::need_deep_update_) {
         // reorder sources
-        scene.fg()->sort();
+        scene.ws()->sort();
     }
 }
 
@@ -151,6 +151,7 @@ uint MixingView::textureMixingQuadratic()
             for (int j=0; j < CIRCLE_PIXELS / 2; ++j) {
                 // distance to the center
                 distance = (GLfloat) ((c * c) + (l * l)) / CIRCLE_PIXEL_RADIUS;
+//                distance = (GLfloat) sqrt( (GLfloat) ((c * c) + (l * l))) / (GLfloat) sqrt(CIRCLE_PIXEL_RADIUS); // linear
                 // luminance
                 luminance = 255.f * CLAMP( 0.95f - 0.8f * distance, 0.f, 1.f);
                 color[0] = color[1] = color[2] = static_cast<GLubyte>(luminance);
@@ -206,7 +207,7 @@ void RenderView::setResolution(glm::vec3 resolution)
 
 void RenderView::draw()
 {
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, SCENE_DEPTH, 0.f);
+    static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -SCENE_DEPTH, 0.f);
     glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
     frame_buffer_->begin();
     scene.root()->draw(glm::identity<glm::mat4>(), P);
@@ -230,7 +231,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
     Frame *border = new Frame(Frame::SHARP_THIN);
     border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
-    scene.bg()->attach(border);
+    scene.fg()->attach(border);
 
 }
 
@@ -245,6 +246,9 @@ void GeometryView::update(float dt)
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = output->aspectRatio();
+            }
+            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
                 (*node)->scale_.x = output->aspectRatio();
             }
         }
@@ -376,7 +380,7 @@ void LayerView::update(float dt)
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
                 (*node)->scale_.x = aspect_ratio;
             }
-            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+            for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); node++) {
                 (*node)->translation_.y = (*node)->translation_.x / aspect_ratio;
             }
         }
@@ -401,7 +405,7 @@ void LayerView::setDepth (Source *s, float d)
 
     // negative depth given; find the front most depth
     if ( depth < 0.f ) {
-        Node *front = scene.fg()->front();
+        Node *front = scene.ws()->front();
         if (front)
             depth = front->translation_.z + 0.5f;
         else
@@ -412,7 +416,7 @@ void LayerView::setDepth (Source *s, float d)
     Group *sourceNode = s->group(mode_);
 
     // diagonal movement only
-    sourceNode->translation_.x = CLAMP( -depth, SCENE_DEPTH + 2.f, 0.f);
+    sourceNode->translation_.x = CLAMP( -depth, -(SCENE_DEPTH - 2.f), 0.f);
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
 
     // change depth
