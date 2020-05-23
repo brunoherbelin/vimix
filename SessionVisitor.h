@@ -44,6 +44,7 @@ public:
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
     void visit (RenderSource& s) override;
+    void visit (CloneSource& s) override;
 
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
 };

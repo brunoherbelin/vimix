@@ -88,6 +88,32 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
             // TODO : create other types of source
 
         }
+
+        // create clones after all sources to potentially clone have been created
+        sourceNode = sessionNode->FirstChildElement("Source");
+        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+        {
+            xmlCurrent_ = sourceNode;
+            counter++;
+
+            const char *pType = xmlCurrent_->Attribute("type");
+            if (!pType)
+                continue;
+
+            if ( std::string(pType) == "CloneSource") {
+                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                if (originNode) {
+                    std::string sourcename = std::string ( originNode->GetText() );
+                    SourceList::iterator origin = session_->find(sourcename);
+                    if (origin != session_->end()) {
+                        CloneSource *new_clone_source = (*origin)->clone();
+                        new_clone_source->accept(*this);
+                        session_->addSource(new_clone_source);
+                    }
+                }
+            }
+        }
+
     }
     else
         Log::Warning("Session seems empty.");
@@ -243,12 +269,6 @@ void SessionCreator::visit (SessionSource& s)
     }
 
 }
-
-void SessionCreator::visit (RenderSource& s)
-{
-
-}
-
 
 
 

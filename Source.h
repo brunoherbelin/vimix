@@ -138,7 +138,6 @@ class CloneSource : public Source
     friend class Source;
 
 public:
-    CloneSource(Source *origin);
     ~CloneSource();
 
     // implementation of source API
@@ -151,6 +150,8 @@ public:
     inline Source *origin() const { return origin_; }
 
 protected:
+    // only Source class can create new CloneSource via clone();
+    CloneSource(Source *origin);
 
     void init() override;
     Surface *clonesurface_;
