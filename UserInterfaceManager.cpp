@@ -506,7 +506,7 @@ void UserInterface::showMenuFile()
         std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT "  Import")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
         // launch file dialog to open a session file
         sessionFileDialogImport_ = true;
         std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
@@ -635,7 +635,8 @@ void UserInterface::RenderPreview()
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / ar);
-        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+        ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+//        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
 
         ImGui::End();
     }

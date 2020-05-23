@@ -141,7 +141,7 @@ void SessionSource::render()
             session()->deleteSource(session()->failedSource());
 
         // render the sesion into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
         sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
@@ -207,7 +207,7 @@ void RenderSource::render()
         init();
     else {
         // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
         sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();

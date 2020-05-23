@@ -206,7 +206,7 @@ void RenderView::setResolution(glm::vec3 resolution)
 
 void RenderView::draw()
 {
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -SCENE_DEPTH, 1.f);
+    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
     glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
     frame_buffer_->begin();
     scene.root()->draw(glm::identity<glm::mat4>(), P);
