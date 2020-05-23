@@ -65,8 +65,8 @@ public:
     void save();
     void saveas(const std::string& filename);
     void open(const std::string& filename);
-    void import(const std::string& filename) {}
-    void import(Session *s) {}
+    void import(const std::string& filename);
+    void merge(Session *s);
     void set(Session *s);
 
 protected:

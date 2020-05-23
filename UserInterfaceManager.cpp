@@ -60,6 +60,7 @@ void ShowAbout(bool* p_open);
 // static objects for multithreaded file dialog
 static std::atomic<bool> fileDialogPending_ = false;
 static std::atomic<bool> sessionFileDialogLoadFinished_ = false;
+static std::atomic<bool> sessionFileDialogImport_ = false;
 static std::atomic<bool> sessionFileDialogSaveFinished_ = false;
 static std::string sessionFileDialogFilename_ = "";
 
@@ -395,19 +396,22 @@ void UserInterface::NewFrame()
     // handle FileDialog
     if (sessionFileDialogLoadFinished_) {
         sessionFileDialogLoadFinished_ = false;
-        fileDialogPending_ = false;
         if (!sessionFileDialogFilename_.empty()) {
-            Mixer::manager().open(sessionFileDialogFilename_);
+            if (sessionFileDialogImport_)
+                Mixer::manager().import(sessionFileDialogFilename_);
+            else
+                Mixer::manager().open(sessionFileDialogFilename_);
             Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
+        fileDialogPending_ = false;
     }
     if (sessionFileDialogSaveFinished_) {
         sessionFileDialogSaveFinished_ = false;
-        fileDialogPending_ = false;
         if (!sessionFileDialogFilename_.empty()) {
             Mixer::manager().saveas(sessionFileDialogFilename_);
             Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
+        fileDialogPending_ = false;
     }
 
     // overlay to ensure file dialog is modal
@@ -485,8 +489,26 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuFile()
 {
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
+        Mixer::manager().clear();
+        navigator.hidePannel();
+    }
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
+    ImGui::Combo("##AR", &Settings::application.framebuffer_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
+    ImGui::Combo("##HEIGHT", &Settings::application.framebuffer_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+
+    ImGui::Separator();
+
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
         // launch file dialog to open a session file
+        sessionFileDialogImport_ = false;
+        std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
+        navigator.hidePannel();
+    }
+    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT "  Import")) {
+        // launch file dialog to open a session file
+        sessionFileDialogImport_ = true;
         std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
@@ -497,22 +519,10 @@ void UserInterface::showMenuFile()
             Mixer::manager().save();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FOLDER_OPEN "  Save as")) {
+    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as")) {
         std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
-
-    ImGui::Separator();
-
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
-        Mixer::manager().clear();
-        navigator.hidePannel();
-    }
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##AR", &Settings::application.framebuffer_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##HEIGHT", &Settings::application.framebuffer_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
-
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {

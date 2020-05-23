@@ -51,6 +51,30 @@ static void loadSession(const std::string& filename, Session *session)
     sessionThreadActive_ = false;
 }
 
+static std::atomic<bool> sessionImportRequested_ = false;
+static void importSession(const std::string& filename, Session *session)
+{
+    while (sessionThreadActive_)
+        std::this_thread::sleep_for( std::chrono::milliseconds(50));
+    sessionThreadActive_ = true;
+
+    // actual loading of xml file
+    SessionCreator creator( session );
+
+    if (creator.load(filename)) {
+        // cosmetics load ok
+        sessionImportRequested_ = true;
+
+        Log::Notify("Session %s loaded. %d source(s) imported.", filename.c_str(), session->numSource());
+    }
+    else {
+        // error loading
+        Log::Warning("Failed to import Session file %s.", filename.c_str());
+    }
+
+    sessionThreadActive_ = false;
+}
+
 // static multithreaded session saving
 static void saveSession(const std::string& filename, Session *session)
 {
@@ -147,6 +171,12 @@ void Mixer::update()
             Rendering::manager().setWindowTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
         }
+    }
+
+    if (sessionImportRequested_) {
+        sessionImportRequested_ = false;
+        merge(back_session_);
+        back_session_ = nullptr;
     }
 
     // compute dt
@@ -449,6 +479,29 @@ void Mixer::open(const std::string& filename)
 
     // launch a thread to load the session into back_session
     std::thread (loadSession, filename, back_session_).detach();
+}
+
+void Mixer::import(const std::string& filename)
+{
+    if (back_session_)
+        delete back_session_;
+
+    // create empty session
+    back_session_ = new Session;
+
+    // launch a thread to load the session into back_session
+    std::thread (importSession, filename, back_session_).detach();
+}
+
+void Mixer::merge(Session *session)
+{
+    if (session) {
+
+        for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
+            insertSource(s);
+
+        delete session;
+    }
 }
 
 void Mixer::swap()

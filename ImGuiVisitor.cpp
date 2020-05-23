@@ -270,11 +270,11 @@ void ImGuiVisitor::visit (Source& s)
 void ImGuiVisitor::visit (MediaSource& s)
 {
     if ( s.mediaplayer()->duration() == GST_CLOCK_TIME_NONE) {
-        ImGui::Text("Image");
+        ImGui::Text("Image File");
     }
     else {
-        ImGui::Text("Video");
-        if (ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        ImGui::Text("Video File");
+        if ( ImGui::Button("Open Media Player", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Settings::application.media_player = true;
     }
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
@@ -282,22 +282,25 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
-//    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-    ImGui::Text("Session");
-    if (ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    ImGui::Text("Session File");
+    if ( ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
+    if ( ImGui::Button( ICON_FA_FILE_IMPORT " Merge", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Mixer::manager().merge( s.detach() );
+
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
 
 void ImGuiVisitor::visit (RenderSource& s)
 {
-//    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-    ImGui::Text("Render");
+    ImGui::Text("Rendering Output");
 }
 
 void ImGuiVisitor::visit (CloneSource& s)
 {
-//    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
     ImGui::Text("Clone of %s", s.origin()->name().c_str());
+    std::string label = "Select " + s.origin()->name();
+    if ( ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Mixer::manager().setCurrentSource(s.origin());
 }
 

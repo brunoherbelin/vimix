@@ -95,6 +95,24 @@ SourceList::iterator Session::deleteSource(Source *s)
     return its;
 }
 
+Source *Session::popSource()
+{
+    Source *s = nullptr;
+
+    SourceList::iterator its = sources_.begin();
+    if (its != sources_.end())
+    {
+        s = *its;
+
+        // remove Node from the rendering scene
+        render_.scene.ws()->detatch( s->group(View::RENDERING) );
+
+        // erase the source from the update list & get next element
+        sources_.erase(its);
+    }
+
+    return s;
+}
 
 void Session::setResolution(glm::vec3 resolution)
 {
@@ -144,6 +162,11 @@ SourceList::iterator Session::find(Node *node)
 uint Session::numSource() const
 {
     return sources_.size();
+}
+
+bool Session::empty() const
+{
+    return sources_.empty();
 }
 
 int Session::index(SourceList::iterator it) const
