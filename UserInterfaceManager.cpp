@@ -854,6 +854,9 @@ Navigator::Navigator()
     pannel_width = 5.f * width;
     height = 100;
     padding_width = 100;
+    new_source_type_ = 0;
+    new_source_to_create_ = "";
+    sprintf(new_source_filename_, " ");
 }
 
 void Navigator::toggle(int index)
@@ -871,6 +874,8 @@ void Navigator::clearSelection()
 {
     for(int i=0; i<NAV_COUNT; ++i)
         selected_button[i] = false;
+    new_source_to_create_ = "";
+    sprintf(new_source_filename_, " ");
 }
 
 void Navigator::showPannelSource(int index)
@@ -927,7 +932,6 @@ void Navigator::Render()
         // the list of INITIALS for sources
         int index = 0;
         SourceList::iterator iter;
-        Source *source_to_delete = nullptr;
         for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
         {
             // draw an indicator for current source
@@ -946,13 +950,7 @@ void Navigator::Render()
                 if (selected_button[index])
                     Mixer::manager().setCurrentSource(selected_source_index);
             }
-            // delete sources which failed
-            if ( (*iter)->failed() )
-                source_to_delete = *iter;
         }
-        // TODO : general (mixer?) paradigm to delete failed sources (here it looks like a hack)
-        if (source_to_delete != nullptr)
-            Mixer::manager().deleteSource(source_to_delete);
 
         // the "+" icon for action of creating new source
         if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
@@ -1078,62 +1076,108 @@ void Navigator::RenderNewPannel()
         ImGui::PopFont();
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        static int new_source_type = 0;
-        ImGui::Combo("Origin", &new_source_type, "File\0Software\0Hardware\0");
+        ImGui::Combo("Origin", &new_source_type_, "File\0Software\0Hardware\0");
 
         // Media Source creation
-        if (new_source_type == 0) {
+        if (new_source_type_ == 0) {
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.vmx)\n\nEquivalent to dropping the file in the workspace.");
 
-            // filename of the media to open
-            static char filename[2048];
-
             // browse for a filename
             if (ImGuiToolkit::ButtonIcon(2, 5)) {
-                std::thread (ImportFileDialogOpen, filename, Settings::application.recentImport.path).detach();
+                std::thread (ImportFileDialogOpen, new_source_filename_, Settings::application.recentImport.path).detach();
             }
             // combo of recent media filenames
             ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##RecentImport", "Select recent"))
             {
-                std::for_each(Settings::application.recentImport.filenames.begin(),
-                              Settings::application.recentImport.filenames.end(), [](std::string& path) {
-                    int right = MIN( 40, path.size());
-                    if (ImGui::Selectable( path.substr( path.size() - right ).c_str() )) {
-                        sprintf(filename, "%s", path.c_str());
+                for (auto path = Settings::application.recentImport.filenames.begin();
+                     path != Settings::application.recentImport.filenames.end(); path++ )
+                {
+                    int right = MIN( 40, path->size());
+                    if (ImGui::Selectable( path->substr( path->size() - right ).c_str() )) {
+                        sprintf(new_source_filename_, "%s", path->c_str());
                     }
-                });
+                }
                 ImGui::EndCombo();
             }
             // filename text entry - [Return] to validate
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::InputText("Path", filename, IM_ARRAYSIZE(filename), ImGuiInputTextFlags_EnterReturnsTrue) ) {
-                Mixer::manager().createSourceFile( std::string(filename) );
+            Source *s = nullptr;
+            if (ImGui::InputText("Path", new_source_filename_, IM_ARRAYSIZE(new_source_filename_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
+                s = Mixer::manager().createSourceFile( std::string(new_source_filename_) );
                 selected_button[NAV_NEW] = false;
             }
             // or press Validate button
             ImGui::Text(" ");
             if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
-                Mixer::manager().createSourceFile( std::string(filename) );
+                s = Mixer::manager().createSourceFile( std::string(new_source_filename_) );
                 selected_button[NAV_NEW] = false;
             }
+            Mixer::manager().insertSource(s);
         }
         // Render Source creator
-        else if (new_source_type == 1){
+        else if (new_source_type_ == 1){
 
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source from a software algorithm or from vimix objects.");
 
-            ImGui::Text(" ");
-            if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
+            // Selection of a source to create
+            static uint texture = 0;
+            static ImVec2 preview_size;
+            static ImVec2 preview_uv1, preview_uv2;
+            static float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
-                Mixer::manager().createSourceClone("toto");
-//                Mixer::manager().createSourceRender();
-                selected_button[NAV_NEW] = false;
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("##Source", "Select source"))
+            {
+                if (ImGui::Selectable( "Render" )) {
+                    new_source_to_create_ = "Render";
+                    texture = Mixer::manager().session()->frame()->texture();
+                    preview_size = ImVec2( preview_width, preview_width / Mixer::manager().session()->frame()->aspectRatio());
+                    preview_uv1 = ImVec2(0.f, 1.f);
+                    preview_uv2 = ImVec2(1.f, 0.f);
+                }
+                SourceList::iterator iter;
+                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++)
+                {
+                    if (ImGui::Selectable( (*iter)->name().c_str() )) {
+                        new_source_to_create_ = (*iter)->name();
+                        texture = (*iter)->texture();
+                        preview_size = ImVec2( preview_width, preview_width / (*iter)->frame()->aspectRatio());
+                        preview_uv1 = ImVec2(0.f, 0.f);
+                        preview_uv2 = ImVec2(1.f, 1.f);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (!new_source_to_create_.empty()) {
+
+                // preview
+                if (texture != 0) {
+                    ImGui::Image((void*)(uintptr_t) texture, preview_size, preview_uv1, preview_uv2);
+                }
+
+                ImGui::Text("%s ", new_source_to_create_.c_str());
+                if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
+
+                    Source *s = nullptr;
+                    if (new_source_to_create_ == "Render")
+                        s = Mixer::manager().createSourceRender();
+                    else
+                        s = Mixer::manager().createSourceClone(new_source_to_create_);
+
+                    Mixer::manager().insertSource(s);
+
+                    // reset for next time
+                    new_source_to_create_ = "";
+                    texture = 0;
+                    selected_button[NAV_NEW] = false;
+                }
             }
 
         }

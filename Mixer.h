@@ -34,13 +34,14 @@ public:
     void draw();
 
     // manangement of sources
-    void createSourceFile(std::string path);
-    void createSourceRender();
-    void createSourceClone(std::string namesource);
+    Source * createSourceFile(std::string path);
+    Source * createSourceClone(std::string namesource);
+    Source * createSourceRender();
 
     // operations on sources
-    void renameSource(Source *s, const std::string &newname);
+    void insertSource(Source *s);
     void deleteSource(Source *s);
+    void renameSource(Source *s, const std::string &newname);
 
     // current source
     void setCurrentSource(std::string namesource);
@@ -49,7 +50,7 @@ public:
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
     void deleteCurrentSource();
-    Source *currentSource();
+    Source * currentSource();
     int indexCurrentSource();
 
     // management of view
@@ -73,7 +74,6 @@ protected:
     Session *back_session_;
     void swap();
 
-    void insertSource(Source *s);
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
     int current_source_index_;

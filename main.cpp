@@ -24,25 +24,10 @@
 #include "ImGuiVisitor.h"
 
 // vmix
-#include "defines.h"
 #include "Settings.h"
-
-// mixing
 #include "Mixer.h"
-#include "Source.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
-#include "FrameBuffer.h"
-#include "Resource.h"
-#include "ImageProcessingShader.h"
-
-#include "MediaPlayer.h"
-#include "Scene.h"
-#include "Primitives.h"
-#include "Mesh.h"
-#include "SessionVisitor.h"
-
-#define PI 3.14159265358979323846
 
 
 void drawScene()
@@ -83,30 +68,10 @@ int main(int, char**)
 #endif
 
 //     test text editor
-    UserInterface::manager().fillShaderEditor( Resource::getText("shaders/image.fs") );
+//    UserInterface::manager().fillShaderEditor( Resource::getText("shaders/image.fs") );
 
     // draw the scene
     Rendering::manager().PushFrontDrawCallback(drawScene);
-
-    // init elements to the scene
-//    if ( !Mixer::manager().open("./testsession.vmx") )
-//    {
-//        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/iss.mov");
-//        Mixer::manager().createSourceMedia("file:///home/bhbn/Videos/fish.mp4");
-//    }
-
-//    Animation A;
-//    A.translation_ = glm::vec3(0.f, 0.f, 3.f);
-//    A.speed_ = 0.1f;
-//    A.axis_ = glm::vec3(1.f, 1.f, 1.f);
-//    Mesh P("mesh/point.ply");
-//    P.scale_ = glm::vec3(0.15f);
-//    A.addChild(&P);
-//    Mixer::manager().currentView()->scene.root()->addChild(&A);
-
-    // custom test window
-//    Rendering::manager().PushBackDrawCallback(drawCustomGui);
-
 
     ///
     /// Main LOOP
@@ -118,11 +83,21 @@ int main(int, char**)
         Rendering::manager().Draw();
     }
 
+    ///
+    /// UI TERMINATE
+    ///
     UserInterface::manager().Terminate();
+
+    ///
+    /// RENDERING TERMINATE
+    ///
     Rendering::manager().Terminate();
 
+    ///
+    /// Settings
+    ///
     Settings::Save();
 
-
+    /// ok
     return 0;
 }

@@ -25,8 +25,9 @@ public:
     SourceList::iterator find (Node *node);
     uint numSource() const;
 
-    // update all sources
+    // update all sources and return the list of source which failed
     void update (float dt);
+    Source *failedSource() { return failedSource_; }
 
     // result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
@@ -41,6 +42,7 @@ public:
 
 protected:
     RenderView render_;
+    Source *failedSource_;
     SourceList sources_;
     std::string filename_;
     std::map<View::Mode, Group*> config_;

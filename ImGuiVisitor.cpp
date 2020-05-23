@@ -300,6 +300,6 @@ void ImGuiVisitor::visit (RenderSource& s)
 void ImGuiVisitor::visit (CloneSource& s)
 {
 //    ImGui::Button("Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-    ImGui::Text("Clone of %s", s.origin()->name());
+    ImGui::Text("Clone of %s", s.origin()->name().c_str());
 }
 

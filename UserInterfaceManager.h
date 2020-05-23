@@ -33,6 +33,10 @@ class Navigator
     void RenderNewPannel();
     void RenderMainPannel();
 
+    int new_source_type_;
+    std::string new_source_to_create_;
+    char new_source_filename_[2048];
+
 public:
     Navigator();
 

@@ -159,12 +159,16 @@ void Mixer::update()
     // update session and associated sources
     session_->update(dt);
 
+    if (session()->failedSource() != nullptr)
+        deleteSource(session()->failedSource());
+
     // update views
     mixing_.update(dt);
     geometry_.update(dt);
     layer_.update(dt);
 
     // optimize the reordering in depth for views
+    // deep updates shall be performed only 1 frame
     View::need_deep_update_ = false;
 }
 
@@ -175,44 +179,45 @@ void Mixer::draw()
 }
 
 // manangement of sources
-void Mixer::createSourceFile(std::string path)
+Source * Mixer::createSourceFile(std::string path)
 {
-    // sanity check
-    if ( !SystemToolkit::file_exists( path ) ) {
-        Log::Notify("File %s does not exist.", path.c_str());
-        return;
-    }
     // ready to create a source
     Source *s = nullptr;
 
-    // test type of file by extension
-    std::string ext = SystemToolkit::extension_filename(path);
-    if ( ext == "vmx" )
-    {
-        // create a session source
-        SessionSource *ss = new SessionSource();
-        ss->load(path);
-        s = ss;
+    // sanity check
+    if ( SystemToolkit::file_exists( path ) ) {
+
+        // test type of file by extension
+        std::string ext = SystemToolkit::extension_filename(path);
+        if ( ext == "vmx" )
+        {
+            // create a session source
+            SessionSource *ss = new SessionSource();
+            ss->load(path);
+            s = ss;
+        }
+        else {
+            // (try to) create media source by default
+            MediaSource *ms = new MediaSource;
+            ms->setPath(path);
+            s = ms;
+        }
+
+        // remember in recent media
+        Settings::application.recentImport.push(path);
+        Settings::application.recentImport.path = SystemToolkit::path_filename(path);
+
+        // propose a new name based on uri
+        renameSource(s, SystemToolkit::base_filename(path));
+
     }
-    else {
-        // (try to) create media source by default
-        MediaSource *ms = new MediaSource;
-        ms->setPath(path);
-        s = ms;
-    }
+    else
+        Log::Notify("File %s does not exist.", path.c_str());
 
-    // remember in recent media
-    Settings::application.recentImport.push(path);
-    Settings::application.recentImport.path = SystemToolkit::path_filename(path);
-
-    // propose a new name based on uri
-    renameSource(s, SystemToolkit::base_filename(path));
-
-    // add to mixer
-    insertSource(s);
+    return s;
 }
 
-void Mixer::createSourceRender()
+Source * Mixer::createSourceRender()
 {
     // ready to create a source
     RenderSource *s = new RenderSource;
@@ -220,37 +225,41 @@ void Mixer::createSourceRender()
     // propose a new name based on session name
     renameSource(s, SystemToolkit::base_filename(session_->filename()));
 
-    // add to mixer
-    insertSource(s);
+    return s;
 }
 
-void Mixer::createSourceClone(std::string namesource)
+Source * Mixer::createSourceClone(std::string namesource)
 {
+    // ready to create a source
+    Source *s = nullptr;
+
     SourceList::iterator origin = session_->find(namesource);
     if (origin != session_->end()) {
 
         // create a source
-        CloneSource *s = (*origin)->clone();
+        s = (*origin)->clone();
 
         // get new name
         renameSource(s, (*origin)->name());
-
-        // add to mixer
-        insertSource(s);
     }
+
+    return s;
 }
 
 void Mixer::insertSource(Source *s)
 {
-    // Add source to Session and set it as current
-    setCurrentSource( session_->addSource(s) );
+    if ( s != nullptr )
+    {
+        // Add source to Session and set it as current
+        setCurrentSource( session_->addSource(s) );
 
-    // add sources Nodes to all views
-    mixing_.scene.ws()->attach(s->group(View::MIXING));
-    geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
-    layer_.scene.ws()->attach(s->group(View::LAYER));
+        // add sources Nodes to all views
+        mixing_.scene.ws()->attach(s->group(View::MIXING));
+        geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
+        layer_.scene.ws()->attach(s->group(View::LAYER));
 
-    layer_.setDepth(s);
+        layer_.setDepth(s);
+    }
 }
 
 void Mixer::deleteCurrentSource()

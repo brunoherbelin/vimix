@@ -8,7 +8,7 @@
 
 #include "Log.h"
 
-Session::Session() : filename_("")
+Session::Session() : filename_(""), failedSource_(nullptr)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = render_.resolution();
@@ -40,12 +40,20 @@ Session::~Session()
 // update all sources
 void Session::update(float dt)
 {
+    failedSource_ = nullptr;
+
     // pre-render of all sources
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); it++){
-        // render the source
-        (*it)->render();
-        // update the source
-        (*it)->update(dt);
+
+        if ( (*it)->failed() ) {
+            failedSource_ = (*it);
+        }
+        else {
+            // render the source
+            (*it)->render();
+            // update the source
+            (*it)->update(dt);
+        }
     }
 
     // update the scene tree

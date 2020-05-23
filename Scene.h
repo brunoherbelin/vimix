@@ -67,7 +67,7 @@ public:
 
     // public members, to manipulate with care
     bool      visible_;
-    uint refcount_;
+    uint      refcount_;
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 

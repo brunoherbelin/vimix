@@ -446,7 +446,7 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         if (filename.empty())
             break;
         // try to create a source
-        Mixer::manager().createSourceFile( filename );
+        Mixer::manager().insertSource ( Mixer::manager().createSourceFile( filename ) );
     }
 }
 
