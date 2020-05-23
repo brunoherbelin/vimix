@@ -55,6 +55,11 @@ bool MediaSource::failed() const
     return mediaplayer_->failed();
 }
 
+uint MediaSource::texture() const
+{
+    return mediaplayer_->texture();
+}
+
 void MediaSource::init()
 {
     if ( mediaplayer_->isOpen() ) {
@@ -70,48 +75,19 @@ void MediaSource::init()
 
             // create Frame buffer matching size of media player
             float height = float(mediaplayer()->width()) / mediaplayer()->aspectRatio();
-            renderbuffer_ = new FrameBuffer(mediaplayer()->width(), (uint)height, true);
+            FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer()->width(), (uint)height, true);
 
-            // create the surfaces to draw the frame buffer in the views
-            // TODO Provide the source custom effect shader
-            rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
-            groups_[View::RENDERING]->attach(rendersurface_);
-            groups_[View::GEOMETRY]->attach(rendersurface_);
-            groups_[View::MIXING]->attach(rendersurface_);
-            groups_[View::LAYER]->attach(rendersurface_);
+            // set the renderbuffer of the source and attach rendering nodes
+            attach(renderbuffer);
 
-            // for mixing view, add another surface to overlay (for stippled view in transparency)
-            Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
-            ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
-            if (is)  is->stipple = 1.0;
-            groups_[View::MIXING]->attach(surfacemix);
-            groups_[View::LAYER]->attach(surfacemix);
+            // icon in mixing view
             if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE)
                 overlays_[View::MIXING]->attach( new Mesh("mesh/icon_image.ply") );
             else
                 overlays_[View::MIXING]->attach( new Mesh("mesh/icon_video.ply") );
 
-            // scale all mixing nodes to match aspect ratio of the media
-            for (NodeSet::iterator node = groups_[View::MIXING]->begin();
-                 node != groups_[View::MIXING]->end(); node++) {
-                (*node)->scale_.x = mediaplayer_->aspectRatio();
-            }
-            for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
-                 node != groups_[View::GEOMETRY]->end(); node++) {
-                (*node)->scale_.x = mediaplayer_->aspectRatio();
-            }
-            for (NodeSet::iterator node = groups_[View::LAYER]->begin();
-                 node != groups_[View::LAYER]->end(); node++) {
-                (*node)->scale_.x = mediaplayer_->aspectRatio();
-            }
-
-            // done init once and for all
+            // done init
             initialized_ = true;
-            // make visible
-            groups_[View::RENDERING]->visible_ = true;
-            groups_[View::MIXING]->visible_ = true;
-            groups_[View::GEOMETRY]->visible_ = true;
-            groups_[View::LAYER]->visible_ = true;
         }
     }
 

@@ -36,7 +36,7 @@ public:
     // manangement of sources
     void createSourceFile(std::string path);
     void createSourceRender();
-    void createSourceClone() {}
+    void createSourceClone(std::string namesource);
 
     // operations on sources
     void renameSource(Source *s, const std::string &newname);

@@ -16,6 +16,11 @@ class MediaPlayer;
 class Surface;
 class Session;
 class Frame;
+class Source;
+class CloneSource;
+
+typedef std::list<Source *> SourceList;
+typedef std::list<CloneSource *> CloneList;
 
 class Source
 {
@@ -29,6 +34,9 @@ public:
     void setName (const std::string &name);
     inline std::string name () const { return name_; }
     inline const char *initials() const { return initials_; }
+
+    // cloning mechanism
+    virtual CloneSource *clone();
 
     // an overlay can be displayed on top of the source
     virtual void setOverlayVisible(bool on);
@@ -44,6 +52,9 @@ public:
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader() const { return blendingshader_; }
 
+    // every Source has a frame buffer from the renderbuffer
+    virtual FrameBuffer *frame() const;
+
     // touch to request update
     inline void touch() { need_update_ = true; }
 
@@ -53,15 +64,13 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    // SPECIFIC implementation for subtypes
-
     // a Source shall informs if the source failed (i.e. shall be deleted)
-    virtual bool failed() const { return false; }
+    virtual bool failed() const = 0;
 
-    // every Source shall have a frame buffer
-    virtual FrameBuffer *frame() const;
+    // a Source shall define a way to get a texture
+    virtual uint texture() const = 0;
 
-    // every Source shall be rendered into the frame buffer
+    // a Source shall define how to render into the frame buffer
     virtual void render() = 0;
 
 protected:
@@ -79,6 +88,7 @@ protected:
     // render() fills in the renderbuffer at every frame
     // NB: rendershader_ is applied at render()
     FrameBuffer *renderbuffer_;
+    void attach(FrameBuffer *renderbuffer);
 
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
@@ -94,15 +104,13 @@ protected:
     std::map<View::Mode, Group*> overlays_;
     Handles *resize_handle_, *resize_H_handle_, *resize_V_handle_, *rotate_handle_;
 
-    // update need
+    // update
     bool need_update_;
     float dt_;
+
+    // clones
+    CloneList clones_;
 };
-
-// TODO SourceSet sorted by shader
-// so that the render loop avoid switching
-typedef std::list<Source *> SourceList;
-
 
 struct hasName: public std::unary_function<Source*, bool>
 {
@@ -125,22 +133,28 @@ private:
 };
 
 
-class RenderSource : public Source
+class CloneSource : public Source
 {
+    friend class Source;
+
 public:
-    RenderSource();
-    ~RenderSource();
+    CloneSource(Source *origin);
+    ~CloneSource();
 
     // implementation of source API
     void render() override;
+    uint texture() const override { return origin_->texture(); }
+    bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 
-    void reconnect();
+    CloneSource *clone();
+    inline Source *origin() const { return origin_; }
 
 protected:
 
     void init() override;
-    Surface *sessionsurface_;
+    Surface *clonesurface_;
+    Source *origin_;
 };
 
 

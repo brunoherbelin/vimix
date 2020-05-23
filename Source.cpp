@@ -14,7 +14,6 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Log.h"
-#include "Mixer.h"
 
 Source::Source() : initialized_(false), need_update_(true)
 {
@@ -114,6 +113,8 @@ Source::~Source()
     groups_.clear();
     overlays_.clear();
 
+    for (auto it = clones_.begin(); it != clones_.end(); it++)
+        (*it)->origin_ = nullptr;
 }
 
 void Source::setName (const std::string &name)
@@ -133,6 +134,46 @@ void Source::setOverlayVisible(bool on)
 {
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = on;
+}
+
+void Source::attach(FrameBuffer *renderbuffer)
+{
+    renderbuffer_ = renderbuffer;
+
+    // create the surfaces to draw the frame buffer in the views
+    // TODO Provide the source custom effect shader
+    rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
+    groups_[View::RENDERING]->attach(rendersurface_);
+    groups_[View::GEOMETRY]->attach(rendersurface_);
+    groups_[View::MIXING]->attach(rendersurface_);
+    groups_[View::LAYER]->attach(rendersurface_);
+
+    // for mixing view, add another surface to overlay (for stippled view in transparency)
+    Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
+    ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
+    if (is)  is->stipple = 1.0;
+    groups_[View::MIXING]->attach(surfacemix);
+    groups_[View::LAYER]->attach(surfacemix);
+
+    // scale all mixing nodes to match aspect ratio of the media
+    for (NodeSet::iterator node = groups_[View::MIXING]->begin();
+         node != groups_[View::MIXING]->end(); node++) {
+        (*node)->scale_.x = renderbuffer_->aspectRatio();
+    }
+    for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
+         node != groups_[View::GEOMETRY]->end(); node++) {
+        (*node)->scale_.x = renderbuffer_->aspectRatio();
+    }
+    for (NodeSet::iterator node = groups_[View::LAYER]->begin();
+         node != groups_[View::LAYER]->end(); node++) {
+        (*node)->scale_.x = renderbuffer_->aspectRatio();
+    }
+
+    // make visible
+    groups_[View::RENDERING]->visible_ = true;
+    groups_[View::MIXING]->visible_ = true;
+    groups_[View::GEOMETRY]->visible_ = true;
+    groups_[View::LAYER]->visible_ = true;
 }
 
 void Source::update(float dt)
@@ -187,7 +228,6 @@ Handles *Source::handleNode(Handles::Type t) const
         return resize_handle_;
 }
 
-
 bool hasNode::operator()(const Source* elem) const
 {
     if (elem)
@@ -209,95 +249,72 @@ bool hasNode::operator()(const Source* elem) const
     return false;
 }
 
-
-RenderSource::RenderSource() : Source()
+CloneSource *Source::clone()
 {
-    // create  surface:
-    sessionsurface_ = new Surface(rendershader_);
+    CloneSource *s = new CloneSource(this);
 
+    clones_.push_back(s);
+
+    return s;
 }
 
-RenderSource::~RenderSource()
+CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
+{
+    // create surface:
+    clonesurface_ = new Surface(rendershader_);
+}
+
+CloneSource::~CloneSource()
 {
     // delete surface
-    delete sessionsurface_;
+    delete clonesurface_;
 }
 
-void RenderSource::reconnect()
+CloneSource *CloneSource::clone()
 {
-    sessionsurface_->setTextureIndex( Mixer::manager().session()->frame()->texture() );
+    // do not clone a clone : clone the original instead
+    return origin_->clone();
 }
 
-void RenderSource::init()
+void CloneSource::init()
 {
-    Session *session = Mixer::manager().session();
-
-    if (session && session->frame()->texture() != Resource::getTextureBlack()) {
+    if (origin_ && origin_->texture() != Resource::getTextureBlack()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
-        sessionsurface_->setTextureIndex( session->frame()->texture() );
+        clonesurface_->setTextureIndex( origin_->texture() );
 
         // create Frame buffer matching size of session
-        renderbuffer_ = new FrameBuffer( session->frame()->resolution());
+        FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), true);
 
-        // create the surfaces to draw the frame buffer in the views
-        rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
-        groups_[View::RENDERING]->attach(rendersurface_);
-        groups_[View::GEOMETRY]->attach(rendersurface_);
-        groups_[View::MIXING]->attach(rendersurface_);
-        groups_[View::LAYER]->attach(rendersurface_);
+        // set the renderbuffer of the source and attach rendering nodes
+        attach(renderbuffer);
 
-        // for mixing view, add another surface to overlay (for stippled view in transparency)
-        Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
-        ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
-        if (is)  is->stipple = 1.0;
-        groups_[View::MIXING]->attach(surfacemix);
-        groups_[View::LAYER]->attach(surfacemix);
-        // TODO icon session
+        // icon in mixing view
+        overlays_[View::MIXING]->attach( new Mesh("mesh/icon_clone.ply") );
 
-        // scale all mixing nodes to match aspect ratio of the media
-        for (NodeSet::iterator node = groups_[View::MIXING]->begin();
-             node != groups_[View::MIXING]->end(); node++) {
-            (*node)->scale_.x = session->frame()->aspectRatio();
-        }
-        for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
-             node != groups_[View::GEOMETRY]->end(); node++) {
-            (*node)->scale_.x = session->frame()->aspectRatio();
-        }
-        for (NodeSet::iterator node = groups_[View::LAYER]->begin();
-             node != groups_[View::LAYER]->end(); node++) {
-            (*node)->scale_.x = session->frame()->aspectRatio();
-        }
-
-        // done init once and for all
+        // done init
         initialized_ = true;
 
-        // make visible
-        groups_[View::RENDERING]->visible_ = true;
-        groups_[View::MIXING]->visible_ = true;
-        groups_[View::GEOMETRY]->visible_ = true;
-        groups_[View::LAYER]->visible_ = true;
-
-        Log::Info("Source Render linked to session (%d x %d).", int(session->frame()->resolution().x), int(session->frame()->resolution().y) );
+        Log::Info("Source Clone linked to source %s).", origin_->name().c_str() );
     }
 }
 
-void RenderSource::render()
+void CloneSource::render()
 {
     if (!initialized_)
         init();
     else {
         // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
+        clonesurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }
 
-
-void RenderSource::accept(Visitor& v)
+void CloneSource::accept(Visitor& v)
 {
     Source::accept(v);
     v.visit(*this);
 }
+

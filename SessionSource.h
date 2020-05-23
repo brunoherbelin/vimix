@@ -12,8 +12,9 @@ public:
 
     // implementation of source API
     void render() override;
-    void accept (Visitor& v) override;
     bool failed() const override;
+    uint texture() const override;
+    void accept (Visitor& v) override;
 
     // Session Source specific interface
     void load(const std::string &p);
@@ -34,4 +35,25 @@ protected:
     std::atomic<bool> loadFailed_;
     std::atomic<bool> loadFinished_;
 };
+
+
+class RenderSource : public Source
+{
+public:
+    RenderSource();
+    ~RenderSource();
+
+    // implementation of source API
+    void render() override;
+    bool failed() const override;
+    uint texture() const override;
+    void accept (Visitor& v) override;
+
+protected:
+
+    void init() override;
+    Surface *sessionsurface_;
+};
+
+
 #endif // SESSIONSOURCE_H

@@ -1131,7 +1131,8 @@ void Navigator::RenderNewPannel()
             ImGui::Text(" ");
             if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
 
-                Mixer::manager().createSourceRender();
+                Mixer::manager().createSourceClone("toto");
+//                Mixer::manager().createSourceRender();
                 selected_button[NAV_NEW] = false;
             }
 

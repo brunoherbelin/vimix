@@ -196,7 +196,7 @@ void Mixer::createSourceFile(std::string path)
     }
     else {
         // (try to) create media source by default
-        MediaSource *ms = new MediaSource();
+        MediaSource *ms = new MediaSource;
         ms->setPath(path);
         s = ms;
     }
@@ -222,6 +222,22 @@ void Mixer::createSourceRender()
 
     // add to mixer
     insertSource(s);
+}
+
+void Mixer::createSourceClone(std::string namesource)
+{
+    SourceList::iterator origin = session_->find(namesource);
+    if (origin != session_->end()) {
+
+        // create a source
+        CloneSource *s = (*origin)->clone();
+
+        // get new name
+        renameSource(s, (*origin)->name());
+
+        // add to mixer
+        insertSource(s);
+    }
 }
 
 void Mixer::insertSource(Source *s)

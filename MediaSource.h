@@ -11,8 +11,9 @@ public:
 
     // implementation of source API
     void render() override;
-    void accept (Visitor& v) override;
     bool failed() const override;
+    uint texture() const override;
+    void accept (Visitor& v) override;
 
     // Media specific interface
     void setPath(const std::string &p);
