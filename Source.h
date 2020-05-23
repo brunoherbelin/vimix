@@ -38,8 +38,11 @@ public:
     // cloning mechanism
     virtual CloneSource *clone();
 
+    // make visible or hidden
+    void setVisible(bool on);
+
     // an overlay can be displayed on top of the source
-    virtual void setOverlayVisible(bool on);
+    void setOverlayVisible(bool on);
 
     // get handle on the node used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }

@@ -49,6 +49,7 @@ public:
     void setCurrentSource(int index);
     void setCurrentSource(Source *s);
     void unsetCurrentSource();
+    void cloneCurrentSource();
     void deleteCurrentSource();
     Source * currentSource();
     int indexCurrentSource();

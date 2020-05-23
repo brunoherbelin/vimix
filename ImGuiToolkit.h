@@ -10,7 +10,6 @@
 
 namespace ImGuiToolkit
 {
-
     // Icons from resource icon.dds
     void Icon(int i, int j);
     void ShowIconsWindow(bool* p_open);

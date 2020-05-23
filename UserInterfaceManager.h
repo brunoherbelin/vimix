@@ -13,6 +13,21 @@ using namespace std;
 struct ImVec2;
 class Source;
 
+class SourcePreview {
+
+    Source *source_;
+    std::string label_;
+
+public:
+    SourcePreview();
+
+    void setSource(Source *s = nullptr, std::string label = "");
+    Source *getSource();
+
+    void draw(float width);
+    inline bool ready() const { return source_ != nullptr; }
+};
+
 class Navigator
 {
     // geometry left bar
@@ -34,8 +49,9 @@ class Navigator
     void RenderMainPannel();
 
     int new_source_type_;
-    std::string new_source_to_create_;
     char new_source_filename_[2048];
+
+    SourcePreview new_source_preview_;
 
 public:
     Navigator();

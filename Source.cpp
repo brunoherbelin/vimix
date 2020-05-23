@@ -136,6 +136,15 @@ void Source::setOverlayVisible(bool on)
         (*o).second->visible_ = on;
 }
 
+void Source::setVisible(bool on)
+{
+    // make visible
+    groups_[View::RENDERING]->visible_ = on;
+    groups_[View::MIXING]->visible_ = on;
+    groups_[View::GEOMETRY]->visible_ = on;
+    groups_[View::LAYER]->visible_ = on;
+}
+
 void Source::attach(FrameBuffer *renderbuffer)
 {
     renderbuffer_ = renderbuffer;
@@ -169,11 +178,7 @@ void Source::attach(FrameBuffer *renderbuffer)
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
 
-    // make visible
-    groups_[View::RENDERING]->visible_ = true;
-    groups_[View::MIXING]->visible_ = true;
-    groups_[View::GEOMETRY]->visible_ = true;
-    groups_[View::LAYER]->visible_ = true;
+    setVisible(true);
 }
 
 void Source::update(float dt)

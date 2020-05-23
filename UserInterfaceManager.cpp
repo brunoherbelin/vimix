@@ -105,7 +105,7 @@ static void SessionFileDialogSave(std::string path)
      sessionFileDialogSaveFinished_ = true;
 }
 
-static void ImportFileDialogOpen(char *filename, const std::string &path)
+static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, const std::string &path)
 {
     if (fileDialogPending_)
         return;
@@ -115,7 +115,14 @@ static void ImportFileDialogOpen(char *filename, const std::string &path)
     char const * open_file_name;
 
     open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
-    sprintf(filename, "%s", open_file_name);
+
+    if (open_file_name) {
+        sprintf(filename, "%s", open_file_name);
+        *success = true;
+    }
+    else {
+        *success = false;
+    }
 
     fileDialogPending_ = false;
 }
@@ -855,7 +862,6 @@ Navigator::Navigator()
     height = 100;
     padding_width = 100;
     new_source_type_ = 0;
-    new_source_to_create_ = "";
     sprintf(new_source_filename_, " ");
 }
 
@@ -874,8 +880,9 @@ void Navigator::clearSelection()
 {
     for(int i=0; i<NAV_COUNT; ++i)
         selected_button[i] = false;
-    new_source_to_create_ = "";
+
     sprintf(new_source_filename_, " ");
+    new_source_preview_.setSource();
 }
 
 void Navigator::showPannelSource(int index)
@@ -1053,6 +1060,9 @@ void Navigator::RenderSourcePannel(Source *s)
         s->touch();
         // delete button
         ImGui::Text(" ");
+        // Action on source
+        if ( ImGui::Button("Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+            Mixer::manager().cloneCurrentSource();
         if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);
         }
@@ -1060,6 +1070,45 @@ void Navigator::RenderSourcePannel(Source *s)
     ImGui::End();
 }
 
+
+SourcePreview::SourcePreview() : source_(nullptr), label_("")
+{
+
+}
+
+void SourcePreview::setSource(Source *s, std::string label)
+{
+    if(source_)
+        delete source_;
+
+    source_ = s;
+    label_ = label;
+}
+
+Source * SourcePreview::getSource()
+{
+    Source *s = source_;
+    source_ = nullptr;
+    return s;
+}
+
+void SourcePreview::draw(float width)
+{
+    if(source_) {
+        // cancel if failed
+        if (source_->failed())
+            setSource();
+        else
+        {
+            // render framebuffer
+            source_->render();
+            // draw preview
+            ImVec2 preview_size(width, width / source_->frame()->aspectRatio());
+            ImGui::Image((void*)(uintptr_t) source_->frame()->texture(), preview_size);
+            ImGui::Text("%s ", label_.c_str());
+        }
+    }
+}
 
 void Navigator::RenderNewPannel()
 {
@@ -1078,108 +1127,89 @@ void Navigator::RenderNewPannel()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Origin", &new_source_type_, "File\0Software\0Hardware\0");
 
-        // Media Source creation
+        // File Source creation
         if (new_source_type_ == 0) {
+
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.vmx)\n\nEquivalent to dropping the file in the workspace.");
 
             // browse for a filename
-            if (ImGuiToolkit::ButtonIcon(2, 5)) {
-                std::thread (ImportFileDialogOpen, new_source_filename_, Settings::application.recentImport.path).detach();
+            static std::atomic<bool> file_selected = false;
+            if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+                // clear string before selection
+                file_selected = false;
+                std::thread (ImportFileDialogOpen, new_source_filename_, &file_selected, Settings::application.recentImport.path).detach();
             }
+            if ( file_selected ) {
+                file_selected = false;
+                std::string open_filename(new_source_filename_);
+                // create a source with this file
+                std::string label = open_filename.substr( open_filename.size() - MIN( 35, open_filename.size()) );
+                new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+            }
+
             // combo of recent media filenames
-            ImGui::SameLine(0, 10);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##RecentImport", "Select recent"))
             {
                 for (auto path = Settings::application.recentImport.filenames.begin();
                      path != Settings::application.recentImport.filenames.end(); path++ )
                 {
-                    int right = MIN( 40, path->size());
-                    if (ImGui::Selectable( path->substr( path->size() - right ).c_str() )) {
-                        sprintf(new_source_filename_, "%s", path->c_str());
+                    std::string label = path->substr( path->size() - MIN( 35, path->size()) );
+                    if (ImGui::Selectable( label.c_str() )) {
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(path->c_str()), label);
                     }
                 }
                 ImGui::EndCombo();
             }
-            // filename text entry - [Return] to validate
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            Source *s = nullptr;
-            if (ImGui::InputText("Path", new_source_filename_, IM_ARRAYSIZE(new_source_filename_), ImGuiInputTextFlags_EnterReturnsTrue) ) {
-                s = Mixer::manager().createSourceFile( std::string(new_source_filename_) );
-                selected_button[NAV_NEW] = false;
+            // if a new source was added
+            if (new_source_preview_.ready()) {
+                // show preview
+                new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+                // or press Validate button
+                if ( ImGui::Button("Import", ImVec2(pannel_width - padding_width, 0)) ) {
+                    Mixer::manager().insertSource(new_source_preview_.getSource());
+                    selected_button[NAV_NEW] = false;
+                }
             }
-            // or press Validate button
-            ImGui::Text(" ");
-            if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
-                s = Mixer::manager().createSourceFile( std::string(new_source_filename_) );
-                selected_button[NAV_NEW] = false;
-            }
-            Mixer::manager().insertSource(s);
         }
-        // Render Source creator
+        // Software Source creator
         else if (new_source_type_ == 1){
 
             // helper
             ImGui::SetCursorPosX(pannel_width - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source from a software algorithm or from vimix objects.");
 
-            // Selection of a source to create
-            static uint texture = 0;
-            static ImVec2 preview_size;
-            static ImVec2 preview_uv1, preview_uv2;
-            static float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-
+            // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Source", "Select source"))
+            if (ImGui::BeginCombo("##Source", "Select input"))
             {
-                if (ImGui::Selectable( "Render" )) {
-                    new_source_to_create_ = "Render";
-                    texture = Mixer::manager().session()->frame()->texture();
-                    preview_size = ImVec2( preview_width, preview_width / Mixer::manager().session()->frame()->aspectRatio());
-                    preview_uv1 = ImVec2(0.f, 1.f);
-                    preview_uv2 = ImVec2(1.f, 0.f);
+                std::string label = "Rendering output";
+                if (ImGui::Selectable( label.c_str() )) {
+                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), label);
                 }
                 SourceList::iterator iter;
                 for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++)
                 {
-                    if (ImGui::Selectable( (*iter)->name().c_str() )) {
-                        new_source_to_create_ = (*iter)->name();
-                        texture = (*iter)->texture();
-                        preview_size = ImVec2( preview_width, preview_width / (*iter)->frame()->aspectRatio());
-                        preview_uv1 = ImVec2(0.f, 0.f);
-                        preview_uv2 = ImVec2(1.f, 1.f);
+                    label = std::string("Clone of ") + (*iter)->name();
+                    if (ImGui::Selectable( label.c_str() )) {
+                        new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name()),label);
                     }
                 }
                 ImGui::EndCombo();
             }
-
-            if (!new_source_to_create_.empty()) {
-
-                // preview
-                if (texture != 0) {
-                    ImGui::Image((void*)(uintptr_t) texture, preview_size, preview_uv1, preview_uv2);
-                }
-
-                ImGui::Text("%s ", new_source_to_create_.c_str());
-                if ( ImGui::Button("Create !", ImVec2(pannel_width - padding_width, 0)) ) {
-
-                    Source *s = nullptr;
-                    if (new_source_to_create_ == "Render")
-                        s = Mixer::manager().createSourceRender();
-                    else
-                        s = Mixer::manager().createSourceClone(new_source_to_create_);
-
-                    Mixer::manager().insertSource(s);
-
+            // if a new source was added
+            if (new_source_preview_.ready()) {
+                // show preview
+                new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+                // ask to import the source in the mixer
+                if ( ImGui::Button("Import", ImVec2(pannel_width - padding_width, 0)) ) {
+                    Mixer::manager().insertSource(new_source_preview_.getSource());
                     // reset for next time
-                    new_source_to_create_ = "";
-                    texture = 0;
                     selected_button[NAV_NEW] = false;
                 }
             }
-
         }
         // Hardware
         else {

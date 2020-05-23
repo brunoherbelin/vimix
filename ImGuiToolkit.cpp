@@ -792,6 +792,11 @@ ImVec4 ImGuiToolkit::GetHighlightColor()
 
 void ImGuiToolkit::SetAccentColor(accent_color color)
 {
+    // hack : preload texture icon to prevent slow-down of rendering when creating a new icon for the first time
+    if (textureicons == 0)
+        textureicons = Resource::getTextureDDS("images/icons.dds");
+
+
     ImVec4* colors = ImGui::GetStyle().Colors;
 
     if (color == ImGuiToolkit::ACCENT_ORANGE) {

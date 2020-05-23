@@ -258,7 +258,10 @@ void Mixer::insertSource(Source *s)
         geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
         layer_.scene.ws()->attach(s->group(View::LAYER));
 
+        // set a default depth to the new source
         layer_.setDepth(s);
+
+        current_view_->update(0);
     }
 }
 
@@ -355,6 +358,16 @@ void Mixer::unsetCurrentSource()
     // deselect current source
     current_source_ = session_->end();
     current_source_index_ = -1;
+}
+
+void Mixer::cloneCurrentSource()
+{
+    if ( current_source_ != session_->end() )
+    {
+        Source *s = createSourceClone( (*current_source_)->name() );
+
+        insertSource(s);
+    }
 }
 
 int Mixer::indexCurrentSource()

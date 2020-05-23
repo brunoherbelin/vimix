@@ -265,8 +265,6 @@ void ImGuiVisitor::visit (Source& s)
     // geometry direct control
     s.groupNode(View::GEOMETRY)->accept(*this);
 
-    // Action on source
-//    ImGui::Button("Clone", ImVec2(IMGUI_RIGHT_ALIGN, 0));
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
