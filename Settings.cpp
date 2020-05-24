@@ -104,7 +104,7 @@ void Settings::Save()
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
-            recentsession->InsertEndChild(fileNode);
+            recentsession->InsertFirstChild(fileNode);
         };
         recent->InsertEndChild(recentsession);
 
@@ -112,11 +112,10 @@ void Settings::Save()
         recentmedia->SetAttribute("path", application.recentImport.path.c_str());
         for(auto it = application.recentImport.filenames.begin();
             it != application.recentImport.filenames.end(); it++) {
-
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
-            recentmedia->InsertEndChild(fileNode);
+            recentmedia->InsertFirstChild(fileNode);
         }
         recent->InsertEndChild(recentmedia);
 

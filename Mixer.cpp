@@ -149,7 +149,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     // auto load if Settings ask to
     if ( Settings::application.recentSessions.load_at_start &&
          Settings::application.recentSessions.filenames.size() > 0 )
-        open( Settings::application.recentSessions.filenames.back() );
+        open( Settings::application.recentSessions.filenames.front() );
     else
         // initializes with a new empty session
         clear();
@@ -291,7 +291,10 @@ void Mixer::insertSource(Source *s)
         // set a default depth to the new source
         layer_.setDepth(s);
 
+        // update view to show source created
         current_view_->update(0);
+//        current_view_->makeVisible(s);
+        current_view_->restoreSettings();
     }
 }
 
