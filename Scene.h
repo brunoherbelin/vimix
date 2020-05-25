@@ -51,7 +51,7 @@ public:
     inline int id () const { return id_; }
 
     // must initialize the node before draw
-    virtual void init() { initialized_ = true; }
+    virtual void init () { initialized_ = true; }
     virtual bool initialized () { return initialized_; }
 
     // pure virtual draw : to be instanciated to define node behavior
@@ -63,7 +63,7 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    void copyTransform(Node *other);
+    void copyTransform (Node *other);
 
     // public members, to manipulate with care
     bool      visible_;

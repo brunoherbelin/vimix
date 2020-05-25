@@ -58,7 +58,7 @@ void View::update(float dt)
     }
 }
 
-void View::drag (glm::vec2 from, glm::vec2 to)
+View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
 {
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
@@ -74,6 +74,8 @@ void View::drag (glm::vec2 from, glm::vec2 to)
 
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
+
+    return Cursor_ResizeAll;
 }
 
 MixingView::MixingView() : View(MIXING)
@@ -106,10 +108,10 @@ void MixingView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
-void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
+View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
 {
     if (!s)
-        return;
+        return Cursor_Arrow;
 
     Group *sourceNode = s->group(mode_);
 
@@ -130,6 +132,8 @@ void MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *
 
     // request update
     s->touch();
+
+    return Cursor_ResizeAll;
 }
 
 uint MixingView::textureMixingQuadratic()
@@ -262,11 +266,13 @@ void GeometryView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
-void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
+    View::Cursor ret = Cursor_Arrow;
+
     // work on the given source
     if (!s)
-        return;
+        return ret;
     Group *sourceNode = s->group(mode_);
 
     // remember source transform at moment of clic at position 'from'
@@ -303,7 +309,7 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
                 S_resize.y = S_resize.x;
             sourceNode->scale_ = start_scale * S_resize;
 
-            Log::Info(" resize            ( %.1f, %.1f ) ", S_resize.x, S_resize.y);
+//            Log::Info(" resize            ( %.1f, %.1f ) ", S_resize.x, S_resize.y);
 //            glm::vec3 factor = S_resize * glm::vec3(0.5f, 0.5f, 1.f);
 ////            glm::vec3 factor = S_resize * glm::vec3(1.f, 1.f, 1.f);
 ////            factor *= glm::sign( glm::vec3(pick.second, 1.f) );
@@ -312,32 +318,45 @@ void GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node
 //            sourceNode->translation_ = start_translation + factor;
 ////            sourceNode->translation_ = start_translation + S_resize * factor;
 
+            // select cursor depending on diagonal
+            glm::vec2 axis = glm::sign(pick.second);
+            ret = axis.x * axis.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
         }
         // picking on the resizing handles left or right
         else if ( pick.first == s->handleNode(Handles::RESIZE_H) ) {
             sourceNode->scale_ = start_scale * glm::vec3(S_resize.x, 1.f, 1.f);
+            ret = Cursor_ResizeEW;
         }
         // picking on the resizing handles top or bottom
         else if ( pick.first == s->handleNode(Handles::RESIZE_V) ) {
             sourceNode->scale_ = start_scale * glm::vec3(1.f, S_resize.y, 1.f);
+            ret = Cursor_ResizeNS;
         }
         // picking on the rotating handle
         else if ( pick.first == s->handleNode(Handles::ROTATE) ) {
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
+
+            if (UserInterface::manager().keyboardModifier())
+                angle = float ( int(angle * 30.f) ) / 30.f;
             sourceNode->rotation_ = start_rotation + glm::vec3(0.f, 0.f, angle);
+            ret = Cursor_Hand;
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
             sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+            ret = Cursor_ResizeAll;
         }
     }
     // don't have a handle, we can only move the source
     else {
         sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+        ret = Cursor_ResizeAll;
     }
 
     // request update
     s->touch();
+
+    return ret;
 }
 
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
@@ -428,10 +447,10 @@ void LayerView::setDepth (Source *s, float d)
     View::need_deep_update_ = true;
 }
 
-void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+View::Cursor LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
     if (!s)
-        return;
+        return Cursor_Arrow;
 
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
@@ -450,5 +469,7 @@ void LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *,
 
     // apply change
     setDepth( s,  MAX( -dest_translation.x, 0.f) );
+
+    return Cursor_ResizeAll;
 }
 

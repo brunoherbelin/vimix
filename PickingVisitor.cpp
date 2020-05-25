@@ -78,7 +78,7 @@ void PickingVisitor::visit(Handles &n)
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
     // get the bounding box of a handle
-    GlmToolkit::AxisAlignedBoundingBox bb = n.handle()->bbox().scaled(n.handle()->scale_);
+    GlmToolkit::AxisAlignedBoundingBox bb = n.handle()->bbox();
 
     // test picking depending on type of handle
     bool picked = false;

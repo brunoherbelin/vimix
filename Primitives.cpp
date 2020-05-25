@@ -113,7 +113,6 @@ void ImageSurface::init()
         textureindex_ = Resource::getTextureImage(resource_, &ar);
         scale_.x = ar;
     }
-
 }
 
 void ImageSurface::accept(Visitor& v)
@@ -139,7 +138,6 @@ void MediaSurface::init()
 
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
-
 }
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -153,7 +151,6 @@ void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
         textureindex_ = mediaplayer_->texture();
 
     Surface::draw(modelview, projection);
-
 }
 
 void MediaSurface::update( float dt )

@@ -21,8 +21,23 @@ public:
     virtual void update (float dt);
     virtual void draw ();
     virtual void zoom (float) {}
-    virtual void drag (glm::vec2, glm::vec2);
-    virtual void grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {}
+
+    typedef enum {
+        Cursor_Arrow = 0,
+        Cursor_TextInput,
+        Cursor_ResizeAll,
+        Cursor_ResizeNS,
+        Cursor_ResizeEW,
+        Cursor_ResizeNESW,
+        Cursor_ResizeNWSE,
+        Cursor_Hand,
+        Cursor_NotAllowed
+    } Cursor;
+
+    virtual Cursor drag (glm::vec2, glm::vec2);
+    virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
+        return Cursor_Arrow;
+    }
 
     virtual void restoreSettings();
     virtual void saveSettings();
@@ -43,7 +58,7 @@ public:
     MixingView();
 
     void zoom (float factor) override;
-    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
+    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
 
 private:
     uint textureMixingQuadratic();
@@ -72,7 +87,7 @@ public:
 
     void update (float dt) override;
     void zoom (float factor) override;
-    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
+    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
 };
 
@@ -83,7 +98,7 @@ public:
 
     void update (float dt) override;
     void zoom (float factor) override;
-    void grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
+    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
     void setDepth (Source *, float d = -1.f);
 

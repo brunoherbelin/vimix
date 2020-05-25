@@ -309,9 +309,9 @@ void UserInterface::handleMouse()
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
             // right mouse drag => drag current view
-            Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
+            int c = Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
 
-            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+            ImGui::SetMouseCursor(c);
         }
         else {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
@@ -335,7 +335,8 @@ void UserInterface::handleMouse()
             if (current)
             {
                 // drag current source
-                Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, pick);
+                int c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, pick);
+                ImGui::SetMouseCursor(c);
             }
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);

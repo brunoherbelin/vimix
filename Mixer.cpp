@@ -293,7 +293,6 @@ void Mixer::insertSource(Source *s)
 
         // update view to show source created
         current_view_->update(0);
-//        current_view_->makeVisible(s);
         current_view_->restoreSettings();
     }
 }

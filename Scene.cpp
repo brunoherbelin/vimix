@@ -409,19 +409,20 @@ void Animation::accept(Visitor& v)
     v.visit(*this);
 }
 
-Scene::Scene(): root_(nullptr), foreground_(nullptr), background_(nullptr)
+Scene::Scene()
 {
     root_ = new Group;
 
     background_ = new Group;
     background_->translation_.z = 0.f;
+    root_->attach(background_);
+
     workspace_  = new Group;
     workspace_->translation_.z  = 1.f;
+    root_->attach(workspace_);
+
     foreground_ = new Group;
     foreground_->translation_.z = SCENE_DEPTH -0.1f;
-
-    root_->attach(background_);
-    root_->attach(workspace_);
     root_->attach(foreground_);
 }
 
@@ -446,7 +447,7 @@ void Scene::clearForeground()
 
 void Scene::clearWorkspace()
 {
-    foreground_->clear();
+    workspace_->clear();
 }
 
 void Scene::clearBackground()
