@@ -112,7 +112,7 @@ static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, con
         return;
     fileDialogPending_ = true;
 
-    char const * open_pattern[18] = { "*vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
+    char const * open_pattern[18] = { "*.vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
 
     open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
