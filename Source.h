@@ -149,7 +149,7 @@ public:
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 
-    CloneSource *clone();
+    CloneSource *clone() override;
     inline Source *origin() const { return origin_; }
 
 protected:
