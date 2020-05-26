@@ -175,7 +175,7 @@ void SessionCreator::visit(Shader &n)
     XMLElement* blending = xmlCurrent_->FirstChildElement("blending");
     if (blending) {
         int blend = 0;
-        blending->QueryIntAttribute("loop", &blend);
+        blending->QueryIntAttribute("mode", &blend);
         n.blending = (Shader::BlendMode) blend;
     }
 }

@@ -175,7 +175,7 @@ void SessionVisitor::visit(Shader &n)
     xmlCurrent_->InsertEndChild(color);
 
     XMLElement *blend = xmlDoc_->NewElement("blending");
-    blend->SetAttribute("mode", (int) n.blending);
+    blend->SetAttribute("mode", int(n.blending) );
     xmlCurrent_->InsertEndChild(blend);
 
 }
