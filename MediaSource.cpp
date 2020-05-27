@@ -81,10 +81,14 @@ void MediaSource::init()
             attach(renderbuffer);
 
             // icon in mixing view
-            if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE)
-                overlays_[View::MIXING]->attach( new Mesh("mesh/icon_image.ply") );
-            else
-                overlays_[View::MIXING]->attach( new Mesh("mesh/icon_video.ply") );
+            if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE) {
+                overlays_[View::MIXING]->attach( new Icon(Icon::IMAGE) );
+                overlays_[View::LAYER]->attach( new Icon(Icon::IMAGE) );
+            }
+            else {
+                overlays_[View::MIXING]->attach( new Icon(Icon::VIDEO) );
+                overlays_[View::LAYER]->attach( new Icon(Icon::VIDEO) );
+            }
 
             // done init
             initialized_ = true;

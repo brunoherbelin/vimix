@@ -7,6 +7,7 @@
 #include "defines.h"
 #include "FrameBuffer.h"
 #include "Primitives.h"
+#include "Decorations.h"
 #include "Mesh.h"
 #include "Resource.h"
 #include "Session.h"
@@ -295,7 +296,8 @@ void CloneSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Mesh("mesh/icon_clone.ply") );
+        overlays_[View::MIXING]->attach( new Icon(Icon::CLONE) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::CLONE) );
 
         // done init
         initialized_ = true;

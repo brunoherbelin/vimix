@@ -119,7 +119,8 @@ void SessionSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Mesh("mesh/icon_vimix.ply") );
+        overlays_[View::MIXING]->attach( new Icon(Icon::SESSION) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::SESSION) );
 
         // done init
         initialized_ = true;
@@ -192,7 +193,8 @@ void RenderSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Mesh("mesh/icon_render.ply") );
+        overlays_[View::MIXING]->attach( new Icon(Icon::RENDER) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::RENDER) );
 
         // done init
         initialized_ = true;

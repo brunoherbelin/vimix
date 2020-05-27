@@ -206,6 +206,7 @@ set(VMIX_SRCS
     Scene.cpp
     Primitives.cpp
     Mesh.cpp
+    Decorations.cpp
     View.cpp
     Source.cpp
     Session.cpp
@@ -282,6 +283,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_render.ply
     ./rsc/mesh/icon_clone.ply
     ./rsc/mesh/icon_vimix.ply
+    ./rsc/mesh/icon_empty.ply
 )
 
 add_executable(${VMIX_BINARY}

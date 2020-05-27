@@ -6,7 +6,7 @@
 #include <list>
 
 #include "View.h"
-#include "Mesh.h"
+#include "Decorations.h"
 
 class ImageShader;
 class ImageProcessingShader;
