@@ -67,12 +67,10 @@ class ToolBox
 {
     bool show_demo_window;
     bool show_icons_window;
-    unsigned int screenshot_step;
 
 public:
     ToolBox();
 
-    void StartScreenshot();
     void Render();
 };
 
@@ -88,6 +86,7 @@ class UserInterface
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;
+    unsigned int screenshot_step;
 
 
 //    typedef enum {
@@ -125,6 +124,7 @@ public:
     // status querries
     inline bool keyboardModifier() { return keyboard_modifier_active; }
 
+    void StartScreenshot();
 
     // TODO implement the shader editor
     std::string currentTextEdit;
@@ -138,6 +138,7 @@ protected:
     void RenderShaderEditor();
     void handleKeyboard();
     void handleMouse();
+    void handleScreenshot();
 
 };
 

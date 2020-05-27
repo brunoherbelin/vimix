@@ -135,6 +135,7 @@ UserInterface::UserInterface()
     show_gst_about = false;
     show_opengl_about = false;
     currentTextEdit = "";
+    screenshot_step = 0;
 }
 
 bool UserInterface::Init()
@@ -261,7 +262,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().ToggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
-            toolbox.StartScreenshot();
+            StartScreenshot();
         // normal keys // make sure no entry / window box is active
         else if ( !ImGui::IsAnyWindowFocused() ){
             // Backspace to delete source
@@ -295,6 +296,18 @@ void UserInterface::handleMouse()
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
         ImGui::FocusWindow(0);
+        Source *current = Mixer::manager().currentSource();
+
+//        if (current)
+//        {
+//            glm::vec3 point = Rendering::manager().unProject(mousepos);
+//            PickingVisitor over(point);
+//            Mixer::manager().currentView()->scene.accept(over);
+//            // drag current source
+//            int c = Mixer::manager().currentView()->over(mousepos, current, over.picked().back());
+//            ImGui::SetMouseCursor(c);
+//        }
+
         //
         // Mouse wheel over background
         //
@@ -302,6 +315,8 @@ void UserInterface::handleMouse()
             // scroll => zoom current view
             Mixer::manager().currentView()->zoom( io.MouseWheel );
         }
+        // TODO : zoom with center on source if over current
+
         //
         // RIGHT Mouse button
         //
@@ -331,7 +346,6 @@ void UserInterface::handleMouse()
         //
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 10.0f) )
         {
-            Source *current = Mixer::manager().currentSource();
             if (current)
             {
                 // drag current source
@@ -363,7 +377,9 @@ void UserInterface::handleMouse()
             if (pv.picked().empty())
                 Mixer::manager().unsetCurrentSource();
             else {
+                // top-most Node picked
                 pick = pv.picked().back();
+                // find source containing the cliced Node
                 Mixer::manager().setCurrentSource( pick.first );
             }
 
@@ -393,6 +409,7 @@ void UserInterface::NewFrame()
     // deal with keyboard and mouse events
     handleKeyboard();
     handleMouse();
+    handleScreenshot();
 
     // handle FileDialog
     if (sessionFileDialogLoadFinished_) {
@@ -536,13 +553,48 @@ ToolBox::ToolBox()
 {
     show_demo_window = false;
     show_icons_window = false;
-    screenshot_step = 0;
 }
 
 
-void ToolBox::StartScreenshot()
+void UserInterface::StartScreenshot()
 {
     screenshot_step = 1;
+}
+
+
+void UserInterface::handleScreenshot()
+{
+    // taking screenshot is in 3 steps
+    // 1) wait 1 frame that the menu / action showing button to take screenshot disapears
+    // 2) wait 1 frame that rendering manager takes the actual screenshot
+    // 3) if rendering manager current screenshot is ok, save it
+    if (screenshot_step > 0) {
+
+        switch(screenshot_step) {
+            case 1:
+                screenshot_step = 2;
+            break;
+            case 2:
+                Rendering::manager().RequestScreenshot();
+                screenshot_step = 3;
+            break;
+            case 3:
+            {
+                if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
+                    std::string filename =  SystemToolkit::home_path() + SystemToolkit::date_time_string() + "_vmixcapture.png";
+                    Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
+                    Rendering::manager().CurrentScreenshot()->Clear();
+                    Log::Notify("Screenshot saved %s", filename.c_str() );
+                }
+                screenshot_step = 4;
+            }
+            break;
+            default:
+                screenshot_step = 0;
+            break;
+        }
+
+    }
 }
 
 
@@ -564,7 +616,7 @@ void ToolBox::Render()
         if (ImGui::BeginMenu("Tools"))
         {
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", NULL) )
-                StartScreenshot();
+                UserInterface::manager().StartScreenshot();
 
             ImGui::MenuItem("Dev", NULL, false, false);
             ImGui::MenuItem("Icons", NULL, &show_icons_window);
@@ -584,36 +636,7 @@ void ToolBox::Render()
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
 
-    // taking screenshot is in 3 steps
-    // 1) wait 1 frame that the menu / action showing button to take screenshot disapears
-    // 2) wait 1 frame that rendering manager takes the actual screenshot
-    // 3) if rendering manager current screenshot is ok, save it
-    if (screenshot_step > 0) {
-        
-        switch(screenshot_step) {
-            case 1:
-                screenshot_step = 2;
-            break;
-            case 2:
-                Rendering::manager().RequestScreenshot();
-                screenshot_step = 3;
-            break;
-            case 3:
-            {
-                if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
-                    std::string filename =  SystemToolkit::date_time_string() + "_vmixcapture.png";
-                    Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
-                    Rendering::manager().CurrentScreenshot()->Clear();
-                }
-                screenshot_step = 4;
-            }
-            break;
-            default:
-                screenshot_step = 0;
-            break;
-        }
-        
-    }
+
 }
 
 

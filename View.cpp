@@ -359,6 +359,11 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
     return ret;
 }
 
+View::Cursor GeometryView::over (glm::vec2, Source*, std::pair<Node *, glm::vec2>)
+{
+
+}
+
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
     // read default settings

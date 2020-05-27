@@ -245,10 +245,10 @@ bool hasNode::operator()(const Source* elem) const
         elem->group(View::GEOMETRY)->accept(sv);
         if (sv.found())
             return true;
-        elem->group(View::RENDERING)->accept(sv);
-        if (sv.found())
-            return sv.found();
         elem->group(View::LAYER)->accept(sv);
+        if (sv.found())
+            return true;
+        elem->group(View::RENDERING)->accept(sv);
         return sv.found();
     }
 

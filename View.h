@@ -38,6 +38,9 @@ public:
     virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
         return Cursor_Arrow;
     }
+    virtual Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
+        return Cursor_Arrow;
+    }
 
     virtual void restoreSettings();
     virtual void saveSettings();
@@ -88,6 +91,7 @@ public:
     void update (float dt) override;
     void zoom (float factor) override;
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
+    Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) override;
 
 };
 
