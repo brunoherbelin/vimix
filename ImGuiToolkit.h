@@ -15,19 +15,20 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
 
     // utility buttons
-    bool ButtonIcon(int i, int j);
-    bool ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle);
-    bool ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state);
-    void ButtonToggle( const char* label, bool* toggle );
-    void ButtonSwitch(const char* label, bool* toggle , const char *help = nullptr);
-    void ButtonOpenUrl( const char* url, const ImVec2& size_arg = ImVec2(0,0));
+    bool ButtonIcon (int i, int j);
+    bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle);
+    bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state);
+    void ButtonToggle (const char* label, bool* toggle );
+    void ButtonSwitch (const char* label, bool* toggle , const char *help = nullptr);
+    bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle);
+    void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
-    void HelpMarker(const char* desc);
+    void HelpMarker (const char* desc);
 
     // utility sliders
-    void Bar(float value, float in, float out, float min, float max, const char* title, bool expand);
-    bool TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step);
-    bool TimelineSliderEdit(const char* label, guint64 *time, guint64 duration, guint64 step,
+    void Bar (float value, float in, float out, float min, float max, const char* title, bool expand);
+    bool TimelineSlider (const char* label, guint64 *time, guint64 duration, guint64 step);
+    bool TimelineSliderEdit (const char* label, guint64 *time, guint64 duration, guint64 step,
                         std::list<std::pair<guint64, guint64> >& segments);
     
     // fonts from ressources 'fonts/'
@@ -38,8 +39,8 @@ namespace ImGuiToolkit
         FONT_MONO,
         FONT_LARGE
     } font_style;
-    void SetFont(font_style type, const std::string &ttf_font_name, int pointsize, int oversample = 2);
-    void PushFont(font_style type);
+    void SetFont (font_style type, const std::string &ttf_font_name, int pointsize, int oversample = 2);
+    void PushFont (font_style type);
 
     // color of gui items
     typedef enum {
@@ -47,10 +48,10 @@ namespace ImGuiToolkit
         ACCENT_ORANGE,
         ACCENT_GREY
     } accent_color;
-    void SetAccentColor(accent_color color);
-    struct ImVec4 GetHighlightColor();
+    void SetAccentColor (accent_color color);
+    struct ImVec4 GetHighlightColor ();
 
-    void ShowStats(bool* p_open, int* p_corner);
+    void ShowStats (bool* p_open, int* p_corner);
 
 }
 

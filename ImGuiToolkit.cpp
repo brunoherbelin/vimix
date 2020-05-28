@@ -158,6 +158,34 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
     return ret;
 }
 
+
+bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle)
+{
+//    bool ret = false;
+    ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
+
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = frame_height;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##icontoggle", ImVec2(frame_width, frame_height));
+    if (ImGui::IsItemClicked())
+        *toggle = !*toggle;
+
+    ImGui::SetCursorScreenPos(draw_pos);
+    if (*toggle) {
+        Icon(i_toggle, j_toggle);
+    }
+    else {
+        Icon(i, j);
+    }
+
+    ImGui::PopID();
+    return *toggle;
+}
+
+
 struct Sum
 {
     void operator()(std::pair<int, int> n) { sum += n.first * 20 + n.second; }

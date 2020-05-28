@@ -74,6 +74,8 @@ void PickingVisitor::visit(Handles &n)
     if (!n.visible_)
         return;
 
+    // TODO fixme !
+
     // apply inverse transform to the point of interest
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
@@ -110,7 +112,7 @@ void PickingVisitor::visit(Handles &n)
     }
 
     if ( picked )
-        // add this surface to the nodes picked
+        // add this to the nodes picked
         nodes_.push_back( std::pair(&n, glm::vec2(P)) );
 
 }

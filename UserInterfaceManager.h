@@ -30,24 +30,25 @@ public:
 
 class Navigator
 {
-    // geometry left bar
-    float width;
-    float pannel_width;
-    float height;
-    float sourcelist_height;
-    float padding_width;
+    // geometry left bar & pannel
+    float width_;
+    float height_;
+    float pannel_width_;
+    float sourcelist_height_;
+    float padding_width_;
 
-    // top items : group of buttons openning a pannel
-    int selected_source_index;
+    // behavior pannel
+    bool pannel_visible_;
+    bool pannel_stick_;
     bool selected_button[NAV_COUNT];
-    void clearSelection();
-    void toggle(int index);
+    void clearButtonSelection();
+    void applyButtonSelection(int index);
 
     // side pannels
     void RenderSourcePannel(Source *s);
-    void RenderNewPannel();
     void RenderMainPannel();
 
+    void RenderNewPannel();
     int new_source_type_;
     char new_source_filename_[2048];
 
@@ -56,11 +57,12 @@ class Navigator
 public:
     Navigator();
 
-    void toggleMenu();
+    bool pannelVisible() { return pannel_visible_; }
     void hidePannel();
     void showPannelSource(int index);
-    void Render();
+    void toggleMenu();
 
+    void Render();
 };
 
 class ToolBox

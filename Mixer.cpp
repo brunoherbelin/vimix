@@ -292,6 +292,7 @@ void Mixer::insertSource(Source *s)
         layer_.setDepth(s);
 
         // update view to show source created
+        setCurrentView(View::MIXING);
         current_view_->update(0);
         current_view_->restoreSettings();
     }
