@@ -35,6 +35,13 @@
 #define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()
 #define IMGUI_NOTIFICATION_DURATION 1.5f
 
+#ifdef APPLE
+#define CTRL_MOD "Cmd+"
+#else
+#define CTRL_MOD "Ctrl+"
+#endif
+
+
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
 #define COLOR_NAVIGATOR 0.1f, 0.1f, 0.1f
 #define COLOR_DEFAULT_SOURCE 1.f, 1.f, 1.f

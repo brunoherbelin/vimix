@@ -205,9 +205,11 @@ bool UserInterface::Init()
 void UserInterface::handleKeyboard()
 {
     ImGuiIO& io = ImGui::GetIO(); 
+    auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
 
     // Application "CTRL +"" Shortcuts
-    if ( io.KeyCtrl ) {
+    if ( ctrl ) {
+
         keyboard_modifier_active = true;
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
@@ -511,7 +513,7 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuFile()
 {
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", "Ctrl+W")) {
+    if (ImGui::MenuItem( ICON_FA_FILE "  New", CTRL_MOD "W")) {
         Mixer::manager().clear();
         navigator.hidePannel();
     }
@@ -522,7 +524,7 @@ void UserInterface::showMenuFile()
 
     ImGui::Separator();
 
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", "Ctrl+O")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O")) {
         // launch file dialog to open a session file
         sessionFileDialogImport_ = false;
         std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
@@ -534,7 +536,7 @@ void UserInterface::showMenuFile()
         std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", "Ctrl+S")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", CTRL_MOD "S")) {
         if (Mixer::manager().session()->filename().empty())
             std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
         else
@@ -547,7 +549,7 @@ void UserInterface::showMenuFile()
     }
 
     ImGui::Separator();
-    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", "Ctrl+Q")) {
+    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q")) {
         Rendering::manager().Close();
     }
 }
@@ -840,20 +842,20 @@ void UserInterface::RenderShaderEditor()
                 editor.SetReadOnly(ro);
             ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", "Ctrl-Z", nullptr, !ro && editor.CanUndo()))
+            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
                 editor.Undo();
-            if (ImGui::MenuItem( ICON_FA_REDO " Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
                 editor.Redo();
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_COPY " Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
                 editor.Copy();
-            if (ImGui::MenuItem( ICON_FA_CUT " Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
                 editor.Cut();
             if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
                 editor.Delete();
-            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
                 editor.Paste();
 
             ImGui::Separator();
@@ -1304,12 +1306,12 @@ void Navigator::RenderMainPannel()
 
         ImGui::Text(" ");
         ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox, "Ctrl + T");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview, "Ctrl + P");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, "Ctrl + M");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview, CTRL_MOD "P");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, CTRL_MOD "M");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox, CTRL_MOD  "T");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, CTRL_MOD "L");
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, "Ctrl + L");
 
         ImGui::Text("  ");
         ImGui::Text("Appearance");
@@ -1387,8 +1389,11 @@ void ShowAboutOpengl(bool* p_open)
     ImGui::SameLine();
 
     static bool show_opengl_info = false;
-    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_opengl_info);
-    ImGui::SameLine(); ImGui::Text("Details");
+    ImGui::SetNextItemWidth(-100.f);
+    ImGui::Text("          Details");
+    ImGui::SameLine();
+
+    ImGuiToolkit::IconToggle(10,0,11,0,&show_opengl_info);
     if (show_opengl_info)
     {
         ImGui::Separator();
@@ -1454,8 +1459,10 @@ void ShowAboutGStreamer(bool* p_open)
     ImGui::SameLine();
 
     static bool show_config_info = false;
-    ImGuiToolkit::ButtonIconToggle(10,0,13,14,&show_config_info);
-    ImGui::SameLine(); ImGui::Text("Details");
+    ImGui::SetNextItemWidth(-100.f);
+    ImGui::Text("          Details");
+    ImGui::SameLine();
+    ImGuiToolkit::IconToggle(10,0,11,0,&show_config_info);
     if (show_config_info)
     {
         ImGui::Separator();
