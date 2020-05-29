@@ -180,9 +180,9 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             handle_->draw( ctm, projection );
         }
         else if ( type_ == ROTATE ){
-            // only once in upper top right corner
-            glm::vec4 pos = modelview * glm::vec4(1.0f, 1.0f, 0.f, 1.f);
-            ctm = GlmToolkit::transform(glm::vec3(pos) + glm::vec3(0.12f, 0.12f, 0.f), glm::vec3(0.f), glm::vec3(1.f));
+            // one icon in top right corner
+            vec = modelview * glm::vec4(1.12f, 1.12f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
 
