@@ -30,10 +30,10 @@ public:
     RenderingWindow();
     ~RenderingWindow();
 
-    void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
+//    void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
 
     bool init(GLFWwindow *share, int id);
-    void draw();
+    void draw(FrameBuffer *fb);
 
 };
 

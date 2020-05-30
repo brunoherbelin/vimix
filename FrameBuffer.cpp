@@ -131,17 +131,14 @@ void FrameBuffer::release()
 
 bool FrameBuffer::blit(FrameBuffer *other)
 {
-    if (!framebufferid_)
-        return false;
-
-    if (attrib_.viewport.x != other->width() || attrib_.viewport.y != other->height())
+    if (!framebufferid_ || !other || !other->id())
         return false;
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
     // blit to the frame buffer object
-    glBlitFramebuffer(0, attrib_.viewport.y, attrib_.viewport.x, 0, 0, 0,
-                    other->width(), other->height(),
+    glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
+                      0, 0, other->width(), other->height(),
                     GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 

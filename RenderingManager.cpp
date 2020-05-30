@@ -43,6 +43,7 @@
 #include "Log.h"
 #include "Resource.h"
 #include "Settings.h"
+#include "Primitives.h"
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "UserInterfaceManager.h"
@@ -229,8 +230,6 @@ bool Rendering::init()
     // output window
     output.init(main_window_, 1);
 
-    glfwMakeContextCurrent(main_window_);
-
     return true;
 }
 
@@ -301,7 +300,7 @@ void Rendering::draw()
     g_main_context_iteration(NULL, FALSE);
 
     // draw output window
-    output.draw();
+    output.draw( Mixer::manager().session()->frame() );
 }
 
 bool Rendering::Begin()
@@ -522,9 +521,19 @@ bool RenderingWindow::init(GLFWwindow *share, int id)
 
     Settings::WindowConfig winset = Settings::application.windows[id_];
 
+    // setup endering area
+    window_attributes_.viewport.x = winset.w;
+    window_attributes_.viewport.y = winset.h;
+    window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.0);
+
     // do not show at creation
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+    glfwWindowHint(GLFW_SAMPLES, 0);
+    glfwWindowHint(GLFW_DEPTH_BITS, 0);
+    glfwWindowHint(GLFW_ALPHA_BITS, 0);
+
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
         Log::Error("Failed to create GLFW Window %d", id_);
@@ -540,11 +549,6 @@ bool RenderingWindow::init(GLFWwindow *share, int id)
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(0); // Disable vsync
 
-    // setup endering area
-    window_attributes_.viewport.x = winset.w;
-    window_attributes_.viewport.y = winset.h;
-    window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.0);
-
     glfwShowWindow(window_);
 
     // give back context ownership
@@ -553,7 +557,25 @@ bool RenderingWindow::init(GLFWwindow *share, int id)
     return true;
 }
 
-void RenderingWindow::draw()
+class WindowSurface : public Primitive {
+
+public:
+    WindowSurface(Shader *s = new ImageShader);
+};
+
+WindowSurface::WindowSurface(Shader *s) : Primitive(s)
+{
+    points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
+            glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
+    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
+    texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
+            glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
+    indices_ = std::vector<uint> { 0, 1, 2, 3 };
+    drawMode_ = GL_TRIANGLE_STRIP;
+}
+
+void RenderingWindow::draw(FrameBuffer *fb)
 {
     if (!window_)
         return;
@@ -572,10 +594,25 @@ void RenderingWindow::draw()
                      window_attributes_.clear_color.b, window_attributes_.clear_color.a);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        static WindowSurface *surface  = new WindowSurface;
+
+        if (fb) {
+            float aspectRatio = static_cast<float>(window_attributes_.viewport.x) / static_cast<float>(window_attributes_.viewport.y);
+            float renderingAspectRatio = fb->aspectRatio();
+            glm::vec3 scale;
+            if (aspectRatio < renderingAspectRatio)
+                scale = glm::vec3(1.f, aspectRatio / renderingAspectRatio, 1.f);
+            else
+                scale = glm::vec3(renderingAspectRatio / aspectRatio, 1.f, 1.f);
+
+            glBindTexture(GL_TEXTURE_2D, fb->texture());
+            surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+        }
+
         // swap buffer
         glfwSwapBuffers(window_);
     }
-
 
     // give back context ownership
     glfwMakeContextCurrent(master_);
