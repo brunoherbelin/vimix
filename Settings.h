@@ -15,9 +15,10 @@ struct WindowConfig
 {
     std::string name;
     int x,y,w,h;
+    int monitor;
     bool fullscreen;
 
-    WindowConfig(std::string n) : name(n), x(15), y(15), w(1280), h(720), fullscreen(false) { }
+    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), monitor(0), fullscreen(false) { }
 
 };
 
@@ -97,7 +98,10 @@ struct Application
         current_view = 1;
         framebuffer_ar = 3;
         framebuffer_h = 1;
-        windows.push_back(WindowConfig(APP_NAME APP_TITLE));
+        std::vector<int> second (4,100);
+        windows = std::vector<WindowConfig>(3);
+        windows[0].name = APP_NAME APP_TITLE;
+        windows[1].name = APP_NAME " Output";
     }
 
 };

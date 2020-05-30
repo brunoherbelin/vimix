@@ -360,8 +360,10 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
 }
 
 View::Cursor GeometryView::over (glm::vec2, Source*, std::pair<Node *, glm::vec2>)
-{
+{    
+    View::Cursor ret = Cursor_Arrow;
 
+    return ret;
 }
 
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)

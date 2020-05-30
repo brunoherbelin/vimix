@@ -52,15 +52,48 @@
 static GstGLContext *global_gl_context = NULL;
 static GstGLDisplay *global_display = NULL;
 
+
+void updateSettings(int id, GLFWwindow *w)
+{
+    if ( !Settings::application.windows[id].fullscreen) {
+        int x, y;
+        glfwGetWindowPos(w, &x, &y);
+        Settings::application.windows[id].x = x;
+        Settings::application.windows[id].y = y;
+        glfwGetWindowSize(w, &x, &y);
+        Settings::application.windows[id].w = x;
+        Settings::application.windows[id].h = y;
+    }
+}
+
 static void glfw_error_callback(int error, const char* description)
 {
     Log::Error("Glfw Error %d: %s",  error, description);
 }
 
-static void WindowRefreshCallback( GLFWwindow* )
+static void WindowRefreshCallback( GLFWwindow *w )
 {
-    Rendering::manager().Draw();
+    Rendering::manager().draw();
 }
+
+static void WindowResizeCallback( GLFWwindow *w, int width, int height)
+{
+    int id = Rendering::manager().getWindowId(w);
+    if ( id > 0 && !Settings::application.windows[id].fullscreen) {
+        Settings::application.windows[id].w = width;
+        Settings::application.windows[id].h = height;
+    }
+}
+
+static void WindowMoveCallback( GLFWwindow *w, int x, int y)
+{
+    int id = Rendering::manager().getWindowId(w);
+    if ( id > 0 && !Settings::application.windows[id].fullscreen) {
+        Settings::application.windows[id].x = x;
+        Settings::application.windows[id].y = y;
+    }
+}
+
 
 Rendering::Rendering()
 {
@@ -69,7 +102,7 @@ Rendering::Rendering()
     dpi_scale_ = 1.f;
 }
 
-bool Rendering::Init()
+bool Rendering::init()
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -86,16 +119,14 @@ bool Rendering::Init()
 #if __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
-
-
-    Settings::WindowConfig winset = Settings::application.windows.front();
-
-    // Create window with graphics context
     // GL Multisampling #3
     glfwWindowHint(GLFW_SAMPLES, 3);
+
+    // Create window with graphics context
+    Settings::WindowConfig winset = Settings::application.windows[0];
+
     // do not show at creation
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-//    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     main_window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, NULL);
     if (main_window_ == NULL){
         Log::Error("Failed to Create GLFW Window.");
@@ -112,10 +143,14 @@ bool Rendering::Init()
         free( icon.pixels );
     }
 
+    // callbacks
+    glfwSetWindowRefreshCallback( main_window_, WindowRefreshCallback );
+    glfwSetFramebufferSizeCallback( main_window_, WindowResizeCallback );
+    glfwSetWindowPosCallback( main_window_, WindowMoveCallback );
+
     glfwSetWindowPos(main_window_, winset.x, winset.y);
     glfwMakeContextCurrent(main_window_);
-    glfwSwapInterval(1); // Enable vsync3
-    glfwSetWindowRefreshCallback( main_window_, WindowRefreshCallback );
+    glfwSwapInterval(1); // Enable vsync
 
     // Initialize OpenGL loader
     bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
@@ -128,7 +163,7 @@ bool Rendering::Init()
     glfwShowWindow(main_window_);
     // restore fullscreen
     if (winset.fullscreen)
-        ToggleFullscreen();
+        toggleFullscreen();
 
     // Rendering area (here same as window)
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
@@ -191,6 +226,11 @@ bool Rendering::Init()
     // file drop callback
     glfwSetDropCallback(main_window_, Rendering::FileDropped);
 
+    // output window
+    output.init(main_window_, 1);
+
+    glfwMakeContextCurrent(main_window_);
+
     return true;
 }
 
@@ -199,12 +239,22 @@ bool Rendering::isActive()
     return !glfwWindowShouldClose(main_window_);
 }
 
-void Rendering::GrabWindow(int dx, int dy)
+//void Rendering::GrabWindow(int dx, int dy)
+//{
+//    int xpos = 0;
+//    int ypos = 0;
+//    glfwGetWindowPos(main_window_, &xpos, &ypos);
+//    glfwSetWindowPos(main_window_, xpos + dx, ypos + dy);
+//}
+
+
+int Rendering::getWindowId(GLFWwindow *w)
 {
-    int xpos = 0;
-    int ypos = 0;
-    glfwGetWindowPos(main_window_, &xpos, &ypos);
-    glfwSetWindowPos(main_window_, xpos + dx, ypos + dy);
+    if (w == main_window_)
+        return 0;
+    else
+        return 1;
+    // TODO manage more than one output
 }
 
 
@@ -214,18 +264,25 @@ void Rendering::setWindowTitle(std::string title)
     glfwSetWindowTitle(main_window_, window_title.c_str());
 }
 
-void Rendering::PushFrontDrawCallback(RenderingCallback function)
+void Rendering::pushFrontDrawCallback(RenderingCallback function)
 {
     draw_callbacks_.push_front(function);
 }
 
-void Rendering::PushBackDrawCallback(RenderingCallback function)
+void Rendering::pushBackDrawCallback(RenderingCallback function)
 {
     draw_callbacks_.push_back(function);
 }
 
-void Rendering::Draw()
+void Rendering::draw()
 {
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    glfwPollEvents();
+
     if ( Begin() )
     {
         UserInterface::manager().NewFrame();
@@ -243,23 +300,21 @@ void Rendering::Draw()
     // no g_main_loop_run(loop) : update global GMainContext
     g_main_context_iteration(NULL, FALSE);
 
+    // draw output window
+    output.draw();
 }
 
 bool Rendering::Begin()
 {
-    // Poll and handle events (inputs, window resize, etc.)
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    glfwPollEvents();
-
+    // ensure main context is current
     glfwMakeContextCurrent(main_window_);
-    if( glfwGetWindowAttrib( main_window_, GLFW_ICONIFIED ) )
-    {
-        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
-        return false;
-    }
+
+    // TODO : optimize if window is minimized? (i.e. render output only)
+//    if( glfwGetWindowAttrib( main_window_, GLFW_ICONIFIED ) )
+//    {
+//        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+//        return false;
+//    }
 
     // handle window resize
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
@@ -275,7 +330,7 @@ bool Rendering::Begin()
 
 void Rendering::End()
 {
-    glfwMakeContextCurrent(main_window_);
+   // glfwMakeContextCurrent(main_window_);
 
     // perform screenshot if requested
     if (request_screenshot_) {
@@ -288,18 +343,10 @@ void Rendering::End()
 }
 
 
-void Rendering::Terminate()
+void Rendering::terminate()
 {
-    // settings
-    if ( !Settings::application.windows.front().fullscreen) {
-        int x, y;
-        glfwGetWindowPos(main_window_, &x, &y);
-        Settings::application.windows.front().x = x;
-        Settings::application.windows.front().y = y;
-        glfwGetWindowSize(main_window_,&x, &y);
-        Settings::application.windows.front().w = x;
-        Settings::application.windows.front().h = y;
-    }
+    // save pos
+    updateSettings(0, main_window_);
 
     // close window
     glfwDestroyWindow(main_window_);
@@ -307,13 +354,13 @@ void Rendering::Terminate()
 }
 
 
-void Rendering::Close()
+void Rendering::close()
 {
     glfwSetWindowShouldClose(main_window_, true);
 }
 
 
-void Rendering::PushAttrib(RenderingAttrib ra)
+void Rendering::pushAttrib(RenderingAttrib ra)
 {
     // push it to top of pile
     draw_attributes_.push_front(ra);
@@ -323,7 +370,7 @@ void Rendering::PushAttrib(RenderingAttrib ra)
     glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, ra.clear_color.a);
 }
 
-void Rendering::PopAttrib()
+void Rendering::popAttrib()
 {
     // pops the top of the pile
     if (draw_attributes_.size() > 0)
@@ -350,7 +397,7 @@ RenderingAttrib Rendering::currentAttrib()
 glm::mat4 Rendering::Projection()
 {
     static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, -SCENE_DEPTH, 1.f);
-    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, AspectRatio(), 1.f));
+    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.f, aspectRatio(), 1.f));
 
     return projection * scale;
 }
@@ -368,10 +415,10 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
     return point;
 }
 
-float Rendering::Width() { return main_window_attributes_.viewport.x; }
-float Rendering::Height() { return main_window_attributes_.viewport.y; }
+float Rendering::width() { return main_window_attributes_.viewport.x; }
+float Rendering::height() { return main_window_attributes_.viewport.y; }
 
-float Rendering::MonitorWidth()
+float Rendering::monitorWidth()
 {
     GLFWmonitor *monitor = glfwGetWindowMonitor (main_window_);
     if (!monitor)
@@ -382,7 +429,7 @@ float Rendering::MonitorWidth()
     return width;
 }
 
-float Rendering::MonitorHeight()
+float Rendering::monitorHeight()
 {
     GLFWmonitor *monitor = glfwGetWindowMonitor (main_window_);
     if (!monitor)
@@ -396,32 +443,26 @@ float Rendering::MonitorHeight()
 
 
 
-bool Rendering::IsFullscreen ()
+bool Rendering::isFullscreen ()
 {
     return (glfwGetWindowMonitor(main_window_) != nullptr);
 }
 
-void Rendering::ToggleFullscreen()
+void Rendering::toggleFullscreen()
 {
     // if in fullscreen mode
-    if (IsFullscreen()) {
+    if (isFullscreen()) {
         // set to window mode
-        glfwSetWindowMonitor( main_window_, nullptr,  Settings::application.windows.front().x,
-                                                Settings::application.windows.front().y,
-                                                Settings::application.windows.front().w,
-                                                Settings::application.windows.front().h, 0 );
-        Settings::application.windows.front().fullscreen = false;
+        glfwSetWindowMonitor( main_window_, nullptr,  Settings::application.windows[0].x,
+                                                Settings::application.windows[0].y,
+                                                Settings::application.windows[0].w,
+                                                Settings::application.windows[0].h, 0 );
+        Settings::application.windows[0].fullscreen = false;
     }
     // not in fullscreen mode
     else {
         // remember window geometry
-        int x, y;
-        glfwGetWindowPos(main_window_, &x, &y);
-        Settings::application.windows.front().x = x;
-        Settings::application.windows.front().y = y;
-        glfwGetWindowSize(main_window_,&x, &y);
-        Settings::application.windows.front().w = x;
-        Settings::application.windows.front().h = y;
+        updateSettings(0, main_window_);
 
         // select monitor
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -429,12 +470,12 @@ void Rendering::ToggleFullscreen()
 
         // set to fullscreen mode
         glfwSetWindowMonitor( main_window_, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-        Settings::application.windows.front().fullscreen = true;
+        Settings::application.windows[0].fullscreen = true;
     }
 
 }
 
-float Rendering::AspectRatio()
+float Rendering::aspectRatio()
 {
     return static_cast<float>(main_window_attributes_.viewport.x) / static_cast<float>(main_window_attributes_.viewport.y);
 }
@@ -451,17 +492,94 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
 }
 
 
-Screenshot *Rendering::CurrentScreenshot()
+Screenshot *Rendering::currentScreenshot()
 {
     return &screenshot_;
 }
 
-void Rendering::RequestScreenshot() 
+void Rendering::requestScreenshot()
 { 
     screenshot_.Clear();
     request_screenshot_ = true;
 }
 
+
+
+RenderingWindow::RenderingWindow() : window_(nullptr), frame_buffer_(nullptr), id_(-1)
+{
+
+}
+
+RenderingWindow::~RenderingWindow()
+{
+
+}
+
+bool RenderingWindow::init(GLFWwindow *share, int id)
+{
+    id_ = id;
+    master_ = share;
+
+    Settings::WindowConfig winset = Settings::application.windows[id_];
+
+    // do not show at creation
+    glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
+    if (window_ == NULL){
+        Log::Error("Failed to create GLFW Window %d", id_);
+        return false;
+    }
+    glfwSetWindowPos(window_, winset.x, winset.y);
+
+    // callbacks
+    glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
+    glfwSetWindowPosCallback( window_, WindowMoveCallback );
+
+    // take context ownership
+    glfwMakeContextCurrent(window_);
+    glfwSwapInterval(0); // Disable vsync
+
+    // setup endering area
+    window_attributes_.viewport.x = winset.w;
+    window_attributes_.viewport.y = winset.h;
+    window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.0);
+
+    glfwShowWindow(window_);
+
+    // give back context ownership
+    glfwMakeContextCurrent(master_);
+
+    return true;
+}
+
+void RenderingWindow::draw()
+{
+    if (!window_)
+        return;
+
+    // only draw if window is not iconified
+    if( !glfwGetWindowAttrib(window_, GLFW_ICONIFIED ) ) {
+
+        // take context ownership
+        glfwMakeContextCurrent(window_);
+
+        // render some stuff
+        glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
+        glViewport(0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y);
+
+        glClearColor(window_attributes_.clear_color.r, window_attributes_.clear_color.g,
+                     window_attributes_.clear_color.b, window_attributes_.clear_color.a);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // swap buffer
+        glfwSwapBuffers(window_);
+    }
+
+
+    // give back context ownership
+    glfwMakeContextCurrent(master_);
+}
 
 //
 // Discarded because not working under OSX - kept in case it would become useful

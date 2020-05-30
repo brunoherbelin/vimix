@@ -112,14 +112,14 @@ void FrameBuffer::begin()
 {
     bind();
 
-    Rendering::manager().PushAttrib(attrib_);
+    Rendering::manager().pushAttrib(attrib_);
 
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void FrameBuffer::end()
 {
-    Rendering::manager().PopAttrib();
+    Rendering::manager().popAttrib();
 
     FrameBuffer::release();
 }

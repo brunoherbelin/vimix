@@ -32,18 +32,19 @@ void Settings::Save()
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
-        vector<Settings::WindowConfig>::iterator iter;
-		for (iter=application.windows.begin(); iter != application.windows.end(); iter++)
-		{
-            const Settings::WindowConfig& w=*iter;
+        for (int i = 0; i < application.windows.size(); i++)
+        {
+            const Settings::WindowConfig& w = application.windows[i];
 
-			XMLElement *window = xmlDoc.NewElement( "Window" );            
-			window->SetAttribute("name", w.name.c_str());
+            XMLElement *window = xmlDoc.NewElement( "Window" );
+            window->SetAttribute("id", i);
+            window->SetAttribute("name", w.name.c_str());
 			window->SetAttribute("x", w.x);
 			window->SetAttribute("y", w.y);
 			window->SetAttribute("w", w.w);
 			window->SetAttribute("h", w.h);
-			window->SetAttribute("f", w.fullscreen);
+            window->SetAttribute("f", w.fullscreen);
+            window->SetAttribute("m", w.monitor);
             windowsNode->InsertEndChild(window);
 		}
 
@@ -167,25 +168,25 @@ void Settings::Load()
     pElement->QueryIntAttribute("framebuffer_h", &application.framebuffer_h);
 
     // bloc windows
-	{
-		application.windows.clear(); // trash existing list
-
+    {
         XMLElement * pElement = pRoot->FirstChildElement("Windows");
         if (pElement)
         {
             XMLElement* windowNode = pElement->FirstChildElement("Window");
             for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
             {
-                const char *pName = windowNode->Attribute("name");
-                Settings::WindowConfig w(pName);
-
+                Settings::WindowConfig w;
+                w.name = std::string(windowNode->Attribute("name"));
                 windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
                 windowNode->QueryIntAttribute("y", &w.y);
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
+                windowNode->QueryIntAttribute("m", &w.monitor);
 
-                application.windows.push_back(w);
+                int i = 0;
+                windowNode->QueryIntAttribute("id", &i);
+                application.windows[i] = w;
             }
         }
 	}

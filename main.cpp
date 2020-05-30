@@ -47,7 +47,7 @@ int main(int, char**)
     ///
     /// RENDERING INIT
     ///
-    if ( !Rendering::manager().Init() )
+    if ( !Rendering::manager().init() )
         return 1;
 
     ///
@@ -71,7 +71,7 @@ int main(int, char**)
 //    UserInterface::manager().fillShaderEditor( Resource::getText("shaders/image.fs") );
 
     // draw the scene
-    Rendering::manager().PushFrontDrawCallback(drawScene);
+    Rendering::manager().pushFrontDrawCallback(drawScene);
 
     ///
     /// Main LOOP
@@ -80,7 +80,7 @@ int main(int, char**)
     {
         Mixer::manager().update();
 
-        Rendering::manager().Draw();
+        Rendering::manager().draw();
     }
 
     ///
@@ -91,7 +91,7 @@ int main(int, char**)
     ///
     /// RENDERING TERMINATE
     ///
-    Rendering::manager().Terminate();
+    Rendering::manager().terminate();
 
     ///
     /// Settings

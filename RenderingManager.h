@@ -9,6 +9,9 @@
 
 #include "Screenshot.h"
 
+class GLFWwindow;
+class FrameBuffer;
+
 struct RenderingAttrib
 {
     RenderingAttrib() {}
@@ -16,15 +19,27 @@ struct RenderingAttrib
     glm::vec4 clear_color;
 };
 
+class RenderingWindow
+{
+    GLFWwindow *window_, *master_;
+    RenderingAttrib window_attributes_;
+    FrameBuffer *frame_buffer_;
+    int id_;
+
+public:
+    RenderingWindow();
+    ~RenderingWindow();
+
+    void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
+
+    bool init(GLFWwindow *share, int id);
+    void draw();
+
+};
 
 class Rendering
 {
     friend class UserInterface;
-
-    // GLFW integration in OS window management
-    class GLFWwindow* main_window_;
-    std::string glsl_version;
-    float dpi_scale_;
 
     // Private Constructor
     Rendering();
@@ -41,47 +56,46 @@ public:
     }
 
     // Initialization OpenGL and GLFW window creation
-    bool Init();
+    bool init();
     // true if active rendering window
     bool isActive();
     // draw one frame
-    void Draw();
+    void draw();
     // request close of the UI (Quit the program)
-    void Close();
+    void close();
     // Post-loop termination
-    void Terminate();
-
-    void GrabWindow(int dx, int dy);
+    void terminate();
 
     // add function to call during Draw
     typedef void (* RenderingCallback)(void);
-    void PushFrontDrawCallback(RenderingCallback function);
-    void PushBackDrawCallback(RenderingCallback function);
+    void pushFrontDrawCallback(RenderingCallback function);
+    void pushBackDrawCallback(RenderingCallback function);
 
     // push and pop rendering attributes
-    void PushAttrib(RenderingAttrib ra);
-    void PopAttrib();
+    void pushAttrib(RenderingAttrib ra);
+    void popAttrib();
     RenderingAttrib currentAttrib();
 
     // request screenshot
-    void RequestScreenshot();
+    void requestScreenshot();
     // get Screenshot
-    class Screenshot *CurrentScreenshot();
+    class Screenshot *currentScreenshot();
     
     // window management
-    void setWindowTitle(std::string title);
+    void setWindowTitle(std::string title);    
     // request fullscreen
-    bool IsFullscreen ();
-    void ToggleFullscreen ();
+    bool isFullscreen ();
+    void toggleFullscreen ();
     // get width of rendering area
-    float Width();
+    float width();
     // get height of rendering area
-    float Height();
+    float height();
     // get aspect ratio of rendering area
-    float AspectRatio();
+    float aspectRatio();
+
     // monitor management
-    float MonitorWidth();
-    float MonitorHeight();
+    float monitorWidth();
+    float monitorHeight();
     inline float DPIScale() const { return dpi_scale_; }
 
     // get projection matrix (for sharers) => Views
@@ -89,12 +103,22 @@ public:
     // unproject from window coordinate
     glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview = glm::mat4(1.f));
 
+    // utility for settings
+    int getWindowId(GLFWwindow *w);
+
 private:
+
+    // GLFW integration in OS window management
+    GLFWwindow *main_window_;
+    std::string glsl_version;
+    float dpi_scale_;
 
     // loop update to begin new frame
     bool Begin();
     // loop update end frame
     void End();
+
+//    void GrabWindow(int dx, int dy);
 
     // list of rendering attributes
     std::list<RenderingAttrib> draw_attributes_;
@@ -102,6 +126,8 @@ private:
 
     // list of functions to call at each Draw
     std::list<RenderingCallback> draw_callbacks_;
+
+    RenderingWindow output;
 
     // file drop callback
     static void FileDropped(GLFWwindow* main_window_, int path_count, const char* paths[]);

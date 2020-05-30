@@ -159,7 +159,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  (Rendering::manager().MonitorHeight() * Rendering::manager().DPIScale()) / 100.f ;
+    float base_font_size =  (Rendering::manager().monitorHeight() * Rendering::manager().DPIScale()) / 100.f ;
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
@@ -169,7 +169,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f), 50), 1 );
 
     // info
-    Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().MonitorWidth(), Rendering::manager().MonitorHeight());
+    Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().monitorWidth(), Rendering::manager().monitorHeight());
     Log::Info("Font size %d", int(base_font_size) );
 
     // Style
@@ -214,7 +214,7 @@ void UserInterface::handleKeyboard()
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
             // Quit
-            Rendering::manager().Close();
+            Rendering::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // Open session
@@ -262,7 +262,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setCurrentView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
-            Rendering::manager().ToggleFullscreen();
+            Rendering::manager().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -275,8 +275,8 @@ void UserInterface::handleKeyboard()
                 navigator.toggleMenu();
             // esc to exit fullscreen
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
-                if (Rendering::manager().IsFullscreen())
-                    Rendering::manager().ToggleFullscreen();
+                if (Rendering::manager().isFullscreen())
+                    Rendering::manager().toggleFullscreen();
             }
         }
     }
@@ -550,7 +550,7 @@ void UserInterface::showMenuFile()
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q")) {
-        Rendering::manager().Close();
+        Rendering::manager().close();
     }
 }
 
@@ -581,15 +581,15 @@ void UserInterface::handleScreenshot()
                 screenshot_step = 2;
             break;
             case 2:
-                Rendering::manager().RequestScreenshot();
+                Rendering::manager().requestScreenshot();
                 screenshot_step = 3;
             break;
             case 3:
             {
-                if ( Rendering::manager().CurrentScreenshot()->IsFull() ){
+                if ( Rendering::manager().currentScreenshot()->IsFull() ){
                     std::string filename =  SystemToolkit::home_path() + SystemToolkit::date_time_string() + "_vmixcapture.png";
-                    Rendering::manager().CurrentScreenshot()->SaveFile( filename.c_str() );
-                    Rendering::manager().CurrentScreenshot()->Clear();
+                    Rendering::manager().currentScreenshot()->SaveFile( filename.c_str() );
+                    Rendering::manager().currentScreenshot()->Clear();
                     Log::Notify("Screenshot saved %s", filename.c_str() );
                 }
                 screenshot_step = 4;
