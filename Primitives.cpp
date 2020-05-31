@@ -63,6 +63,13 @@ void Surface::init()
         // 2. use the global vertex array object
         vao_ = unique_vao_;
         drawCount_ = unique_drawCount;
+        // compute AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
     }
     else {
         // 1. init the Primitive (only once)
@@ -73,8 +80,6 @@ void Surface::init()
         // 3. unique_vao_ will NOT be deleted
     }
 
-    // replace AxisAlignedBoundingBox
-    bbox_.extend(square_points);
 }
 
 void Surface::accept(Visitor& v)
@@ -282,7 +287,9 @@ void LineSquare::init()
         // 2. use the global vertex array object
         vao_ = unique_vao_;
         drawCount_ = unique_drawCount;
-        // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
+        // compute AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore
         points_.clear();
         colors_.clear();
         texCoords_.clear();
@@ -295,9 +302,6 @@ void LineSquare::init()
         unique_vao_ = vao_;
         unique_drawCount = drawCount_;
     }
-
-    // compute AxisAlignedBoundingBox
-    bbox_.extend(square_points);
 }
 
 void LineSquare::accept(Visitor& v)

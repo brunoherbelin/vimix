@@ -15,10 +15,10 @@ struct WindowConfig
 {
     std::string name;
     int x,y,w,h;
-    int monitor;
     bool fullscreen;
+    std::string monitor;
 
-    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), monitor(0), fullscreen(false) { }
+    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), monitor(""), fullscreen(false) { }
 
 };
 

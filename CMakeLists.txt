@@ -254,11 +254,9 @@ set(VMIX_RSC_FILES
     ./rsc/images/mask_linear_bottom.dds
     ./rsc/images/mask_linear_left.dds
     ./rsc/images/mask_linear_right.dds
-    ./rsc/images/v-mix_256x256.png
-    ./rsc/images/rgb.png
-    ./rsc/images/busy.png
+    ./rsc/images/vimix_256x256.png
+    ./rsc/images/vimix_square_256x256.png
     ./rsc/images/icons.dds
-    ./rsc/images/seed_512.jpg
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.png
     ./rsc/images/shadow_dark.png

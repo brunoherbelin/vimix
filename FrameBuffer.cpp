@@ -130,6 +130,7 @@ void FrameBuffer::end()
     // if multisampling frame buffer
     if (use_multi_sampling_) {
         // blit the multisample FBO into unisample FBO to generate 2D texture
+        // Doing this blit will automatically resolve the multisampled FBO.
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediate_framebufferid_);
         glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,

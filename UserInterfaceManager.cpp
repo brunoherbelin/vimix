@@ -159,7 +159,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  (Rendering::manager().monitorHeight() * Rendering::manager().DPIScale()) / 100.f ;
+    float base_font_size =  (Rendering::manager().monitorHeight() * Rendering::manager().dpi_scale_) / 100.f ;
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
@@ -273,11 +273,6 @@ void UserInterface::handleKeyboard()
             // button under esc to toggle menu
             else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
                 navigator.toggleMenu();
-            // esc to exit fullscreen
-            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )){
-                if (Rendering::manager().isFullscreen())
-                    Rendering::manager().toggleFullscreen();
-            }
         }
     }
 
@@ -1324,7 +1319,7 @@ void Navigator::RenderMainPannel()
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
         // Bottom aligned Logo
-        static unsigned int vimixicon = Resource::getTextureImage("images/v-mix_256x256.png");
+        static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
         static float h = 4.f * ImGui::GetTextLineHeightWithSpacing();
         if ( ImGui::GetCursorPosY() + h + 128.f < height_ ) {
             ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -h - 128.f));

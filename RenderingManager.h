@@ -3,12 +3,14 @@
 
 #include <string>
 #include <list>
+#include <map>
 
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp> 
 
 #include "Screenshot.h"
 
+class GLFWmonitor;
 class GLFWwindow;
 class FrameBuffer;
 
@@ -26,15 +28,40 @@ class RenderingWindow
     FrameBuffer *frame_buffer_;
     int id_;
 
+
 public:
     RenderingWindow();
     ~RenderingWindow();
 
-//    void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
+    inline int id() const { return id_; }
 
-    bool init(GLFWwindow *share, int id);
+    bool init(int id, GLFWwindow *share = nullptr);
+    void setIcon(const std::string &resource);
+
+    // draw a framebuffer
     void draw(FrameBuffer *fb);
 
+    // fullscreen
+    bool isFullscreen ();
+    void setFullscreen(GLFWmonitor *mo);
+    void toggleFullscreen ();
+
+    // get width of rendering area
+    int width();
+    // get height of rendering area
+    int height();
+    // get aspect ratio of rendering area
+    float aspectRatio();
+
+    // get GLFW window
+    GLFWwindow *window();
+
+    // get monitor in which the window is
+    GLFWmonitor *monitor();
+
+    // get which monitor contains this point
+    static GLFWmonitor *monitorAt(int x, int y);
+    static GLFWmonitor *monitorNamed(const std::string &name);
 };
 
 class Rendering
@@ -86,17 +113,12 @@ public:
     // request fullscreen
     bool isFullscreen ();
     void toggleFullscreen ();
-    // get width of rendering area
-    float width();
-    // get height of rendering area
-    float height();
     // get aspect ratio of rendering area
     float aspectRatio();
 
     // monitor management
     float monitorWidth();
     float monitorHeight();
-    inline float DPIScale() const { return dpi_scale_; }
 
     // get projection matrix (for sharers) => Views
     glm::mat4 Projection();

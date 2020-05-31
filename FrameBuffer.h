@@ -43,8 +43,6 @@ public:
     // texture index for draw
     uint texture() const;
 
-//    inline uint id() const { return framebufferid_; }
-
 private:
     void init();
     void checkFramebufferStatus();

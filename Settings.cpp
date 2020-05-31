@@ -44,7 +44,7 @@ void Settings::Save()
 			window->SetAttribute("w", w.w);
 			window->SetAttribute("h", w.h);
             window->SetAttribute("f", w.fullscreen);
-            window->SetAttribute("m", w.monitor);
+            window->SetAttribute("m", w.monitor.c_str());
             windowsNode->InsertEndChild(window);
 		}
 
@@ -184,7 +184,7 @@ void Settings::Load()
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                windowNode->QueryIntAttribute("m", &w.monitor);
+                w.monitor = std::string(windowNode->Attribute("m"));
 
                 int i = 0;
                 windowNode->QueryIntAttribute("id", &i);
