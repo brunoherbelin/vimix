@@ -255,14 +255,9 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
 
     glLineWidth(linewidth_);
 
-    // enable antialiasing
-    glEnable(GL_MULTISAMPLE_ARB);
-
     Primitive::draw(modelview, projection);
 
     glLineWidth(1);
-    glDisable(GL_MULTISAMPLE_ARB);
-
 }
 
 void LineStrip::accept(Visitor& v)

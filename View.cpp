@@ -205,7 +205,8 @@ void RenderView::setResolution(glm::vec3 resolution)
     if (frame_buffer_)
         delete frame_buffer_;
 
-    frame_buffer_ = new FrameBuffer(resolution);
+    // output frame is an RBG Multisamples FrameBuffer
+    frame_buffer_ = new FrameBuffer(resolution, false, true);
 }
 
 void RenderView::draw()

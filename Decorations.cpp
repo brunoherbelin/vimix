@@ -57,9 +57,6 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
     if ( visible_ ) {
 
-        // enable antialiasing
-        glEnable(GL_MULTISAMPLE_ARB);
-
         // shadow
         if(shadow_)
             shadow_->draw( modelview * transform_, projection);
@@ -83,8 +80,6 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
                 border_->draw( ctm, projection );
             }
         }
-        // enable antialiasing
-        glDisable(GL_MULTISAMPLE_ARB);
     }
 }
 
@@ -129,8 +124,6 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 
     if ( visible_ ) {
-        // enable antialiasing
-        glEnable(GL_MULTISAMPLE_ARB);
 
         // set color
         handle_->shader()->color = color;
@@ -185,8 +178,6 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
-
-        glDisable(GL_MULTISAMPLE_ARB);
     }
 }
 
@@ -240,9 +231,6 @@ void Icon::draw(glm::mat4 modelview, glm::mat4 projection)
 
     if ( visible_ ) {
 
-        // enable antialiasing
-        glEnable(GL_MULTISAMPLE_ARB);
-
         if(icon_) {
             // set color
             icon_->shader()->color = color;
@@ -254,9 +242,6 @@ void Icon::draw(glm::mat4 modelview, glm::mat4 projection)
 
             icon_->draw( ctm, projection);
         }
-
-        // enable antialiasing
-        glDisable(GL_MULTISAMPLE_ARB);
     }
 }
 

@@ -63,6 +63,7 @@ void Settings::Save()
     applicationNode->SetAttribute("toolbox", application.toolbox);
     applicationNode->SetAttribute("framebuffer_ar", application.framebuffer_ar);
     applicationNode->SetAttribute("framebuffer_h", application.framebuffer_h);
+    applicationNode->SetAttribute("multisampling_level", application.multisampling_level);
     pRoot->InsertEndChild(applicationNode);
 
     // bloc views
@@ -166,6 +167,7 @@ void Settings::Load()
     pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
     pElement->QueryIntAttribute("framebuffer_ar", &application.framebuffer_ar);
     pElement->QueryIntAttribute("framebuffer_h", &application.framebuffer_h);
+    pElement->QueryIntAttribute("multisampling_level", &application.multisampling_level);
 
     // bloc windows
     {

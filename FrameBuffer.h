@@ -14,8 +14,8 @@ public:
     static float resolution_height[4];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
 
-    FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool useDepthBuffer = false);
-    FrameBuffer(uint width, uint height, bool useAlpha = false, bool useDepthBuffer = false);
+    FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
+    FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
     ~FrameBuffer();
 
     // bind the FrameBuffer as current to draw into
@@ -43,16 +43,16 @@ public:
     // texture index for draw
     uint texture() const;
 
-    inline uint id() const { return framebufferid_; }
+//    inline uint id() const { return framebufferid_; }
 
 private:
     void init();
     void checkFramebufferStatus();
 
     RenderingAttrib attrib_;
-    uint textureid_;
-    uint framebufferid_;
-    bool usealpha_, usedepth_;
+    uint textureid_, intermediate_textureid_;
+    uint framebufferid_, intermediate_framebufferid_;
+    bool use_alpha_, use_multi_sampling_;
 };
 
 

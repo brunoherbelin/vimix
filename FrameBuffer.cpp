@@ -1,6 +1,7 @@
 #include "FrameBuffer.h"
 #include "ImageShader.h"
 #include "Resource.h"
+#include "Settings.h"
 #include "Log.h"
 
 
@@ -20,58 +21,65 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
     return res;
 }
 
-FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool useDepthBuffer): textureid_(0), framebufferid_(0), usealpha_(useAlpha), usedepth_(useDepthBuffer)
+FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling): textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0), use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(resolution);
-    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, usealpha_ ? 0.f : 1.f);
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
 }
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool useDepthBuffer): textureid_(0), framebufferid_(0), usealpha_(useAlpha), usedepth_(useDepthBuffer)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling): textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0), use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(width, height);
-    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, usealpha_ ? 0.f : 1.f);
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
 }
 
 void FrameBuffer::init()
 {
-    // create a renderbuffer object to store depth info
-    GLuint rboId;
-    if (usedepth_){
-        glGenRenderbuffers(1, &rboId);
-        glBindRenderbuffer(GL_RENDERBUFFER, rboId);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, attrib_.viewport.x, attrib_.viewport.y);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    }
-
-    // create a framebuffer object
-    glGenFramebuffers(1, &framebufferid_);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
-
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    if (usealpha_)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, attrib_.viewport.x, attrib_.viewport.y,
+    glTexImage2D(GL_TEXTURE_2D, 0, use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
                      0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    else
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
-                     0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // attach the texture to FBO color attachment point
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, textureid_, 0);
+    // create a framebuffer object
+    glGenFramebuffers(1, &framebufferid_);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 
-    // attach the renderbuffer to depth attachment point
-    if (usedepth_){
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                              GL_RENDERBUFFER, rboId);
+    // take settings into account: no multisampling for level 0
+    use_multi_sampling_ &= Settings::application.multisampling_level > 0;
+
+    if (use_multi_sampling_){
+
+        // create a multisample texture
+        glGenTextures(1, &intermediate_textureid_);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_);
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.multisampling_level,
+                                use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+
+        // attach the multisampled texture to FBO (currently binded)
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_, 0);
+
+        // create an intermediate FBO
+        glGenFramebuffers(1, &intermediate_framebufferid_);
+        glBindFramebuffer(GL_FRAMEBUFFER, intermediate_framebufferid_);
+
+        // attach the 2D texture to intermediate FBO
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
     }
+    else {
+
+        // direct attach the 2D texture to FBO
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
+    }
+
     checkFramebufferStatus();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 FrameBuffer::~FrameBuffer()
@@ -118,10 +126,19 @@ void FrameBuffer::begin()
 }
 
 void FrameBuffer::end()
-{
-    Rendering::manager().popAttrib();
+{    
+    // if multisampling frame buffer
+    if (use_multi_sampling_) {
+        // blit the multisample FBO into unisample FBO to generate 2D texture
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediate_framebufferid_);
+        glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
+                          0, 0, attrib_.viewport.x, attrib_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
 
     FrameBuffer::release();
+
+    Rendering::manager().popAttrib();
 }
 
 void FrameBuffer::release()
@@ -131,11 +148,11 @@ void FrameBuffer::release()
 
 bool FrameBuffer::blit(FrameBuffer *other)
 {
-    if (!framebufferid_ || !other || !other->id())
+    if (!framebufferid_ || !other || !other->framebufferid_)
         return false;
 
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
     // blit to the frame buffer object
     glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
                       0, 0, other->width(), other->height(),

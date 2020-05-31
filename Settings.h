@@ -76,9 +76,9 @@ struct Application
     std::map<int, ViewConfig> views;
     int framebuffer_ar;
     int framebuffer_h;
+    int multisampling_level;
 
     // multiple windows handling
-    // TODO: manage other windows
     std::vector<WindowConfig> windows;
 
     // recent files histories
@@ -98,6 +98,7 @@ struct Application
         current_view = 1;
         framebuffer_ar = 3;
         framebuffer_h = 1;
+        multisampling_level = 2; // todo GUI selection
         std::vector<int> second (4,100);
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;

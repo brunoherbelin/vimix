@@ -95,6 +95,32 @@ static void WindowMoveCallback( GLFWwindow *w, int x, int y)
     }
 }
 
+static void WindowKeyCallback( GLFWwindow *w, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+    {
+//        Log::Info("Esc");
+        // escape fullscreen
+
+    }
+}
+
+static void WindowMouseCallback( GLFWwindow *w, int button, int action, int mods)
+{
+    static double seconds = 0.f;
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        // detect double clic
+        if ( glfwGetTime() - seconds < 0.2f ) {
+            Log::Info("double clic");
+            // toggle fullscreen
+
+        }
+        // for next clic detection
+        seconds = glfwGetTime();
+    }
+}
 
 Rendering::Rendering()
 {
@@ -121,7 +147,7 @@ bool Rendering::init()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
     // GL Multisampling #3
-    glfwWindowHint(GLFW_SAMPLES, 3);
+    glfwWindowHint(GLFW_SAMPLES, Settings::application.multisampling_level);
 
     // Create window with graphics context
     Settings::WindowConfig winset = Settings::application.windows[0];
@@ -160,11 +186,11 @@ bool Rendering::init()
         return false;
     }
 
-    // show window
-    glfwShowWindow(main_window_);
-    // restore fullscreen
-    if (winset.fullscreen)
-        toggleFullscreen();
+//    // show window
+//    glfwShowWindow(main_window_);
+//    // restore fullscreen
+//    if (winset.fullscreen)
+//        toggleFullscreen();
 
     // Rendering area (here same as window)
     glfwGetFramebufferSize(main_window_, &(main_window_attributes_.viewport.x), &(main_window_attributes_.viewport.y));
@@ -179,7 +205,10 @@ bool Rendering::init()
     gst_init (NULL, NULL);
 
     // Antialiasing
-    glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+    if (Settings::application.multisampling_level > 0) {
+        glEnable(GL_MULTISAMPLE_ARB);
+        glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+    }
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     // This hint can improve the speed of shading when dFdx dFdy aren't needed in GLSL
@@ -229,6 +258,12 @@ bool Rendering::init()
 
     // output window
     output.init(main_window_, 1);
+
+    // show window
+    glfwShowWindow(main_window_);
+    // restore fullscreen
+    if (winset.fullscreen)
+        toggleFullscreen();
 
     return true;
 }
@@ -530,9 +565,9 @@ bool RenderingWindow::init(GLFWwindow *share, int id)
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-    glfwWindowHint(GLFW_SAMPLES, 0);
-    glfwWindowHint(GLFW_DEPTH_BITS, 0);
-    glfwWindowHint(GLFW_ALPHA_BITS, 0);
+//    glfwWindowHint(GLFW_SAMPLES, 0);
+//    glfwWindowHint(GLFW_DEPTH_BITS, 0);
+//    glfwWindowHint(GLFW_ALPHA_BITS, 0);
 
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
@@ -544,6 +579,8 @@ bool RenderingWindow::init(GLFWwindow *share, int id)
     // callbacks
     glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
     glfwSetWindowPosCallback( window_, WindowMoveCallback );
+    glfwSetKeyCallback( window_, WindowKeyCallback);
+    glfwSetMouseButtonCallback( window_, WindowMouseCallback);
 
     // take context ownership
     glfwMakeContextCurrent(window_);
@@ -586,12 +623,10 @@ void RenderingWindow::draw(FrameBuffer *fb)
         // take context ownership
         glfwMakeContextCurrent(window_);
 
-        // render some stuff
+        // update viewport (could be done with callback)
         glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
-        glViewport(0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y);
 
-        glClearColor(window_attributes_.clear_color.r, window_attributes_.clear_color.g,
-                     window_attributes_.clear_color.b, window_attributes_.clear_color.a);
+        Rendering::manager().pushAttrib(window_attributes_);
         glClear(GL_COLOR_BUFFER_BIT);
 
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
@@ -609,6 +644,10 @@ void RenderingWindow::draw(FrameBuffer *fb)
             glBindTexture(GL_TEXTURE_2D, fb->texture());
             surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
         }
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        Rendering::manager().popAttrib();
+
 
         // swap buffer
         glfwSwapBuffers(window_);
