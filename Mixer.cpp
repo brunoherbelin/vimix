@@ -168,7 +168,7 @@ void Mixer::update()
             // swap front and back sessions
             swap();
             // set session filename
-            Rendering::manager().setWindowTitle(session_->filename());
+            Rendering::manager().mainWindow().setTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
         }
     }

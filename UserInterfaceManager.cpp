@@ -140,7 +140,7 @@ UserInterface::UserInterface()
 
 bool UserInterface::Init()
 {
-    if (Rendering::manager().main_window_ == nullptr)
+    if (Rendering::manager().mainWindow().window()== nullptr)
         return false;
 
     // Setup Dear ImGui context
@@ -152,14 +152,14 @@ bool UserInterface::Init()
     io.FontGlobalScale = Settings::application.scale;
 
     // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().main_window_, true);
+    ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().mainWindow().window(), true);
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
 
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  (Rendering::manager().monitorHeight() * Rendering::manager().dpi_scale_) / 100.f ;
+    float base_font_size =  float(Rendering::manager().mainWindow().maxHeight()) / 100.f ;
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
@@ -169,7 +169,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f), 50), 1 );
 
     // info
-    Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().monitorWidth(), Rendering::manager().monitorHeight());
+//    Log::Info("Monitor (%.1f,%.1f)", Rendering::manager().monitorWidth(), Rendering::manager().monitorHeight());
     Log::Info("Font size %d", int(base_font_size) );
 
     // Style
@@ -262,7 +262,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setCurrentView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
-            Rendering::manager().toggleFullscreen();
+            Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -700,81 +700,84 @@ void UserInterface::RenderMediaPlayer()
         ImGui::Text("    %s %d x %d\n    Framerate %.2f / %.2f", mp->codec().c_str(), mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
     }
 
-    if (ImGui::Button(ICON_FA_FAST_BACKWARD))
-        mp->rewind();
-    ImGui::SameLine(0, spacing);
+    if (mp->duration() != GST_CLOCK_TIME_NONE) {
 
-    // remember playing mode of the GUI
-    bool media_playing_mode = mp->isPlaying();
-
-    // display buttons Play/Stop depending on current playing mode
-    if (media_playing_mode) {
-
-        if (ImGui::Button(ICON_FA_STOP " Stop"))
-            media_playing_mode = false;
+        if (ImGui::Button(ICON_FA_FAST_BACKWARD))
+            mp->rewind();
         ImGui::SameLine(0, spacing);
 
-        ImGui::PushButtonRepeat(true);
-         if (ImGui::Button(ICON_FA_FORWARD))
-            mp->fastForward ();
-        ImGui::PopButtonRepeat();
-    }
-    else {
+        // remember playing mode of the GUI
+        bool media_playing_mode = mp->isPlaying();
 
-        if (ImGui::Button(ICON_FA_PLAY "  Play"))
-            media_playing_mode = true;
+        // display buttons Play/Stop depending on current playing mode
+        if (media_playing_mode) {
+
+            if (ImGui::Button(ICON_FA_STOP " Stop"))
+                media_playing_mode = false;
+            ImGui::SameLine(0, spacing);
+
+            ImGui::PushButtonRepeat(true);
+            if (ImGui::Button(ICON_FA_FORWARD))
+                mp->fastForward ();
+            ImGui::PopButtonRepeat();
+        }
+        else {
+
+            if (ImGui::Button(ICON_FA_PLAY "  Play"))
+                media_playing_mode = true;
+            ImGui::SameLine(0, spacing);
+
+            ImGui::PushButtonRepeat(true);
+            if (ImGui::Button(ICON_FA_STEP_FORWARD))
+                mp->seekNextFrame();
+            ImGui::PopButtonRepeat();
+        }
+
+        ImGui::SameLine(0, spacing * 4.f);
+
+        static int current_loop = 0;
+        static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
+        current_loop = (int) mp->loop();
+        if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
+            mp->setLoop( (MediaPlayer::LoopMode) current_loop );
+
+        float speed = static_cast<float>(mp->playSpeed());
         ImGui::SameLine(0, spacing);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
+        // ImGui::SetNextItemWidth(width - 90.0);
+        if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
+            mp->setPlaySpeed( static_cast<double>(speed) );
+        ImGui::SameLine(0, spacing);
+        if (ImGuiToolkit::ButtonIcon(12, 14)) {
+            speed = 1.f;
+            mp->setPlaySpeed( static_cast<double>(speed) );
+            mp->setLoop( MediaPlayer::LOOP_REWIND );
+        }
 
-        ImGui::PushButtonRepeat(true);
-        if (ImGui::Button(ICON_FA_STEP_FORWARD))
-            mp->seekNextFrame();
-        ImGui::PopButtonRepeat();
-    }
+        guint64 current_t = mp->position();
+        guint64 seek_t = current_t;
 
-    ImGui::SameLine(0, spacing * 4.f);
+        bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
+                                                            mp->duration(), mp->frameDuration());
 
-    static int current_loop = 0;
-    static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
-    current_loop = (int) mp->loop();
-    if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
-        mp->setLoop( (MediaPlayer::LoopMode) current_loop );
+        // if the seek target time is different from the current position time
+        // (i.e. the difference is less than one frame)
+        if ( ABS_DIFF (current_t, seek_t) > mp->frameDuration() ) {
 
-    float speed = static_cast<float>(mp->playSpeed());
-    ImGui::SameLine(0, spacing);
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
-    // ImGui::SetNextItemWidth(width - 90.0);
-    if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
-        mp->setPlaySpeed( static_cast<double>(speed) );
-    ImGui::SameLine(0, spacing);
-    if (ImGuiToolkit::ButtonIcon(12, 14)) {
-        speed = 1.f;
-        mp->setPlaySpeed( static_cast<double>(speed) );
-        mp->setLoop( MediaPlayer::LOOP_REWIND );
-    }
+            // request seek (ASYNC)
+            mp->seekTo(seek_t);
+        }
 
-    guint64 current_t = mp->position();
-    guint64 seek_t = current_t;
+        // play/stop command should be following the playing mode (buttons)
+        // AND force to stop when the slider is pressed
+        bool media_play = media_playing_mode & (!slider_pressed);
 
-    bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
-                                                        mp->duration(), mp->frameDuration());
-
-    // if the seek target time is different from the current position time
-    // (i.e. the difference is less than one frame)
-    if ( ABS_DIFF (current_t, seek_t) > mp->frameDuration() ) {
-
-        // request seek (ASYNC)
-        mp->seekTo(seek_t);
-    }
-
-    // play/stop command should be following the playing mode (buttons)
-    // AND force to stop when the slider is pressed
-    bool media_play = media_playing_mode & (!slider_pressed);
-
-    // apply play action to media only if status should change
-    // NB: The seek command performed an ASYNC state change, but
-    // gst_element_get_state called in isPlaying() will wait for the state change to complete.
-    if ( mp->isPlaying(true) != media_play ) {
-        mp->play( media_play );
+        // apply play action to media only if status should change
+        // NB: The seek command performed an ASYNC state change, but
+        // gst_element_get_state called in isPlaying() will wait for the state change to complete.
+        if ( mp->isPlaying(true) != media_play ) {
+            mp->play( media_play );
+        }
     }
 
     ImGui::End();
