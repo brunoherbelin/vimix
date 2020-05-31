@@ -100,7 +100,6 @@ Handles::Handles(Type type) : Node(), type_(type)
     else {
 //        handle_ = new LineSquare(color, int ( 2.1f * Rendering::manager().DPIScale()) );
         handle_ = new Mesh("mesh/border_handles_overlay.ply");
-//        handle_->scale_ = glm::vec3( 0.05f, 0.05f, 1.f);
     }
 
 }
@@ -174,7 +173,11 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         }
         else if ( type_ == ROTATE ){
             // one icon in top right corner
-            vec = modelview * glm::vec4(1.12f, 1.12f, 0.f, 1.f);
+            // 1. Fixed displacement by (0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
+            vec = ctm * glm::vec4(0.12f, 0.12f, 0.f, 1.f);
+            // 2. ..from the top right corner (1,1)
+            vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + vec;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }

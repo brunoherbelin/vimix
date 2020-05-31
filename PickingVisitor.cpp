@@ -74,41 +74,30 @@ void PickingVisitor::visit(Handles &n)
     if (!n.visible_)
         return;
 
-    // TODO fixme !
-
     // apply inverse transform to the point of interest
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
-    // get the bounding box of a handle
-    GlmToolkit::AxisAlignedBoundingBox bb = n.handle()->bbox();
-
-    // test picking depending on type of handle
     bool picked = false;
+    // test by distance to the corners (more tolerant than bbox)
     if ( n.type() == Handles::RESIZE ) {
         // 4 corners
-        picked = ( bb.translated(glm::vec3(+1.f, +1.f, 0.f)).contains( glm::vec3(P) ) ||
-                   bb.translated(glm::vec3(+1.f, -1.f, 0.f)).contains( glm::vec3(P) ) ||
-                   bb.translated(glm::vec3(-1.f, +1.f, 0.f)).contains( glm::vec3(P) ) ||
-                   bb.translated(glm::vec3(-1.f, -1.f, 0.f)).contains( glm::vec3(P) ) );
+        picked = ( glm::length(glm::vec2(+1.f, +1.f)-glm::vec2(P)) < 0.05f ||
+                   glm::length(glm::vec2(+1.f, -1.f)- glm::vec2(P)) < 0.05f ||
+                   glm::length(glm::vec2(-1.f, +1.f)- glm::vec2(P)) < 0.05f ||
+                   glm::length(glm::vec2(-1.f, -1.f)- glm::vec2(P)) < 0.05f  );
     }
     else if ( n.type() == Handles::RESIZE_H ){
         // left & right
-        picked = ( bb.translated(glm::vec3(+1.f, 0.f, 0.f)).contains( glm::vec3(P) ) ||
-                   bb.translated(glm::vec3(-1.f, 0.f, 0.f)).contains( glm::vec3(P) ) );
+        picked = ( glm::length(glm::vec2(+1.f, 0.f)- glm::vec2(P)) < 0.05f ||
+                   glm::length(glm::vec2(-1.f, 0.f)- glm::vec2(P)) < 0.05f );
     }
     else if ( n.type() == Handles::RESIZE_V ){
         // top & bottom
-        picked = ( bb.translated(glm::vec3(0.f, +1.f, 0.f)).contains( glm::vec3(P) ) ||
-                   bb.translated(glm::vec3(0.f, -1.f, 0.f)).contains( glm::vec3(P) ) );
+        picked = ( glm::length(glm::vec2(0.f, +1.f)- glm::vec2(P)) < 0.05f ||
+                   glm::length(glm::vec2(0.f, -1.f)- glm::vec2(P)) < 0.05f );
     }
     else if ( n.type() == Handles::ROTATE ){
-        // Picking Rotation icon
-        glm::vec4 pos = modelview_ * glm::vec4(1.08f, 1.08f, 0.f, 1.f);
-        glm::mat4 ctm = GlmToolkit::transform(glm::vec3(pos), glm::vec3(0.f), glm::vec3(1.f));
-        glm::vec4 P = glm::inverse(ctm) * glm::vec4( point_, 0.f, 1.f );
-
-        bb = n.handle()->bbox();
-        picked = bb.contains( glm::vec3(P) );
+        picked = glm::length(glm::vec2(+1.1f, +1.1f)- glm::vec2(P)) < 0.1f;
     }
 
     if ( picked )

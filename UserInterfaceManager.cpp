@@ -341,7 +341,7 @@ void UserInterface::handleMouse()
         //
         // LEFT Mouse button
         //
-        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 10.0f) )
+        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
         {
             if (current)
             {
@@ -640,13 +640,17 @@ void ToolBox::Render()
 
 }
 
+//static void Square(ImGuiSizeCallbackData* data) {
+//    data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y); }
 
 void UserInterface::RenderPreview()
 {
     struct CustomConstraints // Helper functions for aspect-ratio constraints
     {
-        static void AspectRatio(ImGuiSizeCallbackData* data) { float *ar = (float*) data->UserData; data->DesiredSize.x = (*ar * data->CurrentSize.y) - 70.f; }
-
+        static void AspectRatio(ImGuiSizeCallbackData* data) {
+            float *ar = (float*) data->UserData;
+            data->DesiredSize.y = (data->CurrentSize.x / (*ar)) + 35.f;
+        }
     };
 
     FrameBuffer *output = Mixer::manager().session()->frame();
@@ -661,7 +665,6 @@ void UserInterface::RenderPreview()
 
         ImVec2 imagesize ( width, width / ar);
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
-//        ImGui::Image((void*)(intptr_t)output->texture(), imagesize, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
 
         ImGui::End();
     }
@@ -684,7 +687,7 @@ void UserInterface::RenderMediaPlayer()
     ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player,  ImGuiWindowFlags_NoScrollbar) || !show)
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, ImGuiWindowFlags_NoScrollbar) || !show)
     {
         ImGui::End();
         return;
@@ -694,11 +697,19 @@ void UserInterface::RenderMediaPlayer()
     float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
     ImVec2 imagesize ( width, width / mp->aspectRatio());
+    ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
     ImGui::Image((void*)(uintptr_t)mp->texture(), imagesize);
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
     if (ImGui::IsItemHovered()) {
-        ImGui::SameLine(-1);
-        ImGui::Text("    %s %d x %d\n    Framerate %.2f / %.2f", mp->codec().c_str(), mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 2.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+
+        ImGui::SetCursorScreenPos(tooltip_pos);
+        ImGui::Text(" %s %d x %d\n Framerate %.2f / %.2f", mp->codec().c_str(), mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
+
     }
+    ImGui::SetCursorScreenPos(draw_pos);
 
     if (mp->duration() != GST_CLOCK_TIME_NONE) {
 
