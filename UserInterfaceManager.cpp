@@ -268,11 +268,17 @@ void UserInterface::handleKeyboard()
         // normal keys // make sure no entry / window box is active
         else if ( !ImGui::IsAnyWindowFocused() ){
             // Backspace to delete source
-            if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ))
+            if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
                 Mixer::manager().deleteCurrentSource();
-            // button under esc to toggle menu
-            else if (ImGui::IsKeyPressed( GLFW_KEY_GRAVE_ACCENT ))
-                navigator.toggleMenu();
+            // button esc to toggle fullscreen
+            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE ))
+                Rendering::manager().mainWindow().setFullscreen(nullptr);
+            // button home to toggle menu
+            else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
+                navigator.togglePannelMenu();
+            // button home to toggle menu
+            else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
+                navigator.togglePannelNew();
         }
     }
 
@@ -556,12 +562,10 @@ ToolBox::ToolBox()
     show_icons_window = false;
 }
 
-
 void UserInterface::StartScreenshot()
 {
     screenshot_step = 1;
 }
-
 
 void UserInterface::handleScreenshot()
 {
@@ -903,6 +907,12 @@ void UserInterface::RenderShaderEditor()
 }
 
 
+
+void UserInterface::showPannel()
+{
+    navigator.showPannelSource(Mixer::manager().indexCurrentSource());
+}
+
 Navigator::Navigator()
 {
     // default geometry
@@ -944,10 +954,16 @@ void Navigator::showPannelSource(int index)
     applyButtonSelection(index);
 }
 
-void Navigator::toggleMenu()
+void Navigator::togglePannelMenu()
 {
     selected_button[NAV_MENU] = !selected_button[NAV_MENU];
     applyButtonSelection(NAV_MENU);
+}
+
+void Navigator::togglePannelNew()
+{
+    selected_button[NAV_NEW] = !selected_button[NAV_NEW];
+    applyButtonSelection(NAV_NEW);
 }
 
 void Navigator::hidePannel()
@@ -1092,7 +1108,7 @@ void Navigator::RenderSourcePannel(Source *s)
 
         static char buf5[128];
         sprintf ( buf5, "%s", s->name().c_str() );
-        ImGui::SetCursorPosY(80);
+        ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
             Mixer::manager().renameSource(s, buf5);
@@ -1168,7 +1184,7 @@ void Navigator::RenderNewPannel()
         ImGui::Text("New Source");
         ImGui::PopFont();
 
-        ImGui::SetCursorPosY(80);
+        ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Origin", &new_source_type_, "File\0Software\0Hardware\0");
 
@@ -1251,7 +1267,6 @@ void Navigator::RenderNewPannel()
                 // ask to import the source in the mixer
                 if ( ImGui::Button("Import", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                     Mixer::manager().insertSource(new_source_preview_.getSource());
-                    // reset for next time
                     selected_button[NAV_NEW] = false;
                 }
             }
@@ -1282,7 +1297,7 @@ void Navigator::RenderMainPannel()
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
-        ImGui::SetCursorPosY(80);
+        ImGui::SetCursorPosY(width_);
         ImGui::Text("Session");
         ImGui::SameLine();
         ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);

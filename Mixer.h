@@ -39,7 +39,7 @@ public:
     Source * createSourceRender();
 
     // operations on sources
-    void insertSource(Source *s);
+    void insertSource(Source *s, bool makecurrent = true);
     void deleteSource(Source *s);
     void renameSource(Source *s, const std::string &newname);
 

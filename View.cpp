@@ -84,7 +84,7 @@ MixingView::MixingView() : View(MIXING)
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Mixing";
-        scene.root()->scale_ = glm::vec3(2.0f, 2.0f, 1.0f);
+        scene.root()->scale_ = glm::vec3(2.4f, 2.4f, 1.0f);
         saveSettings();
     }
 

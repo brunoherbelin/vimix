@@ -60,7 +60,9 @@ public:
     bool pannelVisible() { return pannel_visible_; }
     void hidePannel();
     void showPannelSource(int index);
-    void toggleMenu();
+    void togglePannelMenu();
+    void togglePannelNew();
+
 
     void Render();
 };
@@ -127,6 +129,7 @@ public:
     inline bool keyboardModifier() { return keyboard_modifier_active; }
 
     void StartScreenshot();
+    void showPannel();
 
     // TODO implement the shader editor
     std::string currentTextEdit;

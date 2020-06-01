@@ -276,12 +276,12 @@ Source * Mixer::createSourceClone(std::string namesource)
     return s;
 }
 
-void Mixer::insertSource(Source *s)
+void Mixer::insertSource(Source *s, bool makecurrent)
 {
     if ( s != nullptr )
     {
-        // Add source to Session and set it as current
-        setCurrentSource( session_->addSource(s) );
+        // Add source to Session
+        SourceList::iterator sit = session_->addSource(s);
 
         // add sources Nodes to all views
         mixing_.scene.ws()->attach(s->group(View::MIXING));
@@ -291,10 +291,16 @@ void Mixer::insertSource(Source *s)
         // set a default depth to the new source
         layer_.setDepth(s);
 
-        // update view to show source created
-        setCurrentView(View::MIXING);
-        current_view_->update(0);
-        current_view_->restoreSettings();
+        if (makecurrent) {
+            // set this new source as current
+            setCurrentSource( sit );
+
+            // switch to Mixing view to show source created
+            setCurrentView(View::MIXING);
+            current_view_->update(0);
+            current_view_->restoreSettings();
+
+        }
     }
 }
 
@@ -305,45 +311,51 @@ void Mixer::deleteCurrentSource()
 
 void Mixer::deleteSource(Source *s)
 {
-    // in case..
-    unsetCurrentSource();
+    if ( s != nullptr )
+    {
+        // in case..
+        unsetCurrentSource();
 
-    // keep name
-    std::string name = s->name();
+        // keep name
+        std::string name = s->name();
 
-    // remove source Nodes from all views
-    mixing_.scene.ws()->detatch( s->group(View::MIXING) );
-    geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
-    layer_.scene.ws()->detatch( s->group(View::LAYER) );
+        // remove source Nodes from all views
+        mixing_.scene.ws()->detatch( s->group(View::MIXING) );
+        geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->detatch( s->group(View::LAYER) );
 
-    // delete source
-    session_->deleteSource(s);
+        // delete source
+        session_->deleteSource(s);
 
-    Log::Notify("Source %s deleted.", name.c_str());
+        Log::Notify("Source %s deleted.", name.c_str());
+    }
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
 {
-    // tentative new name
-    std::string tentativename = newname;
+    if ( s != nullptr )
+    {
+        // tentative new name
+        std::string tentativename = newname;
 
-    // refuse to rename to an empty name
-    if ( newname.empty() )
-        tentativename = "source";
+        // refuse to rename to an empty name
+        if ( newname.empty() )
+            tentativename = "source";
 
-    // trivial case : same name as current
-    if ( tentativename == s->name() )
-        return;
+        // trivial case : same name as current
+        if ( tentativename == s->name() )
+            return;
 
-    // search for a source of the name 'tentativename'
-    std::string basename = tentativename;
-    int count = 1;
-    while ( std::find_if(session_->begin(), session_->end(), hasName(tentativename)) != session_->end() ) {
-        tentativename = basename + std::to_string(++count);
+        // search for a source of the name 'tentativename'
+        std::string basename = tentativename;
+        int count = 1;
+        while ( std::find_if(session_->begin(), session_->end(), hasName(tentativename)) != session_->end() ) {
+            tentativename = basename + std::to_string(++count);
+        }
+
+        // ok to rename
+        s->setName(tentativename);
     }
-
-    // ok to rename
-    s->setName(tentativename);
 }
 
 void Mixer::setCurrentSource(SourceList::iterator it)
@@ -501,7 +513,7 @@ void Mixer::merge(Session *session)
     if (session) {
 
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
-            insertSource(s);
+            insertSource(s, false);
 
         delete session;
     }
