@@ -293,7 +293,7 @@ void UserInterface::handleMouse()
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
     mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
 
-    static std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
+    static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
 
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
@@ -351,8 +351,8 @@ void UserInterface::handleMouse()
         {
             if (current)
             {
-                // drag current source
-                int c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, pick);
+                // grab current source
+                int c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
                 ImGui::SetMouseCursor(c);
             }
             else {
@@ -371,21 +371,15 @@ void UserInterface::handleMouse()
 
             // get coordinate in world coordinate of mouse cursor
             glm::vec3 point = Rendering::manager().unProject(mousepos);
+            // ask the view what was picked
+            picked = Mixer::manager().currentView()->pick(point);
 
-            // picking visitor traverses the scene
-            PickingVisitor pv(point);
-            Mixer::manager().currentView()->scene.accept(pv);
-
-            // picking visitor found nodes?
-            if (pv.picked().empty()) {
+            if (picked.first == nullptr){
+                // nothing picked, unset current
                 Mixer::manager().unsetCurrentSource();
                 navigator.hidePannel();
-            }
-            else {
-                // top-most Node picked
-                pick = pv.picked().back();
-                // find source containing the cliced Node
-                Mixer::manager().setCurrentSource( pick.first );
+            } else  {
+                Mixer::manager().setCurrentSource( picked.first );
                 if (navigator.pannelVisible())
                     navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
@@ -393,7 +387,7 @@ void UserInterface::handleMouse()
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
-            pick = { nullptr, glm::vec2(0.f) };
+            picked = { nullptr, glm::vec2(0.f) };
 
         }
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )

@@ -66,6 +66,8 @@ public:
     // get total height available in monitor
     int maxHeight();
 
+    inline float dpiScale() const { return dpi_scale_; }
+
     // get which monitor contains this point
     static GLFWmonitor *monitorAt(int x, int y);
     // get which monitor has this name

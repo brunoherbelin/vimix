@@ -222,21 +222,16 @@ FrameBuffer *Source::frame() const
     }
 }
 
-Handles *Source::handleNode(Handles::Type t) const
+bool Source::contains(Node *node) const
 {
-    if ( t == Handles::ROTATE )
-        return rotate_handle_;
-    else if ( t == Handles::RESIZE_H )
-        return resize_H_handle_;
-    else if ( t == Handles::RESIZE_V )
-        return resize_V_handle_;
-    else
-        return resize_handle_;
+    hasNode tester(node);
+    return tester(this);
 }
+
 
 bool hasNode::operator()(const Source* elem) const
 {
-    if (elem)
+    if (_n && elem)
     {
         SearchVisitor sv(_n);
         elem->group(View::MIXING)->accept(sv);

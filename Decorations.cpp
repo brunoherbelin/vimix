@@ -1,41 +1,38 @@
-
-#include <glad/glad.h>
-
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-
-#include "Resource.h"
-#include "Visitor.h"
-#include "ImageShader.h"
-#include "Log.h"
-#include "GlmToolkit.h"
 #include "Decorations.h"
 
+#include "Visitor.h"
+#include "ImageShader.h"
+#include "GlmToolkit.h"
 
-Frame::Frame(Type type) : Node(), type_(type)
+
+Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
 {
-    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (type) {
     case SHARP_LARGE:
-        border_  = nullptr; //new Mesh("mesh/border_large_sharp.ply");
+        square_ = new LineSquare(color, 2.f );
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case SHARP_THIN:
-        border_  = new Mesh("mesh/border_sharp.ply");
-        shadow_  = nullptr;
+        square_ = new LineSquare(color, 2.f );
         break;
     case ROUND_LARGE:
-        border_  = new Mesh("mesh/border_large_round.ply");
+        side_  = new Mesh("mesh/border_large_round.ply");
+        top_   = new Mesh("mesh/border_large_top.ply");
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     default:
     case ROUND_THIN:
-        border_  = new Mesh("mesh/border_round.ply");
+        side_  = new Mesh("mesh/border_round.ply");
+        top_   = new Mesh("mesh/border_top.ply");
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case ROUND_SHADOW:
-        border_  = new Mesh("mesh/border_round.ply");
+        side_  = new Mesh("mesh/border_round.ply");
+        top_   = new Mesh("mesh/border_top.ply");
         shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.png");
         break;
     }
@@ -43,41 +40,73 @@ Frame::Frame(Type type) : Node(), type_(type)
 
 Frame::~Frame()
 {
-    if(border_)  delete border_;
+    if(side_)  delete side_;
+    if(top_)  delete top_;
     if(shadow_)  delete shadow_;
+}
+
+void Frame::update( float dt )
+{
+    Node::update(dt);
+    if(top_)
+        top_->update(dt);
+    if(side_)
+        side_->update(dt);
+    if(shadow_)
+        shadow_->update(dt);
 }
 
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(border_)  border_->init();
+        if(side_)  side_->init();
+        if(top_)   top_->init();
         if(shadow_)  shadow_->init();
         init();
     }
 
     if ( visible_ ) {
 
-        // shadow
+        glm::mat4 ctm = modelview * transform_;
+
+        // shadow (scaled)
         if(shadow_)
-            shadow_->draw( modelview * transform_, projection);
+            shadow_->draw( ctm, projection);
 
-        if(border_) {
-            // right side
-            float ar = scale_.x / scale_.y;
-            glm::vec3 s(1.f, 1.f, 1.f);
-            //        glm::vec3 s(scale_.y, scale_.y, 1.0);
-            glm::vec3 t(translation_.x - 1.0 + ar, translation_.y, translation_.z);
-            glm::mat4 ctm = modelview * GlmToolkit::transform(t, rotation_, s);
+        // top (scaled)
+        if(top_) {
+            top_->shader()->color = color;
+            top_->draw( ctm, projection);
+        }
 
-            if(border_) {
-                // right side
-                border_->shader()->color = color;
-                border_->draw( ctm, projection );
+        // top (scaled)
+        if(square_) {
+            square_->shader()->color = color;
+            square_->draw( ctm, projection);
+        }
+
+        if(side_) {
+
+            side_->shader()->color = color;
+
+            // get scale
+            glm::vec4 scale = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
+
+            // get rotation
+            glm::vec3 rot(0.f);
+            glm::vec4 vec = ctm * glm::vec4(1.f, 0.f, 0.f, 0.f);
+            rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+
+            if(side_) {
+
                 // left side
-                t.x = -t.x;
-                s.x = -s.x;
-                ctm = modelview * GlmToolkit::transform(t, rotation_, s);
-                border_->draw( ctm, projection );
+                vec = ctm * glm::vec4(1.f, 0.f, 0.f, 1.f);
+                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
+
+                // right side
+                vec = ctm * glm::vec4(-1.f, 0.f, 0.f, 1.f);
+                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(-scale.y, scale.y, 1.f)), projection );
+
             }
         }
     }

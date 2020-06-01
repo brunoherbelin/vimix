@@ -17,14 +17,6 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 
-static const std::vector<glm::vec3> square_points {
-            glm::vec3( -0.99f, -1.f, 0.f ), glm::vec3( -1.f, -0.99f, 0.f ),
-            glm::vec3( -1.f, 0.99f, 0.f ), glm::vec3( -0.99f, 1.f, 0.f ),
-            glm::vec3( 0.99f, 1.f, 0.f ), glm::vec3( 1.f, 0.99f, 0.f ),
-            glm::vec3( 1.f, -0.99f, 0.f ), glm::vec3( 0.99f, -1.f, 0.f ),
-            glm::vec3( -0.99f, -1.f, 0.f )
-};
-
 
 Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
 {
@@ -258,7 +250,7 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() )
         init();
 
-    glLineWidth(linewidth_);
+    glLineWidth(linewidth_ * Rendering::manager().mainWindow().dpiScale());
 
     Primitive::draw(modelview, projection);
 
@@ -271,6 +263,13 @@ void LineStrip::accept(Visitor& v)
     v.visit(*this);
 }
 
+
+
+static const std::vector<glm::vec3> square_points {
+            glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
+            glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ),
+            glm::vec3( -1.f, -1.f, 0.f )
+};
 
 LineSquare::LineSquare(glm::vec4 color, uint linewidth) : LineStrip(square_points, color, linewidth)
 {

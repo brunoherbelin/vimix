@@ -1,22 +1,18 @@
-#ifndef GARBAGEVISITOR_H
-#define GARBAGEVISITOR_H
+#ifndef DRAWVISITOR_H
+#define DRAWVISITOR_H
 
-#include <list>
-
-#include "Source.h"
+#include <glm/glm.hpp>
 #include "Visitor.h"
 
-
-class GarbageVisitor : public Visitor
+class DrawVisitor : public Visitor
 {
-    Group *current_;
-    std::list<Node *> targets_;
-    bool found_;
+    glm::mat4 modelview_;
+    glm::mat4 projection_;
+    Node *target_;
+    bool done_;
 
 public:
-    GarbageVisitor(Source *sourcetocollect);
-    GarbageVisitor(Node *nodetocollect);
-    ~GarbageVisitor();
+    DrawVisitor(Node *nodetodraw, glm::mat4 projection);
 
     void visit(Scene& n) override;
     void visit(Node& n) override;
@@ -41,7 +37,6 @@ public:
 
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
-
 };
 
-#endif // GARBAGEVISITOR_H
+#endif // DRAWVISITOR_H

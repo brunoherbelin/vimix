@@ -34,6 +34,7 @@ public:
         Cursor_NotAllowed
     } Cursor;
 
+    virtual std::pair<Node *, glm::vec2> pick(glm::vec3 point);
     virtual Cursor drag (glm::vec2, glm::vec2);
     virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
         return Cursor_Arrow;
@@ -88,8 +89,10 @@ class GeometryView : public View
 public:
     GeometryView();
 
+    void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
+    std::pair<Node *, glm::vec2> pick(glm::vec3 point) override;
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
     Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) override;
 

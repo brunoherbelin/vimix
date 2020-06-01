@@ -13,6 +13,7 @@
 #include "Source.h"
 #include "Primitives.h"
 #include "PickingVisitor.h"
+#include "DrawVisitor.h"
 #include "Mesh.h"
 #include "Mixer.h"
 #include "FrameBuffer.h"
@@ -77,6 +78,26 @@ View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
 
     return Cursor_ResizeAll;
 }
+
+std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
+{
+    std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(point);
+    scene.accept(pv);
+
+    // picking visitor found nodes?
+    if ( !pv.picked().empty()) {
+
+        // select top-most Node picked
+        picked = pv.picked().back();
+
+    }
+
+    return picked;
+}
+
 
 MixingView::MixingView() : View(MIXING)
 {
@@ -267,6 +288,58 @@ void GeometryView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
+
+void GeometryView::draw()
+{
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+
+    // draw overlay of current source
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+
+        DrawVisitor dv(s->overlays_[View::GEOMETRY], Rendering::manager().Projection());
+        scene.accept(dv);
+    }
+}
+
+
+std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
+{
+    std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(point);
+    scene.accept(pv);
+
+    // picking visitor found nodes?
+    if ( !pv.picked().empty()) {
+
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            // find if the current source was picked
+            auto itp = pv.picked().begin();
+            for (; itp != pv.picked().end(); itp++){
+                if (s->contains( (*itp).first )){
+                    picked = *itp;
+                    break;
+                }
+            }
+            // not found: the current source was not clicked
+            if (itp == pv.picked().end())
+                s = nullptr;
+        }
+        // maybe the source changed
+        if (s == nullptr)
+        {
+            // select top-most Node picked
+            picked = pv.picked().back();
+        }
+    }
+
+    return picked;
+}
+
 View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
     View::Cursor ret = Cursor_Arrow;
@@ -305,7 +378,7 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
     // which manipulation to perform?
     if (pick.first)  {
         // picking on the resizing handles in the corners
-        if ( pick.first == s->handleNode(Handles::RESIZE) ) {
+        if ( pick.first == s->resize_handle_ ) {
             if (UserInterface::manager().keyboardModifier())
                 S_resize.y = S_resize.x;
             sourceNode->scale_ = start_scale * S_resize;
@@ -324,17 +397,17 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
             ret = axis.x * axis.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
         }
         // picking on the resizing handles left or right
-        else if ( pick.first == s->handleNode(Handles::RESIZE_H) ) {
+        else if ( pick.first == s->resize_H_handle_ ) {
             sourceNode->scale_ = start_scale * glm::vec3(S_resize.x, 1.f, 1.f);
             ret = Cursor_ResizeEW;
         }
         // picking on the resizing handles top or bottom
-        else if ( pick.first == s->handleNode(Handles::RESIZE_V) ) {
+        else if ( pick.first == s->resize_V_handle_ ) {
             sourceNode->scale_ = start_scale * glm::vec3(1.f, S_resize.y, 1.f);
             ret = Cursor_ResizeNS;
         }
         // picking on the rotating handle
-        else if ( pick.first == s->handleNode(Handles::ROTATE) ) {
+        else if ( pick.first == s->rotate_handle_ ) {
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
 
             if (UserInterface::manager().keyboardModifier())

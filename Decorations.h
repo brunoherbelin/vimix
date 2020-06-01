@@ -5,6 +5,7 @@
 #include <string>
 #include <glm/glm.hpp>
 
+#include "Primitives.h"
 #include "Mesh.h"
 
 class Frame : public Node
@@ -15,18 +16,20 @@ public:
     Frame(Type type);
     ~Frame();
 
+    void update (float dt) override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
     Type type() const { return type_; }
-    Mesh *border() const { return border_; }
+    Mesh *border() const { return side_; }
     glm::vec4 color;
 
 protected:
-    Mesh *border_;
-    Mesh *shadow_;
     Type type_;
-
+    Mesh *side_;
+    Mesh *top_;
+    Mesh *shadow_;
+    LineSquare *square_;
 };
 
 class Handles : public Node

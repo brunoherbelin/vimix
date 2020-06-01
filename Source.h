@@ -24,6 +24,9 @@ typedef std::list<CloneSource *> CloneList;
 
 class Source
 {
+    friend class View;
+    friend class GeometryView;
+
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
@@ -44,10 +47,12 @@ public:
     // an overlay can be displayed on top of the source
     void setOverlayVisible(bool on);
 
-    // get handle on the node used to manipulate the source in a view
+    // get handle on the nodes used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
     inline Node *groupNode(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
-    Handles *handleNode(Handles::Type t) const;
+
+    // tests if a given node is part of the source
+    bool contains(Node *node) const;
 
     // a Source has a shader to control image processing effects
     inline ImageProcessingShader *processingShader() const { return rendershader_; }

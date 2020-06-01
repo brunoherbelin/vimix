@@ -225,6 +225,7 @@ set(VMIX_SRCS
     RenderingManager.cpp
     UserInterfaceManager.cpp
     PickingVisitor.cpp
+    DrawVisitor.cpp
     SearchVisitor.cpp
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
@@ -266,8 +267,10 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/target.ply
     ./rsc/mesh/border_round.ply
+    ./rsc/mesh/border_top.ply
     ./rsc/mesh/border_sharp.ply
     ./rsc/mesh/border_large_round.ply
+    ./rsc/mesh/border_large_top.ply
     ./rsc/mesh/border_handles_rotation.ply
     ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_handles_sharp.ply

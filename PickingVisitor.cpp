@@ -65,8 +65,8 @@ void PickingVisitor::visit(Surface &n)
 
 void PickingVisitor::visit(Frame &n)
 {
-    if (n.border())
-        n.border()->accept(*this);
+//    if (n.border())
+//        n.border()->accept(*this);
 }
 
 void PickingVisitor::visit(Handles &n)
