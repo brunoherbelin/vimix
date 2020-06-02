@@ -94,6 +94,9 @@ public:
 
     // Initialization OpenGL and GLFW window creation
     bool init();
+
+    void show();
+
     // true if active rendering window
     bool isActive();
     // draw one frame

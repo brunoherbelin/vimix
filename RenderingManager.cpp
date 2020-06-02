@@ -176,13 +176,20 @@ bool Rendering::init()
     glfwSetKeyCallback( output_.window(), WindowEscapeFullscreen);
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
 
+    return true;
+}
+
+
+void Rendering::show()
+{
     // show output window
     output_.show();
 
     // show main window
     main_.show();
 
-    return true;
+    // show menu on first show
+    UserInterface::manager().showPannel();
 }
 
 bool Rendering::isActive()
@@ -520,7 +527,8 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     // set position
     glfwSetWindowPos(window_, winset.x, winset.y);
     // window position and resize callbacks
-    glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
+    glfwSetWindowSizeCallback( window_, WindowResizeCallback );
+//    glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
     glfwSetWindowPosCallback( window_, WindowMoveCallback );
 
     // take opengl context ownership
@@ -577,12 +585,13 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
 
 void RenderingWindow::show()
 {
+    glfwShowWindow(window_);
+
     if ( Settings::application.windows[id_].fullscreen ) {
         GLFWmonitor *mo = monitorNamed(Settings::application.windows[id_].monitor);
         setFullscreen(mo);
     }
 
-    glfwShowWindow(window_);
 }
 
 // custom surface with a new VAO

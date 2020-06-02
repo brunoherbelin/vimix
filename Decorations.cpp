@@ -13,11 +13,11 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (type) {
     case SHARP_LARGE:
-        square_ = new LineSquare(color, 2.f );
+        square_ = new LineSquare(color, 3 );
         shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
         break;
     case SHARP_THIN:
-        square_ = new LineSquare(color, 2.f );
+        square_ = new LineSquare(color, 3 );
         break;
     case ROUND_LARGE:
         side_  = new Mesh("mesh/border_large_round.ply");

@@ -73,6 +73,9 @@ int main(int, char**)
     // draw the scene
     Rendering::manager().pushFrontDrawCallback(drawScene);
 
+    // show all windows
+    Rendering::manager().show();
+
     ///
     /// Main LOOP
     ///

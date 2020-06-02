@@ -901,10 +901,13 @@ void UserInterface::RenderShaderEditor()
 }
 
 
-
 void UserInterface::showPannel()
 {
-    navigator.showPannelSource(Mixer::manager().indexCurrentSource());
+    int s = Mixer::manager().indexCurrentSource();
+    if (s > -1)
+        navigator.showPannelSource(s);
+    else
+        navigator.togglePannelMenu();
 }
 
 Navigator::Navigator()

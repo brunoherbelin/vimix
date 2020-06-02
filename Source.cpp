@@ -224,6 +224,9 @@ FrameBuffer *Source::frame() const
 
 bool Source::contains(Node *node) const
 {
+    if ( node == nullptr )
+        return false;
+
     hasNode tester(node);
     return tester(this);
 }

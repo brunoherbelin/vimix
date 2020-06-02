@@ -4,7 +4,10 @@
 
 SearchVisitor::SearchVisitor(Node *node) : Visitor(), node_(node), id_(0), found_(false)
 {
-    id_ = node->id();
+    if (node != nullptr)
+        id_ = node->id();
+    else
+        id_ = -1;
 }
 
 SearchVisitor::SearchVisitor(int id) : Visitor(), node_(nullptr), id_(id), found_(false)

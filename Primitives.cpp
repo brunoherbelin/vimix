@@ -250,11 +250,19 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() )
         init();
 
-    glLineWidth(linewidth_ * Rendering::manager().mainWindow().dpiScale());
+   // glLineWidth(linewidth_ * 2.f * Rendering::manager().mainWindow().dpiScale());
 
-    Primitive::draw(modelview, projection);
+    glm::mat4 mv = modelview;
+    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.001f, 1.001f, 1.f));
 
-    glLineWidth(1);
+    for (uint i = 0 ; i < linewidth_ ; ++i ) {
+        Primitive::draw(mv, projection);
+        mv *= scale;
+    }
+
+
+
+   // glLineWidth(1);
 }
 
 void LineStrip::accept(Visitor& v)
