@@ -2,24 +2,16 @@
 
 #include "Scene.h"
 
-SearchVisitor::SearchVisitor(Node *node) : Visitor(), node_(node), id_(0), found_(false)
-{
-    if (node != nullptr)
-        id_ = node->id();
-    else
-        id_ = -1;
-}
-
-SearchVisitor::SearchVisitor(int id) : Visitor(), node_(nullptr), id_(id), found_(false)
+SearchVisitor::SearchVisitor(Node *node) : Visitor(), node_(node), found_(false)
 {
 
 }
+
 
 void SearchVisitor::visit(Node &n)
 {
-    if ( n.id() == id_ ){
+    if ( node_ == &n ){
         found_ = true;
-        node_ = &n;
     }
 }
 
@@ -40,6 +32,6 @@ void SearchVisitor::visit(Switch &n)
 
 void SearchVisitor::visit(Scene &n)
 {
-    // TODO maybe search only forground?
-    n.root()->accept(*this);
+    // search only in workspace
+    n.ws()->accept(*this);
 }

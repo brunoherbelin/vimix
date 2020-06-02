@@ -307,7 +307,7 @@ void GeometryView::draw()
 
 std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
 {
-    std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
+    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
 
     // picking visitor traverses the scene
     PickingVisitor pv(point);
@@ -321,8 +321,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
             // find if the current source was picked
             auto itp = pv.picked().begin();
             for (; itp != pv.picked().end(); itp++){
-                if (s->contains( (*itp).first )){
-                    picked = *itp;
+                if ( s->contains( (*itp).first ) ){
+                    pick = *itp;
                     break;
                 }
             }
@@ -334,11 +334,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
         if (s == nullptr)
         {
             // select top-most Node picked
-            picked = pv.picked().back();
+            pick = pv.picked().back();
         }
     }
 
-    return picked;
+    return pick;
 }
 
 View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)

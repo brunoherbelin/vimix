@@ -6,12 +6,10 @@
 class SearchVisitor: public Visitor
 {
     Node *node_;
-    int id_;
     bool found_;
 
 public:
     SearchVisitor(Node *node);
-    SearchVisitor(int id);
     inline bool found() const { return found_; }
     inline Node *node() const { return found_ ? node_ : nullptr; }
 
