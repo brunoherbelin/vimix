@@ -259,12 +259,13 @@ set(VMIX_RSC_FILES
     ./rsc/images/vimix_square_256x256.png
     ./rsc/images/icons.dds
     ./rsc/images/transparencygrid.png
-    ./rsc/images/shadow.png
-    ./rsc/images/shadow_dark.png
-    ./rsc/images/shadow_perspective.png
+    ./rsc/images/shadow.dds
+    ./rsc/images/glow.dds
+    ./rsc/images/shadow_perspective.dds
     ./rsc/mesh/point.ply
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
+    ./rsc/mesh/glow.ply
     ./rsc/mesh/target.ply
     ./rsc/mesh/border_round.ply
     ./rsc/mesh/border_top.ply

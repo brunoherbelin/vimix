@@ -203,6 +203,10 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 
 uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 {
+    std::string ext = path.substr(path.find_last_of(".") + 1);
+    if (ext=="dds")
+        return getTextureDDS(path, aspect_ratio);
+
 	GLuint textureID = 0;
 
     // return previously openned resource if already openned before

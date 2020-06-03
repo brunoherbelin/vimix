@@ -14,7 +14,7 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
     switch (type) {
     case SHARP_LARGE:
         square_ = new LineSquare(color, 3 );
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+        shadow_ = new Mesh("mesh/glow.ply", "images/glow.dds");
         break;
     case SHARP_THIN:
         square_ = new LineSquare(color, 3 );
@@ -22,18 +22,18 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
     case ROUND_LARGE:
         side_  = new Mesh("mesh/border_large_round.ply");
         top_   = new Mesh("mesh/border_large_top.ply");
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.dds");
         break;
     default:
     case ROUND_THIN:
         side_  = new Mesh("mesh/border_round.ply");
         top_   = new Mesh("mesh/border_top.ply");
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.png");
+        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.dds");
         break;
     case ROUND_SHADOW:
         side_  = new Mesh("mesh/border_round.ply");
         top_   = new Mesh("mesh/border_top.ply");
-        shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.png");
+        shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
         break;
     }
 }
@@ -70,8 +70,10 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
         glm::mat4 ctm = modelview * transform_;
 
         // shadow (scaled)
-        if(shadow_)
+        if(shadow_){
+            shadow_->shader()->color.a = 0.8f;
             shadow_->draw( ctm, projection);
+        }
 
         // top (scaled)
         if(top_) {
