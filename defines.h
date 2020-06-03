@@ -42,7 +42,8 @@
 
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
 #define COLOR_NAVIGATOR 0.1f, 0.1f, 0.1f
-#define COLOR_DEFAULT_SOURCE 1.f, 1.f, 1.f
+#define COLOR_DEFAULT_SOURCE 0.8f, 0.8f, 0.8f
+#define COLOR_HIGHLIGHT_SOURCE 1.f, 1.f, 1.f
 
 // from glmixer
 #define TEXTURE_REQUIRED_MAXIMUM 2048

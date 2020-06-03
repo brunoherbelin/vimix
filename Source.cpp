@@ -42,7 +42,7 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::MIXING]->visible_ = false;
     frame = new Frame(Frame::ROUND_LARGE);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     overlays_[View::MIXING]->attach(frame);
     groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
@@ -58,22 +58,22 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
     frame = new Frame(Frame::SHARP_LARGE);
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     overlays_[View::GEOMETRY]->attach(frame);
     resize_handle_ = new Handles(Handles::RESIZE);
-    resize_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    resize_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     resize_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_handle_);
     resize_H_handle_ = new Handles(Handles::RESIZE_H);
-    resize_H_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    resize_H_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     resize_H_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_H_handle_);
     resize_V_handle_ = new Handles(Handles::RESIZE_V);
-    resize_V_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    resize_V_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     resize_V_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(resize_V_handle_);
     rotate_handle_ = new Handles(Handles::ROTATE);
-    rotate_handle_->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    rotate_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     rotate_handle_->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(rotate_handle_);
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);

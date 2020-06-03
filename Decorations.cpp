@@ -121,7 +121,7 @@ void Frame::accept(Visitor& v)
 
 Handles::Handles(Type type) : Node(), type_(type)
 {
-    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
 
     if ( type_ == ROTATE ) {
         handle_ = new Mesh("mesh/border_handles_rotation.ply");
