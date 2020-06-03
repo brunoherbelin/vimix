@@ -279,6 +279,9 @@ void UserInterface::handleKeyboard()
             // button home to toggle menu
             else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
                 navigator.togglePannelNew();
+            // button tab to select next
+            else if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
+                Mixer::manager().setCurrentNext();
         }
     }
 

@@ -48,6 +48,7 @@ public:
     void setCurrentSource(Node *node);
     void setCurrentSource(int index);
     void setCurrentSource(Source *s);
+    void setCurrentNext();
     void unsetCurrentSource();
     void cloneCurrentSource();
     void deleteCurrentSource();

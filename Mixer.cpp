@@ -394,6 +394,19 @@ void Mixer::setCurrentSource(int index)
     setCurrentSource( session_->find(index) );
 }
 
+void Mixer::setCurrentNext()
+{
+    SourceList::iterator it = current_source_;
+
+    it++;
+
+    if (it == session_->end())  {
+        it = session_->begin();
+    }
+
+    setCurrentSource( it );
+}
+
 void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source
