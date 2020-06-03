@@ -314,20 +314,21 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
     scene.accept(pv);
 
     // picking visitor found nodes?
-    if ( !pv.picked().empty()) {
+    if ( pv.picked().size() > 0) {
 
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
+
             // find if the current source was picked
-            auto itp = pv.picked().begin();
-            for (; itp != pv.picked().end(); itp++){
+            auto itp = pv.picked().rbegin();
+            for (; itp != pv.picked().rend(); itp++){
                 if ( s->contains( (*itp).first ) ){
                     pick = *itp;
                     break;
                 }
             }
             // not found: the current source was not clicked
-            if (itp == pv.picked().end())
+            if (itp == pv.picked().rend())
                 s = nullptr;
         }
         // maybe the source changed

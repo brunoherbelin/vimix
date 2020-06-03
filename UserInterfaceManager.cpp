@@ -374,11 +374,11 @@ void UserInterface::handleMouse()
             // ask the view what was picked
             picked = Mixer::manager().currentView()->pick(point);
 
-            if (picked.first == nullptr){
+            if ( picked.first == nullptr ) {
                 // nothing picked, unset current
                 Mixer::manager().unsetCurrentSource();
                 navigator.hidePannel();
-            } else  {
+            } else {
                 Mixer::manager().setCurrentSource( picked.first );
                 if (navigator.pannelVisible())
                     navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
