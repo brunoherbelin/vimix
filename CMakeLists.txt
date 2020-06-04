@@ -256,13 +256,11 @@ set(VMIX_RSC_FILES
     ./rsc/images/mask_linear_left.dds
     ./rsc/images/mask_linear_right.dds
     ./rsc/images/vimix_256x256.png
-    ./rsc/images/vimix_square_256x256.png
     ./rsc/images/icons.dds
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.dds
     ./rsc/images/glow.dds
     ./rsc/images/shadow_perspective.dds
-    ./rsc/mesh/point.ply
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
@@ -279,6 +277,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
     ./rsc/mesh/shadow_perspective.ply
+    ./rsc/mesh/point.ply
     ./rsc/mesh/circle.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply

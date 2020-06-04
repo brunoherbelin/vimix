@@ -38,12 +38,12 @@ void FrameBuffer::init()
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexImage2D(GL_TEXTURE_2D, 0, use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
-                     0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // create a framebuffer object
@@ -58,6 +58,8 @@ void FrameBuffer::init()
         // create a multisample texture
         glGenTextures(1, &intermediate_textureid_);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.multisampling_level,
                                 use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);

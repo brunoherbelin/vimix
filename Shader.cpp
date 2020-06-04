@@ -204,8 +204,12 @@ void Shader::use()
     // Blending Function
     if ( blending != BLEND_CUSTOM) {
         glEnable(GL_BLEND);
-        glBlendEquation(blending_equation[blending]);
-        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
+//        glBlendEquation(blending_equation[blending]);
+//        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
+
+        glBlendEquationSeparate(blending_equation[blending], GL_MAX);
+        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE_MINUS_SRC_ALPHA, GL_ZERO);
+
     }
     else
         glDisable(GL_BLEND);

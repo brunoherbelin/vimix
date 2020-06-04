@@ -56,7 +56,7 @@ protected:
 class Icon : public Node
 {
 public:
-    typedef enum { GENERIC = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER } Type;
+    typedef enum { GENERIC = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, EMPTY } Type;
     Icon(Type type);
     ~Icon();
 

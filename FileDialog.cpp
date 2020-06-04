@@ -1130,7 +1130,8 @@ inline void ImageInfosPane(std::string vFilter, bool *vCantContinue) // if vCant
 
             // apply img to texture
             glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
 
             // adjust image display aspect ratio

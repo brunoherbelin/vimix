@@ -36,6 +36,7 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
         shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
         break;
     }
+
 }
 
 Frame::~Frame()
@@ -226,6 +227,8 @@ void Handles::accept(Visitor& v)
 Icon::Icon(Type style) : Node()
 {
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    translation_ = glm::vec3(0.8f, 0.8f, 0.f);
+
     switch (style) {
     case IMAGE:
         icon_  = new Mesh("mesh/icon_image.ply");
@@ -242,13 +245,16 @@ Icon::Icon(Type style) : Node()
     case RENDER:
         icon_  = new Mesh("mesh/icon_render.ply");
         break;
+    case EMPTY:
+        icon_  = new Mesh("mesh/icon_empty.ply");
+        break;
     default:
     case GENERIC:
-        icon_  = new Mesh("mesh/icon_empty.ply");
+        icon_  = new Mesh("mesh/point.ply");
+        translation_ = glm::vec3(0.f, 0.f, 0.f);
         break;
     }
 
-    translation_ = glm::vec3(0.8f, 0.8f, 0.f);
 }
 
 Icon::~Icon()
