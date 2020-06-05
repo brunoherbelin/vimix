@@ -70,7 +70,7 @@ static void SessionFileDialogOpen(std::string path)
      sessionFileDialogLoadFinished_ = false;
 
      char const * open_file_name;
-     char const * open_pattern[1] = { "*.vmx" };
+     char const * open_pattern[1] = { "*.mix" };
 
      open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
 
@@ -88,7 +88,7 @@ static void SessionFileDialogSave(std::string path)
      sessionFileDialogSaveFinished_ = false;
 
      char const * save_file_name;
-     char const * save_pattern[1] = { "*.vmx" };
+     char const * save_pattern[1] = { "*.mix" };
 
      save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
@@ -99,8 +99,8 @@ static void SessionFileDialogSave(std::string path)
         sessionFileDialogFilename_ = std::string( save_file_name );
         // check extension
         std::string extension = sessionFileDialogFilename_.substr(sessionFileDialogFilename_.find_last_of(".") + 1);
-        if (extension != "vmx")
-            sessionFileDialogFilename_ += ".vmx";
+        if (extension != "mix")
+            sessionFileDialogFilename_ += ".mix";
      }
 
      sessionFileDialogSaveFinished_ = true;
@@ -112,7 +112,7 @@ static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, con
         return;
     fileDialogPending_ = true;
 
-    char const * open_pattern[18] = { "*.vmx", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
+    char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
 
     open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
@@ -665,6 +665,13 @@ void UserInterface::RenderPreview()
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / ar);
+        // virtual button to show the output window when clic on the preview
+        ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+        if (ImGui::Selectable("##preview", false, ImGuiSelectableFlags_PressedOnClick, imagesize))
+            Rendering::manager().outputWindow().show();
+        ImGui::SetCursorScreenPos(draw_pos);
+
+        // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
 
         ImGui::End();
@@ -1193,7 +1200,7 @@ void Navigator::RenderNewPannel()
 
             // helper
             ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.vmx)\n\nEquivalent to dropping the file in the workspace.");
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.mix)\n\nEquivalent to dropping the file in the workspace.");
 
             // browse for a filename
             static std::atomic<bool> file_selected = false;

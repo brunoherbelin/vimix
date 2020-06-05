@@ -219,7 +219,7 @@ Source * Mixer::createSourceFile(std::string path)
 
         // test type of file by extension
         std::string ext = SystemToolkit::extension_filename(path);
-        if ( ext == "vmx" )
+        if ( ext == "mix" )
         {
             // create a session source
             SessionSource *ss = new SessionSource();

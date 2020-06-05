@@ -92,6 +92,10 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::LAYER] = new Group;
     overlays_[View::LAYER]->translation_.z = 0.15;
     overlays_[View::LAYER]->visible_ = false;
+    frame = new Frame(Frame::ROUND_LARGE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    overlays_[View::LAYER]->attach(frame);
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // will be associated to nodes later
@@ -159,7 +163,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::RENDERING]->attach(rendersurface_);
     groups_[View::GEOMETRY]->attach(rendersurface_);
     groups_[View::MIXING]->attach(rendersurface_);
-    groups_[View::LAYER]->attach(rendersurface_);
+//    groups_[View::LAYER]->attach(rendersurface_);
 
     // for mixing view, add another surface to overlay (for stippled view in transparency)
     Surface *surfacemix = new FrameBufferSurface(renderbuffer_);

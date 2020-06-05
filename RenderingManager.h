@@ -118,6 +118,7 @@ public:
 
     // get hold on the main window
     inline RenderingWindow& mainWindow() { return main_; }
+    inline RenderingWindow& outputWindow() { return output_; }
 
     // request screenshot
     void requestScreenshot();
