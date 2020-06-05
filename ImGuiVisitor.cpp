@@ -150,8 +150,8 @@ void ImGuiVisitor::visit(Shader &n)
         n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
     }
     ImGui::SameLine(0, 10);
-    ImGui::ColorEdit3("Color", glm::value_ptr(n.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel ) ;
-    ImGui::SameLine(0, 5);
+//    ImGui::ColorEdit3("Color", glm::value_ptr(n.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel ) ;
+//    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int mode = n.blending;
     if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Inverse\0Addition\0Subtract\0") )
@@ -187,6 +187,17 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(n.id());
 
+    if (ImGuiToolkit::ButtonIcon(4, 0)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    float g[3] = { n.gamma.x, n.gamma.y, n.gamma.z};
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::SliderFloat3("RGB", g, 1.0, 10.0) )
+    {
+        n.gamma.x = g[0];
+        n.gamma.y = g[1];
+        n.gamma.z = g[2];
+    }
+
     if (ImGuiToolkit::ButtonIcon(4, 1)) {
         n.brightness = 0.f;
         n.contrast = 0.f;
@@ -204,6 +215,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
+
 
     if (ImGuiToolkit::ButtonIcon(12, 4)) n.hueshift = 0.f;
     ImGui::SameLine(0, 10);

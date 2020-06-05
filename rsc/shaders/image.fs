@@ -23,7 +23,7 @@ void main()
     float maskIntensity = (maskColor.r + maskColor.g + maskColor.b) / 3.0;
 
     float A = textureColor.a * vertexColor.a * color.a * maskIntensity;
-    A *= int(gl_FragCoord.x + gl_FragCoord.y) % 2 > (1 - int(stipple)) ? 0.0 : 1.0;
+    A *= int(gl_FragCoord.x + gl_FragCoord.y) % 2 > (1 - int(stipple)) ? 0.0 : 0.8;
 
     // output RGBA
     FragColor = vec4(RGB, A);

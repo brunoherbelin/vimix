@@ -44,11 +44,9 @@ Source::Source() : initialized_(false), need_update_(true)
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     overlays_[View::MIXING]->attach(frame);
-
     Icon *center = new Icon(Icon::GENERIC);
     center->translation_.z = 0.1;
     overlays_[View::MIXING]->attach(center);
-
     groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
     // default geometry nodes

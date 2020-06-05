@@ -173,7 +173,7 @@ void ShadingProgram::checkLinkingErr()
 Shader::Shader() : blending(BLEND_OPACITY)
 {
     // create unique id
-    auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
     id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
 
     program_ = &simpleShadingProgram;
@@ -204,11 +204,11 @@ void Shader::use()
     // Blending Function
     if ( blending != BLEND_CUSTOM) {
         glEnable(GL_BLEND);
-//        glBlendEquation(blending_equation[blending]);
-//        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
+        glBlendEquation(blending_equation[blending]);
+        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
 
-        glBlendEquationSeparate(blending_equation[blending], GL_MAX);
-        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE_MINUS_SRC_ALPHA, GL_ZERO);
+//        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
+//        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     }
     else
