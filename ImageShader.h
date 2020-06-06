@@ -22,6 +22,7 @@ public:
     void reset() override;
     void accept(Visitor& v) override;
 
+    void operator = (const ImageShader &S);
 
     uint mask;
     uint custom_textureindex;

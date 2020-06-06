@@ -17,6 +17,8 @@ public:
     void reset() override;
     void accept(Visitor& v) override;
 
+    void operator = (const ImageProcessingShader &S);
+
 //    // textures resolution
 //    glm::vec3 iChannelResolution[1];
 

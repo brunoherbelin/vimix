@@ -59,10 +59,30 @@ void ImageProcessingShader::reset()
     filterid = 0;
     gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     levels = glm::vec4(0.f, 1.f, 0.f, 1.f);
-    chromakey = glm::vec4(0.f, 1.f, 0.f, 0.f);
+    chromakey = glm::vec4(0.f, 0.8f, 0.f, 0.f);
     chromadelta = 0.f;
 
 }
+
+void ImageProcessingShader::operator = (const ImageProcessingShader &S )
+{
+    Shader::operator =(S);
+
+    brightness = S.brightness;
+    contrast = S.contrast;
+    saturation = S.saturation;
+    hueshift = S.hueshift;
+    threshold = S.threshold;
+    lumakey = S.lumakey;
+    nbColors = S.nbColors;
+    invert = S.invert;
+    filterid = S.filterid;
+    gamma = S.gamma;
+    levels = S.levels;
+    chromakey = S.chromakey;
+    chromadelta = S.chromadelta;
+}
+
 
 void ImageProcessingShader::accept(Visitor& v) {
 //    Shader::accept(v);

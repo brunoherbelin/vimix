@@ -37,14 +37,19 @@ void ImageShader::use()
     program_->setUniform("stipple", stipple);
 
     glActiveTexture(GL_TEXTURE1);
-    if ( mask < 9 )
+    if ( mask < 9 ) {
         glBindTexture(GL_TEXTURE_2D, mask_presets[mask]);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
     else
         glBindTexture(GL_TEXTURE_2D, custom_textureindex);
     glActiveTexture(GL_TEXTURE0);
 
 }
-
 
 void ImageShader::reset()
 {
@@ -56,6 +61,16 @@ void ImageShader::reset()
     // no stippling
     stipple = 0.f;
 }
+
+void ImageShader::operator = (const ImageShader &S )
+{
+    Shader::operator =(S);
+
+    mask = S.mask;
+    custom_textureindex = S.custom_textureindex;
+    stipple = S.stipple;
+}
+
 
 void ImageShader::accept(Visitor& v) {
     Shader::accept(v);

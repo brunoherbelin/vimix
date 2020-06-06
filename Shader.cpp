@@ -180,6 +180,13 @@ Shader::Shader() : blending(BLEND_OPACITY)
     reset();
 }
 
+
+void Shader::operator = (const Shader &S )
+{
+    color = S.color;
+    blending = S.blending;
+}
+
 void Shader::accept(Visitor& v) {
     v.visit(*this);
 }

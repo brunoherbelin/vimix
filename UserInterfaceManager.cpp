@@ -1128,9 +1128,9 @@ void Navigator::RenderSourcePannel(Source *s)
         // delete button
         ImGui::Text(" ");
         // Action on source
-        if ( ImGui::Button("Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().cloneCurrentSource();
-        if ( ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+        if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);
         }
     }

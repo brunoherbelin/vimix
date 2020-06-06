@@ -187,16 +187,15 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(n.id());
 
-    if (ImGuiToolkit::ButtonIcon(4, 0)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
-    float g[3] = { n.gamma.x, n.gamma.y, n.gamma.z};
+    if (ImGuiToolkit::ButtonIcon(6, 2)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     ImGui::SameLine(0, 10);
+    ImGui::ColorEdit3("GammaColor", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
+    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::SliderFloat3("RGB", g, 1.0, 10.0) )
-    {
-        n.gamma.x = g[0];
-        n.gamma.y = g[1];
-        n.gamma.z = g[2];
-    }
+    ImGui::SliderFloat("Gamma", &n.gamma.w, 0.5f, 10.f, "%.2f", 2.f);
+
+//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//    ImGui::SliderFloat4("Levels", glm::value_ptr(n.levels), 0.0, 1.0);
 
     if (ImGuiToolkit::ButtonIcon(4, 1)) {
         n.brightness = 0.f;
@@ -215,7 +214,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
-
 
     if (ImGuiToolkit::ButtonIcon(12, 4)) n.hueshift = 0.f;
     ImGui::SameLine(0, 10);
@@ -248,7 +246,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
 
     if (ImGuiToolkit::ButtonIcon(13, 4)) {
-        n.chromakey = glm::vec4(0.f, 1.f, 0.f, 1.f);
+        n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
         n.chromadelta = 0.f;
     }
     ImGui::SameLine(0, 10);
@@ -295,9 +293,9 @@ void ImGuiVisitor::visit (MediaSource& s)
 void ImGuiVisitor::visit (SessionSource& s)
 {
     ImGui::Text("Session File");
-    if ( ImGui::Button("Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
-    if ( ImGui::Button( ICON_FA_FILE_IMPORT " Merge", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().merge( s.detach() );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );

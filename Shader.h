@@ -41,7 +41,6 @@ class Shader
 
 public:
     Shader();
-//    virtual ~Shader() {}
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
@@ -49,6 +48,8 @@ public:
     virtual void use();
     virtual void reset();
     virtual void accept(Visitor& v);
+
+    void operator = (const Shader &D );
 
     glm::mat4 projection;
     glm::mat4 modelview;

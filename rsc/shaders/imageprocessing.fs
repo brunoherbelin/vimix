@@ -326,9 +326,8 @@ void main(void)
     // chromakey
     alpha -= mix( 0.0, 1.0 - alphachromakey( transformedRGB, chromakey.rgb, chromadelta), float(chromadelta > 0.0001) );
 
-    // color transformation
+    // brightness and contrast transformation
     transformedRGB = mix(vec3(0.62), transformedRGB, contrast + 1.0) + brightness;
-    transformedRGB = LevelsControl(transformedRGB, levels.x, gamma.rgb * gamma.a, levels.y, levels.z, levels.w);
 
     // RGB invert
     transformedRGB = vec3(float(invert==1)) + ( transformedRGB * vec3(1.0 - 2.0 * float(invert==1)) );
@@ -352,10 +351,13 @@ void main(void)
     alpha -= mix( 0.0, step( transformedHSL.z, lumakey ), float(lumakey > EPSILON));
 
     // level threshold
-    transformedHSL = mix( transformedHSL, vec3(0.0, 0.0, step( transformedHSL.z, threshold )), float(threshold > EPSILON));
+    transformedHSL = mix( transformedHSL, vec3(0.0, 0.0, 0.95 - step( transformedHSL.z, threshold )), float(threshold > EPSILON));
 
     // after operations on HSL, convert back to RGB
     transformedRGB = HSV2RGB(transformedHSL);
+
+    // apply gamma correction
+    transformedRGB = LevelsControl(transformedRGB, levels.x, gamma.rgb * gamma.a, levels.y, levels.z, levels.w);
 
     // apply base color and alpha for final fragment color
     FragColor = vec4(transformedRGB * vertexColor.rgb * color.rgb, clamp(alpha, 0.0, 1.0) );
