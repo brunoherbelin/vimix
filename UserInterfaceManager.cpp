@@ -397,6 +397,9 @@ void UserInterface::handleMouse()
         {
             // display source in left pannel
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+            // discard current to select front most source
+            // (because single clic maintains same source active)
+            Mixer::manager().unsetCurrentSource();
         }
 
     }
@@ -1111,7 +1114,7 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::PopFont();
 
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 10.f));
-        ImGuiToolkit::IconToggle(13,11,11,11,&pannel_stick_);
+        ImGuiToolkit::IconToggle(13,11,11,11, &pannel_stick_);
 
         static char buf5[128];
         sprintf ( buf5, "%s", s->name().c_str() );

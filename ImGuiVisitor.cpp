@@ -145,11 +145,11 @@ void ImGuiVisitor::visit(Shader &n)
 {
     ImGui::PushID(n.id());
 
-    if (ImGuiToolkit::ButtonIcon(10, 2)) {
-        n.blending = Shader::BLEND_OPACITY;
-        n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-    }
-    ImGui::SameLine(0, 10);
+//    if (ImGuiToolkit::ButtonIcon(10, 2)) {
+//        n.blending = Shader::BLEND_OPACITY;
+//        n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+//    }
+//    ImGui::SameLine(0, 10);
 //    ImGui::ColorEdit3("Color", glm::value_ptr(n.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel ) ;
 //    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -167,8 +167,8 @@ void ImGuiVisitor::visit(ImageShader &n)
     // get index of the mask used in this ImageShader
     int item_current = n.mask;
 
-    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
-    ImGui::SameLine(0, 10);
+//    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
+//    ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     // combo list of masks
     if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
@@ -187,7 +187,14 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(n.id());
 
-    if (ImGuiToolkit::ButtonIcon(6, 2)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    if (ImGuiToolkit::ButtonIcon(6, 2)) {
+        ImageProcessingShader defaultvalues;
+        n = defaultvalues;
+    }
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Filters");
+
+    if (ImGuiToolkit::ButtonIcon(6, 4)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     ImGui::SameLine(0, 10);
     ImGui::ColorEdit3("GammaColor", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
     ImGui::SameLine(0, 5);

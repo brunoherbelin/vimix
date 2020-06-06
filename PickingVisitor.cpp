@@ -9,6 +9,7 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 
 PickingVisitor::PickingVisitor(glm::vec2 coordinates) : Visitor(), point_(coordinates)
@@ -77,27 +78,33 @@ void PickingVisitor::visit(Handles &n)
     // apply inverse transform to the point of interest
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
+    // inverse transform to check the scale
+    glm::vec4 S = glm::inverse(modelview_) * glm::vec4( 0.05f, 0.05f, 0.f, 0.f );
+    float scale = glm::length( glm::vec2(S) );
+
     bool picked = false;
-    // test by distance to the corners (more tolerant than bbox)
     if ( n.type() == Handles::RESIZE ) {
         // 4 corners
-        picked = ( glm::length(glm::vec2(+1.f, +1.f)-glm::vec2(P)) < 0.05f ||
-                   glm::length(glm::vec2(+1.f, -1.f)- glm::vec2(P)) < 0.05f ||
-                   glm::length(glm::vec2(-1.f, +1.f)- glm::vec2(P)) < 0.05f ||
-                   glm::length(glm::vec2(-1.f, -1.f)- glm::vec2(P)) < 0.05f  );
+        picked = ( glm::length(glm::vec2(+1.f, +1.f)- glm::vec2(P)) < scale ||
+                   glm::length(glm::vec2(+1.f, -1.f)- glm::vec2(P)) < scale ||
+                   glm::length(glm::vec2(-1.f, +1.f)- glm::vec2(P)) < scale ||
+                   glm::length(glm::vec2(-1.f, -1.f)- glm::vec2(P)) < scale );
     }
     else if ( n.type() == Handles::RESIZE_H ){
         // left & right
-        picked = ( glm::length(glm::vec2(+1.f, 0.f)- glm::vec2(P)) < 0.05f ||
-                   glm::length(glm::vec2(-1.f, 0.f)- glm::vec2(P)) < 0.05f );
+        picked = ( glm::length(glm::vec2(+1.f, 0.f)- glm::vec2(P)) < scale ||
+                   glm::length(glm::vec2(-1.f, 0.f)- glm::vec2(P)) < scale );
     }
     else if ( n.type() == Handles::RESIZE_V ){
         // top & bottom
-        picked = ( glm::length(glm::vec2(0.f, +1.f)- glm::vec2(P)) < 0.05f ||
-                   glm::length(glm::vec2(0.f, -1.f)- glm::vec2(P)) < 0.05f );
+        picked = ( glm::length(glm::vec2(0.f, +1.f)- glm::vec2(P)) < scale ||
+                   glm::length(glm::vec2(0.f, -1.f)- glm::vec2(P)) < scale );
     }
     else if ( n.type() == Handles::ROTATE ){
-        picked = glm::length(glm::vec2(+1.1f, +1.1f)- glm::vec2(P)) < 0.1f;
+        // the icon for rotation is on the right top corner at (0.12, 0.12) in screen coordinates
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
+        vec += glm::vec4(+1.f, +1.f, 0.f, 0.f);
+        picked = glm::length( glm::vec2(vec) - glm::vec2(P) ) < scale;
     }
 
     if ( picked )
