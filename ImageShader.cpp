@@ -7,7 +7,7 @@
 
 static ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 
-const char* ImageShader::mask_names[10] = { "None", "Vignette", "Halo", "Circle", "Round", "Top", "Botton", "Left", "Right", "Custom" };
+const char* ImageShader::mask_names[11] = { "None", "Glow", "Halo", "Circle", "Round", "Vignette", "Top", "Botton", "Left", "Right", "Custom" };
 std::vector< uint > ImageShader::mask_presets;
 
 ImageShader::ImageShader(): Shader(), custom_textureindex(0)
@@ -15,14 +15,15 @@ ImageShader::ImageShader(): Shader(), custom_textureindex(0)
     // first initialization
     if ( mask_presets.empty() ) {
         mask_presets.push_back(Resource::getTextureWhite());
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_vignette.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_halo.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_circle.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_roundcorner.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_top.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_bottom.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_left.dds"));
-        mask_presets.push_back(Resource::getTextureDDS("images/mask_linear_right.dds"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_glow.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_halo.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_circle.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_roundcorner.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_vignette.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_linear_top.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_linear_bottom.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_linear_left.png"));
+        mask_presets.push_back(Resource::getTextureImage("images/mask_linear_right.png"));
     }
     // static program shader
     program_ = &imageShadingProgram;

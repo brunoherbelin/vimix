@@ -28,7 +28,7 @@ public:
     uint custom_textureindex;
     float stipple;
 
-    static const char* mask_names[10];
+    static const char* mask_names[11];
     static std::vector< uint > mask_presets;
 };
 
