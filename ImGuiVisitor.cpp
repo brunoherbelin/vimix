@@ -77,10 +77,10 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SameLine(0, 10);
     float scale[2] = { n.scale_.x, n.scale_.y} ;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::SliderFloat2("Scale", scale, -5.0, 5.0, "%.2f") )
+    if ( ImGui::SliderFloat2("Scale", scale, -MAX_SCALE, MAX_SCALE, "%.2f") )
     {
-        n.scale_.x = scale[0];
-        n.scale_.y = scale[1];
+        n.scale_.x = CLAMP_SCALE(scale[0]);
+        n.scale_.y = CLAMP_SCALE(scale[1]);
     }
 
 //        // loop over members of a group

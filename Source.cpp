@@ -205,8 +205,14 @@ void Source::update(float dt)
 
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
-        groups_[View::RENDERING]->scale_ = groups_[View::GEOMETRY]->scale_;
         groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
+        // avoid any null scale
+        glm::vec3 s = groups_[View::GEOMETRY]->scale_;
+        s.x = CLAMP_SCALE(s.x);
+        s.y = CLAMP_SCALE(s.y);
+        s.z = 1.f;
+        groups_[View::GEOMETRY]->scale_ = s;
+        groups_[View::RENDERING]->scale_ = s;
 
         // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;

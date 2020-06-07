@@ -25,6 +25,9 @@
 #define SCENE_UNIT 5.f
 #define SCENE_DEPTH 12.f
 #define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SCENE_UNIT * SCENE_UNIT * SCENE_UNIT * SCENE_UNIT) )
+#define MIN_SCALE 0.01f
+#define MAX_SCALE 10.f
+#define CLAMP_SCALE(x) SIGN(x) * CLAMP( ABS(x), MIN_SCALE, MAX_SCALE)
 
 #define IMGUI_TITLE_MAINWINDOW ICON_FA_CIRCLE_NOTCH "  vimix"
 #define IMGUI_TITLE_MEDIAPLAYER ICON_FA_FILM "  Media Player"
@@ -58,8 +61,6 @@
 #define MAX_ICON_SIZE 2.5
 #define MIN_DEPTH_LAYER 0.0
 #define MAX_DEPTH_LAYER 40.0
-#define MIN_SCALE 0.1
-#define MAX_SCALE 200.0
 #define DEPTH_EPSILON 0.1
 #define DEPTH_DEFAULT_SPACING 1.0
 #define BORDER_SIZE 0.4

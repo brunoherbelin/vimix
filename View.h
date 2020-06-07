@@ -32,15 +32,22 @@ public:
         Cursor_ResizeNWSE,
         Cursor_Hand,
         Cursor_NotAllowed
+    } CursorType;
+
+    typedef struct Cursor {
+        CursorType type;
+        std::string info;
+        Cursor() { type = Cursor_Arrow; info = "";}
+        Cursor(CursorType t, std::string i = "") { type = t; info = i;}
     } Cursor;
 
     virtual std::pair<Node *, glm::vec2> pick(glm::vec3 point);
     virtual Cursor drag (glm::vec2, glm::vec2);
     virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
-        return Cursor_Arrow;
+        return Cursor();
     }
     virtual Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
-        return Cursor_Arrow;
+        return Cursor();
     }
 
     virtual void restoreSettings();
@@ -107,7 +114,7 @@ public:
     void zoom (float factor) override;
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
 
-    void setDepth (Source *, float d = -1.f);
+    float setDepth (Source *, float d = -1.f);
 
 private:
     float aspect_ratio;

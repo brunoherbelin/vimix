@@ -808,8 +808,8 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
             if (p_open && ImGui::MenuItem("Close")) *p_open = false;
             ImGui::EndPopup();
         }
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 ImVec4 ImGuiToolkit::GetHighlightColor()

@@ -6,6 +6,8 @@
 
 // memmove
 #include <string.h>
+#include <sstream>
+#include <iomanip>
 
 #include "defines.h"
 #include "Settings.h"
@@ -76,7 +78,7 @@ View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
-    return Cursor_ResizeAll;
+    return Cursor(Cursor_ResizeAll);
 }
 
 std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
@@ -133,7 +135,7 @@ void MixingView::zoom( float factor )
 View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
 {
     if (!s)
-        return Cursor_Arrow;
+        return Cursor();
 
     Group *sourceNode = s->group(mode_);
 
@@ -155,7 +157,9 @@ View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pai
     // request update
     s->touch();
 
-    return Cursor_ResizeAll;
+    std::ostringstream info;
+    info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+    return Cursor(Cursor_ResizeAll, info.str() );
 }
 
 uint MixingView::textureMixingQuadratic()
@@ -344,7 +348,9 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
 
 View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
-    View::Cursor ret = Cursor_Arrow;
+    View::Cursor ret = Cursor();
+
+    std::ostringstream info;
 
     // work on the given source
     if (!s)
@@ -396,42 +402,70 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
 
             // select cursor depending on diagonal
             glm::vec2 axis = glm::sign(pick.second);
-            ret = axis.x * axis.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
+            ret.type = axis.x * axis.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
+            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << " x "  << sourceNode->scale_.y;
         }
         // picking on the resizing handles left or right
         else if ( pick.first == s->resize_H_handle_ ) {
             sourceNode->scale_ = start_scale * glm::vec3(S_resize.x, 1.f, 1.f);
-            ret = Cursor_ResizeEW;
+            if (UserInterface::manager().keyboardModifier())
+                sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
+
+            ret.type = Cursor_ResizeEW;
+            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << " x "  << sourceNode->scale_.y;
         }
         // picking on the resizing handles top or bottom
         else if ( pick.first == s->resize_V_handle_ ) {
             sourceNode->scale_ = start_scale * glm::vec3(1.f, S_resize.y, 1.f);
-            ret = Cursor_ResizeNS;
+            if (UserInterface::manager().keyboardModifier())
+                sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
+
+            ret.type = Cursor_ResizeNS;
+            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << " x "  << sourceNode->scale_.y;
         }
         // picking on the rotating handle
         else if ( pick.first == s->rotate_handle_ ) {
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
-
-            if (UserInterface::manager().keyboardModifier())
-                angle = float ( int(angle * 30.f) ) / 30.f;
             sourceNode->rotation_ = start_rotation + glm::vec3(0.f, 0.f, angle);
-            ret = Cursor_Hand;
+
+            int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
+            if (UserInterface::manager().keyboardModifier()) {
+                degrees = (degrees / 10) * 10;
+                sourceNode->rotation_.z = glm::radians( float(degrees) );
+            }
+
+            ret.type = Cursor_Hand;
+            info << "Angle " << degrees << "\u00b0"; // degree symbol
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
             sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
-            ret = Cursor_ResizeAll;
+
+            if (UserInterface::manager().keyboardModifier()) {
+                sourceNode->translation_.x = float( int( sourceNode->translation_.x * 10.f ) ) / 10.f;
+                sourceNode->translation_.y = float( int( sourceNode->translation_.y * 10.f ) ) / 10.f;
+            }
+
+            ret.type = Cursor_ResizeAll;
+            info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+            info << ", "  << sourceNode->translation_.y << ")";
         }
     }
     // don't have a handle, we can only move the source
     else {
         sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
-        ret = Cursor_ResizeAll;
+        ret.type = Cursor_ResizeAll;
+        info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+        info << ", "  << sourceNode->translation_.y << ")";
     }
 
     // request update
     s->touch();
 
+    ret.info = info.str();
     return ret;
 }
 
@@ -497,10 +531,10 @@ void LayerView::zoom (float factor)
 }
 
 
-void LayerView::setDepth (Source *s, float d)
+float LayerView::setDepth(Source *s, float d)
 {
     if (!s)
-        return;
+        return -1.f;
 
     float depth = d;
 
@@ -528,12 +562,14 @@ void LayerView::setDepth (Source *s, float d)
 
     // request reordering
     View::need_deep_update_ = true;
+
+    return sourceNode->translation_.z;
 }
 
 View::Cursor LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {
     if (!s)
-        return Cursor_Arrow;
+        return Cursor();
 
     static glm::vec3 start_translation = glm::vec3(0.f);
     static glm::vec2 start_position = glm::vec2(0.f);
@@ -551,8 +587,10 @@ View::Cursor LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair
     glm::vec3 dest_translation = start_translation + gl_Position_to - gl_Position_from;
 
     // apply change
-    setDepth( s,  MAX( -dest_translation.x, 0.f) );
+    float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
 
-    return Cursor_ResizeAll;
+    std::ostringstream info;
+    info << "Depth " << std::fixed << std::setprecision(2) << d;
+    return Cursor(Cursor_ResizeAll, info.str() );
 }
 

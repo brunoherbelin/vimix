@@ -330,9 +330,9 @@ void UserInterface::handleMouse()
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
             // right mouse drag => drag current view
-            int c = Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
+            View::Cursor c = Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
 
-            ImGui::SetMouseCursor(c);
+            ImGui::SetMouseCursor(c.type);
         }
         else {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
@@ -355,8 +355,21 @@ void UserInterface::handleMouse()
             if (current)
             {
                 // grab current source
-                int c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
-                ImGui::SetMouseCursor(c);
+                View::Cursor c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
+
+                ImGui::SetMouseCursor(c.type);
+
+                float d = 0.5f * ImGui::GetFrameHeight() ;
+                ImVec2 window_pos = ImVec2( mousepos.x - d, mousepos.y - d );
+                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+                ImGui::SetNextWindowBgAlpha(0.45f); // Transparent background
+                if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+                {
+                    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+                    ImGui::Text("   %s", c.info.c_str());
+                    ImGui::PopFont();
+                    ImGui::End();
+                }
             }
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
