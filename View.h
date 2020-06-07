@@ -20,7 +20,9 @@ public:
 
     virtual void update (float dt);
     virtual void draw ();
+
     virtual void zoom (float) {}
+    virtual void centerSource(Source *) {}
 
     typedef enum {
         Cursor_Arrow = 0,
@@ -50,6 +52,7 @@ public:
         return Cursor();
     }
 
+
     virtual void restoreSettings();
     virtual void saveSettings();
 
@@ -69,6 +72,8 @@ public:
     MixingView();
 
     void zoom (float factor) override;
+    void centerSource(Source *) override;
+
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
 
 private:

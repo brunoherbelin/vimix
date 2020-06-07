@@ -107,7 +107,7 @@ MixingView::MixingView() : View(MIXING)
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Mixing";
-        scene.root()->scale_ = glm::vec3(2.4f, 2.4f, 1.0f);
+        scene.root()->scale_ = glm::vec3(MIXING_DEFAULT_SCALE, MIXING_DEFAULT_SCALE, 1.0f);
         scene.root()->translation_ = glm::vec3(1.0f, 0.0f, 0.0f);
         saveSettings();
     }
@@ -117,9 +117,8 @@ MixingView::MixingView() : View(MIXING)
     disk->setTexture(textureMixingQuadratic());
     scene.bg()->attach(disk);
 
-    glm::vec4 pink( 0.8f, 0.f, 0.8f, 1.f );
     Mesh *circle = new Mesh("mesh/circle.ply");
-    circle->shader()->color = pink;
+    circle->shader()->color = glm::vec4( COLOR_FRAME, 1.f );
     scene.bg()->attach(circle);
 }
 
@@ -127,9 +126,20 @@ MixingView::MixingView() : View(MIXING)
 void MixingView::zoom( float factor )
 {
     float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
+    z = CLAMP( z + 0.1f * factor, MIXING_MIN_SCALE, MIXING_MAX_SCALE);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+}
+
+void MixingView::centerSource(Source *s)
+{
+    // setup view so that the center of the source ends at screen coordinates (650, 150)
+    // -> this is just next to the navigation pannel
+    glm::vec3 pos_to = Rendering::manager().unProject( glm::vec2(650.f, 150.f) , scene.root()->transform_);
+    glm::vec4 pos_delta = glm::vec4(pos_to.x, pos_to.y, 0.f, 0.f) - glm::vec4(s->group(View::MIXING)->translation_, 0.f);
+    pos_delta = scene.root()->transform_ * pos_delta;
+    scene.root()->translation_ += glm::vec3(pos_delta);
+
 }
 
 View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
@@ -251,7 +261,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Geometry";
-        scene.root()->scale_ = glm::vec3(1.2f, 1.2f, 1.0f);
+        scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
         saveSettings();
     }
 
@@ -260,7 +270,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.bg()->attach(rect);
 
     Frame *border = new Frame(Frame::SHARP_THIN);
-    border->color = glm::vec4( 0.8f, 0.f, 0.8f, 1.f );
+    border->color = glm::vec4( COLOR_FRAME, 1.f );
     scene.fg()->attach(border);
 
 }
@@ -288,7 +298,7 @@ void GeometryView::update(float dt)
 void GeometryView::zoom( float factor )
 {
     float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
+    z = CLAMP( z + 0.1f * factor, GEOMETRY_MIN_SCALE, GEOMETRY_MAX_SCALE);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }
@@ -482,8 +492,8 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Layer";
-        scene.root()->scale_ = glm::vec3(0.8f, 0.8f, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.3f, 0.5f, 0.0f);
+        scene.root()->scale_ = glm::vec3(LAYER_DEFAULT_SCALE, LAYER_DEFAULT_SCALE, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.3f, 1.f, 0.0f);
         saveSettings();
     }
 
@@ -497,7 +507,7 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     scene.bg()->attach(persp);
 
     Frame *border = new Frame(Frame::ROUND_SHADOW);
-    border->color = glm::vec4( 0.8f, 0.f, 0.8f, 0.7f );
+    border->color = glm::vec4( COLOR_FRAME, 0.7f );
     scene.bg()->attach(border);
 }
 
@@ -525,7 +535,7 @@ void LayerView::update(float dt)
 void LayerView::zoom (float factor)
 {
     float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, 0.2f, 10.f);
+    z = CLAMP( z + 0.1f * factor, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }

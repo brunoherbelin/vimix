@@ -144,7 +144,6 @@ protected:
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();
-
 };
 
 #endif /* #define __UI_MANAGER_H_ */

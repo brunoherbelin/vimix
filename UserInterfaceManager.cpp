@@ -287,6 +287,27 @@ void UserInterface::handleKeyboard()
 
 }
 
+
+void setMouseCursor(View::Cursor c = View::Cursor())
+{
+    ImGui::SetMouseCursor(c.type);
+
+    if ( !c.info.empty()) {
+        ImGuiIO& io = ImGui::GetIO();
+        float d = 0.5f * ImGui::GetFrameHeight() ;
+        ImVec2 window_pos = ImVec2( io.MousePos.x - d, io.MousePos.y - d );
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.45f); // Transparent background
+        if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("   %s", c.info.c_str());
+            ImGui::PopFont();
+            ImGui::End();
+        }
+    }
+}
+
 void UserInterface::handleMouse()
 {
 
@@ -331,20 +352,19 @@ void UserInterface::handleMouse()
         {
             // right mouse drag => drag current view
             View::Cursor c = Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
-
-            ImGui::SetMouseCursor(c.type);
+            setMouseCursor(c);
         }
-        else {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
+        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
 
-            if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-
-                // TODO CONTEXT MENU
+            Mixer::manager().unsetCurrentSource();
+            navigator.hidePannel();
 
 //                glm::vec3 point = Rendering::manager().unProject(mousepos, Mixer::manager().currentView()->scene.root()->transform_ );
 
-
-            }
+        }
+        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right) )
+        {
+            Mixer::manager().currentView()->restoreSettings();
         }
 
         //
@@ -357,19 +377,7 @@ void UserInterface::handleMouse()
                 // grab current source
                 View::Cursor c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
 
-                ImGui::SetMouseCursor(c.type);
-
-                float d = 0.5f * ImGui::GetFrameHeight() ;
-                ImVec2 window_pos = ImVec2( mousepos.x - d, mousepos.y - d );
-                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-                ImGui::SetNextWindowBgAlpha(0.45f); // Transparent background
-                if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-                {
-                    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-                    ImGui::Text("   %s", c.info.c_str());
-                    ImGui::PopFont();
-                    ImGui::End();
-                }
+                setMouseCursor(c);
             }
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
