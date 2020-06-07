@@ -135,8 +135,11 @@ void MixingView::centerSource(Source *s)
 {
     // setup view so that the center of the source ends at screen coordinates (650, 150)
     // -> this is just next to the navigation pannel
-    glm::vec3 pos_to = Rendering::manager().unProject( glm::vec2(650.f, 150.f) , scene.root()->transform_);
-    glm::vec4 pos_delta = glm::vec4(pos_to.x, pos_to.y, 0.f, 0.f) - glm::vec4(s->group(View::MIXING)->translation_, 0.f);
+    glm::vec2 screenpoint = glm::vec2(480.f, 40.f) * Rendering::manager().mainWindow().dpiScale();
+    glm::vec3 pos_to = Rendering::manager().unProject(screenpoint, scene.root()->transform_);
+    glm::vec3 pos_from( - s->group(View::MIXING)->scale_.x, s->group(View::MIXING)->scale_.y, 0.f);
+    pos_from += s->group(View::MIXING)->translation_;
+    glm::vec4 pos_delta = glm::vec4(pos_to.x, pos_to.y, 0.f, 0.f) - glm::vec4(pos_from.x, pos_from.y, 0.f, 0.f);
     pos_delta = scene.root()->transform_ * pos_delta;
     scene.root()->translation_ += glm::vec3(pos_delta);
 
