@@ -78,8 +78,6 @@ void PickingVisitor::visit(Handles &n)
     // apply inverse transform to the point of interest
     glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
 
-    Log::Info("P  (%f, %f)", P.x, P.y);
-
     // inverse transform to check the scale
     glm::vec4 S = glm::inverse(modelview_) * glm::vec4( 0.05f, 0.05f, 0.f, 0.f );
     float scale = glm::length( glm::vec2(S) );
@@ -103,9 +101,10 @@ void PickingVisitor::visit(Handles &n)
                    glm::length(glm::vec2(0.f, -1.f)- glm::vec2(P)) < scale );
     }
     else if ( n.type() == Handles::ROTATE ){
-        // the icon for rotation is on the right top corner at (0.12, 0.12) in screen coordinates
-        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
-        picked = glm::length( glm::vec2( 1.f + glm::abs(vec.x), 1.f + glm::abs(vec.y)) - glm::vec2(P) ) < scale;
+        // the icon for rotation is on the right top corner at (0.12, 0.12) in scene coordinates
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
+        float l = glm::length( glm::vec2(vec) );
+        picked = glm::length( glm::vec2( 1.f + l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
     }
 
     if ( picked )

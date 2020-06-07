@@ -384,11 +384,11 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
 
     // grab coordinates in scene-View reference frame
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
-    glm::vec3 gl_Position_to = Rendering::manager().unProject(to, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // grab coordinates in source-root reference frame
     glm::vec4 S_from = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_from,  1.f );
-    glm::vec4 S_to = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_to,  1.f );
+    glm::vec4 S_to   = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_to,  1.f );
     glm::vec3 S_resize = glm::vec3(S_to) / glm::vec3(S_from);
 
 //    Log::Info(" screen coordinates ( %.1f, %.1f ) ", to.x, to.y);
@@ -441,7 +441,13 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
         }
         // picking on the rotating handle
         else if ( pick.first == s->rotate_handle_ ) {
+            // rotation center to center of source
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), start_translation);
+            S_from = glm::inverse(T) * glm::vec4( gl_Position_from,  1.f );
+            S_to   = glm::inverse(T) * glm::vec4( gl_Position_to,  1.f );
+            // angle
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
+            // apply rotation on Z axis
             sourceNode->rotation_ = start_rotation + glm::vec3(0.f, 0.f, angle);
 
             int degrees = int(  glm::degrees(sourceNode->rotation_.z) );

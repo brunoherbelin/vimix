@@ -1,11 +1,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
+#include <glm/gtx/component_wise.hpp>
 
 #include "Decorations.h"
 
 #include "Visitor.h"
 #include "ImageShader.h"
 #include "GlmToolkit.h"
+#include "Log.h"
 
 
 Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
@@ -163,6 +165,11 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         glm::vec3 rot(0.f);
         glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
         rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+        vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
+//        glm::vec3 scale( vec.x > 0.f ? 1.f : -1.f, vec.y > 0.f ? 1.f : -1.f, 1.f);
+//        glm::vec3 scale(1.f, 1.f, 1.f);
+
+//        Log::Info(" (0,1) becomes (%f, %f)", scale.x, scale.y);
 
         if ( type_ == RESIZE ) {
 
@@ -207,10 +214,24 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // one icon in top right corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
-            vec = ctm * glm::vec4(0.12f, 0.12f, 0.f, 1.f);
+            glm::vec4 pos = ctm * glm::vec4(0.12f, 0.12f, 0.f, 1.f);
+//            Log::Info(" (0.12,0.12) becomes (%f, %f)", pos.x, pos.y);
             // 2. ..from the top right corner (1,1)
-            vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + vec;
+            vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+
+// TODO fix problem with negative scale
+//            glm::vec4 target = modelview * glm::vec4(1.2f, 1.2f, 0.f, 1.f);
+
+//            vec = modelview * glm::vec4(1.f, 1.f, 0.f, 1.f);
+//            glm::vec4 dv = target - vec;
+
+//            Log::Info("dv  (%f, %f)", dv.x, dv.y);
+//            float m = dv.x < dv.y ? dv.x : dv.y;
+//            Log::Info("min  %f", m);
+
+//            ctm = GlmToolkit::transform( glm::vec3(target), rot, glm::vec3(1.f));
+
             handle_->draw( ctm, projection );
         }
     }
