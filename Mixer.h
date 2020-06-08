@@ -33,13 +33,13 @@ public:
     // draw session and current view
     void draw();
 
-    // manangement of sources
+    // creation of sources
     Source * createSourceFile(std::string path);
     Source * createSourceClone(std::string namesource);
     Source * createSourceRender();
 
     // operations on sources
-    void insertSource(Source *s, bool makecurrent = true);
+    void addSource(Source *s);
     void deleteSource(Source *s);
     void renameSource(Source *s, const std::string &newname);
 
@@ -75,6 +75,9 @@ protected:
     Session *session_;
     Session *back_session_;
     void swap();
+
+    SourceList candidate_sources_;
+    void insertSource(Source *s, bool makecurrent = true);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

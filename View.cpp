@@ -175,6 +175,29 @@ View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pai
     return Cursor(Cursor_ResizeAll, info.str() );
 }
 
+void MixingView::setAlpha(Source *s)
+{
+    if (!s)
+        return;
+
+    // move the layer node of the source
+    Group *sourceNode = s->group(mode_);
+    glm::vec2 mix_pos = glm::vec2(sourceNode->translation_);
+
+    for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
+
+        if ( glm::distance(glm::vec2((*it)->translation_), mix_pos) < 0.001) {
+            mix_pos += glm::vec2(-0.03, 0.03);
+        }
+    }
+
+    sourceNode->translation_.x = mix_pos.x;
+    sourceNode->translation_.y = mix_pos.y;
+
+    // request update
+    s->touch();
+}
+
 uint MixingView::textureMixingQuadratic()
 {
     static GLuint texid = 0;

@@ -76,6 +76,8 @@ public:
 
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
 
+    void setAlpha (Source *s);
+
 private:
     uint textureMixingQuadratic();
 };

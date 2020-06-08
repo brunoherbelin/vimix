@@ -186,6 +186,12 @@ void Mixer::update()
     float dt = static_cast<float>( GST_TIME_AS_MSECONDS(current_time - update_time_) ) * 0.001f;
     update_time_ = current_time;
 
+    // insert source candidate for this session
+    if (candidate_sources_.size()>0) {
+        insertSource(candidate_sources_.front());
+        candidate_sources_.pop_front();
+    }
+
     // update session and associated sources
     session_->update(dt);
 
@@ -276,6 +282,11 @@ Source * Mixer::createSourceClone(std::string namesource)
     return s;
 }
 
+void Mixer::addSource(Source *s)
+{
+    candidate_sources_.push_back(s);
+}
+
 void Mixer::insertSource(Source *s, bool makecurrent)
 {
     if ( s != nullptr )
@@ -283,13 +294,15 @@ void Mixer::insertSource(Source *s, bool makecurrent)
         // Add source to Session
         SourceList::iterator sit = session_->addSource(s);
 
+        // set a default depth to the new source
+        layer_.setDepth(s);
+        // set a default alpha to the new source
+        mixing_.setAlpha(s);
+
         // add sources Nodes to all views
         mixing_.scene.ws()->attach(s->group(View::MIXING));
         geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
         layer_.scene.ws()->attach(s->group(View::LAYER));
-
-        // set a default depth to the new source
-        layer_.setDepth(s);
 
         if (makecurrent) {
             // set this new source as current
@@ -298,9 +311,7 @@ void Mixer::insertSource(Source *s, bool makecurrent)
             // switch to Mixing view to show source created
             setCurrentView(View::MIXING);
             current_view_->update(0);
-//            current_view_->restoreSettings();
             current_view_->centerSource(s);
-
         }
     }
 }
