@@ -297,7 +297,7 @@ void setMouseCursor(View::Cursor c = View::Cursor())
         float d = 0.5f * ImGui::GetFrameHeight() ;
         ImVec2 window_pos = ImVec2( io.MousePos.x - d, io.MousePos.y - d );
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.45f); // Transparent background
+        ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
         if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
@@ -319,10 +319,14 @@ void UserInterface::handleMouse()
 
     static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
 
+    // steal focus on right button clic
+    if (!ImGui::GetIO().WantCaptureMouse)
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) /*|| ImGui::IsMouseClicked(ImGuiMouseButton_Middle)*/)
+            ImGui::FocusWindow(NULL);
+
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
-        ImGui::FocusWindow(0);
         Source *current = Mixer::manager().currentSource();
 
 //        if (current)
@@ -682,8 +686,8 @@ void UserInterface::RenderPreview()
     if (output)
     {
         float ar = output->aspectRatio();
-        ImGui::SetNextWindowPos(ImVec2(850, 450), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(380, 260), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(1180, 20), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
         ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.preview,  ImGuiWindowFlags_NoScrollbar);
         float width = ImGui::GetContentRegionAvail().x;
@@ -716,7 +720,7 @@ void UserInterface::RenderMediaPlayer()
         }
     }
 
-    ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
     if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, ImGuiWindowFlags_NoScrollbar) || !show)
@@ -738,7 +742,11 @@ void UserInterface::RenderMediaPlayer()
         draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 2.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
 
         ImGui::SetCursorScreenPos(tooltip_pos);
-        ImGui::Text(" %s %d x %d\n Framerate %.2f / %.2f", mp->codec().c_str(), mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
+        ImGui::Text(" %s (%s)", SystemToolkit::base_filename(mp->uri()).c_str(), mp->codec().c_str());
+        if ( mp->frameRate() > 0.f )
+            ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
+        else
+            ImGui::Text(" %d x %d px", mp->width(), mp->height());
 
     }
     ImGui::SetCursorScreenPos(draw_pos);
@@ -1096,7 +1104,7 @@ void Navigator::Render()
     ImGui::PopStyleVar();
     ImGui::PopFont();
 
-    if (pannel_stick_ || pannel_visible_){
+    if ( Settings::application.pannel_stick || pannel_visible_){
         // pannel menu
         if (selected_button[NAV_MENU])
         {
@@ -1136,7 +1144,13 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::PopFont();
 
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 10.f));
-        ImGuiToolkit::IconToggle(13,11,11,11, &pannel_stick_);
+        ImGuiToolkit::IconToggle(13,11,11,11, &Settings::application.pannel_stick);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("%s-clic on source to show pannel", Settings::application.pannel_stick?"Single":"Double");
+            ImGui::EndTooltip();
+        }
 
         static char buf5[128];
         sprintf ( buf5, "%s", s->name().c_str() );
@@ -1364,8 +1378,10 @@ void Navigator::RenderMainPannel()
         ImGui::Text("Windows");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview, CTRL_MOD "P");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, CTRL_MOD "M");
+#ifndef NDEBUG
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox, CTRL_MOD  "T");
+#endif
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, CTRL_MOD "L");
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
 
@@ -1409,8 +1425,8 @@ void Navigator::RenderMainPannel()
 
 void ShowAbout(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -1429,7 +1445,7 @@ void ShowAbout(bool* p_open)
 
 void ShowAboutOpengl(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(430, 640), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
@@ -1498,7 +1514,7 @@ void ShowAboutOpengl(bool* p_open)
 void ShowAboutGStreamer(bool* p_open)
 {
 
-    ImGui::SetNextWindowPos(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(430, 20), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();

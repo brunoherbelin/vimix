@@ -598,6 +598,11 @@ std::string MediaPlayer::codec() const
     return codec_name_;
 }
 
+std::string MediaPlayer::uri() const
+{
+    return uri_;
+}
+
 double MediaPlayer::frameRate() const
 {
     return framerate_;

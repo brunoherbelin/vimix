@@ -207,6 +207,11 @@ public:
     float aspectRatio() const;
 
     /**
+     * Get name of the media
+     * */
+    std::string uri() const;
+
+    /**
      * Accept visitors
      * */
     void accept(Visitor& v);

@@ -57,6 +57,7 @@ void Settings::Save()
     applicationNode->SetAttribute("preview", application.preview);
     applicationNode->SetAttribute("media_player", application.media_player);
     applicationNode->SetAttribute("shader_editor", application.shader_editor);
+    applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
     applicationNode->SetAttribute("stats", application.stats);
     applicationNode->SetAttribute("stats_corner", application.stats_corner);
     applicationNode->SetAttribute("logs", application.logs);
@@ -161,6 +162,7 @@ void Settings::Load()
     pElement->QueryBoolAttribute("preview", &application.preview);
     pElement->QueryBoolAttribute("media_player", &application.media_player);
     pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
+    pElement->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
     pElement->QueryBoolAttribute("stats", &application.stats);
     pElement->QueryBoolAttribute("logs", &application.logs);
     pElement->QueryBoolAttribute("toolbox", &application.toolbox);

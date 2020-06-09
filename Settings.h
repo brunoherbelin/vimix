@@ -69,6 +69,7 @@ struct Application
     bool preview;
     bool media_player;
     bool shader_editor;
+    bool pannel_stick;
     bool toolbox;
 
     // Settings of Views
@@ -94,6 +95,7 @@ struct Application
         preview = false;
         media_player = false;
         shader_editor = false;
+        pannel_stick = false;
         toolbox = false;
         current_view = 1;
         framebuffer_ar = 3;
@@ -102,6 +104,8 @@ struct Application
         std::vector<int> second (4,100);
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
+        windows[0].w = 1600;
+        windows[0].h = 900;
         windows[1].name = APP_NAME " -- Output";
     }
 

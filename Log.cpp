@@ -54,6 +54,10 @@ struct AppLog
 
     void Draw(const char* title, bool* p_open = NULL)
     {
+
+        ImGui::SetNextWindowPos(ImVec2(430, 660), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(1150, 220), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(600, 180), ImVec2(FLT_MAX, FLT_MAX));
         if (!ImGui::Begin(title, p_open))
         {
             ImGui::End();
