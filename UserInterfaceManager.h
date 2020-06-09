@@ -129,7 +129,7 @@ public:
     inline bool keyboardModifier() { return keyboard_modifier_active; }
 
     void StartScreenshot();
-    void showPannel();
+    void showPannel(int id = 0);
 
     // TODO implement the shader editor
     std::string currentTextEdit;

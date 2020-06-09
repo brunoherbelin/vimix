@@ -935,13 +935,14 @@ void UserInterface::RenderShaderEditor()
 }
 
 
-void UserInterface::showPannel()
+void UserInterface::showPannel(int id)
 {
-    int s = Mixer::manager().indexCurrentSource();
-    if (s > -1)
-        navigator.showPannelSource(s);
-    else
+    if (id == NAV_MENU)
         navigator.togglePannelMenu();
+    else if (id == NAV_NEW)
+        navigator.togglePannelNew();
+    else
+        navigator.showPannelSource(id);
 }
 
 Navigator::Navigator()

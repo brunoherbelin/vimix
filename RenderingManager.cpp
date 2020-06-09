@@ -187,7 +187,7 @@ void Rendering::show()
     main_.show();
 
     // show menu on first show
-    UserInterface::manager().showPannel();
+    UserInterface::manager().showPannel(NAV_MENU);
 }
 
 bool Rendering::isActive()
@@ -324,6 +324,10 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
             break;
         // try to create a source
         Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
+    }
+    if (path_count>0) {
+        UserInterface::manager().showPannel();
+        Rendering::manager().mainWindow().show();
     }
 }
 
