@@ -81,7 +81,7 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 session_->addSource(new_session_source);
             }
             else if ( std::string(pType) == "RenderSource") {
-                RenderSource *new_render_source = new RenderSource();
+                RenderSource *new_render_source = new RenderSource(session_);
                 new_render_source->accept(*this);
                 session_->addSource(new_render_source);
             }

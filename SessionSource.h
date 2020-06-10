@@ -40,7 +40,7 @@ protected:
 class RenderSource : public Source
 {
 public:
-    RenderSource();
+    RenderSource(Session *session);
     ~RenderSource();
 
     // implementation of source API
@@ -53,6 +53,7 @@ protected:
 
     void init() override;
     Surface *sessionsurface_;
+    Session *session_;
 };
 
 

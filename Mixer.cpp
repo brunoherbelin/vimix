@@ -256,7 +256,7 @@ Source * Mixer::createSourceFile(std::string path)
 Source * Mixer::createSourceRender()
 {
     // ready to create a source
-    RenderSource *s = new RenderSource;
+    RenderSource *s = new RenderSource(session_);
 
     // propose a new name based on session name
     renameSource(s, SystemToolkit::base_filename(session_->filename()));

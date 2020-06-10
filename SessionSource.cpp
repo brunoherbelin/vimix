@@ -95,12 +95,14 @@ bool SessionSource::failed() const
 
 uint SessionSource::texture() const
 {
+    if (session_ == nullptr)
+        return Resource::getTextureBlack();
     return session_->frame()->texture();
 }
 
 void SessionSource::init()
 {
-    if ( loadFinished_ && !loadFailed_ ) {
+    if ( loadFinished_ && !loadFailed_ && session_ != nullptr) {
         loadFinished_ = false;
 
         // set resolution
@@ -156,7 +158,7 @@ void SessionSource::accept(Visitor& v)
 }
 
 
-RenderSource::RenderSource() : Source()
+RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
     // create  surface:
     sessionsurface_ = new Surface(rendershader_);
@@ -170,24 +172,30 @@ RenderSource::~RenderSource()
 
 bool RenderSource::failed() const
 {
-    return Mixer::manager().session() == nullptr;
+    return session_ == nullptr;
 }
 
 uint RenderSource::texture() const
 {
-    return Mixer::manager().session()->frame()->texture();
+    if (session_ == nullptr)
+        return Resource::getTextureBlack();
+    return session_->frame()->texture();
 }
 
 void RenderSource::init()
 {
-    Session *session = Mixer::manager().session();
-    if (session && session->frame()->texture() != Resource::getTextureBlack()) {
+    if (session_ == nullptr)
+        session_ = Mixer::manager().session();
+
+    if (session_ && session_->frame()->texture() != Resource::getTextureBlack()) {
+
+        FrameBuffer *fb = session_->frame();
 
         // get the texture index from framebuffer of view, apply it to the surface
-        sessionsurface_->setTextureIndex( session->frame()->texture() );
+        sessionsurface_->setTextureIndex( fb->texture() );
 
         // create Frame buffer matching size of output session
-        FrameBuffer *renderbuffer = new FrameBuffer( session->frame()->resolution());
+        FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution());
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
@@ -199,7 +207,7 @@ void RenderSource::init()
         // done init
         initialized_ = true;
 
-        Log::Info("Source Render linked to session (%d x %d).", int(session->frame()->resolution().x), int(session->frame()->resolution().y) );
+        Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
     }
 }
 
