@@ -10,6 +10,7 @@
 #include <set>
 #include <list>
 #include <vector>
+#include <map>
 
 #include "GlmToolkit.h"
 
@@ -71,6 +72,10 @@ public:
     glm::mat4 transform_;
     glm::vec3 scale_, rotation_, translation_;
 
+    // animation update callbacks
+    typedef void (* NodeUpdateCallback)(Node *);
+    // list of functions to call at each update
+    std::list<NodeUpdateCallback> update_callbacks_;
 };
 
 
@@ -164,10 +169,10 @@ public:
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    virtual void clear();
-    virtual void attach (Node *child);
-    virtual void detatch (Node *child);
-    virtual void sort();
+    void clear();
+    void attach (Node *child);
+    void detatch (Node *child);
+    void sort();
 
     NodeSet::iterator begin();
     NodeSet::iterator end();
@@ -187,53 +192,27 @@ protected:
  * draw() will draw only the active child
  *
  */
-class Switch : public Group {
+class Switch : public Node {
 
 public:
-    Switch() : Group(), active_(end()) {}
+    Switch() : Node(), active_(0) {}
 
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-    void attach (Node *child) override;
-    void detatch (Node *child) override;
+    uint attach  (Node *child);
+    void detatch (Node *child);
+    void setActive (uint index);
 
-    void unsetActiveChild ();
-    void setActiveChild (Node *child);
-    void setActiveChild (NodeSet::iterator n);
-    NodeSet::iterator activeChild () const;
-
-    void setIndexActiveChild (int index);
-    int getIndexActiveChild () const;
+    uint active ()       const { return active_; }
+    Node *activeChild () const { return child(active_); }
+    uint numChildren ()  const { return children_.size(); }
+    Node *child (uint index) const;
 
 protected:
-    NodeSet::iterator active_;
-};
-
-/**
- * @brief The Animation class is a Group with an update() function
- *
- * The update() computes a transformation of the Group to apply a movement
- * which is applied to all children.
- *
- */
-class Animation : public Group {
-
-public:
-    Animation() : Group(), axis_(glm::vec3(0.f, 0.f, 1.f)), speed_(0.f), radius_(1.f) { }
-
-    virtual void init () override;
-    virtual void update (float dt) override;
-    virtual void accept (Visitor& v) override;
-
-    // circular path
-    glm::vec3 axis_;
-    float speed_;
-    float radius_;
-
-protected:
-    glm::mat4 animation_;
+    uint active_;
+    std::vector<Node *> children_;
 };
 
 

@@ -41,11 +41,15 @@ public:
     // cloning mechanism
     virtual CloneSource *clone();
 
-    // make visible or hidden
-    void setVisible(bool on);
-
-    // an overlay can be displayed on top of the source
-    void setOverlayVisible(bool on);
+    // Display mode
+    typedef enum {
+        HIDDEN  = 0,
+        NORMAL  = 1,
+        ACTIVE  = 2,
+        CURRENT = 3
+    } Mode;
+    Mode mode() const;
+    void setMode(Mode m);
 
     // get handle on the nodes used to manipulate the source in a view
     inline Group *group(View::Mode m) const { return groups_.at(m); }
@@ -108,8 +112,12 @@ protected:
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
-    // overlay to be displayed on top of source
+    // mode for display
+    Mode mode_;
+
+    // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
+    std::map<View::Mode, Switch*> frames_;
     Handles *resize_handle_, *resize_H_handle_, *resize_V_handle_, *rotate_handle_;
 
     // update

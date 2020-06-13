@@ -26,7 +26,8 @@ void SearchVisitor::visit(Group &n)
 
 void SearchVisitor::visit(Switch &n)
 {
-    (*n.activeChild())->accept(*this);
+    if (n.numChildren()>0)
+        n.activeChild()->accept(*this);
 }
 
 

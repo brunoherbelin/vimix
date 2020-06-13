@@ -50,13 +50,8 @@ void DrawVisitor::visit(Scene &n)
 void DrawVisitor::visit(Switch &n)
 {
     glm::mat4 mv = modelview_;
-    (*n.activeChild())->accept(*this);
+    n.activeChild()->accept(*this);
     modelview_ = mv;
-}
-
-void DrawVisitor::visit(Animation &n)
-{
-
 }
 
 void DrawVisitor::visit(Primitive &n)

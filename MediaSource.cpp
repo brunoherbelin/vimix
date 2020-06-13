@@ -82,16 +82,17 @@ void MediaSource::init()
 
             // icon in mixing view
             if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE) {
-                overlays_[View::MIXING]->attach( new Icon(Icon::IMAGE) );
-                overlays_[View::LAYER]->attach( new Icon(Icon::IMAGE) );
+                overlays_[View::MIXING]->attach( new Icon(Icon::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+                overlays_[View::LAYER]->attach( new Icon(Icon::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
             }
             else {
-                overlays_[View::MIXING]->attach( new Icon(Icon::VIDEO) );
-                overlays_[View::LAYER]->attach( new Icon(Icon::VIDEO) );
+                overlays_[View::MIXING]->attach( new Icon(Icon::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f)) );
+                overlays_[View::LAYER]->attach( new Icon(Icon::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f)) );
             }
 
             // done init
             initialized_ = true;
+            Log::Info("Source Media linked to Media %s.", mediaplayer()->uri().c_str());
         }
     }
 

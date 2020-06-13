@@ -29,6 +29,7 @@ public:
     inline glm::vec3 min() const { return mMin; }
     inline glm::vec3 max() const { return mMax; }
     glm::vec3 center() const;
+    glm::vec3 scale() const;
     bool intersect(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(glm::vec3 point, bool ignore_z = true) const;
@@ -40,6 +41,7 @@ public:
 
     AxisAlignedBoundingBox translated(glm::vec3 t);
     AxisAlignedBoundingBox scaled(glm::vec3 s);
+    AxisAlignedBoundingBox transformed(glm::mat4 m);
 };
 
 }

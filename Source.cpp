@@ -20,6 +20,7 @@ Source::Source() : initialized_(false), need_update_(true)
 {
     sprintf(initials_, "__");
     name_ = "Source";
+    mode_ = Source::HIDDEN;
 
     // create groups and overlays for each view
 
@@ -30,39 +31,45 @@ Source::Source() : initialized_(false), need_update_(true)
     // default mixing nodes
     groups_[View::MIXING] = new Group;
     groups_[View::MIXING]->visible_ = false;
+    groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
+    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
+
+    frames_[View::MIXING] = new Switch;
     Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.7f);
-    groups_[View::MIXING]->attach(frame);
-    groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
-    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
+    frames_[View::MIXING]->attach(frame);
+    frame = new Frame(Frame::ROUND_LARGE);
+    frame->translation_.z = 0.01;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    frames_[View::MIXING]->attach(frame);
+    groups_[View::MIXING]->attach(frames_[View::MIXING]);
 
     overlays_[View::MIXING] = new Group;
     overlays_[View::MIXING]->translation_.z = 0.1;
     overlays_[View::MIXING]->visible_ = false;
-    frame = new Frame(Frame::ROUND_LARGE);
-    frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    overlays_[View::MIXING]->attach(frame);
-    Icon *center = new Icon(Icon::GENERIC);
-    center->translation_.z = 0.1;
+    Icon *center = new Icon(Icon::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
     overlays_[View::MIXING]->attach(center);
     groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
     // default geometry nodes
     groups_[View::GEOMETRY] = new Group;
     groups_[View::GEOMETRY]->visible_ = false;
+
+    frames_[View::GEOMETRY] = new Switch;
     frame = new Frame(Frame::SHARP_THIN);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.7f);
-    groups_[View::GEOMETRY]->attach(frame);
+    frames_[View::GEOMETRY]->attach(frame);
+    frame = new Frame(Frame::SHARP_LARGE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    frames_[View::GEOMETRY]->attach(frame);
+    groups_[View::GEOMETRY]->attach(frames_[View::GEOMETRY]);
 
     overlays_[View::GEOMETRY] = new Group;
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
-    frame = new Frame(Frame::SHARP_LARGE);
-    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    overlays_[View::GEOMETRY]->attach(frame);
     resize_handle_ = new Handles(Handles::RESIZE);
     resize_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     resize_handle_->translation_.z = 0.1;
@@ -81,21 +88,24 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::GEOMETRY]->attach(rotate_handle_);
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
-    // default mixing nodes
+    // default layer nodes
     groups_[View::LAYER] = new Group;
     groups_[View::LAYER]->visible_ = false;
+
+    frames_[View::LAYER] = new Switch;
     frame = new Frame(Frame::ROUND_SHADOW);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
-    groups_[View::LAYER]->attach(frame);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);    
+    frames_[View::LAYER]->attach(frame);
+    frame = new Frame(Frame::ROUND_LARGE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    frames_[View::LAYER]->attach(frame);
+    groups_[View::LAYER]->attach(frames_[View::LAYER]);
 
     overlays_[View::LAYER] = new Group;
     overlays_[View::LAYER]->translation_.z = 0.15;
     overlays_[View::LAYER]->visible_ = false;
-    frame = new Frame(Frame::ROUND_LARGE);
-    frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    overlays_[View::LAYER]->attach(frame);
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // will be associated to nodes later
@@ -103,6 +113,7 @@ Source::Source() : initialized_(false), need_update_(true)
     rendershader_ = new ImageProcessingShader;
     renderbuffer_ = nullptr;
     rendersurface_ = nullptr;
+
 }
 
 Source::~Source()
@@ -138,19 +149,33 @@ void Source::accept(Visitor& v)
     v.visit(*this);
 }
 
-void Source::setOverlayVisible(bool on)
+
+Source::Mode Source::mode() const
 {
-    for (auto o = overlays_.begin(); o != overlays_.end(); o++)
-        (*o).second->visible_ = on;
+    return mode_;
 }
 
-void Source::setVisible(bool on)
+void Source::setMode(Source::Mode m)
 {
-    // make visible
-    groups_[View::RENDERING]->visible_ = on;
-    groups_[View::MIXING]->visible_ = on;
-    groups_[View::GEOMETRY]->visible_ = on;
-    groups_[View::LAYER]->visible_ = on;
+    mode_ = m;
+
+    bool visible = mode_ != Source::HIDDEN;
+    for (auto g = groups_.begin(); g != groups_.end(); g++)
+        (*g).second->visible_ = visible;
+
+    uint index_frame = mode_ == Source::NORMAL ? 0 : 1;
+    for (auto f = frames_.begin(); f != frames_.end(); f++)
+        (*f).second->setActive(index_frame);
+
+    bool current = mode_ == Source::CURRENT;
+    for (auto o = overlays_.begin(); o != overlays_.end(); o++)
+        (*o).second->visible_ = current;
+
+}
+
+void fix_ar(Node *n)
+{
+    n->scale_.y = n->scale_.x;
 }
 
 void Source::attach(FrameBuffer *renderbuffer)
@@ -186,7 +211,11 @@ void Source::attach(FrameBuffer *renderbuffer)
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
 
-    setVisible(true);
+
+    // test update callback
+//    groups_[View::GEOMETRY]->update_callbacks_.push_front(fix_ar);
+
+    setMode(Source::NORMAL);
 }
 
 void Source::update(float dt)
@@ -307,8 +336,8 @@ void CloneSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::CLONE) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::CLONE) );
+        overlays_[View::MIXING]->attach( new Icon(Icon::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;

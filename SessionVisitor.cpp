@@ -78,30 +78,17 @@ void SessionVisitor::visit(Switch &n)
 {
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "Switch");
-    xmlCurrent_->SetAttribute("active", n.getIndexActiveChild());
+    xmlCurrent_->SetAttribute("active", n.active());
 
     if (recursive_) {
         // loop over members of the group
         XMLElement *group = xmlCurrent_;
-        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-            (*node)->accept(*this);
+        for(uint i = 0; i < n.numChildren(); i++) {
+            n.child(i)->accept(*this);
             // revert to group as current
             xmlCurrent_ = group;
         }
     }
-}
-
-void SessionVisitor::visit(Animation &n)
-{
-    // Group of a different type
-    xmlCurrent_->SetAttribute("type", "Animation");
-
-    XMLElement *anim = xmlDoc_->NewElement("Movement");
-    anim->SetAttribute("speed", n.speed_);
-    anim->SetAttribute("radius", n.radius_);
-    XMLElement *axis = XMLElementFromGLM(xmlDoc_, n.axis_);
-    anim->InsertEndChild(axis);
-    xmlCurrent_->InsertEndChild(anim);
 }
 
 void SessionVisitor::visit(Primitive &n)
@@ -229,17 +216,25 @@ void SessionVisitor::visit(LineStrip &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineStrip");
 
-    XMLElement *color = xmlDoc_->NewElement("color");
-    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
-    xmlCurrent_->InsertEndChild(color);
-
+    XMLElement *points_node = xmlDoc_->NewElement("points");
     std::vector<glm::vec3> points = n.getPoints();
     for(size_t i = 0; i < points.size(); ++i)
     {
         XMLElement *p = XMLElementFromGLM(xmlDoc_, points[i]);
         p->SetAttribute("index", (int) i);
-        xmlCurrent_->InsertEndChild(p);
+        points_node->InsertEndChild(p);
     }
+    xmlCurrent_->InsertEndChild(points_node);
+
+    XMLElement *colors_node = xmlDoc_->NewElement("colors");
+    std::vector<glm::vec4> colors = n.getColors();
+    for(size_t i = 0; i < colors.size(); ++i)
+    {
+        XMLElement *p = XMLElementFromGLM(xmlDoc_, colors[i]);
+        p->SetAttribute("index", (int) i);
+        colors_node->InsertEndChild(p);
+    }
+    xmlCurrent_->InsertEndChild(colors_node);
 }
 
 void SessionVisitor::visit(LineSquare &)
@@ -254,9 +249,9 @@ void SessionVisitor::visit(LineCircle &n)
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineCircle");
 
-    XMLElement *color = xmlDoc_->NewElement("color");
-    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
-    xmlCurrent_->InsertEndChild(color);
+//    XMLElement *color = xmlDoc_->NewElement("color");
+//    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
+//    xmlCurrent_->InsertEndChild(color);
 }
 
 void SessionVisitor::visit(Mesh &n)

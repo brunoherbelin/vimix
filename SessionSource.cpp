@@ -121,8 +121,8 @@ void SessionSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::SESSION) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::SESSION) );
+        overlays_[View::MIXING]->attach( new Icon(Icon::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;
@@ -201,8 +201,8 @@ void RenderSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::RENDER) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::RENDER) );
+        overlays_[View::MIXING]->attach( new Icon(Icon::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Icon(Icon::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;

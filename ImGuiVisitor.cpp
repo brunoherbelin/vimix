@@ -94,14 +94,8 @@ void ImGuiVisitor::visit(Group &n)
 
 void ImGuiVisitor::visit(Switch &n)
 {
-    // TODO : display selection of active child
-    (*n.activeChild())->accept(*this);
-}
-
-void ImGuiVisitor::visit(Animation &n)
-{
-    // TODO : display group and animation parameters
-
+    if (n.numChildren()>0)
+        n.activeChild()->accept(*this);
 }
 
 void ImGuiVisitor::visit(Scene &n)

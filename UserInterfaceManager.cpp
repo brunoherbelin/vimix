@@ -248,6 +248,10 @@ void UserInterface::handleKeyboard()
             // Logs
             Settings::application.media_player = !Settings::application.media_player;
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
+            // select all
+            Mixer::manager().currentView()->selectall();
+        }
 
     }
     // No CTRL modifier
@@ -386,12 +390,14 @@ void UserInterface::handleMouse()
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
                 // Selection area
-//                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-//                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
-//                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-//                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
 
 // TODO Multiple sources selection
+
+                Mixer::manager().currentView()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
 
             }
         }
@@ -412,6 +418,9 @@ void UserInterface::handleMouse()
                     navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
 
+
+            // TODO deselect if current source is not in selection
+            Mixer::manager().currentView()->deselect();
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
@@ -723,7 +732,7 @@ void UserInterface::RenderMediaPlayer()
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, ImGuiWindowFlags_NoScrollbar) || !show)
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, ImGuiWindowFlags_NoScrollbar ) || !show)
     {
         ImGui::End();
         return;
@@ -1090,14 +1099,16 @@ void Navigator::Render()
         {
             Mixer::manager().setCurrentView(View::MIXING);
         }
-        if (ImGui::Selectable( ICON_FA_SIGN , &selected_view[2], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             Mixer::manager().setCurrentView(View::GEOMETRY);
         }
-        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
+//            if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setCurrentView(View::LAYER);
         }
+
     }
     ImGui::End();
 

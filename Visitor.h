@@ -7,7 +7,6 @@
 class Node;
 class Group;
 class Switch;
-class Animation;
 class Primitive;
 class Scene;
 class Surface;
@@ -42,7 +41,6 @@ public:
 
     // not mandatory for all others
     virtual void visit (Switch&) {}
-    virtual void visit (Animation&) {}
     virtual void visit (Surface&) {}
     virtual void visit (ImageSurface&) {}
     virtual void visit (MediaSurface&) {}

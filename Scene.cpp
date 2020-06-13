@@ -49,6 +49,12 @@ void Node::copyTransform(Node *other)
 
 void Node::update( float )
 {
+    std::list<Node::NodeUpdateCallback>::iterator iter;
+    for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); iter++)
+    {
+        (*iter)(this);
+    }
+
     // update transform matrix from attributes
     transform_ = GlmToolkit::transform(translation_, rotation_, scale_);
 }
@@ -296,8 +302,8 @@ void Switch::update( float dt )
     Node::update(dt);
 
     // update active child node
-    if (active_ != children_.end())
-        (*active_)->update( dt );
+    if (!children_.empty())
+        (children_[active_])->update( dt );
 }
 
 void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
@@ -307,8 +313,8 @@ void Switch::draw(glm::mat4 modelview, glm::mat4 projection)
 
     if ( visible_ ) {
         // draw current child        
-        if (active_ != children_.end())
-            (*active_)->draw( modelview * transform_, projection);
+        if (!children_.empty())
+            (children_[active_])->draw( modelview * transform_, projection);
     }
 }
 
@@ -318,95 +324,39 @@ void Switch::accept(Visitor& v)
     v.visit(*this);
 }
 
-void Switch::attach(Node *child)
+void Switch::setActive (uint index)
 {
-    Group::attach(child);
-    setActiveChild(child);
+    active_ = CLAMP(index, 0, children_.size() - 1);
+}
+
+Node *Switch::child(uint index) const
+{
+    if (!children_.empty()) {
+        uint i = CLAMP(index, 0, children_.size() - 1);
+        return children_.at(i);
+    }
+    return nullptr;
+}
+
+uint Switch::attach(Node *child)
+{
+    children_.push_back(child);
+    active_ = children_.size() - 1;
+    return active_;
 }
 
 void Switch::detatch(Node *child)
 {
-    Group::detatch(child);
-    active_ = children_.begin();
-}
-
-
-void Switch::unsetActiveChild ()
-{
-    active_ = children_.end();
-}
-
-void Switch::setActiveChild(Node *child)
-{
-    setActiveChild( std::find_if(children_.begin(), children_.end(), hasId(child->id())) );
-}
-
-void Switch::setActiveChild(NodeSet::iterator n)
-{
-    if ( n != children_.end())
-        active_ = n;
-    else
-        active_ = children_.begin();
-}
-
-NodeSet::iterator Switch::activeChild() const
-{
-    return active_;
-}
-
-void Switch::setIndexActiveChild(int index)
-{
-    int i = 0;
-    for (NodeSet::iterator node = children_.begin();
-         node != children_.end(); node++, i++) {
-        if ( i == index ) {
-            active_ = node;
-            break;
-        }
+    // find the node with this id, and erase it out of the list of children
+    // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
+    std::vector<Node *>::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
+    if ( it != children_.end())  {
+        // detatch child from group parent
+        children_.erase(it);
+        child->refcount_--;
     }
 }
 
-int Switch::getIndexActiveChild() const
-{
-    int index = 0;
-    for (NodeSet::iterator node = children_.begin();
-         node != children_.end(); node++, index++) {
-        if (node == active_)
-            break;
-    }
-    return index;
-}
-
-void Animation::init()
-{
-    Group::init();
-
-    animation_ = glm::identity<glm::mat4>();
-//    animation_ = glm::translate(glm::identity<glm::mat4>(), glm::vec3(2.f, 0.f, 0.f));
-}
-
-void Animation::update( float dt )
-{
-    Group::update(dt);
-
-    // incremental rotation
-    animation_ = glm::rotate(animation_, speed_ * dt, axis_);
-
-    // calculate translation of a point at distance radius_ after rotation by animation_
-    static glm::vec3 any = glm::linearRand( glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 1.f));
-    glm::vec3 pos = glm::normalize( glm::cross(any, axis_) ) * radius_;
-    glm::vec4 delta = glm::vec4(pos, 0.f) * animation_;
-
-    // apply this translation to the Group transform
-    transform_ *= glm::translate(glm::identity<glm::mat4>(), glm::vec3(delta.x, delta.y, 0.f));
-
-}
-
-void Animation::accept(Visitor& v)
-{
-    Group::accept(v);
-    v.visit(*this);
-}
 
 Scene::Scene()
 {

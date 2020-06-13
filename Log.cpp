@@ -173,7 +173,7 @@ void Log::Notify(const char* fmt, ...)
     notifications_timeout = 0.f;
 
     // always log
-    Log::Info("%s\n", buf.c_str());
+    Log::Info("%s", buf.c_str());
 }
 
 

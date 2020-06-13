@@ -77,11 +77,6 @@ void GarbageVisitor::visit(Switch &n)
 
 }
 
-void GarbageVisitor::visit(Animation &n)
-{
-
-}
-
 void GarbageVisitor::visit(Primitive &n)
 {
 

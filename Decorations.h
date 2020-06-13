@@ -57,7 +57,7 @@ class Icon : public Node
 {
 public:
     typedef enum { GENERIC = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, EMPTY } Type;
-    Icon(Type type);
+    Icon(Type type = GENERIC, glm::vec3 pos = glm::vec3(0.f));
     ~Icon();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
@@ -70,6 +70,22 @@ protected:
     Mesh *icon_;
     Type type_;
 };
+
+class Selection : public Group
+{
+public:
+    Selection();
+
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+
+    glm::vec4 color;
+
+protected:
+    LineSquare *square_;
+    GlmToolkit::AxisAlignedBoundingBox bbox_;
+
+};
+
 
 // TODO Shadow mesh with unique vao
 

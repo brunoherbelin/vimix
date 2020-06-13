@@ -14,6 +14,7 @@
 #include "View.h"
 #include "Source.h"
 #include "Primitives.h"
+#include "Decorations.h"
 #include "PickingVisitor.h"
 #include "DrawVisitor.h"
 #include "Mesh.h"
@@ -29,6 +30,9 @@ bool View::need_deep_update_ = true;
 
 View::View(Mode m) : mode_(m)
 {
+    selection_ = new Selection;
+    selection_->visible_ = false;
+    scene.ws()->attach(selection_);
 }
 
 void View::restoreSettings()
@@ -95,10 +99,41 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
         // select top-most Node picked
         picked = pv.picked().back();
 
+        //DEBUG
+        select(glm::vec2(-1.f, -1.f), glm::vec2(1.f, 1.f));
+
+
+    }
+    // cancel selection on clic in background
+    else {
+        deselect();
     }
 
     return picked;
 }
+
+
+void View::select(glm::vec2 A, glm::vec2 B)
+{
+
+}
+
+void View::selectall()
+{
+    for(auto it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
+        if ( *it != selection_)
+            selection_->attach(*it);
+    }
+
+    selection_->visible_ = true;
+}
+
+void View::deselect()
+{
+    selection_->clear();
+    selection_->visible_ = false;
+}
+
 
 
 MixingView::MixingView() : View(MIXING)

@@ -15,7 +15,6 @@ class PickingVisitor: public Visitor
 
 public:
 
-
     PickingVisitor(glm::vec2 coordinates);
     std::vector< std::pair<Node *, glm::vec2> > picked() { return nodes_; }
 

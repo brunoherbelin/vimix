@@ -195,6 +195,7 @@ void Mixer::update()
     // update session and associated sources
     session_->update(dt);
 
+    // delete failed sources (one by one)
     if (session()->failedSource() != nullptr)
         deleteSource(session()->failedSource());
 
@@ -203,7 +204,7 @@ void Mixer::update()
     geometry_.update(dt);
     layer_.update(dt);
 
-    // optimize the reordering in depth for views
+    // optimize the reordering in depth for views;
     // deep updates shall be performed only 1 frame
     View::need_deep_update_ = false;
 }
@@ -382,7 +383,7 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(it);
-        (*current_source_)->setOverlayVisible(true);
+        (*current_source_)->setMode(Source::CURRENT);
     }
 }
 
@@ -423,7 +424,7 @@ void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source
     if ( current_source_ != session_->end() )
-        (*current_source_)->setOverlayVisible(false);
+        (*current_source_)->setMode(Source::NORMAL);
 
     // deselect current source
     current_source_ = session_->end();
@@ -606,6 +607,8 @@ void Mixer::clear()
 
     // swap current with empty
     sessionSwapRequested_ = true;
+
+    Log::Info("New session ready.");
 }
 
 void Mixer::set(Session *s)

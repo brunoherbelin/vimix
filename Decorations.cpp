@@ -5,6 +5,7 @@
 #include "Decorations.h"
 
 #include "Visitor.h"
+#include "BoundingBoxVisitor.h"
 #include "ImageShader.h"
 #include "GlmToolkit.h"
 #include "Log.h"
@@ -15,11 +16,11 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (type) {
     case SHARP_LARGE:
-        square_ = new LineSquare(color, 3 );
+        square_ = new LineSquare( 3 );
         shadow_ = new Mesh("mesh/glow.ply", "images/glow.dds");
         break;
     case SHARP_THIN:
-        square_ = new LineSquare(color, 3 );
+        square_ = new LineSquare( 3 );
         break;
     case ROUND_LARGE:
         side_  = new Mesh("mesh/border_large_round.ply");
@@ -245,10 +246,10 @@ void Handles::accept(Visitor& v)
 }
 
 
-Icon::Icon(Type style) : Node()
+Icon::Icon(Type style, glm::vec3 pos) : Node()
 {
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-    translation_ = glm::vec3(0.8f, 0.8f, 0.f);
+    translation_ = pos;
 
     switch (style) {
     case IMAGE:
@@ -272,7 +273,6 @@ Icon::Icon(Type style) : Node()
     default:
     case GENERIC:
         icon_  = new Mesh("mesh/point.ply");
-        translation_ = glm::vec3(0.f, 0.f, 0.f);
         break;
     }
 
@@ -312,3 +312,56 @@ void Icon::accept(Visitor& v)
     Node::accept(v);
     v.visit(*this);
 }
+
+
+Selection::Selection()
+{
+//    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
+    square_ = new LineSquare( 3 );
+
+}
+
+void Selection::draw (glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() ) {
+        square_->init();
+        init();
+    }
+
+    if (visible_) {
+
+        // use a visitor bounding box to calculate extend of all selected nodes
+        BoundingBoxVisitor vbox;
+
+        // visit every child of the selection
+        for (NodeSet::iterator node = children_.begin();
+             node != children_.end(); node++) {
+            // reset the transform before
+            vbox.setModelview(glm::identity<glm::mat4>());
+            (*node)->accept(vbox);
+        }
+
+        // get the bounding box
+        bbox_ = vbox.bbox();
+
+//        Log::Info("                                       -------- visitor box (%f, %f)-(%f, %f)", bbox_.min().x, bbox_.min().y, bbox_.max().x, bbox_.max().y);
+
+        // set color
+        square_->shader()->color = color;
+
+        // compute transformation from bounding box
+//        glm::mat4 ctm = modelview * GlmToolkit::transform(glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f));
+        glm::mat4 ctm = modelview * GlmToolkit::transform(bbox_.center(), glm::vec3(0.f), bbox_.scale());
+
+        // draw bbox
+//        square_->draw( modelview, projection);
+        square_->draw( ctm, projection);
+
+        // DEBUG
+//        visible_=false;
+    }
+
+}
+
+

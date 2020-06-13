@@ -71,6 +71,19 @@ glm::vec3 GlmToolkit::AxisAlignedBoundingBox::center() const
     }
 }
 
+glm::vec3 GlmToolkit::AxisAlignedBoundingBox::scale() const
+{
+    if (!isNull())
+    {
+      glm::vec3 d = mMax - mMin;
+      return d * 0.5f;
+    }
+    else
+    {
+      return glm::vec3(0.f);
+    }
+}
+
 bool GlmToolkit::AxisAlignedBoundingBox::intersect(const AxisAlignedBoundingBox& bb, bool ignore_z) const
 {
     if (isNull() || bb.isNull())
@@ -130,6 +143,19 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::scaled(gl
 
     bb.mMin *= s;
     bb.mMax *= s;
+
+    return bb;
+}
+
+GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transformed(glm::mat4 m)
+{
+    GlmToolkit::AxisAlignedBoundingBox bb;
+    glm::vec4 vec;
+    vec = m * glm::vec4(mMin, 1.f);
+    bb.mMin = glm::vec3(vec);
+
+    vec = m * glm::vec4(mMax, 1.f);
+    bb.mMax = glm::vec3(vec);
 
     return bb;
 }

@@ -43,26 +43,37 @@ public:
         Cursor(CursorType t, std::string i = "") { type = t; info = i;}
     } Cursor;
 
+    // picking of nodes in a view provided a point coordinates in scene reference frame
     virtual std::pair<Node *, glm::vec2> pick(glm::vec3 point);
+
+    // drag the view provided a start and an end point in screen coordinates
     virtual Cursor drag (glm::vec2, glm::vec2);
+
+    // grab a source provided a start and an end point in screen coordinates and the picking point
     virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
+    // test mouse over provided a point in screen coordinates and the picking point
     virtual Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
-
+    // select sources provided a start and end selection points in screen coordinates
+    virtual void select(glm::vec2, glm::vec2);
+    virtual void selectall();
+    virtual void deselect();
 
     virtual void restoreSettings();
     virtual void saveSettings();
 
+    // accessible scene
     Scene scene;
 
-    // hack to avoid reordering scene of view if not necessary
+    // avoid reordering scene of view if not necessary
     static bool need_deep_update_;
 
 protected:
     Mode mode_;
+    class Selection *selection_;
 };
 
 

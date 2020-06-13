@@ -133,13 +133,13 @@ class LineStrip : public Primitive {
     uint linewidth_;
 
 public:
-    LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth = 1);
+    LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth = 1);
 
     virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
     virtual void accept(Visitor& v) override;
 
     std::vector<glm::vec3> getPoints() { return points_; }
-    glm::vec4 getColor() { return colors_[0]; }
+    std::vector<glm::vec4> getColors() { return colors_; }
 
     inline void setLineWidth(uint v) { linewidth_ = v; }
     inline uint getLineWidth() const { return linewidth_; }
@@ -152,7 +152,7 @@ public:
 class LineSquare : public LineStrip {
 
 public:
-    LineSquare(glm::vec4 color, uint linewidth = 1);
+    LineSquare(uint linewidth = 1);
 
     void init() override;
     void accept(Visitor& v) override;
@@ -167,7 +167,7 @@ public:
 class LineCircle : public LineStrip {
 
 public:
-    LineCircle(glm::vec4 color, uint linewidth = 1);
+    LineCircle(uint linewidth = 1);
 
     void init() override;
     void accept(Visitor& v) override;

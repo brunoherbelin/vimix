@@ -233,12 +233,12 @@ void Points::accept(Visitor& v)
     v.visit(*this);
 }
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, glm::vec4 color, uint linewidth) : Primitive(new Shader), linewidth_(linewidth)
+LineStrip::LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth) : Primitive(new Shader), linewidth_(linewidth)
 {
     for(size_t i = 0; i < points.size(); ++i)
     {
         points_.push_back( points[i] );
-        colors_.push_back( color );
+        colors_.push_back( colors[i] );
         indices_.push_back ( i );
     }
 
@@ -255,12 +255,12 @@ void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
     glm::mat4 mv = modelview;
     glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.001f, 1.001f, 1.f));
 
+    // TODO FIXME drawing multiple times is not correct to draw lines of different width
+    // TODO Draw LineStrip using polygons
     for (uint i = 0 ; i < linewidth_ ; ++i ) {
         Primitive::draw(mv, projection);
         mv *= scale;
     }
-
-
 
    // glLineWidth(1);
 }
@@ -279,7 +279,13 @@ static const std::vector<glm::vec3> square_points {
             glm::vec3( -1.f, -1.f, 0.f )
 };
 
-LineSquare::LineSquare(glm::vec4 color, uint linewidth) : LineStrip(square_points, color, linewidth)
+static const std::vector<glm::vec4> square_colors {
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f )
+};
+
+LineSquare::LineSquare(uint linewidth) : LineStrip(square_points, square_colors, linewidth)
 {
 }
 
@@ -324,22 +330,23 @@ LineSquare::~LineSquare()
 }
 
 
-LineCircle::LineCircle(glm::vec4 color, uint linewidth) : LineStrip(std::vector<glm::vec3>(), color, linewidth)
+LineCircle::LineCircle(uint linewidth) : LineStrip(std::vector<glm::vec3>(), std::vector<glm::vec4>(), linewidth)
 {
     static int N = 72;
     static float a =  glm::two_pi<float>() / static_cast<float>(N);
+    static glm::vec4 circle_color_points = glm::vec4(1.f, 1.f, 1.f, 1.f);
     // loop to build a circle
     glm::vec3 P(1.f, 0.f, 0.f);
     for (int i = 0; i < N ; i++ ){
         points_.push_back( glm::vec3(P) );
-        colors_.push_back( color );
+        colors_.push_back( circle_color_points );
         indices_.push_back ( i );
 
         P = glm::rotateZ(P, a);
     }
     // close loop
     points_.push_back( glm::vec3(1.f, 0.f, 0.f) );
-    colors_.push_back( color );
+    colors_.push_back( circle_color_points );
     indices_.push_back ( N );
 }
 

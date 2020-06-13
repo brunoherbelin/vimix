@@ -29,6 +29,8 @@ void PickingVisitor::visit(Node &n)
 
 void PickingVisitor::visit(Group &n)
 {
+    if (!n.visible_)
+        return;
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
         if ( (*node)->visible_ )
@@ -39,8 +41,10 @@ void PickingVisitor::visit(Group &n)
 
 void PickingVisitor::visit(Switch &n)
 {
+    if (!n.visible_ || n.numChildren()<1)
+        return;
     glm::mat4 mv = modelview_;
-    (*n.activeChild())->accept(*this);
+    n.activeChild()->accept(*this);
     modelview_ = mv;
 }
 
