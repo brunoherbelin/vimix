@@ -326,10 +326,13 @@ void Mixer::deleteSource(Source *s)
 {
     if ( s != nullptr )
     {
-        // in case..
+        // in case it was the current source...
         unsetCurrentSource();
 
-        // keep name
+        // in case it was selected..
+        selection().remove(s);
+
+        // keep name for log
         std::string name = s->name();
 
         // remove source Nodes from all views
@@ -340,6 +343,7 @@ void Mixer::deleteSource(Source *s)
         // delete source
         session_->deleteSource(s);
 
+        // log
         Log::Notify("Source %s deleted.", name.c_str());
     }
 }
@@ -377,14 +381,26 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     if ( current_source_ == it )
         return;
 
+    // clear current (even if it is invalid)
     unsetCurrentSource();
 
-    // change current
+    // change current if it is valid
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(it);
+        // add to selection
+        selection().add(*it);
+        // show status as current
         (*current_source_)->setMode(Source::CURRENT);
     }
+}
+
+Source * Mixer::findSource (Node *node)
+{
+    SourceList::iterator it = session_->find(node);
+    if (it != session_->end())
+        return *it;
+    return nullptr;
 }
 
 void Mixer::setCurrentSource(Node *node)
@@ -423,8 +439,12 @@ void Mixer::setCurrentNext()
 void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source
-    if ( current_source_ != session_->end() )
-        (*current_source_)->setMode(Source::NORMAL);
+    if ( current_source_ != session_->end() ) {
+        // remove from selection
+        selection().remove( *current_source_ );
+        // show status as normal
+        (*current_source_)->setMode(Source::NORMAL);        
+    }
 
     // deselect current source
     current_source_ = session_->end();
@@ -551,6 +571,8 @@ void Mixer::swap()
         return;
 
     if (session_) {
+        // clear selection
+        selection().clear();
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         {

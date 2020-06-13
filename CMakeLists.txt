@@ -210,6 +210,7 @@ set(VMIX_SRCS
     View.cpp
     Source.cpp
     Session.cpp
+    Selection.cpp
     SessionSource.cpp
     SessionVisitor.cpp
     GarbageVisitor.cpp

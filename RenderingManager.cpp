@@ -674,6 +674,9 @@ void RenderingWindow::draw(FrameBuffer *fb)
             ShadingProgram::enduse();
             glBindTexture(GL_TEXTURE_2D, 0);
         }
+        else {
+            Log::Info("No Framebuffer Provided to draw Rendering Window");
+        }
 
         // restore attribs
         Rendering::manager().popAttrib();

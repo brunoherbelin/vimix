@@ -314,7 +314,7 @@ void Icon::accept(Visitor& v)
 }
 
 
-Selection::Selection()
+Box::Box()
 {
 //    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
@@ -322,7 +322,7 @@ Selection::Selection()
 
 }
 
-void Selection::draw (glm::mat4 modelview, glm::mat4 projection)
+void Box::draw (glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
         square_->init();

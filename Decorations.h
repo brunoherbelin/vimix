@@ -71,10 +71,10 @@ protected:
     Type type_;
 };
 
-class Selection : public Group
+class Box : public Group
 {
 public:
-    Selection();
+    Box();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
 

@@ -30,9 +30,6 @@ bool View::need_deep_update_ = true;
 
 View::View(Mode m) : mode_(m)
 {
-    selection_ = new Selection;
-    selection_->visible_ = false;
-    scene.ws()->attach(selection_);
 }
 
 void View::restoreSettings()
@@ -100,40 +97,27 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
         picked = pv.picked().back();
 
         //DEBUG
-        select(glm::vec2(-1.f, -1.f), glm::vec2(1.f, 1.f));
+//        select(glm::vec2(-1.f, -1.f), glm::vec2(1.f, 1.f));
 
 
     }
     // cancel selection on clic in background
     else {
-        deselect();
+//        deselect();
     }
 
     return picked;
 }
 
-
-void View::select(glm::vec2 A, glm::vec2 B)
-{
-
-}
-
-void View::selectall()
+void GeometryView::select(glm::vec2 A, glm::vec2 B)
 {
     for(auto it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
-        if ( *it != selection_)
-            selection_->attach(*it);
+        if ( *it != selection_box_)
+            selection_box_->attach(*it);
     }
 
-    selection_->visible_ = true;
+    selection_box_->visible_ = true;
 }
-
-void View::deselect()
-{
-    selection_->clear();
-    selection_->visible_ = false;
-}
-
 
 
 MixingView::MixingView() : View(MIXING)
@@ -334,6 +318,10 @@ GeometryView::GeometryView() : View(GEOMETRY)
     border->color = glm::vec4( COLOR_FRAME, 1.f );
     scene.fg()->attach(border);
 
+    // selection box
+    selection_box_ = new Box;
+    selection_box_->visible_ = false;
+    scene.ws()->attach(selection_box_);
 }
 
 void GeometryView::update(float dt)

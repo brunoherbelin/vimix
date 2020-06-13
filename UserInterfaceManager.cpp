@@ -42,6 +42,7 @@
 #include "ImGuiVisitor.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
+#include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
@@ -250,7 +251,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             // select all
-            Mixer::manager().currentView()->selectall();
+//            Mixer::manager().currentView()->selectall();
         }
 
     }
@@ -408,19 +409,34 @@ void UserInterface::handleMouse()
             // ask the view what was picked
             picked = Mixer::manager().currentView()->pick(point);
 
+            // if nothing picked,
             if ( picked.first == nullptr ) {
-                // nothing picked, unset current
+                // unset current
                 Mixer::manager().unsetCurrentSource();
                 navigator.hidePannel();
-            } else {
-                Mixer::manager().setCurrentSource( picked.first );
-                if (navigator.pannelVisible())
-                    navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                // clear selection
+                Mixer::selection().clear();
+            }
+            // something was picked
+            else {
+                // get if a source was picked
+                Source *s = Mixer::manager().findSource(picked.first);
+
+                if (keyboard_modifier_active) {
+                    // selection
+                    Mixer::selection().add( s );
+                }
+                // make current
+                else {
+                    Mixer::manager().setCurrentSource( picked.first );
+                    if (navigator.pannelVisible())
+                        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                }
+
             }
 
-
             // TODO deselect if current source is not in selection
-            Mixer::manager().currentView()->deselect();
+//            Mixer::manager().currentView()->deselect();
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {

@@ -8,8 +8,7 @@
 
 #include "View.h"
 #include "Session.h"
-#include "Source.h"
-
+#include "Selection.h"
 
 class Mixer
 {
@@ -27,6 +26,13 @@ public:
         return _instance;
     }
 
+    static Selection& selection()
+    {
+        // The only instance
+        static Selection _selection;
+        return _selection;
+    }
+
     // update session and all views
     void update();
 
@@ -34,41 +40,43 @@ public:
     void draw();
 
     // creation of sources
-    Source * createSourceFile(std::string path);
-    Source * createSourceClone(std::string namesource);
-    Source * createSourceRender();
+    Source * createSourceFile   (std::string path);
+    Source * createSourceClone  (std::string namesource);
+    Source * createSourceRender ();
 
     // operations on sources
-    void addSource(Source *s);
-    void deleteSource(Source *s);
-    void renameSource(Source *s, const std::string &newname);
+    void addSource    (Source *s);
+    void deleteSource (Source *s);
+    void renameSource (Source *s, const std::string &newname);
 
     // current source
-    void setCurrentSource(std::string namesource);
-    void setCurrentSource(Node *node);
-    void setCurrentSource(int index);
-    void setCurrentSource(Source *s);
-    void setCurrentNext();
-    void unsetCurrentSource();
-    void cloneCurrentSource();
-    void deleteCurrentSource();
-    Source * currentSource();
-    int indexCurrentSource();
+    void setCurrentSource (std::string namesource);
+    void setCurrentSource (Node *node);
+    void setCurrentSource (int index);
+    void setCurrentSource (Source *s);
+    void setCurrentNext ();
+    void unsetCurrentSource ();
+    void cloneCurrentSource ();
+    void deleteCurrentSource ();
+    int  indexCurrentSource ();
+
+    Source * currentSource ();
+    Source * findSource (Node *node);
 
     // management of view
-    View *view(View::Mode m);
-    void setCurrentView(View::Mode m);
-    View *currentView();
+    View *view (View::Mode m);
+    void setCurrentView (View::Mode m);
+    View *currentView ();
 
     // manipulate, load and save sessions
-    inline Session *session() const { return session_; }
-    void clear();
-    void save();
-    void saveas(const std::string& filename);
-    void open(const std::string& filename);
-    void import(const std::string& filename);
-    void merge(Session *s);
-    void set(Session *s);
+    inline Session *session () const { return session_; }
+    void clear ();
+    void save ();
+    void saveas (const std::string& filename);
+    void open   (const std::string& filename);
+    void import (const std::string& filename);
+    void merge (Session *s);
+    void set   (Session *s);
 
 protected:
 

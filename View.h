@@ -58,9 +58,7 @@ public:
         return Cursor();
     }
     // select sources provided a start and end selection points in screen coordinates
-    virtual void select(glm::vec2, glm::vec2);
-    virtual void selectall();
-    virtual void deselect();
+    virtual void select(glm::vec2, glm::vec2) {}
 
     virtual void restoreSettings();
     virtual void saveSettings();
@@ -73,7 +71,6 @@ public:
 
 protected:
     Mode mode_;
-    class Selection *selection_;
 };
 
 
@@ -120,7 +117,9 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec3 point) override;
     Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
     Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) override;
+    void select(glm::vec2, glm::vec2) override;
 
+    class Box *selection_box_;
 };
 
 class LayerView : public View
