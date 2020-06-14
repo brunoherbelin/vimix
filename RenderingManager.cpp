@@ -666,6 +666,7 @@ void RenderingWindow::draw(FrameBuffer *fb)
                 scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
 
             // draw
+            ShadingProgram::enduse();
             glBindTexture(GL_TEXTURE_2D, fb->texture());
 //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
             surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
