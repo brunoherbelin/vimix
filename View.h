@@ -119,7 +119,7 @@ public:
     Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) override;
     void select(glm::vec2, glm::vec2) override;
 
-    class Box *selection_box_;
+//    class Box *selection_box_;
 };
 
 class LayerView : public View

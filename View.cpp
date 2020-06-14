@@ -111,12 +111,12 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
 
 void GeometryView::select(glm::vec2 A, glm::vec2 B)
 {
-    for(auto it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
-        if ( *it != selection_box_)
-            selection_box_->attach(*it);
-    }
+//    for(auto it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
+//        if ( *it != selection_box_)
+//            selection_box_->attach(*it);
+//    }
 
-    selection_box_->visible_ = true;
+//    selection_box_->visible_ = true;
 }
 
 
@@ -319,9 +319,9 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(border);
 
     // selection box
-    selection_box_ = new Box;
-    selection_box_->visible_ = false;
-    scene.ws()->attach(selection_box_);
+//    selection_box_ = new Box;
+//    selection_box_->visible_ = false;
+//    scene.ws()->attach(selection_box_);
 }
 
 void GeometryView::update(float dt)

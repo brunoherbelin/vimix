@@ -64,7 +64,9 @@ void Node::accept(Visitor& v)
     v.visit(*this);
 }
 
+//
 // Primitive
+//
 
 Primitive::~Primitive()
 {
@@ -181,8 +183,10 @@ void Primitive::replaceShader( Shader *newshader )
     }
 }
 
-
+//
 // Group
+//
+
 Group::~Group()
 {
     clear();
@@ -292,10 +296,33 @@ Node *Group::back()
     return nullptr;
 }
 
-uint Group::numChildren() const
+//
+// Switch node
+//
+
+Switch::~Switch()
 {
-    return children_.size();
+    clear();
 }
+
+void Switch::clear()
+{
+    for(std::vector<Node *>::iterator it = children_.begin(); it != children_.end(); ) {
+        // one less ref to this node
+        (*it)->refcount_--;
+        // if this group was the only remaining parent
+        if ( (*it)->refcount_ < 1 ) {
+            // delete
+            delete (*it);
+        }
+        // erase this iterator from the list
+        it = children_.erase(it);
+    }
+
+    // reset active
+    active_ = 0;
+}
+
 
 void Switch::update( float dt )
 {
@@ -341,14 +368,20 @@ Node *Switch::child(uint index) const
 uint Switch::attach(Node *child)
 {
     children_.push_back(child);
+    child->refcount_++;
+
+    // make new child active
     active_ = children_.size() - 1;
     return active_;
 }
 
 void Switch::detatch(Node *child)
 {
+    // if removing the active child, it cannot be active anymore
+    if ( children_.at(active_) == child )
+        active_ = 0;
+
     // find the node with this id, and erase it out of the list of children
-    // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
     std::vector<Node *>::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
     if ( it != children_.end())  {
         // detatch child from group parent
@@ -357,6 +390,9 @@ void Switch::detatch(Node *child)
     }
 }
 
+//
+// Scene
+//
 
 Scene::Scene()
 {

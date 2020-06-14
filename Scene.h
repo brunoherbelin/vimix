@@ -165,20 +165,23 @@ public:
     Group() : Node() {}
     virtual ~Group();
 
+    // Node interface
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
+    // container
     void clear();
-    void attach (Node *child);
+    void attach  (Node *child);
     void detatch (Node *child);
-    void sort();
+    inline uint numChildren ()  const { return children_.size(); }
 
+    // Group specific access to its Nodes
+    void sort();
     NodeSet::iterator begin();
     NodeSet::iterator end();
     Node *front();
     Node *back();
-    uint numChildren() const;
 
 protected:
     NodeSet children_;
@@ -186,7 +189,7 @@ protected:
 };
 
 /**
- * @brief The Switch class is a Group to selectively update & draw ONE selected child
+ * @brief The Switch class selectively updates & draws ONE selected child
  *
  * update() will update only the active child
  * draw() will draw only the active child
@@ -196,18 +199,23 @@ class Switch : public Node {
 
 public:
     Switch() : Node(), active_(0) {}
+    virtual ~Switch();
 
+    // Node interface
     virtual void update (float dt) override;
     virtual void accept (Visitor& v) override;
     virtual void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
+    // container
+    void clear();
     uint attach  (Node *child);
     void detatch (Node *child);
-    void setActive (uint index);
+    inline uint numChildren ()  const { return children_.size(); }
 
-    uint active ()       const { return active_; }
+    // Switch specific access to its Nodes
+    void setActive (uint index);
+    uint active () const { return active_; }
     Node *activeChild () const { return child(active_); }
-    uint numChildren ()  const { return children_.size(); }
     Node *child (uint index) const;
 
 protected:

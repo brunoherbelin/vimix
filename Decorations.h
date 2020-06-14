@@ -87,7 +87,4 @@ protected:
 };
 
 
-// TODO Shadow mesh with unique vao
-
-
 #endif // DECORATIONS_H

@@ -26,7 +26,7 @@ public:
     inline std::string meshPath() const { return mesh_resource_; }
     inline std::string texturePath() const { return texture_resource_; }
 
-protected:
+//protected:
     std::string mesh_resource_;
     std::string texture_resource_;
     uint textureindex_;

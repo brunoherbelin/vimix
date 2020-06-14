@@ -130,6 +130,7 @@ Source::~Source()
     delete groups_[View::LAYER];
 
     groups_.clear();
+    frames_.clear();
     overlays_.clear();
 
     for (auto it = clones_.begin(); it != clones_.end(); it++)

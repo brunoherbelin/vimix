@@ -13,30 +13,45 @@
 
 Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
 {
+    static Mesh *shadows[3] = {nullptr};
+    if (shadows[0] == nullptr)  {
+        shadows[0] = new Mesh("mesh/glow.ply", "images/glow.dds");
+        shadows[1] = new Mesh("mesh/shadow.ply", "images/shadow.dds");
+        shadows[2] = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
+    }
+    static Mesh *frames[4] = {nullptr};
+    if (frames[0] == nullptr)  {
+        frames[0] = new Mesh("mesh/border_round.ply");
+        frames[1] = new Mesh("mesh/border_top.ply");
+        frames[2] = new Mesh("mesh/border_large_round.ply");
+        frames[3] = new Mesh("mesh/border_large_top.ply");
+    }
+    static LineSquare *sharpframe = new LineSquare( 3 );
+
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     switch (type) {
     case SHARP_LARGE:
-        square_ = new LineSquare( 3 );
-        shadow_ = new Mesh("mesh/glow.ply", "images/glow.dds");
+        square_ = sharpframe;
+        shadow_ = shadows[0];
         break;
     case SHARP_THIN:
-        square_ = new LineSquare( 3 );
+        square_ = sharpframe;
         break;
     case ROUND_LARGE:
-        side_  = new Mesh("mesh/border_large_round.ply");
-        top_   = new Mesh("mesh/border_large_top.ply");
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.dds");
+        side_  = frames[2];
+        top_   = frames[3];
+        shadow_ = shadows[1];
         break;
     default:
     case ROUND_THIN:
-        side_  = new Mesh("mesh/border_round.ply");
-        top_   = new Mesh("mesh/border_top.ply");
-        shadow_  = new Mesh("mesh/shadow.ply", "images/shadow.dds");
+        side_  = frames[0];
+        top_   = frames[1];
+        shadow_ = shadows[1];
         break;
     case ROUND_SHADOW:
-        side_  = new Mesh("mesh/border_round.ply");
-        top_   = new Mesh("mesh/border_top.ply");
-        shadow_  = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
+        side_  = frames[0];
+        top_   = frames[1];
+        shadow_ = shadows[2];
         break;
     }
 
@@ -44,9 +59,7 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
 
 Frame::~Frame()
 {
-    if(side_)  delete side_;
-    if(top_)  delete top_;
-    if(shadow_)  delete shadow_;
+
 }
 
 void Frame::update( float dt )
@@ -58,14 +71,21 @@ void Frame::update( float dt )
         side_->update(dt);
     if(shadow_)
         shadow_->update(dt);
+    if(square_)
+        square_->update(dt);
 }
 
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(side_)  side_->init();
-        if(top_)   top_->init();
-        if(shadow_)  shadow_->init();
+        if(side_  && !side_->initialized())
+            side_->init();
+        if(top_  && !top_->initialized())
+            top_->init();
+        if(shadow_ && !shadow_->initialized())
+            shadow_->init();
+        if(square_ && !square_->initialized())
+            square_->init();
         init();
     }
 
@@ -127,21 +147,21 @@ void Frame::accept(Visitor& v)
 
 Handles::Handles(Type type) : Node(), type_(type)
 {
-    color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
+    static Mesh *handle_rotation_ = new Mesh("mesh/border_handles_rotation.ply");
+    static Mesh *handle_corner    = new Mesh("mesh/border_handles_overlay.ply");
 
+    color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == ROTATE ) {
-        handle_ = new Mesh("mesh/border_handles_rotation.ply");
+        handle_ = handle_rotation_;
     }
     else {
-//        handle_ = new LineSquare(color, int ( 2.1f * Rendering::manager().DPIScale()) );
-        handle_ = new Mesh("mesh/border_handles_overlay.ply");
+        handle_ = handle_corner;
     }
 
 }
 
 Handles::~Handles()
 {
-    if(handle_) delete handle_;
 }
 
 void Handles::update( float dt )
@@ -153,7 +173,8 @@ void Handles::update( float dt )
 void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(handle_) handle_->init();
+        if(handle_ && !handle_->initialized())
+            handle_->init();
         init();
     }
 
@@ -248,45 +269,33 @@ void Handles::accept(Visitor& v)
 
 Icon::Icon(Type style, glm::vec3 pos) : Node()
 {
-    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-    translation_ = pos;
-
-    switch (style) {
-    case IMAGE:
-        icon_  = new Mesh("mesh/icon_image.ply");
-        break;
-    case VIDEO:
-        icon_  = new Mesh("mesh/icon_video.ply");
-        break;
-    case SESSION:
-        icon_  = new Mesh("mesh/icon_vimix.ply");
-        break;
-    case CLONE:
-        icon_  = new Mesh("mesh/icon_clone.ply");
-        break;
-    case RENDER:
-        icon_  = new Mesh("mesh/icon_render.ply");
-        break;
-    case EMPTY:
-        icon_  = new Mesh("mesh/icon_empty.ply");
-        break;
-    default:
-    case GENERIC:
-        icon_  = new Mesh("mesh/point.ply");
-        break;
+    static Mesh *icons[7] = {nullptr};
+    if (icons[0] == nullptr)  {
+        icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
+        icons[VIDEO]   = new Mesh("mesh/icon_video.ply");
+        icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
+        icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
+        icons[RENDER]  = new Mesh("mesh/icon_render.ply");
+        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
+        icons[GENERIC] = new Mesh("mesh/point.ply");
     }
+
+    icon_ = icons[style];
+    translation_ = pos;
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 
 }
 
 Icon::~Icon()
 {
-    if(icon_)  delete icon_;
+
 }
 
 void Icon::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(icon_)  icon_->init();
+        if(icon_ && !icon_->initialized())
+            icon_->init();
         init();
     }
 

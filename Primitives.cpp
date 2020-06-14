@@ -209,7 +209,7 @@ Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) :
         indices_.push_back ( i );
     }
 
-    drawMode_ = GL_POINTS;
+    drawMode_ = GL_POINTS; // TODO implement drawing of points as Mesh
     pointsize_ = pointsize;
 }
 

@@ -38,7 +38,7 @@ void ImageShader::use()
     program_->setUniform("stipple", stipple);
 
     glActiveTexture(GL_TEXTURE1);
-    if ( mask < 9 ) {
+    if ( mask < 10 ) {
         glBindTexture(GL_TEXTURE_2D, mask_presets[mask]);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
