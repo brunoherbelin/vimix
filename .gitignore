@@ -1,1 +1,16 @@
 /CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+.ninja_deps
+.ninja_log
+__cmrc_vmix-resources/
+_cmrc/
+build.ninja
+cmake_install.cmake
+libGLAD.a
+libIMGUI.a
+libTINYFD.a
+libTINYXML2.a
+libvmix-resources.a
+rules.ninja
+/vmix
