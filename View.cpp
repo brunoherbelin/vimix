@@ -82,41 +82,54 @@ View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
     return Cursor(Cursor_ResizeAll);
 }
 
-std::pair<Node *, glm::vec2> View::pick(glm::vec3 point)
+std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 {
-    std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
+    // prepare empty return value
+    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
+
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
 
     // picking visitor traverses the scene
-    PickingVisitor pv(point);
+    PickingVisitor pv(scene_point_);
     scene.accept(pv);
 
     // picking visitor found nodes?
     if ( !pv.picked().empty()) {
 
         // select top-most Node picked
-        picked = pv.picked().back();
-
-        //DEBUG
-//        select(glm::vec2(-1.f, -1.f), glm::vec2(1.f, 1.f));
-
+        pick = pv.picked().back();
 
     }
-    // cancel selection on clic in background
-    else {
-//        deselect();
-    }
-
-    return picked;
+    return pick;
 }
 
-void GeometryView::select(glm::vec2 A, glm::vec2 B)
+void View::select(glm::vec2 A, glm::vec2 B)
 {
-//    for(auto it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
-//        if ( *it != selection_box_)
-//            selection_box_->attach(*it);
-//    }
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_A = Rendering::manager().unProject(A);
+    glm::vec3 scene_point_B = Rendering::manager().unProject(B);
 
-//    selection_box_->visible_ = true;
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_A, scene_point_B);
+    scene.accept(pv);
+
+    // reset selection
+    Mixer::selection().clear();
+
+    // picking visitor found nodes in the area?
+    if ( !pv.picked().empty()) {
+
+        SourceList selection;
+        for(auto p = pv.picked().begin(); p != pv.picked().end(); p++){
+            Source *s = Mixer::manager().findSource( p->first );
+            if (s)
+                selection.push_back( s );
+        }
+        // set the selection with list of picked (overlaped) sources
+        Mixer::selection().add(selection);
+
+    }
 }
 
 
@@ -368,12 +381,16 @@ void GeometryView::draw()
 }
 
 
-std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec3 point)
+std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 {
+    // prepare empty return value
     std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
 
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
+
     // picking visitor traverses the scene
-    PickingVisitor pv(point);
+    PickingVisitor pv(scene_point_);
     scene.accept(pv);
 
     // picking visitor found nodes?
@@ -630,6 +647,7 @@ float LayerView::setDepth(Source *s, float d)
 
     return sourceNode->translation_.z;
 }
+
 
 View::Cursor LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
 {

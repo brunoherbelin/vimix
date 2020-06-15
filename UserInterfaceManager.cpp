@@ -383,10 +383,16 @@ void UserInterface::handleMouse()
         {
             if (current)
             {
+
                 // grab current source
                 View::Cursor c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
-
                 setMouseCursor(c);
+
+//                if ( Mixer::selection().contains(current)) {
+//                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
+//                        c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, *it, picked);
+//                }
+
             }
             else {
 //                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
@@ -405,9 +411,9 @@ void UserInterface::handleMouse()
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
 
             // get coordinate in world coordinate of mouse cursor
-            glm::vec3 point = Rendering::manager().unProject(mousepos);
+//            glm::vec3 point = Rendering::manager().unProject(mousepos);
             // ask the view what was picked
-            picked = Mixer::manager().currentView()->pick(point);
+            picked = Mixer::manager().currentView()->pick(mousepos);
 
             // if nothing picked,
             if ( picked.first == nullptr ) {

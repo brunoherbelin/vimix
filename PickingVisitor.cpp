@@ -12,9 +12,17 @@
 #include <glm/gtx/vector_angle.hpp>
 
 
-PickingVisitor::PickingVisitor(glm::vec2 coordinates) : Visitor(), point_(coordinates)
+PickingVisitor::PickingVisitor(glm::vec3 coordinates) : Visitor()
 {
     modelview_ = glm::mat4(1.f);
+    points_.push_back( coordinates );
+}
+
+PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end) : Visitor()
+{
+    modelview_ = glm::mat4(1.f);
+    points_.push_back( selectionstart );
+    points_.push_back( selection_end );
 }
 
 void PickingVisitor::visit(Node &n)
@@ -31,6 +39,7 @@ void PickingVisitor::visit(Group &n)
 {
     if (!n.visible_)
         return;
+
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
         if ( (*node)->visible_ )
@@ -43,6 +52,7 @@ void PickingVisitor::visit(Switch &n)
 {
     if (!n.visible_ || n.numChildren()<1)
         return;
+
     glm::mat4 mv = modelview_;
     n.activeChild()->accept(*this);
     modelview_ = mv;
@@ -59,13 +69,32 @@ void PickingVisitor::visit(Surface &n)
     if (!n.visible_)
         return;
 
-    // apply inverse transform to the point of interest
-    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
+    // if more than one point given for testing: test overlap
+    if (points_.size() > 1) {
+        // create bounding box for those points (2 in practice)
+        GlmToolkit::AxisAlignedBoundingBox bb_points;
+        bb_points.extend(points_);
 
-    // test bounding box: it is an exact fit for a resctangular surface
-    if ( n.bbox().contains( glm::vec3(P)) )
-        // add this surface to the nodes picked
-        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+        // apply inverse transform
+        bb_points = bb_points.transformed(glm::inverse(modelview_)) ;
+
+        // test bounding box for overlap with inverse transform bbox
+        if ( bb_points.intersect( n.bbox() ) )
+//            if ( n.bbox().contains( bb_points ) )
+            // add this surface to the nodes picked
+            nodes_.push_back( std::pair(&n, glm::vec2(0.f)) );
+    }
+    // only one point
+    else if (points_.size() > 0) {
+
+        // apply inverse transform to the point of interest
+        glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
+
+        // test bounding box for picking from a single point
+        if ( n.bbox().contains( glm::vec3(P)) )
+            // add this surface to the nodes picked
+            nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+    }
 }
 
 void PickingVisitor::visit(Frame &n)
@@ -76,11 +105,12 @@ void PickingVisitor::visit(Frame &n)
 
 void PickingVisitor::visit(Handles &n)
 {
-    if (!n.visible_)
+    // discard if not visible or if not exactly one point given for picking
+    if (!n.visible_ || points_.size() != 1)
         return;
 
     // apply inverse transform to the point of interest
-    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
 
     // inverse transform to check the scale
     glm::vec4 S = glm::inverse(modelview_) * glm::vec4( 0.05f, 0.05f, 0.f, 0.f );
@@ -108,7 +138,7 @@ void PickingVisitor::visit(Handles &n)
         // the icon for rotation is on the right top corner at (0.12, 0.12) in scene coordinates
         glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
         float l = glm::length( glm::vec2(vec) );
-        picked = glm::length( glm::vec2( 1.f + l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
+        picked  = glm::length( glm::vec2( 1.f + l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
     }
 
     if ( picked )
@@ -119,26 +149,26 @@ void PickingVisitor::visit(Handles &n)
 
 void PickingVisitor::visit(LineSquare &)
 {
-    // apply inverse transform to the point of interest
-    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
+//    // apply inverse transform to the point of interest
+//    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_A_, 0.f, 1.f );
 
-    // lower left corner
-    glm::vec3 LL = glm::vec3( -1.f, -1.f, 0.f );
-    // up right corner
-    glm::vec3 UR = glm::vec3( 1.f, 1.f, 0.f );
+//    // lower left corner
+//    glm::vec3 LL = glm::vec3( -1.f, -1.f, 0.f );
+//    // up right corner
+//    glm::vec3 UR = glm::vec3( 1.f, 1.f, 0.f );
 
-    // if P is over a line [LL UR] rectangle:
-    // TODO
+//    // if P is over a line [LL UR] rectangle:
+//    // TODO
 }
 
 void PickingVisitor::visit(LineCircle &n)
 {
-    // apply inverse transform to the point of interest
-    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_, 0.f, 1.f );
+//    // apply inverse transform to the point of interest
+//    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_A_, 0.f, 1.f );
 
-    float r = glm::length( glm::vec2(P) );
-    if ( r < 1.02 && r > 0.98)
-        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+//    float r = glm::length( glm::vec2(P) );
+//    if ( r < 1.02 && r > 0.98)
+//        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
 }
 
 void PickingVisitor::visit(Scene &n)

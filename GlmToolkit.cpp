@@ -22,7 +22,7 @@ GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() {
     mMax = glm::vec3(-1.f);
 }
 
-void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point)
+void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point) // TODO why ref to point?
 {
     if (isNull()) {
         mMin = point;

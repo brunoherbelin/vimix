@@ -37,7 +37,7 @@ Source::Source() : initialized_(false), need_update_(true)
     frames_[View::MIXING] = new Switch;
     Frame *frame = new Frame(Frame::ROUND_THIN);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.7f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
     frames_[View::MIXING]->attach(frame);
     frame = new Frame(Frame::ROUND_LARGE);
     frame->translation_.z = 0.01;

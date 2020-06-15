@@ -95,7 +95,7 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // shadow (scaled)
         if(shadow_){
-            shadow_->shader()->color.a = 0.8f;
+            shadow_->shader()->color.a = 0.98f;
             shadow_->draw( ctm, projection);
         }
 

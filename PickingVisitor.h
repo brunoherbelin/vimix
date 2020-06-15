@@ -9,13 +9,14 @@
 
 class PickingVisitor: public Visitor
 {
-    glm::vec2 point_;
+    std::vector<glm::vec3> points_;
     glm::mat4 modelview_;
     std::vector< std::pair<Node *, glm::vec2> > nodes_;
 
 public:
 
-    PickingVisitor(glm::vec2 coordinates);
+    PickingVisitor(glm::vec3 coordinates);
+    PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end);
     std::vector< std::pair<Node *, glm::vec2> > picked() { return nodes_; }
 
     // Elements of Scene

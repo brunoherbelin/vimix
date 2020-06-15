@@ -14,6 +14,16 @@ void Selection::add(Source *s)
     s->setMode(Source::ACTIVE);
 }
 
+void Selection::set(SourceList l)
+{
+    clear();
+
+    for(auto it = l.begin(); it != l.end(); it++)
+        (*it)->setMode(Source::ACTIVE);
+
+    selection_ = l;
+}
+
 void Selection::add(SourceList l)
 {
     for(auto it = l.begin(); it != l.end(); it++)
@@ -64,4 +74,14 @@ SourceList::iterator Selection::find(Source *s)
 bool Selection::contains (Source *s)
 {
     return (find(s) != selection_.end());
+}
+
+SourceList::iterator Selection::begin()
+{
+    return selection_.begin();
+}
+
+SourceList::iterator Selection::end()
+{
+    return selection_.end();
 }

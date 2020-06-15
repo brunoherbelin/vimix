@@ -13,8 +13,12 @@ public:
     void add    (SourceList l);
     void remove (Source *s);
     void remove (SourceList l);
+
+    void set    (SourceList l);
     void clear  ();
 
+    SourceList::iterator begin ();
+    SourceList::iterator end ();
     bool contains (Source *s);
 
 protected:
