@@ -275,22 +275,21 @@ bool Source::contains(Node *node) const
 }
 
 
-bool hasNode::operator()(const Source* elem) const
+bool Source::hasNode::operator()(const Source* elem) const
 {
     if (_n && elem)
     {
+        // quick case (most frequent and easy to answer)
+        if (elem->rendersurface_ == _n)
+            return true;
+
+        // general case: traverse tree of all Groups recursively using a SearchVisitor
         SearchVisitor sv(_n);
-        elem->group(View::MIXING)->accept(sv);
-        if (sv.found())
-            return true;
-        elem->group(View::GEOMETRY)->accept(sv);
-        if (sv.found())
-            return true;
-        elem->group(View::LAYER)->accept(sv);
-        if (sv.found())
-            return true;
-        elem->group(View::RENDERING)->accept(sv);
-        return sv.found();
+        for (auto g = elem->groups_.begin(); g != elem->groups_.end(); g++) {
+            (*g).second->accept(sv);
+            if (sv.found())
+                return true;
+        }
     }
 
     return false;

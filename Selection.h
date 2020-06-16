@@ -16,6 +16,7 @@ public:
 
     void set    (SourceList l);
     void clear  ();
+    uint size   ();
 
     SourceList::iterator begin ();
     SourceList::iterator end ();

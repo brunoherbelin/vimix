@@ -366,7 +366,7 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         // search for a source of the name 'tentativename'
         std::string basename = tentativename;
         int count = 1;
-        while ( std::find_if(session_->begin(), session_->end(), hasName(tentativename)) != session_->end() ) {
+        while ( std::find_if(session_->begin(), session_->end(), Source::hasName(tentativename)) != session_->end() ) {
             tentativename = basename + std::to_string(++count);
         }
 

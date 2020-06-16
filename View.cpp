@@ -120,16 +120,19 @@ void View::select(glm::vec2 A, glm::vec2 B)
     // picking visitor found nodes in the area?
     if ( !pv.picked().empty()) {
 
+        // create a list of source matching the list of picked nodes
         SourceList selection;
-        for(auto p = pv.picked().begin(); p != pv.picked().end(); p++){
+        std::vector< std::pair<Node *, glm::vec2> > pick = pv.picked();
+        // loop over the nodes and add all sources found.
+        for(std::vector< std::pair<Node *, glm::vec2> >::iterator p = pick.begin(); p != pick.end(); p++){
             Source *s = Mixer::manager().findSource( p->first );
             if (s)
                 selection.push_back( s );
         }
         // set the selection with list of picked (overlaped) sources
-        Mixer::selection().add(selection);
-
+        Mixer::selection().set(selection);
     }
+
 }
 
 

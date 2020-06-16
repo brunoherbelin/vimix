@@ -151,12 +151,12 @@ SourceList::iterator Session::find(Source *s)
 
 SourceList::iterator Session::find(std::string namesource)
 {
-    return std::find_if(sources_.begin(), sources_.end(), hasName(namesource));
+    return std::find_if(sources_.begin(), sources_.end(), Source::hasName(namesource));
 }
 
 SourceList::iterator Session::find(Node *node)
 {
-    return std::find_if(sources_.begin(), sources_.end(), hasNode(node));
+    return std::find_if(sources_.begin(), sources_.end(), Source::hasNode(node));
 }
 
 uint Session::numSource() const

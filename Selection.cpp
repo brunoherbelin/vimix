@@ -21,6 +21,8 @@ void Selection::set(SourceList l)
     for(auto it = l.begin(); it != l.end(); it++)
         (*it)->setMode(Source::ACTIVE);
 
+    l.sort();
+    l.unique();
     selection_ = l;
 }
 
@@ -32,7 +34,10 @@ void Selection::add(SourceList l)
     // generate new set as union of current selection and give list
     SourceList result;
     std::set_union(selection_.begin(), selection_.end(), l.begin(), l.end(), std::inserter(result, result.begin()) );
+
     // set new selection
+    result.sort();
+    result.unique();
     selection_ = SourceList(result);
 }
 
@@ -63,6 +68,11 @@ void Selection::clear()
         (*it)->setMode(Source::NORMAL);
 
     selection_.clear();
+}
+
+uint Selection::size()
+{
+    return selection_.size();
 }
 
 SourceList::iterator Selection::find(Source *s)

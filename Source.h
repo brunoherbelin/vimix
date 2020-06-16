@@ -85,6 +85,25 @@ public:
     // a Source shall define how to render into the frame buffer
     virtual void render() = 0;
 
+
+    struct hasNode: public std::unary_function<Source*, bool>
+    {
+        bool operator()(const Source* elem) const;
+        hasNode(Node *n) : _n(n) { }
+    private:
+        Node *_n;
+    };
+
+    struct hasName: public std::unary_function<Source*, bool>
+    {
+        inline bool operator()(const Source* elem) const {
+           return (elem && elem->name() == _n);
+        }
+        hasName(std::string n) : _n(n) { }
+    private:
+        std::string _n;
+    };
+
 protected:
     // name
     std::string name_;
@@ -128,25 +147,6 @@ protected:
     CloneList clones_;
 };
 
-struct hasName: public std::unary_function<Source*, bool>
-{
-    inline bool operator()(const Source* elem) const {
-       return (elem && elem->name() == _n);
-    }
-    hasName(std::string n) : _n(n) { }
-
-private:
-    std::string _n;
-};
-
-struct hasNode: public std::unary_function<Source*, bool>
-{
-    bool operator()(const Source* elem) const;
-    hasNode(Node *n) : _n(n) { }
-
-private:
-    Node *_n;
-};
 
 
 class CloneSource : public Source
