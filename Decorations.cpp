@@ -11,7 +11,7 @@
 #include "Log.h"
 
 
-Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
+Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
 {
     static Mesh *shadows[3] = {nullptr};
     if (shadows[0] == nullptr)  {
@@ -26,35 +26,69 @@ Frame::Frame(Type type) : Node(), type_(type), side_(nullptr), top_(nullptr), sh
         frames[2] = new Mesh("mesh/border_large_round.ply");
         frames[3] = new Mesh("mesh/border_large_top.ply");
     }
-    static LineSquare *sharpframe = new LineSquare( 3 );
+    static LineSquare *sharpframethin = new LineSquare( 3 );
+    static LineSquare *sharpframelarge = new LineSquare( 5 );
 
-    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-    switch (type) {
-    case SHARP_LARGE:
-        square_ = sharpframe;
+    if (corner == SHARP) {
+        if (border == LARGE)
+            square_ = sharpframelarge;
+        else
+            square_ = sharpframethin;
+    }
+    else {
+        // Round corners
+        if (border == THIN) {
+            side_  = frames[0];
+            top_   = frames[1];
+        }
+        else{
+            side_  = frames[2];
+            top_   = frames[3];
+        }
+    }
+
+    switch (shadow) {
+    default:
+    case NONE:
+        break;
+    case GLOW:
         shadow_ = shadows[0];
         break;
-    case SHARP_THIN:
-        square_ = sharpframe;
-        break;
-    case ROUND_LARGE:
-        side_  = frames[2];
-        top_   = frames[3];
+    case DROP:
         shadow_ = shadows[1];
         break;
-    default:
-    case ROUND_THIN:
-        side_  = frames[0];
-        top_   = frames[1];
-        shadow_ = shadows[1];
-        break;
-    case ROUND_SHADOW:
-        side_  = frames[0];
-        top_   = frames[1];
+    case PERSPECTIVE:
         shadow_ = shadows[2];
         break;
     }
 
+//    switch (type) {
+//    case SHARP_LARGE:
+//        square_ = sharpframe;
+//        shadow_ = shadows[0];
+//        break;
+//    case SHARP_THIN:
+//        square_ = sharpframe;
+//        break;
+//    case ROUND_LARGE:
+//        side_  = frames[2];
+//        top_   = frames[3];
+//        shadow_ = shadows[1];
+//        break;
+//    default:
+//    case ROUND_THIN:
+//        side_  = frames[0];
+//        top_   = frames[1];
+//        shadow_ = shadows[1];
+//        break;
+//    case ROUND_THIN_PERSPECTIVE:
+//        side_  = frames[0];
+//        top_   = frames[1];
+//        shadow_ = shadows[2];
+//        break;
+//    }
+
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
 Frame::~Frame()
@@ -323,7 +357,7 @@ void Icon::accept(Visitor& v)
 }
 
 
-Box::Box()
+SelectionBox::SelectionBox()
 {
 //    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
@@ -331,7 +365,7 @@ Box::Box()
 
 }
 
-void Box::draw (glm::mat4 modelview, glm::mat4 projection)
+void SelectionBox::draw (glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
         square_->init();

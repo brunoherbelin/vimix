@@ -35,11 +35,11 @@ Source::Source() : initialized_(false), need_update_(true)
     groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
 
     frames_[View::MIXING] = new Switch;
-    Frame *frame = new Frame(Frame::ROUND_THIN);
+    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
     frames_[View::MIXING]->attach(frame);
-    frame = new Frame(Frame::ROUND_LARGE);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::MIXING]->attach(frame);
@@ -57,11 +57,11 @@ Source::Source() : initialized_(false), need_update_(true)
     groups_[View::GEOMETRY]->visible_ = false;
 
     frames_[View::GEOMETRY] = new Switch;
-    frame = new Frame(Frame::SHARP_THIN);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.7f);
     frames_[View::GEOMETRY]->attach(frame);
-    frame = new Frame(Frame::SHARP_LARGE);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::GEOMETRY]->attach(frame);
@@ -70,22 +70,22 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::GEOMETRY] = new Group;
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
-    resize_handle_ = new Handles(Handles::RESIZE);
-    resize_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    resize_handle_->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(resize_handle_);
-    resize_H_handle_ = new Handles(Handles::RESIZE_H);
-    resize_H_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    resize_H_handle_->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(resize_H_handle_);
-    resize_V_handle_ = new Handles(Handles::RESIZE_V);
-    resize_V_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    resize_V_handle_->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(resize_V_handle_);
-    rotate_handle_ = new Handles(Handles::ROTATE);
-    rotate_handle_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    rotate_handle_->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(rotate_handle_);
+    handle_[Handles::RESIZE] = new Handles(Handles::RESIZE);
+    handle_[Handles::RESIZE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handle_[Handles::RESIZE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE]);
+    handle_[Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+    handle_[Handles::RESIZE_H]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handle_[Handles::RESIZE_H]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE_H]);
+    handle_[Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+    handle_[Handles::RESIZE_V]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handle_[Handles::RESIZE_V]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE_V]);
+    handle_[Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handle_[Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handle_[Handles::ROTATE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handle_[Handles::ROTATE]);
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default layer nodes
@@ -93,11 +93,11 @@ Source::Source() : initialized_(false), need_update_(true)
     groups_[View::LAYER]->visible_ = false;
 
     frames_[View::LAYER] = new Switch;
-    frame = new Frame(Frame::ROUND_SHADOW);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);    
     frames_[View::LAYER]->attach(frame);
-    frame = new Frame(Frame::ROUND_LARGE);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::LAYER]->attach(frame);
@@ -108,17 +108,21 @@ Source::Source() : initialized_(false), need_update_(true)
     overlays_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
-    // will be associated to nodes later
+    // create objects
+    stored_status_  = new Group;
+
+    // those will be associated to nodes later
     blendingshader_ = new ImageShader;
-    rendershader_ = new ImageProcessingShader;
-    renderbuffer_ = nullptr;
-    rendersurface_ = nullptr;
+    rendershader_   = new ImageProcessingShader;
+    renderbuffer_   = nullptr;
+    rendersurface_  = nullptr;
 
 }
 
 Source::~Source()
 {
-    // delete render objects
+    // delete objects
+    delete stored_status_;
     if (renderbuffer_)
         delete renderbuffer_;
 
@@ -133,8 +137,10 @@ Source::~Source()
     frames_.clear();
     overlays_.clear();
 
+    // inform clones that they lost their origin
     for (auto it = clones_.begin(); it != clones_.end(); it++)
         (*it)->origin_ = nullptr;
+
 }
 
 void Source::setName (const std::string &name)

@@ -14,6 +14,31 @@ void Selection::add(Source *s)
     s->setMode(Source::ACTIVE);
 }
 
+void Selection::remove(Source *s)
+{
+    SourceList::iterator it = find(s);
+    if (it != selection_.end()) {
+        selection_.erase(it);
+        s->setMode(Source::NORMAL);
+    }
+}
+
+void Selection::toggle(Source *s)
+{
+    if (contains(s))
+        remove(s);
+    else
+        add(s);
+}
+
+void Selection::set(Source *s)
+{
+    clear();
+    selection_.push_back(s);
+    s->setMode(Source::ACTIVE);
+}
+
+
 void Selection::set(SourceList l)
 {
     clear();
@@ -39,15 +64,6 @@ void Selection::add(SourceList l)
     result.sort();
     result.unique();
     selection_ = SourceList(result);
-}
-
-void Selection::remove(Source *s)
-{
-    SourceList::iterator it = find(s);
-    if (it != selection_.end()) {
-        selection_.erase(it);
-        s->setMode(Source::NORMAL);
-    }
 }
 
 void Selection::remove(SourceList l)

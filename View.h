@@ -53,14 +53,16 @@ public:
     virtual Cursor drag (glm::vec2, glm::vec2);
 
     // grab a source provided a start and an end point in screen coordinates and the picking point
-    virtual Cursor grab (glm::vec2, glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
+    virtual Cursor grab (Source*, glm::vec2, glm::vec2, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
 
     // test mouse over provided a point in screen coordinates and the picking point
-    virtual Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) {
+    virtual Cursor over (Source*, glm::vec2, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
+
+    virtual void initiate();
 
     virtual void restoreSettings();
     virtual void saveSettings();
@@ -84,7 +86,7 @@ public:
     void zoom (float factor) override;
     void centerSource(Source *) override;
 
-    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>) override;
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
 
     void setAlpha (Source *s);
 
@@ -117,8 +119,8 @@ public:
     void update (float dt) override;
     void zoom (float factor) override;
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
-    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
-    Cursor over (glm::vec2, Source*, std::pair<Node *, glm::vec2>) override;
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+    Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
 //    void select(glm::vec2, glm::vec2) override;
 
 //    class Box *selection_box_;
@@ -131,7 +133,7 @@ public:
 
     void update (float dt) override;
     void zoom (float factor) override;
-    Cursor grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick) override;
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
 
     float setDepth (Source *, float d = -1.f);
 

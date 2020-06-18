@@ -12,20 +12,21 @@ class Frame : public Node
 {
 public:
 
-    typedef enum { ROUND_THIN = 0, ROUND_LARGE, SHARP_THIN, SHARP_LARGE, ROUND_SHADOW } Type;
-    Frame(Type type);
+    typedef enum { ROUND = 0, SHARP } CornerType;
+    typedef enum { THIN = 0, LARGE } BorderType;
+    typedef enum { NONE = 0, GLOW, DROP, PERSPECTIVE } ShadowType;
+
+    Frame(CornerType corner, BorderType border, ShadowType shadow);
     ~Frame();
 
     void update (float dt) override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    Type type() const { return type_; }
     Mesh *border() const { return side_; }
     glm::vec4 color;
 
 protected:
-    Type type_;
     Mesh *side_;
     Mesh *top_;
     Mesh *shadow_;
@@ -71,10 +72,10 @@ protected:
     Type type_;
 };
 
-class Box : public Group
+class SelectionBox : public Group
 {
 public:
-    Box();
+    SelectionBox();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
 

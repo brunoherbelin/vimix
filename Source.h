@@ -25,7 +25,9 @@ typedef std::list<CloneSource *> CloneList;
 class Source
 {
     friend class View;
+    friend class MixingView;
     friend class GeometryView;
+    friend class LayerView;
 
 public:
     // create a source and add it to the list
@@ -104,6 +106,7 @@ public:
         std::string _n;
     };
 
+
 protected:
     // name
     std::string name_;
@@ -137,11 +140,12 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    Handles *resize_handle_, *resize_H_handle_, *resize_V_handle_, *rotate_handle_;
+    Handles *handle_[4];
 
     // update
-    bool need_update_;
+    bool  need_update_;
     float dt_;
+    Group *stored_status_;
 
     // clones
     CloneList clones_;

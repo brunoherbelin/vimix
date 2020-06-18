@@ -385,33 +385,28 @@ void UserInterface::handleMouse()
             {
 
                 // grab current source
-                View::Cursor c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, current, picked);
+//                View::Cursor c = Mixer::manager().currentView()->grab(current, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+//                setMouseCursor(c);
+                // grab selected sources (current is also selected by default)
+                View::Cursor c = View::Cursor_Arrow;
+                for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
+                    c = Mixer::manager().currentView()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
                 setMouseCursor(c);
-
-//                if ( Mixer::selection().contains(current)) {
-//                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
-//                        c = Mixer::manager().currentView()->grab( mouseclic[ImGuiMouseButton_Left], mousepos, *it, picked);
-//                }
-
             }
             else {
-//                Log::Info("Mouse drag (%.1f,%.1f)(%.1f,%.1f)", io.MouseClickedPos[0].x, io.MouseClickedPos[0].y, io.MousePos.x, io.MousePos.y);
                 // Selection area
                 ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
                         ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
                 ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
                         ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
 
-// TODO Multiple sources selection
-
+                // Bounding box multiple sources selection
                 Mixer::manager().currentView()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
 
             }
         }
-        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
+        else if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
 
-            // get coordinate in world coordinate of mouse cursor
-//            glm::vec3 point = Rendering::manager().unProject(mousepos);
             // ask the view what was picked
             picked = Mixer::manager().currentView()->pick(mousepos);
 
@@ -427,22 +422,24 @@ void UserInterface::handleMouse()
             else {
                 // get if a source was picked
                 Source *s = Mixer::manager().findSource(picked.first);
+                if (s != nullptr) {
 
-                if (keyboard_modifier_active) {
-                    // selection
-                    Mixer::selection().add( s );
-                }
-                // make current
-                else {
-                    Mixer::manager().setCurrentSource( picked.first );
-                    if (navigator.pannelVisible())
-                        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                    if (keyboard_modifier_active) {
+                        // selection
+                        Mixer::selection().toggle( s ); // TODO toggle selection
+                    }
+                    // make current
+                    else {
+                        Mixer::manager().setCurrentSource( s );
+                        if (navigator.pannelVisible())
+                            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                    }
+
+                    // indicate to view that an action can be initiated (e.g. grab)
+                    Mixer::manager().currentView()->initiate();
                 }
 
             }
-
-            // TODO deselect if current source is not in selection
-//            Mixer::manager().currentView()->deselect();
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {

@@ -10,17 +10,19 @@ public:
     Selection();
 
     void add    (Source *s);
-    void add    (SourceList l);
     void remove (Source *s);
-    void remove (SourceList l);
+    void set    (Source *s);
+    void toggle (Source *s);
 
+    void add    (SourceList l);
+    void remove (SourceList l);
     void set    (SourceList l);
     void clear  ();
-    uint size   ();
 
     SourceList::iterator begin ();
     SourceList::iterator end ();
     bool contains (Source *s);
+    uint size ();
 
 protected:
     SourceList::iterator find (Source *s);

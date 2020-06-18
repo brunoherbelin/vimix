@@ -388,8 +388,9 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(it);
-        // add to selection
-        selection().add(*it);
+        // set selection if not already selected
+        if (!selection().contains(*it))
+            selection().set(*it);
         // show status as current
         (*current_source_)->setMode(Source::CURRENT);
     }
@@ -440,10 +441,17 @@ void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source
     if ( current_source_ != session_->end() ) {
-        // remove from selection
-        selection().remove( *current_source_ );
-        // show status as normal
-        (*current_source_)->setMode(Source::NORMAL);        
+//        if (selection().size() > 1) {
+
+//        }
+//        // current source is the sole selected source : unselect and
+//        else
+        {
+            // remove from selection
+//            selection().remove( *current_source_ );
+            // show status as normal
+            (*current_source_)->setMode(Source::ACTIVE);
+        }
     }
 
     // deselect current source

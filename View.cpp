@@ -104,6 +104,15 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
     return pick;
 }
 
+void View::initiate()
+{
+    for (auto sit = Mixer::manager().session()->begin();
+         sit != Mixer::manager().session()->end(); sit++){
+
+        (*sit)->stored_status_->copyTransform((*sit)->group(mode_));
+    }
+}
+
 void View::select(glm::vec2 A, glm::vec2 B)
 {
     // unproject mouse coordinate into scene coordinates
@@ -180,27 +189,17 @@ void MixingView::centerSource(Source *s)
 
 }
 
-View::Cursor MixingView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2>)
+View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>)
 {
     if (!s)
         return Cursor();
-
-    Group *sourceNode = s->group(mode_);
-
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec2 start_position = glm::vec2(0.f);
-
-    if ( start_position != from ) {
-        start_position = from;
-        start_translation = sourceNode->translation_;
-    }
 
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
-    sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+    s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
     // request update
     s->touch();
@@ -330,7 +329,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     Surface *rect = new Surface;
     scene.bg()->attach(rect);
 
-    Frame *border = new Frame(Frame::SHARP_THIN);
+    Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     border->color = glm::vec4( COLOR_FRAME, 1.f );
     scene.fg()->attach(border);
 
@@ -425,7 +424,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
     return pick;
 }
 
-View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
     View::Cursor ret = Cursor();
 
@@ -435,18 +434,6 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
     if (!s)
         return ret;
     Group *sourceNode = s->group(mode_);
-
-    // remember source transform at moment of clic at position 'from'
-    static glm::vec2 start_clic_position = glm::vec2(0.f);
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec3 start_scale = glm::vec3(1.f);
-    static glm::vec3 start_rotation = glm::vec3(0.f);
-    if ( start_clic_position != from ) {
-        start_clic_position = from;
-        start_translation = sourceNode->translation_;
-        start_scale = sourceNode->scale_;
-        start_rotation = sourceNode->rotation_;
-    }
 
     // grab coordinates in scene-View reference frame
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
@@ -465,10 +452,10 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
     // which manipulation to perform?
     if (pick.first)  {
         // picking on the resizing handles in the corners
-        if ( pick.first == s->resize_handle_ ) {
+        if ( pick.first == s->handle_[Handles::RESIZE] ) {
             if (UserInterface::manager().keyboardModifier())
                 S_resize.y = S_resize.x;
-            sourceNode->scale_ = start_scale * S_resize;
+            sourceNode->scale_ = s->stored_status_->scale_ * S_resize;
 
 //            Log::Info(" resize            ( %.1f, %.1f ) ", S_resize.x, S_resize.y);
 //            glm::vec3 factor = S_resize * glm::vec3(0.5f, 0.5f, 1.f);
@@ -486,8 +473,8 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the resizing handles left or right
-        else if ( pick.first == s->resize_H_handle_ ) {
-            sourceNode->scale_ = start_scale * glm::vec3(S_resize.x, 1.f, 1.f);
+        else if ( pick.first == s->handle_[Handles::RESIZE_H] ) {
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(S_resize.x, 1.f, 1.f);
             if (UserInterface::manager().keyboardModifier())
                 sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
 
@@ -496,8 +483,8 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the resizing handles top or bottom
-        else if ( pick.first == s->resize_V_handle_ ) {
-            sourceNode->scale_ = start_scale * glm::vec3(1.f, S_resize.y, 1.f);
+        else if ( pick.first == s->handle_[Handles::RESIZE_V] ) {
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(1.f, S_resize.y, 1.f);
             if (UserInterface::manager().keyboardModifier())
                 sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
 
@@ -506,15 +493,15 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the rotating handle
-        else if ( pick.first == s->rotate_handle_ ) {
+        else if ( pick.first == s->handle_[Handles::ROTATE] ) {
             // rotation center to center of source
-            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), start_translation);
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
             S_from = glm::inverse(T) * glm::vec4( gl_Position_from,  1.f );
             S_to   = glm::inverse(T) * glm::vec4( gl_Position_to,  1.f );
             // angle
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
             // apply rotation on Z axis
-            sourceNode->rotation_ = start_rotation + glm::vec3(0.f, 0.f, angle);
+            sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
 
             int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
             if (UserInterface::manager().keyboardModifier()) {
@@ -527,7 +514,7 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
-            sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+            sourceNode->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
             if (UserInterface::manager().keyboardModifier()) {
                 sourceNode->translation_.x = float( int( sourceNode->translation_.x * 10.f ) ) / 10.f;
@@ -539,13 +526,13 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
             info << ", "  << sourceNode->translation_.y << ")";
         }
     }
-    // don't have a handle, we can only move the source
-    else {
-        sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
-        ret.type = Cursor_ResizeAll;
-        info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-        info << ", "  << sourceNode->translation_.y << ")";
-    }
+//    // don't have a handle, we can only move the source
+//    else {
+//        sourceNode->translation_ = start_translation + gl_Position_to - gl_Position_from;
+//        ret.type = Cursor_ResizeAll;
+//        info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+//        info << ", "  << sourceNode->translation_.y << ")";
+//    }
 
     // request update
     s->touch();
@@ -554,7 +541,7 @@ View::Cursor GeometryView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::p
     return ret;
 }
 
-View::Cursor GeometryView::over (glm::vec2, Source*, std::pair<Node *, glm::vec2>)
+View::Cursor GeometryView::over (Source*, glm::vec2, std::pair<Node *, glm::vec2>)
 {    
     View::Cursor ret = Cursor_Arrow;
 
@@ -581,7 +568,7 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp->translation_.z = -0.1f;
     scene.bg()->attach(persp);
 
-    Frame *border = new Frame(Frame::ROUND_SHADOW);
+    Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
     border->color = glm::vec4( COLOR_FRAME, 0.7f );
     scene.bg()->attach(border);
 }
@@ -652,25 +639,17 @@ float LayerView::setDepth(Source *s, float d)
 }
 
 
-View::Cursor LayerView::grab (glm::vec2 from, glm::vec2 to, Source *s, std::pair<Node *, glm::vec2> pick)
+View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
     if (!s)
         return Cursor();
-
-    static glm::vec3 start_translation = glm::vec3(0.f);
-    static glm::vec2 start_position = glm::vec2(0.f);
-
-    if ( start_position != from ) {
-        start_position = from;
-        start_translation = s->group(mode_)->translation_;
-    }
 
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
-    glm::vec3 dest_translation = start_translation + gl_Position_to - gl_Position_from;
+    glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
     // apply change
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
