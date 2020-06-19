@@ -56,6 +56,7 @@ public:
     void setCurrentSource (Source *s);
     void setCurrentNext ();
     void unsetCurrentSource ();
+
     void cloneCurrentSource ();
     void deleteCurrentSource ();
     int  indexCurrentSource ();
@@ -64,9 +65,9 @@ public:
     Source * findSource (Node *node);
 
     // management of view
-    View *view (View::Mode m);
-    void setCurrentView (View::Mode m);
-    View *currentView ();
+    View *view (View::Mode m = View::INVALID);
+    void setView (View::Mode m);
+//    View *currentView ();
 
     // manipulate, load and save sessions
     inline Session *session () const { return session_; }

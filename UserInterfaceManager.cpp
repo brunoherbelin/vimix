@@ -261,11 +261,11 @@ void UserInterface::handleKeyboard()
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
-            Mixer::manager().setCurrentView(View::MIXING);
+            Mixer::manager().setView(View::MIXING);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
-            Mixer::manager().setCurrentView(View::GEOMETRY);
+            Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
-            Mixer::manager().setCurrentView(View::LAYER);
+            Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
@@ -349,7 +349,7 @@ void UserInterface::handleMouse()
         //
         if ( io.MouseWheel != 0) {
             // scroll => zoom current view
-            Mixer::manager().currentView()->zoom( io.MouseWheel );
+            Mixer::manager().view()->zoom( io.MouseWheel );
         }
         // TODO : zoom with center on source if over current
 
@@ -360,7 +360,7 @@ void UserInterface::handleMouse()
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
             // right mouse drag => drag current view
-            View::Cursor c = Mixer::manager().currentView()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
+            View::Cursor c = Mixer::manager().view()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
             setMouseCursor(c);
         }
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
@@ -373,7 +373,7 @@ void UserInterface::handleMouse()
         }
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right) )
         {
-            Mixer::manager().currentView()->restoreSettings();
+            Mixer::manager().view()->restoreSettings();
         }
 
         //
@@ -390,7 +390,7 @@ void UserInterface::handleMouse()
                 // grab selected sources (current is also selected by default)
                 View::Cursor c = View::Cursor_Arrow;
                 for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
-                    c = Mixer::manager().currentView()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
                 setMouseCursor(c);
             }
             else {
@@ -401,14 +401,14 @@ void UserInterface::handleMouse()
                         ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
 
                 // Bounding box multiple sources selection
-                Mixer::manager().currentView()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
+                Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
 
             }
         }
         else if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
 
             // ask the view what was picked
-            picked = Mixer::manager().currentView()->pick(mousepos);
+            picked = Mixer::manager().view()->pick(mousepos);
 
             // if nothing picked,
             if ( picked.first == nullptr ) {
@@ -436,7 +436,7 @@ void UserInterface::handleMouse()
                     }
 
                     // indicate to view that an action can be initiated (e.g. grab)
-                    Mixer::manager().currentView()->initiate();
+                    Mixer::manager().view()->initiate();
                 }
 
             }
@@ -1116,16 +1116,16 @@ void Navigator::Render()
         selected_view[ Settings::application.current_view ] = true;
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
         {
-            Mixer::manager().setCurrentView(View::MIXING);
+            Mixer::manager().setView(View::MIXING);
         }
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
-            Mixer::manager().setCurrentView(View::GEOMETRY);
+            Mixer::manager().setView(View::GEOMETRY);
         }
         if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
 //            if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
-            Mixer::manager().setCurrentView(View::LAYER);
+            Mixer::manager().setView(View::LAYER);
         }
 
     }

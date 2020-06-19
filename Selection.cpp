@@ -11,7 +11,7 @@ Selection::Selection()
 void Selection::add(Source *s)
 {
     selection_.push_back(s);
-    s->setMode(Source::ACTIVE);
+    s->setMode(Source::SELECTED);
 }
 
 void Selection::remove(Source *s)
@@ -35,7 +35,7 @@ void Selection::set(Source *s)
 {
     clear();
     selection_.push_back(s);
-    s->setMode(Source::ACTIVE);
+    s->setMode(Source::SELECTED);
 }
 
 
@@ -44,7 +44,7 @@ void Selection::set(SourceList l)
     clear();
 
     for(auto it = l.begin(); it != l.end(); it++)
-        (*it)->setMode(Source::ACTIVE);
+        (*it)->setMode(Source::SELECTED);
 
     l.sort();
     l.unique();
@@ -54,7 +54,7 @@ void Selection::set(SourceList l)
 void Selection::add(SourceList l)
 {
     for(auto it = l.begin(); it != l.end(); it++)
-        (*it)->setMode(Source::ACTIVE);
+        (*it)->setMode(Source::SELECTED);
 
     // generate new set as union of current selection and give list
     SourceList result;

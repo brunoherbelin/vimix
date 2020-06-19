@@ -155,7 +155,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
         clear();
 
     // this initializes with the current view
-    setCurrentView( (View::Mode) Settings::application.current_view );
+    setView( (View::Mode) Settings::application.current_view );
 }
 
 void Mixer::update()
@@ -310,7 +310,7 @@ void Mixer::insertSource(Source *s, bool makecurrent)
             setCurrentSource( sit );
 
             // switch to Mixing view to show source created
-            setCurrentView(View::MIXING);
+            setView(View::MIXING);
             current_view_->update(0);
             current_view_->centerSource(s);
         }
@@ -450,7 +450,7 @@ void Mixer::unsetCurrentSource()
             // remove from selection
 //            selection().remove( *current_source_ );
             // show status as normal
-            (*current_source_)->setMode(Source::ACTIVE);
+            (*current_source_)->setMode(Source::SELECTED);
         }
     }
 
@@ -484,7 +484,7 @@ Source *Mixer::currentSource()
 }
 
 // management of view
-void Mixer::setCurrentView(View::Mode m)
+void Mixer::setView(View::Mode m)
 {
     switch (m) {
     case View::GEOMETRY:
@@ -512,13 +512,8 @@ View *Mixer::view(View::Mode m)
     case View::MIXING:
         return &mixing_;
     default:
-        return nullptr;
+        return current_view_;
     }
-}
-
-View *Mixer::currentView()
-{
-    return current_view_;
 }
 
 void Mixer::save()

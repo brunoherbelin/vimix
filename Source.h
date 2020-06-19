@@ -45,10 +45,10 @@ public:
 
     // Display mode
     typedef enum {
-        HIDDEN  = 0,
-        NORMAL  = 1,
-        ACTIVE  = 2,
-        CURRENT = 3
+        HIDDEN   = 0,
+        NORMAL   = 1,
+        SELECTED = 2,
+        CURRENT  = 3
     } Mode;
     Mode mode() const;
     void setMode(Mode m);
