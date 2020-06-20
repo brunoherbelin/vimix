@@ -86,6 +86,10 @@ Source::Source() : initialized_(false), need_update_(true)
     handle_[Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     handle_[Handles::ROTATE]->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(handle_[Handles::ROTATE]);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.7f);
+    overlays_[View::GEOMETRY]->attach(frame);
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default layer nodes

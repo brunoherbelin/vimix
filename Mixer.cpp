@@ -454,8 +454,6 @@ void Mixer::setCurrentNext()
 
 void Mixer::unsetCurrentSource()
 {
-    Log::Info("unsetCurrentSource");
-
     // discard overlay for previously current source
     if ( current_source_ != session_->end() ) {
 
@@ -469,11 +467,11 @@ void Mixer::unsetCurrentSource()
             // remove from selection
             selection().remove( *current_source_ );
         }
-    }
 
-    // deselect current source
-    current_source_ = session_->end();
-    current_source_index_ = -1;
+        // deselect current source
+        current_source_ = session_->end();
+        current_source_index_ = -1;
+    }
 }
 
 int Mixer::indexCurrentSource()

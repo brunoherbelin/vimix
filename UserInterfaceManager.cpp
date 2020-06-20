@@ -379,10 +379,10 @@ void UserInterface::handleMouse()
         //
         if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
 
-            if ( !mousedown)
+            if ( !mousedown )
             {
+                Log::Info("LMB down");
                 mousedown = true;
-                Log::Info("LMB %d", mousedown);
 
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
@@ -430,27 +430,27 @@ void UserInterface::handleMouse()
                 }
             }
         }
-        else if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
+            Log::Info("LMB release");
+            mousedown = false;
+//            picked = { nullptr, glm::vec2(0.f) };
+        }
+
+        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+        {
+            Log::Info("LMB double clic");
             // display source in left pannel
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             // discard current to select front most source
             // (because single clic maintains same source active)
             Mixer::manager().unsetCurrentSource();
-        }
-        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
-        {
-            mousedown = false;
-            Log::Info("LMB %d", mousedown);
 
-            picked = { nullptr, glm::vec2(0.f) };
         }
 
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
         {
-//            Log::Info("LMB drag %f", glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos));
-
             Source *current = Mixer::manager().currentSource();
             if (current)
             {

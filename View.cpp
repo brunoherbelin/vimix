@@ -370,14 +370,24 @@ void GeometryView::zoom( float factor )
 
 void GeometryView::draw()
 {
+    // hack to prevent source manipulation (scale and rotate)
+    // when multiple sources are selected: simply do not draw overlay in scene
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+        if ( Mixer::selection().size() > 1)   {
+            s->setMode(Source::SELECTED);
+            s = nullptr;
+        }
+    }
+
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
-    // draw overlay of current source
-    Source *s = Mixer::manager().currentSource();
+    // re-draw overlay of current source on top
+    // (allows manipulation current source even when hidden below others)
     if (s != nullptr) {
-
-        DrawVisitor dv(s->overlays_[View::GEOMETRY], Rendering::manager().Projection());
+        s->setMode(Source::CURRENT);
+        DrawVisitor dv(s->overlays_[mode_], Rendering::manager().Projection());
         scene.accept(dv);
     }
 }
