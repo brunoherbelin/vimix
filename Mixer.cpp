@@ -270,7 +270,14 @@ Source * Mixer::createSourceClone(std::string namesource)
     // ready to create a source
     Source *s = nullptr;
 
-    SourceList::iterator origin = session_->find(namesource);
+    // origin to clone is either the given name or the current
+    SourceList::iterator origin = session_->end();
+    if ( !namesource.empty() )
+        origin =session_->find(namesource);
+    else if (current_source_ != session_->end())
+        origin = current_source_;
+
+    // have an origin, can clone it
     if (origin != session_->end()) {
 
         // create a source
@@ -285,7 +292,8 @@ Source * Mixer::createSourceClone(std::string namesource)
 
 void Mixer::addSource(Source *s)
 {
-    candidate_sources_.push_back(s);
+    if (s != nullptr)
+        candidate_sources_.push_back(s);
 }
 
 void Mixer::insertSource(Source *s, bool makecurrent)
@@ -306,20 +314,15 @@ void Mixer::insertSource(Source *s, bool makecurrent)
         layer_.scene.ws()->attach(s->group(View::LAYER));
 
         if (makecurrent) {
-            // set this new source as current
-            setCurrentSource( sit );
-
             // switch to Mixing view to show source created
             setView(View::MIXING);
             current_view_->update(0);
             current_view_->centerSource(s);
+
+            // set this new source as current
+            setCurrentSource( sit );
         }
     }
-}
-
-void Mixer::deleteCurrentSource()
-{
-    deleteSource( currentSource() );
 }
 
 void Mixer::deleteSource(Source *s)
@@ -387,18 +390,30 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     // change current if it is valid
     if ( it != session_->end() ) {
         current_source_ = it;
-        current_source_index_ = session_->index(it);
-        // set selection if not already selected
-        if (!selection().contains(*it))
-            selection().set(*it);
+        current_source_index_ = session_->index(current_source_);
+
+        // set selection for this only source if not already part of a selection
+        if (!selection().contains(*current_source_))
+            selection().set(*current_source_);
+
         // show status as current
         (*current_source_)->setMode(Source::CURRENT);
+        Log::Info("setCurrentSource");
     }
+
 }
 
 Source * Mixer::findSource (Node *node)
 {
     SourceList::iterator it = session_->find(node);
+    if (it != session_->end())
+        return *it;
+    return nullptr;
+}
+
+Source * Mixer::findSource (std::string namesource)
+{
+    SourceList::iterator it = session_->find(namesource);
     if (it != session_->end())
         return *it;
     return nullptr;
@@ -439,34 +454,26 @@ void Mixer::setCurrentNext()
 
 void Mixer::unsetCurrentSource()
 {
+    Log::Info("unsetCurrentSource");
+
     // discard overlay for previously current source
     if ( current_source_ != session_->end() ) {
-//        if (selection().size() > 1) {
 
-//        }
-//        // current source is the sole selected source : unselect and
-//        else
+        // current source is part of a selection, just change status
+        if (selection().size() > 1) {
+            (*current_source_)->setMode(Source::SELECTED);
+        }
+        // current source is the only selected source, unselect too
+        else
         {
             // remove from selection
-//            selection().remove( *current_source_ );
-            // show status as normal
-            (*current_source_)->setMode(Source::SELECTED);
+            selection().remove( *current_source_ );
         }
     }
 
     // deselect current source
     current_source_ = session_->end();
     current_source_index_ = -1;
-}
-
-void Mixer::cloneCurrentSource()
-{
-    if ( current_source_ != session_->end() )
-    {
-        Source *s = createSourceClone( (*current_source_)->name() );
-
-        insertSource(s);
-    }
 }
 
 int Mixer::indexCurrentSource()

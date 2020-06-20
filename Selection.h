@@ -21,13 +21,14 @@ public:
 
     SourceList::iterator begin ();
     SourceList::iterator end ();
+    Source *front();
     bool contains (Source *s);
+    bool empty();
     uint size ();
 
 protected:
     SourceList::iterator find (Source *s);
     SourceList selection_;
-
 };
 
 #endif // SELECTION_H

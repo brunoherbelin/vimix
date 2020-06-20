@@ -41,7 +41,7 @@ public:
 
     // creation of sources
     Source * createSourceFile   (std::string path);
-    Source * createSourceClone  (std::string namesource);
+    Source * createSourceClone  (std::string namesource = "");
     Source * createSourceRender ();
 
     // operations on sources
@@ -50,34 +50,32 @@ public:
     void renameSource (Source *s, const std::string &newname);
 
     // current source
+    void setCurrentSource (Source *s);
     void setCurrentSource (std::string namesource);
     void setCurrentSource (Node *node);
     void setCurrentSource (int index);
-    void setCurrentSource (Source *s);
     void setCurrentNext ();
     void unsetCurrentSource ();
-
-    void cloneCurrentSource ();
-    void deleteCurrentSource ();
     int  indexCurrentSource ();
-
     Source * currentSource ();
+
+    // browsing into sources
     Source * findSource (Node *node);
+    Source * findSource (std::string name);
 
     // management of view
-    View *view (View::Mode m = View::INVALID);
+    View *view   (View::Mode m = View::INVALID);
     void setView (View::Mode m);
-//    View *currentView ();
 
     // manipulate, load and save sessions
     inline Session *session () const { return session_; }
-    void clear ();
-    void save ();
+    void clear  ();
+    void save   ();
     void saveas (const std::string& filename);
     void open   (const std::string& filename);
     void import (const std::string& filename);
-    void merge (Session *s);
-    void set   (Session *s);
+    void merge  (Session *s);
+    void set    (Session *s);
 
 protected:
 

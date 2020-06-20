@@ -180,6 +180,7 @@ void Source::setMode(Source::Mode m)
 
 }
 
+// test update callback
 void fix_ar(Node *n)
 {
     n->scale_.y = n->scale_.x;
@@ -222,7 +223,9 @@ void Source::attach(FrameBuffer *renderbuffer)
     // test update callback
 //    groups_[View::GEOMETRY]->update_callbacks_.push_front(fix_ar);
 
-    setMode(Source::NORMAL);
+    // make the source visible
+    if ( mode_ == HIDDEN )
+        setMode(NORMAL);
 }
 
 void Source::update(float dt)

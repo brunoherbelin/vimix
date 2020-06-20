@@ -4,18 +4,25 @@
 
 Selection::Selection()
 {
-
 }
 
 
 void Selection::add(Source *s)
 {
+    if (s == nullptr)
+        return;
+
     selection_.push_back(s);
+    selection_.sort();
+    selection_.unique();
     s->setMode(Source::SELECTED);
 }
 
 void Selection::remove(Source *s)
 {
+    if (s == nullptr)
+        return;
+
     SourceList::iterator it = find(s);
     if (it != selection_.end()) {
         selection_.erase(it);
@@ -25,6 +32,9 @@ void Selection::remove(Source *s)
 
 void Selection::toggle(Source *s)
 {
+    if (s == nullptr)
+        return;
+
     if (contains(s))
         remove(s);
     else
@@ -34,6 +44,10 @@ void Selection::toggle(Source *s)
 void Selection::set(Source *s)
 {
     clear();
+
+    if (s == nullptr)
+        return;
+
     selection_.push_back(s);
     s->setMode(Source::SELECTED);
 }
@@ -91,6 +105,16 @@ uint Selection::size()
     return selection_.size();
 }
 
+Source *Selection::front()
+{
+    return selection_.front();
+}
+
+bool Selection::empty()
+{
+    return selection_.empty();
+}
+
 SourceList::iterator Selection::find(Source *s)
 {
     return std::find(selection_.begin(), selection_.end(), s);
@@ -111,3 +135,5 @@ SourceList::iterator Selection::end()
 {
     return selection_.end();
 }
+
+

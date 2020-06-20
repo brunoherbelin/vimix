@@ -274,7 +274,7 @@ void UserInterface::handleKeyboard()
         else if ( !ImGui::IsAnyWindowFocused() ){
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
-                Mixer::manager().deleteCurrentSource();
+                Mixer::manager().deleteSource( Mixer::manager().currentSource() );
             // button esc to toggle fullscreen
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE ))
                 Rendering::manager().mainWindow().setFullscreen(nullptr);
@@ -293,17 +293,16 @@ void UserInterface::handleKeyboard()
 }
 
 
-void setMouseCursor(View::Cursor c = View::Cursor())
+void setMouseCursor(glm::vec2 mousepos, View::Cursor c = View::Cursor())
 {
     ImGui::SetMouseCursor(c.type);
 
     if ( !c.info.empty()) {
-        ImGuiIO& io = ImGui::GetIO();
         float d = 0.5f * ImGui::GetFrameHeight() ;
-        ImVec2 window_pos = ImVec2( io.MousePos.x - d, io.MousePos.y - d );
+        ImVec2 window_pos = ImVec2( mousepos.x - d, mousepos.y - d );
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
-        if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
             ImGui::Text("   %s", c.info.c_str());
@@ -322,6 +321,7 @@ void UserInterface::handleMouse()
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
     mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
 
+    static bool mousedown = false;
     static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
 
     // steal focus on right button clic
@@ -332,7 +332,6 @@ void UserInterface::handleMouse()
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
-        Source *current = Mixer::manager().currentSource();
 
 //        if (current)
 //        {
@@ -361,13 +360,12 @@ void UserInterface::handleMouse()
         {
             // right mouse drag => drag current view
             View::Cursor c = Mixer::manager().view()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
-            setMouseCursor(c);
+            setMouseCursor(mousepos, c);
         }
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
 
             Mixer::manager().unsetCurrentSource();
             navigator.hidePannel();
-
 //                glm::vec3 point = Rendering::manager().unProject(mousepos, Mixer::manager().currentView()->scene.root()->transform_ );
 
         }
@@ -379,74 +377,60 @@ void UserInterface::handleMouse()
         //
         // LEFT Mouse button
         //
-        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
-        {
-            if (current)
+        if ( ImGui::IsMouseDown(ImGuiMouseButton_Left) ) {
+
+            if ( !mousedown)
             {
+                mousedown = true;
+                Log::Info("LMB %d", mousedown);
 
-                // grab current source
-//                View::Cursor c = Mixer::manager().currentView()->grab(current, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-//                setMouseCursor(c);
-                // grab selected sources (current is also selected by default)
-                View::Cursor c = View::Cursor_Arrow;
-                for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
-                    c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-                setMouseCursor(c);
-            }
-            else {
-                // Selection area
-                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
-                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+                // ask the view what was picked
+                picked = Mixer::manager().view()->pick(mousepos);
 
-                // Bounding box multiple sources selection
-                Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
-
-            }
-        }
-        else if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
-
-            // ask the view what was picked
-            picked = Mixer::manager().view()->pick(mousepos);
-
-            // if nothing picked,
-            if ( picked.first == nullptr ) {
-                // unset current
-                Mixer::manager().unsetCurrentSource();
-                navigator.hidePannel();
-                // clear selection
-                Mixer::selection().clear();
-            }
-            // something was picked
-            else {
-                // get if a source was picked
-                Source *s = Mixer::manager().findSource(picked.first);
-                if (s != nullptr) {
-
-                    if (keyboard_modifier_active) {
-                        // selection
-                        Mixer::selection().toggle( s ); // TODO toggle selection
-                    }
-                    // make current
-                    else {
-                        Mixer::manager().setCurrentSource( s );
-                        if (navigator.pannelVisible())
-                            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
-                    }
-
-                    // indicate to view that an action can be initiated (e.g. grab)
-                    Mixer::manager().view()->initiate();
+                // if nothing picked,
+                if ( picked.first == nullptr ) {
+                    // unset current
+                    Mixer::manager().unsetCurrentSource();
+                    navigator.hidePannel();
+                    // clear selection
+                    Mixer::selection().clear();
                 }
+                // something was picked
+                else {
+                    // get if a source was picked
+                    Source *s = Mixer::manager().findSource(picked.first);
+                    if (s != nullptr) {
 
+                        if (keyboard_modifier_active) {
+                            if ( !Mixer::selection().contains(s) )
+                                Mixer::selection().add( s );
+                            else {
+                                Mixer::selection().remove( s );
+                                if ( Mixer::selection().size() > 1 )
+                                    s = Mixer::selection().front();
+                                else {
+                                    s = nullptr;
+                                }
+                            }
+//                            Mixer::selection().toggle( Mixer::manager().currentSource() );
+                        }
+
+                        {
+
+                            Mixer::manager().setCurrentSource( s );
+                            if (navigator.pannelVisible())
+                                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+
+                        }
+
+                        // indicate to view that an action can be initiated (e.g. grab)
+                        Mixer::manager().view()->initiate();
+                    }
+
+                }
             }
         }
-        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
-        {
-            picked = { nullptr, glm::vec2(0.f) };
-
-        }
-        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+        else if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
             // display source in left pannel
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
@@ -454,7 +438,39 @@ void UserInterface::handleMouse()
             // (because single clic maintains same source active)
             Mixer::manager().unsetCurrentSource();
         }
+        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+        {
+            mousedown = false;
+            Log::Info("LMB %d", mousedown);
 
+            picked = { nullptr, glm::vec2(0.f) };
+        }
+
+//        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
+        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
+        {
+//            Log::Info("LMB drag %f", glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos));
+
+            Source *current = Mixer::manager().currentSource();
+            if (current)
+            {
+                // grab selected sources (current is also selected by default)
+                View::Cursor c = View::Cursor_Arrow;
+                for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
+                    c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                setMouseCursor(mousepos, c);
+            }
+            else {
+                // Selection area
+                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                                                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                                                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+
+                // Bounding box multiple sources selection
+                Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
+            }
+        }
     }
 }
 
@@ -1198,7 +1214,7 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Text(" ");
         // Action on source
         if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            Mixer::manager().cloneCurrentSource();
+            Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
         if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);
         }
