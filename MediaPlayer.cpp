@@ -40,6 +40,7 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     seekable_ = false;
     isimage_ = false;
     interlaced_ = false;
+    enabled_ = true;
     need_loop_ = false;
     v_frame_is_full_ = false;
     rate_ = 1.0;
@@ -271,10 +272,37 @@ GstClockTime MediaPlayer::position()
     return pos - start_position_;
 }
 
+void MediaPlayer::enable(bool on)
+{
+    if ( enabled_ != on ) {
+
+        enabled_ = on;
+
+        GstState requested_state = GST_STATE_PAUSED;
+
+        if (enabled_) {
+            requested_state = desired_state_;
+        }
+
+        //  apply state change
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
+        if (ret == GST_STATE_CHANGE_FAILURE) {
+            Log::Warning("MediaPlayer %s Failed to enable", gst_element_get_name(pipeline_));
+            failed_ = true;
+        }
+
+    }
+}
+
+bool MediaPlayer::isEnabled() const
+{
+    return enabled_;
+}
+
 void MediaPlayer::play(bool on)
 {
     // cannot play an image
-    if (isimage_)
+    if (!enabled_ || isimage_)
         return;
 
     // request state 
@@ -299,7 +327,7 @@ void MediaPlayer::play(bool on)
     // all ready, apply state change immediately
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("MediaPlayer %s Failed to start", gst_element_get_name(pipeline_));
+        Log::Warning("MediaPlayer %s Failed to play", gst_element_get_name(pipeline_));
         failed_ = true;
     }    
 #ifdef MEDIA_PLAYER_DEBUG
@@ -317,7 +345,7 @@ void MediaPlayer::play(bool on)
 bool MediaPlayer::isPlaying(bool testpipeline) const
 {
     // image cannot play
-    if (isimage_)
+    if (!enabled_ || isimage_)
         return false;
 
     // if not ready yet, answer with requested state
@@ -328,8 +356,6 @@ bool MediaPlayer::isPlaying(bool testpipeline) const
     GstState state;
     gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
     return state == GST_STATE_PLAYING;
-
-    // return desired_state == GST_STATE_PLAYING;
 }
 
 
@@ -345,7 +371,7 @@ void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
 
 void MediaPlayer::rewind()
 {
-    if (!seekable_)
+    if (!enabled_ || !seekable_)
         return;
 
     if (rate_ > 0.0)
@@ -360,7 +386,7 @@ void MediaPlayer::rewind()
 void MediaPlayer::seekNextFrame()
 {
     // useful only when Paused
-    if (isPlaying())
+    if (!enabled_ || isPlaying())
         return;
 
     if ( loop_ != LOOP_NONE) {
@@ -376,7 +402,7 @@ void MediaPlayer::seekNextFrame()
 
 void MediaPlayer::seekTo(GstClockTime pos)
 {
-    if (!seekable_)
+    if (!enabled_ || !seekable_)
         return;
 
     // apply seek
@@ -387,7 +413,7 @@ void MediaPlayer::seekTo(GstClockTime pos)
 
 void MediaPlayer::fastForward()
 {
-    if (!seekable_)
+    if (!enabled_ || !seekable_)
         return;
 
     double step = SIGN(rate_) * 0.01 * static_cast<double>(duration_);
@@ -458,6 +484,9 @@ void MediaPlayer::update()
         g_object_unref (discoverer_);
         discoverer_ = nullptr;
     }
+
+    if (!enabled_)
+        return;
 
     // apply texture
     if (v_frame_is_full_) {

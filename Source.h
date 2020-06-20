@@ -38,42 +38,47 @@ public:
     // manipulate name of source
     void setName (const std::string &name);
     inline std::string name () const { return name_; }
-    inline const char *initials() const { return initials_; }
+    inline const char *initials () const { return initials_; }
 
     // cloning mechanism
-    virtual CloneSource *clone();
+    virtual CloneSource *clone ();
 
     // Display mode
     typedef enum {
-        HIDDEN   = 0,
-        NORMAL   = 1,
+        UNINITIALIZED   = 0,
+        VISIBLE   = 1,
         SELECTED = 2,
         CURRENT  = 3
     } Mode;
-    Mode mode() const;
-    void setMode(Mode m);
+    Mode mode () const;
+    void setMode (Mode m);
+
 
     // get handle on the nodes used to manipulate the source in a view
-    inline Group *group(View::Mode m) const { return groups_.at(m); }
-    inline Node *groupNode(View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+    inline Group *group (View::Mode m) const { return groups_.at(m); }
+    inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
 
     // tests if a given node is part of the source
-    bool contains(Node *node) const;
+    bool contains (Node *node) const;
 
     // a Source has a shader to control image processing effects
-    inline ImageProcessingShader *processingShader() const { return rendershader_; }
+    inline ImageProcessingShader *processingShader () const { return rendershader_; }
 
     // a Source has a shader to control mixing effects
-    inline ImageShader *blendingShader() const { return blendingshader_; }
+    inline ImageShader *blendingShader () const { return blendingshader_; }
 
     // every Source has a frame buffer from the renderbuffer
-    virtual FrameBuffer *frame() const;
+    virtual FrameBuffer *frame () const;
 
     // touch to request update
-    inline void touch() { need_update_ = true; }
+    inline void touch () { need_update_ = true; }
 
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
-    void update (float dt);
+    virtual void update (float dt);
+
+    // update mode
+    virtual void setActive (bool on);
+    inline bool active () { return active_; }
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
@@ -143,6 +148,7 @@ protected:
     Handles *handle_[4];
 
     // update
+    bool  active_;
     bool  need_update_;
     float dt_;
     Group *stored_status_;
@@ -161,6 +167,7 @@ public:
     ~CloneSource();
 
     // implementation of source API
+    void setActive (bool on) override;
     void render() override;
     uint texture() const override { return origin_->texture(); }
     bool failed() const override  { return origin_ == nullptr; }

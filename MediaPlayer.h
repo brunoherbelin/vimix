@@ -119,6 +119,11 @@ public:
      * Must be called in update loop
      * */
     void update();
+
+    void enable(bool on);
+
+    bool isEnabled() const;
+
     /**
      * Pause / Play
      * Can play backward if play speed is negative
@@ -256,6 +261,7 @@ private:
     bool seekable_;
     bool isimage_;
     bool interlaced_;
+    bool enabled_;
 
     void execute_open();
     void execute_loop_command();

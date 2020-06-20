@@ -11,7 +11,7 @@
 #include "Visitor.h"
 #include "Log.h"
 
-MediaSource::MediaSource() : Source(), path_("")
+MediaSource::MediaSource() : Source(), path_(""), media_playing_(true)
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
@@ -35,7 +35,7 @@ void MediaSource::setPath(const std::string &p)
 {
     path_ = p;
     mediaplayer_->open(path_);
-    mediaplayer_->play(true);
+    mediaplayer_->play(media_playing_);
 
     Log::Notify("Opening %s", p.c_str());
 }
@@ -98,13 +98,30 @@ void MediaSource::init()
 
 }
 
+void MediaSource::setActive (bool on)
+{
+    bool was_active = active_;
+
+    Source::setActive(on);
+
+    if ( active_ != was_active ) {
+        mediaplayer()->enable(active_);
+    }
+}
+
+void MediaSource::update(float dt)
+{
+    // update video
+    mediaplayer_->update();
+
+    Source::update(dt);
+}
+
 void MediaSource::render()
 {
     if (!initialized_)
         init();
     else {
-        // update video
-        mediaplayer_->update();
 
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);

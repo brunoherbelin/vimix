@@ -11,6 +11,7 @@ public:
     ~SessionSource();
 
     // implementation of source API
+    void update (float dt) override;
     void render() override;
     bool failed() const override;
     uint texture() const override;

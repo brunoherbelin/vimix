@@ -131,18 +131,25 @@ void SessionSource::init()
     }
 }
 
+
+void SessionSource::update(float dt)
+{
+    // delete a source which failed
+    if (session()->failedSource() != nullptr)
+        session()->deleteSource(session()->failedSource());
+
+    // update video
+    if (active_)
+        session_->update(dt);
+
+    Source::update(dt);
+}
+
 void SessionSource::render()
 {
     if (!initialized_)
         init();
     else {
-        // update session
-        session_->update(dt_);
-
-        // delete a source which failed
-        if (session()->failedSource() != nullptr)
-            session()->deleteSource(session()->failedSource());
-
         // render the sesion into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();

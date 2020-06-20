@@ -89,9 +89,11 @@ public:
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
 
     void setAlpha (Source *s);
+    inline float limboScale() { return limbo_scale_; }
 
 private:
     uint textureMixingQuadratic();
+    float limbo_scale_;
 };
 
 class RenderView : public View

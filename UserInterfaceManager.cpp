@@ -795,7 +795,7 @@ void UserInterface::RenderMediaPlayer()
     }
     ImGui::SetCursorScreenPos(draw_pos);
 
-    if (mp->duration() != GST_CLOCK_TIME_NONE) {
+    if ( mp->isEnabled() && mp->duration() != GST_CLOCK_TIME_NONE) {
 
         if (ImGui::Button(ICON_FA_FAST_BACKWARD))
             mp->rewind();

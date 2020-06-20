@@ -10,6 +10,8 @@ public:
     ~MediaSource();
 
     // implementation of source API
+    void update (float dt) override;
+    void setActive (bool on) override;
     void render() override;
     bool failed() const override;
     uint texture() const override;
@@ -27,6 +29,7 @@ protected:
     Surface *mediasurface_;
     std::string path_;
     MediaPlayer *mediaplayer_;
+    bool media_playing_;
 };
 
 #endif // MEDIASOURCE_H

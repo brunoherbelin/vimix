@@ -145,7 +145,7 @@ void View::select(glm::vec2 A, glm::vec2 B)
 }
 
 
-MixingView::MixingView() : View(MIXING)
+MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
 {
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
@@ -162,7 +162,12 @@ MixingView::MixingView() : View(MIXING)
     scene.bg()->attach(disk);
 
     Mesh *circle = new Mesh("mesh/circle.ply");
-    circle->shader()->color = glm::vec4( COLOR_FRAME, 1.f );
+    circle->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    scene.bg()->attach(circle);
+
+    circle = new Mesh("mesh/circle.ply");
+    circle->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
+    circle->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
     scene.bg()->attach(circle);
 }
 

@@ -26,7 +26,7 @@ void Selection::remove(Source *s)
     SourceList::iterator it = find(s);
     if (it != selection_.end()) {
         selection_.erase(it);
-        s->setMode(Source::NORMAL);
+        s->setMode(Source::VISIBLE);
     }
 }
 
@@ -83,7 +83,7 @@ void Selection::add(SourceList l)
 void Selection::remove(SourceList l)
 {
     for(auto it = l.begin(); it != l.end(); it++)
-        (*it)->setMode(Source::NORMAL);
+        (*it)->setMode(Source::VISIBLE);
 
     // generate new set as difference of current selection and give list
     SourceList result;
@@ -95,7 +95,7 @@ void Selection::remove(SourceList l)
 void Selection::clear()
 {
     for(auto it = selection_.begin(); it != selection_.end(); it++)
-        (*it)->setMode(Source::NORMAL);
+        (*it)->setMode(Source::VISIBLE);
 
     selection_.clear();
 }

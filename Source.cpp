@@ -15,12 +15,13 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Log.h"
+#include "Mixer.h"
 
-Source::Source() : initialized_(false), need_update_(true)
+Source::Source() : initialized_(false), active_(true), need_update_(true)
 {
     sprintf(initials_, "__");
     name_ = "Source";
-    mode_ = Source::HIDDEN;
+    mode_ = Source::UNINITIALIZED;
 
     // create groups and overlays for each view
 
@@ -168,20 +169,23 @@ Source::Mode Source::mode() const
 
 void Source::setMode(Source::Mode m)
 {
-    mode_ = m;
+    // make visible on first time
+    if ( mode_ == Source::UNINITIALIZED ) {
+        for (auto g = groups_.begin(); g != groups_.end(); g++)
+            (*g).second->visible_ = true;
+    }
 
-    bool visible = mode_ != Source::HIDDEN;
-    for (auto g = groups_.begin(); g != groups_.end(); g++)
-        (*g).second->visible_ = visible;
-
-    uint index_frame = mode_ == Source::NORMAL ? 0 : 1;
+    // choose frame if selected
+    uint index_frame = m == Source::SELECTED ? 1 : 0;
     for (auto f = frames_.begin(); f != frames_.end(); f++)
         (*f).second->setActive(index_frame);
 
-    bool current = mode_ == Source::CURRENT;
+    // show overlay if current
+    bool current = m == Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current;
 
+    mode_ = m;
 }
 
 // test update callback
@@ -228,8 +232,23 @@ void Source::attach(FrameBuffer *renderbuffer)
 //    groups_[View::GEOMETRY]->update_callbacks_.push_front(fix_ar);
 
     // make the source visible
-    if ( mode_ == HIDDEN )
-        setMode(NORMAL);
+    if ( mode_ == UNINITIALIZED )
+        setMode(VISIBLE);
+}
+
+void Source::setActive (bool on)
+{
+    active_ = on;
+
+    for(auto clone = clones_.begin(); clone != clones_.end(); clone++) {
+        if ( (*clone)->active() )
+            active_ = true;
+    }
+
+    groups_[View::RENDERING]->visible_ = active_;
+    groups_[View::GEOMETRY]->visible_ = active_;
+    groups_[View::LAYER]->visible_ = active_;
+
 }
 
 void Source::update(float dt)
@@ -245,6 +264,9 @@ void Source::update(float dt)
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
         float alpha = 1.0 - CLAMP( ( dist.x * dist.x ) + ( dist.y * dist.y ), 0.f, 1.f );
         blendingshader_->color.a = alpha;
+
+        // CHANGE update status based on limbo
+        setActive( glm::length(dist) < 1.3f );
 
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
@@ -357,6 +379,17 @@ void CloneSource::init()
 
         Log::Info("Source Clone linked to source %s).", origin_->name().c_str() );
     }
+}
+
+void CloneSource::setActive (bool on)
+{
+    active_ = on;
+
+    groups_[View::RENDERING]->visible_ = active_;
+    groups_[View::GEOMETRY]->visible_ = active_;
+    groups_[View::LAYER]->visible_ = active_;
+
+    origin_->touch();
 }
 
 void CloneSource::render()

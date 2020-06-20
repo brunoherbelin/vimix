@@ -37,7 +37,8 @@ void DrawVisitor::visit(Group &n)
     // traverse children
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); !done_ && node != n.end(); node++) {
-        (*node)->accept(*this);
+        if ( (*node)->visible_ )
+            (*node)->accept(*this);
         modelview_ = mv;
     }
 }
