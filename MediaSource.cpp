@@ -11,7 +11,7 @@
 #include "Visitor.h"
 #include "Log.h"
 
-MediaSource::MediaSource() : Source(), path_(""), media_playing_(true)
+MediaSource::MediaSource() : Source(), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
@@ -35,7 +35,7 @@ void MediaSource::setPath(const std::string &p)
 {
     path_ = p;
     mediaplayer_->open(path_);
-    mediaplayer_->play(media_playing_);
+    mediaplayer_->play(true);
 
     Log::Notify("Opening %s", p.c_str());
 }

@@ -170,6 +170,7 @@ bool Rendering::init()
     //
     glfwWindowHint(GLFW_SAMPLES, 0); // no need for multisampling in displaying output
     output_.init(1, main_.window());
+    output_.setIcon("images/vimix_256x256.png");
     // special callbacks for user input in output window
     glfwSetKeyCallback( output_.window(), WindowEscapeFullscreen);
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);

@@ -29,7 +29,6 @@ protected:
     Surface *mediasurface_;
     std::string path_;
     MediaPlayer *mediaplayer_;
-    bool media_playing_;
 };
 
 #endif // MEDIASOURCE_H

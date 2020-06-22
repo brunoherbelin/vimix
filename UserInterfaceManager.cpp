@@ -381,7 +381,6 @@ void UserInterface::handleMouse()
 
             if ( !mousedown )
             {
-                Log::Info("LMB down");
                 mousedown = true;
 
                 // ask the view what was picked
@@ -412,16 +411,11 @@ void UserInterface::handleMouse()
                                     s = nullptr;
                                 }
                             }
-//                            Mixer::selection().toggle( Mixer::manager().currentSource() );
                         }
 
-                        {
-
-                            Mixer::manager().setCurrentSource( s );
-                            if (navigator.pannelVisible())
-                                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
-
-                        }
+                        Mixer::manager().setCurrentSource( s );
+                        if (navigator.pannelVisible())
+                            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
                         // indicate to view that an action can be initiated (e.g. grab)
                         Mixer::manager().view()->initiate();
@@ -432,20 +426,17 @@ void UserInterface::handleMouse()
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
-            Log::Info("LMB release");
             mousedown = false;
-//            picked = { nullptr, glm::vec2(0.f) };
+            picked = { nullptr, glm::vec2(0.f) };
         }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
-            Log::Info("LMB double clic");
             // display source in left pannel
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             // discard current to select front most source
             // (because single clic maintains same source active)
             Mixer::manager().unsetCurrentSource();
-
         }
 
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
@@ -1252,6 +1243,9 @@ void SourcePreview::draw(float width)
             setSource();
         else
         {
+            // update source
+            ImGuiIO& io = ImGui::GetIO();
+            source_->update( 1.f / io.Framerate);
             // render framebuffer
             source_->render();
             // draw preview

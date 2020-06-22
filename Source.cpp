@@ -176,7 +176,7 @@ void Source::setMode(Source::Mode m)
     }
 
     // choose frame if selected
-    uint index_frame = m == Source::SELECTED ? 1 : 0;
+    uint index_frame = m == Source::VISIBLE ? 0 : 1;
     for (auto f = frames_.begin(); f != frames_.end(); f++)
         (*f).second->setActive(index_frame);
 

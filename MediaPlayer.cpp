@@ -274,6 +274,9 @@ GstClockTime MediaPlayer::position()
 
 void MediaPlayer::enable(bool on)
 {
+    if ( !ready_ )
+        return;
+
     if ( enabled_ != on ) {
 
         enabled_ = on;
