@@ -158,6 +158,11 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
 
     // Mixing scene background
     Mesh *disk = new Mesh("mesh/disk.ply");
+    disk->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
+    disk->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
+    scene.bg()->attach(disk);
+
+    disk = new Mesh("mesh/disk.ply");
     disk->setTexture(textureMixingQuadratic());
     scene.bg()->attach(disk);
 
@@ -165,10 +170,6 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     circle->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
     scene.bg()->attach(circle);
 
-    circle = new Mesh("mesh/circle.ply");
-    circle->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
-    circle->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
-    scene.bg()->attach(circle);
 }
 
 
@@ -210,7 +211,11 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     s->touch();
 
     std::ostringstream info;
-    info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+    if (s->active())
+        info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+    else
+        info << "Inactive";
+
     return Cursor(Cursor_ResizeAll, info.str() );
 }
 
