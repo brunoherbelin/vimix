@@ -314,6 +314,9 @@ void Mixer::insertSource(Source *s, bool makecurrent)
         layer_.scene.ws()->attach(s->group(View::LAYER));
 
         if (makecurrent) {
+
+            s->group(View::MIXING)->translation_ = glm::vec3(-1.f, 1.f, 0.f);
+
             // switch to Mixing view to show source created
             setView(View::MIXING);
             current_view_->update(0);

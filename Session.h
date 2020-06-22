@@ -35,6 +35,9 @@ public:
     // update all sources and mark sources which failed
     void update (float dt);
 
+    // update mode (active or not)
+    void setActive (bool on);
+
     // return the last source which failed
     Source *failedSource() { return failedSource_; }
 

@@ -93,6 +93,10 @@ void MediaSource::init()
             // done init
             initialized_ = true;
             Log::Info("Source Media linked to Media %s.", mediaplayer()->uri().c_str());
+
+            // force update of activation mode
+            active_ = true;
+            touch();
         }
     }
 
@@ -104,6 +108,7 @@ void MediaSource::setActive (bool on)
 
     Source::setActive(on);
 
+    // change status of media player (only if status changed)
     if ( active_ != was_active ) {
         mediaplayer()->enable(active_);
     }
@@ -111,10 +116,10 @@ void MediaSource::setActive (bool on)
 
 void MediaSource::update(float dt)
 {
+    Source::update(dt);
+
     // update video
     mediaplayer_->update();
-
-    Source::update(dt);
 }
 
 void MediaSource::render()
@@ -122,7 +127,6 @@ void MediaSource::render()
     if (!initialized_)
         init();
     else {
-
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();

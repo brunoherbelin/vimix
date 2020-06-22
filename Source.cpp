@@ -33,7 +33,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     groups_[View::MIXING] = new Group;
     groups_[View::MIXING]->visible_ = false;
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
-    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
+//    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
 
     frames_[View::MIXING] = new Switch;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);

@@ -37,6 +37,13 @@ Session::~Session()
 
 }
 
+void Session::setActive (bool on)
+{
+    for(auto it = sources_.begin(); it != sources_.end(); it++) {
+        (*it)->setActive(on);
+    }
+}
+
 // update all sources
 void Session::update(float dt)
 {

@@ -348,11 +348,11 @@ void MediaPlayer::play(bool on)
 bool MediaPlayer::isPlaying(bool testpipeline) const
 {
     // image cannot play
-    if (!enabled_ || isimage_)
+    if (isimage_)
         return false;
 
     // if not ready yet, answer with requested state
-    if ( !testpipeline || pipeline_ == nullptr )
+    if ( !testpipeline || pipeline_ == nullptr || !enabled_)
         return desired_state_ == GST_STATE_PLAYING;
 
     // if ready, answer with actual state

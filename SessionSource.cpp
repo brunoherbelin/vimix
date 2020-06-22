@@ -102,14 +102,18 @@ uint SessionSource::texture() const
 
 void SessionSource::init()
 {
+    Log::Info("SessionSource::init");
+
     if ( loadFinished_ && !loadFailed_ && session_ != nullptr) {
         loadFinished_ = false;
 
         // set resolution
         session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-        // update once
+        // update once with update of the depth
+        View::need_deep_update_ = true;
         session_->update(dt_);
+        View::need_deep_update_ = false;
 
         // get the texture index from framebuffer of session, apply it to the surface
         sessionsurface_->setTextureIndex( session_->frame()->texture() );
@@ -126,23 +130,41 @@ void SessionSource::init()
 
         // done init
         initialized_ = true;
-
         Log::Info("Source Session %s loading %d sources.", path_.c_str(), session_->numSource());
+
+        // force update of activation mode
+        active_ = true;
+        touch();
+    }
+}
+
+void SessionSource::setActive (bool on)
+{
+//    Log::Info("SessionSource::setActive %d", on);
+
+    bool was_active = active_;
+
+    Source::setActive(on);
+
+    // change status of media player (only if status changed)
+    if ( active_ != was_active ) {
+        session_->setActive(active_);
     }
 }
 
 
 void SessionSource::update(float dt)
 {
-    // delete a source which failed
-    if (session()->failedSource() != nullptr)
-        session()->deleteSource(session()->failedSource());
+//    Log::Info("SessionSource::update %f", dt);
+    Source::update(dt);
 
     // update video
     if (active_)
         session_->update(dt);
 
-    Source::update(dt);
+    // delete a source which failed
+    if (session()->failedSource() != nullptr)
+        session()->deleteSource(session()->failedSource());
 }
 
 void SessionSource::render()
