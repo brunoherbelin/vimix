@@ -57,6 +57,12 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     current_segment_ = segments_.begin();
     v_frame_.buffer = nullptr;
 
+    // no PBO by default
+    pbo_[0] = pbo_[1] = 0;
+    pbo_size_ = 0;
+    pbo_index_ = 0;
+    pbo_next_index_ = 1;
+
     textureindex_ = 0;
 }
 
@@ -475,6 +481,69 @@ std::list< std::pair<guint64, guint64> > MediaPlayer::getPlaySegments() const
     return ret;
 }
 
+void MediaPlayer::init_texture()
+{
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &textureindex_);
+    glBindTexture(GL_TEXTURE_2D, textureindex_);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
+
+
+    if (!isimage_ && Rendering::supportsPBO()) {
+
+        // need to fill image size
+        pbo_size_ = height_ * width_ * 4;
+
+        // create 2 pixel buffer objects,
+        glGenBuffers(2, pbo_);
+        // create first PBO
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[0]);
+        // glBufferDataARB with NULL pointer reserves only memory space.
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+        // fill in with reset picture
+        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+        if (ptr)  {
+            // update data directly on the mapped buffer
+            memmove(ptr, v_frame_.data[0], pbo_size_);
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+        }
+        else {
+            // did not work, disable PBO
+            glDeleteBuffers(2, pbo_);
+            pbo_[0] = pbo_[1] = 0;
+            pbo_size_ = 0;
+        }
+
+        // idem with second PBO
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[1]);
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+        ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+        if (ptr) {
+            memmove(ptr, v_frame_.data[0], pbo_size_);
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+        }
+        else {
+            // did not work, disable PBO
+            glDeleteBuffers(2, pbo_);
+            pbo_[0] = pbo_[1] = 0;
+            pbo_size_ = 0;
+        }
+
+        // should be good to go, wrap it up
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        pbo_index_ = 0;
+        pbo_next_index_ = 1;
+
+        Log::Info("Using PBO");
+    }
+
+}
+
 void MediaPlayer::update()
 {
     // discard 
@@ -495,19 +564,46 @@ void MediaPlayer::update()
     if (v_frame_is_full_) {
         // first occurence; create texture
         if (textureindex_==0) {
-            glActiveTexture(GL_TEXTURE0);
-            glGenTextures(1, &textureindex_);
-            glBindTexture(GL_TEXTURE_2D, textureindex_);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_,
-                         0, GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
+            init_texture();
         }
-        else // bind texture
+        // all other times, bind and fill texture
+        else
         {
             glBindTexture(GL_TEXTURE_2D, textureindex_);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+
+            if (pbo_size_ > 0) {
+
+                // bind PBO to read pixels
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+
+                // copy pixels from PBO to texture object
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+                // bind the next PBO to write pixels
+                // NB : equivalent but faster (memmove instead of memcpy ?) than
+                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
+
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+                glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+
+                // map the buffer object into client's memory
+                GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+                if (ptr) {
+                    // update data directly on the mapped buffer
+                    memmove(ptr, v_frame_.data[0], pbo_size_);
+                    // release pointer to mapping buffer
+                    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+                }
+
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+                // In dual PBO mode, increment current index first then get the next index
+                pbo_index_ = (pbo_index_ + 1) % 2;
+                pbo_next_index_ = (pbo_index_ + 1) % 2;
+            }
+            else
+                // without PBO, use standard opengl (slower)
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
                             GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
         }        
 

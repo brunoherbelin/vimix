@@ -253,6 +253,11 @@ private:
     std::atomic<bool> v_frame_is_full_;
     std::atomic<bool> need_loop_;
 
+    // for PBO
+    guint pbo_[2];
+    guint pbo_index_, pbo_next_index_;
+    guint pbo_size_;
+
     MediaSegmentSet segments_;
     MediaSegmentSet::iterator current_segment_;
 
@@ -263,6 +268,7 @@ private:
     bool interlaced_;
     bool enabled_;
 
+    void init_texture();
     void execute_open();
     void execute_loop_command();
     void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);   
