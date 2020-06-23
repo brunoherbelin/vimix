@@ -305,6 +305,7 @@ void Mixer::insertSource(Source *s, bool makecurrent)
 
         // set a default depth to the new source
         layer_.setDepth(s);
+
         // set a default alpha to the new source
         mixing_.setAlpha(s);
 

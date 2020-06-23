@@ -8,7 +8,7 @@
 
 #include "Log.h"
 
-Session::Session() : filename_(""), failedSource_(nullptr)
+Session::Session() : filename_(""), failedSource_(nullptr), active_(true)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = render_.resolution();
@@ -39,8 +39,11 @@ Session::~Session()
 
 void Session::setActive (bool on)
 {
-    for(auto it = sources_.begin(); it != sources_.end(); it++) {
-        (*it)->setActive(on);
+    if (active_ != on) {
+        active_ = on;
+        for(auto it = sources_.begin(); it != sources_.end(); it++) {
+            (*it)->setActive(active_);
+        }
     }
 }
 
@@ -59,7 +62,8 @@ void Session::update(float dt)
             // render the source
             (*it)->render();
             // update the source
-            (*it)->update(dt);
+            if (active_)
+                (*it)->update(dt);
         }
     }
 

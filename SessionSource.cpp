@@ -113,7 +113,6 @@ void SessionSource::init()
         // update once with update of the depth
         View::need_deep_update_ = true;
         session_->update(dt_);
-        View::need_deep_update_ = false;
 
         // get the texture index from framebuffer of session, apply it to the surface
         sessionsurface_->setTextureIndex( session_->frame()->texture() );
@@ -158,9 +157,8 @@ void SessionSource::update(float dt)
 //    Log::Info("SessionSource::update %f", dt);
     Source::update(dt);
 
-    // update video
-    if (active_)
-        session_->update(dt);
+    // update content
+    session_->update(dt);
 
     // delete a source which failed
     if (session()->failedSource() != nullptr)

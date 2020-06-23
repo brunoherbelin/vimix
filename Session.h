@@ -37,6 +37,7 @@ public:
 
     // update mode (active or not)
     void setActive (bool on);
+    inline bool active () { return active_; }
 
     // return the last source which failed
     Source *failedSource() { return failedSource_; }
@@ -60,6 +61,7 @@ protected:
     SourceList sources_;
     std::string filename_;
     std::map<View::Mode, Group*> config_;
+    bool active_;
 };
 
 #endif // SESSION_H
