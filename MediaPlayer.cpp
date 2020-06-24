@@ -493,7 +493,7 @@ void MediaPlayer::init_texture()
                  0, GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
 
 
-    if (!isimage_ && Rendering::supportsPBO()) {
+    if (!isimage_) {
 
         // need to fill image size
         pbo_size_ = height_ * width_ * 4;
@@ -539,7 +539,9 @@ void MediaPlayer::init_texture()
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
-        Log::Info("Using PBO");
+#ifdef MEDIA_PLAYER_DEBUG
+        Log::Info("MediaPlayer %s Using Pixel Buffer Object texturing.", id_.c_str());
+#endif
     }
 
 }

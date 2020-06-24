@@ -130,7 +130,6 @@ public:
     // unproject from window coordinate
     glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview = glm::mat4(1.f));
 
-    static bool supportsPBO();
 
 private:
 

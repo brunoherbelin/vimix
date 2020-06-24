@@ -692,19 +692,6 @@ void RenderingWindow::draw(FrameBuffer *fb)
 }
 
 
-bool Rendering::supportsPBO()
-{
-    static int support_extension = -1;
-    if (support_extension < 0) {
-        if (GLAD_GL_ARB_pixel_buffer_object || GLAD_GL_EXT_pixel_buffer_object)
-            support_extension = 1;
-        else
-            support_extension = 0;
-    }
-
-    return support_extension == 1;
-}
-
 //
 // Discarded because not working under OSX - kept in case it would become useful
 //
