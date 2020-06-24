@@ -733,9 +733,17 @@ void UserInterface::RenderPreview()
         if (ImGui::Selectable("##preview", false, ImGuiSelectableFlags_PressedOnClick, imagesize))
             Rendering::manager().outputWindow().show();
         ImGui::SetCursorScreenPos(draw_pos);
-
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        // tooltip overlay
+        if (ImGui::IsItemHovered()) {
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+
+            ImGui::SetCursorScreenPos(draw_pos);
+            ImGui::Text(" %d x %d px, %.1f fps", output->width(), output->height(),  ImGui::GetIO().Framerate );
+        }
 
         ImGui::End();
     }
