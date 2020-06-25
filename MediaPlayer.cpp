@@ -69,7 +69,6 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
 MediaPlayer::~MediaPlayer()
 {
     close();
-    // g_free(v_frame);
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -155,7 +154,7 @@ void MediaPlayer::execute_open()
 
         // set all properties 
         g_object_set (sink, "emit-signals", TRUE, "sync", TRUE, "enable-last-sample", TRUE,  
-                    "wait-on-eos", FALSE, "max-buffers", 1000, "caps", caps, NULL);
+                    "wait-on-eos", FALSE, "max-buffers", 100, "caps", caps, NULL);
 
         // connect callbacks
         g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_pull_sample_video), this);
@@ -163,7 +162,7 @@ void MediaPlayer::execute_open()
         g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_video), this);
 
         // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        // here max-buffers set to 1000
+        // here max-buffers set to 100
         gst_app_sink_set_drop ( (GstAppSink*) sink, true);
         
         // done with ref to sink
@@ -221,9 +220,18 @@ void MediaPlayer::close()
         pipeline_ = nullptr;
     }
 
-    // nothing to display
+    // cleanup eventual remaining frame related memory
+    if (v_frame_.buffer)
+        gst_video_frame_unmap(&v_frame_);
+
+    // cleanup opengl texture
     glDeleteTextures(1, &textureindex_);
-    textureindex_ = Resource::getTextureBlack();
+    textureindex_ = 0;
+
+    // delete picture buffer
+    if (pbo_[0] || pbo_[1])
+        glDeleteBuffers(2, pbo_);
+    pbo_size_ = 0;
 
     // un-ready the media player
     ready_ = false;
@@ -492,13 +500,14 @@ void MediaPlayer::init_texture()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
 
-
     if (!isimage_) {
 
         // need to fill image size
         pbo_size_ = height_ * width_ * 4;
 
         // create 2 pixel buffer objects,
+        if (pbo_[0] || pbo_[1])
+            glDeleteBuffers(2, pbo_);
         glGenBuffers(2, pbo_);
         // create first PBO
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[0]);
@@ -564,6 +573,7 @@ void MediaPlayer::update()
 
     // apply texture
     if (v_frame_is_full_) {
+
         // first occurence; create texture
         if (textureindex_==0) {
             init_texture();
@@ -580,23 +590,23 @@ void MediaPlayer::update()
 
                 // copy pixels from PBO to texture object
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
                 // bind the next PBO to write pixels
-                // NB : equivalent but faster (memmove instead of memcpy ?) than
-                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
-
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+                // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
                 glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-
                 // map the buffer object into client's memory
                 GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
                 if (ptr) {
                     // update data directly on the mapped buffer
+                    // NB : equivalent but faster (memmove instead of memcpy ?) than
+                    // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
                     memmove(ptr, v_frame_.data[0], pbo_size_);
                     // release pointer to mapping buffer
                     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
                 }
-
+                // done with PBO
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
                 // In dual PBO mode, increment current index first then get the next index
