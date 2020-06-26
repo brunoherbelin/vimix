@@ -293,7 +293,7 @@ void UserInterface::handleKeyboard()
 }
 
 
-void setMouseCursor(glm::vec2 mousepos, View::Cursor c = View::Cursor())
+void setMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor())
 {
     ImGui::SetMouseCursor(c.type);
 
@@ -325,7 +325,7 @@ void UserInterface::handleMouse()
     static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
 
     // steal focus on right button clic
-    if (!ImGui::GetIO().WantCaptureMouse)
+    if (!io.WantCaptureMouse)
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) /*|| ImGui::IsMouseClicked(ImGuiMouseButton_Middle)*/)
             ImGui::FocusWindow(NULL);
 
@@ -360,7 +360,7 @@ void UserInterface::handleMouse()
         {
             // right mouse drag => drag current view
             View::Cursor c = Mixer::manager().view()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
-            setMouseCursor(mousepos, c);
+            setMouseCursor(io.MousePos, c);
         }
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
 
@@ -449,7 +449,7 @@ void UserInterface::handleMouse()
                 View::Cursor c = View::Cursor_Arrow;
                 for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
                     c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-                setMouseCursor(mousepos, c);
+                setMouseCursor(io.MousePos, c);
             }
             else {
                 // Selection area
