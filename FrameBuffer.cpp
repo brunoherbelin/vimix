@@ -73,15 +73,21 @@ void FrameBuffer::init()
 
         // attach the 2D texture to intermediate FBO
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
+
+        Log::Info("New FBO %d Multi Sampling ", framebufferid_);
+
     }
     else {
 
         // direct attach the 2D texture to FBO
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
+
+        Log::Info("New FBO %d Single Sampling ", framebufferid_);
     }
 
     checkFramebufferStatus();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 FrameBuffer::~FrameBuffer()
@@ -158,8 +164,7 @@ bool FrameBuffer::blit(FrameBuffer *other)
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
     // blit to the frame buffer object
     glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
-                      0, 0, other->width(), other->height(),
-                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                      0, 0, other->width(), other->height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     return true;

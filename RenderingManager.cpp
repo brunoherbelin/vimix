@@ -622,7 +622,7 @@ void RenderingWindow::makeCurrent()
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
 
     // ensure main context is current
-    glfwMakeContextCurrent(window_);
+   // glfwMakeContextCurrent(window_);
 
     // set and clear
     glViewport(0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y);
@@ -630,6 +630,8 @@ void RenderingWindow::makeCurrent()
                  window_attributes_.clear_color.b, window_attributes_.clear_color.a);
     glClear(GL_COLOR_BUFFER_BIT);
 }
+
+// TODO update parameters for draw on resize event (not every frame)
 
 void RenderingWindow::draw(FrameBuffer *fb)
 {
@@ -648,33 +650,82 @@ void RenderingWindow::draw(FrameBuffer *fb)
         // setup attribs
         Rendering::manager().pushAttrib(window_attributes_);
         glClear(GL_COLOR_BUFFER_BIT);
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-
-        // VAO is not shared between multiple contexts of different windows
-        // so we have to create a new VAO for rendering the surface in this window
-        static WindowSurface *surface  = new WindowSurface;
 
         // draw frame buffer provided
         if (fb) {
 
-            // calculate scaling factor of frame buffer inside window
-            float windowAspectRatio = aspectRatio();
-            float renderingAspectRatio = fb->aspectRatio();
-            glm::vec3 scale;
-            if (windowAspectRatio < renderingAspectRatio)
-                scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
-            else
-                scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+            if (false) {
+                // VAO is not shared between multiple contexts of different windows
+                // so we have to create a new VAO for rendering the surface in this window
+                static WindowSurface *surface = new WindowSurface;
+                static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
 
-            // draw
-            ShadingProgram::enduse();
-            glBindTexture(GL_TEXTURE_2D, fb->texture());
-//            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
-            surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+                // calculate scaling factor of frame buffer inside window
+                float windowAspectRatio = aspectRatio();
+                float renderingAspectRatio = fb->aspectRatio();
+                glm::vec3 scale;
+                if (windowAspectRatio < renderingAspectRatio)
+                    scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+                else
+                    scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
 
-            // done drawing
-            ShadingProgram::enduse();
-            glBindTexture(GL_TEXTURE_2D, 0);
+                // draw
+                ShadingProgram::enduse();
+                glBindTexture(GL_TEXTURE_2D, fb->texture());
+                //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
+                surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+
+                // done drawing
+                ShadingProgram::enduse();
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+            else {
+
+                static int attached_textureid_fbo_ = 0;
+                static uint local_fbo_ = 0;
+                if ( attached_textureid_fbo_ != fb->texture()) {
+
+                    // create a new fbo in this opengl context
+                    if (local_fbo_ != 0)
+                        glDeleteFramebuffers(1, &local_fbo_);
+                    glGenFramebuffers(1, &local_fbo_);
+                    glBindFramebuffer(GL_FRAMEBUFFER, local_fbo_);
+
+                    // attach the 2D texture to local FBO
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->texture(), 0);
+                    attached_textureid_fbo_ = fb->texture();
+
+                    Log::Info("Blit to output window enabled.");
+                }
+
+                // calculate scaling factor of frame buffer inside window
+                int rx, ry, rw, rh;
+                float renderingAspectRatio = fb->aspectRatio();
+                if (aspectRatio() < renderingAspectRatio) {
+                    int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
+                    rx = 0;
+                    ry = (window_attributes_.viewport.y - nh) / 2;
+                    rw = window_attributes_.viewport.x;
+                    rh = (window_attributes_.viewport.y + nh) / 2;
+                } else {
+                    int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
+                    rx = (window_attributes_.viewport.x - nw) / 2;
+                    ry = 0;
+                    rw = (window_attributes_.viewport.x + nw) / 2;
+                    rh = window_attributes_.viewport.y;
+                }
+
+                // select fbo texture read target
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, local_fbo_);
+
+                // select screen target
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+//                glBlitFramebuffer(0, 0, fb->width(), fb->height(), 0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+            }
+
         }
         else {
             Log::Info("No Framebuffer Provided to draw Rendering Window");
