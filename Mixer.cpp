@@ -139,7 +139,7 @@ static void saveSession(const std::string& filename, Session *session)
     sessionThreadActive_ = false;
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), fps_(60.f)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), dt_(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -183,10 +183,8 @@ void Mixer::update()
     if (update_time_ == GST_CLOCK_TIME_NONE)
         update_time_ = gst_util_get_timestamp ();
     gint64 current_time = gst_util_get_timestamp ();
-    // dt is in mulisecond, with fractional precision (from micro seconds)
-    float dt = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
-    if (dt > 0.1f)
-        fps_ = 0.9f * fps_ + 100.f / dt;
+    // dt is in milisecond, with fractional precision (from micro seconds)
+    dt_ = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
     update_time_ = current_time;
 
     // insert source candidate for this session
@@ -196,16 +194,16 @@ void Mixer::update()
     }
 
     // update session and associated sources
-    session_->update(dt);
+    session_->update(dt_);
 
     // delete failed sources (one by one)
     if (session()->failedSource() != nullptr)
         deleteSource(session()->failedSource());
 
     // update views
-    mixing_.update(dt);
-    geometry_.update(dt);
-    layer_.update(dt);
+    mixing_.update(dt_);
+    geometry_.update(dt_);
+    layer_.update(dt_);
 
     // optimize the reordering in depth for views;
     // deep updates shall be performed only 1 frame

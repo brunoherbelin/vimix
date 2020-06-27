@@ -28,6 +28,11 @@ class RenderingWindow
     int id_;
     float dpi_scale_;
 
+    // objects to render
+    int textureid_;
+    uint fbo_;
+    class WindowSurface *surface_;
+
     // get monitor in which the window is
     GLFWmonitor *monitor();
 

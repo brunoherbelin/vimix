@@ -699,44 +699,37 @@ void ToolBox::Render()
     }
 
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
-    plot_size.y *= 0.5;
+    plot_size.y *= 0.45;
 
-    static float mixer_framerate_values[120] = {60.f};
-    static float io_framerate_values[120] = {60.f};
-    static int values_offset = 0;
-    values_offset = (values_offset+1) % IM_ARRAYSIZE(mixer_framerate_values);
-    mixer_framerate_values[values_offset] = Mixer::manager().frameRate();
-    io_framerate_values[values_offset] = ImGui::GetIO().Framerate;
+#define NUM_VALUES_PLOT 120
+    static float framerate_values[2][NUM_VALUES_PLOT] = {{}};
+    static int values_index = 0;
+    framerate_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 100.f);
+    framerate_values[1][values_index] = MINI(Mixer::manager().dt(), 500.f);
 
-    // plot FPS graph
-    {
-        float average = 0.0f;
-        for (int n = 0; n < IM_ARRAYSIZE(mixer_framerate_values); n++)
-            average += mixer_framerate_values[n];
-        average /= (float)IM_ARRAYSIZE(mixer_framerate_values);
-        char overlay[32];
-        sprintf(overlay, "Mixer FPS %.2f", average);
-        ImGui::PlotLines("LinesMixer", mixer_framerate_values, IM_ARRAYSIZE(mixer_framerate_values), values_offset, overlay, 40.0f, 65.0f, plot_size);
+    float average[2] = {};
+    for (int n = 0; n < NUM_VALUES_PLOT; ++n) {
+        average[0] += framerate_values[0][n];
+        average[1] += framerate_values[1][n];
     }
-    {
-        float average = 0.0f;
-        for (int n = 0; n < IM_ARRAYSIZE(mixer_framerate_values); n++)
-            average += mixer_framerate_values[n];
-        average /= (float)IM_ARRAYSIZE(mixer_framerate_values);
-        char overlay[32];
-        sprintf(overlay, "Render FPS %.2f", average);
-        ImGui::PlotLines("LinesRender", io_framerate_values, IM_ARRAYSIZE(io_framerate_values), values_offset, overlay, 40.0f, 65.0f, plot_size);
-    }
+    average[0] /= NUM_VALUES_PLOT;
+    average[1] /= NUM_VALUES_PLOT;
 
-    ImGui::End(); // "v-mix"
+    char overlay[128];
+    sprintf(overlay, "Rendering %.2f FPS", average[0]);
+    ImGui::PlotLines("LinesRender", framerate_values[0], NUM_VALUES_PLOT, values_index, overlay, 40.0f, 65.0f, plot_size);
+    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", average[1], 1000.f / average[1]);
+    ImGui::PlotHistogram("LinesMixer", framerate_values[1], NUM_VALUES_PLOT, values_index, overlay, 0.0f, 50.0f, plot_size);
+
+    values_index = (values_index+1) % NUM_VALUES_PLOT;
+
+    ImGui::End();
 
     // About and other utility windows
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
-
-
 
 }
 
@@ -778,7 +771,7 @@ void UserInterface::RenderPreview()
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
 
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" %d x %d px, %.1f fps", output->width(), output->height(),  Mixer::manager().frameRate() );
+            ImGui::Text(" %d x %d px, %.1f fps", output->width(), output->height(), 1000.f / Mixer::manager().dt() );
         }
 
         ImGui::End();

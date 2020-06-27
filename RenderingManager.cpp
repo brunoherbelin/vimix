@@ -349,13 +349,38 @@ void Rendering::requestScreenshot()
     request_screenshot_ = true;
 }
 
-RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr), id_(-1), dpi_scale_(1.f)
+
+// custom surface with a new VAO
+class WindowSurface : public Primitive {
+
+public:
+    WindowSurface(Shader *s = new ImageShader);
+};
+
+WindowSurface::WindowSurface(Shader *s) : Primitive(s)
+{
+    points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
+            glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
+    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
+    texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
+            glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
+    indices_ = std::vector<uint> { 0, 1, 2, 3 };
+    drawMode_ = GL_TRIANGLE_STRIP;
+}
+
+
+RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr),
+    id_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr)
 {
 }
 
 RenderingWindow::~RenderingWindow()
-{
-
+{    
+    if (surface_ != nullptr)
+        delete surface_;
+    if (fbo_ != 0)
+        glDeleteFramebuffers(1, &fbo_);
 }
 
 void RenderingWindow::setTitle(const std::string &title)
@@ -602,25 +627,6 @@ void RenderingWindow::show()
 
 }
 
-// custom surface with a new VAO
-class WindowSurface : public Primitive {
-
-public:
-    WindowSurface(Shader *s = new ImageShader);
-};
-
-WindowSurface::WindowSurface(Shader *s) : Primitive(s)
-{
-    points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-            glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
-    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
-            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
-    texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
-            glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
-    indices_ = std::vector<uint> { 0, 1, 2, 3 };
-    drawMode_ = GL_TRIANGLE_STRIP;
-}
-
 
 void RenderingWindow::makeCurrent()
 {
@@ -659,19 +665,19 @@ void RenderingWindow::draw(FrameBuffer *fb)
 
         // blit framebuffer
         if (Settings::application.render_blit) {
-            static int attached_textureid_fbo_ = 0;
-            static uint local_fbo_ = 0;
-            if ( attached_textureid_fbo_ != fb->texture()) {
+
+            if ( textureid_ != fb->texture()) {
+
+                textureid_ = fb->texture();
 
                 // create a new fbo in this opengl context
-                if (local_fbo_ != 0)
-                    glDeleteFramebuffers(1, &local_fbo_);
-                glGenFramebuffers(1, &local_fbo_);
-                glBindFramebuffer(GL_FRAMEBUFFER, local_fbo_);
+                if (fbo_ != 0)
+                    glDeleteFramebuffers(1, &fbo_);
+                glGenFramebuffers(1, &fbo_);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
 
                 // attach the 2D texture to local FBO
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->texture(), 0);
-                attached_textureid_fbo_ = fb->texture();
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
                 Log::Info("Blit to output window enabled.");
             }
@@ -694,12 +700,12 @@ void RenderingWindow::draw(FrameBuffer *fb)
             }
 
             // select fbo texture read target
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, local_fbo_);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);
 
             // select screen target
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-            //                glBlitFramebuffer(0, 0, fb->width(), fb->height(), 0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            // blit operation from fbo (containing texture) to screen
             glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
         }
@@ -708,8 +714,8 @@ void RenderingWindow::draw(FrameBuffer *fb)
         {
             // VAO is not shared between multiple contexts of different windows
             // so we have to create a new VAO for rendering the surface in this window
-            static WindowSurface *surface = new WindowSurface;
-            static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+            if (surface_ == 0)
+                surface_ = new WindowSurface;
 
             // calculate scaling factor of frame buffer inside window
             float windowAspectRatio = aspectRatio();
@@ -720,13 +726,16 @@ void RenderingWindow::draw(FrameBuffer *fb)
             else
                 scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
 
-            // draw
+            // make sure previous shader in another glcontext is disabled
             ShadingProgram::enduse();
+
+            // draw
             glBindTexture(GL_TEXTURE_2D, fb->texture());
             //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
-            surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+            static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+            surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
 
-            // done drawing
+            // done drawing (unload shader from this glcontext)
             ShadingProgram::enduse();
             glBindTexture(GL_TEXTURE_2D, 0);
         }
