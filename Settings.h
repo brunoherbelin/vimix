@@ -77,7 +77,8 @@ struct Application
     std::map<int, ViewConfig> views;
     int framebuffer_ar;
     int framebuffer_h;
-    int multisampling_level;
+    int render_multisampling;
+    bool render_blit;
 
     // multiple windows handling
     std::vector<WindowConfig> windows;
@@ -100,7 +101,8 @@ struct Application
         current_view = 1;
         framebuffer_ar = 3;
         framebuffer_h = 1;
-        multisampling_level = 2; // todo GUI selection
+        render_multisampling = 2; // todo GUI selection
+        render_blit = false;
         std::vector<int> second (4,100);
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;

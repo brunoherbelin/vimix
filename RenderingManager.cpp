@@ -135,7 +135,7 @@ bool Rendering::init()
     //
     // OpenGL Multisampling main window
     //
-    glfwWindowHint(GLFW_SAMPLES, Settings::application.multisampling_level);
+    glfwWindowHint(GLFW_SAMPLES, Settings::application.render_multisampling);
     main_.init(0);
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
@@ -209,23 +209,21 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
-    // Poll and handle events (inputs, window resize, etc.)
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    glfwPollEvents();
 
+    // operate on main window context
     main_.makeCurrent();
 
+    // User Interface step 1
     UserInterface::manager().NewFrame();
 
+    // Custom draw
     std::list<Rendering::RenderingCallback>::iterator iter;
     for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); iter++)
     {
         (*iter)();
     }
 
+    // User Interface step 2
     UserInterface::manager().Render();
 
     // perform screenshot if requested
@@ -238,11 +236,18 @@ void Rendering::draw()
     // swap GL buffers
     glfwSwapBuffers(main_.window());
 
+    // draw output window (and swap buffer output)
+    output_.draw( Mixer::manager().session()->frame() );
+
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    glfwPollEvents();
+
     // no g_main_loop_run(loop) : update global GMainContext
     g_main_context_iteration(NULL, FALSE);
-
-    // draw output window
-    output_.draw( Mixer::manager().session()->frame() );
 }
 
 
@@ -523,11 +528,12 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         return false;
     }
 
-    // store global ref to pointers (used by callbacks)
-    GLFW_window_[window_] = this;
-
     // set position
     glfwSetWindowPos(window_, winset.x, winset.y);
+
+    /// CALLBACKS
+    // store global ref to pointers (used by callbacks)
+    GLFW_window_[window_] = this;
     // window position and resize callbacks
     glfwSetWindowSizeCallback( window_, WindowResizeCallback );
 //    glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
@@ -536,11 +542,11 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     // take opengl context ownership
     glfwMakeContextCurrent(window_);
 
+    //
+    // Initialize OpenGL loader on first call
+    //
     static bool glad_initialized = false;
     if ( !glad_initialized ) {
-        //
-        // Initialize OpenGL loader
-        //
         bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
         if (err) {
             Log::Error("Failed to initialize GLAD OpenGL loader.");
@@ -566,7 +572,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         // no need for multisampling
         glDisable(GL_MULTISAMPLE);
         // clear to black
-        window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.0);
+        window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.f);
         // give back context ownership
         glfwMakeContextCurrent(master_);
     }
@@ -574,12 +580,12 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         // Enable vsync on main window
         glfwSwapInterval(1);
         // enable Antialiasing multisampling
-        if (Settings::application.multisampling_level > 0) {
+        if (Settings::application.render_multisampling > 0) {
             glEnable(GL_MULTISAMPLE);
             glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
         }
         // clear to grey
-        window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.0);
+        window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.f);
     }
 
     return true;
@@ -635,7 +641,7 @@ void RenderingWindow::makeCurrent()
 
 void RenderingWindow::draw(FrameBuffer *fb)
 {
-    if (!window_)
+    if (!window_ || !fb)
         return;
 
     // only draw if window is not iconified
@@ -651,84 +657,78 @@ void RenderingWindow::draw(FrameBuffer *fb)
         Rendering::manager().pushAttrib(window_attributes_);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw frame buffer provided
-        if (fb) {
+        // blit framebuffer
+        if (Settings::application.render_blit) {
+            static int attached_textureid_fbo_ = 0;
+            static uint local_fbo_ = 0;
+            if ( attached_textureid_fbo_ != fb->texture()) {
 
-            if (false) {
-                // VAO is not shared between multiple contexts of different windows
-                // so we have to create a new VAO for rendering the surface in this window
-                static WindowSurface *surface = new WindowSurface;
-                static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+                // create a new fbo in this opengl context
+                if (local_fbo_ != 0)
+                    glDeleteFramebuffers(1, &local_fbo_);
+                glGenFramebuffers(1, &local_fbo_);
+                glBindFramebuffer(GL_FRAMEBUFFER, local_fbo_);
 
-                // calculate scaling factor of frame buffer inside window
-                float windowAspectRatio = aspectRatio();
-                float renderingAspectRatio = fb->aspectRatio();
-                glm::vec3 scale;
-                if (windowAspectRatio < renderingAspectRatio)
-                    scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
-                else
-                    scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+                // attach the 2D texture to local FBO
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->texture(), 0);
+                attached_textureid_fbo_ = fb->texture();
 
-                // draw
-                ShadingProgram::enduse();
-                glBindTexture(GL_TEXTURE_2D, fb->texture());
-                //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
-                surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
-
-                // done drawing
-                ShadingProgram::enduse();
-                glBindTexture(GL_TEXTURE_2D, 0);
+                Log::Info("Blit to output window enabled.");
             }
-            else {
 
-                static int attached_textureid_fbo_ = 0;
-                static uint local_fbo_ = 0;
-                if ( attached_textureid_fbo_ != fb->texture()) {
-
-                    // create a new fbo in this opengl context
-                    if (local_fbo_ != 0)
-                        glDeleteFramebuffers(1, &local_fbo_);
-                    glGenFramebuffers(1, &local_fbo_);
-                    glBindFramebuffer(GL_FRAMEBUFFER, local_fbo_);
-
-                    // attach the 2D texture to local FBO
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->texture(), 0);
-                    attached_textureid_fbo_ = fb->texture();
-
-                    Log::Info("Blit to output window enabled.");
-                }
-
-                // calculate scaling factor of frame buffer inside window
-                int rx, ry, rw, rh;
-                float renderingAspectRatio = fb->aspectRatio();
-                if (aspectRatio() < renderingAspectRatio) {
-                    int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
-                    rx = 0;
-                    ry = (window_attributes_.viewport.y - nh) / 2;
-                    rw = window_attributes_.viewport.x;
-                    rh = (window_attributes_.viewport.y + nh) / 2;
-                } else {
-                    int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
-                    rx = (window_attributes_.viewport.x - nw) / 2;
-                    ry = 0;
-                    rw = (window_attributes_.viewport.x + nw) / 2;
-                    rh = window_attributes_.viewport.y;
-                }
-
-                // select fbo texture read target
-                glBindFramebuffer(GL_READ_FRAMEBUFFER, local_fbo_);
-
-                // select screen target
-                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-//                glBlitFramebuffer(0, 0, fb->width(), fb->height(), 0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-                glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
+            // calculate scaling factor of frame buffer inside window
+            int rx, ry, rw, rh;
+            float renderingAspectRatio = fb->aspectRatio();
+            if (aspectRatio() < renderingAspectRatio) {
+                int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
+                rx = 0;
+                ry = (window_attributes_.viewport.y - nh) / 2;
+                rw = window_attributes_.viewport.x;
+                rh = (window_attributes_.viewport.y + nh) / 2;
+            } else {
+                int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
+                rx = (window_attributes_.viewport.x - nw) / 2;
+                ry = 0;
+                rw = (window_attributes_.viewport.x + nw) / 2;
+                rh = window_attributes_.viewport.y;
             }
+
+            // select fbo texture read target
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, local_fbo_);
+
+            // select screen target
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+            //                glBlitFramebuffer(0, 0, fb->width(), fb->height(), 0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
         }
-        else {
-            Log::Info("No Framebuffer Provided to draw Rendering Window");
+        // draw geometry
+        else
+        {
+            // VAO is not shared between multiple contexts of different windows
+            // so we have to create a new VAO for rendering the surface in this window
+            static WindowSurface *surface = new WindowSurface;
+            static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+
+            // calculate scaling factor of frame buffer inside window
+            float windowAspectRatio = aspectRatio();
+            float renderingAspectRatio = fb->aspectRatio();
+            glm::vec3 scale;
+            if (windowAspectRatio < renderingAspectRatio)
+                scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+            else
+                scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+
+            // draw
+            ShadingProgram::enduse();
+            glBindTexture(GL_TEXTURE_2D, fb->texture());
+            //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
+            surface->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+
+            // done drawing
+            ShadingProgram::enduse();
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         // restore attribs

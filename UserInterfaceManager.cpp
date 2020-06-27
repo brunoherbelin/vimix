@@ -678,14 +678,20 @@ void ToolBox::Render()
     // Menu Bar
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("Tools"))
+        if (ImGui::BeginMenu("Render"))
         {
-            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", NULL) )
+            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot") )
                 UserInterface::manager().StartScreenshot();
 
-            ImGui::MenuItem("Dev", NULL, false, false);
-            ImGui::MenuItem("Icons", NULL, &show_icons_window);
-            ImGui::MenuItem("Demo ImGui", NULL, &show_demo_window);
+            ImGui::MenuItem("Blit", nullptr, &Settings::application.render_blit);
+            ImGui::MenuItem("Multisampling", nullptr, (Settings::application.render_multisampling > 0), false);
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Dev"))
+        {
+            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
 
             ImGui::EndMenu();
         }
