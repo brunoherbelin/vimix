@@ -38,6 +38,7 @@ public:
 
     // draw session and current view
     void draw();
+    inline float frameRate() const { return fps_;}
 
     // creation of sources
     Source * createSourceFile   (std::string path);
@@ -96,7 +97,7 @@ protected:
     View *current_view_;
 
     gint64 update_time_;
-
+    float fps_;
 };
 
 #endif // MIXER_H

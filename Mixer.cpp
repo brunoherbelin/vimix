@@ -139,7 +139,7 @@ static void saveSession(const std::string& filename, Session *session)
     sessionThreadActive_ = false;
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), fps_(60.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -183,7 +183,10 @@ void Mixer::update()
     if (update_time_ == GST_CLOCK_TIME_NONE)
         update_time_ = gst_util_get_timestamp ();
     gint64 current_time = gst_util_get_timestamp ();
-    float dt = static_cast<float>( GST_TIME_AS_MSECONDS(current_time - update_time_) ) * 0.001f;
+    // dt is in mulisecond, with fractional precision (from micro seconds)
+    float dt = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
+    if (dt > 0.1f)
+        fps_ = 0.9f * fps_ + 100.f / dt;
     update_time_ = current_time;
 
     // insert source candidate for this session
@@ -402,7 +405,6 @@ void Mixer::setCurrentSource(SourceList::iterator it)
 
         // show status as current
         (*current_source_)->setMode(Source::CURRENT);
-        Log::Info("setCurrentSource");
     }
 
 }

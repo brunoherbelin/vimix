@@ -692,14 +692,44 @@ void ToolBox::Render()
         ImGui::EndMenuBar();
     }
 
-    ImGui::End(); // "v-mix"
+    ImVec2 plot_size = ImGui::GetContentRegionAvail();
+    plot_size.y *= 0.5;
 
+    static float mixer_framerate_values[120] = {60.f};
+    static float io_framerate_values[120] = {60.f};
+    static int values_offset = 0;
+    values_offset = (values_offset+1) % IM_ARRAYSIZE(mixer_framerate_values);
+    mixer_framerate_values[values_offset] = Mixer::manager().frameRate();
+    io_framerate_values[values_offset] = ImGui::GetIO().Framerate;
+
+    // plot FPS graph
+    {
+        float average = 0.0f;
+        for (int n = 0; n < IM_ARRAYSIZE(mixer_framerate_values); n++)
+            average += mixer_framerate_values[n];
+        average /= (float)IM_ARRAYSIZE(mixer_framerate_values);
+        char overlay[32];
+        sprintf(overlay, "Mixer FPS %.2f", average);
+        ImGui::PlotLines("LinesMixer", mixer_framerate_values, IM_ARRAYSIZE(mixer_framerate_values), values_offset, overlay, 40.0f, 65.0f, plot_size);
+    }
+    {
+        float average = 0.0f;
+        for (int n = 0; n < IM_ARRAYSIZE(mixer_framerate_values); n++)
+            average += mixer_framerate_values[n];
+        average /= (float)IM_ARRAYSIZE(mixer_framerate_values);
+        char overlay[32];
+        sprintf(overlay, "Render FPS %.2f", average);
+        ImGui::PlotLines("LinesRender", io_framerate_values, IM_ARRAYSIZE(io_framerate_values), values_offset, overlay, 40.0f, 65.0f, plot_size);
+    }
+
+    ImGui::End(); // "v-mix"
 
     // About and other utility windows
     if (show_icons_window)
         ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
+
 
 
 }
@@ -742,7 +772,7 @@ void UserInterface::RenderPreview()
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
 
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" %d x %d px, %.1f fps", output->width(), output->height(),  ImGui::GetIO().Framerate );
+            ImGui::Text(" %d x %d px, %.1f fps", output->width(), output->height(),  Mixer::manager().frameRate() );
         }
 
         ImGui::End();

@@ -74,7 +74,7 @@ void FrameBuffer::init()
         // attach the 2D texture to intermediate FBO
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
-        Log::Info("New FBO %d Multi Sampling ", framebufferid_);
+//        Log::Info("New FBO %d Multi Sampling ", framebufferid_);
 
     }
     else {
@@ -82,7 +82,7 @@ void FrameBuffer::init()
         // direct attach the 2D texture to FBO
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
-        Log::Info("New FBO %d Single Sampling ", framebufferid_);
+//        Log::Info("New FBO %d Single Sampling ", framebufferid_);
     }
 
     checkFramebufferStatus();

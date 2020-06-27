@@ -583,7 +583,11 @@ void MediaPlayer::update()
         {
             glBindTexture(GL_TEXTURE_2D, textureindex_);
 
+            // use dual Pixel Buffer Object
             if (pbo_size_ > 0) {
+                // In dual PBO mode, increment current index first then get the next index
+                pbo_index_ = (pbo_index_ + 1) % 2;
+                pbo_next_index_ = (pbo_index_ + 1) % 2;
 
                 // bind PBO to read pixels
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
@@ -597,6 +601,7 @@ void MediaPlayer::update()
                 // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
                 glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
                 // map the buffer object into client's memory
+//                GLubyte* ptr = (GLubyte*) glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, GL_MAP_WRITE_BIT|GL_MAP_INVALIDATE_BUFFER_BIT);
                 GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
                 if (ptr) {
                     // update data directly on the mapped buffer
@@ -608,10 +613,6 @@ void MediaPlayer::update()
                 }
                 // done with PBO
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-                // In dual PBO mode, increment current index first then get the next index
-                pbo_index_ = (pbo_index_ + 1) % 2;
-                pbo_next_index_ = (pbo_index_ + 1) % 2;
             }
             else
                 // without PBO, use standard opengl (slower)
