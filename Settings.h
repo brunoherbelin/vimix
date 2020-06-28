@@ -77,6 +77,7 @@ struct Application
     std::map<int, ViewConfig> views;
     int framebuffer_ar;
     int framebuffer_h;
+    int render_vsync;
     int render_multisampling;
     bool render_blit;
 
@@ -101,6 +102,7 @@ struct Application
         current_view = 1;
         framebuffer_ar = 3;
         framebuffer_h = 1;
+        render_vsync = 1; // todo GUI selection
         render_multisampling = 2; // todo GUI selection
         render_blit = false;
         std::vector<int> second (4,100);

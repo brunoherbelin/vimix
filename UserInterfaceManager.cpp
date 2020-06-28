@@ -704,13 +704,28 @@ void ToolBox::Render()
     static float sum[2] = { 0.f, 0.f };
     static int values_index = 0;
 
+    static float max_fps = 65.f;
+    static float min_fps = 40.f;
+    static float refresh_rate = -1.f;
+    if (refresh_rate < 0.f) {
+
+        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
+        float refresh_rate = float(mode->refreshRate);
+        if (Settings::application.render_vsync > 0)
+            refresh_rate /= Settings::application.render_vsync;
+        else
+            refresh_rate = 0.f;
+        max_fps = refresh_rate + 5.f;
+        min_fps = refresh_rate - 20.f;
+    }
+
     // compute average step 1: remove previous value from the sum
     sum[0] -= framerate_values[0][values_index];
     sum[1] -= framerate_values[1][values_index];
 
     // store values of FPS and of Mixing update dt
-    framerate_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 100.f);
-    framerate_values[1][values_index] = MINI(Mixer::manager().dt(), 500.f);
+    framerate_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
+    framerate_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
 
     // compute average step 2: add current value to the sum
     sum[0] += framerate_values[0][values_index];
@@ -719,15 +734,20 @@ void ToolBox::Render()
     // move inside array
     values_index = (values_index+1) % 120;
 
+    // non-vsync fixed FPS : have to calculate plot dimensions based on past values
+    if (refresh_rate < 1.f) {
+        max_fps = sum[0] / 120.f + 5.f;
+        min_fps = sum[0] / 120.f - 20.f;
+    }
+
     // plot values, with title overlay to display the average
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
     plot_size.y *= 0.49;
     char overlay[128];
     sprintf(overlay, "Rendering %.1f FPS", sum[0] / 120.f);
-    ImGui::PlotLines("LinesRender", framerate_values[0], 120, values_index, overlay, 40.0f, 65.0f, plot_size);
+    ImGui::PlotLines("LinesRender", framerate_values[0], 120, values_index, overlay, min_fps, max_fps, plot_size);
     sprintf(overlay, "Update time %.1f ms (%.1f FPS)", sum[1] / 120.f, 120000.f / sum[1]);
     ImGui::PlotHistogram("LinesMixer", framerate_values[1], 120, values_index, overlay, 0.0f, 50.0f, plot_size);
-
 
     ImGui::End();
 

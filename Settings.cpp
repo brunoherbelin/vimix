@@ -64,7 +64,8 @@ void Settings::Save()
     applicationNode->SetAttribute("toolbox", application.toolbox);
     applicationNode->SetAttribute("framebuffer_ar", application.framebuffer_ar);
     applicationNode->SetAttribute("framebuffer_h", application.framebuffer_h);
-    applicationNode->SetAttribute("multisampling_level", application.render_multisampling);
+    applicationNode->SetAttribute("render_vsync", application.render_vsync);
+    applicationNode->SetAttribute("render_multisampling", application.render_multisampling);
     applicationNode->SetAttribute("render_blit", application.render_blit);
     pRoot->InsertEndChild(applicationNode);
 
@@ -170,7 +171,8 @@ void Settings::Load()
     pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
     pElement->QueryIntAttribute("framebuffer_ar", &application.framebuffer_ar);
     pElement->QueryIntAttribute("framebuffer_h", &application.framebuffer_h);
-    pElement->QueryIntAttribute("multisampling_level", &application.render_multisampling);
+    pElement->QueryIntAttribute("render_vsync", &application.render_vsync);
+    pElement->QueryIntAttribute("render_multisampling", &application.render_multisampling);
     pElement->QueryBoolAttribute("render_blit", &application.render_blit);
 
     // bloc windows

@@ -603,7 +603,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     }
     else {
         // Enable vsync on main window
-        glfwSwapInterval(1);
+        glfwSwapInterval(Settings::application.render_vsync);
         // enable Antialiasing multisampling
         if (Settings::application.render_multisampling > 0) {
             glEnable(GL_MULTISAMPLE);

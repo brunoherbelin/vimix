@@ -33,8 +33,6 @@ class RenderingWindow
     uint fbo_;
     class WindowSurface *surface_;
 
-    // get monitor in which the window is
-    GLFWmonitor *monitor();
 
 public:
     RenderingWindow();
@@ -73,6 +71,8 @@ public:
 
     inline float dpiScale() const { return dpi_scale_; }
 
+    // get monitor in which the window is
+    GLFWmonitor *monitor();
     // get which monitor contains this point
     static GLFWmonitor *monitorAt(int x, int y);
     // get which monitor has this name
