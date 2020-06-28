@@ -233,11 +233,11 @@ void Rendering::draw()
         request_screenshot_ = false;
     }
 
-    // swap GL buffers
-    glfwSwapBuffers(main_.window());
-
     // draw output window (and swap buffer output)
     output_.draw( Mixer::manager().session()->frame() );
+
+    // swap GL buffers
+    glfwSwapBuffers(main_.window());
 
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
