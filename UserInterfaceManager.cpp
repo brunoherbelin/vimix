@@ -400,6 +400,7 @@ void UserInterface::handleMouse()
                     Source *s = Mixer::manager().findSource(picked.first);
                     if (s != nullptr) {
 
+                        // CTRL + clic = multiple selection
                         if (keyboard_modifier_active) {
                             if ( !Mixer::selection().contains(s) )
                                 Mixer::selection().add( s );
@@ -432,11 +433,13 @@ void UserInterface::handleMouse()
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
+
+            if (navigator.pannelVisible())
+                // discard current to select front most source
+                // (because single clic maintains same source active)
+                Mixer::manager().unsetCurrentSource();
             // display source in left pannel
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
-            // discard current to select front most source
-            // (because single clic maintains same source active)
-            Mixer::manager().unsetCurrentSource();
         }
 
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
@@ -1088,8 +1091,13 @@ void Navigator::clearButtonSelection()
 
 void Navigator::showPannelSource(int index)
 {
-    selected_button[index] = true;
-    applyButtonSelection(index);
+    // invalid index given
+    if ( index < 0)
+        hidePannel();
+    else {
+        selected_button[index] = true;
+        applyButtonSelection(index);
+    }
 }
 
 void Navigator::togglePannelMenu()
