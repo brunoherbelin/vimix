@@ -1149,13 +1149,16 @@ void Navigator::Render()
         for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
         {
             // draw an indicator for current source
-            if ( Mixer::manager().indexCurrentSource() == index ){
-
+            if ( (*iter)->mode() >= Source::SELECTED ){
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                const ImVec2 p = ImGui::GetCursorScreenPos() + ImVec2(icon_width,0);
+                ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
+                ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
                 const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-
-                draw_list->AddRect(p, ImVec2(p.x + 2.f, p.y + icon_width), color, 0.0f,  0, 3.f);
+                if ((*iter)->mode() == Source::CURRENT)  {
+                    p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
+                    p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
+                }
+                draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
             }
             // draw select box
             if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
