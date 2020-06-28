@@ -712,14 +712,19 @@ void ToolBox::Render()
     static float refresh_rate = -1.f;
     if (refresh_rate < 0.f) {
 
-        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
-        float refresh_rate = float(mode->refreshRate);
+        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
+        refresh_rate = float(mode->refreshRate);
         if (Settings::application.render_vsync > 0)
             refresh_rate /= Settings::application.render_vsync;
         else
             refresh_rate = 0.f;
         max_fps = refresh_rate + 5.f;
         min_fps = refresh_rate - 20.f;
+
+        for(int i = 0; i<120; ++i) {
+            framerate_values[0][i] = refresh_rate;
+            sum[0] += refresh_rate;
+        }
     }
 
     // compute average step 1: remove previous value from the sum

@@ -635,7 +635,7 @@ void RenderingWindow::makeCurrent()
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
 
     // ensure main context is current
-   // glfwMakeContextCurrent(window_);
+    glfwMakeContextCurrent(window_);
 
     // set and clear
     glViewport(0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y);
@@ -744,8 +744,6 @@ void RenderingWindow::draw(FrameBuffer *fb)
         // restore attribs
         Rendering::manager().popAttrib();
 
-//        // swap buffer
-//        glfwSwapBuffers(window_);
     }
 
     // give back context ownership
