@@ -238,6 +238,7 @@ void Rendering::draw()
 
     // swap GL buffers
     glfwSwapBuffers(main_.window());
+    glfwSwapBuffers(output_.window());
 
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -593,7 +594,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     // if not main window
     if ( master_ != NULL ) {
         // Disable vsync
-        glfwSwapInterval(0);
+        glfwSwapInterval(Settings::application.render_vsync);
         // no need for multisampling
         glDisable(GL_MULTISAMPLE);
         // clear to black
@@ -603,7 +604,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     }
     else {
         // Enable vsync on main window
-        glfwSwapInterval(Settings::application.render_vsync);
+        glfwSwapInterval(0);
         // enable Antialiasing multisampling
         if (Settings::application.render_multisampling > 0) {
             glEnable(GL_MULTISAMPLE);
@@ -743,8 +744,8 @@ void RenderingWindow::draw(FrameBuffer *fb)
         // restore attribs
         Rendering::manager().popAttrib();
 
-        // swap buffer
-        glfwSwapBuffers(window_);
+//        // swap buffer
+//        glfwSwapBuffers(window_);
     }
 
     // give back context ownership
