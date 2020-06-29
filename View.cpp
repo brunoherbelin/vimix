@@ -306,7 +306,7 @@ RenderView::~RenderView()
 void RenderView::setResolution(glm::vec3 resolution)
 {
     if (resolution.x < 128.f || resolution.y < 128.f)
-        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.framebuffer_ar, Settings::application.framebuffer_h);
+        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render_view_ar, Settings::application.render_view_h);
 
     if (frame_buffer_)
         delete frame_buffer_;

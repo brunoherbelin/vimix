@@ -51,7 +51,7 @@ void FrameBuffer::init()
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 
     // take settings into account: no multisampling for level 0
-    use_multi_sampling_ &= Settings::application.render_multisampling > 0;
+    use_multi_sampling_ &= Settings::application.render.multisampling > 0;
 
     if (use_multi_sampling_){
 
@@ -60,7 +60,7 @@ void FrameBuffer::init()
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.render_multisampling,
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.render.multisampling,
                                 use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 

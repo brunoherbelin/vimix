@@ -286,7 +286,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     else {
         ImGui::Text("Video File");
         if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Settings::application.media_player = true;
+            Settings::application.widget.media_player = true;
     }
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
@@ -306,7 +306,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 {
     ImGui::Text("Rendering Output");
     if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Settings::application.preview = true;
+        Settings::application.widget.preview = true;
 }
 
 void ImGuiVisitor::visit (CloneSource& s)

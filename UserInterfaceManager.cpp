@@ -235,19 +235,19 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
-            Settings::application.logs = !Settings::application.logs;
+            Settings::application.widget.logs = !Settings::application.widget.logs;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_T )) {
             // Logs
-            Settings::application.toolbox = !Settings::application.toolbox;
+            Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
-            Settings::application.preview = !Settings::application.preview;
+            Settings::application.widget.preview = !Settings::application.widget.preview;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
             // Logs
-            Settings::application.media_player = !Settings::application.media_player;
+            Settings::application.widget.media_player = !Settings::application.widget.media_player;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             // select all
@@ -536,18 +536,18 @@ void UserInterface::Render()
     Log::Render();
 
     // windows
-    if (Settings::application.toolbox)
+    if (Settings::application.widget.toolbox)
         toolbox.Render();
-    if (Settings::application.preview)
+    if (Settings::application.widget.preview)
         RenderPreview();
-    if (Settings::application.media_player)
+    if (Settings::application.widget.media_player)
         RenderMediaPlayer();
-    if (Settings::application.shader_editor)
+    if (Settings::application.widget.shader_editor)
         RenderShaderEditor();
-    if (Settings::application.stats)
-        ImGuiToolkit::ShowStats(&Settings::application.stats, &Settings::application.stats_corner);
-    if (Settings::application.logs)
-        Log::ShowLogWindow(&Settings::application.logs);
+    if (Settings::application.widget.stats)
+        ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
+    if (Settings::application.widget.logs)
+        Log::ShowLogWindow(&Settings::application.widget.logs);
 
     // about
     if (show_about)
@@ -582,9 +582,9 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##AR", &Settings::application.framebuffer_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
+    ImGui::Combo("##AR", &Settings::application.render_view_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##HEIGHT", &Settings::application.framebuffer_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+    ImGui::Combo("##HEIGHT", &Settings::application.render_view_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
     ImGui::Separator();
 
@@ -672,7 +672,7 @@ void ToolBox::Render()
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox,  ImGuiWindowFlags_MenuBar) )
+    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar) )
     {
         ImGui::End();
         return;
@@ -686,8 +686,8 @@ void ToolBox::Render()
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot") )
                 UserInterface::manager().StartScreenshot();
 
-            ImGui::MenuItem("Blit", nullptr, &Settings::application.render_blit);
-            ImGui::MenuItem("Multisampling", nullptr, (Settings::application.render_multisampling > 0), false);
+            ImGui::MenuItem("Blit", nullptr, &Settings::application.render.blit);
+            ImGui::MenuItem("Multisampling", nullptr, (Settings::application.render.multisampling > 0), false);
 
             ImGui::EndMenu();
         }
@@ -714,8 +714,8 @@ void ToolBox::Render()
 
         const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
         refresh_rate = float(mode->refreshRate);
-        if (Settings::application.render_vsync > 0)
-            refresh_rate /= Settings::application.render_vsync;
+        if (Settings::application.render.vsync > 0)
+            refresh_rate /= Settings::application.render.vsync;
         else
             refresh_rate = 0.f;
         max_fps = refresh_rate + 5.f;
@@ -787,7 +787,7 @@ void UserInterface::RenderPreview()
         ImGui::SetNextWindowPos(ImVec2(1180, 20), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
-        ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.preview,  ImGuiWindowFlags_NoScrollbar);
+        ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.widget.preview,  ImGuiWindowFlags_NoScrollbar);
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / ar);
@@ -829,7 +829,7 @@ void UserInterface::RenderMediaPlayer()
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, ImGuiWindowFlags_NoScrollbar ) || !show)
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar ) || !show)
     {
         ImGui::End();
         return;
@@ -986,7 +986,7 @@ void UserInterface::RenderShaderEditor()
 {
     static bool show_statusbar = true;
 
-    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGui::BeginMenuBar())
     {
@@ -1495,14 +1495,14 @@ void Navigator::RenderMainPannel()
 
         ImGui::Text(" ");
         ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.preview, CTRL_MOD "P");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.media_player, CTRL_MOD "M");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "M");
 #ifndef NDEBUG
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.shader_editor);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.toolbox, CTRL_MOD  "T");
 #endif
-        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.logs, CTRL_MOD "L");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.stats);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         ImGui::Text("  ");
         ImGui::Text("Appearance");

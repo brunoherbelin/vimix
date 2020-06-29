@@ -11,6 +11,27 @@
 
 namespace Settings {
 
+struct WidgetsConfig
+{
+    bool stats;
+    int  stats_corner;
+    bool logs;
+    bool preview;
+    bool media_player;
+    bool shader_editor;
+    bool toolbox;
+
+    WidgetsConfig() {
+        stats = false;
+        stats_corner = 1;
+        logs = false;
+        preview = false;
+        media_player = false;
+        shader_editor = false;
+        toolbox = false;
+    }
+};
+
 struct WindowConfig
 {
     std::string name;
@@ -55,6 +76,19 @@ struct History
     }
 };
 
+struct RenderConfig
+{
+    int vsync;
+    int multisampling;
+    bool blit;
+
+    RenderConfig() {
+        vsync = 1; // todo GUI selection
+        multisampling = 2; // todo GUI selection
+        blit = false;
+    }
+};
+
 struct Application
 {
     // Verification
@@ -63,23 +97,19 @@ struct Application
     // Global settings Application interface
     float scale;
     int  accent_color;
-    bool stats;
-    int  stats_corner;
-    bool logs;
-    bool preview;
-    bool media_player;
-    bool shader_editor;
     bool pannel_stick;
-    bool toolbox;
+
+    // Settings of widgets
+    WidgetsConfig widget;
 
     // Settings of Views
     int current_view;
+    int render_view_ar;
+    int render_view_h;
     std::map<int, ViewConfig> views;
-    int framebuffer_ar;
-    int framebuffer_h;
-    int render_vsync;
-    int render_multisampling;
-    bool render_blit;
+
+    // settings render
+    RenderConfig render;
 
     // multiple windows handling
     std::vector<WindowConfig> windows;
@@ -91,21 +121,12 @@ struct Application
     Application() : name(APP_NAME){
         scale = 1.f;
         accent_color = 0;
-        stats = false;
-        stats_corner = 1;
-        logs = false;
-        preview = false;
-        media_player = false;
-        shader_editor = false;
         pannel_stick = false;
-        toolbox = false;
+
         current_view = 1;
-        framebuffer_ar = 3;
-        framebuffer_h = 1;
-        render_vsync = 1; // todo GUI selection
-        render_multisampling = 2; // todo GUI selection
-        render_blit = false;
-        std::vector<int> second (4,100);
+        render_view_ar = 3;
+        render_view_h = 1;
+
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
         windows[0].w = 1600;

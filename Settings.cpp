@@ -51,28 +51,37 @@ void Settings::Save()
         pRoot->InsertEndChild(windowsNode);
 	}
 
+    // General application preferences
     XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
-    applicationNode->SetAttribute("preview", application.preview);
-    applicationNode->SetAttribute("media_player", application.media_player);
-    applicationNode->SetAttribute("shader_editor", application.shader_editor);
     applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
-    applicationNode->SetAttribute("stats", application.stats);
-    applicationNode->SetAttribute("stats_corner", application.stats_corner);
-    applicationNode->SetAttribute("logs", application.logs);
-    applicationNode->SetAttribute("toolbox", application.toolbox);
-    applicationNode->SetAttribute("framebuffer_ar", application.framebuffer_ar);
-    applicationNode->SetAttribute("framebuffer_h", application.framebuffer_h);
-    applicationNode->SetAttribute("render_vsync", application.render_vsync);
-    applicationNode->SetAttribute("render_multisampling", application.render_multisampling);
-    applicationNode->SetAttribute("render_blit", application.render_blit);
     pRoot->InsertEndChild(applicationNode);
+
+    // Widgets
+    XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
+    widgetsNode->SetAttribute("preview", application.widget.preview);
+    widgetsNode->SetAttribute("media_player", application.widget.media_player);
+    widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
+    widgetsNode->SetAttribute("stats", application.widget.stats);
+    widgetsNode->SetAttribute("stats_corner", application.widget.stats_corner);
+    widgetsNode->SetAttribute("logs", application.widget.logs);
+    widgetsNode->SetAttribute("toolbox", application.widget.toolbox);
+    pRoot->InsertEndChild(widgetsNode);
+
+    // Render
+    XMLElement *RenderNode = xmlDoc.NewElement( "Render" );
+    RenderNode->SetAttribute("vsync", application.render.vsync);
+    RenderNode->SetAttribute("multisampling", application.render.multisampling);
+    RenderNode->SetAttribute("blit", application.render.blit);
+    pRoot->InsertEndChild(RenderNode);
 
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
         viewsNode->SetAttribute("current", application.current_view);
+        viewsNode->SetAttribute("render_view_ar", application.render_view_ar);
+        viewsNode->SetAttribute("render_view_h", application.render_view_h);
 
         map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); iter++)
@@ -157,23 +166,32 @@ void Settings::Load()
         // different root name
         return;
 
-    XMLElement * pElement = pRoot->FirstChildElement("Application");
-    if (pElement == nullptr) return;
-    pElement->QueryFloatAttribute("scale", &application.scale);
-    pElement->QueryIntAttribute("accent_color", &application.accent_color);
-    pElement->QueryBoolAttribute("preview", &application.preview);
-    pElement->QueryBoolAttribute("media_player", &application.media_player);
-    pElement->QueryBoolAttribute("shader_editor", &application.shader_editor);
-    pElement->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
-    pElement->QueryBoolAttribute("stats", &application.stats);
-    pElement->QueryBoolAttribute("logs", &application.logs);
-    pElement->QueryBoolAttribute("toolbox", &application.toolbox);
-    pElement->QueryIntAttribute("stats_corner", &application.stats_corner);
-    pElement->QueryIntAttribute("framebuffer_ar", &application.framebuffer_ar);
-    pElement->QueryIntAttribute("framebuffer_h", &application.framebuffer_h);
-    pElement->QueryIntAttribute("render_vsync", &application.render_vsync);
-    pElement->QueryIntAttribute("render_multisampling", &application.render_multisampling);
-    pElement->QueryBoolAttribute("render_blit", &application.render_blit);
+    XMLElement * applicationNode = pRoot->FirstChildElement("Application");
+    if (applicationNode != nullptr) {
+        applicationNode->QueryFloatAttribute("scale", &application.scale);
+        applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
+        applicationNode->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
+    }
+
+    // Widgets
+    XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
+    if (widgetsNode != nullptr) {
+        widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
+        widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
+        widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
+        widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
+        widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
+        widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
+        widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
+    }
+
+    // Render
+    XMLElement * rendernode = pRoot->FirstChildElement("Render");
+    if (rendernode != nullptr) {
+        rendernode->QueryIntAttribute("vsync", &application.render.vsync);
+        rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
+        rendernode->QueryBoolAttribute("blit", &application.render.blit);
+    }
 
     // bloc windows
     {
@@ -206,6 +224,8 @@ void Settings::Load()
         if (pElement)
         {
             pElement->QueryIntAttribute("current", &application.current_view);
+            pElement->QueryIntAttribute("render_view_ar", &application.render_view_ar);
+            pElement->QueryIntAttribute("render_view_h", &application.render_view_h);
 
             XMLElement* viewNode = pElement->FirstChildElement("View");
             for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

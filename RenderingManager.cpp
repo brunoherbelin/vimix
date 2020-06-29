@@ -135,7 +135,7 @@ bool Rendering::init()
     //
     // OpenGL Multisampling main window
     //
-    glfwWindowHint(GLFW_SAMPLES, Settings::application.render_multisampling);
+    glfwWindowHint(GLFW_SAMPLES, Settings::application.render.multisampling);
     main_.init(0);
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
@@ -594,7 +594,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     // if not main window
     if ( master_ != NULL ) {
         // Disable vsync
-        glfwSwapInterval(Settings::application.render_vsync);
+        glfwSwapInterval(Settings::application.render.vsync);
         // no need for multisampling
         glDisable(GL_MULTISAMPLE);
         // clear to black
@@ -606,7 +606,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         // Enable vsync on main window
         glfwSwapInterval(0);
         // enable Antialiasing multisampling
-        if (Settings::application.render_multisampling > 0) {
+        if (Settings::application.render.multisampling > 0) {
             glEnable(GL_MULTISAMPLE);
             glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
         }
@@ -665,7 +665,7 @@ void RenderingWindow::draw(FrameBuffer *fb)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // blit framebuffer
-        if (Settings::application.render_blit) {
+        if (Settings::application.render.blit) {
 
             if ( textureid_ != fb->texture()) {
 
