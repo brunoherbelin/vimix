@@ -64,6 +64,7 @@ struct History
     bool save_on_exit;
 
     History() {
+        path = "Recent Files";
         load_at_start = false;
         save_on_exit = false;
     }
@@ -98,6 +99,7 @@ struct Application
     float scale;
     int  accent_color;
     bool pannel_stick;
+    bool smooth_transition;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -116,12 +118,14 @@ struct Application
 
     // recent files histories
     History recentSessions;
+    History recentFolders;
     History recentImport;
 
     Application() : name(APP_NAME){
         scale = 1.f;
         accent_color = 0;
         pannel_stick = false;
+        smooth_transition = true;
 
         current_view = 1;
         render_view_ar = 3;

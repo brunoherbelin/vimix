@@ -49,7 +49,7 @@ class Navigator
 
     void RenderNewPannel();
     int new_source_type_;
-    char new_source_filename_[2048];
+    char file_browser_path_[2048];
 
     SourcePreview new_source_preview_;
 

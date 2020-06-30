@@ -116,7 +116,10 @@ static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, con
     char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
 
-    open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
+    if (SystemToolkit::file_exists(path))
+        open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
+    else
+        open_file_name = tinyfd_openFileDialog( "Import a file", SystemToolkit::home_path().c_str(), 18, open_pattern, "All supported formats", 0);
 
     if (open_file_name) {
         sprintf(filename, "%s", open_file_name);
@@ -128,6 +131,30 @@ static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, con
 
     fileDialogPending_ = false;
 }
+
+static void FolderDialogOpen(char *folder, std::atomic<bool> *success, const std::string &path)
+{
+    if (fileDialogPending_)
+        return;
+    fileDialogPending_ = true;
+
+     char const * open_file_name;
+     if (SystemToolkit::file_exists(path))
+         open_file_name = tinyfd_selectFolderDialog("Select a folder", path.c_str());
+     else
+         open_file_name = tinyfd_selectFolderDialog("Select a folder", SystemToolkit::home_path().c_str());
+
+     if (open_file_name) {
+         sprintf(folder, "%s", open_file_name);
+         *success = true;
+     }
+     else {
+         *success = false;
+     }
+
+     fileDialogPending_ = false;
+}
+
 
 UserInterface::UserInterface()
 {
@@ -195,7 +222,7 @@ bool UserInterface::Init()
     ImGui::SetClipboardText("");
 
     // setup settings filename
-    std::string inifile = SystemToolkit::settings_prepend_path("imgui.ini");
+    std::string inifile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
     char *inifilepath = (char *) malloc( (inifile.size() + 1) * sizeof(char) );
     std::sprintf(inifilepath, "%s", inifile.c_str() );
     io.IniFilename = inifilepath;
@@ -649,7 +676,7 @@ void UserInterface::handleScreenshot()
             case 3:
             {
                 if ( Rendering::manager().currentScreenshot()->IsFull() ){
-                    std::string filename =  SystemToolkit::home_path() + SystemToolkit::date_time_string() + "_vmixcapture.png";
+                    std::string filename =  SystemToolkit::full_filename( SystemToolkit::home_path(), SystemToolkit::date_time_string() + "_vmixcapture.png" );
                     Rendering::manager().currentScreenshot()->SaveFile( filename.c_str() );
                     Rendering::manager().currentScreenshot()->Clear();
                     Log::Notify("Screenshot saved %s", filename.c_str() );
@@ -845,10 +872,11 @@ void UserInterface::RenderMediaPlayer()
     if (ImGui::IsItemHovered()) {
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 2.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+        draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 3.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
 
         ImGui::SetCursorScreenPos(tooltip_pos);
-        ImGui::Text(" %s (%s)", SystemToolkit::base_filename(mp->uri()).c_str(), mp->codec().c_str());
+        ImGui::Text(" %s", SystemToolkit::filename(mp->uri()).c_str());
+        ImGui::Text(" %s", mp->codec().c_str());
         if ( mp->frameRate() > 0.f )
             ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
         else
@@ -1090,7 +1118,7 @@ void Navigator::clearButtonSelection()
         selected_button[i] = false;
 
     // clear new source pannel
-    sprintf(new_source_filename_, " ");
+    sprintf(file_browser_path_, " ");
     new_source_preview_.setSource();
 }
 
@@ -1365,11 +1393,11 @@ void Navigator::RenderNewPannel()
             if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // clear string before selection
                 file_selected = false;
-                std::thread (ImportFileDialogOpen, new_source_filename_, &file_selected, Settings::application.recentImport.path).detach();
+                std::thread (ImportFileDialogOpen, file_browser_path_, &file_selected, Settings::application.recentImport.path).detach();
             }
             if ( file_selected ) {
                 file_selected = false;
-                std::string open_filename(new_source_filename_);
+                std::string open_filename(file_browser_path_);
                 // create a source with this file
                 std::string label = open_filename.substr( open_filename.size() - MIN( 35, open_filename.size()) );
                 new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
@@ -1472,24 +1500,123 @@ void Navigator::RenderMainPannel()
             ImGui::EndMenu();
         }
 
-        // combo box with list of recent session files from Settings
-        static bool recentselected = false;
-        recentselected = false;
+        static bool selection_session_mode_changed = true;
+        static int selection_session_mode = 0;
+
+        //
+        // Session quick selection pannel
+        //
+
+        // return from thread for folder openning
+        static std::atomic<bool> folder_selected = false;
+        if (folder_selected)  {
+            folder_selected = false;
+            selection_session_mode = 1;
+            selection_session_mode_changed = true;
+            Settings::application.recentFolders.push(file_browser_path_);
+            Settings::application.recentFolders.path.assign(file_browser_path_);
+        }
+
+        // Show combo box of quick selection modes
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("##Recent", "Open recent"))
-        {
-            std::for_each(Settings::application.recentSessions.filenames.begin(),
-                          Settings::application.recentSessions.filenames.end(), [](std::string& filename) {
-                int right = MIN( 40, filename.size());
-                if (ImGui::Selectable( filename.substr( filename.size() - right ).c_str() )) {
-                    Mixer::manager().open( filename );
-                    recentselected = true;
+        if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
+
+            // Option 0 : recent files
+            if (ImGui::Selectable( ICON_FA_HISTORY " Recent Files") ) {
+                 Settings::application.recentFolders.path = "Recent Files";
+                 selection_session_mode = 0;
+                 selection_session_mode_changed = true;
+            }
+            // Options 1 : known folders
+            for(auto foldername = Settings::application.recentFolders.filenames.begin();
+                foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
+                std::string f = std::string(ICON_FA_FOLDER) + " " + SystemToolkit::trunc_filename( *foldername, 40);
+                if (ImGui::Selectable( f.c_str() )) {
+                    // remember which path was selected
+                    Settings::application.recentFolders.path.assign(*foldername);
+                    // set mode
+                    selection_session_mode = 1;
+                    selection_session_mode_changed = true;
                 }
-            });
+            }
+            // Option 2 : add a folder
+            if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
+                std::thread (FolderDialogOpen, file_browser_path_, &folder_selected, Settings::application.recentFolders.path).detach();
+            }
             ImGui::EndCombo();
         }
-        if (recentselected)
+
+        // helper
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(pannel_width_  + IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::HelpMarker("Quick access of Session files.\nSelect from the history of recently\nopened files or from a folder.\nDouble clic on a filename to open it.");
+
+        // fill the session list depending on the mode
+        static std::list<std::string> sessions_list;
+        // change session list if changed
+        if (selection_session_mode_changed) {
+
+            // selection MODE 0 ; RECENT sessions
+            if ( selection_session_mode == 0) {
+                // show list of recent sessions
+                sessions_list = Settings::application.recentSessions.filenames;
+            }
+            // selection MODE 1 : LIST FOLDER
+            else if ( selection_session_mode == 1) {
+                // show list of vimix files in folder
+                sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, ".mix");
+            }
+            // indicate the list changed (do not change at every frame)
+            selection_session_mode_changed = false;
+        }
+
+        // display the sessions list and detect if one was selected (double clic)
+        bool session_selected = false;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::ListBoxHeader("##Sessions", Settings::application.recentSessions.filenames.size());
+        for(auto filename = sessions_list.begin(); filename != sessions_list.end(); filename++) {
+            if (ImGui::Selectable( SystemToolkit::filename(*filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
+              if (ImGui::IsMouseDoubleClicked(0)) {
+                Mixer::manager().open( *filename );
+                session_selected = true;
+              }
+            }
+        }
+        ImGui::ListBoxFooter();
+
+        // icon to remove this folder from the list
+        if ( selection_session_mode == 1) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+            bool reset = false;
+            ImGuiToolkit::IconToggle(12,14,11,14, &reset);
+            if (reset) {
+                Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
+                if (Settings::application.recentFolders.filenames.empty()) {
+                    Settings::application.recentFolders.path.assign("Recent Files");
+                    selection_session_mode = 0;
+                }
+                else
+                    Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
+                // reload the list next time
+                selection_session_mode_changed = true;
+            }
+            ImGui::PopStyleVar();
+            ImGui::SetCursorPos(pos);
+        }
+
+        // done the selection !
+        if (session_selected) {
+            // close pannel
             hidePannel();
+            // reload the list next time
+            selection_session_mode_changed = true;
+        }
+
+        // Continue Main pannel
+        ImGui::Text(" ");
+        ImGuiToolkit::ButtonSwitch( "Smooth transition", &Settings::application.smooth_transition);
         ImGuiToolkit::ButtonSwitch( "Load most recent on start", &Settings::application.recentSessions.load_at_start);
         ImGuiToolkit::ButtonSwitch( "Save on exit", &Settings::application.recentSessions.save_on_exit);
 

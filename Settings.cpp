@@ -56,6 +56,7 @@ void Settings::Save()
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
+    applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -122,6 +123,16 @@ void Settings::Save()
         };
         recent->InsertEndChild(recentsession);
 
+        XMLElement *recentfolder = xmlDoc.NewElement( "Folder" );
+        for(auto it = application.recentFolders.filenames.begin();
+            it != application.recentFolders.filenames.end(); it++) {
+            XMLElement *fileNode = xmlDoc.NewElement("path");
+            XMLText *text = xmlDoc.NewText( (*it).c_str() );
+            fileNode->InsertEndChild( text );
+            recentfolder->InsertFirstChild(fileNode);
+        };
+        recent->InsertEndChild(recentfolder);
+
         XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
         recentmedia->SetAttribute("path", application.recentImport.path.c_str());
         for(auto it = application.recentImport.filenames.begin();
@@ -139,7 +150,7 @@ void Settings::Save()
 
     // First save : create filename
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settings_prepend_path(APP_SETTINGS);
+        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
 
     XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
     XMLResultError(eResult);
@@ -149,7 +160,7 @@ void Settings::Load()
 {
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::settings_prepend_path(APP_SETTINGS);
+        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
@@ -171,6 +182,7 @@ void Settings::Load()
         applicationNode->QueryFloatAttribute("scale", &application.scale);
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
+        applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
     }
 
     // Widgets
@@ -270,6 +282,19 @@ void Settings::Load()
                     const char *p = path->GetText();
                     if (p)
                     application.recentSessions.push( std::string (p) );
+                }
+            }
+            // recent session filenames
+            XMLElement * pFolder = pElement->FirstChildElement("Folder");
+            if (pFolder)
+            {
+                application.recentFolders.filenames.clear();
+                XMLElement* path = pFolder->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    const char *p = path->GetText();
+                    if (p)
+                    application.recentFolders.push( std::string (p) );
                 }
             }
             // recent media uri
