@@ -203,6 +203,7 @@ set(VMIX_SRCS
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp
+    UpdateCallback.cpp
     Scene.cpp
     Primitives.cpp
     Mesh.cpp

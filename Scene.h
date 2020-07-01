@@ -12,7 +12,7 @@
 #include <vector>
 #include <map>
 
-#include "GlmToolkit.h"
+#include "UpdateCallback.h"
 
 // Forward declare classes referenced
 class Shader;
@@ -73,9 +73,8 @@ public:
     glm::vec3 scale_, rotation_, translation_;
 
     // animation update callbacks
-    typedef void (* NodeUpdateCallback)(Node *);
-    // list of functions to call at each update
-    std::list<NodeUpdateCallback> update_callbacks_;
+    // list of callbacks to call at each update
+    std::list<UpdateCallback *> update_callbacks_;
 };
 
 
@@ -91,7 +90,7 @@ public:
  * should fill the points, colors and texture coordinates
  * in their constructor.
  *
- * Primitive can be given a shader that is used during draw.
+ * Primitive can be given a shader th0at is used during draw.
  *
  */
 class Primitive : public Node {

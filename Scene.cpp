@@ -35,6 +35,13 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
 Node::~Node ()
 {
 
+    std::list<UpdateCallback *>::iterator iter;
+    for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
+    {
+        UpdateCallback *callback = *iter;
+        iter = update_callbacks_.erase(iter);
+        delete callback;
+    }
 }
 
 void Node::copyTransform(Node *other)
@@ -47,12 +54,13 @@ void Node::copyTransform(Node *other)
     translation_ = other->translation_;
 }
 
-void Node::update( float )
+void Node::update( float dt)
 {
-    std::list<Node::NodeUpdateCallback>::iterator iter;
+    std::list<UpdateCallback *>::iterator iter;
     for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); iter++)
     {
-        (*iter)(this);
+        if ((*iter)->enabled())
+            (*iter)->update(this, dt);
     }
 
     // update transform matrix from attributes
