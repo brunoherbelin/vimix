@@ -5,14 +5,28 @@
 #include <iomanip>
 #include <ctime>
 #include <chrono>
-#include <filesystem>
 
 using namespace std;
 
 #ifdef WIN32
 #include <windows.h>
+#define mkdir(dir, mode) _mkdir(dir)
+#include <include/dirent.h>
+#define PATH_SEP '\\'
 #elif defined(LINUX) or defined(APPLE)
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <pwd.h>
+#include <dirent.h>
+#define PATH_SEP '/'
+#endif
+
+#ifdef WIN32
+#define PATH_SETTINGS "\\\AppData\\Roaming\\"
+#elif defined(APPLE)
+#define PATH_SETTINGS "/Library/Application Support/"
+#elif defined(LINUX)
+#define PATH_SETTINGS "/.config/"
 #endif
 
 #include "defines.h"
@@ -43,17 +57,23 @@ string SystemToolkit::date_time_string()
 
 string SystemToolkit::filename(const string& path)
 {
-    return filesystem::path(path).filename();
+    return path.substr(path.find_last_of(PATH_SEP) + 1);
 }
 
 string SystemToolkit::base_filename(const string& path)
 {
-    return filesystem::path(path).stem();
+    string basefilename = SystemToolkit::filename(path);
+    const size_t period_idx = basefilename.rfind('.');
+    if (string::npos != period_idx)
+    {
+        basefilename.erase(period_idx);
+    }
+    return basefilename;
 }
 
 string SystemToolkit::path_filename(const string& path)
 {
-    return filesystem::path(path).parent_path();
+    return path.substr(0, path.find_last_of(PATH_SEP) + 1);
 }
 
 string SystemToolkit::trunc_filename(const string& path, int lenght)
@@ -68,12 +88,13 @@ string SystemToolkit::trunc_filename(const string& path, int lenght)
 
 string SystemToolkit::extension_filename(const string& filename)
 {
-    return filesystem::path(filename).extension();
+    string ext = filename.substr(filename.find_last_of(".") + 1);
+    return ext;
 }
 
-string SystemToolkit::home_path()
+std::string SystemToolkit::home_path()
 {
-    // find home
+    // 1. find home
     char *mHomePath;
     // try the system user info
     struct passwd* pwd = getpwuid(getuid());
@@ -85,61 +106,78 @@ string SystemToolkit::home_path()
         mHomePath = getenv("HOME");
     }
 
-    return filesystem::path(mHomePath).string();
+    return string(mHomePath) + PATH_SEP;
+}
+
+bool create_directory(const string& path)
+{
+    return !mkdir(path.c_str(), 0755) || errno == EEXIST;
+
+    // TODO : verify WIN32 implementation
 }
 
 string SystemToolkit::settings_path()
 {
-    filesystem::path settings(home_path());
+    string home(home_path());
 
-    // platform dependent location of settings
-#ifdef WIN32
-    settings /= "AppData";
-    settings /= "Roaming";
-#elif defined(APPLE)
-    settings /= "Library";
-    settings /= "Application Support";
-#elif defined(LINUX)
-    settings /= ".config";
-#endif
+    // 2. try to access user settings folder
+    string settingspath = home + PATH_SETTINGS;
+    if (SystemToolkit::file_exists(settingspath)) {
+        // good, we have a place to put the settings file
+        // settings should be in 'vmix' subfolder
+        settingspath += APP_NAME;
 
-    // append folder location for vimix settings
-    settings /= APP_NAME;
+        // 3. create the vmix subfolder in settings folder if not existing already
+        if ( !SystemToolkit::file_exists(settingspath)) {
+            if ( !create_directory(settingspath) )
+                // fallback to home if settings path cannot be created
+                settingspath = home;
+        }
 
-    // create folder if not existint
-    if (!filesystem::exists(settings)) {
-        if (!filesystem::create_directories(settings) )
-            return home_path();
+        return settingspath;
+    }
+    else {
+        // fallback to home if settings path does not exists
+        return home;
     }
 
-    return settings.string();
 }
 
 string SystemToolkit::full_filename(const std::string& path, const string &filename)
 {
-    filesystem::path fullfilename( path );
-    fullfilename /= filename;
+    string fullfilename = path;
+    fullfilename += PATH_SEP;
+    fullfilename += filename;
 
-    return fullfilename.string();
+    return fullfilename;
 }
 
 bool SystemToolkit::file_exists(const string& path)
 {
-    return filesystem::exists( filesystem::status(path) );
+    return access(path.c_str(), R_OK) == 0;
+
+    // TODO : WIN32 implementation
 }
 
 list<string> SystemToolkit::list_directory(const string& path, const string& filter)
 {
     list<string> ls;
-    // loop over elements of the directory
-    for (const auto & entry : filesystem::directory_iterator(path)) {
-        // list only files, not directories
-        if ( filesystem::is_regular_file(entry)) {
-            // add the path if no filter, or if filter is matching
-            if (filter.empty() || entry.path().extension() == filter )
-                ls.push_back( entry.path().string() );
-        }
+
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (path.c_str())) != NULL) {
+      // list all the files and directories within directory
+      while ((ent = readdir (dir)) != NULL) {
+          if ( ent->d_type == DT_REG)
+          {
+              string filename = string(ent->d_name);
+              if ( extension_filename(filename) == filter)
+                  ls.push_back( filename );
+          }
+      }
+      closedir (dir);
     }
+
     return ls;
 }
 
@@ -154,6 +192,9 @@ void SystemToolkit::open(const string& url)
 #else
         char buf[2048];
         sprintf( buf, "xdg-open '%s'", url.c_str() );
-        system( buf );
+        int r = system( buf );
 #endif
 }
+
+
+

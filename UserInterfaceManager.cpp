@@ -1564,7 +1564,7 @@ void Navigator::RenderMainPannel()
             // selection MODE 1 : LIST FOLDER
             else if ( selection_session_mode == 1) {
                 // show list of vimix files in folder
-                sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, ".mix");
+                sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, "mix");
             }
             // indicate the list changed (do not change at every frame)
             selection_session_mode_changed = false;
