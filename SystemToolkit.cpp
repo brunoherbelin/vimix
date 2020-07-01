@@ -172,7 +172,7 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
           {
               string filename = string(ent->d_name);
               if ( extension_filename(filename) == filter)
-                  ls.push_back( filename );
+                  ls.push_back( full_filename(path, filename) );
           }
       }
       closedir (dir);
