@@ -57,10 +57,20 @@ void Node::copyTransform(Node *other)
 void Node::update( float dt)
 {
     std::list<UpdateCallback *>::iterator iter;
-    for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); iter++)
+    for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {
-        if ((*iter)->enabled())
-            (*iter)->update(this, dt);
+        UpdateCallback *callback = *iter;
+
+        if (callback->enabled())
+            callback->update(this, dt);
+
+        if (callback->finished()) {
+            iter = update_callbacks_.erase(iter);
+            delete callback;
+        }
+        else {
+            iter++;
+        }
     }
 
     // update transform matrix from attributes
