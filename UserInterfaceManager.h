@@ -137,6 +137,8 @@ public:
 protected:
 
     void showMenuFile();
+    void showMenuOptions();
+
     void RenderPreview();
     void RenderMediaPlayer();
     void RenderShaderEditor();

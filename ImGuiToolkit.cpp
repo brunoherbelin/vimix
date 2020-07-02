@@ -159,9 +159,9 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 }
 
 
-bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle)
+bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
-//    bool ret = false;
+    bool ret = false;
     ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
 
     float frame_height = ImGui::GetFrameHeight();
@@ -170,8 +170,10 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 
     // toggle action : operate on the whole area
     ImGui::InvisibleButton("##icontoggle", ImVec2(frame_width, frame_height));
-    if (ImGui::IsItemClicked())
+    if (ImGui::IsItemClicked()) {
         *toggle = !*toggle;
+        ret = true;
+    }
 
     ImGui::SetCursorScreenPos(draw_pos);
     if (*toggle) {
@@ -181,8 +183,17 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
         Icon(i, j);
     }
 
+    int tooltipid = *toggle ? 1 : 0;
+    if (tooltips != nullptr && tooltips[tooltipid] != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        //        ImGui::Text("%s-clic on source to show pannel", Settings::application.pannel_stick?"Single":"Double");
+        ImGui::Text("%s", tooltips[tooltipid]);
+        ImGui::EndTooltip();
+    }
+
     ImGui::PopID();
-    return *toggle;
+    return ret;
 }
 
 

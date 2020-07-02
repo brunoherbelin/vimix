@@ -602,6 +602,15 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
+void UserInterface::showMenuOptions()
+{
+    ImGui::MenuItem( ICON_FA_CLOCK " Smooth transition", nullptr, &Settings::application.smooth_transition);
+
+    ImGui::Separator();
+    ImGui::MenuItem( ICON_FA_HISTORY " Load most recent on start", nullptr, &Settings::application.recentSessions.load_at_start);
+    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD " Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
+}
+
 void UserInterface::showMenuFile()
 {
     if (ImGui::MenuItem( ICON_FA_FILE "  New", CTRL_MOD "W")) {
@@ -1287,14 +1296,9 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Text("Source");
         ImGui::PopFont();
 
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 10.f));
-        ImGuiToolkit::IconToggle(13,11,11,11, &Settings::application.pannel_stick);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text("%s-clic on source to show pannel", Settings::application.pannel_stick?"Single":"Double");
-            ImGui::EndTooltip();
-        }
+        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
+        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
 
         static char buf5[128];
         sprintf ( buf5, "%s", s->name().c_str() );
@@ -1490,6 +1494,14 @@ void Navigator::RenderMainPannel()
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
+        // Icon to switch fullscreen
+        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
+        bool fs = Rendering::manager().mainWindow().isFullscreen();
+        if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) )
+            Rendering::manager().mainWindow().toggleFullscreen();
+
+        // Session menu
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Session");
         ImGui::SameLine();
@@ -1497,6 +1509,13 @@ void Navigator::RenderMainPannel()
         if (ImGui::BeginMenu("File"))
         {
             UserInterface::manager().showMenuFile();
+            ImGui::EndMenu();
+        }
+
+        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginMenu("Option"))
+        {
+            UserInterface::manager().showMenuOptions();
             ImGui::EndMenu();
         }
 
@@ -1546,10 +1565,35 @@ void Navigator::RenderMainPannel()
             ImGui::EndCombo();
         }
 
-        // helper
+        // icon to clear list
+        ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine();
-        ImGui::SetCursorPosX(pannel_width_  + IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::HelpMarker("Quick access of Session files.\nSelect from the history of recently\nopened files or from a folder.\nDouble clic on a filename to open it.");
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+        bool reset = false;
+        if ( selection_session_mode == 1) {
+            const char *tooltip[2] = {"Discard folder", "Discard folder"};
+            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
+                Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
+                if (Settings::application.recentFolders.filenames.empty()) {
+                    Settings::application.recentFolders.path.assign("Recent Files");
+                    selection_session_mode = 0;
+                }
+                else
+                    Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
+                // reload the list next time
+                selection_session_mode_changed = true;
+            }
+        }
+        else {
+            const char *tooltip[2] = {"Clear history", "Clear history"};
+            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
+                Settings::application.recentSessions.filenames.clear();
+                // reload the list next time
+                selection_session_mode_changed = true;
+            }
+        }
+        ImGui::PopStyleVar();
+        ImGui::SetCursorPos(pos);
 
         // fill the session list depending on the mode
         static std::list<std::string> sessions_list;
@@ -1573,7 +1617,7 @@ void Navigator::RenderMainPannel()
         // display the sessions list and detect if one was selected (double clic)
         bool session_selected = false;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##Sessions", Settings::application.recentSessions.filenames.size());
+        ImGui::ListBoxHeader("##Sessions", 7);
         for(auto filename = sessions_list.begin(); filename != sessions_list.end(); filename++) {
             if (ImGui::Selectable( SystemToolkit::filename(*filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
               if (ImGui::IsMouseDoubleClicked(0)) {
@@ -1584,27 +1628,10 @@ void Navigator::RenderMainPannel()
         }
         ImGui::ListBoxFooter();
 
-        // icon to remove this folder from the list
-        if ( selection_session_mode == 1) {
-            ImVec2 pos = ImGui::GetCursorPos();
-            ImGui::SameLine();
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-            bool reset = false;
-            ImGuiToolkit::IconToggle(12,14,11,14, &reset);
-            if (reset) {
-                Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
-                if (Settings::application.recentFolders.filenames.empty()) {
-                    Settings::application.recentFolders.path.assign("Recent Files");
-                    selection_session_mode = 0;
-                }
-                else
-                    Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
-                // reload the list next time
-                selection_session_mode_changed = true;
-            }
-            ImGui::PopStyleVar();
-            ImGui::SetCursorPos(pos);
-        }
+        pos = ImGui::GetCursorPos();
+        ImGui::SameLine();
+        ImGuiToolkit::HelpMarker("Quick access to Session files;\nSelect the history of recently\nopened files or a folder, and\ndouble-clic a filename to open.");
+        ImGui::SetCursorPos(pos);
 
         // done the selection !
         if (session_selected) {
@@ -1615,11 +1642,6 @@ void Navigator::RenderMainPannel()
         }
 
         // Continue Main pannel
-        ImGui::Text(" ");
-        ImGuiToolkit::ButtonSwitch( "Smooth transition", &Settings::application.smooth_transition);
-        ImGuiToolkit::ButtonSwitch( "Load most recent on start", &Settings::application.recentSessions.load_at_start);
-        ImGuiToolkit::ButtonSwitch( "Save on exit", &Settings::application.recentSessions.save_on_exit);
-
         ImGui::Text(" ");
         ImGui::Text("Windows");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
