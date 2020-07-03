@@ -1498,8 +1498,10 @@ void Navigator::RenderMainPannel()
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
         const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
-        if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) )
+        if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
+            return;
+        }
 
         // Session menu
         ImGui::SetCursorPosY(width_);
