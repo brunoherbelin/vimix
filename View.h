@@ -11,7 +11,7 @@ class View
 {
 public:
 
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, INVALID=4 } Mode;
+    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3,  TRANSITION=4, INVALID=5 } Mode;
 
     View(Mode m);
     virtual ~View() {}
@@ -142,6 +142,21 @@ public:
 private:
     float aspect_ratio;
 };
+
+class TransitionView : public View
+{
+public:
+    TransitionView();
+
+    void draw () override;
+    void update (float dt) override;
+    void zoom (float factor) override;
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+
+private:
+    float duration_;
+};
+
 
 
 #endif // VIEW_H

@@ -679,3 +679,74 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     return Cursor(Cursor_ResizeAll, info.str() );
 }
 
+// TRANSITION
+
+TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f)
+{
+    // read default settings
+    if ( Settings::application.views[mode_].name.empty() ) {
+        // no settings found: store application default
+        Settings::application.views[mode_].name = "Transition";
+        scene.root()->scale_ = glm::vec3(TRANSITION_DEFAULT_SCALE, TRANSITION_DEFAULT_SCALE, 1.0f);
+        saveSettings();
+    }
+
+    // Geometry Scene background
+    Surface *rect = new Surface;
+    rect->shader()->color.a = 0.3f;
+    scene.bg()->attach(rect);
+
+    Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);
+    border->color = glm::vec4( COLOR_FRAME, 0.7f );
+    scene.bg()->attach(border);
+
+    // Add a source in the scene root : output preview
+
+}
+
+void TransitionView::update(float dt)
+{
+    View::update(dt);
+
+
+}
+
+void TransitionView::draw()
+{
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+
+    // maybe enough if scene contains the session source to transition
+    // and the preview
+}
+
+
+void TransitionView::zoom (float factor)
+{
+//    float z = scene.root()->scale_.x;
+//    z = CLAMP( z + 0.1f * factor, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
+//    scene.root()->scale_.x = z;
+//    scene.root()->scale_.y = z;
+}
+
+
+View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
+{
+    if (!s)
+        return Cursor();
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+
+    // compute delta translation
+//    glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
+
+    // apply change
+
+    std::ostringstream info;
+//    info << "Depth " << std::fixed << std::setprecision(2) << d;
+    return Cursor(Cursor_ResizeAll, info.str() );
+}
+
+
