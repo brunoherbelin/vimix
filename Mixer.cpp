@@ -4,6 +4,9 @@
 #include <vector>
 #include <chrono>
 
+//  GStreamer
+#include <gst/gst.h>
+
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -142,7 +145,8 @@ static void saveSession(const std::string& filename, Session *session)
     sessionThreadActive_ = false;
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), dt_(0.f)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
+    transition_source_(nullptr), update_time_(GST_CLOCK_TIME_NONE), dt_(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -152,7 +156,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     // auto load if Settings ask to
     if ( Settings::application.recentSessions.load_at_start &&
          Settings::application.recentSessions.filenames.size() > 0 )
-        open( Settings::application.recentSessions.filenames.front() );
+        load( Settings::application.recentSessions.filenames.front() );
     else
         // initializes with a new empty session
         clear();
@@ -175,11 +179,18 @@ void Mixer::update()
             Settings::application.recentSessions.push(session_->filename());
         }
     }
-
+    // merge session when threaded loading is finished
     if (sessionImportRequested_) {
         sessionImportRequested_ = false;
         merge(back_session_);
         back_session_ = nullptr;
+    }
+
+    // insert source candidate for this session
+    if (candidate_sources_.size() > 0) {
+        // NB: only make the last candidate the current source in Mixing view
+        insertSource(candidate_sources_.front(), candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
+        candidate_sources_.pop_front();
     }
 
     // compute dt
@@ -190,16 +201,10 @@ void Mixer::update()
     dt_ = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
     update_time_ = current_time;
 
-    // insert source candidate for this session
-    if (candidate_sources_.size()>0) {
-        insertSource(candidate_sources_.front());
-        candidate_sources_.pop_front();
-    }
-
     // update session and associated sources
     session_->update(dt_);
 
-    // delete failed sources (one by one)
+    // delete sources which failed update (one by one)
     if (session()->failedSource() != nullptr)
         deleteSource(session()->failedSource());
 
@@ -207,6 +212,7 @@ void Mixer::update()
     mixing_.update(dt_);
     geometry_.update(dt_);
     layer_.update(dt_);
+    transition_.update(dt_);
 
     // optimize the reordering in depth for views;
     // deep updates shall be performed only 1 frame
@@ -300,7 +306,7 @@ void Mixer::addSource(Source *s)
         candidate_sources_.push_back(s);
 }
 
-void Mixer::insertSource(Source *s, bool makecurrent)
+void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
     {
@@ -318,19 +324,17 @@ void Mixer::insertSource(Source *s, bool makecurrent)
         geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
         layer_.scene.ws()->attach(s->group(View::LAYER));
 
-        if (makecurrent) {
+        // if requested to show the source in a given view
+        // (known to work for View::MIXING et TRANSITION: other views untested)
+        if (m != View::INVALID) {
 
-            s->group(View::MIXING)->translation_ = glm::vec3(-1.f, 1.f, 0.f);
-
-            // switch to Mixing view to show source created
-            setView(View::MIXING);
-            current_view_->update(0);
+            // switch to this view to show source created
+            setView(m);
+            current_view_->update(0.f);
             current_view_->centerSource(s);
 
             // set this new source as current
             setCurrentSource( sit );
-
-//            s->group(View::MIXING)->update_callbacks_.push_back(new MoveToCenterCallback);
         }
     }
 }
@@ -352,6 +356,7 @@ void Mixer::deleteSource(Source *s)
         mixing_.scene.ws()->detatch( s->group(View::MIXING) );
         geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
         layer_.scene.ws()->detatch( s->group(View::LAYER) );
+        transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
 
         // delete source
         session_->deleteSource(s);
@@ -359,6 +364,14 @@ void Mixer::deleteSource(Source *s)
         // log
         Log::Notify("Source %s deleted.", name.c_str());
     }
+}
+
+
+void Mixer::deleteSelection()
+{
+    while ( !selection().empty() )
+        deleteSource( selection().front());
+
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -503,7 +516,21 @@ Source *Mixer::currentSource()
 // management of view
 void Mixer::setView(View::Mode m)
 {
+    // special case when leaving transition view
+    if ( current_view_ == &transition_ && transition_source_ != nullptr) {
+        // test if the icon of the transition source is registered for accepting
+        // this session as current
+        if (transition_source_->group(View::TRANSITION)->translation_.x > 0.f)
+            // yes, make this session source the current session
+            set( transition_source_->detach() );
+        // done with transition
+        transition_source_ = nullptr;
+    }
+
     switch (m) {
+    case View::TRANSITION:
+        current_view_ = &transition_;
+        break;
     case View::GEOMETRY:
         current_view_ = &geometry_;
         break;
@@ -522,6 +549,8 @@ void Mixer::setView(View::Mode m)
 View *Mixer::view(View::Mode m)
 {
     switch (m) {
+    case View::TRANSITION:
+        return &transition_;
     case View::GEOMETRY:
         return &geometry_;
     case View::LAYER:
@@ -550,7 +579,7 @@ void Mixer::saveas(const std::string& filename)
     std::thread (saveSession, filename, session_).detach();
 }
 
-void Mixer::open(const std::string& filename)
+void Mixer::load(const std::string& filename)
 {
     if (back_session_)
         delete back_session_;
@@ -560,6 +589,24 @@ void Mixer::open(const std::string& filename)
 
     // launch a thread to load the session into back_session
     std::thread (loadSession, filename, back_session_).detach();
+}
+
+void Mixer::open(const std::string& filename)
+{
+    if (Settings::application.smooth_transition)
+    {
+        // create special SessionSource to be used for the smooth transition
+        transition_source_ = new SessionSource();
+        transition_source_->load(filename);
+
+        // add the TRANSITION group of the SessionSource to the transition view
+        transition_.scene.ws()->attach(transition_source_->group(View::TRANSITION));
+
+        // insert source and switch to transition view
+        insertSource(transition_source_, View::TRANSITION);
+    }
+    else
+        load(filename);
 }
 
 void Mixer::import(const std::string& filename)
@@ -579,7 +626,7 @@ void Mixer::merge(Session *session)
     if (session) {
 
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
-            insertSource(s, false);
+            insertSource(s);
 
         delete session;
     }
@@ -599,6 +646,7 @@ void Mixer::swap()
             mixing_.scene.ws()->detatch( (*source_iter)->group(View::MIXING) );
             geometry_.scene.ws()->detatch( (*source_iter)->group(View::GEOMETRY) );
             layer_.scene.ws()->detatch( (*source_iter)->group(View::LAYER) );
+            transition_.scene.ws()->detatch( (*source_iter)->group(View::TRANSITION) );
         }
     }
 

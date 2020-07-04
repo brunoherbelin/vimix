@@ -33,7 +33,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     groups_[View::MIXING] = new Group;
     groups_[View::MIXING]->visible_ = false;
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
-//    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
+    groups_[View::MIXING]->translation_ = glm::vec3(-1.f, 1.f, 0.f);
 
     frames_[View::MIXING] = new Switch;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
@@ -113,6 +113,9 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     overlays_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
+    // empty transition node
+    groups_[View::TRANSITION] = new Group;
+
     // create objects
     stored_status_  = new Group;
 
@@ -137,6 +140,7 @@ Source::~Source()
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
     delete groups_[View::LAYER];
+    delete groups_[View::TRANSITION];
 
     groups_.clear();
     frames_.clear();
@@ -188,48 +192,49 @@ void Source::setMode(Source::Mode m)
     mode_ = m;
 }
 
-// test update callback
-void fix_ar(Node *n)
-{
-    n->scale_.y = n->scale_.x;
-}
-
 void Source::attach(FrameBuffer *renderbuffer)
 {
     renderbuffer_ = renderbuffer;
 
     // create the surfaces to draw the frame buffer in the views
-    // TODO Provide the source custom effect shader
     rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
     groups_[View::RENDERING]->attach(rendersurface_);
     groups_[View::GEOMETRY]->attach(rendersurface_);
     groups_[View::MIXING]->attach(rendersurface_);
 //    groups_[View::LAYER]->attach(rendersurface_);
 
-    // for mixing view, add another surface to overlay (for stippled view in transparency)
+    // for mixing and layer views, add another surface to overlay
+    // (stippled view on top with transparency)
     Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
     ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
     if (is)  is->stipple = 1.0;
     groups_[View::MIXING]->attach(surfacemix);
     groups_[View::LAYER]->attach(surfacemix);
 
-    // scale all mixing nodes to match aspect ratio of the media
-    for (NodeSet::iterator node = groups_[View::MIXING]->begin();
+    // scale all icon nodes to match aspect ratio of the media
+    NodeSet::iterator node;
+    for (node = groups_[View::MIXING]->begin();
          node != groups_[View::MIXING]->end(); node++) {
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
-    for (NodeSet::iterator node = groups_[View::GEOMETRY]->begin();
+    for (node = groups_[View::GEOMETRY]->begin();
          node != groups_[View::GEOMETRY]->end(); node++) {
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
-    for (NodeSet::iterator node = groups_[View::LAYER]->begin();
+    for (node = groups_[View::LAYER]->begin();
          node != groups_[View::LAYER]->end(); node++) {
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
 
-
-    // test update callback
-//    groups_[View::GEOMETRY]->update_callbacks_.push_front(fix_ar);
+    // Transition group node is optionnal
+    if ( groups_[View::TRANSITION]->numChildren() > 0 ) {
+        groups_[View::TRANSITION]->attach(rendersurface_);
+        groups_[View::TRANSITION]->attach(surfacemix);
+        for (NodeSet::iterator node = groups_[View::TRANSITION]->begin();
+             node != groups_[View::TRANSITION]->end(); node++) {
+            (*node)->scale_.x = renderbuffer_->aspectRatio();
+        }
+    }
 
     // make the source visible
     if ( mode_ == UNINITIALIZED )

@@ -56,6 +56,7 @@
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
 #define COLOR_NAVIGATOR 0.1f, 0.1f, 0.1f
 #define COLOR_DEFAULT_SOURCE 0.8f, 0.8f, 0.8f
+#define COLOR_TRANSITION_LINES 0.9f, 0.9f, 0.9f
 #define COLOR_HIGHLIGHT_SOURCE 1.f, 1.f, 1.f
 #define COLOR_FRAME 0.8f, 0.f, 0.8f
 #define COLOR_LIMBO_CIRCLE 0.16f, 0.16f, 0.16f

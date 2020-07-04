@@ -41,6 +41,24 @@ void SessionSource::loadSession(const std::string& filename, SessionSource *sour
 
 SessionSource::SessionSource() : Source(), path_("")
 {
+    // specific node for transition view
+    groups_[View::TRANSITION]->visible_ = false;
+    groups_[View::TRANSITION]->scale_ = glm::vec3(0.1f, 0.1f, 1.f);
+    groups_[View::TRANSITION]->translation_ = glm::vec3(-1.f, 0.f, 0.f);
+
+    frames_[View::TRANSITION] = new Switch;
+    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
+    frames_[View::TRANSITION]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
+    frame->translation_.z = 0.01;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    frames_[View::TRANSITION]->attach(frame);
+    groups_[View::TRANSITION]->attach(frames_[View::MIXING]);
+
+    overlays_[View::TRANSITION] = new Group;
+
     loadFailed_ = false;
     loadFinished_ = false;
 

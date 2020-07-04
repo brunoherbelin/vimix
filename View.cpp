@@ -684,23 +684,31 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f)
 {
     // read default settings
-    if ( Settings::application.views[mode_].name.empty() ) {
+    //if ( Settings::application.views[mode_].name.empty() )
+    {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Transition";
-        scene.root()->scale_ = glm::vec3(TRANSITION_DEFAULT_SCALE, TRANSITION_DEFAULT_SCALE, 1.0f);
+        scene.root()->scale_ = glm::vec3(5.f, 5.f, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.8f, 0.f, 0.0f);
         saveSettings();
     }
 
     // Geometry Scene background
-    Surface *rect = new Surface;
-    rect->shader()->color.a = 0.3f;
-    scene.bg()->attach(rect);
+    Mesh *circle = new Mesh("mesh/h_line.ply");
+    circle->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.fg()->translation_ = glm::vec3(0.f, -0.11f, 0.0f);
+    scene.fg()->attach(circle);
+
+    output_surface_ = new Surface;
+    output_surface_->shader()->color.a = 0.9f;
+    scene.bg()->attach(output_surface_);
 
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);
-    border->color = glm::vec4( COLOR_FRAME, 0.7f );
+    border->color = glm::vec4( COLOR_FRAME, 1.0f );
     scene.bg()->attach(border);
 
-    // Add a source in the scene root : output preview
+    scene.bg()->scale_ = glm::vec3(0.1f, 0.1f, 1.f);
+    scene.bg()->translation_ = glm::vec3(0.4f, 0.f, 0.0f);
 
 }
 
@@ -708,17 +716,30 @@ void TransitionView::update(float dt)
 {
     View::update(dt);
 
+    // reorder depth if needed
+    if (View::need_deep_update_) {
+
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            float aspect_ratio = output->aspectRatio();
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = aspect_ratio;
+            }
+            output_surface_->setTextureIndex( output->texture() );
+        }
+    }
 
 }
 
-void TransitionView::draw()
-{
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+//void TransitionView::draw()
+//{
+//    // draw scene of this view
+//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
-    // maybe enough if scene contains the session source to transition
-    // and the preview
-}
+//    // maybe enough if scene contains the session source to transition
+//    // and the preview
+//}
 
 
 void TransitionView::zoom (float factor)
@@ -729,23 +750,41 @@ void TransitionView::zoom (float factor)
 //    scene.root()->scale_.y = z;
 }
 
+void TransitionView::centerSource(Source *s)
+{
+    // setup view so that the center of the source is accessible
+
+}
 
 View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
     if (!s)
         return Cursor();
 
+    std::ostringstream info;
+
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
-//    glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
+    float d = s->stored_status_->translation_.x + gl_Position_to.x - gl_Position_from.x;
+    if (d > 0.2) {
+        s->group(View::TRANSITION)->translation_.x = 0.4;
+        info << "Ready";
+    }
+    else {
+        s->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
+        info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+    }
 
-    // apply change
+    // copy identical coordinates in Mixing View
+    s->group(View::MIXING)->translation_.x = CLAMP(d, -1.f, 0.f);
+    s->group(View::MIXING)->translation_.y = 0.f;
 
-    std::ostringstream info;
-//    info << "Depth " << std::fixed << std::setprecision(2) << d;
+    // request update
+    s->touch();
+
     return Cursor(Cursor_ResizeAll, info.str() );
 }
 

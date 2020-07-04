@@ -302,7 +302,7 @@ void UserInterface::handleKeyboard()
         else if ( !ImGui::IsAnyWindowFocused() ){
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
-                Mixer::manager().deleteSource( Mixer::manager().currentSource() );
+                Mixer::manager().deleteSelection();
             // button esc to toggle fullscreen
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE ))
                 Rendering::manager().mainWindow().setFullscreen(nullptr);
@@ -461,13 +461,19 @@ void UserInterface::handleMouse()
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
-
-            if (navigator.pannelVisible())
-                // discard current to select front most source
-                // (because single clic maintains same source active)
-                Mixer::manager().unsetCurrentSource();
-            // display source in left pannel
-            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+            // double clic in Transition view means quit
+            if (Mixer::manager().view() == Mixer::manager().view(View::TRANSITION)) {
+                Mixer::manager().setView(View::MIXING);
+            }
+            // double clic in other views means toggle pannel
+            else {
+                if (navigator.pannelVisible())
+                    // discard current to select front most source
+                    // (because single clic maintains same source active)
+                    Mixer::manager().unsetCurrentSource();
+                // display source in left pannel
+                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+            }
         }
 
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
@@ -1182,53 +1188,56 @@ void Navigator::Render()
     float icon_width = width_ - 2.f * style.WindowPadding.x;        // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
 
-    // Left bar top
-    ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-    if (ImGui::Begin("##navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-        // the "=" icon for menu
-        if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
+        // Left bar top
+        ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
+        ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
+        ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
+        if (ImGui::Begin("##navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
-//            Mixer::manager().unsetCurrentSource();
-            applyButtonSelection(NAV_MENU);
-        }
-        // the list of INITIALS for sources
-        int index = 0;
-        SourceList::iterator iter;
-        for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
-        {
-            // draw an indicator for current source
-            if ( (*iter)->mode() >= Source::SELECTED ){
-                ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
-                ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
-                const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-                if ((*iter)->mode() == Source::CURRENT)  {
-                    p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
-                    p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
-                }
-                draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
-            }
-            // draw select box
-            if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
+            // the "=" icon for menu
+            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
             {
-                applyButtonSelection(index);
-                if (selected_button[index])
-                    Mixer::manager().setCurrentSource(index);
+                //            Mixer::manager().unsetCurrentSource();
+                applyButtonSelection(NAV_MENU);
+            }
+            if (Settings::application.current_view < 4) {
+
+                // the list of INITIALS for sources
+                int index = 0;
+                SourceList::iterator iter;
+                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
+                {
+                    // draw an indicator for current source
+                    if ( (*iter)->mode() >= Source::SELECTED ){
+                        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                        ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
+                        ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
+                        const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
+                        if ((*iter)->mode() == Source::CURRENT)  {
+                            p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
+                            p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
+                        }
+                        draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
+                    }
+                    // draw select box
+                    if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
+                    {
+                        applyButtonSelection(index);
+                        if (selected_button[index])
+                            Mixer::manager().setCurrentSource(index);
+                    }
+                }
+
+                // the "+" icon for action of creating new source
+                if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
+                {
+                    Mixer::manager().unsetCurrentSource();
+                    applyButtonSelection(NAV_NEW);
+                }
+
             }
         }
-
-        // the "+" icon for action of creating new source
-        if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
-        {
-            Mixer::manager().unsetCurrentSource();
-            applyButtonSelection(NAV_NEW);
-        }
-
-    }
-    ImGui::End();
+        ImGui::End();
 
     // Left bar bottom
     ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height_), ImGuiCond_Always );
@@ -1236,7 +1245,7 @@ void Navigator::Render()
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
     if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        bool selected_view[4] = { false, false, false, false };
+        bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
         {
@@ -1654,6 +1663,7 @@ void Navigator::RenderMainPannel()
         // done the selection !
         if (session_selected) {
             // close pannel
+            file_info.clear();
             hidePannel();
             // reload the list next time
             selection_session_mode_changed = true;

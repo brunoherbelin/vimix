@@ -1,11 +1,6 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-
-//  GStreamer
-#include <gst/gst.h>
-
-
 #include "View.h"
 #include "Session.h"
 #include "Selection.h"
@@ -35,10 +30,10 @@ public:
 
     // update session and all views
     void update();
+    inline float dt() const { return dt_;}
 
     // draw session and current view
     void draw();
-    inline float dt() const { return dt_;}
 
     // creation of sources
     Source * createSourceFile   (std::string path);
@@ -49,6 +44,7 @@ public:
     void addSource    (Source *s);
     void deleteSource (Source *s);
     void renameSource (Source *s, const std::string &newname);
+    void deleteSelection();
 
     // current source
     void setCurrentSource (Source *s);
@@ -73,6 +69,7 @@ public:
     void clear  ();
     void save   ();
     void saveas (const std::string& filename);
+    void load   (const std::string& filename);
     void open   (const std::string& filename);
     void import (const std::string& filename);
     void merge  (Session *s);
@@ -85,16 +82,19 @@ protected:
     void swap();
 
     SourceList candidate_sources_;
-    void insertSource(Source *s, bool makecurrent = true);
+    void insertSource(Source *s, View::Mode m = View::INVALID);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
     int current_source_index_;
 
+    View *current_view_;
     MixingView mixing_;
     GeometryView geometry_;
     LayerView layer_;
-    View *current_view_;
+
+    TransitionView transition_;
+    class SessionSource *transition_source_;
 
     gint64 update_time_;
     float dt_;

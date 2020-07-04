@@ -148,13 +148,14 @@ class TransitionView : public View
 public:
     TransitionView();
 
-    void draw () override;
+    void centerSource(Source *) override;
     void update (float dt) override;
     void zoom (float factor) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
 
 private:
     float duration_;
+    class Surface *output_surface_;
 };
 
 

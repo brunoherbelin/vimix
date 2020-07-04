@@ -28,6 +28,7 @@ class Source
     friend class MixingView;
     friend class GeometryView;
     friend class LayerView;
+    friend class TransitionView;
 
 public:
     // create a source and add it to the list
