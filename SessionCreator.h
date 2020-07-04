@@ -15,6 +15,7 @@ class SessionCreator : public Visitor {
     void loadSession(tinyxml2::XMLElement *sessionNode);
     void loadConfig(tinyxml2::XMLElement *viewsNode);
 
+
 public:
     SessionCreator(Session *session = nullptr);
 
@@ -47,6 +48,7 @@ public:
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
 
+    static std::string info(const std::string& filename);
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };
 

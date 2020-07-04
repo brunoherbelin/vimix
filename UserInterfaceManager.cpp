@@ -38,6 +38,7 @@
 #include "Resource.h"
 #include "FileDialog.h"
 #include "Settings.h"
+#include "SessionCreator.h"
 #include "ImGuiToolkit.h"
 #include "ImGuiVisitor.h"
 #include "GstToolkit.h"
@@ -1620,15 +1621,30 @@ void Navigator::RenderMainPannel()
         bool session_selected = false;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::ListBoxHeader("##Sessions", 7);
+        static std::string file_info = "";
+        static std::list<std::string>::iterator file_selected = sessions_list.end();
         for(auto filename = sessions_list.begin(); filename != sessions_list.end(); filename++) {
             if (ImGui::Selectable( SystemToolkit::filename(*filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
-              if (ImGui::IsMouseDoubleClicked(0)) {
-                Mixer::manager().open( *filename );
-                session_selected = true;
-              }
+                if (ImGui::IsMouseDoubleClicked(0)) {
+                    Mixer::manager().open( *filename );
+                    session_selected = true;
+                }
+                else  {
+                    file_info = SessionCreator::info(*filename);
+                    file_selected = filename;
+                }
+            }
+            if (ImGui::IsItemHovered() && file_selected != filename) {
+                file_info.clear();
+                file_selected = sessions_list.end();
             }
         }
         ImGui::ListBoxFooter();
+        if (!file_info.empty()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", file_info.c_str());
+            ImGui::EndTooltip();
+        }
 
         pos = ImGui::GetCursorPos();
         ImGui::SameLine();

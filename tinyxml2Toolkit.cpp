@@ -86,7 +86,7 @@ bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
     XMLDeclaration *pDec = doc->NewDeclaration();
     doc->InsertFirstChild(pDec);
 
-    std::string s = "Save time " + SystemToolkit::date_time_string();
+    std::string s = "Originally saved as " + filename + " by " + SystemToolkit::username();
     XMLComment *pComment = doc->NewComment(s.c_str());
     doc->InsertEndChild(pComment);
 

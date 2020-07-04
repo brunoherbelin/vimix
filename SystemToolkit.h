@@ -15,13 +15,16 @@ namespace SystemToolkit
     // get fixed length string (17 chars) YYYYMMDDHHmmssiii
     std::string date_time_string();
 
+    // get the OS dependent username
+    std::string username();
+
     // get the OS dependent home path
     std::string home_path();
 
     // get the OS dependent path where to store settings
     std::string settings_path();
 
-    // builds the OS dependent complete file name for a settings file
+    // builds the OS dependent complete file name
     std::string full_filename(const std::string& path, const std::string& filename);
 
     // extract the filename from a full path / URI (e.g. file:://home/me/toto.mpg -> toto.mpg)

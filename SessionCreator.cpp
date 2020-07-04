@@ -17,6 +17,27 @@
 using namespace tinyxml2;
 
 
+std::string SessionCreator::info(const std::string& filename)
+{
+    std::string ret = "";
+
+    XMLDocument doc;
+    XMLError eResult = doc.LoadFile(filename.c_str());
+    if ( XMLResultError(eResult))
+        return ret;
+
+    XMLElement *header = doc.FirstChildElement(APP_NAME);
+    if (header != nullptr && header->Attribute("date") != 0) {
+        int s = header->IntAttribute("size");
+        ret = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
+        std::string date( header->Attribute("date") );
+        ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " ";
+        ret += date.substr(8,2) + ":" + date.substr(10,2) + "\n";
+    }
+
+    return ret;
+}
+
 SessionCreator::SessionCreator(Session *session): Visitor(), session_(session)
 {
     xmlDoc_ = new XMLDocument;
@@ -29,15 +50,15 @@ bool SessionCreator::load(const std::string& filename)
     if ( XMLResultError(eResult))
         return false;
 
-    XMLElement *version = xmlDoc_->FirstChildElement(APP_NAME);
-    if (version == nullptr) {
+    XMLElement *header = xmlDoc_->FirstChildElement(APP_NAME);
+    if (header == nullptr) {
         Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
         return false;
     }
 
     int version_major = -1, version_minor = -1;
-    version->QueryIntAttribute("major", &version_major); // TODO incompatible if major is different?
-    version->QueryIntAttribute("minor", &version_minor);
+    header->QueryIntAttribute("major", &version_major); // TODO incompatible if major is different?
+    header->QueryIntAttribute("minor", &version_minor);
     if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
         Log::Warning("%s is in a different versions of session file. Loading might fail.", filename.c_str());
         return false;

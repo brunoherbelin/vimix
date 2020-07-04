@@ -187,7 +187,6 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
     if (tooltips != nullptr && tooltips[tooltipid] != nullptr && ImGui::IsItemHovered())
     {
         ImGui::BeginTooltip();
-        //        ImGui::Text("%s-clic on source to show pannel", Settings::application.pannel_stick?"Single":"Double");
         ImGui::Text("%s", tooltips[tooltipid]);
         ImGui::EndTooltip();
     }

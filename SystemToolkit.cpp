@@ -98,15 +98,28 @@ std::string SystemToolkit::home_path()
     char *mHomePath;
     // try the system user info
     struct passwd* pwd = getpwuid(getuid());
-    if (pwd)  {
+    if (pwd)
         mHomePath = pwd->pw_dir;
-    }
-    else  {
+    else
         // try the $HOME environment variable
         mHomePath = getenv("HOME");
-    }
 
     return string(mHomePath) + PATH_SEP;
+}
+
+std::string SystemToolkit::username()
+{
+    // 1. find home
+    char *user;
+    // try the system user info
+    struct passwd* pwd = getpwuid(getuid());
+    if (pwd)
+        user = pwd->pw_name;
+    else
+        // try the $USER environment variable
+        user = getenv("USER");
+
+    return string(user);
 }
 
 bool create_directory(const string& path)
@@ -140,7 +153,6 @@ string SystemToolkit::settings_path()
         // fallback to home if settings path does not exists
         return home;
     }
-
 }
 
 string SystemToolkit::full_filename(const std::string& path, const string &filename)
