@@ -77,6 +77,21 @@ struct History
     }
 };
 
+struct TransitionConfig
+{
+    bool auto_start;
+    bool cross_fade;
+    int duration;
+    int profile;
+
+    TransitionConfig() {
+        auto_start = false;
+        cross_fade = false;
+        duration = 1000;
+        profile = 0;
+    }
+};
+
 struct RenderConfig
 {
     int vsync;
@@ -112,6 +127,9 @@ struct Application
 
     // settings render
     RenderConfig render;
+
+    // settings transition
+    TransitionConfig transition;
 
     // multiple windows handling
     std::vector<WindowConfig> windows;

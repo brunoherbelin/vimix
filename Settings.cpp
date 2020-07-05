@@ -77,6 +77,14 @@ void Settings::Save()
     RenderNode->SetAttribute("blit", application.render.blit);
     pRoot->InsertEndChild(RenderNode);
 
+    // Transition
+    XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
+    TransitionNode->SetAttribute("auto_start", application.transition.auto_start);
+    TransitionNode->SetAttribute("cross_fade", application.transition.cross_fade);
+    TransitionNode->SetAttribute("duration", application.transition.duration);
+    TransitionNode->SetAttribute("profile", application.transition.profile);
+    pRoot->InsertEndChild(TransitionNode);
+
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
@@ -205,6 +213,15 @@ void Settings::Load()
         rendernode->QueryIntAttribute("vsync", &application.render.vsync);
         rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
         rendernode->QueryBoolAttribute("blit", &application.render.blit);
+    }
+
+    // Transition
+    XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
+    if (transitionnode != nullptr) {
+        transitionnode->QueryBoolAttribute("auto_start", &application.transition.auto_start);
+        transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
+        transitionnode->QueryIntAttribute("duration", &application.transition.duration);
+        transitionnode->QueryIntAttribute("profile", &application.transition.profile);
     }
 
     // bloc windows
