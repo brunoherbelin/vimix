@@ -53,9 +53,9 @@ SessionSource::SessionSource() : Source(), path_("")
     frames_[View::TRANSITION]->attach(frame);
     frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
     frame->translation_.z = 0.01;
-    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    frame->color = glm::vec4( COLOR_TRANSITION_SOURCE, 1.f);
     frames_[View::TRANSITION]->attach(frame);
-    groups_[View::TRANSITION]->attach(frames_[View::MIXING]);
+    groups_[View::TRANSITION]->attach(frames_[View::TRANSITION]);
 
     overlays_[View::TRANSITION] = new Group;
 

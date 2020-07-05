@@ -146,7 +146,7 @@ static void saveSession(const std::string& filename, Session *session)
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
-    transition_source_(nullptr), update_time_(GST_CLOCK_TIME_NONE), dt_(0.f)
+                 update_time_(GST_CLOCK_TIME_NONE), dt_(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -364,6 +364,14 @@ void Mixer::deleteSource(Source *s)
         // log
         Log::Notify("Source %s deleted.", name.c_str());
     }
+
+    // cancel transition source in TRANSITION view
+    if ( current_view_ == &transition_ ) {
+        // cancel attachment
+        transition_.attach(nullptr);
+        // revert to mixing view
+        setView(View::MIXING);
+    }
 }
 
 
@@ -517,14 +525,10 @@ Source *Mixer::currentSource()
 void Mixer::setView(View::Mode m)
 {
     // special case when leaving transition view
-    if ( current_view_ == &transition_ && transition_source_ != nullptr) {
-        // test if the icon of the transition source is registered for accepting
-        // this session as current
-        if (transition_source_->group(View::TRANSITION)->translation_.x > 0.f)
-            // yes, make this session source the current session
-            set( transition_source_->detach() );
-        // done with transition
-        transition_source_ = nullptr;
+    if ( current_view_ == &transition_ ) {
+        // get the session detached from the transition view and set it as current session
+        // NB: detatch() can return nullptr, which is then ignored.
+        set ( transition_.detach() );
     }
 
     switch (m) {
@@ -596,14 +600,16 @@ void Mixer::open(const std::string& filename)
     if (Settings::application.smooth_transition)
     {
         // create special SessionSource to be used for the smooth transition
-        transition_source_ = new SessionSource();
-        transition_source_->load(filename);
-
-        // add the TRANSITION group of the SessionSource to the transition view
-        transition_.scene.ws()->attach(transition_source_->group(View::TRANSITION));
+        SessionSource *ts = new SessionSource();
+        ts->load(filename);
+        // propose a new name based on uri
+        renameSource(ts, SystemToolkit::base_filename(filename));
 
         // insert source and switch to transition view
-        insertSource(transition_source_, View::TRANSITION);
+        insertSource(ts, View::TRANSITION);
+
+        // attach the SessionSource to the transition view
+        transition_.attach(ts);
     }
     else
         load(filename);

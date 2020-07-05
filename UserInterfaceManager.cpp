@@ -294,6 +294,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 )) // TODO REMOVE (DEBUG ONLY)
+            Mixer::manager().setView(View::TRANSITION);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
@@ -360,16 +362,6 @@ void UserInterface::handleMouse()
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
-
-//        if (current)
-//        {
-//            glm::vec3 point = Rendering::manager().unProject(mousepos);
-//            PickingVisitor over(point);
-//            Mixer::manager().currentView()->scene.accept(over);
-//            // drag current source
-//            int c = Mixer::manager().currentView()->over(mousepos, current, over.picked().back());
-//            ImGui::SetMouseCursor(c);
-//        }
 
         //
         // Mouse wheel over background
@@ -449,7 +441,6 @@ void UserInterface::handleMouse()
                         // indicate to view that an action can be initiated (e.g. grab)
                         Mixer::manager().view()->initiate();
                     }
-
                 }
             }
         }
@@ -1194,13 +1185,14 @@ void Navigator::Render()
         ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
         if (ImGui::Begin("##navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
-            // the "=" icon for menu
-            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
-            {
-                //            Mixer::manager().unsetCurrentSource();
-                applyButtonSelection(NAV_MENU);
-            }
             if (Settings::application.current_view < 4) {
+
+                // the "=" icon for menu
+                if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
+                {
+                    //            Mixer::manager().unsetCurrentSource();
+                    applyButtonSelection(NAV_MENU);
+                }
 
                 // the list of INITIALS for sources
                 int index = 0;
@@ -1235,6 +1227,14 @@ void Navigator::Render()
                     applyButtonSelection(NAV_NEW);
                 }
 
+            }
+            else {
+                // the "=" icon for menu
+                if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_TRANS], 0, iconsize))
+                {
+                    //            Mixer::manager().unsetCurrentSource();
+                    applyButtonSelection(NAV_TRANS);
+                }
             }
         }
         ImGui::End();
@@ -1272,6 +1272,11 @@ void Navigator::Render()
         if (selected_button[NAV_MENU])
         {
             RenderMainPannel();
+        }
+        // pannel to manage transition
+        else if (selected_button[NAV_TRANS])
+        {
+            RenderTransitionPannel();
         }
         // pannel to create a source
         else if (selected_button[NAV_NEW])
@@ -1490,6 +1495,25 @@ void Navigator::RenderNewPannel()
 }
 
 
+void Navigator::RenderTransitionPannel()
+{
+    // Next window is a side pannel
+    ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    if (ImGui::Begin("##navigatorTrans", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // TITLE
+        ImGui::SetCursorPosY(10);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text("Transition");
+        ImGui::PopFont();
+
+
+    }
+    ImGui::End();
+}
+
 void Navigator::RenderMainPannel()
 {
     // Next window is a side pannel
@@ -1670,6 +1694,7 @@ void Navigator::RenderMainPannel()
         }
 
         // Continue Main pannel
+        // WINDOWS
         ImGui::Text(" ");
         ImGui::Text("Windows");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
@@ -1681,6 +1706,7 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
+        // Settings application appearance
         ImGui::Text("  ");
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1691,7 +1717,7 @@ void Navigator::RenderMainPannel()
         if ( ImGui::Combo("Accent", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-        // Bottom aligned Logo
+        // Bottom aligned Logo & About
         static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
         static float h = 4.f * ImGui::GetTextLineHeightWithSpacing();
         if ( ImGui::GetCursorPosY() + h + 128.f < height_ ) {

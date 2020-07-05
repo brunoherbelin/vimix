@@ -12,7 +12,9 @@
 #include "defines.h"
 #include "Settings.h"
 #include "View.h"
+#include "Session.h"
 #include "Source.h"
+#include "SessionSource.h"
 #include "Primitives.h"
 #include "Decorations.h"
 #include "PickingVisitor.h"
@@ -155,6 +157,8 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
         scene.root()->translation_ = glm::vec3(1.0f, 0.0f, 0.0f);
         saveSettings();
     }
+    else
+        restoreSettings();
 
     // Mixing scene background
     Mesh *disk = new Mesh("mesh/disk.ply");
@@ -334,6 +338,8 @@ GeometryView::GeometryView() : View(GEOMETRY)
         scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
         saveSettings();
     }
+    else
+        restoreSettings();
 
     // Geometry Scene background
     Surface *rect = new Surface;
@@ -578,6 +584,8 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
         scene.root()->translation_ = glm::vec3(1.3f, 1.f, 0.0f);
         saveSettings();
     }
+    else
+        restoreSettings();
 
     // Geometry Scene background
     Surface *rect = new Surface;
@@ -681,10 +689,10 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
 // TRANSITION
 
-TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f)
+TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f), transition_source_(nullptr)
 {
     // read default settings
-    //if ( Settings::application.views[mode_].name.empty() )
+    if ( Settings::application.views[mode_].name.empty() )
     {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Transition";
@@ -692,6 +700,8 @@ TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f)
         scene.root()->translation_ = glm::vec3(1.8f, 0.f, 0.0f);
         saveSettings();
     }
+    else
+        restoreSettings();
 
     // Geometry Scene background
     Mesh *circle = new Mesh("mesh/h_line.ply");
@@ -732,6 +742,43 @@ void TransitionView::update(float dt)
 
 }
 
+
+void TransitionView::attach(SessionSource *ts)
+{
+    // store source for later (detatch & interaction)
+    transition_source_ = ts;
+
+    if ( transition_source_ != nullptr) {
+        // insert in scene
+        Group *tg = transition_source_->group(View::TRANSITION);
+        tg->visible_ = true;
+        scene.ws()->attach(tg);
+    }
+}
+
+Session *TransitionView::detach()
+{
+    // by default, nothing to return
+    Session *ret = nullptr;
+
+    if ( transition_source_ != nullptr) {
+
+        // get and detatch the group node from the view workspace
+        Group *tg = transition_source_->group(View::TRANSITION);
+        scene.ws()->detatch( tg );
+
+        // test if the icon of the transition source is "Ready"
+        if ( tg->translation_.x > 0.f )
+            // detatch the session and return it
+            ret = transition_source_->detach();
+
+        // done with transition
+        transition_source_ = nullptr;
+    }
+
+    return ret;
+}
+
 //void TransitionView::draw()
 //{
 //    // draw scene of this view
@@ -752,7 +799,7 @@ void TransitionView::zoom (float factor)
 
 void TransitionView::centerSource(Source *s)
 {
-    // setup view so that the center of the source is accessible
+    // TODO setup view when starting : anything to initialize ?
 
 }
 

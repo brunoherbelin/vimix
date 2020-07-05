@@ -5,10 +5,11 @@
 #include <list>
 using namespace std;
 
-#define NAV_COUNT 67
+#define NAV_COUNT 68
 #define NAV_MAX 64
 #define NAV_NEW 65
 #define NAV_MENU 66
+#define NAV_TRANS 67
 
 struct ImVec2;
 class Source;
@@ -46,7 +47,7 @@ class Navigator
     // side pannels
     void RenderSourcePannel(Source *s);
     void RenderMainPannel();
-
+    void RenderTransitionPannel();
     void RenderNewPannel();
     int new_source_type_;
     char file_browser_path_[2048];

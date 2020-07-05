@@ -6,6 +6,7 @@
 #include "Scene.h"
 #include "FrameBuffer.h"
 class Source;
+class SessionSource;
 
 class View
 {
@@ -148,6 +149,10 @@ class TransitionView : public View
 public:
     TransitionView();
 
+    void attach(SessionSource *ts);
+    class Session *detach();
+    inline SessionSource * attached() { return transition_source_; }
+
     void centerSource(Source *) override;
     void update (float dt) override;
     void zoom (float factor) override;
@@ -156,6 +161,7 @@ public:
 private:
     float duration_;
     class Surface *output_surface_;
+    SessionSource *transition_source_;
 };
 
 

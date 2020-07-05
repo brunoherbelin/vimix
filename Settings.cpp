@@ -80,7 +80,9 @@ void Settings::Save()
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        viewsNode->SetAttribute("current", application.current_view);
+        // save current view only if [mixing, geometry or layers]
+        int v = application.current_view > 3 ? 1 : application.current_view;
+        viewsNode->SetAttribute("current", v);
         viewsNode->SetAttribute("render_view_ar", application.render_view_ar);
         viewsNode->SetAttribute("render_view_h", application.render_view_h);
 
