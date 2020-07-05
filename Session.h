@@ -48,6 +48,11 @@ public:
     // configure rendering resolution
     void setResolution(glm::vec3 resolution);
 
+    // manipulate fading of output
+    void setFading(float f);
+    void fadeIn();
+    void fadeOut();
+
     // configuration for group nodes of views
     inline Group *config (View::Mode m) const { return config_.at(m); }
 

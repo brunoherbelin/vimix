@@ -113,6 +113,7 @@ public:
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
     void setFading(float f = 0.f);
+    float fading() const;
 
     inline FrameBuffer *frame () const { return frame_buffer_; }
 };
@@ -155,16 +156,18 @@ public:
 
     void attach(SessionSource *ts);
     class Session *detach();
-    inline SessionSource * attached() { return transition_source_; }
 
-    void centerSource(Source *) override;
+    void play();
+
+    void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
+    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
 
 private:
-    float duration_;
     class Surface *output_surface_;
+    class Mesh *mark_half_;
     SessionSource *transition_source_;
 };
 

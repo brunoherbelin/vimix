@@ -223,6 +223,10 @@ void Mixer::draw()
 {
     // draw the current view in the window
     current_view_->draw();
+
+    // make sure we disable fading of session rendering
+    if (current_view_ != &transition_)
+        session_->fadeIn();
 }
 
 // manangement of sources

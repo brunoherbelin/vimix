@@ -290,6 +290,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_vimix.ply
     ./rsc/mesh/icon_empty.ply
     ./rsc/mesh/h_line.ply
+    ./rsc/mesh/h_mark.ply
 )
 
 add_executable(${VMIX_BINARY}

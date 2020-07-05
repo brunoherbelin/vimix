@@ -81,7 +81,7 @@ void Settings::Save()
 
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
-    TransitionNode->SetAttribute("auto_start", application.transition.auto_start);
+    TransitionNode->SetAttribute("auto_end", application.transition.auto_open);
     TransitionNode->SetAttribute("cross_fade", application.transition.cross_fade);
     TransitionNode->SetAttribute("duration", application.transition.duration);
     TransitionNode->SetAttribute("profile", application.transition.profile);
@@ -220,7 +220,7 @@ void Settings::Load()
     // Transition
     XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
     if (transitionnode != nullptr) {
-        transitionnode->QueryBoolAttribute("auto_start", &application.transition.auto_start);
+        transitionnode->QueryBoolAttribute("auto_end", &application.transition.auto_open);
         transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
         transitionnode->QueryIntAttribute("duration", &application.transition.duration);
         transitionnode->QueryIntAttribute("profile", &application.transition.profile);

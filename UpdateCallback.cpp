@@ -11,28 +11,38 @@ UpdateCallback::UpdateCallback() : enabled_(true), finished_(false)
 
 }
 
-void MoveToCenterCallback::update(Node *n, float dt)
+MoveToCallback::MoveToCallback(glm::vec3 target, float duration) : UpdateCallback(),
+    target_(target), duration_(duration), progress_(0.f), initialized_(false)
 {
 
+}
+
+void MoveToCallback::update(Node *n, float dt)
+{
     // set start position on first run or upon call of reset()
     if (!initialized_){
-        initial_position_ = n->translation_;
+        startingpoint_ = n->translation_;
+        target_.z = startingpoint_.z; // ignore depth
         initialized_ = true;
     }
 
     // calculate amplitude of movement
     progress_ += dt / duration_;
 
-    // perform movement : translation to the center (0, 0)
-    n->translation_.x = initial_position_.x - progress_ * initial_position_.x;
-    n->translation_.y = initial_position_.y - progress_ * initial_position_.y;
+    // perform movement
+    n->translation_ = startingpoint_ + progress_ * (target_ - startingpoint_);
 
     // end of movement
     if ( progress_ > 1.f ) {
-        n->translation_.x = 0.f;
-        n->translation_.y = 0.f;
+        n->translation_ = target_;
         finished_ = true;
     }
+}
+
+BounceScaleCallback::BounceScaleCallback(float duration) : UpdateCallback(),
+    duration_(duration), progress_(0.f), initialized_(false)
+{
+
 }
 
 void BounceScaleCallback::update(Node *n, float dt)

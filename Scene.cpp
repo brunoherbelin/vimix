@@ -34,7 +34,11 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
 
 Node::~Node ()
 {
+    clearCallbacks();
+}
 
+void Node::clearCallbacks()
+{
     std::list<UpdateCallback *>::iterator iter;
     for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {

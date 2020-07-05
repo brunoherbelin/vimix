@@ -352,6 +352,7 @@ void UserInterface::handleMouse()
     mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
 
     static bool mousedown = false;
+    static View *view_drag = nullptr;
     static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
 
     // steal focus on right button clic
@@ -446,6 +447,7 @@ void UserInterface::handleMouse()
         }
         else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
         {
+            view_drag = nullptr;
             mousedown = false;
             picked = { nullptr, glm::vec2(0.f) };
         }
@@ -470,24 +472,33 @@ void UserInterface::handleMouse()
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
         {
-            Source *current = Mixer::manager().currentSource();
-            if (current)
-            {
-                // grab selected sources (current is also selected by default)
-                View::Cursor c = View::Cursor_Arrow;
-                for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
-                    c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-                setMouseCursor(io.MousePos, c);
-            }
-            else {
-                // Selection area
-                ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
-                ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                        ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+            if(view_drag == nullptr)
+                view_drag = Mixer::manager().view();
 
-                // Bounding box multiple sources selection
-                Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
+            // only operate if the view didn't change
+            if (view_drag == Mixer::manager().view()) {
+
+                // action on current source
+                Source *current = Mixer::manager().currentSource();
+                if (current)
+                {
+                    // grab selected sources (current is also selected by default)
+                    View::Cursor c = View::Cursor_Arrow;
+                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
+                        c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    setMouseCursor(io.MousePos, c);
+                }
+                // Selection area
+                else {
+                    ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                                                            ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+                    ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
+                                                            ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+
+                    // Bounding box multiple sources selection
+                    Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);
+                }
+
             }
         }
     }
@@ -1230,7 +1241,7 @@ void Navigator::Render()
             }
             else {
                 // the "=" icon for menu
-                if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_TRANS], 0, iconsize))
+                if (ImGui::Selectable( ICON_FA_GREATER_THAN, &selected_button[NAV_TRANS], 0, iconsize))
                 {
                     //            Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_TRANS);
@@ -1497,6 +1508,11 @@ void Navigator::RenderNewPannel()
 
 void Navigator::RenderTransitionPannel()
 {
+    if (Settings::application.current_view < 4) {
+        hidePannel();
+        return;
+    }
+
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
@@ -1509,6 +1525,27 @@ void Navigator::RenderTransitionPannel()
         ImGui::Text("Transition");
         ImGui::PopFont();
 
+        // Session menu
+        ImGui::SetCursorPosY(width_);
+        ImGui::Text("Behavior");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_RANDOM " Cross fading", &Settings::application.transition.cross_fade);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_SIGN_IN_ALT " Automatic open", &Settings::application.transition.auto_open);
+//        ImGuiToolkit::ButtonSwitch( ICON_FA_SIGN_OUT_ALT " Automatic start", &Settings::application.transition.auto_start);
+
+        // Transition options
+        ImGui::Text(" ");
+        ImGui::Text("Animation");
+        if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1000;
+        ImGui::SameLine(0, 10);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::SliderInt("Duration", &Settings::application.transition.duration, 200, 5000, "%d ms");
+        if (ImGuiToolkit::ButtonIcon(9, 1)) Settings::application.transition.profile = 0;
+        ImGui::SameLine(0, 10);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0IExponent\0");
+
+        if ( ImGui::Button("Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Settings::application.widget.media_player = true;
 
     }
     ImGui::End();

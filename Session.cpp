@@ -131,6 +131,23 @@ void Session::setResolution(glm::vec3 resolution)
     config_[View::RENDERING]->scale_ = resolution;
 }
 
+void Session::setFading(float f)
+{
+    render_.setFading(f);
+}
+
+void Session::fadeIn() {
+    float f = render_.fading();
+    if ( f > EPSILON)
+        render_.setFading( f / 2.f);
+}
+
+void Session::fadeOut() {
+    float f = render_.fading();
+    if ( f < 1.f - EPSILON)
+        render_.setFading( f * 2.f);
+}
+
 SourceList::iterator Session::begin()
 {
     return sources_.begin();

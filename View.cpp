@@ -9,20 +9,18 @@
 #include <sstream>
 #include <iomanip>
 
+#include "View.h"
 #include "defines.h"
 #include "Settings.h"
-#include "View.h"
 #include "Session.h"
 #include "Source.h"
 #include "SessionSource.h"
-#include "Primitives.h"
-#include "Decorations.h"
 #include "PickingVisitor.h"
 #include "DrawVisitor.h"
 #include "Mesh.h"
 #include "Mixer.h"
-#include "FrameBuffer.h"
 #include "UserInterfaceManager.h"
+#include "UpdateCallback.h"
 #include "Log.h"
 
 #define CIRCLE_PIXELS 64
@@ -314,7 +312,15 @@ void RenderView::setFading(float f)
     if (fading_overlay_ == nullptr)
         fading_overlay_ = new Surface;
 
-    fading_overlay_->shader()->color.a = CLAMP(f, 0.f, 1.f);
+    fading_overlay_->shader()->color.a = CLAMP( f < EPSILON ? 0.f : f, 0.f, 1.f);
+}
+
+float RenderView::fading() const
+{
+    if (fading_overlay_)
+        return fading_overlay_->shader()->color.a;
+    else
+        return 0.f;
 }
 
 void RenderView::setResolution(glm::vec3 resolution)
@@ -706,7 +712,7 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
 // TRANSITION
 
-TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f), transition_source_(nullptr)
+TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
 {
     // read default settings
     if ( Settings::application.views[mode_].name.empty() )
@@ -721,10 +727,17 @@ TransitionView::TransitionView() : View(TRANSITION), duration_(1000.f), transiti
         restoreSettings();
 
     // Geometry Scene background
-    Mesh *circle = new Mesh("mesh/h_line.ply");
-    circle->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    Mesh *horizontal_line = new Mesh("mesh/h_line.ply");
+    horizontal_line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.fg()->attach(horizontal_line);
+    mark_half_ = new Mesh("mesh/h_mark.ply");
+    mark_half_->translation_ = glm::vec3(-0.5f, 0.f, 0.0f);
+    mark_half_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    mark_half_->visible_ = false;
+    scene.fg()->attach(mark_half_);
+
+    // move the whole forground below
     scene.fg()->translation_ = glm::vec3(0.f, -0.11f, 0.0f);
-    scene.fg()->attach(circle);
 
     output_surface_ = new Surface;
     output_surface_->shader()->color.a = 0.9f;
@@ -759,6 +772,50 @@ void TransitionView::update(float dt)
 
 }
 
+
+void TransitionView::draw()
+{
+    // update the GUI depending on changes in settings
+    mark_half_->visible_ = !Settings::application.transition.cross_fade;
+
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+
+    // Update transition source
+    if ( transition_source_ != nullptr) {
+
+        float d = transition_source_->group(View::TRANSITION)->translation_.x;
+
+        // Transfer this movement to changes in mixing
+        // cross fading
+        if ( Settings::application.transition.cross_fade )
+        {
+            // change alpha of session: identical coordinates in Mixing View
+            transition_source_->group(View::MIXING)->translation_.x = CLAMP(d, -1.f, 0.f);
+            transition_source_->group(View::MIXING)->translation_.y = 0.f;
+        }
+        // fade to black
+        else
+        {
+            // change alpha of session ; hidden before -0.5, visible after
+            transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
+            transition_source_->group(View::MIXING)->translation_.y = 0.f;
+
+            // crossing the fade : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
+            float f = ABS(2.f * d + 1.f);  // linear
+            //        d = ( 2 * d + 1.f);  // quadratic
+            //        d *= d;
+            Mixer::manager().session()->setFading( 1.f - f );
+        }
+
+        // request update
+        transition_source_->touch();
+
+        if (d > 0.2f && Settings::application.transition.auto_open)
+            Mixer::manager().setView(View::MIXING);
+
+    }
+}
 
 void TransitionView::attach(SessionSource *ts)
 {
@@ -796,28 +853,45 @@ Session *TransitionView::detach()
     return ret;
 }
 
-//void TransitionView::draw()
-//{
-//    // draw scene of this view
-//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
-
-//    // maybe enough if scene contains the session source to transition
-//    // and the preview
-//}
-
-
 void TransitionView::zoom (float factor)
 {
-//    float z = scene.root()->scale_.x;
-//    z = CLAMP( z + 0.1f * factor, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
-//    scene.root()->scale_.x = z;
-//    scene.root()->scale_.y = z;
+    float d = transition_source_->group(View::TRANSITION)->translation_.x;
+    d += 0.1f * factor;
+    transition_source_->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
 }
 
-void TransitionView::centerSource(Source *s)
+std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 {
-    // TODO setup view when starting : anything to initialize ?
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
 
+    // start animation when clic on target
+    if (pick.first == output_surface_)
+        play();
+    // otherwise cancel animation
+    else
+        transition_source_->group(View::TRANSITION)->clearCallbacks();
+
+    return pick;
+}
+
+
+void TransitionView::play()
+{
+    if (transition_source_ != nullptr) {
+
+        float time = CLAMP(- transition_source_->group(View::TRANSITION)->translation_.x, 0.f, 1.f);
+        time *= float(Settings::application.transition.duration);
+        // if remaining time is more than 50ms
+        if (time > 50.f) {
+            // start animation
+            MoveToCallback *anim = new MoveToCallback(glm::vec3(0.4f, 0.0, 0.0), time);
+            transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
+            // TODO : add time for doing the last 0.4 of translation
+        }
+        // otherwise finish animation
+        else
+            transition_source_->group(View::TRANSITION)->translation_.x = 0.4;
+    }
 }
 
 View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
@@ -835,24 +909,14 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     float d = s->stored_status_->translation_.x + gl_Position_to.x - gl_Position_from.x;
     if (d > 0.2) {
         s->group(View::TRANSITION)->translation_.x = 0.4;
-        info << "Ready";
+        info << "Make current";
     }
     else {
         s->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
-        info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+        info << "Transition " <<  int( 100.f * (1.f + s->group(View::TRANSITION)->translation_.x)) << "%";
     }
 
-    // copy identical coordinates in Mixing View
-    s->group(View::MIXING)->translation_.x = CLAMP(d, -1.f, 0.f);
-    s->group(View::MIXING)->translation_.y = 0.f;
-
-    // request update
-    s->touch();
-
-    // fade out output
-
-
-    return Cursor(Cursor_ResizeAll, info.str() );
+    return Cursor(Cursor_ResizeEW, info.str() );
 }
 
 

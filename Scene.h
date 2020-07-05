@@ -75,6 +75,7 @@ public:
     // animation update callbacks
     // list of callbacks to call at each update
     std::list<UpdateCallback *> update_callbacks_;
+    void clearCallbacks();
 };
 
 

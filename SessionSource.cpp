@@ -58,6 +58,11 @@ SessionSource::SessionSource() : Source(), path_("")
     groups_[View::TRANSITION]->attach(frames_[View::TRANSITION]);
 
     overlays_[View::TRANSITION] = new Group;
+    overlays_[View::TRANSITION]->translation_.z = 0.1;
+    overlays_[View::TRANSITION]->visible_ = false;
+    Icon *center = new Icon(Icon::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
+    overlays_[View::TRANSITION]->attach(center);
+    groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
     loadFailed_ = false;
     loadFinished_ = false;
@@ -80,6 +85,8 @@ SessionSource::~SessionSource()
     if (session_)
         delete session_;
 }
+
+
 
 void SessionSource::load(const std::string &p)
 {
@@ -172,7 +179,6 @@ void SessionSource::setActive (bool on)
 
 void SessionSource::update(float dt)
 {
-//    Log::Info("SessionSource::update %f", dt);
     Source::update(dt);
 
     // update content

@@ -21,16 +21,16 @@ protected:
     bool finished_;
 };
 
-class MoveToCenterCallback : public UpdateCallback
+class MoveToCallback : public UpdateCallback
 {
     float duration_;
     float progress_;
     bool initialized_;
-    glm::vec3 initial_position_;
+    glm::vec3 startingpoint_;
+    glm::vec3 target_;
 
 public:
-    MoveToCenterCallback(float duration = 1000.f) : duration_(duration), progress_(0.f), initialized_(false) {}
-
+    MoveToCallback(glm::vec3 target, float duration = 1000.f);
     void update(Node *n, float dt);
 
     inline void reset() { initialized_ = false; }
@@ -44,8 +44,7 @@ class BounceScaleCallback : public UpdateCallback
     glm::vec3 initial_scale_;
 
 public:
-    BounceScaleCallback(float duration = 100.f) : duration_(duration), progress_(0.f), initialized_(false) {}
-
+    BounceScaleCallback(float duration = 100.f);
     void update(Node *n, float dt);
 };
 
