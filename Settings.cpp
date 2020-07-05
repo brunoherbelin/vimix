@@ -75,6 +75,8 @@ void Settings::Save()
     RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
     RenderNode->SetAttribute("blit", application.render.blit);
+    RenderNode->SetAttribute("ratio", application.render.ratio);
+    RenderNode->SetAttribute("res", application.render.res);
     pRoot->InsertEndChild(RenderNode);
 
     // Transition
@@ -91,8 +93,6 @@ void Settings::Save()
         // save current view only if [mixing, geometry or layers]
         int v = application.current_view > 3 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
-        viewsNode->SetAttribute("render_view_ar", application.render_view_ar);
-        viewsNode->SetAttribute("render_view_h", application.render_view_h);
 
         map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); iter++)
@@ -213,6 +213,8 @@ void Settings::Load()
         rendernode->QueryIntAttribute("vsync", &application.render.vsync);
         rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
         rendernode->QueryBoolAttribute("blit", &application.render.blit);
+        rendernode->QueryIntAttribute("ratio", &application.render.ratio);
+        rendernode->QueryIntAttribute("res", &application.render.res);
     }
 
     // Transition
@@ -255,8 +257,6 @@ void Settings::Load()
         if (pElement)
         {
             pElement->QueryIntAttribute("current", &application.current_view);
-            pElement->QueryIntAttribute("render_view_ar", &application.render_view_ar);
-            pElement->QueryIntAttribute("render_view_h", &application.render_view_h);
 
             XMLElement* viewNode = pElement->FirstChildElement("View");
             for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

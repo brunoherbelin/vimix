@@ -616,9 +616,9 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##AR", &Settings::application.render_view_ar, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
+    ImGui::Combo("##AR", &Settings::application.render.ratio, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##HEIGHT", &Settings::application.render_view_h, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+    ImGui::Combo("##HEIGHT", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
     ImGui::Separator();
 

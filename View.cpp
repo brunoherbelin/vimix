@@ -295,7 +295,7 @@ uint MixingView::textureMixingQuadratic()
     return texid;
 }
 
-RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr)
+RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr)
 {
     // set resolution to settings or default
     setResolution();
@@ -305,26 +305,43 @@ RenderView::~RenderView()
 {
     if (frame_buffer_)
         delete frame_buffer_;
+    if (fading_overlay_)
+        delete fading_overlay_;
+}
+
+void RenderView::setFading(float f)
+{
+    if (fading_overlay_ == nullptr)
+        fading_overlay_ = new Surface;
+
+    fading_overlay_->shader()->color.a = CLAMP(f, 0.f, 1.f);
 }
 
 void RenderView::setResolution(glm::vec3 resolution)
 {
     if (resolution.x < 128.f || resolution.y < 128.f)
-        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render_view_ar, Settings::application.render_view_h);
+        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
 
+    // new frame buffer
     if (frame_buffer_)
         delete frame_buffer_;
 
     // output frame is an RBG Multisamples FrameBuffer
     frame_buffer_ = new FrameBuffer(resolution, false, true);
+
+    // reset fading
+    setFading();
 }
 
 void RenderView::draw()
 {
     static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
+
+    // draw in frame buffer
     glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
     frame_buffer_->begin();
     scene.root()->draw(glm::identity<glm::mat4>(), P);
+    fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
     frame_buffer_->end();
 }
 
@@ -831,6 +848,9 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 
     // request update
     s->touch();
+
+    // fade out output
+
 
     return Cursor(Cursor_ResizeAll, info.str() );
 }

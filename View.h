@@ -7,6 +7,7 @@
 #include "FrameBuffer.h"
 class Source;
 class SessionSource;
+class Surface;
 
 class View
 {
@@ -100,6 +101,7 @@ private:
 class RenderView : public View
 {
     FrameBuffer *frame_buffer_;
+    Surface *fading_overlay_;
 
 public:
     RenderView ();
@@ -109,6 +111,8 @@ public:
 
     void setResolution (glm::vec3 resolution = glm::vec3(0.f));
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
+
+    void setFading(float f = 0.f);
 
     inline FrameBuffer *frame () const { return frame_buffer_; }
 };

@@ -94,14 +94,20 @@ struct TransitionConfig
 
 struct RenderConfig
 {
+    bool blit;
     int vsync;
     int multisampling;
-    bool blit;
+    int ratio;
+    int res;
+    float fading;
 
     RenderConfig() {
+        blit = false;
         vsync = 1; // todo GUI selection
         multisampling = 2; // todo GUI selection
-        blit = false;
+        ratio = 3;
+        res = 1;
+        fading = 0.0;
     }
 };
 
@@ -121,8 +127,6 @@ struct Application
 
     // Settings of Views
     int current_view;
-    int render_view_ar;
-    int render_view_h;
     std::map<int, ViewConfig> views;
 
     // settings render
@@ -144,11 +148,7 @@ struct Application
         accent_color = 0;
         pannel_stick = false;
         smooth_transition = true;
-
         current_view = 1;
-        render_view_ar = 3;
-        render_view_h = 1;
-
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
         windows[0].w = 1600;
