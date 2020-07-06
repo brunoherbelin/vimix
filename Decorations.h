@@ -54,12 +54,12 @@ protected:
 
 };
 
-class Icon : public Node
+class Symbol : public Node
 {
 public:
     typedef enum { GENERIC = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, EMPTY } Type;
-    Icon(Type type = GENERIC, glm::vec3 pos = glm::vec3(0.f));
-    ~Icon();
+    Symbol(Type type = GENERIC, glm::vec3 pos = glm::vec3(0.f));
+    ~Symbol();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;

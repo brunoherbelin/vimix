@@ -301,7 +301,7 @@ void Handles::accept(Visitor& v)
 }
 
 
-Icon::Icon(Type style, glm::vec3 pos) : Node()
+Symbol::Symbol(Type style, glm::vec3 pos) : Node()
 {
     static Mesh *icons[7] = {nullptr};
     if (icons[0] == nullptr)  {
@@ -320,12 +320,12 @@ Icon::Icon(Type style, glm::vec3 pos) : Node()
 
 }
 
-Icon::~Icon()
+Symbol::~Symbol()
 {
 
 }
 
-void Icon::draw(glm::mat4 modelview, glm::mat4 projection)
+void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
         if(icon_ && !icon_->initialized())
@@ -350,7 +350,7 @@ void Icon::draw(glm::mat4 modelview, glm::mat4 projection)
 }
 
 
-void Icon::accept(Visitor& v)
+void Symbol::accept(Visitor& v)
 {
     Node::accept(v);
     v.visit(*this);

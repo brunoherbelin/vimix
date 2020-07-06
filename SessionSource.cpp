@@ -60,7 +60,7 @@ SessionSource::SessionSource() : Source(), path_("")
     overlays_[View::TRANSITION] = new Group;
     overlays_[View::TRANSITION]->translation_.z = 0.1;
     overlays_[View::TRANSITION]->visible_ = false;
-    Icon *center = new Icon(Icon::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
+    Symbol *center = new Symbol(Symbol::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
@@ -149,8 +149,8 @@ void SessionSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;
@@ -252,8 +252,8 @@ void RenderSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::MIXING]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;

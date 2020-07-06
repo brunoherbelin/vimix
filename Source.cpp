@@ -49,7 +49,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     overlays_[View::MIXING] = new Group;
     overlays_[View::MIXING]->translation_.z = 0.1;
     overlays_[View::MIXING]->visible_ = false;
-    Icon *center = new Icon(Icon::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
+    Symbol *center = new Symbol(Symbol::GENERIC, glm::vec3(0.f, 0.f, 0.1f));
     overlays_[View::MIXING]->attach(center);
     groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
@@ -376,8 +376,8 @@ void CloneSource::init()
         attach(renderbuffer);
 
         // icon in mixing view
-        overlays_[View::MIXING]->attach( new Icon(Icon::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Icon(Icon::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::MIXING]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::LAYER]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;
