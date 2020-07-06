@@ -754,33 +754,6 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
 
 void TransitionView::update(float dt)
 {
-    View::update(dt);
-
-    // reorder depth if needed
-    if (View::need_deep_update_) {
-
-        // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output){
-            float aspect_ratio = output->aspectRatio();
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = aspect_ratio;
-            }
-            output_surface_->setTextureIndex( output->texture() );
-        }
-    }
-
-}
-
-
-void TransitionView::draw()
-{
-    // update the GUI depending on changes in settings
-    mark_half_->visible_ = !Settings::application.transition.cross_fade;
-
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
-
     // Update transition source
     if ( transition_source_ != nullptr) {
 
@@ -815,6 +788,36 @@ void TransitionView::draw()
             Mixer::manager().setView(View::MIXING);
 
     }
+
+    // update scene
+    View::update(dt);
+
+    // reorder depth if needed
+    if (View::need_deep_update_) {
+
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            float aspect_ratio = output->aspectRatio();
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = aspect_ratio;
+            }
+            output_surface_->setTextureIndex( output->texture() );
+        }
+    }
+
+}
+
+
+void TransitionView::draw()
+{
+    // update the GUI depending on changes in settings
+    mark_half_->visible_ = !Settings::application.transition.cross_fade;
+
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+
+
 }
 
 void TransitionView::attach(SessionSource *ts)
@@ -909,7 +912,7 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     float d = s->stored_status_->translation_.x + gl_Position_to.x - gl_Position_from.x;
     if (d > 0.2) {
         s->group(View::TRANSITION)->translation_.x = 0.4;
-        info << "Make current";
+        info << "Open session";
     }
     else {
         s->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);

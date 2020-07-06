@@ -613,11 +613,11 @@ void UserInterface::Terminate()
 
 void UserInterface::showMenuOptions()
 {
-    ImGui::MenuItem( ICON_FA_CLOCK " Smooth transition", nullptr, &Settings::application.smooth_transition);
+    ImGui::MenuItem( ICON_FA_PLAY "  Smooth transition", nullptr, &Settings::application.smooth_transition);
 
     ImGui::Separator();
     ImGui::MenuItem( ICON_FA_HISTORY " Load most recent on start", nullptr, &Settings::application.recentSessions.load_at_start);
-    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD " Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
+    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 }
 
 void UserInterface::showMenuFile()
@@ -1241,7 +1241,7 @@ void Navigator::Render()
             }
             else {
                 // the "=" icon for menu
-                if (ImGui::Selectable( ICON_FA_GREATER_THAN, &selected_button[NAV_TRANS], 0, iconsize))
+                if (ImGui::Selectable( ICON_FA_PLAY, &selected_button[NAV_TRANS], 0, iconsize))
                 {
                     //            Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_TRANS);
@@ -1543,9 +1543,14 @@ void Navigator::RenderTransitionPannel()
         ImGui::SameLine(0, 10);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0IExponent\0");
+        if ( ImGui::Button( ICON_FA_PLAY " Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->play();
+        }
 
-        if ( ImGui::Button("Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Settings::application.widget.media_player = true;
+        ImGui::Text(" ");
+        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+            Mixer::manager().setView(View::MIXING);
 
     }
     ImGui::End();
