@@ -68,9 +68,11 @@ public:
     glm::vec4 color;
 
 protected:
-    Mesh *icon_;
+    Mesh *symbol_;
     Type type_;
 };
+
+
 
 class SelectionBox : public Group
 {

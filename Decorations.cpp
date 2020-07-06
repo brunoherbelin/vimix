@@ -314,7 +314,7 @@ Symbol::Symbol(Type style, glm::vec3 pos) : Node()
         icons[GENERIC] = new Mesh("mesh/point.ply");
     }
 
-    icon_ = icons[style];
+    symbol_ = icons[style];
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 
@@ -328,23 +328,23 @@ Symbol::~Symbol()
 void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(icon_ && !icon_->initialized())
-            icon_->init();
+        if(symbol_ && !symbol_->initialized())
+            symbol_->init();
         init();
     }
 
     if ( visible_ ) {
 
-        if(icon_) {
+        if(symbol_) {
             // set color
-            icon_->shader()->color = color;
+            symbol_->shader()->color = color;
 
             glm::mat4 ctm = modelview * transform_;
             // correct for aspect ratio
             glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
             ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
 
-            icon_->draw( ctm, projection);
+            symbol_->draw( ctm, projection);
         }
     }
 }
