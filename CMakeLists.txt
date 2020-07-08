@@ -261,8 +261,10 @@ set(VMIX_RSC_FILES
     ./rsc/images/mask_linear_right.png
     ./rsc/images/vimix_256x256.png
     ./rsc/images/icons.dds
-    ./rsc/images/gradient_0.png
-    ./rsc/images/gradient_1.png
+    ./rsc/images/gradient_0_cross_linear.png
+    ./rsc/images/gradient_1_black_linear.png
+    ./rsc/images/gradient_2_cross_quad.png
+    ./rsc/images/gradient_3_black_quad.png
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.dds
     ./rsc/images/glow.dds

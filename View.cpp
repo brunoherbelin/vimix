@@ -732,8 +732,10 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
 
     // Geometry Scene background
     gradient_ = new Switch;
-    gradient_->attach(new ImageSurface("images/gradient_0.png"));
-    gradient_->attach(new ImageSurface("images/gradient_1.png"));
+    gradient_->attach(new ImageSurface("images/gradient_0_cross_linear.png"));
+    gradient_->attach(new ImageSurface("images/gradient_1_black_linear.png"));
+    gradient_->attach(new ImageSurface("images/gradient_2_cross_quad.png"));
+    gradient_->attach(new ImageSurface("images/gradient_3_black_quad.png"));
     gradient_->scale_ = glm::vec3(0.501f, 0.006f, 1.f);
     gradient_->translation_ = glm::vec3(-0.5f, -0.005f, -0.01f);
     scene.fg()->attach(gradient_);
@@ -779,8 +781,16 @@ void TransitionView::update(float dt)
         // cross fading
         if ( Settings::application.transition.cross_fade )
         {
-            // change alpha of session: identical coordinates in Mixing View
-            transition_source_->group(View::MIXING)->translation_.x = CLAMP(d, -1.f, 0.f);
+            float f = 0.f;
+            // change alpha of session:
+            if (Settings::application.transition.profile == 0)
+                // linear => identical coordinates in Mixing View
+                f = d;
+            else {
+                // quadratic => square coordinates in Mixing View
+                f = (d+1.f)*(d+1.f) -1.f;
+            }
+            transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
             // reset / no fading
@@ -794,9 +804,13 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
             // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
-            float f = ABS(2.f * d + 1.f);  // linear
-            //        d = ( 2 * d + 1.f);  // quadratic
-            //        d *= d;
+            float f = 0.f;
+            if (Settings::application.transition.profile == 0)
+                f = ABS(2.f * d + 1.f);  // linear
+            else {
+                f = ( 2 * d + 1.f);  // quadratic
+                f *= f;
+            }
             Mixer::manager().session()->setFading( 1.f - f );
         }
 
@@ -831,7 +845,7 @@ void TransitionView::update(float dt)
 void TransitionView::draw()
 {
     // update the GUI depending on changes in settings
-    gradient_->setActive( Settings::application.transition.cross_fade ? 0 : 1);
+    gradient_->setActive( 2*Settings::application.transition.profile + (Settings::application.transition.cross_fade ? 0 : 1) );
 
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());

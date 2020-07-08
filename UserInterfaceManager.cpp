@@ -1542,7 +1542,7 @@ void Navigator::RenderTransitionPannel()
         if (ImGuiToolkit::ButtonIcon(9, 1)) Settings::application.transition.profile = 0;
         ImGui::SameLine(0, 10);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0IExponent\0");
+        ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
         if ( ImGui::Button( ICON_FA_PLAY " Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play();
