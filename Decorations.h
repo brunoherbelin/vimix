@@ -72,8 +72,6 @@ protected:
     Type type_;
 };
 
-
-
 class SelectionBox : public Group
 {
 public:

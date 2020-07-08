@@ -261,6 +261,8 @@ set(VMIX_RSC_FILES
     ./rsc/images/mask_linear_right.png
     ./rsc/images/vimix_256x256.png
     ./rsc/images/icons.dds
+    ./rsc/images/gradient_0.png
+    ./rsc/images/gradient_1.png
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.dds
     ./rsc/images/glow.dds

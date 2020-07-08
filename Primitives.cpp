@@ -106,9 +106,7 @@ void ImageSurface::init()
 
     // load image if specified (should always be the case)
     if ( !resource_.empty()) {
-        float ar = 1.0;
-        textureindex_ = Resource::getTextureImage(resource_, &ar);
-        scale_.x = ar;
+        textureindex_ = Resource::getTextureImage(resource_);
     }
 }
 
