@@ -730,7 +730,7 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     gradient_ = new Switch;
     gradient_->attach(new ImageSurface("images/gradient_0.png"));
     gradient_->attach(new ImageSurface("images/gradient_1.png"));
-    gradient_->scale_ = glm::vec3(0.5f, 0.01f, 1.f);
+    gradient_->scale_ = glm::vec3(0.502f, 0.008f, 1.f);
     gradient_->translation_ = glm::vec3(-0.5f, -0.007f, -0.01f);
     scene.fg()->attach(gradient_);
 
@@ -739,10 +739,10 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     scene.fg()->attach(horizontal_line);
 
     mark_ = new Mesh("mesh/h_mark.ply");
-    mark_->translation_ = glm::vec3(-0.5f, 0.f, 0.0f);
-    mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    mark_->visible_ = false;
-    scene.fg()->attach(mark_);
+//    mark_->translation_ = glm::vec3(-0.5f, 0.f, 0.0f);
+//    mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+//    mark_->visible_ = false;
+//    scene.fg()->attach(mark_);
 
     // move the whole forground below the icons
     scene.fg()->translation_ = glm::vec3(0.f, -0.11f, 0.0f);
@@ -820,11 +820,10 @@ void TransitionView::update(float dt)
 void TransitionView::draw()
 {
     // update the GUI depending on changes in settings
-    gradient->setActive( Settings::application.transition.cross_fade ? 0 : 1);
+    gradient_->setActive( Settings::application.transition.cross_fade ? 0 : 1);
 
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
-
 
 }
 
