@@ -25,6 +25,7 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
+
     void visit(Surface& n) override;
     void visit(Frame& n) override;
     void visit(Handles& n) override;

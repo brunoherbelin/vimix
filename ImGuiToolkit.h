@@ -42,6 +42,11 @@ namespace ImGuiToolkit
     void SetFont (font_style type, const std::string &ttf_font_name, int pointsize, int oversample = 2);
     void PushFont (font_style type);
 
+    void WindowText(const char* window_name, ImVec2 window_pos, const char* text);
+    bool WindowButton(const char* window_name, ImVec2 window_pos, const char* text);
+    void WindowDragFloat(const char* window_name, ImVec2 window_pos, float* v, float v_speed, float v_min, float v_max, const char* format);
+
+
     // color of gui items
     typedef enum {
         ACCENT_BLUE =0,

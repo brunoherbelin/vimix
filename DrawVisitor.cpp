@@ -1,6 +1,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "DrawVisitor.h"
 #include "Scene.h"
 
@@ -11,14 +12,28 @@ DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection)
     modelview_ = glm::identity<glm::mat4>();
     projection_ = projection;
     done_ = false;
+    num_duplicat_ = 1;
+    transform_duplicat_ = glm::identity<glm::mat4>();
 }
 
+
+void DrawVisitor::loop(int num, glm::mat4 transform)
+{
+    num_duplicat_ = CLAMP(num, 1, 10000);
+    transform_duplicat_ = transform;
+}
 
 void DrawVisitor::visit(Node &n)
 {
     // draw the target
     if ( n.id() == target_->id()) {
-        n.draw(modelview_, projection_);
+
+        for (int i = 0; i < num_duplicat_; ++i) {
+            // draw multiple copies if requested
+            n.draw(modelview_, projection_);
+            modelview_ *= transform_duplicat_;
+        }
+
         done_ = true;
     }
 
@@ -56,82 +71,6 @@ void DrawVisitor::visit(Switch &n)
 }
 
 void DrawVisitor::visit(Primitive &n)
-{
-
-}
-
-void DrawVisitor::visit(Surface &n)
-{
-
-}
-
-void DrawVisitor::visit(ImageSurface &n)
-{
-
-}
-
-void DrawVisitor::visit(FrameBufferSurface &n)
-{
-
-}
-
-void DrawVisitor::visit(MediaSurface &n)
-{
-
-}
-
-void DrawVisitor::visit(MediaPlayer &n)
-{
-
-}
-
-void DrawVisitor::visit(Shader &n)
-{
-
-}
-
-void DrawVisitor::visit(ImageShader &n)
-{
-
-}
-
-void DrawVisitor::visit(ImageProcessingShader &n)
-{
-
-}
-
-void DrawVisitor::visit(LineStrip &n)
-{
-
-}
-
-void DrawVisitor::visit(LineSquare &)
-{
-
-}
-
-void DrawVisitor::visit(LineCircle &n)
-{
-
-}
-
-void DrawVisitor::visit(Mesh &n)
-{
-
-}
-
-void DrawVisitor::visit(Frame &n)
-{
-
-}
-
-
-void DrawVisitor::visit (Source& s)
-{
-
-}
-
-void DrawVisitor::visit (MediaSource& s)
 {
 
 }

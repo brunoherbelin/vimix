@@ -10,32 +10,19 @@ class DrawVisitor : public Visitor
     glm::mat4 projection_;
     Node *target_;
     bool done_;
+    int num_duplicat_;
+    glm::mat4 transform_duplicat_;
 
 public:
     DrawVisitor(Node *nodetodraw, glm::mat4 projection);
 
+    void loop(int num, glm::mat4 transform);
+
     void visit(Scene& n) override;
     void visit(Node& n) override;
+    void visit(Primitive& n) override;
     void visit(Group& n) override;
     void visit(Switch& n) override;
-    void visit(Primitive& n) override;
-    void visit(Surface& n) override;
-    void visit(ImageSurface& n) override;
-    void visit(MediaSurface& n) override;
-    void visit(FrameBufferSurface& n) override;
-    void visit(LineStrip& n) override;
-    void visit(LineSquare&) override;
-    void visit(LineCircle& n) override;
-    void visit(Mesh& n) override;
-    void visit(Frame& n) override;
-
-    void visit(MediaPlayer& n) override;
-    void visit(Shader& n) override;
-    void visit(ImageShader& n) override;
-    void visit(ImageProcessingShader& n) override;
-
-    void visit (Source& s) override;
-    void visit (MediaSource& s) override;
 };
 
 #endif // DRAWVISITOR_H

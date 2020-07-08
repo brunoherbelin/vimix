@@ -222,7 +222,7 @@ void Settings::Load()
     if (transitionnode != nullptr) {
         transitionnode->QueryBoolAttribute("auto_end", &application.transition.auto_open);
         transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
-        transitionnode->QueryIntAttribute("duration", &application.transition.duration);
+        transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
         transitionnode->QueryIntAttribute("profile", &application.transition.profile);
     }
 

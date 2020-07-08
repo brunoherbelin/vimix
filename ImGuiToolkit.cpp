@@ -822,6 +822,58 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
     }
 }
 
+
+void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
+{
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+
+    if (ImGui::Begin(window_name, NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text(text);
+        ImGui::PopFont();
+
+        ImGui::End();
+    }
+}
+
+bool ImGuiToolkit::WindowButton(const char* window_name, ImVec2 window_pos, const char* button_text)
+{
+    bool ret = false;
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+
+    if (ImGui::Begin(window_name, NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ret = ImGui::Button(button_text);
+        ImGui::PopFont();
+
+        ImGui::End();
+    }
+    return ret;
+}
+
+void ImGuiToolkit::WindowDragFloat(const char* window_name, ImVec2 window_pos, float* v, float v_speed, float v_min, float v_max, const char* format)
+{
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+
+    if (ImGui::Begin(window_name, NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetNextItemWidth(100.f);
+        ImGui::DragFloat("##nolabel", v, v_speed, v_min, v_max, format);
+        ImGui::PopFont();
+
+        ImGui::End();
+    }
+}
+
 ImVec4 ImGuiToolkit::GetHighlightColor()
 {
     ImVec4* colors = ImGui::GetStyle().Colors;

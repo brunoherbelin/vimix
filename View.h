@@ -167,7 +167,7 @@ public:
 
 private:
     class Surface *output_surface_;
-    class Mesh *mark_;
+    class Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionSource *transition_source_;
 };

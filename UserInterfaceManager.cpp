@@ -1535,15 +1535,15 @@ void Navigator::RenderTransitionPannel()
         // Transition options
         ImGui::Text(" ");
         ImGui::Text("Animation");
-        if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1000;
+        if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
         ImGui::SameLine(0, 10);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderInt("Duration", &Settings::application.transition.duration, 200, 5000, "%d ms");
+        ImGui::SliderFloat("Duration", &Settings::application.transition.duration, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         if (ImGuiToolkit::ButtonIcon(9, 1)) Settings::application.transition.profile = 0;
         ImGui::SameLine(0, 10);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0IExponent\0");
-        if ( ImGui::Button( ICON_FA_ARROW_CIRCLE_RIGHT " Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+        if ( ImGui::Button( ICON_FA_PLAY " Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play();
         }

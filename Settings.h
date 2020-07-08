@@ -81,13 +81,13 @@ struct TransitionConfig
 {
     bool cross_fade;
     bool auto_open;
-    int duration;
+    float duration;
     int profile;
 
     TransitionConfig() {
         cross_fade = true;
         auto_open = true;
-        duration = 1000;
+        duration = 1.f;
         profile = 0;
     }
 };

@@ -38,9 +38,9 @@ public:
     virtual void visit (Node&) = 0;
     virtual void visit (Primitive&) = 0;
     virtual void visit (Group&) = 0;
+    virtual void visit (Switch&) = 0;
 
     // not mandatory for all others
-    virtual void visit (Switch&) {}
     virtual void visit (Surface&) {}
     virtual void visit (ImageSurface&) {}
     virtual void visit (MediaSurface&) {}

@@ -4,6 +4,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
+
+#include "imgui.h"
+#include "ImGuiToolkit.h"
+
 // memmove
 #include <string.h>
 #include <sstream>
@@ -730,19 +734,23 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     gradient_ = new Switch;
     gradient_->attach(new ImageSurface("images/gradient_0.png"));
     gradient_->attach(new ImageSurface("images/gradient_1.png"));
-    gradient_->scale_ = glm::vec3(0.502f, 0.008f, 1.f);
-    gradient_->translation_ = glm::vec3(-0.5f, -0.007f, -0.01f);
+    gradient_->scale_ = glm::vec3(0.501f, 0.006f, 1.f);
+    gradient_->translation_ = glm::vec3(-0.5f, -0.005f, -0.01f);
     scene.fg()->attach(gradient_);
 
-    Mesh *horizontal_line = new Mesh("mesh/h_line.ply");
-    horizontal_line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    scene.fg()->attach(horizontal_line);
+//    Mesh *horizontal_line = new Mesh("mesh/h_line.ply");
+//    horizontal_line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+//    scene.fg()->attach(horizontal_line);
+    mark_1s_ = new Mesh("mesh/h_mark.ply");
+    mark_1s_->translation_ = glm::vec3(-1.f, -0.01f, 0.0f);
+    mark_1s_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.fg()->attach(mark_1s_);
 
-    mark_ = new Mesh("mesh/h_mark.ply");
-//    mark_->translation_ = glm::vec3(-0.5f, 0.f, 0.0f);
-//    mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-//    mark_->visible_ = false;
-//    scene.fg()->attach(mark_);
+    mark_100ms_ = new Mesh("mesh/h_mark.ply");
+    mark_100ms_->translation_ = glm::vec3(-1.f, -0.01f, 0.0f);
+    mark_100ms_->scale_ = glm::vec3(0.5f, 0.5f, 0.0f);
+    mark_100ms_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.fg()->attach(mark_100ms_);
 
     // move the whole forground below the icons
     scene.fg()->translation_ = glm::vec3(0.f, -0.11f, 0.0f);
@@ -774,6 +782,9 @@ void TransitionView::update(float dt)
             // change alpha of session: identical coordinates in Mixing View
             transition_source_->group(View::MIXING)->translation_.x = CLAMP(d, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
+
+            // reset / no fading
+            Mixer::manager().session()->setFading( 0.f );
         }
         // fade to black
         else
@@ -782,7 +793,7 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
-            // crossing the fade : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
+            // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
             float f = ABS(2.f * d + 1.f);  // linear
             //        d = ( 2 * d + 1.f);  // quadratic
             //        d *= d;
@@ -825,6 +836,38 @@ void TransitionView::draw()
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
+    // 100ms tic marks
+    int n = static_cast<int>( Settings::application.transition.duration / 0.1f );
+    glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 1.f / n, 0.f, 0.f));
+    DrawVisitor dv(mark_100ms_, Rendering::manager().Projection());
+    dv.loop(n+1, T);
+    scene.accept(dv);
+
+    // 1s tic marks
+    int N = static_cast<int>( Settings::application.transition.duration );
+    T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 10.f / n, 0.f, 0.f));
+    DrawVisitor dv2(mark_1s_, Rendering::manager().Projection());
+    dv2.loop(N+1, T);
+    scene.accept(dv2);
+
+    // display interface duration
+    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.03f, -0.14f, 0.f), scene.root()->transform_);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+    if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetNextItemWidth(100.f);
+        ImGui::DragFloat("##nolabel", &Settings::application.transition.duration,
+                         0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
+        ImGui::SameLine();
+        if ( ImGui::Button(ICON_FA_PLAY) )
+            play();
+        ImGui::PopFont();
+        ImGui::End();
+    }
+
 }
 
 void TransitionView::attach(SessionSource *ts)
@@ -865,21 +908,25 @@ Session *TransitionView::detach()
 
 void TransitionView::zoom (float factor)
 {
-    float d = transition_source_->group(View::TRANSITION)->translation_.x;
-    d += 0.1f * factor;
-    transition_source_->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
+    if (transition_source_ != nullptr) {
+        float d = transition_source_->group(View::TRANSITION)->translation_.x;
+        d += 0.1f * factor;
+        transition_source_->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
+    }
 }
 
 std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 {
     std::pair<Node *, glm::vec2> pick = View::pick(P);
 
-    // start animation when clic on target
-    if (pick.first == output_surface_)
-        play();
-    // otherwise cancel animation
-    else
-        transition_source_->group(View::TRANSITION)->clearCallbacks();
+    if (transition_source_ != nullptr) {
+        // start animation when clic on target
+        if (pick.first == output_surface_)
+            play();
+        // otherwise cancel animation
+        else
+            transition_source_->group(View::TRANSITION)->clearCallbacks();
+    }
 
     return pick;
 }
@@ -890,13 +937,13 @@ void TransitionView::play()
     if (transition_source_ != nullptr) {
 
         float time = CLAMP(- transition_source_->group(View::TRANSITION)->translation_.x, 0.f, 1.f);
-        time *= float(Settings::application.transition.duration);
+        time += 0.2; // extra time to reach transition
+        time *= Settings::application.transition.duration  * 1000.f;
         // if remaining time is more than 50ms
         if (time > 50.f) {
             // start animation
             MoveToCallback *anim = new MoveToCallback(glm::vec3(0.4f, 0.0, 0.0), time);
             transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
-            // TODO : add time for doing the last 0.4 of translation
         }
         // otherwise finish animation
         else

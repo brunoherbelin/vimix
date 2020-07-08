@@ -23,6 +23,7 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
+
     void visit(Surface& n) override;
     void visit(ImageSurface& n) override;
     void visit(MediaSurface& n) override;

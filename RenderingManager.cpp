@@ -21,7 +21,6 @@
 #include <GLFW/glfw3native.h>
 
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
-#include <glm/ext/matrix_projection.hpp> // glm::unproject
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
 
 // Include GStreamer
@@ -321,6 +320,15 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
     glm::vec3 point = glm::unProject(coordinates, modelview, Projection(), viewport);
 
     return point;
+}
+
+
+glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview)
+{
+    glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_.width(), main_.height());
+    glm::vec3 P = glm::project( scene_coordinate, modelview, Projection(), viewport );
+
+    return glm::vec2(P.x, main_.height() - P.y);
 }
 
 void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])

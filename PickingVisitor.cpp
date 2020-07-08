@@ -60,7 +60,7 @@ void PickingVisitor::visit(Switch &n)
 
 void PickingVisitor::visit(Primitive &n)
 {
-    // TODO: generic visitor for primitive with random shape
+    // TODO: generic visitor for primitive with random shape ?
 
 }
 
