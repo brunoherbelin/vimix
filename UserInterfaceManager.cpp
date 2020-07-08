@@ -1310,6 +1310,9 @@ void Navigator::Render()
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
+    if (Settings::application.current_view >3)
+        return;
+
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
