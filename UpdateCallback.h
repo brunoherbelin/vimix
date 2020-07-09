@@ -10,6 +10,7 @@ class UpdateCallback
 
 public:
     UpdateCallback();
+    virtual ~UpdateCallback() {}
 
     virtual void update(Node *, float) = 0;
 
