@@ -42,8 +42,7 @@ using namespace std;
 long SystemToolkit::memory_usage()
 {
 #if defined(LINUX)
-    // Ugh, getrusage doesn't work well on Linux.  Try grabbing info
-    // directly from the /proc pseudo-filesystem.  Reading from
+    // Grabbing info directly from the /proc pseudo-filesystem.  Reading from
     // /proc/self/statm gives info on your own process, as one line of
     // numbers that are: virtual mem program size, resident set size,
     // shared pages, text/code, data/stack, library, dirty pages.  The
@@ -51,12 +50,13 @@ long SystemToolkit::memory_usage()
     size_t size = 0;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
-        unsigned long vm = 0;
-        fscanf (file, "%ul", &vm);  // Just need the first num: vm size
+        unsigned long m = 0;
+        fscanf (file, "%lu", &m);  // virtual mem program size,
+        fscanf (file, "%lu", &m);  // resident set size,
         fclose (file);
-       size = (size_t)vm * getpagesize();
+        size = (size_t)m * getpagesize();
     }
-    return size;
+    return (long)size;
 
 #elif defined(APPLE)
     // Inspired from
