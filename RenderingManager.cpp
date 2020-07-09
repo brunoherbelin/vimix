@@ -59,7 +59,7 @@ static void glfw_error_callback(int error, const char* description)
     Log::Error("Glfw Error %d: %s",  error, description);
 }
 
-static void WindowRefreshCallback( GLFWwindow *w )
+static void WindowRefreshCallback( GLFWwindow * )
 {
     Rendering::manager().draw();
 }
@@ -325,10 +325,10 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
 
 glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview)
 {
-    glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_.width(), main_.height());
+    glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_.width() / main_.dpiScale(), main_.height() / main_.dpiScale());
     glm::vec3 P = glm::project( scene_coordinate, modelview, Projection(), viewport );
 
-    return glm::vec2(P.x, main_.height() - P.y);
+    return glm::vec2(P.x, viewport.w - P.y);
 }
 
 void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])

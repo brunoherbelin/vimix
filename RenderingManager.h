@@ -29,7 +29,7 @@ class RenderingWindow
     float dpi_scale_;
 
     // objects to render
-    int textureid_;
+    uint textureid_;
     uint fbo_;
     class WindowSurface *surface_;
 
