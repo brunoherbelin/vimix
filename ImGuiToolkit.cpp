@@ -669,7 +669,7 @@ void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, c
 
 
     ImVec2 pos0 = ImLerp(bb.Min, bb.Max, 0.1);
-    ImVec2 pos1 = ImLerp(bb.Min, bb.Max, 0.2);
+//    ImVec2 pos1 = ImLerp(bb.Min, bb.Max, 0.2);
     float step = (bb.Max.x - bb.Min.x) / 100.f;
     int i = 0;
     for (float tic = bb.Min.x; tic < bb.Max.x; tic += step, ++i) {
@@ -797,15 +797,17 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
     {
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        if (ImGui::IsMousePosValid())
-            ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
-        else
-            ImGui::Text("Mouse  <invalid>");
+//        if (ImGui::IsMousePosValid())
+//            ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+//        else
+//            ImGui::Text("Mouse  <invalid>");
 
         ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
-        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
+//        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
 //        ImGui::Text("DPI Scale (%.1f,%.1f)", io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
         ImGui::Text("Rendering %.1f FPS", io.Framerate);
+        ImGui::Text("Memory %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
+//        ImGui::Text("Memory %.ld MB", SystemToolkit::memory_usage());
         ImGui::PopFont();
 
         if (ImGui::BeginPopupContextWindow())

@@ -14,6 +14,7 @@ using namespace std;
 #include <include/dirent.h>
 #define PATH_SEP '\\'
 #elif defined(LINUX) or defined(APPLE)
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -31,6 +32,32 @@ using namespace std;
 
 #include "defines.h"
 #include "SystemToolkit.h"
+
+
+
+long SystemToolkit::memory_usage() {
+    struct rusage r_usage;
+    getrusage(RUSAGE_SELF,&r_usage);
+    return r_usage.ru_maxrss;
+//    return r_usage.ru_isrss;
+}
+
+string SystemToolkit::byte_to_string(long b)
+{
+    double numbytes = static_cast<double>(b);
+    ostringstream oss;
+
+    std::list<std::string> list = {" Bytes", " KB", " MB", " GB", " TB"};
+    std::list<std::string>::iterator i = list.begin();
+
+    while(numbytes >= 1024.0 && i != list.end())
+    {
+        i++;
+        numbytes /= 1024.0;
+    }
+    oss << std::fixed << std::setprecision(2) << numbytes << *i;
+    return oss.str();
+}
 
 
 string SystemToolkit::date_time_string()

@@ -50,6 +50,12 @@ namespace SystemToolkit
 
     // try to open the file with system
     void open(const std::string& path);
+
+    // (tries to) return maximum resident set size used (in kilobytes)
+    long memory_usage();
+
+    // get a string to display memory size with unit KB, MB, GB, TB
+    std::string byte_to_string(long b);
 }
 
 #endif // SYSTEMTOOLKIT_H
