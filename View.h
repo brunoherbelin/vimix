@@ -157,7 +157,7 @@ public:
     void attach(SessionSource *ts);
     class Session *detach();
 
-    void play();
+    void play(bool open);
 
     void draw () override;
     void update (float dt) override;

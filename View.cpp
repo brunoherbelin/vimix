@@ -877,7 +877,7 @@ void TransitionView::draw()
                          0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         ImGui::SameLine();
         if ( ImGui::Button(ICON_FA_PLAY) )
-            play();
+            play(false);
         ImGui::PopFont();
         ImGui::End();
     }
@@ -936,7 +936,7 @@ std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
     if (transition_source_ != nullptr) {
         // start animation when clic on target
         if (pick.first == output_surface_)
-            play();
+            play(true);
         // otherwise cancel animation
         else
             transition_source_->group(View::TRANSITION)->clearCallbacks();
@@ -946,26 +946,31 @@ std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 }
 
 
-void TransitionView::play()
+void TransitionView::play(bool open)
 {
     if (transition_source_ != nullptr) {
 
+        // if want to open session after play, target  movement till end position, otherwise stop at 0
+        float target_x = open ? 0.4f : 0.f;
+
+        // calculate time remaining to reach target
         float time = CLAMP(- transition_source_->group(View::TRANSITION)->translation_.x, 0.f, 1.f);
-        time += 0.2; // extra time to reach transition
+        time += open ? 0.2f : 0.f;; // extra time to reach transition if want to open
         time *= Settings::application.transition.duration  * 1000.f;
+
         // if remaining time is more than 50ms
         if (time > 50.f) {
             // start animation
-            MoveToCallback *anim = new MoveToCallback(glm::vec3(0.4f, 0.0, 0.0), time);
+            MoveToCallback *anim = new MoveToCallback(glm::vec3(target_x, 0.0, 0.0), time);
             transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
         }
         // otherwise finish animation
         else
-            transition_source_->group(View::TRANSITION)->translation_.x = 0.4;
+            transition_source_->group(View::TRANSITION)->translation_.x = target_x;
     }
 }
 
-View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
+View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>)
 {
     if (!s)
         return Cursor();

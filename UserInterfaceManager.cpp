@@ -1547,13 +1547,13 @@ void Navigator::RenderTransitionPannel()
         ImGui::SameLine(0, 10);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
-        if ( ImGui::Button( ICON_FA_PLAY " Start", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play();
-        }
 
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_PLAY " Play ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->play(true);
+        }
+        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Cancel", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().setView(View::MIXING);
 
     }
