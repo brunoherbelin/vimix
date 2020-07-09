@@ -39,7 +39,7 @@ struct WindowConfig
     bool fullscreen;
     std::string monitor;
 
-    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), monitor(""), fullscreen(false) { }
+    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), fullscreen(false), monitor("") { }
 
 };
 
@@ -60,20 +60,26 @@ struct History
 {
     std::string path;
     std::list<std::string> filenames;
+    bool valid_file;
     bool load_at_start;
     bool save_on_exit;
 
     History() {
         path = "Recent Files";
+        valid_file = false;
         load_at_start = false;
         save_on_exit = false;
     }
     void push(std::string filename) {
-        if (filename.empty()) return;
+        if (filename.empty()) {
+            valid_file = false;
+            return;
+        }
         filenames.remove(filename);
         filenames.push_front(filename);
         if (filenames.size() > MAX_RECENT_HISTORY)
             filenames.pop_back();
+        valid_file = true;
     }
 };
 

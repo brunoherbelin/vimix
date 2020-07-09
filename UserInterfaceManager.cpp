@@ -247,6 +247,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // Open session
+            sessionFileDialogImport_ = false;
             std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
             navigator.hidePannel();
         }
@@ -616,7 +617,7 @@ void UserInterface::showMenuOptions()
     ImGui::MenuItem( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", nullptr, &Settings::application.smooth_transition);
 
     ImGui::Separator();
-    ImGui::MenuItem( ICON_FA_HISTORY " Load most recent on start", nullptr, &Settings::application.recentSessions.load_at_start);
+    ImGui::MenuItem( ICON_FA_HISTORY " Restore session on start", nullptr, &Settings::application.recentSessions.load_at_start);
     ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 }
 
@@ -1669,6 +1670,7 @@ void Navigator::RenderMainPannel()
             const char *tooltip[2] = {"Clear history", "Clear history"};
             if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
                 Settings::application.recentSessions.filenames.clear();
+                Settings::application.recentSessions.valid_file = false;
                 // reload the list next time
                 selection_session_mode_changed = true;
             }

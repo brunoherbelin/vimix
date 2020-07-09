@@ -62,9 +62,9 @@ public:
 
 protected:
     RenderView render_;
+    std::string filename_;
     Source *failedSource_;
     SourceList sources_;
-    std::string filename_;
     std::map<View::Mode, Group*> config_;
     bool active_;
 };

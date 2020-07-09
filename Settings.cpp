@@ -124,6 +124,7 @@ void Settings::Save()
         recentsession->SetAttribute("path", application.recentSessions.path.c_str());
         recentsession->SetAttribute("autoload", application.recentSessions.load_at_start);
         recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
+        recentsession->SetAttribute("valid", application.recentSessions.valid_file);
         for(auto it = application.recentSessions.filenames.begin();
             it != application.recentSessions.filenames.end(); it++) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
@@ -292,8 +293,6 @@ void Settings::Load()
                     application.recentSessions.path = std::string(path_);
                 else
                     application.recentSessions.path = SystemToolkit::home_path();
-                pSession->QueryBoolAttribute("autoload", &application.recentSessions.load_at_start);
-                pSession->QueryBoolAttribute("autosave", &application.recentSessions.save_on_exit);
                 application.recentSessions.filenames.clear();
                 XMLElement* path = pSession->FirstChildElement("path");
                 for( ; path ; path = path->NextSiblingElement())
@@ -302,6 +301,9 @@ void Settings::Load()
                     if (p)
                     application.recentSessions.push( std::string (p) );
                 }
+                pSession->QueryBoolAttribute("autoload", &application.recentSessions.load_at_start);
+                pSession->QueryBoolAttribute("autosave", &application.recentSessions.save_on_exit);
+                pSession->QueryBoolAttribute("valid", &application.recentSessions.valid_file);
             }
             // recent session filenames
             XMLElement * pFolder = pElement->FirstChildElement("Folder");

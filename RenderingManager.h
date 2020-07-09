@@ -44,7 +44,7 @@ public:
 
     bool init(int id, GLFWwindow *share = NULL);
     void setIcon(const std::string &resource);
-    void setTitle(const std::string &title);
+    void setTitle(const std::string &title = "");
 
     // show window (fullscreen if needed)
     void show();

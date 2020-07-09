@@ -41,9 +41,11 @@ static void loadSession(const std::string& filename, Session *session)
     if (creator.load(filename)) {
         // loaded ok
         session->setFilename(filename);
+
+        // internal update flag
         sessionSwapRequested_ = true;
 
-        // cosmetics load ok
+        // notification
         Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
     }
     else {
@@ -65,7 +67,8 @@ static void importSession(const std::string& filename, Session *session)
     SessionCreator creator( session );
 
     if (creator.load(filename)) {
-        // cosmetics load ok
+
+        // internal update flag
         sessionImportRequested_ = true;
 
         Log::Notify("Session %s loaded. %d source(s) imported.", filename.c_str(), session->numSource());
@@ -134,8 +137,11 @@ static void saveSession(const std::string& filename, Session *session)
         // all ok
         session->setFilename(filename);
         // cosmetics saved ok
+        Rendering::manager().mainWindow().setTitle(filename);
         Settings::application.recentSessions.push(filename);
         Log::Notify("Session %s saved.", filename.c_str());
+
+        // set session filename
     }
     else {
         // error loading
@@ -155,6 +161,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 
     // auto load if Settings ask to
     if ( Settings::application.recentSessions.load_at_start &&
+         Settings::application.recentSessions.valid_file &&
          Settings::application.recentSessions.filenames.size() > 0 )
         load( Settings::application.recentSessions.filenames.front() );
     else
