@@ -1758,8 +1758,13 @@ void Navigator::RenderMainPannel()
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.8f, 1.2f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::Combo("Accent", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//        if ( ImGui::Combo("Accent", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
+//            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
+        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
+        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
+        if (b || o || g)
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
         // Bottom aligned Logo & About
