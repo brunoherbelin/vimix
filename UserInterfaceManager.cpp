@@ -270,6 +270,10 @@ void UserInterface::handleKeyboard()
             // Logs
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_E )) {
+            // Shader Editor
+            Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
             Settings::application.widget.preview = !Settings::application.widget.preview;
@@ -1549,12 +1553,15 @@ void Navigator::RenderTransitionPannel()
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY " Play ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
+        if ( ImGui::Button( ICON_FA_PLAY " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
         }
-        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Cancel", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Mixer::manager().setView(View::MIXING);
+        ImGui::SameLine();
+        ImGuiToolkit::HelpMarker("Exit transition leaves the output 'as is',\nwith the newly openned session as a source\nif the transition is not finished.");
+
 
     }
     ImGui::End();
@@ -1747,7 +1754,7 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "M");
 #ifndef NDEBUG
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor);
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
 #endif
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
