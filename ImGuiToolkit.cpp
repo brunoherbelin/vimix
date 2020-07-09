@@ -208,10 +208,11 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     Sum id = std::for_each(icons.begin(), icons.end(), Sum());
     ImGui::PushID( id.sum );
 
-    int s = CLAMP(*state, 0, icons.size() - 1);
+    int num_button = static_cast<int>(icons.size()) -1;
+    int s = CLAMP(*state, 0, num_button);
     if ( ButtonIcon( icons[s].first, icons[s].second ) ){
         ++s;
-        if (s > icons.size() -1)
+        if (s > num_button)
             *state = 0;
         else
             *state = s;
@@ -530,7 +531,7 @@ bool ImGuiToolkit::TimelineSliderEdit(const char* label, guint64 *time, guint64 
 
     // segments behavior
     float time_segment_begin = 0.f;
-    float time_segment_end = 0.f;
+//    float time_segment_end = 0.f;
     if (right_mouse_press) {
         time_segment_begin = 0.f;
     }
@@ -797,25 +798,17 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
     {
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-//        if (ImGui::IsMousePosValid())
-//            ImGui::Text("Mouse  (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
-//        else
-//            ImGui::Text("Mouse  <invalid>");
 
-        ImGui::Text("Window  (%.1f,%.1f)", io.DisplaySize.x, io.DisplaySize.y);
+        ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
 //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
-//        ImGui::Text("DPI Scale (%.1f,%.1f)", io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-        ImGui::Text("Rendering %.1f FPS", io.Framerate);
-        ImGui::Text("Memory %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
-//        ImGui::Text("Memory %.ld MB", SystemToolkit::memory_usage());
+        ImGui::Text("Refresh %.1f FPS", io.Framerate);
+        ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
         ImGui::PopFont();
 
         if (ImGui::BeginPopupContextWindow())
         {
-            if (ImGui::MenuItem("Custom",       NULL, corner == -1)) *p_corner = -1;
-//            if (ImGui::MenuItem("Top-left",     NULL, corner == 0)) corner = 0;
+            if (ImGui::MenuItem("Custom", NULL, corner == -1)) *p_corner = -1;
             if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;
-//            if (ImGui::MenuItem("Bottom-left",  NULL, corner == 2)) corner = 2;
             if (ImGui::MenuItem("Bottom", NULL, corner == 3)) *p_corner = 3;
             if (p_open && ImGui::MenuItem("Close")) *p_open = false;
             ImGui::EndPopup();

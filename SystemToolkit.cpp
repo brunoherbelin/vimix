@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <ctime>
 #include <chrono>
@@ -12,7 +13,9 @@ using namespace std;
 #include <windows.h>
 #define mkdir(dir, mode) _mkdir(dir)
 #include <include/dirent.h>
+#include <sys/resource.h>
 #define PATH_SEP '\\'
+#define PATH_SETTINGS "\\\AppData\\Roaming\\"
 #elif defined(LINUX) or defined(APPLE)
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -22,20 +25,61 @@ using namespace std;
 #define PATH_SEP '/'
 #endif
 
-#ifdef WIN32
-#define PATH_SETTINGS "\\\AppData\\Roaming\\"
-#elif defined(APPLE)
+#if defined(APPLE)
 #define PATH_SETTINGS "/Library/Application Support/"
+#include <mach/task.h>
+#include <mach/mach_init.h>
 #elif defined(LINUX)
+#include <sys/sysinfo.h>
 #define PATH_SETTINGS "/.config/"
 #endif
 
 #include "defines.h"
 #include "SystemToolkit.h"
 
+/// The amount of memory currently being used by this process, in bytes.
+/// it will try to report the resident set in RAM
+long SystemToolkit::memory_usage()
+{
+#if defined(LINUX)
+    // Ugh, getrusage doesn't work well on Linux.  Try grabbing info
+    // directly from the /proc pseudo-filesystem.  Reading from
+    // /proc/self/statm gives info on your own process, as one line of
+    // numbers that are: virtual mem program size, resident set size,
+    // shared pages, text/code, data/stack, library, dirty pages.  The
+    // mem sizes should all be multiplied by the page size.
+    size_t size = 0;
+    FILE *file = fopen("/proc/self/statm", "r");
+    if (file) {
+        unsigned long vm = 0;
+        fscanf (file, "%ul", &vm);  // Just need the first num: vm size
+        fclose (file);
+       size = (size_t)vm * getpagesize();
+    }
+    return size;
 
+#elif defined(APPLE)
+    // Inspired from
+    // http://miknight.blogspot.com/2005/11/resident-set-size-in-mac-os-x.html
+    struct task_basic_info t_info;
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+    task_info(current_task(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+    return t_info.resident_size;
 
-long SystemToolkit::memory_usage() {
+#elif defined(WIN32)
+    // According to MSDN...
+    PROCESS_MEMORY_COUNTERS counters;
+    if (GetProcessMemoryInfo (GetCurrentProcess(), &counters, sizeof (counters)))
+        return counters.PagefileUsage;
+    else return 0;
+
+#else
+    return 0;
+#endif
+}
+
+long SystemToolkit::memory_max_usage() {
+
     struct rusage r_usage;
     getrusage(RUSAGE_SELF,&r_usage);
     return r_usage.ru_maxrss;

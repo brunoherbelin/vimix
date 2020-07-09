@@ -51,8 +51,9 @@ namespace SystemToolkit
     // try to open the file with system
     void open(const std::string& path);
 
-    // (tries to) return maximum resident set size used (in kilobytes)
+    // return memory resident set size used (in bytes)
     long memory_usage();
+    long memory_max_usage();
 
     // get a string to display memory size with unit KB, MB, GB, TB
     std::string byte_to_string(long b);
