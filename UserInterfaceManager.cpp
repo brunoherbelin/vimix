@@ -284,7 +284,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             // select all
-//            Mixer::manager().currentView()->selectall();
+            Mixer::manager().view()->selectAll();
         }
 
     }
@@ -1516,7 +1516,8 @@ void Navigator::RenderNewPannel()
                 // show preview
                 new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
                 // or press Validate button
-                if ( ImGui::Button("Import", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+                ImGui::Text(" ");
+                if ( ImGui::Button(ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                     Mixer::manager().addSource(new_source_preview_.getSource());
                     selected_button[NAV_NEW] = false;
                 }
@@ -1552,7 +1553,8 @@ void Navigator::RenderNewPannel()
                 // show preview
                 new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
                 // ask to import the source in the mixer
-                if ( ImGui::Button("Import", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+                ImGui::Text(" ");
+                if ( ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                     Mixer::manager().addSource(new_source_preview_.getSource());
                     selected_button[NAV_NEW] = false;
                 }

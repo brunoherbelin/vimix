@@ -117,6 +117,16 @@ void View::initiate()
     }
 }
 
+void View::selectAll()
+{
+    Mixer::selection().clear();
+    for(auto sit = Mixer::manager().session()->begin();
+        sit != Mixer::manager().session()->end(); sit++) {
+        if ( (*sit)->active() )
+            Mixer::selection().add(*sit);
+    }
+}
+
 void View::select(glm::vec2 A, glm::vec2 B)
 {
     // unproject mouse coordinate into scene coordinates
@@ -199,6 +209,15 @@ void MixingView::centerSource(Source *s)
     pos_delta = scene.root()->transform_ * pos_delta;
     scene.root()->translation_ += glm::vec3(pos_delta);
 
+}
+
+
+void MixingView::selectAll()
+{
+    for(auto sit = Mixer::manager().session()->begin();
+        sit != Mixer::manager().session()->end(); sit++) {
+        Mixer::selection().add(*sit);
+    }
 }
 
 View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>)
@@ -882,6 +901,12 @@ void TransitionView::draw()
         ImGui::End();
     }
 
+}
+
+void TransitionView::selectAll()
+{
+    Mixer::selection().clear();
+    Mixer::selection().add(transition_source_);
 }
 
 void TransitionView::attach(SessionSource *ts)

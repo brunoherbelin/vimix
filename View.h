@@ -50,6 +50,7 @@ public:
 
     // select sources provided a start and end selection points in screen coordinates
     virtual void select(glm::vec2, glm::vec2);
+    virtual void selectAll();
 
     // drag the view provided a start and an end point in screen coordinates
     virtual Cursor drag (glm::vec2, glm::vec2);
@@ -88,6 +89,7 @@ public:
     void zoom (float factor) override;
     void centerSource(Source *) override;
 
+    void selectAll() override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
 
     void setAlpha (Source *s);
@@ -163,6 +165,7 @@ public:
     void update (float dt) override;
     void zoom (float factor) override;
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
+    void selectAll() override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
 
 private:
