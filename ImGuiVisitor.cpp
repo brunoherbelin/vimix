@@ -21,6 +21,7 @@
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
+#include "UserInterfaceManager.h"
 #include "SystemToolkit.h"
 
 
@@ -285,8 +286,9 @@ void ImGuiVisitor::visit (MediaSource& s)
     }
     else {
         ImGui::Text("Video File");
-        if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Settings::application.widget.media_player = true;
+        if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            UserInterface::manager().showMediaPlayer( s.mediaplayer());
+        }
     }
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }

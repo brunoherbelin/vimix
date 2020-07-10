@@ -6,6 +6,7 @@
 #include <sstream>
 #include <set>
 #include <list>
+#include <map>
 #include <utility>
 
 #include <gst/gst.h>
@@ -215,11 +216,20 @@ public:
      * Get name of the media
      * */
     std::string uri() const;
+    std::string filename() const;
 
     /**
      * Accept visitors
      * */
     void accept(Visitor& v);
+
+    /**
+     * @brief registered
+     * @return list of media players currently registered
+     */
+    static std::list<MediaPlayer*> registered() { return registered_; }
+    static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
+    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
 
 private:
 
@@ -230,6 +240,7 @@ private:
     std::list< std::pair<guint64, guint64> > getPlaySegments() const;
 
     std::string id_;
+    std::string filename_;
     std::string uri_;
     guint textureindex_;
     guint width_;
@@ -279,6 +290,7 @@ private:
     static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
     static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 
+    static std::list<MediaPlayer*> registered_;
 };
 
 

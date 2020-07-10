@@ -582,7 +582,7 @@ void UserInterface::Render()
     if (Settings::application.widget.preview)
         RenderPreview();
     if (Settings::application.widget.media_player)
-        RenderMediaPlayer();
+        mediacontrol.Render();
     if (Settings::application.widget.shader_editor)
         RenderShaderEditor();
     if (Settings::application.widget.stats)
@@ -862,24 +862,52 @@ void UserInterface::RenderPreview()
     }
 }
 
-void UserInterface::RenderMediaPlayer()
-{
-    bool show = false;
-    MediaPlayer *mp = nullptr;
-    MediaSource *s = nullptr;
-    if ( Mixer::manager().currentSource()) {
-        s = dynamic_cast<MediaSource *>(Mixer::manager().currentSource());
-        if (s) {
-            mp = s->mediaplayer();
-            if (mp && mp->isOpen())
-                show = true;
-        }
-    }
 
+void UserInterface::showMediaPlayer(MediaPlayer *mp)
+{
+    Settings::application.widget.media_player = true;
+    mediacontrol.setMediaPlayer(mp);
+}
+
+#define LABEL_AUTO_MEDIA_PLAYER "Follow active source"
+
+MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true)
+{
+}
+
+void MediaController::setMediaPlayer(MediaPlayer *mp)
+{
+    if (mp && mp->isOpen()) {
+        mp_ = mp;
+        current_ = SystemToolkit::base_filename(mp_->filename());
+        follow_active_source_ = false;
+    }
+    else {
+        mp_ = nullptr;
+        current_ = LABEL_AUTO_MEDIA_PLAYER;
+        follow_active_source_ = true;
+    }
+}
+
+void MediaController::followCurrentSource()
+{
+    Source *s = Mixer::manager().currentSource();
+    if ( s != nullptr) {
+        MediaSource *ms = dynamic_cast<MediaSource *>(s);
+        if (ms)
+            mp_ = ms->mediaplayer();
+        else
+            mp_ = nullptr;
+    }
+}
+
+
+void MediaController::Render()
+{
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar ) || !show)
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar ))
     {
         ImGui::End();
         return;
@@ -888,103 +916,133 @@ void UserInterface::RenderMediaPlayer()
     float width = ImGui::GetContentRegionAvail().x;
     float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
-    ImVec2 imagesize ( width, width / mp->aspectRatio());
-    ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
-    ImGui::Image((void*)(uintptr_t)mp->texture(), imagesize);
-    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-    if (ImGui::IsItemHovered()) {
-
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 3.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
-
-        ImGui::SetCursorScreenPos(tooltip_pos);
-        ImGui::Text(" %s", SystemToolkit::filename(mp->uri()).c_str());
-        ImGui::Text(" %s", mp->codec().c_str());
-        if ( mp->frameRate() > 0.f )
-            ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp->width(), mp->height(), mp->updateFrameRate() , mp->frameRate() );
-        else
-            ImGui::Text(" %d x %d px", mp->width(), mp->height());
-
+    // verify that mp is still registered
+    if ( std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ ) == MediaPlayer::end() ) {
+        setMediaPlayer();
     }
-    ImGui::SetCursorScreenPos(draw_pos);
 
-    if ( mp->isEnabled() && mp->duration() != GST_CLOCK_TIME_NONE) {
+    // display list of available media
+    ImGui::SetNextItemWidth(width);
+    if (ImGui::BeginCombo("##MediaPlayers", current_.c_str()))
+    {
+        if (ImGui::Selectable( LABEL_AUTO_MEDIA_PLAYER ))
+            setMediaPlayer();
 
-        if (ImGui::Button(ICON_FA_FAST_BACKWARD))
-            mp->rewind();
-        ImGui::SameLine(0, spacing);
+        for (auto mpit = MediaPlayer::begin();
+             mpit != MediaPlayer::end(); mpit++ )
+        {
+            std::string label = (*mpit)->filename();
+            if (ImGui::Selectable( label.c_str() ))
+                setMediaPlayer(*mpit);
+        }
+        ImGui::EndCombo();
+    }
 
-        // remember playing mode of the GUI
-        bool media_playing_mode = mp->isPlaying();
+    // mode auto
+    if (follow_active_source_)
+        followCurrentSource();
 
-        // display buttons Play/Stop depending on current playing mode
-        if (media_playing_mode) {
+    // Something to show ?
+    if (mp_ && mp_->isOpen())
+    {
+        // display media
+        ImVec2 imagesize ( width, width / mp_->aspectRatio());
+        ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
+        ImGui::Image((void*)(uintptr_t)mp_->texture(), imagesize);
+        ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+        if (ImGui::IsItemHovered()) {
 
-            if (ImGui::Button(ICON_FA_STOP " Stop"))
-                media_playing_mode = false;
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 2.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+
+            ImGui::SetCursorScreenPos(tooltip_pos);
+            ImGui::Text(" %s", mp_->codec().c_str());
+            if ( mp_->frameRate() > 0.f )
+                ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
+            else
+                ImGui::Text(" %d x %d px", mp_->width(), mp_->height());
+
+        }
+        ImGui::SetCursorScreenPos(draw_pos);
+
+        if ( mp_->isEnabled() && mp_->duration() != GST_CLOCK_TIME_NONE) {
+
+            if (ImGui::Button(ICON_FA_FAST_BACKWARD))
+                mp_->rewind();
             ImGui::SameLine(0, spacing);
 
-            ImGui::PushButtonRepeat(true);
-            if (ImGui::Button(ICON_FA_FORWARD))
-                mp->fastForward ();
-            ImGui::PopButtonRepeat();
-        }
-        else {
+            // remember playing mode of the GUI
+            bool media_playing_mode = mp_->isPlaying();
 
-            if (ImGui::Button(ICON_FA_PLAY "  Play"))
-                media_playing_mode = true;
+            // display buttons Play/Stop depending on current playing mode
+            if (media_playing_mode) {
+
+                if (ImGui::Button(ICON_FA_STOP " Stop"))
+                    media_playing_mode = false;
+                ImGui::SameLine(0, spacing);
+
+                ImGui::PushButtonRepeat(true);
+                if (ImGui::Button(ICON_FA_FORWARD))
+                    mp_->fastForward ();
+                ImGui::PopButtonRepeat();
+            }
+            else {
+
+                if (ImGui::Button(ICON_FA_PLAY "  Play"))
+                    media_playing_mode = true;
+                ImGui::SameLine(0, spacing);
+
+                ImGui::PushButtonRepeat(true);
+                if (ImGui::Button(ICON_FA_STEP_FORWARD))
+                    mp_->seekNextFrame();
+                ImGui::PopButtonRepeat();
+            }
+
+            ImGui::SameLine(0, spacing * 4.f);
+
+            static int current_loop = 0;
+            static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
+            current_loop = (int) mp_->loop();
+            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
+                mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
+
+            float speed = static_cast<float>(mp_->playSpeed());
             ImGui::SameLine(0, spacing);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
+            // ImGui::SetNextItemWidth(width - 90.0);
+            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
+                mp_->setPlaySpeed( static_cast<double>(speed) );
+            ImGui::SameLine(0, spacing);
+            if (ImGuiToolkit::ButtonIcon(12, 14)) {
+                speed = 1.f;
+                mp_->setPlaySpeed( static_cast<double>(speed) );
+                mp_->setLoop( MediaPlayer::LOOP_REWIND );
+            }
 
-            ImGui::PushButtonRepeat(true);
-            if (ImGui::Button(ICON_FA_STEP_FORWARD))
-                mp->seekNextFrame();
-            ImGui::PopButtonRepeat();
-        }
+            guint64 current_t = mp_->position();
+            guint64 seek_t = current_t;
 
-        ImGui::SameLine(0, spacing * 4.f);
+            bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
+                                                                mp_->duration(), mp_->frameDuration());
 
-        static int current_loop = 0;
-        static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
-        current_loop = (int) mp->loop();
-        if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
-            mp->setLoop( (MediaPlayer::LoopMode) current_loop );
+            // if the seek target time is different from the current position time
+            // (i.e. the difference is less than one frame)
+            if ( ABS_DIFF (current_t, seek_t) > mp_->frameDuration() ) {
 
-        float speed = static_cast<float>(mp->playSpeed());
-        ImGui::SameLine(0, spacing);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
-        // ImGui::SetNextItemWidth(width - 90.0);
-        if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
-            mp->setPlaySpeed( static_cast<double>(speed) );
-        ImGui::SameLine(0, spacing);
-        if (ImGuiToolkit::ButtonIcon(12, 14)) {
-            speed = 1.f;
-            mp->setPlaySpeed( static_cast<double>(speed) );
-            mp->setLoop( MediaPlayer::LOOP_REWIND );
-        }
+                // request seek (ASYNC)
+                mp_->seekTo(seek_t);
+            }
 
-        guint64 current_t = mp->position();
-        guint64 seek_t = current_t;
+            // play/stop command should be following the playing mode (buttons)
+            // AND force to stop when the slider is pressed
+            bool media_play = media_playing_mode & (!slider_pressed);
 
-        bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
-                                                            mp->duration(), mp->frameDuration());
-
-        // if the seek target time is different from the current position time
-        // (i.e. the difference is less than one frame)
-        if ( ABS_DIFF (current_t, seek_t) > mp->frameDuration() ) {
-
-            // request seek (ASYNC)
-            mp->seekTo(seek_t);
-        }
-
-        // play/stop command should be following the playing mode (buttons)
-        // AND force to stop when the slider is pressed
-        bool media_play = media_playing_mode & (!slider_pressed);
-
-        // apply play action to media only if status should change
-        // NB: The seek command performed an ASYNC state change, but
-        // gst_element_get_state called in isPlaying() will wait for the state change to complete.
-        if ( mp->isPlaying(true) != media_play ) {
-            mp->play( media_play );
+            // apply play action to media only if status should change
+            // NB: The seek command performed an ASYNC state change, but
+            // gst_element_get_state called in isPlaying() will wait for the state change to complete.
+            if ( mp_->isPlaying(true) != media_play ) {
+                mp_->play( media_play );
+            }
         }
     }
 
@@ -1302,9 +1360,7 @@ void Navigator::Render()
         // pannel to configure a selected source
         else
         {
-            Source *s = Mixer::manager().currentSource();
-            if (s)
-                RenderSourcePannel(s);
+            RenderSourcePannel(Mixer::manager().currentSource());
         }
     }
     ImGui::PopStyleColor(2);
@@ -1315,7 +1371,7 @@ void Navigator::Render()
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
-    if (Settings::application.current_view >3)
+    if (s == nullptr || Settings::application.current_view >3)
         return;
 
     // Next window is a side pannel
@@ -1355,7 +1411,7 @@ void Navigator::RenderSourcePannel(Source *s)
             Mixer::manager().deleteSource(s);
         }
     }
-    ImGui::End();
+    ImGui::End();    
 }
 
 

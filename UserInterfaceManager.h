@@ -13,6 +13,7 @@ using namespace std;
 
 struct ImVec2;
 class Source;
+class MediaPlayer;
 
 class SourcePreview {
 
@@ -79,11 +80,27 @@ public:
 };
 
 
+class MediaController
+{
+    MediaPlayer *mp_;
+    std::string current_;
+    bool follow_active_source_;
+
+public:
+    MediaController();
+
+    void setMediaPlayer(MediaPlayer *mp = nullptr);
+    void followCurrentSource();
+
+    void Render();
+};
+
 class UserInterface
 {
     friend class Navigator;
     Navigator navigator;
     ToolBox toolbox;
+    MediaController mediacontrol;
 
     bool keyboard_modifier_active;
     bool show_about;
@@ -130,6 +147,8 @@ public:
 
     void StartScreenshot();
     void showPannel(int id = 0);
+
+    void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;

@@ -24,7 +24,7 @@
 #define MEDIA_PLAYER_DEBUG
 #endif
 
-
+std::list<MediaPlayer*> MediaPlayer::registered_;
 
 MediaPlayer::MediaPlayer(string name) : id_(name)
 {
@@ -86,6 +86,7 @@ guint MediaPlayer::texture() const
 void MediaPlayer::open(string path)
 {
     // set uri to open
+    filename_ = path;
     uri_ = string( gst_uri_construct("file", path.c_str()) );
 
     // reset
@@ -189,6 +190,8 @@ void MediaPlayer::execute_open()
     // all good
     Log::Info("MediaPlayer %s Open %s (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
     ready_ = true;
+
+    MediaPlayer::registered_.push_back(this);
 }
 
 bool MediaPlayer::isOpen() const
@@ -235,6 +238,8 @@ void MediaPlayer::close()
 
     // un-ready the media player
     ready_ = false;
+
+    MediaPlayer::registered_.remove(this);
 }
 
 
@@ -742,6 +747,11 @@ std::string MediaPlayer::codec() const
 std::string MediaPlayer::uri() const
 {
     return uri_;
+}
+
+std::string MediaPlayer::filename() const
+{
+    return filename_;
 }
 
 double MediaPlayer::frameRate() const
