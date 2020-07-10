@@ -148,7 +148,7 @@ message(STATUS "Including 'STB Nothings' from https://github.com/nothings/stb --
 # DIRENT
 #
 if(WIN32)
-    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext)
+    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/Dirent/include)
     message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
 endif( WIN32 )
 

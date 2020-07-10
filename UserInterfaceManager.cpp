@@ -299,8 +299,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 )) // TODO REMOVE (DEBUG ONLY)
-            Mixer::manager().setView(View::TRANSITION);
+//        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 )) // TODO REMOVE (DEBUG ONLY)
+//            Mixer::manager().setView(View::TRANSITION);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
@@ -311,8 +311,14 @@ void UserInterface::handleKeyboard()
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
                 Mixer::manager().deleteSelection();
             // button esc to toggle fullscreen
-            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE ))
-                Rendering::manager().mainWindow().setFullscreen(nullptr);
+            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
+//                if (Rendering::manager().mainWindow().isFullscreen())
+//                    Rendering::manager().mainWindow().setFullscreen(nullptr);
+//                else if (!Mixer::selection().empty())
+//                    Mixer::selection().clear();
+//                else
+//                    Mixer::manager().setView(View::MIXING);
+            }
             // button home to toggle menu
             else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
                 navigator.togglePannelMenu();
@@ -698,10 +704,9 @@ void UserInterface::handleScreenshot()
             break;
             case 3:
             {
-                if ( Rendering::manager().currentScreenshot()->IsFull() ){
+                if ( Rendering::manager().currentScreenshot()->isFull() ){
                     std::string filename =  SystemToolkit::full_filename( SystemToolkit::home_path(), SystemToolkit::date_time_string() + "_vmixcapture.png" );
-                    Rendering::manager().currentScreenshot()->SaveFile( filename.c_str() );
-                    Rendering::manager().currentScreenshot()->Clear();
+                    Rendering::manager().currentScreenshot()->save( filename );
                     Log::Notify("Screenshot saved %s", filename.c_str() );
                 }
                 screenshot_step = 4;
@@ -1645,6 +1650,7 @@ void Navigator::RenderMainPannel()
         bool fs = Rendering::manager().mainWindow().isFullscreen();
         if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
+            ImGui::End();
             return;
         }
 

@@ -93,7 +93,6 @@ protected:
     GeometryView geometry_;
     LayerView layer_;
     TransitionView transition_;
-//    class SessionSource *transition_source_;
 
     gint64 update_time_;
     float dt_;

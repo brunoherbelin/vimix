@@ -2,6 +2,8 @@
 
 #include <memory.h>
 #include <assert.h>
+#include <thread>
+#include <atomic>
 
 #include <glad/glad.h>
 
@@ -9,84 +11,90 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+
+
 Screenshot::Screenshot()
 {
     Width = Height = 0;
     Data = nullptr;
+    Pbo = 0;
+    Pbo_size = 0;
+    Pbo_full = false;
 }
 
 Screenshot::~Screenshot()
 {
-    Clear();
+    if (Data)  free(Data);
 }
 
-bool Screenshot::IsFull()
+bool Screenshot::isFull()
 {
-    return Data != nullptr;
+    return Pbo_full;
 }
 
-void Screenshot::Clear()
+void Screenshot::captureGL(int x, int y, int w, int h)
 {
-    if (IsFull())
-        free(Data);
-    Data = nullptr;
-}
+    Width = w - x;
+    Height = h - y;
+    unsigned int size = Width * Height * 4;
 
-void Screenshot::CreateEmpty(int w, int h)
-{
-    Clear();
-    Width = w;
-    Height = h;
-    Data = (unsigned int*) malloc(Width * Height * 4 * sizeof(unsigned int));
-    memset(Data, 0, Width * Height * 4);
-}
+    // create BPO
+    if (Pbo == 0)
+        glGenBuffers(1, &Pbo);
 
-void Screenshot::CreateFromCaptureGL(int x, int y, int w, int h)
-{
-    Clear();
-    Width = w;
-    Height = h;
-    Data = (unsigned int*) malloc(Width * Height * 4);
+    // bind
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, Pbo);
 
-    // actual capture of frame buffer
+    // init
+    if (Pbo_size != size) {
+        Pbo_size = size;
+        if (Data)  free(Data);
+        Data = (unsigned char*) malloc(Pbo_size);
+        glBufferData(GL_PIXEL_PACK_BUFFER, Pbo_size, NULL, GL_STREAM_READ);
+    }
+
+    // screenshot to PBO (fast)
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    Pbo_full = true;
 
-    // make it usable
-    RemoveAlpha();
-    FlipVertical();
+    // done
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 }
 
-void Screenshot::SaveFile(const char* filename)
+void Screenshot::save(std::string filename)
 {
-    if (Data)
-        stbi_write_png(filename, Width, Height, 4, Data, Width * 4);
+    // is there something to save?
+    if (Pbo && Pbo_size > 0 && Pbo_full) {
+
+        // bind buffer
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, Pbo);
+
+        // get pixels (quite fast)
+        unsigned char* ptr = (unsigned char*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+        if (NULL != ptr) {
+            memmove(Data, ptr, Pbo_size);
+            glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+        }
+
+        // initiate saving in thread (slow)
+        std::thread(storeToFile, this, filename).detach();
+
+        // ready for next
+        Pbo_full = false;
+    }
+
 }
 
 void Screenshot::RemoveAlpha()
 {
-    unsigned int* p = Data;
+    unsigned int* p = (unsigned int*)Data;
     int n = Width * Height;
     while (n-- > 0)
     {
         *p |= 0xFF000000;
         p++;
     }
-}
-
-void Screenshot::BlitTo(Screenshot* dst, int src_x, int src_y, int dst_x, int dst_y, int w, int h) const
-{
-    const Screenshot* src = this;
-    assert(dst != src);
-    assert(dst != NULL);
-    assert(src_x >= 0 && src_y >= 0);
-    assert(src_x + w <= src->Width);
-    assert(src_y + h <= src->Height);
-    assert(dst_x >= 0 && dst_y >= 0);
-    assert(dst_x + w <= dst->Width);
-    assert(dst_y + h <= dst->Height);
-    for (int y = 0; y < h; y++)
-        memcpy(dst->Data + dst_x + (dst_y + y) * dst->Width, src->Data + src_x + (src_y + y) * src->Width, w * 4);
 }
 
 void Screenshot::FlipVertical()
@@ -107,3 +115,21 @@ void Screenshot::FlipVertical()
     delete[] line_tmp;
 }
 
+// Thread to perform slow operation of saving to file
+void Screenshot::storeToFile(Screenshot *s, std::string filename)
+{
+    static std::atomic<bool> ScreenshotSavePending_ = false;
+    // only one save at a time
+    if (ScreenshotSavePending_)
+        return;
+    ScreenshotSavePending_ = true;
+    // got data to save ?
+    if (s && s->Data) {
+        // make it usable
+        s->RemoveAlpha();
+        s->FlipVertical();
+        // save file
+        stbi_write_png(filename.c_str(), s->Width, s->Height, 4, s->Data, s->Width * 4);
+    }
+    ScreenshotSavePending_ = false;
+}
