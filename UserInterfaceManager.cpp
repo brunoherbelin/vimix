@@ -176,7 +176,7 @@ bool UserInterface::Init()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // TODO Enable Keyboard Controls?
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.MouseDrawCursor = true;
     io.FontGlobalScale = Settings::application.scale;
 
@@ -312,12 +312,12 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().deleteSelection();
             // button esc to toggle fullscreen
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
-//                if (Rendering::manager().mainWindow().isFullscreen())
-//                    Rendering::manager().mainWindow().setFullscreen(nullptr);
-//                else if (!Mixer::selection().empty())
-//                    Mixer::selection().clear();
-//                else
-//                    Mixer::manager().setView(View::MIXING);
+                if (Rendering::manager().mainWindow().isFullscreen())
+                    Rendering::manager().mainWindow().setFullscreen(nullptr);
+                else if (!Mixer::selection().empty())
+                    Mixer::selection().clear();
+                else
+                    Mixer::manager().setView(View::MIXING);
             }
             // button home to toggle menu
             else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
@@ -1262,7 +1262,7 @@ void Navigator::Render()
         ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
         ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
         ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-        if (ImGui::Begin("##navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
         {
             if (Settings::application.current_view < 4) {
 
