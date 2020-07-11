@@ -58,30 +58,36 @@ void GlmToolkit::AxisAlignedBoundingBox::extend(const AxisAlignedBoundingBox& bb
     }
 }
 
-glm::vec3 GlmToolkit::AxisAlignedBoundingBox::center() const
+glm::vec3 GlmToolkit::AxisAlignedBoundingBox::center(bool ignore_z) const
 {
+    glm::vec3 ret = glm::vec3(0.f);
+
     if (!isNull())
     {
       glm::vec3 d = mMax - mMin;
-      return mMin + (d * 0.5f);
+      ret = mMin + (d * 0.5f);
     }
-    else
-    {
-      return glm::vec3(0.f);
-    }
+
+    if (ignore_z)
+        ret.z = 0.f;
+
+    return ret;
 }
 
-glm::vec3 GlmToolkit::AxisAlignedBoundingBox::scale() const
+glm::vec3 GlmToolkit::AxisAlignedBoundingBox::scale(bool ignore_z) const
 {
+    glm::vec3 ret = glm::vec3(1.f);
+
     if (!isNull())
     {
       glm::vec3 d = mMax - mMin;
-      return d * 0.5f;
+      ret = d * 0.5f;
     }
-    else
-    {
-      return glm::vec3(0.f);
-    }
+
+    if (ignore_z)
+        ret.z = 1.f;
+
+    return ret;
 }
 
 bool GlmToolkit::AxisAlignedBoundingBox::intersect(const AxisAlignedBoundingBox& bb, bool ignore_z) const

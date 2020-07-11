@@ -66,9 +66,7 @@ public:
     }
 
     virtual void initiate();
-
-    virtual void restoreSettings();
-    virtual void saveSettings();
+    virtual void recenter();
 
     // accessible scene
     Scene scene;
@@ -77,6 +75,10 @@ public:
     static bool need_deep_update_;
 
 protected:
+
+    virtual void restoreSettings();
+    virtual void saveSettings();
+
     Mode mode_;
 };
 
@@ -91,6 +93,7 @@ public:
 
     void selectAll() override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
 
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
@@ -131,6 +134,7 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
 //    void select(glm::vec2, glm::vec2) override;
 
 //    class Box *selection_box_;
@@ -144,6 +148,7 @@ public:
     void update (float dt) override;
     void zoom (float factor) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
 
     float setDepth (Source *, float d = -1.f);
 
@@ -167,6 +172,7 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     void selectAll() override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
 
 private:
     class Surface *output_surface_;

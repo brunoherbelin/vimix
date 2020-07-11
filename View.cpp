@@ -20,6 +20,7 @@
 #include "Source.h"
 #include "SessionSource.h"
 #include "PickingVisitor.h"
+#include "BoundingBoxVisitor.h"
 #include "DrawVisitor.h"
 #include "Mesh.h"
 #include "Mixer.h"
@@ -114,6 +115,55 @@ void View::initiate()
          sit != Mixer::manager().session()->end(); sit++){
 
         (*sit)->stored_status_->copyTransform((*sit)->group(mode_));
+    }
+}
+
+void View::recenter()
+{
+    // restore default view
+    restoreSettings();
+
+    // calculate screen area visible in the default view
+    GlmToolkit::AxisAlignedBoundingBox view_box;
+    glm::mat4 modelview = GlmToolkit::transform(scene.root()->translation_, scene.root()->rotation_, scene.root()->scale_);
+    view_box.extend( Rendering::manager().unProject(glm::vec2(0.f, Rendering::manager().mainWindow().height()), modelview) );
+    view_box.extend( Rendering::manager().unProject(glm::vec2(Rendering::manager().mainWindow().width(), 0.f), modelview) );
+
+    // calculate screen area required to see the entire scene
+    BoundingBoxVisitor scene_visitor_bbox;
+    scene.accept(scene_visitor_bbox);
+    GlmToolkit::AxisAlignedBoundingBox scene_box = scene_visitor_bbox.bbox();
+
+    // if the default view does not contains the entire scene
+    // we shall adjust the view to fit the scene
+    if ( !view_box.contains(scene_box)) {
+
+        // drag view to move towards scene_box center (while remaining in limits of the view)
+        glm::vec2 from = Rendering::manager().project(-view_box.center(), modelview);
+        glm::vec2 to = Rendering::manager().project(-scene_box.center(), modelview);
+        drag(from, to);
+
+        // recalculate the view bounding box
+        GlmToolkit::AxisAlignedBoundingBox updated_view_box;
+        glm::mat4 modelview = GlmToolkit::transform(scene.root()->translation_, scene.root()->rotation_, scene.root()->scale_);
+        updated_view_box.extend( Rendering::manager().unProject(glm::vec2(0.f, Rendering::manager().mainWindow().height()), modelview) );
+        updated_view_box.extend( Rendering::manager().unProject(glm::vec2(Rendering::manager().mainWindow().width(), 0.f), modelview) );
+
+        // if the updated (translated) view does not contains the entire scene
+        // we shall scale the view to fit the scene
+        if ( !updated_view_box.contains(scene_box)) {
+
+            glm::vec3 view_extend = updated_view_box.max() - updated_view_box.min();
+            updated_view_box.extend(scene_box);
+            glm::vec3 scene_extend = scene_box.max() - scene_box.min();
+            glm::vec3 scale = view_extend  / scene_extend  ;
+
+            float z = scene.root()->scale_.x;
+            z = CLAMP( z * MIN(scale.x, scale.y), MIXING_MIN_SCALE, MIXING_MAX_SCALE);
+            scene.root()->scale_.x = z;
+            scene.root()->scale_.y = z;
+
+        }
     }
 }
 
@@ -242,6 +292,16 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
         info << "Inactive";
 
     return Cursor(Cursor_ResizeAll, info.str() );
+}
+
+View::Cursor MixingView::drag (glm::vec2 from, glm::vec2 to)
+{
+    Cursor ret = View::drag(from, to);
+
+    // Clamp translation to acceptable area
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -2.f, 0.f), glm::vec3(3.f, 2.f, 0.f));
+
+    return ret;
 }
 
 void MixingView::setAlpha(Source *s)
@@ -620,6 +680,16 @@ View::Cursor GeometryView::over (Source*, glm::vec2, std::pair<Node *, glm::vec2
     return ret;
 }
 
+View::Cursor GeometryView::drag (glm::vec2 from, glm::vec2 to)
+{
+    Cursor ret = View::drag(from, to);
+
+    // Clamp translation to acceptable area
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -1.5f, 0.f), glm::vec3(3.f, 1.5f, 0.f));
+
+    return ret;
+}
+
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
     // read default settings
@@ -732,6 +802,18 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     info << "Depth " << std::fixed << std::setprecision(2) << d;
     return Cursor(Cursor_ResizeAll, info.str() );
 }
+
+
+View::Cursor LayerView::drag (glm::vec2 from, glm::vec2 to)
+{
+    Cursor ret = View::drag(from, to);
+
+    // Clamp translation to acceptable area
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(0.f), glm::vec3(4.f, 2.f, 0.f));
+
+    return ret;
+}
+
 
 // TRANSITION
 
@@ -978,10 +1060,15 @@ void TransitionView::play(bool open)
         // if want to open session after play, target  movement till end position, otherwise stop at 0
         float target_x = open ? 0.4f : 0.f;
 
-        // calculate time remaining to reach target
+        // calculate how far to reach target
         float time = CLAMP(- transition_source_->group(View::TRANSITION)->translation_.x, 0.f, 1.f);
-        time += open ? 0.2f : 0.f;; // extra time to reach transition if want to open
+        // extra distance to reach transition if want to open
+        time += open ? 0.2f : 0.f;
+        // calculate remaining time on the total duration, in ms
         time *= Settings::application.transition.duration  * 1000.f;
+
+        // cancel previous animation
+        transition_source_->group(View::TRANSITION)->update_callbacks_.clear();
 
         // if remaining time is more than 50ms
         if (time > 50.f) {
@@ -1018,6 +1105,16 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     }
 
     return Cursor(Cursor_ResizeEW, info.str() );
+}
+
+View::Cursor TransitionView::drag (glm::vec2 from, glm::vec2 to)
+{
+    Cursor ret = View::drag(from, to);
+
+    // Clamp translation to acceptable area
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(1.f, -1.7f, 0.f), glm::vec3(2.f, 1.7f, 0.f));
+
+    return ret;
 }
 
 

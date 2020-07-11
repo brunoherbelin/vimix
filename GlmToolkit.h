@@ -28,8 +28,8 @@ public:
     inline bool isNull() const { return mMin.x > mMax.x || mMin.y > mMax.y || mMin.z > mMax.z;}
     inline glm::vec3 min() const { return mMin; }
     inline glm::vec3 max() const { return mMax; }
-    glm::vec3 center() const;
-    glm::vec3 scale() const;
+    glm::vec3 center(bool ignore_z = true) const;
+    glm::vec3 scale(bool ignore_z = true) const;
     bool intersect(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(glm::vec3 point, bool ignore_z = true) const;

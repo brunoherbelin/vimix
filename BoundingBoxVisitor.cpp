@@ -24,8 +24,9 @@ GlmToolkit::AxisAlignedBoundingBox BoundingBoxVisitor::bbox()
 
 void BoundingBoxVisitor::visit(Node &n)
 {
-    // use the transform modified during update
-    modelview_ *= n.transform_;
+    // use the transform modified during update    modelview_ *= n.transform_;
+    glm::mat4 transform_local = GlmToolkit::transform(n.translation_, n.rotation_, n.scale_);
+    modelview_ *= transform_local;
 }
 
 void BoundingBoxVisitor::visit(Group &n)
