@@ -970,7 +970,7 @@ void TransitionView::draw()
     scene.accept(dv2);
 
     // display interface duration
-    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.03f, -0.14f, 0.f), scene.root()->transform_);
+    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.03f, -0.14f, 0.f), scene.root()->transform_, false);
     ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
     if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings

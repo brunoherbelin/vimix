@@ -323,9 +323,13 @@ glm::vec3 Rendering::unProject(glm::vec2 screen_coordinate, glm::mat4 modelview)
 }
 
 
-glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview)
+glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview, bool to_framebuffer)
 {
-    glm::vec4 viewport = glm::vec4( 0.f, 0.f, main_.width() / main_.dpiScale(), main_.height() / main_.dpiScale());
+    glm::vec4 viewport;
+    if (to_framebuffer)
+        viewport= glm::vec4( 0.f, 0.f, main_.width(), main_.height());
+    else
+        viewport= glm::vec4( 0.f, 0.f, main_.width() / main_.dpiScale(), main_.height() / main_.dpiScale());
     glm::vec3 P = glm::project( scene_coordinate, modelview, Projection(), viewport );
 
     return glm::vec2(P.x, viewport.w - P.y);
