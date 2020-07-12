@@ -528,7 +528,6 @@ void UserInterface::NewFrame()
     handleKeyboard();
     handleMouse();
     handleScreenshot();
-
     // handle FileDialog
     if (sessionFileDialogLoadFinished_) {
         sessionFileDialogLoadFinished_ = false;
@@ -610,6 +609,7 @@ void UserInterface::Render()
     // all IMGUI Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 }
 
 void UserInterface::Terminate()
@@ -1715,6 +1715,8 @@ void Navigator::RenderMainPannel()
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
+        // TODO fixe fullscreen for OSX :(
+#ifndef APPLE
         // Icon to switch fullscreen
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
         const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
@@ -1724,7 +1726,7 @@ void Navigator::RenderMainPannel()
             ImGui::End();
             return;
         }
-
+#endif
         // Session menu
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Session");
