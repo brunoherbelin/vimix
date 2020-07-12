@@ -154,8 +154,8 @@ void MediaPlayer::execute_open()
     if (sink) {
 
         // set all properties 
-        g_object_set (sink, "emit-signals", TRUE, "sync", TRUE, "enable-last-sample", TRUE,  
-                    "wait-on-eos", FALSE, "max-buffers", 100, "caps", caps, NULL);
+        g_object_set (sink, "emit-signals", TRUE, "sync", TRUE, "enable-last-sample", TRUE,
+                    "wait-on-eos", FALSE, "max-buffers", 50, "caps", caps, NULL);
 
         // connect callbacks
         g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_pull_sample_video), this);
