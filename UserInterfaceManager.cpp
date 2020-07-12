@@ -853,7 +853,7 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
-                if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Close") )
+                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                     Settings::application.widget.preview = false;
 
                 ImGui::EndMenu();
@@ -955,7 +955,7 @@ void MediaController::Render()
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
 
-            if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Close") )
+            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                 Settings::application.widget.media_player = false;
 
             ImGui::EndMenu();
@@ -1100,6 +1100,17 @@ void MediaController::Render()
             }
 
         }
+    }
+    else {
+        ImVec2 center = ImGui::GetContentRegionAvail() * ImVec2(0.5f, 0.5f);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.5f));
+        center.x -= ImGui::GetTextLineHeight() * 2.f;
+        center.y += ImGui::GetTextLineHeight() * 0.5f;
+        ImGui::SetCursorPos(center);
+        ImGui::Text("No selection");
+        ImGui::PopFont();
+        ImGui::PopStyleColor(1);
     }
 
     ImGui::End();
@@ -1529,22 +1540,28 @@ void Navigator::RenderNewPannel()
 
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Origin", &new_source_type_, "File\0Software\0Hardware\0");
+
+        static const char* origin_names[2] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal" };
+        // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
+        if (ImGui::Combo("Origin", &new_source_type_, origin_names, IM_ARRAYSIZE(origin_names)) )
+            new_source_preview_.setSource();
 
         // File Source creation
         if (new_source_type_ == 0) {
 
-            // helper
-            ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.mix)\n\nEquivalent to dropping the file in the workspace.");
+            ImGui::SetCursorPosY(2.f * width_);
 
             // browse for a filename
             static std::atomic<bool> file_selected = false;
-            if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // clear string before selection
                 file_selected = false;
                 std::thread (ImportFileDialogOpen, file_browser_path_, &file_selected, Settings::application.recentImport.path).detach();
             }
+            // Indication
+            ImGui::SameLine();
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.mix)\n\nEquivalent to dropping the file in the workspace.");
+
             if ( file_selected ) {
                 file_selected = false;
                 std::string open_filename(file_browser_path_);
@@ -1582,9 +1599,7 @@ void Navigator::RenderNewPannel()
         // Software Source creator
         else if (new_source_type_ == 1){
 
-            // helper
-            ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("Create a source from a software algorithm or from vimix objects.");
+            ImGui::SetCursorPosY(2.f * width_);
 
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1604,6 +1619,11 @@ void Navigator::RenderNewPannel()
                 }
                 ImGui::EndCombo();
             }
+
+            // Indication
+            ImGui::SameLine();
+            ImGuiToolkit::HelpMarker("Create a source generating images\nfrom internal vimix objects\nor from software algorithms.");
+
             // if a new source was added
             if (new_source_preview_.ready()) {
                 // show preview
@@ -1620,7 +1640,7 @@ void Navigator::RenderNewPannel()
         else {
             // helper
             ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("Create a source capturing images from an external hardware.");
+            ImGuiToolkit::HelpMarker("Create a source capturing images\nfrom external devices or network.");
         }
 
     }
