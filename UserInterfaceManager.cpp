@@ -890,7 +890,7 @@ void UserInterface::showMediaPlayer(MediaPlayer *mp)
 
 #define LABEL_AUTO_MEDIA_PLAYER "Play active source"
 
-MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true)
+MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true), media_playing_mode_(false)
 {
 }
 
@@ -900,11 +900,13 @@ void MediaController::setMediaPlayer(MediaPlayer *mp)
         mp_ = mp;
         current_ = SystemToolkit::base_filename(mp_->filename());
         follow_active_source_ = false;
+        media_playing_mode_ = mp_->isPlaying();
     }
     else {
         mp_ = nullptr;
         current_ = LABEL_AUTO_MEDIA_PLAYER;
         follow_active_source_ = true;
+        media_playing_mode_ = false;
     }
 }
 
@@ -913,10 +915,16 @@ void MediaController::followCurrentSource()
     Source *s = Mixer::manager().currentSource();
     if ( s != nullptr) {
         MediaSource *ms = dynamic_cast<MediaSource *>(s);
-        if (ms)
-            mp_ = ms->mediaplayer();
-        else
+        if (ms) {
+            // update the internal mediaplayer if changed
+            if (mp_ != ms->mediaplayer()) {
+                mp_ = ms->mediaplayer();
+                media_playing_mode_ = mp_->isPlaying();
+            }
+        } else {
             mp_ = nullptr;
+            media_playing_mode_ = false;
+        }
     }
 }
 
@@ -980,8 +988,10 @@ void MediaController::Render()
         float width = ImGui::GetContentRegionAvail().x;
 
         if (Settings::application.widget.media_player_view) {
-            // set an image height to fill the vertical space, minus the hieht of navigation bar
-            float image_height = ImGui::GetContentRegionAvail().y - 3.f * ImGui::GetFrameHeight();
+            // set an image height to fill the vertical space, minus the height of control bar
+            float image_height = ImGui::GetContentRegionAvail().y;
+            if (mp_->duration() != GST_CLOCK_TIME_NONE)
+                image_height -= 3.f * ImGui::GetFrameHeight();
 
             // display media
             ImVec2 imagesize ( image_height * mp_->aspectRatio(), image_height);
@@ -1009,7 +1019,7 @@ void MediaController::Render()
             ImGui::SetCursorPos(return_to_pos);
         }
 
-
+        // Control bar
         if ( mp_->isEnabled() && mp_->duration() != GST_CLOCK_TIME_NONE) {
 
             float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
@@ -1018,14 +1028,11 @@ void MediaController::Render()
                 mp_->rewind();
             ImGui::SameLine(0, spacing);
 
-            // remember playing mode of the GUI
-            bool media_playing_mode = mp_->isPlaying();
-
             // display buttons Play/Stop depending on current playing mode
-            if (media_playing_mode) {
+            if (media_playing_mode_) {
 
                 if (ImGui::Button(ICON_FA_STOP " Stop"))
-                    media_playing_mode = false;
+                    media_playing_mode_ = false;
                 ImGui::SameLine(0, spacing);
 
                 ImGui::PushButtonRepeat(true);
@@ -1036,7 +1043,7 @@ void MediaController::Render()
             else {
 
                 if (ImGui::Button(ICON_FA_PLAY "  Play"))
-                    media_playing_mode = true;
+                    media_playing_mode_ = true;
                 ImGui::SameLine(0, spacing);
 
                 ImGui::PushButtonRepeat(true);
@@ -1047,18 +1054,20 @@ void MediaController::Render()
 
             ImGui::SameLine(0, MAX(spacing * 4.f, width - 400.f) );
 
+            // loop modes button
             static int current_loop = 0;
             static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
             current_loop = (int) mp_->loop();
             if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
                 mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
-
+            // speed slider
             float speed = static_cast<float>(mp_->playSpeed());
             ImGui::SameLine(0, spacing);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
             // ImGui::SetNextItemWidth(width - 90.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
+            // reset play to x1
             ImGui::SameLine(0, spacing);
             if (ImGuiToolkit::ButtonIcon(19, 15)) {
                 speed = 1.f;
@@ -1066,30 +1075,30 @@ void MediaController::Render()
                 mp_->setLoop( MediaPlayer::LOOP_REWIND );
             }
 
+            // custom timeline slider
             guint64 current_t = mp_->position();
             guint64 seek_t = current_t;
-
             bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
                                                                 mp_->duration(), mp_->frameDuration());
-
             // if the seek target time is different from the current position time
             // (i.e. the difference is less than one frame)
             if ( ABS_DIFF (current_t, seek_t) > mp_->frameDuration() ) {
-
                 // request seek (ASYNC)
                 mp_->seekTo(seek_t);
+                slider_pressed = false;
             }
-
             // play/stop command should be following the playing mode (buttons)
             // AND force to stop when the slider is pressed
-            bool media_play = media_playing_mode & (!slider_pressed);
+            bool media_play = media_playing_mode_ & (!slider_pressed);
 
             // apply play action to media only if status should change
             // NB: The seek command performed an ASYNC state change, but
-            // gst_element_get_state called in isPlaying() will wait for the state change to complete.
+            // gst_element_get_state called in isPlaying(true) will wait
+            // for the state change to complete : do not remove it!
             if ( mp_->isPlaying(true) != media_play ) {
                 mp_->play( media_play );
             }
+
         }
     }
 
@@ -1862,8 +1871,8 @@ void Navigator::RenderMainPannel()
 #ifndef NDEBUG
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
-#endif
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
+#endif
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         // Settings application appearance

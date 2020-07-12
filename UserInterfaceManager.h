@@ -85,6 +85,7 @@ class MediaController
     MediaPlayer *mp_;
     std::string current_;
     bool follow_active_source_;
+    bool media_playing_mode_;
 
 public:
     MediaController();
