@@ -823,9 +823,6 @@ void ToolBox::Render()
 
 }
 
-//static void Square(ImGuiSizeCallbackData* data) {
-//    data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y); }
-
 void UserInterface::RenderPreview()
 {
     struct CustomConstraints // Helper functions for aspect-ratio constraints
@@ -843,15 +840,32 @@ void UserInterface::RenderPreview()
         ImGui::SetNextWindowPos(ImVec2(1180, 20), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
-        ImGui::Begin(ICON_FA_LAPTOP " Preview", &Settings::application.widget.preview,  ImGuiWindowFlags_NoScrollbar);
+        if ( !ImGui::Begin("Preview", &Settings::application.widget.preview,  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
+        {
+            ImGui::End();
+            return;
+        }
+        // menu (no title bar)
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu(ICON_FA_LAPTOP " Preview"))
+            {
+                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
+                    Rendering::manager().outputWindow().show();
+
+                if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Close") )
+                    Settings::application.widget.preview = false;
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
         float width = ImGui::GetContentRegionAvail().x;
 
         ImVec2 imagesize ( width, width / ar);
         // virtual button to show the output window when clic on the preview
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-        if (ImGui::Selectable("##preview", false, ImGuiSelectableFlags_PressedOnClick, imagesize))
-            Rendering::manager().outputWindow().show();
-        ImGui::SetCursorScreenPos(draw_pos);
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         // tooltip overlay
@@ -867,7 +881,6 @@ void UserInterface::RenderPreview()
         ImGui::End();
     }
 }
-
 
 void UserInterface::showMediaPlayer(MediaPlayer *mp)
 {
