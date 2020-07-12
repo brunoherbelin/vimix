@@ -160,7 +160,6 @@ protected:
     void showMenuOptions();
 
     void RenderPreview();
-    void RenderMediaPlayer();
     void RenderShaderEditor();
     void handleKeyboard();
     void handleMouse();

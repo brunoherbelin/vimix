@@ -858,7 +858,7 @@ void UserInterface::RenderPreview()
         if (ImGui::IsItemHovered()) {
 
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(5, 5, 5, 100));
 
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
@@ -875,7 +875,7 @@ void UserInterface::showMediaPlayer(MediaPlayer *mp)
     mediacontrol.setMediaPlayer(mp);
 }
 
-#define LABEL_AUTO_MEDIA_PLAYER "Follow active source"
+#define LABEL_AUTO_MEDIA_PLAYER "Play active source"
 
 MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true)
 {
@@ -910,68 +910,96 @@ void MediaController::followCurrentSource()
 
 void MediaController::Render()
 {
+    float toolbar_height = 2.5 * ImGui::GetFrameHeightWithSpacing();
+    ImVec2 MinWindowSize = ImVec2(350.f, 1.2f * ImGui::GetFrameHeightWithSpacing() + toolbar_height * (Settings::application.widget.media_player_view? 2.f : 1.f));
+
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar ))
+    ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
+    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
         ImGui::End();
         return;
     }
-
-    float width = ImGui::GetContentRegionAvail().x;
-    float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
     // verify that mp is still registered
     if ( std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ ) == MediaPlayer::end() ) {
         setMediaPlayer();
     }
 
-    // display list of available media
-    ImGui::SetNextItemWidth(width);
-    if (ImGui::BeginCombo("##MediaPlayers", current_.c_str()))
+    // menu (no title bar)
+    if (ImGui::BeginMenuBar())
     {
-        if (ImGui::Selectable( LABEL_AUTO_MEDIA_PLAYER ))
-            setMediaPlayer();
-
-        for (auto mpit = MediaPlayer::begin();
-             mpit != MediaPlayer::end(); mpit++ )
+        if (ImGui::BeginMenu(ICON_FA_FILM))
         {
-            std::string label = (*mpit)->filename();
-            if (ImGui::Selectable( label.c_str() ))
-                setMediaPlayer(*mpit);
+            ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
+
+            if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Close") )
+                Settings::application.widget.media_player = false;
+
+            ImGui::EndMenu();
         }
-        ImGui::EndCombo();
+        if (ImGui::BeginMenu(current_.c_str()))
+        {
+            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
+                setMediaPlayer();
+
+            // display list of available media
+            for (auto mpit = MediaPlayer::begin(); mpit != MediaPlayer::end(); mpit++ )
+            {
+                std::string label = (*mpit)->filename();
+                if (ImGui::MenuItem( label.c_str() ))
+                    setMediaPlayer(*mpit);
+            }
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
     }
 
-    // mode auto
+    // mode auto : select the media player from active source
     if (follow_active_source_)
         followCurrentSource();
 
     // Something to show ?
     if (mp_ && mp_->isOpen())
     {
-        // display media
-        ImVec2 imagesize ( width, width / mp_->aspectRatio());
-        ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
-        ImGui::Image((void*)(uintptr_t)mp_->texture(), imagesize);
-        ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-        if (ImGui::IsItemHovered()) {
+        float width = ImGui::GetContentRegionAvail().x;
 
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + 2.f * ImGui::GetTextLineHeightWithSpacing()), IM_COL32(55, 55, 55, 200));
+        if (Settings::application.widget.media_player_view) {
+            // set an image height to fill the vertical space, minus the hieht of navigation bar
+            float image_height = ImGui::GetContentRegionAvail().y - 3.f * ImGui::GetFrameHeight();
 
-            ImGui::SetCursorScreenPos(tooltip_pos);
-            ImGui::Text(" %s", mp_->codec().c_str());
-            if ( mp_->frameRate() > 0.f )
-                ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
-            else
-                ImGui::Text(" %d x %d px", mp_->width(), mp_->height());
+            // display media
+            ImVec2 imagesize ( image_height * mp_->aspectRatio(), image_height);
+            ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
+            ImGui::SetCursorPosX(ImGui::GetCursorPos().x + (ImGui::GetContentRegionAvail().x - imagesize.x) / 2.0);
+            ImGui::Image((void*)(uintptr_t)mp_->texture(), imagesize);
+            ImVec2 return_to_pos = ImGui::GetCursorPos();
+            if (ImGui::IsItemHovered()) {
 
+                float tooltip_height = (follow_active_source_? 3.f:2.f)* ImGui::GetTextLineHeightWithSpacing();
+
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + tooltip_height), IM_COL32(5, 5, 5, 100));
+
+                ImGui::SetCursorScreenPos(tooltip_pos);
+                if (follow_active_source_)
+                    ImGui::Text(" %s", mp_->filename().c_str());
+                ImGui::Text(" %s", mp_->codec().c_str());
+                if ( mp_->frameRate() > 0.f )
+                    ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
+                else
+                    ImGui::Text(" %d x %d px", mp_->width(), mp_->height());
+
+            }
+            ImGui::SetCursorPos(return_to_pos);
         }
-        ImGui::SetCursorScreenPos(draw_pos);
+
 
         if ( mp_->isEnabled() && mp_->duration() != GST_CLOCK_TIME_NONE) {
+
+            float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
             if (ImGui::Button(ICON_FA_FAST_BACKWARD))
                 mp_->rewind();
@@ -1004,7 +1032,7 @@ void MediaController::Render()
                 ImGui::PopButtonRepeat();
             }
 
-            ImGui::SameLine(0, spacing * 4.f);
+            ImGui::SameLine(0, MAX(spacing * 4.f, width - 400.f) );
 
             static int current_loop = 0;
             static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
@@ -1019,7 +1047,7 @@ void MediaController::Render()
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
             ImGui::SameLine(0, spacing);
-            if (ImGuiToolkit::ButtonIcon(12, 14)) {
+            if (ImGuiToolkit::ButtonIcon(19, 15)) {
                 speed = 1.f;
                 mp_->setPlaySpeed( static_cast<double>(speed) );
                 mp_->setLoop( MediaPlayer::LOOP_REWIND );

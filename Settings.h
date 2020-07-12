@@ -18,6 +18,7 @@ struct WidgetsConfig
     bool logs;
     bool preview;
     bool media_player;
+    bool media_player_view;
     bool shader_editor;
     bool toolbox;
 
@@ -27,6 +28,7 @@ struct WidgetsConfig
         logs = false;
         preview = false;
         media_player = false;
+        media_player_view = true;
         shader_editor = false;
         toolbox = false;
     }
