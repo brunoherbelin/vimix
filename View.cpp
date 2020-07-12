@@ -123,6 +123,10 @@ void View::recenter()
     // restore default view
     restoreSettings();
 
+    // nothing else if scene is empty
+    if (scene.ws()->numChildren() < 1)
+        return;
+
     // calculate screen area visible in the default view
     GlmToolkit::AxisAlignedBoundingBox view_box;
     glm::mat4 modelview = GlmToolkit::transform(scene.root()->translation_, scene.root()->rotation_, scene.root()->scale_);
