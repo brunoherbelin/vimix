@@ -1353,12 +1353,14 @@ void Navigator::Render()
                         draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
                     }
                     // draw select box
+                    ImGui::PushID( (*iter)->group(View::RENDERING)->id() );
                     if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
                     {
                         applyButtonSelection(index);
                         if (selected_button[index])
                             Mixer::manager().setCurrentSource(index);
                     }
+                    ImGui::PopID();
                 }
 
                 // the "+" icon for action of creating new source
