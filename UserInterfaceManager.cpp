@@ -1572,7 +1572,7 @@ void Navigator::RenderNewPannel()
 
             // combo of recent media filenames
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##RecentImport", "Select recent"))
+            if (ImGui::BeginCombo("##RecentImport", "Recent files"))
             {
                 for (auto path = Settings::application.recentImport.filenames.begin();
                      path != Settings::application.recentImport.filenames.end(); path++ )
