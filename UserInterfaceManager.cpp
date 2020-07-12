@@ -1925,10 +1925,10 @@ void Navigator::RenderMainPannel()
         }
         if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().show_about = true;
-        if ( ImGui::Button("ImGui"))
+        if ( ImGui::Button("    ImGui    "))
             UserInterface::manager().show_imgui_about = true;
         ImGui::SameLine();
-        if ( ImGui::Button("GStreamer"))
+        if ( ImGui::Button(" GStreamer "))
             UserInterface::manager().show_gst_about = true;
         ImGui::SameLine();
         if ( ImGui::Button("OpenGL", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
