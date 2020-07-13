@@ -56,9 +56,6 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     loop_ = LoopMode::LOOP_REWIND;
     current_segment_ = segments_.begin();
 
-//    v_frame_.buffer = nullptr;
-//    v_frame_is_full_ = false;
-
     vframe_write_index_ = 0;
     vframe_read_index_ = 0;
     for(guint i = 0; i < N_VFRAME; i++){
@@ -652,7 +649,7 @@ void MediaPlayer::update()
         vframe_lock_[vframe_read_index_].unlock();
     }
 
-    vframe_read_index_ = (vframe_read_index_ +1) %2;
+    vframe_read_index_ = (vframe_read_index_ +1) % N_VFRAME;
 
     // manage loop mode
     if (need_loop_ && !isimage_) {
@@ -800,7 +797,7 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
     if ( vframe_lock_[i].try_lock()) {
 
         // always empty frame before filling it again
-        if (vframe_[i].buffer)
+        if (vframe_[vframe_write_index_].buffer)
             gst_video_frame_unmap(&vframe_[vframe_write_index_]);
 
 
@@ -831,7 +828,7 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
                     start_position_ = vframe_position_[vframe_write_index_];
 
                 //  dual VFRAME mechanism
-                vframe_write_index_ = (vframe_write_index_ + 1) % 2;
+                vframe_write_index_ = (vframe_write_index_ + 1) % N_VFRAME;
             }
         }
 

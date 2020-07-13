@@ -888,7 +888,7 @@ void UserInterface::showMediaPlayer(MediaPlayer *mp)
     mediacontrol.setMediaPlayer(mp);
 }
 
-#define LABEL_AUTO_MEDIA_PLAYER "Play active source"
+#define LABEL_AUTO_MEDIA_PLAYER "Active source"
 
 MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true), media_playing_mode_(false)
 {
