@@ -1576,12 +1576,14 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##RecentImport", "Recent files"))
             {
-                for (auto path = Settings::application.recentImport.filenames.begin();
+                for (std::list<std::string>::iterator path = Settings::application.recentImport.filenames.begin();
                      path != Settings::application.recentImport.filenames.end(); path++ )
                 {
-                    std::string label = path->substr( path->size() - MIN( 35, path->size()) );
-                    if (ImGui::Selectable( label.c_str() )) {
-                        new_source_preview_.setSource( Mixer::manager().createSourceFile(path->c_str()), label);
+                    if ( SystemToolkit::file_exists(*path)) {
+                        std::string label = path->substr( path->size() - MIN( 35, path->size()) );
+                        if (ImGui::Selectable( label.c_str() )) {
+                            new_source_preview_.setSource( Mixer::manager().createSourceFile(path->c_str()), label);
+                        }
                     }
                 }
                 ImGui::EndCombo();

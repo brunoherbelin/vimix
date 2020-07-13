@@ -237,6 +237,9 @@ string SystemToolkit::full_filename(const std::string& path, const string &filen
 
 bool SystemToolkit::file_exists(const string& path)
 {
+    if (path.empty())
+        return false;
+
     return access(path.c_str(), R_OK) == 0;
 
     // TODO : WIN32 implementation
