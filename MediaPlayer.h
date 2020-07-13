@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <utility>
+#include <mutex>
 
 #include <gst/gst.h>
 #include <gst/gl/gl.h>
@@ -18,15 +19,17 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
+#define N_VFRAME 2
 
 struct TimeCounter {
 
-    GstClockTime current_time;
     GstClockTime last_time;
+    GstClockTime tic_time;
     int nbFrames;
     float fps;
 public:
     TimeCounter();
+    GstClockTime dt();
     void tic();
     void reset();
     float frameRate() const;
@@ -252,6 +255,7 @@ private:
     GstClockTime frame_duration_;
     gdouble rate_;
     LoopMode loop_;
+    std::atomic<bool> need_loop_;
     TimeCounter timecount_;
     gdouble framerate_;
     GstState desired_state_;
@@ -259,10 +263,18 @@ private:
     GstDiscoverer *discoverer_;
     std::stringstream discoverer_message_;
     std::string codec_name_;
-    GstVideoFrame v_frame_;
     GstVideoInfo v_frame_video_info_;
-    std::atomic<bool> v_frame_is_full_;
-    std::atomic<bool> need_loop_;
+
+//    GstVideoFrame v_frame_;
+//    std::atomic<bool> v_frame_is_full_;
+
+    guint vframe_read_index_;
+    guint vframe_write_index_;
+    GstVideoFrame vframe_[N_VFRAME];
+    std::atomic<bool> vframe_is_full_[N_VFRAME];
+    GstClockTime vframe_position_[N_VFRAME];
+    std::mutex vframe_lock_[N_VFRAME];
+    std::mutex vframe_index_lock_;
 
     // for PBO
     guint pbo_[2];
@@ -283,7 +295,7 @@ private:
     void execute_open();
     void execute_loop_command();
     void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);   
-    bool fill_v_frame(GstBuffer *buf, bool ignorepts = false);
+    bool fill_v_frame(GstBuffer *buf);
 
     static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);
     static void callback_end_of_video (GstElement *, MediaPlayer *m);

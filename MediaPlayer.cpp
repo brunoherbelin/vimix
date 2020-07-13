@@ -1,5 +1,6 @@
 #include "MediaPlayer.h"
 #include <algorithm>
+#include <thread>
 
 // vmix
 #include "defines.h"
@@ -42,7 +43,6 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     interlaced_ = false;
     enabled_ = true;
     need_loop_ = false;
-    v_frame_is_full_ = false;
     rate_ = 1.0;
     framerate_ = 0.0;
 
@@ -55,13 +55,23 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
     current_segment_ = segments_.begin();
-    v_frame_.buffer = nullptr;
+
+//    v_frame_.buffer = nullptr;
+//    v_frame_is_full_ = false;
+
+    vframe_write_index_ = 0;
+    vframe_read_index_ = 0;
+    for(guint i = 0; i < N_VFRAME; i++){
+        vframe_[i].buffer = nullptr;
+        vframe_is_full_[i] = false;
+        vframe_position_[i] = GST_CLOCK_TIME_NONE;
+    }
 
     // no PBO by default
     pbo_[0] = pbo_[1] = 0;
     pbo_size_ = 0;
     pbo_index_ = 0;
-    pbo_next_index_ = 1;
+    pbo_next_index_ = 0;
 
     textureindex_ = 0;
 }
@@ -224,15 +234,24 @@ void MediaPlayer::close()
     }
 
     // cleanup eventual remaining frame related memory
-    if (v_frame_.buffer)
-        gst_video_frame_unmap(&v_frame_);
+//    if (v_frame_.buffer)
+//        gst_video_frame_unmap(&v_frame_);
+
+    for(guint i = 0; i < N_VFRAME; i++){
+        if (vframe_[i].buffer)
+            gst_video_frame_unmap(&vframe_[i]);
+        vframe_is_full_[i] = false;
+        vframe_position_[i] = GST_CLOCK_TIME_NONE;
+    }
+
 
     // cleanup opengl texture
-    glDeleteTextures(1, &textureindex_);
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
     textureindex_ = 0;
 
     // delete picture buffer
-    if (pbo_[0] || pbo_[1])
+    if (pbo_[0])
         glDeleteBuffers(2, pbo_);
     pbo_size_ = 0;
 
@@ -503,49 +522,39 @@ void MediaPlayer::init_texture()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, vframe_[vframe_read_index_].data[0]);
 
     if (!isimage_) {
 
         // need to fill image size
         pbo_size_ = height_ * width_ * 4;
 
-        // create 2 pixel buffer objects,
-        if (pbo_[0] || pbo_[1])
+        // create pixel buffer objects,
+        if (pbo_[0])
             glDeleteBuffers(2, pbo_);
         glGenBuffers(2, pbo_);
-        // create first PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[0]);
-        // glBufferDataARB with NULL pointer reserves only memory space.
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-        // fill in with reset picture
-        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-        if (ptr)  {
-            // update data directly on the mapped buffer
-            memmove(ptr, v_frame_.data[0], pbo_size_);
-            // release pointer to mapping buffer
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-        }
-        else {
-            // did not work, disable PBO
-            glDeleteBuffers(2, pbo_);
-            pbo_[0] = pbo_[1] = 0;
-            pbo_size_ = 0;
-        }
 
-        // idem with second PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[1]);
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-        ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-        if (ptr) {
-            memmove(ptr, v_frame_.data[0], pbo_size_);
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-        }
-        else {
-            // did not work, disable PBO
-            glDeleteBuffers(2, pbo_);
-            pbo_[0] = pbo_[1] = 0;
-            pbo_size_ = 0;
+        for(int i = 0; i < 2; i++ ) {
+            // create  PBO
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
+            // glBufferDataARB with NULL pointer reserves only memory space.
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+            // fill in with reset picture
+            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+            if (ptr)  {
+                // update data directly on the mapped buffer
+                memmove(ptr, vframe_[vframe_read_index_].data[0], pbo_size_);
+                // release pointer to mapping buffer
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+            }
+            else {
+                // did not work, disable PBO
+                glDeleteBuffers(4, pbo_);
+                pbo_[0] = pbo_[1] = 0;
+                pbo_size_ = 0;
+                break;
+            }
+
         }
 
         // should be good to go, wrap it up
@@ -576,58 +585,74 @@ void MediaPlayer::update()
     if (!enabled_)
         return;
 
-    // apply texture
-    if (v_frame_is_full_) {
+    // bind texture in any case (except if not initialized yet)
+    if (textureindex_>0)
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-        // first occurence; create texture
-        if (textureindex_==0) {
-            init_texture();
-        }
-        // all other times, bind and fill texture
-        else
+    // try to access a vframe
+    if (vframe_lock_[vframe_read_index_].try_lock() ) {
+
+        // if we got a full vframe
+        if (vframe_is_full_[vframe_read_index_])
         {
-            glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-            // use dual Pixel Buffer Object
-            if (pbo_size_ > 0) {
-                // In dual PBO mode, increment current index first then get the next index
-                pbo_index_ = (pbo_index_ + 1) % 2;
-                pbo_next_index_ = (pbo_index_ + 1) % 2;
-
-                // bind PBO to read pixels
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
-
-                // copy pixels from PBO to texture object
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-                // bind the next PBO to write pixels
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
-                // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
-                glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-                // map the buffer object into client's memory
-//                GLubyte* ptr = (GLubyte*) glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, GL_MAP_WRITE_BIT|GL_MAP_INVALIDATE_BUFFER_BIT);
-                GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-                if (ptr) {
-                    // update data directly on the mapped buffer
-                    // NB : equivalent but faster (memmove instead of memcpy ?) than
-                    // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
-                    memmove(ptr, v_frame_.data[0], pbo_size_);
-                    // release pointer to mapping buffer
-                    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-                }
-                // done with PBO
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            // first occurence; create texture
+            if (textureindex_==0) {
+                init_texture();
             }
+            // all other times, fill the texture
             else
-                // without PBO, use standard opengl (slower)
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                            GL_RGBA, GL_UNSIGNED_BYTE, v_frame_.data[0]);
-        }        
+            {
+                // use dual Pixel Buffer Object
+                if (pbo_size_ > 0) {
+                    // In dual PBO mode, increment current index first then get the next index
+                    pbo_index_ = (pbo_index_ + 1) % 2;
+                    pbo_next_index_ = (pbo_index_ + 1) % 2;
 
-        // sync with callback_pull_last_sample_video 
-        v_frame_is_full_ = false;
+                    // bind PBO to read pixels
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+
+                    // copy pixels from PBO to texture object
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+                    // bind the next PBO to write pixels
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+                    // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
+                    glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+                    // map the buffer object into client's memory
+                    GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+                    if (ptr) {
+                        // update data directly on the mapped buffer
+                        // NB : equivalent but faster (memmove instead of memcpy ?) than
+                        // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
+                        memmove(ptr, vframe_[vframe_read_index_].data[0], pbo_size_);
+
+                        // release pointer to mapping buffer
+                        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+                    }
+                    // done with PBO
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+                }
+                else {
+                    // without PBO, use standard opengl (slower)
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                                    GL_RGBA, GL_UNSIGNED_BYTE, vframe_[vframe_read_index_].data[0]);
+                }
+
+            }
+
+            // we just displayed a vframe : set position time to vframe PTS
+            position_ = vframe_position_[vframe_read_index_];
+
+            // sync with callback_pull_last_sample_video : inform its free
+            vframe_is_full_[vframe_read_index_] = false;
+
+        }
+
+        vframe_lock_[vframe_read_index_].unlock();
     }
+
+    vframe_read_index_ = (vframe_read_index_ +1) %2;
 
     // manage loop mode
     if (need_loop_ && !isimage_) {
@@ -767,39 +792,51 @@ double MediaPlayer::updateFrameRate() const
 
 // CALLBACKS
 
-bool MediaPlayer::fill_v_frame(GstBuffer *buf, bool ignorepts)
+bool MediaPlayer::fill_v_frame(GstBuffer *buf)
 {
-    // always empty frame before filling it again
-    if (v_frame_.buffer)
-        gst_video_frame_unmap(&v_frame_);
 
-    // get the frame from buffer
-    if ( !gst_video_frame_map (&v_frame_, &v_frame_video_info_, buf, GST_MAP_READ ) ) {
-        Log::Info("MediaPlayer %s Failed to map the video buffer", id_.c_str());
-        return false;
-    }
+    // non-blocking attempt to access vframe
+    guint i = vframe_write_index_;
+    if ( vframe_lock_[i].try_lock()) {
 
-    // validate frame format
-    if( GST_VIDEO_INFO_IS_RGB(&(v_frame_).info) && GST_VIDEO_INFO_N_PLANES(&(v_frame_).info) == 1) {
+        // always empty frame before filling it again
+        if (vframe_[i].buffer)
+            gst_video_frame_unmap(&vframe_[vframe_write_index_]);
 
-        // validate time
-        if (ignorepts || position_ != buf->pts)
-        {
 
-            // got a new RGB frame !
-            v_frame_is_full_ = true;
-
-            // get presentation time stamp
-            position_ = buf->pts;
-
-            // set start position (i.e. pts of first frame we got)
-            if (start_position_ == GST_CLOCK_TIME_NONE)
-                start_position_ = position_;
-
-            // keep update time (i.e. actual FPS of update)
-            timecount_.tic();
+        // get the frame from buffer
+        if ( !gst_video_frame_map (&vframe_[vframe_write_index_], &v_frame_video_info_, buf, GST_MAP_READ ) ) {
+            Log::Info("MediaPlayer %s Failed to map the video buffer", id_.c_str());
+            return false;
         }
 
+        // validate frame format
+        if( GST_VIDEO_INFO_IS_RGB(&(vframe_[vframe_write_index_]).info) && GST_VIDEO_INFO_N_PLANES(&(vframe_[vframe_write_index_]).info) == 1) {
+
+            // validate time
+            if (isimage_ || vframe_position_[vframe_write_index_] != buf->pts)
+            {
+
+                // calculate actual FPS of update
+                timecount_.tic();
+
+                // got a new RGB frame !
+                vframe_is_full_[vframe_write_index_] = true;
+
+                // get presentation time stamp
+                vframe_position_[vframe_write_index_] = buf->pts;
+
+                // set start position (i.e. pts of first frame we got)
+                if (start_position_ == GST_CLOCK_TIME_NONE)
+                    start_position_ = vframe_position_[vframe_write_index_];
+
+                //  dual VFRAME mechanism
+                vframe_write_index_ = (vframe_write_index_ + 1) % 2;
+            }
+        }
+
+        // unlock
+        vframe_lock_[i].unlock();
     }
 
     return true;
@@ -809,34 +846,35 @@ GstFlowReturn MediaPlayer::callback_pull_sample_video (GstElement *bin, MediaPla
 {
     GstFlowReturn ret = GST_FLOW_OK;
 
-    if (m && !m->v_frame_is_full_) {
+    // get last sample (non blocking)
+    GstSample *sample = nullptr;
+    g_object_get (bin, "last-sample", &sample, NULL);
 
-        // get last sample (non blocking)
-        GstSample *sample = nullptr;
-        g_object_get (bin, "last-sample", &sample, NULL);        
+    // if got a valid sample
+    if (sample != nullptr) {
 
-        // if got a valid sample
-        if (sample != nullptr) {
+        // get buffer from sample
+        GstBuffer *buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
 
-            // get buffer from sample
-            GstBuffer *buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
+        if (m) {
 
             // fill frame from buffer
-            if ( !m->fill_v_frame(buf, m->isimage_) )
+            if ( !m->fill_v_frame(buf) )
                 ret = GST_FLOW_ERROR;
-            // free buffer
-            gst_buffer_unref (buf);
-        }
-        else
-            ret = GST_FLOW_FLUSHING;
 
-        // cleanup stack of samples (non blocking)
-        // NB : overkill as gst_app_sink_set_drop is set to TRUE, but better be safe than leak memory...
-        while (sample != nullptr) {
-            gst_sample_unref (sample);
-            sample = gst_app_sink_try_pull_sample( (GstAppSink * ) bin, 0 );
         }
 
+        // free buffer
+        gst_buffer_unref (buf);
+    }
+    else
+        ret = GST_FLOW_FLUSHING;
+
+    // cleanup stack of samples (non blocking)
+    // NB : possible overkill as gst_app_sink_set_drop is set to TRUE in pipeline
+    while (sample != nullptr) {
+        gst_sample_unref (sample);
+        sample = gst_app_sink_try_pull_sample( (GstAppSink * ) bin, 0 );
     }
 
     return ret;
@@ -963,14 +1001,14 @@ TimeCounter::TimeCounter() {
 void TimeCounter::tic ()
 {
     // how long since last time
-    current_time = gst_util_get_timestamp ();
-    gint64 dt = current_time - last_time;
+    GstClockTime t = gst_util_get_timestamp ();
+    GstClockTime dt = t - last_time;
 
     // one more frame since last time
     nbFrames++;
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jutter (50/50)
+    // Exponential moving averate with previous framerate to filter jitter (50/50)
     // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
     // NB: factor 100 to get 0.01 precision
     fps = 0.5f * fps + 0.005f * static_cast<float>( ( 100 * GST_SECOND * nbFrames ) / dt );
@@ -978,16 +1016,25 @@ void TimeCounter::tic ()
     // reset counter every second
     if ( dt >= GST_SECOND)
     {
-        last_time = current_time;
+        last_time = t;
         nbFrames = 0;
     }
+}
 
+GstClockTime TimeCounter::dt ()
+{
+    GstClockTime t = gst_util_get_timestamp ();
+    GstClockTime dt = t - tic_time;
+    tic_time = t;
+
+    // return the instantaneous delta t
+    return dt;
 }
 
 void TimeCounter::reset ()
 {
-    current_time = gst_util_get_timestamp ();
-    last_time = gst_util_get_timestamp();
+    last_time = gst_util_get_timestamp ();;
+    tic_time = last_time;
     nbFrames = 0;
     fps = 0.f;
 }
