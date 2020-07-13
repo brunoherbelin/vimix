@@ -231,9 +231,6 @@ void MediaPlayer::close()
     }
 
     // cleanup eventual remaining frame related memory
-//    if (v_frame_.buffer)
-//        gst_video_frame_unmap(&v_frame_);
-
     for(guint i = 0; i < N_VFRAME; i++){
         if (vframe_[i].buffer)
             gst_video_frame_unmap(&vframe_[i]);
@@ -586,13 +583,13 @@ void MediaPlayer::update()
     if (textureindex_>0)
         glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    // try to access a vframe
-    if (vframe_lock_[vframe_read_index_].try_lock() ) {
+    // try to access a vframe (non blocking)
+    guint i = vframe_read_index_;
+    if (vframe_lock_[i].try_lock() ) {
 
         // if we got a full vframe
         if (vframe_is_full_[vframe_read_index_])
         {
-
             // first occurence; create texture
             if (textureindex_==0) {
                 init_texture();
@@ -644,12 +641,14 @@ void MediaPlayer::update()
             // sync with callback_pull_last_sample_video : inform its free
             vframe_is_full_[vframe_read_index_] = false;
 
+            // read next in stack
+            vframe_read_index_ = (vframe_read_index_ +1) % N_VFRAME;
+
         }
 
-        vframe_lock_[vframe_read_index_].unlock();
+        vframe_lock_[i].unlock();
     }
 
-    vframe_read_index_ = (vframe_read_index_ +1) % N_VFRAME;
 
     // manage loop mode
     if (need_loop_ && !isimage_) {
@@ -794,7 +793,10 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
 
     // non-blocking attempt to access vframe
     guint i = vframe_write_index_;
-    if ( vframe_lock_[i].try_lock()) {
+    if ( vframe_lock_[i].try_lock())
+    {
+        // blocking  access vframe
+//        vframe_lock_[i].lock();
 
         // always empty frame before filling it again
         if (vframe_[vframe_write_index_].buffer)
@@ -810,15 +812,13 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
         // validate frame format
         if( GST_VIDEO_INFO_IS_RGB(&(vframe_[vframe_write_index_]).info) && GST_VIDEO_INFO_N_PLANES(&(vframe_[vframe_write_index_]).info) == 1) {
 
+            // got a new RGB frame !
             // validate time
             if (isimage_ || vframe_position_[vframe_write_index_] != buf->pts)
             {
 
                 // calculate actual FPS of update
                 timecount_.tic();
-
-                // got a new RGB frame !
-                vframe_is_full_[vframe_write_index_] = true;
 
                 // get presentation time stamp
                 vframe_position_[vframe_write_index_] = buf->pts;
@@ -827,7 +827,10 @@ bool MediaPlayer::fill_v_frame(GstBuffer *buf)
                 if (start_position_ == GST_CLOCK_TIME_NONE)
                     start_position_ = vframe_position_[vframe_write_index_];
 
-                //  dual VFRAME mechanism
+                // sync with MediaPlayer::update() : inform its full
+                vframe_is_full_[vframe_write_index_] = true;
+
+                // write next in stack
                 vframe_write_index_ = (vframe_write_index_ + 1) % N_VFRAME;
             }
         }

@@ -19,7 +19,7 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 2
+#define N_VFRAME 3
 
 struct TimeCounter {
 
@@ -265,16 +265,12 @@ private:
     std::string codec_name_;
     GstVideoInfo v_frame_video_info_;
 
-//    GstVideoFrame v_frame_;
-//    std::atomic<bool> v_frame_is_full_;
-
     guint vframe_read_index_;
     guint vframe_write_index_;
     GstVideoFrame vframe_[N_VFRAME];
     std::atomic<bool> vframe_is_full_[N_VFRAME];
     GstClockTime vframe_position_[N_VFRAME];
     std::mutex vframe_lock_[N_VFRAME];
-    std::mutex vframe_index_lock_;
 
     // for PBO
     guint pbo_[2];
