@@ -221,7 +221,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         glm::vec3 rot(0.f);
         glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
         rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
-        vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
+//        vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
 //        glm::vec3 scale( vec.x > 0.f ? 1.f : -1.f, vec.y > 0.f ? 1.f : -1.f, 1.f);
 //        glm::vec3 scale(1.f, 1.f, 1.f);
 
@@ -301,23 +301,24 @@ void Handles::accept(Visitor& v)
 }
 
 
-Symbol::Symbol(Type style, glm::vec3 pos) : Node()
+Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
-    static Mesh *icons[7] = {nullptr};
+    static Mesh *icons[9] = {nullptr};
     if (icons[0] == nullptr)  {
+        icons[POINT]   = new Mesh("mesh/point.ply");
         icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
         icons[VIDEO]   = new Mesh("mesh/icon_video.ply");
         icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
         icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
+        icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
+        icons[CIRCLES] = new Mesh("mesh/icon_circles.ply");
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
-        icons[GENERIC] = new Mesh("mesh/point.ply");
     }
 
-    symbol_ = icons[style];
+    symbol_ = icons[type_];
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-
 }
 
 Symbol::~Symbol()
@@ -333,19 +334,17 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         init();
     }
 
-    if ( visible_ ) {
+    if ( visible_ && symbol_) {
 
-        if(symbol_) {
-            // set color
-            symbol_->shader()->color = color;
+        // set color
+        symbol_->shader()->color = color;
 
-            glm::mat4 ctm = modelview * transform_;
-            // correct for aspect ratio
-            glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
-            ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
+        glm::mat4 ctm = modelview * transform_;
+        // correct for aspect ratio
+        glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
+        ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
 
-            symbol_->draw( ctm, projection);
-        }
+        symbol_->draw( ctm, projection);
     }
 }
 

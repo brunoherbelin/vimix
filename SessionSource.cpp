@@ -60,7 +60,12 @@ SessionSource::SessionSource() : Source(), path_("")
     overlays_[View::TRANSITION] = new Group;
     overlays_[View::TRANSITION]->translation_.z = 0.1;
     overlays_[View::TRANSITION]->visible_ = false;
-    Symbol *center = new Symbol(Symbol::GENERIC, glm::vec3(0.f, -1.05f, 0.1f));
+
+    Symbol *loader = new Symbol(Symbol::DOTS);
+    loader->scale_ = glm::vec3(2.f, 2.f, 1.f);
+    loader->update_callbacks_.push_back(new InfiniteGlowCallback);
+    overlays_[View::TRANSITION]->attach(loader);
+    Symbol *center = new Symbol(Symbol::POINT, glm::vec3(0.f, -1.05f, 0.1f));
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
@@ -149,6 +154,10 @@ void SessionSource::init()
         }
         // if all sources are ready, done with initialization!
         if (ready) {
+            // remove the loading icon
+            Node *loader = overlays_[View::TRANSITION]->back();
+            overlays_[View::TRANSITION]->detatch(loader);
+            delete loader;
             // done init
             wait_for_sources_ = false;
             initialized_ = true;

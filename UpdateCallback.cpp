@@ -65,3 +65,23 @@ void BounceScaleCallback::update(Node *n, float dt)
         finished_ = true;
     }
 }
+InfiniteGlowCallback::InfiniteGlowCallback(float amplitude) : UpdateCallback(),
+    amplitude_(amplitude), time_(0.f), initialized_(false)
+{
+
+}
+
+void InfiniteGlowCallback::update(Node *n, float dt)
+{
+    // set start scale on first run
+    if (!initialized_){
+        initial_scale_ = n->scale_;
+        initialized_ = true;
+    }
+
+    time_ += dt / 1000.f;
+
+    n->scale_.x = initial_scale_.x + amplitude_ * sin(M_PI * time_);
+    n->scale_.y = initial_scale_.y + amplitude_ * sin(M_PI * time_);
+
+}

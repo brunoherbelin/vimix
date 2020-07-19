@@ -49,4 +49,16 @@ public:
     void update(Node *n, float dt);
 };
 
+class InfiniteGlowCallback : public UpdateCallback
+{
+    float amplitude_;
+    float time_;
+    bool initialized_;
+    glm::vec3 initial_scale_;
+
+public:
+    InfiniteGlowCallback(float amplitude = 0.5f);
+    void update(Node *n, float dt);
+};
+
 #endif // UPDATECALLBACK_H

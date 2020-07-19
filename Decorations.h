@@ -57,8 +57,8 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { GENERIC = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, EMPTY } Type;
-    Symbol(Type type = GENERIC, glm::vec3 pos = glm::vec3(0.f));
+    typedef enum { POINT = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, DOTS, CIRCLES, EMPTY } Type;
+    Symbol(Type t = POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
