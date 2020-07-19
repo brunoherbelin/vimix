@@ -277,6 +277,9 @@ void ImGuiVisitor::visit (Source& s)
     // geometry direct control
     s.groupNode(View::GEOMETRY)->accept(*this);
 
+    if ( s.numClones() > 0 ) {
+        ImGui::Text("Cloned %d time%s", s.numClones(), s.numClones() > 1 ? "s." : ".");
+    }
 }
 
 void ImGuiVisitor::visit (MediaSource& s)

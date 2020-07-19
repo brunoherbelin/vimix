@@ -119,7 +119,8 @@ void MediaSource::update(float dt)
     Source::update(dt);
 
     // update video
-    mediaplayer_->update();
+    if (active_)
+        mediaplayer_->update();
 }
 
 void MediaSource::render()

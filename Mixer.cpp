@@ -688,7 +688,7 @@ void Mixer::swap()
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-    // request reordering in depth for views
+    // request complete update for views
     View::need_deep_update_ = true;
 
     // no current source

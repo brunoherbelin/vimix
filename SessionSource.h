@@ -36,6 +36,7 @@ protected:
 
     std::atomic<bool> loadFailed_;
     std::atomic<bool> loadFinished_;
+    std::atomic<bool> wait_for_sources_;
 };
 
 

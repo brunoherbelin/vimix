@@ -66,6 +66,7 @@ SessionSource::SessionSource() : Source(), path_("")
 
     loadFailed_ = false;
     loadFinished_ = false;
+    wait_for_sources_ = false;
 
     session_ = new Session;
 
@@ -127,7 +128,33 @@ uint SessionSource::texture() const
 
 void SessionSource::init()
 {
-    Log::Info("SessionSource::init");
+    if (session_ == nullptr)
+        return;
+
+    if (wait_for_sources_) {
+
+        // force update of of all sources
+        active_ = true;
+        touch();
+
+        // check that every source is ready..
+        bool ready = true;
+        for (SourceList::iterator iter = session_->begin(); iter != session_->end(); iter++)
+        {
+            // interrupt if any source is NOT ready
+            if ( !(*iter)->ready() ){
+                ready = false;
+                break;
+            }
+        }
+        // if all sources are ready, done with initialization!
+        if (ready) {
+            // done init
+            wait_for_sources_ = false;
+            initialized_ = true;
+            Log::Info("Source Session %s loaded %d sources.", path_.c_str(), session_->numSource());
+        }
+    }
 
     if ( loadFinished_ && !loadFailed_ && session_ != nullptr) {
         loadFinished_ = false;
@@ -135,7 +162,7 @@ void SessionSource::init()
         // set resolution
         session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-        // update once with update of the depth
+        // deep update once to draw framebuffer
         View::need_deep_update_ = true;
         session_->update(dt_);
 
@@ -152,41 +179,41 @@ void SessionSource::init()
         overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
         overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
-        // done init
-        initialized_ = true;
-        Log::Info("Source Session %s loading %d sources.", path_.c_str(), session_->numSource());
+        // wait for all sources to init
+        wait_for_sources_ = true;
 
-        // force update of activation mode
-        active_ = true;
-        touch();
     }
+
 }
 
 void SessionSource::setActive (bool on)
 {
-//    Log::Info("SessionSource::setActive %d", on);
-
-    bool was_active = active_;
-
     Source::setActive(on);
 
-    // change status of media player (only if status changed)
-    if ( active_ != was_active ) {
+    // change status of session (recursive change of internal sources)
+    if (session_ != nullptr)
         session_->setActive(active_);
-    }
 }
 
 
 void SessionSource::update(float dt)
 {
-    Source::update(dt);
+    if (session_ == nullptr)
+        loadFailed_ = true;
 
     // update content
-    session_->update(dt);
+    if (active_)
+        session_->update(dt);
 
     // delete a source which failed
-    if (session()->failedSource() != nullptr)
-        session()->deleteSource(session()->failedSource());
+    if (session_->failedSource() != nullptr) {
+        session_->deleteSource(session_->failedSource());
+        // fail session if all sources failed
+        if ( session_->numSource() < 1)
+            loadFailed_ = true;
+    }
+
+    Source::update(dt);
 }
 
 void SessionSource::render()
@@ -230,13 +257,14 @@ uint RenderSource::texture() const
 {
     if (session_ == nullptr)
         return Resource::getTextureBlack();
-    return session_->frame()->texture();
+    else
+        return session_->frame()->texture();
 }
 
 void RenderSource::init()
 {
     if (session_ == nullptr)
-        session_ = Mixer::manager().session();
+        return;
 
     if (session_ && session_->frame()->texture() != Resource::getTextureBlack()) {
 

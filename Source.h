@@ -43,6 +43,7 @@ public:
 
     // cloning mechanism
     virtual CloneSource *clone ();
+    inline size_t numClones() const { return clones_.size(); }
 
     // Display mode
     typedef enum {
@@ -53,7 +54,6 @@ public:
     } Mode;
     Mode mode () const;
     void setMode (Mode m);
-
 
     // get handle on the nodes used to manipulate the source in a view
     inline Group *group (View::Mode m) const { return groups_.at(m); }
@@ -74,15 +74,15 @@ public:
     // touch to request update
     inline void touch () { need_update_ = true; }
 
+    // informs if its ready (i.e. initialized)
+    inline bool ready() const  { return initialized_; }
+
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
     virtual void update (float dt);
 
     // update mode
     virtual void setActive (bool on);
     inline bool active () { return active_; }
-
-    // accept all kind of visitors
-    virtual void accept (Visitor& v);
 
     // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed() const = 0;
@@ -93,6 +93,8 @@ public:
     // a Source shall define how to render into the frame buffer
     virtual void render() = 0;
 
+    // accept all kind of visitors
+    virtual void accept (Visitor& v);
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -170,7 +172,7 @@ public:
     // implementation of source API
     void setActive (bool on) override;
     void render() override;
-    uint texture() const override { return origin_->texture(); }
+    uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 

@@ -469,7 +469,7 @@ void GeometryView::update(float dt)
 {
     View::update(dt);
 
-    // reorder depth if needed
+    // a more complete update is requested
     if (View::need_deep_update_) {
 
         // update rendering of render frame
@@ -725,7 +725,7 @@ void LayerView::update(float dt)
 {
     View::update(dt);
 
-    // reorder depth if needed
+    // a more complete update is requested
     if (View::need_deep_update_) {
 
         // update rendering of render frame
@@ -777,11 +777,11 @@ float LayerView::setDepth(Source *s, float d)
     // change depth
     sourceNode->translation_.z = -sourceNode->translation_.x;
 
-    // request update
-    s->touch();
-
-    // request reordering
+    // request reordering of scene at next update
     View::need_deep_update_ = true;
+
+    // request update of source
+    s->touch();
 
     return sourceNode->translation_.z;
 }
@@ -930,8 +930,8 @@ void TransitionView::update(float dt)
     // update scene
     View::update(dt);
 
-    // reorder depth if needed
-    if (View::need_deep_update_) {
+    // a more complete update is requested
+    if  (View::need_deep_update_) {
 
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();

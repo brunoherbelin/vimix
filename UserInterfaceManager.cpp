@@ -1514,14 +1514,21 @@ void SourcePreview::draw(float width)
             setSource();
         else
         {
+            bool active = source_->active();
             // update source
-            ImGuiIO& io = ImGui::GetIO();
-            source_->update( 1.f / io.Framerate);
+            source_->update( Mixer::manager().dt());
             // render framebuffer
             source_->render();
+
             // draw preview
             ImVec2 preview_size(width, width / source_->frame()->aspectRatio());
             ImGui::Image((void*)(uintptr_t) source_->frame()->texture(), preview_size);
+
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine();
+            if (ImGuiToolkit::IconToggle(9,7,1,8, &active))
+                source_->setActive(active);
+            ImGui::SetCursorPos(pos);
             ImGui::Text("%s ", label_.c_str());
         }
     }
@@ -2036,13 +2043,9 @@ void ShowAboutOpengl(bool* p_open)
 
 void ShowAboutGStreamer(bool* p_open)
 {
-
-    ImGui::SetNextWindowPos(ImVec2(430, 20), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::End();
-        return;
-    }
+    ImGui::SetNextWindowPos(ImVec2(430, 20), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_Appearing);
+    ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
     ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
@@ -2079,6 +2082,7 @@ void ShowAboutGStreamer(bool* p_open)
         ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
         ImGui::Text("Plugins & features (runtime) :");
 
+        std::list<std::string> filteredlist;
         static std::list<std::string> pluginslist;
         static std::map<std::string, std::list<std::string> > featureslist;
         if (pluginslist.empty()) {
@@ -2089,22 +2093,19 @@ void ShowAboutGStreamer(bool* p_open)
             }
         }
 
-        std::list<std::string> filteredlist;
-
-        // filter
+        // filter list
         if ( filter.empty() )
             filteredlist = pluginslist;
         else {
-            std::list<std::string> plist = pluginslist;
-            for (auto const& i: plist) {
-                // add plugin if plugin name match
+            for (auto const& i: pluginslist) {
+                // add plugin if plugin name matches
                 if ( i.find(filter) != std::string::npos )
-                    filteredlist.push_back( i.c_str() );
+                    filteredlist.push_back( i );
                 // check in features
                 for (auto const& j: featureslist[i]) {
                     // add plugin if feature name matches
                     if ( j.find(filter) != std::string::npos )
-                        filteredlist.push_back( i.c_str() );
+                        filteredlist.push_back( i );
                 }
             }
         }
@@ -2128,5 +2129,6 @@ void ShowAboutGStreamer(bool* p_open)
 
         ImGui::EndChildFrame();
     }
+
     ImGui::End();
 }

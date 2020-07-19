@@ -62,8 +62,7 @@ void Session::update(float dt)
             // render the source
             (*it)->render();
             // update the source
-            if (active_)
-                (*it)->update(dt);
+            (*it)->update(dt);
         }
     }
 

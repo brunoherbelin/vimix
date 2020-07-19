@@ -71,7 +71,7 @@ public:
     // accessible scene
     Scene scene;
 
-    // avoid reordering scene of view if not necessary
+    // reordering scene when necessary
     static bool need_deep_update_;
 
 protected:

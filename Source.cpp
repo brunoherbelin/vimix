@@ -359,12 +359,15 @@ CloneSource::~CloneSource()
 CloneSource *CloneSource::clone()
 {
     // do not clone a clone : clone the original instead
-    return origin_->clone();
+    if (origin_)
+        return origin_->clone();
+    else
+        return nullptr;
 }
 
 void CloneSource::init()
 {
-    if (origin_ && origin_->texture() != Resource::getTextureBlack()) {
+    if (origin_ && origin_->ready()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
         clonesurface_->setTextureIndex( origin_->texture() );
@@ -394,7 +397,17 @@ void CloneSource::setActive (bool on)
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
-    origin_->touch();
+    if (origin_)
+        origin_->touch();
+}
+
+
+uint CloneSource::texture() const
+{
+    if (origin_)
+        return origin_->texture();
+    else
+        return Resource::getTextureBlack();
 }
 
 void CloneSource::render()
