@@ -19,7 +19,7 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 3
+#define N_VFRAME 2
 
 struct TimeCounter {
 

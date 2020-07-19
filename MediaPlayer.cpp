@@ -130,6 +130,11 @@ void MediaPlayer::open(string path)
 
 void MediaPlayer::execute_open() 
 {
+    // Create the simplest gstreamer pipeline possible :
+    //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
+    // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
+
+
     // build string describing pipeline
     string description = "uridecodebin uri=" + uri_ + " name=decoder !";
     if (interlaced_)
