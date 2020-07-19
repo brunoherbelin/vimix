@@ -951,6 +951,10 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                     m->seekable_ = gst_discoverer_info_get_seekable (info);
                     guint frn = gst_discoverer_video_info_get_framerate_num(vinfo);
                     guint frd = gst_discoverer_video_info_get_framerate_denom(vinfo);
+                    if (frn == 0 || frd == 0) {
+                        frn = 25;
+                        frd = 1;
+                    }
                     m->framerate_ = static_cast<double>(frn) / static_cast<double>(frd);
                     m->frame_duration_ = (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn));
                 }
