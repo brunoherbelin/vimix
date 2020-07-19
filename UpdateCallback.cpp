@@ -79,7 +79,7 @@ void InfiniteGlowCallback::update(Node *n, float dt)
         initialized_ = true;
     }
 
-    time_ += dt / 1000.f;
+    time_ += dt / 600.f;
 
     n->scale_.x = initial_scale_.x + amplitude_ * sin(M_PI * time_);
     n->scale_.y = initial_scale_.y + amplitude_ * sin(M_PI * time_);

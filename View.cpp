@@ -970,7 +970,7 @@ void TransitionView::draw()
     scene.accept(dv2);
 
     // display interface duration
-    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.03f, -0.14f, 0.f), scene.root()->transform_, false);
+    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.11f, -0.14f, 0.f), scene.root()->transform_, false);
     ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
     if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
@@ -981,7 +981,7 @@ void TransitionView::draw()
         ImGui::DragFloat("##nolabel", &Settings::application.transition.duration,
                          0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         ImGui::SameLine();
-        if ( ImGui::Button(ICON_FA_PLAY) )
+        if ( ImGui::Button(ICON_FA_STEP_FORWARD) )
             play(false);
         ImGui::PopFont();
         ImGui::End();

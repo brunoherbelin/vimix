@@ -583,29 +583,35 @@ void UserInterface::Render()
     // warning modal dialog
     Log::Render();
 
-    // windows
-    if (Settings::application.widget.toolbox)
-        toolbox.Render();
-    if (Settings::application.widget.preview)
-        RenderPreview();
-    if (Settings::application.widget.media_player)
-        mediacontrol.Render();
-    if (Settings::application.widget.shader_editor)
-        RenderShaderEditor();
+    // clear view mode in Transition view
+    if ( !Settings::application.transition.hide_windows || Settings::application.current_view != 4) {
+
+        // windows
+        if (Settings::application.widget.toolbox)
+            toolbox.Render();
+        if (Settings::application.widget.preview)
+            RenderPreview();
+        if (Settings::application.widget.media_player)
+            mediacontrol.Render();
+        if (Settings::application.widget.shader_editor)
+            RenderShaderEditor();
+        if (Settings::application.widget.logs)
+            Log::ShowLogWindow(&Settings::application.widget.logs);
+
+        // about dialogs
+        if (show_about)
+            ShowAbout(&show_about);
+        if (show_imgui_about)
+            ImGui::ShowAboutWindow(&show_imgui_about);
+        if (show_gst_about)
+            ShowAboutGStreamer(&show_gst_about);
+        if (show_opengl_about)
+            ShowAboutOpengl(&show_opengl_about);
+    }
+
+    // stats in the corner
     if (Settings::application.widget.stats)
         ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
-    if (Settings::application.widget.logs)
-        Log::ShowLogWindow(&Settings::application.widget.logs);
-
-    // about
-    if (show_about)
-        ShowAbout(&show_about);
-    if (show_imgui_about)
-        ImGui::ShowAboutWindow(&show_imgui_about);
-    if (show_gst_about)
-        ShowAboutGStreamer(&show_gst_about);
-    if (show_opengl_about)
-        ShowAboutOpengl(&show_opengl_about);
 
     // all IMGUI Rendering
     ImGui::Render();
@@ -1685,7 +1691,8 @@ void Navigator::RenderTransitionPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Behavior");
         ImGuiToolkit::ButtonSwitch( ICON_FA_RANDOM " Cross fading", &Settings::application.transition.cross_fade);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_SIGN_IN_ALT " Automatic open", &Settings::application.transition.auto_open);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_CROSSHAIRS " Open on target", &Settings::application.transition.auto_open);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
 
         // Transition options
         ImGui::Text(" ");
@@ -1700,7 +1707,7 @@ void Navigator::RenderTransitionPannel()
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+        if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
         }
