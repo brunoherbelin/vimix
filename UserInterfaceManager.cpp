@@ -3,6 +3,7 @@
 #include <sstream>
 #include <thread>
 #include <algorithm>
+#include <map>
 
 // ImGui
 #include "imgui.h"
@@ -2078,20 +2079,29 @@ void ShowAboutGStreamer(bool* p_open)
         ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
         ImGui::Text("Plugins & features (runtime) :");
 
+        static std::list<std::string> pluginslist;
+        static std::map<std::string, std::list<std::string> > featureslist;
+        if (pluginslist.empty()) {
+            pluginslist = GstToolkit::all_plugins();
+            for (auto const& i: pluginslist) {
+                // list features
+                featureslist[i] = GstToolkit::all_plugin_features(i);
+            }
+        }
+
         std::list<std::string> filteredlist;
 
         // filter
         if ( filter.empty() )
-            filteredlist = GstToolkit::all_plugins();
+            filteredlist = pluginslist;
         else {
-            std::list<std::string> plist = GstToolkit::all_plugins();
+            std::list<std::string> plist = pluginslist;
             for (auto const& i: plist) {
                 // add plugin if plugin name match
                 if ( i.find(filter) != std::string::npos )
                     filteredlist.push_back( i.c_str() );
                 // check in features
-                std::list<std::string> flist = GstToolkit::all_plugin_features(i);
-                for (auto const& j: flist) {
+                for (auto const& j: featureslist[i]) {
                     // add plugin if feature name matches
                     if ( j.find(filter) != std::string::npos )
                         filteredlist.push_back( i.c_str() );
@@ -2102,8 +2112,7 @@ void ShowAboutGStreamer(bool* p_open)
         // display list
         for (auto const& t: filteredlist) {
             ImGui::Text("> %s", t.c_str());
-            std::list<std::string> flist = GstToolkit::all_plugin_features(t);
-            for (auto const& j: flist) {
+            for (auto const& j: featureslist[t]) {
                 if ( j.find(filter) != std::string::npos )
                 {
                     ImGui::Text(" -   %s", j.c_str());
