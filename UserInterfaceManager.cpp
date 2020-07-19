@@ -849,7 +849,7 @@ void UserInterface::RenderPreview()
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
-            if (ImGui::BeginMenu(ICON_FA_LAPTOP " Preview"))
+            if (ImGui::BeginMenu(ICON_FA_DESKTOP " Preview"))
             {
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
@@ -1032,7 +1032,7 @@ void MediaController::Render()
             // display buttons Play/Stop depending on current playing mode
             if (media_playing_mode_) {
 
-                if (ImGui::Button(ICON_FA_STOP " Stop"))
+                if (ImGui::Button(ICON_FA_PAUSE "  Pause"))
                     media_playing_mode_ = false;
                 ImGui::SameLine(0, spacing);
 
@@ -1043,7 +1043,7 @@ void MediaController::Render()
             }
             else {
 
-                if (ImGui::Button(ICON_FA_PLAY "  Play"))
+                if (ImGui::Button(ICON_FA_PLAY "  Play    "))
                     media_playing_mode_ = true;
                 ImGui::SameLine(0, spacing);
 
@@ -1524,11 +1524,13 @@ void SourcePreview::draw(float width)
             ImVec2 preview_size(width, width / source_->frame()->aspectRatio());
             ImGui::Image((void*)(uintptr_t) source_->frame()->texture(), preview_size);
 
-            ImVec2 pos = ImGui::GetCursorPos();
-            ImGui::SameLine();
-            if (ImGuiToolkit::IconToggle(9,7,1,8, &active))
-                source_->setActive(active);
-            ImGui::SetCursorPos(pos);
+            if (source_->ready()) {
+                ImVec2 pos = ImGui::GetCursorPos();
+                ImGui::SameLine();
+                if (ImGuiToolkit::IconToggle(9,7,1,8, &active))
+                    source_->setActive(active);
+                ImGui::SetCursorPos(pos);
+            }
             ImGui::Text("%s ", label_.c_str());
         }
     }
@@ -1684,7 +1686,6 @@ void Navigator::RenderTransitionPannel()
         ImGui::Text("Behavior");
         ImGuiToolkit::ButtonSwitch( ICON_FA_RANDOM " Cross fading", &Settings::application.transition.cross_fade);
         ImGuiToolkit::ButtonSwitch( ICON_FA_SIGN_IN_ALT " Automatic open", &Settings::application.transition.auto_open);
-//        ImGuiToolkit::ButtonSwitch( ICON_FA_SIGN_OUT_ALT " Automatic start", &Settings::application.transition.auto_start);
 
         // Transition options
         ImGui::Text(" ");
@@ -1707,7 +1708,6 @@ void Navigator::RenderTransitionPannel()
             Mixer::manager().setView(View::MIXING);
         ImGui::SameLine();
         ImGuiToolkit::HelpMarker("Exit transition leaves the output 'as is',\nwith the newly openned session as a source\nif the transition is not finished.");
-
 
     }
     ImGui::End();

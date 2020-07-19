@@ -277,17 +277,18 @@ void ImGuiVisitor::visit (Source& s)
     // geometry direct control
     s.groupNode(View::GEOMETRY)->accept(*this);
 
-    if ( s.numClones() > 0 ) {
-        ImGui::Text("Cloned %d time%s", s.numClones(), s.numClones() > 1 ? "s." : ".");
-    }
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
     if ( s.mediaplayer()->duration() == GST_CLOCK_TIME_NONE) {
+        ImGuiToolkit::Icon(2,9);
+        ImGui::SameLine(0, 10);
         ImGui::Text("Image File");
     }
     else {
+        ImGuiToolkit::Icon(18,13);
+        ImGui::SameLine(0, 10);
         ImGui::Text("Video File");
         if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
             UserInterface::manager().showMediaPlayer( s.mediaplayer());
@@ -298,6 +299,8 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
+    ImGuiToolkit::Icon(4,9);
+    ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
@@ -309,6 +312,8 @@ void ImGuiVisitor::visit (SessionSource& s)
 
 void ImGuiVisitor::visit (RenderSource& s)
 {
+    ImGuiToolkit::Icon(19,1);
+    ImGui::SameLine(0, 10);
     ImGui::Text("Rendering Output");
     if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.preview = true;
@@ -316,6 +321,8 @@ void ImGuiVisitor::visit (RenderSource& s)
 
 void ImGuiVisitor::visit (CloneSource& s)
 {
+    ImGuiToolkit::Icon(9,2);
+    ImGui::SameLine(0, 10);
     ImGui::Text("Clone of %s", s.origin()->name().c_str());
     std::string label = "Select " + s.origin()->name();
     if ( ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
