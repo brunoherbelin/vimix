@@ -485,11 +485,16 @@ void UserInterface::handleMouse()
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
         {
-            if(view_drag == nullptr)
+            if(view_drag == nullptr) {
                 view_drag = Mixer::manager().view();
+
+                // indicate to view that an action can be initiated (e.g. grab)
+                Mixer::manager().view()->initiate();
+            }
 
             // only operate if the view didn't change
             if (view_drag == Mixer::manager().view()) {
+
 
                 // action on current source
                 Source *current = Mixer::manager().currentSource();
