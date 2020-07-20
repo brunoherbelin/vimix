@@ -26,7 +26,7 @@ public:
     void setSource(Source *s = nullptr, std::string label = "");
     Source *getSource();
 
-    void draw(float width);
+    void Render(float width, bool controlbutton = false);
     inline bool ready() const { return source_ != nullptr; }
 };
 

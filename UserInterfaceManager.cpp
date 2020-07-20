@@ -1522,7 +1522,7 @@ Source * SourcePreview::getSource()
     return s;
 }
 
-void SourcePreview::draw(float width)
+void SourcePreview::Render(float width, bool controlbutton)
 {
     if(source_) {
         // cancel if failed
@@ -1540,7 +1540,7 @@ void SourcePreview::draw(float width)
             ImVec2 preview_size(width, width / source_->frame()->aspectRatio());
             ImGui::Image((void*)(uintptr_t) source_->frame()->texture(), preview_size);
 
-            if (source_->ready()) {
+            if (controlbutton && source_->ready()) {
                 ImVec2 pos = ImGui::GetCursorPos();
                 ImGui::SameLine();
                 if (ImGuiToolkit::IconToggle(9,7,1,8, &active))
@@ -1617,7 +1617,7 @@ void Navigator::RenderNewPannel()
             // if a new source was added
             if (new_source_preview_.ready()) {
                 // show preview
-                new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+                new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, true);
                 // or press Validate button
                 ImGui::Text(" ");
                 if ( ImGui::Button(ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
@@ -1657,7 +1657,7 @@ void Navigator::RenderNewPannel()
             // if a new source was added
             if (new_source_preview_.ready()) {
                 // show preview
-                new_source_preview_.draw(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+                new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
                 // ask to import the source in the mixer
                 ImGui::Text(" ");
                 if ( ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
