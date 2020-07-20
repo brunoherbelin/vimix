@@ -396,8 +396,16 @@ void MediaPlayer::play(bool on)
 #endif
 
     // reset time counter on stop
-    if (!on)
+    if (on)
+    {
+        if (rate_ > 0)
+            TimeComparator_ = &is_higher;
+        else
+            TimeComparator_ = &is_lower;
+    }
+    else
         timecount_.reset();
+
 }
 
 bool MediaPlayer::isPlaying(bool testpipeline) const
@@ -666,11 +674,6 @@ void MediaPlayer::update()
 
             // read next in stack
             vframe_read_index_ = (vframe_read_index_ +1) % N_VFRAME;
-
-            if (rate_ > 0)
-                TimeComparator_ = &is_higher;
-            else
-                TimeComparator_ = &is_lower;
 
         }
 
