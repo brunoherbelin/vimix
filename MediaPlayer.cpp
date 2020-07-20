@@ -590,8 +590,8 @@ void MediaPlayer::update()
 
     // try to access a vframe (non blocking)
     guint i = vframe_read_index_;
-    if (vframe_lock_[i].try_lock() ) {
-
+    if (vframe_lock_[i].try_lock() )
+    {
         // if we got a full vframe
         if (vframe_is_full_[vframe_read_index_])
         {
