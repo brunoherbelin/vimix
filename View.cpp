@@ -804,7 +804,7 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
     std::ostringstream info;
     info << "Depth " << std::fixed << std::setprecision(2) << d;
-    return Cursor(Cursor_ResizeAll, info.str() );
+    return Cursor(Cursor_ResizeNESW, info.str() );
 }
 
 
