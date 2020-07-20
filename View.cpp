@@ -415,12 +415,17 @@ void RenderView::setResolution(glm::vec3 resolution)
     if (resolution.x < 128.f || resolution.y < 128.f)
         resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
 
-    // new frame buffer
-    if (frame_buffer_)
-        delete frame_buffer_;
+    // do we need to change resolution ?
+    if (frame_buffer_ && frame_buffer_->resolution() != resolution)  {
 
-    // output frame is an RBG Multisamples FrameBuffer
-    frame_buffer_ = new FrameBuffer(resolution, false, true);
+        // new frame buffer
+        delete frame_buffer_;
+        frame_buffer_ = nullptr;
+    }
+
+    if (!frame_buffer_)
+        // output frame is an RBG Multisamples FrameBuffer
+        frame_buffer_ = new FrameBuffer(resolution, false, true);
 
     // reset fading
     setFading();
