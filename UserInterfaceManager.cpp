@@ -902,7 +902,8 @@ void UserInterface::showMediaPlayer(MediaPlayer *mp)
 
 #define LABEL_AUTO_MEDIA_PLAYER "Active source"
 
-MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER), follow_active_source_(true), media_playing_mode_(false)
+MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER),
+    follow_active_source_(true), media_playing_mode_(false), slider_pressed_(false)
 {
 }
 
@@ -1040,6 +1041,10 @@ void MediaController::Render()
                 mp_->rewind();
             ImGui::SameLine(0, spacing);
 
+            // ignore actual play status of mediaplayer when slider is pressed
+            if (!slider_pressed_)
+                media_playing_mode_ = mp_->isPlaying();
+
             // display buttons Play/Stop depending on current playing mode
             if (media_playing_mode_) {
 
@@ -1090,18 +1095,18 @@ void MediaController::Render()
             // custom timeline slider
             guint64 current_t = mp_->position();
             guint64 seek_t = current_t;
-            bool slider_pressed = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
+            slider_pressed_ = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
                                                                 mp_->duration(), mp_->frameDuration());
             // if the seek target time is different from the current position time
             // (i.e. the difference is less than one frame)
             if ( ABS_DIFF (current_t, seek_t) > mp_->frameDuration() ) {
                 // request seek (ASYNC)
                 mp_->seekTo(seek_t);
-                slider_pressed = false;
+                slider_pressed_ = false;
             }
             // play/stop command should be following the playing mode (buttons)
             // AND force to stop when the slider is pressed
-            bool media_play = media_playing_mode_ & (!slider_pressed);
+            bool media_play = media_playing_mode_ & (!slider_pressed_);
 
             // apply play action to media only if status should change
             // NB: The seek command performed an ASYNC state change, but

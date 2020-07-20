@@ -657,8 +657,8 @@ void MediaPlayer::update()
 
     // manage loop mode
     if (need_loop_ && !isimage_) {
-        execute_loop_command();
         need_loop_ = false;
+        execute_loop_command();
     }
 
     // all other updates below are only for playing mode
@@ -692,7 +692,7 @@ void MediaPlayer::execute_loop_command()
         rate_ *= - 1.f;
         execute_seek_command();
     }
-    else {
+    else { //LOOP_NONE
         play(false);
     }
 }
@@ -742,6 +742,23 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     else
         Log::Info("MediaPlayer %s Seek %ld %f", gst_element_get_name(pipeline_), seek_pos, rate_);
 #endif
+
+
+    // make sure the intermediate buffered frames are ignored
+    guint i = vframe_read_index_;
+    vframe_lock_[i].lock();
+    if (vframe_write_index_ != vframe_read_index_)
+    {
+        vframe_lock_[vframe_write_index_].lock();
+
+        // catch-up with vframe stack
+        vframe_read_index_ = vframe_write_index_;
+#ifdef MEDIA_PLAYER_DEBUG
+        Log::Info("MediaPlayer %s reset vframe %d", gst_element_get_name(pipeline_), vframe_write_index_);
+#endif
+        vframe_lock_[vframe_write_index_].unlock();
+    }
+    vframe_lock_[i].unlock();
 }
 
 void MediaPlayer::setPlaySpeed(double s)

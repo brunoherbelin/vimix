@@ -86,6 +86,7 @@ class MediaController
     std::string current_;
     bool follow_active_source_;
     bool media_playing_mode_;
+    bool slider_pressed_;
 
 public:
     MediaController();
