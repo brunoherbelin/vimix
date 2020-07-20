@@ -253,6 +253,7 @@ private:
     GstClockTime start_position_;
     GstClockTime duration_;
     GstClockTime frame_duration_;
+    bool (*TimeComparator_)(GstClockTime,GstClockTime);
     gdouble rate_;
     LoopMode loop_;
     std::atomic<bool> need_loop_;

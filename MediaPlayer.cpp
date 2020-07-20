@@ -27,6 +27,23 @@
 
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
+static bool is_lower(GstClockTime a, GstClockTime b) {
+    if ( a == GST_CLOCK_TIME_NONE || b == GST_CLOCK_TIME_NONE )
+        return true;
+    return a < b;
+}
+
+static bool is_higher(GstClockTime a, GstClockTime b) {
+    if ( a == GST_CLOCK_TIME_NONE || b == GST_CLOCK_TIME_NONE )
+        return true;
+    return a > b;
+}
+
+static bool always_true(GstClockTime a, GstClockTime b) {
+    return true;
+}
+
+
 MediaPlayer::MediaPlayer(string name) : id_(name)
 {
     if (std::empty(id_))
@@ -52,6 +69,7 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     duration_ = GST_CLOCK_TIME_NONE;
     start_position_ = GST_CLOCK_TIME_NONE;
     frame_duration_ = GST_CLOCK_TIME_NONE;
+    TimeComparator_ = &is_higher;
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
     current_segment_ = segments_.begin();
@@ -593,7 +611,7 @@ void MediaPlayer::update()
     if (vframe_lock_[i].try_lock() )
     {
         // if we got a full vframe
-        if (vframe_is_full_[vframe_read_index_])
+        if (vframe_is_full_[vframe_read_index_] && (*TimeComparator_)(vframe_position_[vframe_read_index_], position_) )
         {
             // first occurence; create texture
             if (textureindex_==0) {
@@ -648,6 +666,11 @@ void MediaPlayer::update()
 
             // read next in stack
             vframe_read_index_ = (vframe_read_index_ +1) % N_VFRAME;
+
+            if (rate_ > 0)
+                TimeComparator_ = &is_higher;
+            else
+                TimeComparator_ = &is_lower;
 
         }
 
@@ -730,7 +753,8 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     if (rate_ > 0) {
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
             GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_END, 0);
-    } else {
+    }
+    else {
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
             GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_SET, seek_pos);
     }
@@ -738,27 +762,29 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     // Send the event (ASYNC)
     if (seek_event && !gst_element_send_event(pipeline_, seek_event) )
         Log::Warning("MediaPlayer %s Seek failed", gst_element_get_name(pipeline_));
+    else {
 #ifdef MEDIA_PLAYER_DEBUG
-    else
         Log::Info("MediaPlayer %s Seek %ld %f", gst_element_get_name(pipeline_), seek_pos, rate_);
 #endif
+        // temporarily ignore the ordering test
+        TimeComparator_ = &always_true;
 
+        // make sure the intermediate buffered frames are ignored
+        guint i = vframe_read_index_;
+        vframe_lock_[i].lock();
+        if (vframe_write_index_ != vframe_read_index_)
+        {
+            vframe_lock_[vframe_write_index_].lock();
 
-    // make sure the intermediate buffered frames are ignored
-    guint i = vframe_read_index_;
-    vframe_lock_[i].lock();
-    if (vframe_write_index_ != vframe_read_index_)
-    {
-        vframe_lock_[vframe_write_index_].lock();
-
-        // catch-up with vframe stack
-        vframe_read_index_ = vframe_write_index_;
+            // catch-up with vframe stack
+            vframe_read_index_ = vframe_write_index_;
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s reset vframe %d", gst_element_get_name(pipeline_), vframe_write_index_);
+            Log::Info("MediaPlayer %s reset vframe %d", gst_element_get_name(pipeline_), vframe_write_index_);
 #endif
-        vframe_lock_[vframe_write_index_].unlock();
+            vframe_lock_[vframe_write_index_].unlock();
+        }
+        vframe_lock_[i].unlock();
     }
-    vframe_lock_[i].unlock();
 }
 
 void MediaPlayer::setPlaySpeed(double s)
