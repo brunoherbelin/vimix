@@ -1,0 +1,36 @@
+language: cpp
+dist: focal
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          packages:
+            - build-essential
+            - cmake
+            - ninja-build
+            - libpng-dev
+            - libglfw3-dev
+            - libgstreamer1.0-dev
+            - libgstreamer-plugins-base1.0-dev
+            - libxrandr-dev
+
+    # - os: osx
+    #   osx_image: xcode11.5
+    #   addons:
+    #     homebrew:
+    #       update: true
+    #       packages:
+    #         - cmake
+    #         - ninja
+    #         - libpng
+    #         - glfw
+    #         - gstreamer
+    #         - gst-plugins-base
+    #   env:
+    #     - CXX_COMPILER=clang++
+
+script:
+  - cmake -G Ninja
+  - ninja
