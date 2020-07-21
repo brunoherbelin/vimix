@@ -1600,10 +1600,10 @@ void Navigator::RenderNewPannel()
 
             // combo of recent media filenames
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##RecentImport", "Recent files"))
+            if (ImGui::BeginCombo("##RecentImport", IMGUI_LABEL_RECENT_FILES))
             {
-                for (std::list<std::string>::iterator path = Settings::application.recentImport.filenames.begin();
-                     path != Settings::application.recentImport.filenames.end(); path++ )
+                std::list<std::string> recent = Settings::application.recentImport.filenames;
+                for (std::list<std::string>::iterator path = recent.begin(); path != recent.end(); path++ )
                 {
                     if ( SystemToolkit::file_exists(*path)) {
                         std::string label = path->substr( path->size() - MIN( 35, path->size()) );
@@ -1796,8 +1796,8 @@ void Navigator::RenderMainPannel()
         if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
 
             // Option 0 : recent files
-            if (ImGui::Selectable( ICON_FA_HISTORY " Recent Files") ) {
-                 Settings::application.recentFolders.path = "Recent Files";
+            if (ImGui::Selectable( ICON_FA_HISTORY IMGUI_LABEL_RECENT_FILES) ) {
+                 Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
                  selection_session_mode = 0;
                  selection_session_mode_changed = true;
             }
@@ -1830,7 +1830,7 @@ void Navigator::RenderMainPannel()
             if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
                 Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
                 if (Settings::application.recentFolders.filenames.empty()) {
-                    Settings::application.recentFolders.path.assign("Recent Files");
+                    Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
                     selection_session_mode = 0;
                 }
                 else
