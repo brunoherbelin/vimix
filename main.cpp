@@ -37,12 +37,13 @@ void drawScene()
 
 
 
-int main(int, char**)
+int main(int, char *argv[])
 {
     ///
     /// Settings
     ///
     Settings::Load();
+    Settings::application.executable = std::string(argv[0]);
 
     ///
     /// RENDERING INIT

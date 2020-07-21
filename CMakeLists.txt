@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.8.0)
-project(vmix VERSION 0.0.1 LANGUAGES CXX C)
+project(vimix VERSION 0.0.1 LANGUAGES CXX C)
 
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 set(CMAKE_INCLUDE_CURRENTDIR ON)
@@ -63,6 +63,12 @@ macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamer pbutils library"
 macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamer opengl library"
 "${GSTREAMER_GL_LIBRARY}"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+
+
+#find_package(GStreamerPluginsBad 1.0.0 COMPONENTS player)
+#macro_log_feature(GSTREAMER_PLAYER_LIBRARY_FOUND "GStreamer player library"
+#"${GSTREAMER_PLAYER_LIBRARY}"
+#"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
 
 # Various preprocessor definitions for GST
@@ -196,7 +202,7 @@ include_directories(
 )
 
 
-set(VMIX_BINARY "vmix")
+set(VMIX_BINARY "vimix")
 set(VMIX_SRCS
     main.cpp
     Log.cpp
@@ -299,10 +305,38 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/h_mark.ply
 )
 
-add_executable(${VMIX_BINARY}
-    ${VMIX_SRCS}
-    ${IMGUITEXTEDIT_SRC}
-)
+### DEFINE THE TARGET (OS specific)
+
+IF(APPLE)
+
+    # set icon
+    set(MACOSX_BUNDLE_ICON vimix.icns)
+    set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/osx/${MACOSX_BUNDLE_ICON})
+    # set where in the bundle to put the icns file
+    set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+
+    # create the application
+    add_executable(${VMIX_BINARY} MACOSX_BUNDLE
+        ${VMIX_SRCS}
+        ${IMGUITEXTEDIT_SRC}
+        ${MACOSX_BUNDLE_ICON_FILE}
+    )
+
+    # set the Info.plist file
+    set(MACOSX_BUNDLE_PLIST_FILE ${CMAKE_SOURCE_DIR}/osx/Info.plist)
+    set_target_properties(${VMIX_BINARY} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE})
+
+ELSE(APPLE)
+
+    add_executable(${VMIX_BINARY}
+        ${VMIX_SRCS}
+        ${IMGUITEXTEDIT_SRC}
+    )
+
+ENDIF(APPLE)
+
+
+### COMPILE THE TARGET (all OS)
 
 set_property(TARGET ${VMIX_BINARY} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${VMIX_BINARY} PROPERTY C_STANDARD 11)
@@ -326,6 +360,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${GSTREAMER_VIDEO_LIBRARY}
     ${GSTREAMER_PBUTILS_LIBRARY}
     ${GSTREAMER_GL_LIBRARY}
+    ${GSTREAMER_PLAYER_LIBRARY}
     ${NFD_LIBRARY}
     ${PNG_LIBRARY}
     ${THREAD_LIBRARY}
@@ -337,3 +372,82 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 )
 
 macro_display_feature_log()
+
+
+### DEFINE THE PACKAGING (all OS)
+
+SET(CPACK_PACKAGE_NAME "vimix")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "vimix\n Real-time video mixing for live performance.")
+SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
+SET(CPACK_PACKAGE_CONTACT "bruno.herbelin@gmail.com")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
+SET(CPACK_PACKAGE_VERSION_MAJOR "0")
+SET(CPACK_PACKAGE_VERSION_MINOR "1")
+#SET(CPACK_PACKAGE_VERSION_PATCH "${GLMIXER_WC_REVISION}")
+SET(CPACK_PACKAGE_VENDOR "Bruno Herbelin")
+SET(CPACK_SOURCE_IGNORE_FILES
+    "/\\\\.git/"
+    "/\\\\.gitignore$"
+    "/\\\\.gitmodules$"
+)
+
+
+### DEFINE THE PACKAGING (OS specific)
+
+IF(APPLE)
+
+    # Bundle target
+    set(CPACK_GENERATOR "DragNDrop")
+
+    # OSX cpack info
+    set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
+    set(CPACK_BUNDLE_NAME  ${CPACK_PACKAGE_NAME})
+    set(CPACK_BUNDLE_ICON  ${MACOSX_BUNDLE_ICON_FILE})
+    set(CPACK_BUNDLE_PLIST ${MACOSX_BUNDLE_PLIST_FILE})
+
+    set(APPS "\${CMAKE_INSTALL_PREFIX}/vimix.app")
+    #    set( APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/vimix${CMAKE_EXECUTABLE_SUFFIX}")
+
+    install(TARGETS ${VMIX_BINARY}
+            CONFIGURATIONS Release RelWithDebInfo
+            BUNDLE  DESTINATION . COMPONENT Runtime
+            RUNTIME DESTINATION bin COMPONENT Runtime
+    )
+
+    set(plugin_dest_dir vimix.app/Contents/MacOS/)
+    install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.16.2_3/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.16.2_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+
+    # package runtime fixup bundle
+    install(CODE "
+            file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.so\")
+            include(BundleUtilities)
+            set(BU_CHMOD_BUNDLE_ITEMS TRUE)
+            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"\")
+            "
+            COMPONENT Runtime
+    )
+
+    set(CPACK_BINARY_DRAGNDROP ON)
+
+ELSE(APPLE)
+
+    set(APPS "\${CMAKE_INSTALL_PREFIX}/bin/vimix")
+
+    install(TARGETS ${VMIX_BINARY}
+            CONFIGURATIONS Release RelWithDebInfo
+            RUNTIME DESTINATION bin COMPONENT Runtime
+    )
+
+
+ENDIF(APPLE)
+
+# Package full name
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}_${CPACK_SYSTEM_NAME}")
+
+# To Create a package, run "cpack"
+include(CPack)

@@ -67,7 +67,7 @@ struct History
     bool save_on_exit;
 
     History() {
-        path = "Recent Files";
+        path = IMGUI_LABEL_RECENT_FILES;
         valid_file = false;
         load_at_start = false;
         save_on_exit = false;
@@ -125,6 +125,7 @@ struct Application
 {
     // Verification
     std::string name;
+    std::string executable;
 
     // Global settings Application interface
     float scale;

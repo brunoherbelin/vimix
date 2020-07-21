@@ -2,6 +2,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <stdlib.h>
 
 // Desktop OpenGL function loader
 #include <glad/glad.h>  // Initialized with gladLoadGLLoader()
@@ -143,9 +144,15 @@ bool Rendering::init()
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
     //
-    // Gstreamer setup for OpenGL
+    // Gstreamer setup
     //
-    g_setenv ("GST_GL_API", "opengl3", FALSE);
+    std::string plugins_path = SystemToolkit::path_filename(Settings::application.executable);
+    plugins_path += "gstreamer-1.0";
+    if ( SystemToolkit::file_exists(plugins_path)) {
+        Log::Info("Found Gstreamer plugins in %s", plugins_path.c_str());
+        g_setenv ("GST_PLUGIN_SYSTEM_PATH", plugins_path.c_str(), TRUE);
+    }
+    g_setenv ("GST_GL_API", "opengl3", TRUE);
     gst_init (NULL, NULL);
 #if GST_GL_HAVE_PLATFORM_WGL
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
@@ -163,6 +170,7 @@ bool Rendering::init()
                                         (guintptr) glfwGetGLXContext(main_.window()),
                                         GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
 #endif
+
 
     //
     // output window

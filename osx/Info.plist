@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>CFBundleDocumentTypes</key>
+        <array>
+                <dict>
+                        <key>CFBundleTypeExtensions</key>
+                        <array>
+                                <string>mix</string>
+                        </array>
+                        <key>CFBundleTypeIconFile</key>
+                        <string>vimix.icns</string>
+                        <key>CFBundleTypeName</key>
+                        <string>GLMixer Session</string>
+                        <key>CFBundleTypeOSTypes</key>
+                        <array>
+                                <string>MIX </string>
+                        </array>
+                        <key>CFBundleTypeRole</key>
+                        <string>Editor</string>
+                	<key>LSIsAppleDefaultForType</key>
+        		<true/>
+                </dict>
+        </array>
+	<key>CFBundleExecutable</key>
+        <string>vimix</string>
+	<key>CFBundleGetInfoString</key>
+        <string>Vimix Bundle</string>
+	<key>CFBundleIconFile</key>
+        <string>vimix.icns</string>
+	<key>CFBundleIdentifier</key>
+        <string>com.bhbn.vimix</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleLongVersionString</key>
+	<string>version 1.0</string>
+	<key>CFBundleName</key>
+        <string>vimix</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+        <string>0.1</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>CSResourcesFileMapped</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Bruno Herbelin</string>
+</dict>
+</plist>
