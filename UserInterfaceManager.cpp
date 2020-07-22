@@ -1053,7 +1053,7 @@ void MediaController::Render()
                 ImGui::SameLine(0, spacing);
 
                 ImGui::PushButtonRepeat(true);
-                if (ImGui::Button(ICON_FA_FORWARD))
+                if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD))
                     mp_->fastForward ();
                 ImGui::PopButtonRepeat();
             }
@@ -1064,7 +1064,7 @@ void MediaController::Render()
                 ImGui::SameLine(0, spacing);
 
                 ImGui::PushButtonRepeat(true);
-                if (ImGui::Button(ICON_FA_STEP_FORWARD))
+                if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_STEP_BACKWARD : ICON_FA_STEP_FORWARD))
                     mp_->seekNextFrame();
                 ImGui::PopButtonRepeat();
             }

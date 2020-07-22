@@ -13,6 +13,8 @@
 #include <gst/gst.h>
 #include <gst/gl/gl.h>
 #include <gst/pbutils/pbutils.h>
+#include <gst/app/gstappsink.h>
+
 
 // Forward declare classes referenced
 class Visitor;
@@ -123,6 +125,7 @@ public:
      * Must be called in update loop
      * */
     void update();
+    void update_old();
 
     void enable(bool on);
 
@@ -253,10 +256,8 @@ private:
     GstClockTime start_position_;
     GstClockTime duration_;
     GstClockTime frame_duration_;
-    bool (*TimeComparator_)(GstClockTime,GstClockTime);
     gdouble rate_;
     LoopMode loop_;
-    std::atomic<bool> need_loop_;
     TimeCounter timecount_;
     gdouble framerate_;
     GstState desired_state_;
@@ -266,12 +267,30 @@ private:
     std::string codec_name_;
     GstVideoInfo v_frame_video_info_;
 
-    guint vframe_read_index_;
-    guint vframe_write_index_;
-    GstVideoFrame vframe_[N_VFRAME];
-    std::atomic<bool> vframe_is_full_[N_VFRAME];
-    GstClockTime vframe_position_[N_VFRAME];
-    std::mutex vframe_lock_[N_VFRAME];
+    // frame stack
+    typedef enum  {
+        EMPTY = 0,
+        SAMPLE = 1,
+        PREROLL = 2,
+        EOS = 4
+    } FrameStatus;
+
+    struct Frame {
+        GstVideoFrame vframe;
+        FrameStatus status;
+        GstClockTime position;
+        std::mutex access;
+
+        Frame() {
+            vframe.buffer = nullptr;
+            status = EMPTY;
+            position = GST_CLOCK_TIME_NONE;
+        }
+    };
+    Frame frame_[N_VFRAME];
+    guint write_index_;
+    guint last_index_;
+    std::mutex index_lock_;
 
     // for PBO
     guint pbo_[2];
@@ -288,14 +307,18 @@ private:
     bool interlaced_;
     bool enabled_;
 
-    void init_texture();
     void execute_open();
     void execute_loop_command();
-    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);   
-    bool fill_v_frame(GstBuffer *buf);
+    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);
 
-    static GstFlowReturn callback_pull_sample_video (GstElement *bin, MediaPlayer *m);
-    static void callback_end_of_video (GstElement *, MediaPlayer *m);
+    // gst frame filling
+    void init_texture(guint index);
+    void fill_texture(guint index);
+    bool fill_frame(GstBuffer *buf, FrameStatus status);
+    static void callback_end_of_stream (GstAppSink *, gpointer);
+    static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
+    static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
+
     static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
     static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 
