@@ -146,30 +146,33 @@ bool Rendering::init()
     //
     // Gstreamer setup
     //
-    std::string plugins_path = SystemToolkit::path_filename(Settings::application.executable);
-    plugins_path += "gstreamer-1.0";
+    std::string plugins_path = SystemToolkit::cwd_path() + "gstreamer-1.0";
+    std::string plugins_scanner = SystemToolkit::cwd_path() + "gst-plugin-scanner" ;
     if ( SystemToolkit::file_exists(plugins_path)) {
         Log::Info("Found Gstreamer plugins in %s", plugins_path.c_str());
         g_setenv ("GST_PLUGIN_SYSTEM_PATH", plugins_path.c_str(), TRUE);
+        g_setenv ("GST_PLUGIN_SCANNER", plugins_scanner.c_str(), TRUE);
     }
     g_setenv ("GST_GL_API", "opengl3", TRUE);
     gst_init (NULL, NULL);
-#if GST_GL_HAVE_PLATFORM_WGL
-    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
-                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
-#elif GST_GL_HAVE_PLATFORM_CGL
-//    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_.window()) );
-    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
 
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                         (guintptr) 0,
-                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
-#elif GST_GL_HAVE_PLATFORM_GLX
-    global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                        (guintptr) glfwGetGLXContext(main_.window()),
-                                        GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
-#endif
+
+//#if GST_GL_HAVE_PLATFORM_WGL
+//    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
+//                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
+//#elif GST_GL_HAVE_PLATFORM_CGL
+////    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_.window()) );
+//    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
+
+//    global_gl_context = gst_gl_context_new_wrapped (global_display,
+//                                         (guintptr) 0,
+//                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
+//#elif GST_GL_HAVE_PLATFORM_GLX
+//    global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
+//    global_gl_context = gst_gl_context_new_wrapped (global_display,
+//                                        (guintptr) glfwGetGLXContext(main_.window()),
+//                                        GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
+//#endif
 
 
     //

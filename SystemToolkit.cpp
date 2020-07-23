@@ -178,6 +178,17 @@ std::string SystemToolkit::home_path()
     return string(mHomePath) + PATH_SEP;
 }
 
+
+std::string SystemToolkit::cwd_path()
+{
+    char mCwdPath[PATH_MAX];
+
+    if (getcwd(mCwdPath, sizeof(mCwdPath)) != NULL)
+        return string(mCwdPath) + PATH_SEP;
+    else
+        return string();
+}
+
 std::string SystemToolkit::username()
 {
     // 1. find home

@@ -414,12 +414,17 @@ IF(APPLE)
             RUNTIME DESTINATION bin COMPONENT Runtime
     )
 
-    set(plugin_dest_dir vimix.app/Contents/MacOS/)
+    set(plugin_dest_dir vimix.app/Contents/Resources/)
+    install(FILES "/usr/local/Cellar/gstreamer/1.16.2/libexec/gstreamer-1.0/gst-plugin-scanner"
+        DESTINATION "${plugin_dest_dir}"
+        PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        COMPONENT Runtime
+    )
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.16.2_3/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.16.2_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+#    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.16.2_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # package runtime fixup bundle

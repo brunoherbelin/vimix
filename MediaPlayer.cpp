@@ -161,8 +161,8 @@ void MediaPlayer::execute_open()
 
         // instruct the sink to send samples synched in time
         gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
-        gst_base_sink_set_max_lateness (GST_BASE_SINK(sink), 0 );
-        gst_base_sink_set_processing_deadline (GST_BASE_SINK(sink), 0 );
+//        gst_base_sink_set_max_lateness (GST_BASE_SINK(sink), 0 );
+//        gst_base_sink_set_processing_deadline (GST_BASE_SINK(sink), 0 );
 
         // instruct sink to use the required caps
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
@@ -173,9 +173,15 @@ void MediaPlayer::execute_open()
 
         // set the callbacks
         GstAppSinkCallbacks callbacks;
-        callbacks.eos = callback_end_of_stream;
         callbacks.new_preroll = callback_new_preroll;
-        callbacks.new_sample = callback_new_sample;
+        if (isimage_) {
+            callbacks.eos = NULL;
+            callbacks.new_sample = NULL;
+        }
+        else {
+            callbacks.eos = callback_end_of_stream;
+            callbacks.new_sample = callback_new_sample;
+        }
         gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
         gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 
@@ -614,7 +620,8 @@ void MediaPlayer::update()
         discoverer_ = nullptr;
     }
 
-    if (!enabled_)
+    // prevent unnecessary updates
+    if (!enabled_ || (isimage_ && textureindex_>0 ) )
         return;
 
     // local variables before trying to update
@@ -633,10 +640,12 @@ void MediaPlayer::update()
     }
     index_lock_.unlock();
 
-    // lock frame while reading it
-    if (!frame_[read_index].access.try_lock())
-        // do not block rendering if everything is too busy
-        return;
+//    // lock frame while reading it
+//    if (!frame_[read_index].access.try_lock())
+//        // do not block rendering if everything is too busy
+//        return;
+
+    frame_[read_index].access.lock();
 
     // do not fill a frame twice
     if (frame_[read_index].status != EMPTY ) {

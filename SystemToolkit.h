@@ -21,6 +21,9 @@ namespace SystemToolkit
     // get the OS dependent home path
     std::string home_path();
 
+    // get the OS dependent location
+    std::string cwd_path();
+
     // get the OS dependent path where to store settings
     std::string settings_path();
 
