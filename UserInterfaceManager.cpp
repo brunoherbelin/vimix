@@ -276,11 +276,11 @@ void UserInterface::handleKeyboard()
             // Shader Editor
             Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
             // Logs
             Settings::application.widget.preview = !Settings::application.widget.preview;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
         }
@@ -301,8 +301,6 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
-//        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 )) // TODO REMOVE (DEBUG ONLY)
-//            Mixer::manager().setView(View::TRANSITION);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
@@ -861,12 +859,12 @@ void UserInterface::RenderPreview()
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
-            if (ImGui::BeginMenu(ICON_FA_DESKTOP " Preview"))
+            if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save capture") )
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save frame") )
                     Mixer::manager().session()->addRecorder(new FrameRecorder);
 
                 if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
@@ -1921,8 +1919,8 @@ void Navigator::RenderMainPannel()
         // WINDOWS
         ImGui::Text(" ");
         ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "M");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
 #ifndef NDEBUG
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
