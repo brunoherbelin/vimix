@@ -161,20 +161,23 @@ void MediaPlayer::execute_open()
 
         // instruct the sink to send samples synched in time
         gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
+        gst_base_sink_set_max_lateness (GST_BASE_SINK(sink), 0 );
+        gst_base_sink_set_processing_deadline (GST_BASE_SINK(sink), 0 );
 
         // instruct sink to use the required caps
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
 
         // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
+        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 100);
         gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
         // set the callbacks
-        GstAppSinkCallbacks callbacks = { NULL };
+        GstAppSinkCallbacks callbacks;
         callbacks.eos = callback_end_of_stream;
         callbacks.new_preroll = callback_new_preroll;
         callbacks.new_sample = callback_new_sample;
         gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 
         // done with ref to sink
         gst_object_unref (sink);
@@ -556,49 +559,53 @@ void MediaPlayer::fill_texture(guint index)
         // initialize texture
         init_texture(index);
 
-        return;
-    }
-
-    // use dual Pixel Buffer Object
-    if (pbo_size_ > 0) {
-        // In dual PBO mode, increment current index first then get the next index
-        pbo_index_ = (pbo_index_ + 1) % 2;
-        pbo_next_index_ = (pbo_index_ + 1) % 2;
-
-        // bind PBO to read pixels
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
-        // copy pixels from PBO to texture object
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        // bind the next PBO to write pixels
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
-        // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-        // map the buffer object into client's memory
-        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-        if (ptr) {
-            // update data directly on the mapped buffer
-            // NB : equivalent but faster (memmove instead of memcpy ?) than
-            // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
-            memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-
-            // release pointer to mapping buffer
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-        }
-        // done with PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     }
     else {
-        // without PBO, use standard opengl (slower)
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                        GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
+
+        // use dual Pixel Buffer Object
+        if (pbo_size_ > 0) {
+            // In dual PBO mode, increment current index first then get the next index
+            pbo_index_ = (pbo_index_ + 1) % 2;
+            pbo_next_index_ = (pbo_index_ + 1) % 2;
+
+            // bind PBO to read pixels
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+            // copy pixels from PBO to texture object
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+            // bind the next PBO to write pixels
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+            // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+            // map the buffer object into client's memory
+            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+            if (ptr) {
+                // update data directly on the mapped buffer
+                // NB : equivalent but faster (memmove instead of memcpy ?) than
+                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
+                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+
+                // release pointer to mapping buffer
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+            }
+            // done with PBO
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        }
+        else {
+            // without PBO, use standard opengl (slower)
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                            GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
+        }
     }
 }
 
 void MediaPlayer::update()
 {
     // discard
-    if (!ready_)
+    if (!ready_) {
+        timecount_.reset();
         return;
+    }
 
     // done discovering stream
     if (discoverer_ != nullptr) {
@@ -609,10 +616,6 @@ void MediaPlayer::update()
 
     if (!enabled_)
         return;
-
-    // bind texture in any case (except if not initialized yet)
-    if (textureindex_>0)
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
 
     // local variables before trying to update
     guint read_index = 0;
@@ -631,10 +634,13 @@ void MediaPlayer::update()
     index_lock_.unlock();
 
     // lock frame while reading it
-    frame_[read_index].access.lock();
+    if (!frame_[read_index].access.try_lock())
+        // do not block rendering if everything is too busy
+        return;
 
     // do not fill a frame twice
     if (frame_[read_index].status != EMPTY ) {
+
 
         // is this an End-of-Stream frame ?
         if (frame_[read_index].status == EOS )
@@ -648,8 +654,8 @@ void MediaPlayer::update()
             // fill the texture with the frame at reading index
             fill_texture(read_index);
 
-            // double update for pre-roll (needed because of dual FPO)
-            if (frame_[read_index].status == PREROLL )
+            // double update for pre-roll and dual FPO (ensure frame is displayed now)
+            if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
                 fill_texture(read_index);
         }
 
@@ -658,6 +664,11 @@ void MediaPlayer::update()
 
         // avoid reading it again
         frame_[read_index].status = EMPTY;
+
+//        // TODO : try to do something when the update is too slow :(
+//        if ( timecount_.dt() > frame_duration_  * 2) {
+//            Log::Info("frame late %d", 2 * frame_duration_);
+//        }
     }
 
     // unkock frame after reading it
@@ -665,7 +676,6 @@ void MediaPlayer::update()
 
     // manage loop mode
     if (need_loop && !isimage_) {
-
         execute_loop_command();
     }
 
@@ -841,7 +851,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
     return true;
 }
 
-void MediaPlayer::callback_end_of_stream (GstAppSink *sink, gpointer p)
+void MediaPlayer::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     MediaPlayer *m = (MediaPlayer *)p;
     if (m) {
@@ -899,6 +909,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
         MediaPlayer *m = (MediaPlayer *)p;
         if (m) {
+
             // fill frame with buffer
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
@@ -913,6 +924,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
         // free buffer & sample
         gst_buffer_unref (buf);
         gst_sample_unref (sample);
+
     }
     else
         ret = GST_FLOW_FLUSHING;
@@ -970,6 +982,7 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                 m->height_ = gst_discoverer_video_info_get_height(vinfo);
                 m->isimage_ = gst_discoverer_video_info_is_image(vinfo);
                 m->interlaced_ = gst_discoverer_video_info_is_interlaced(vinfo);
+                m->bitrate_ = gst_discoverer_video_info_get_bitrate(vinfo);
                 guint parn = gst_discoverer_video_info_get_par_num(vinfo);
                 guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
                 m->par_width_ = (m->width_ * parn) / pard;
@@ -1048,7 +1061,7 @@ void TimeCounter::tic ()
     // Exponential moving averate with previous framerate to filter jitter (50/50)
     // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
     // NB: factor 100 to get 0.01 precision
-    fps = 0.5f * fps + 0.005f * static_cast<float>( ( 100 * GST_SECOND * nbFrames ) / dt );
+    fps = 0.5 * fps + 0.005 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
 
     // reset counter every second
     if ( dt >= GST_SECOND)
@@ -1073,11 +1086,11 @@ void TimeCounter::reset ()
     last_time = gst_util_get_timestamp ();;
     tic_time = last_time;
     nbFrames = 0;
-    fps = 0.f;
+    fps = 0.0;
 }
 
-float TimeCounter::frameRate() const
+double TimeCounter::frameRate() const
 {
-    return  fps;
+    return fps;
 }
 

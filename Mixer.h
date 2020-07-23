@@ -94,7 +94,7 @@ protected:
     LayerView layer_;
     TransitionView transition_;
 
-    gint64 update_time_;
+    guint64 update_time_;
     float dt_;
 };
 

@@ -203,7 +203,7 @@ void Mixer::update()
     // compute dt
     if (update_time_ == GST_CLOCK_TIME_NONE)
         update_time_ = gst_util_get_timestamp ();
-    gint64 current_time = gst_util_get_timestamp ();
+    guint64 current_time = gst_util_get_timestamp ();
     // dt is in milisecond, with fractional precision (from micro seconds)
     dt_ = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
     update_time_ = current_time;

@@ -28,13 +28,13 @@ struct TimeCounter {
     GstClockTime last_time;
     GstClockTime tic_time;
     int nbFrames;
-    float fps;
+    gdouble fps;
 public:
     TimeCounter();
     GstClockTime dt();
     void tic();
     void reset();
-    float frameRate() const;
+    gdouble frameRate() const;
 };
 
 struct MediaSegment
@@ -252,6 +252,7 @@ private:
     guint width_;
     guint height_;
     guint par_width_;  // width to match pixel aspect ratio
+    guint bitrate_;
     GstClockTime position_;
     GstClockTime start_position_;
     GstClockTime duration_;
