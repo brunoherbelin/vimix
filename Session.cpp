@@ -5,6 +5,7 @@
 #include "FrameBuffer.h"
 #include "Session.h"
 #include "GarbageVisitor.h"
+#include "Recorder.h"
 
 #include "Log.h"
 
@@ -71,6 +72,24 @@ void Session::update(float dt)
 
     // draw render view in Frame Buffer
     render_.draw();
+
+    // send frame to recorders
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        Recorder *rec = *iter;
+
+        if (rec->enabled())
+            rec->addFrame(render_.frame(), dt);
+
+        if (rec->finished()) {
+            iter = recorders_.erase(iter);
+            delete rec;
+        }
+        else {
+            iter++;
+        }
+    }
 }
 
 
@@ -209,4 +228,19 @@ int Session::index(SourceList::iterator it) const
     return index;
 }
 
+void Session::addRecorder(Recorder *rec)
+{
+    recorders_.push_back(rec);
+}
+
+void Session::clearRecorders()
+{
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        Recorder *rec = *iter;
+        iter = recorders_.erase(iter);
+        delete rec;
+    }
+}
 

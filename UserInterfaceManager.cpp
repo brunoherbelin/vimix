@@ -44,6 +44,7 @@
 #include "ImGuiVisitor.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
+#include "Recorder.h"
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
@@ -864,6 +865,9 @@ void UserInterface::RenderPreview()
             {
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
+
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save capture") )
+                    Mixer::manager().session()->addRecorder(new FrameRecorder);
 
                 if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                     Settings::application.widget.preview = false;

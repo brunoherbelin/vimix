@@ -37,6 +37,7 @@ public:
     // width & height
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
+    inline bool use_alpha() const { return use_alpha_; }
     glm::vec3 resolution() const;
     float aspectRatio() const;
 

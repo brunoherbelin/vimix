@@ -5,6 +5,8 @@
 #include "View.h"
 #include "Source.h"
 
+class Recorder;
+
 class Session
 {
 public:
@@ -45,6 +47,10 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
+    // add recorders
+    void addRecorder(Recorder *rec);
+    void clearRecorders();
+
     // configure rendering resolution
     void setResolution(glm::vec3 resolution);
 
@@ -67,6 +73,8 @@ protected:
     SourceList sources_;
     std::map<View::Mode, Group*> config_;
     bool active_;
+    std::list<Recorder *> recorders_;
+
 };
 
 #endif // SESSION_H
