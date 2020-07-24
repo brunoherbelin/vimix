@@ -990,6 +990,18 @@ void MediaController::Render()
 
             ImGui::EndMenu();
         }
+        bool next = false;
+        if (mp_ && ImGui::Selectable(ICON_FA_CHEVRON_RIGHT, &next, ImGuiSelectableFlags_None, ImVec2(15,0))) {
+
+            auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
+            mpit++;
+            if (mpit == MediaPlayer::end()) {
+                mpit = MediaPlayer::begin();
+            }
+            setMediaPlayer(*mpit);
+
+        }
+
         ImGui::EndMenuBar();
     }
 
