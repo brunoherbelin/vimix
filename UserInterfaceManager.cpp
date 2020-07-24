@@ -975,6 +975,28 @@ void MediaController::Render()
 
             ImGui::EndMenu();
         }
+        if (mp_ && current_ != LABEL_AUTO_MEDIA_PLAYER && MediaPlayer::registered().size() > 1) {
+            bool tmp = false;
+            if ( ImGui::Selectable(ICON_FA_CHEVRON_LEFT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
+
+                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
+                if (mpit == MediaPlayer::begin()) {
+                    mpit = MediaPlayer::end();
+                }
+                mpit--;
+                setMediaPlayer(*mpit);
+
+            }
+            if ( ImGui::Selectable(ICON_FA_CHEVRON_RIGHT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
+
+                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
+                mpit++;
+                if (mpit == MediaPlayer::end()) {
+                    mpit = MediaPlayer::begin();
+                }
+                setMediaPlayer(*mpit);
+            }
+        }
         if (ImGui::BeginMenu(current_.c_str()))
         {
             if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
@@ -990,17 +1012,7 @@ void MediaController::Render()
 
             ImGui::EndMenu();
         }
-        bool next = false;
-        if (mp_ && ImGui::Selectable(ICON_FA_CHEVRON_RIGHT, &next, ImGuiSelectableFlags_None, ImVec2(15,0))) {
 
-            auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
-            mpit++;
-            if (mpit == MediaPlayer::end()) {
-                mpit = MediaPlayer::begin();
-            }
-            setMediaPlayer(*mpit);
-
-        }
 
         ImGui::EndMenuBar();
     }
