@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <map>
 
+using namespace std;
+
 // ImGui
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -287,6 +289,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             // select all
             Mixer::manager().view()->selectAll();
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
+            // toggle recording
+            Mixer::manager().session()->addRecorder(new H264Recorder);
         }
 
     }
@@ -865,7 +871,7 @@ void UserInterface::RenderPreview()
                     Rendering::manager().outputWindow().show();
 
                 if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save frame") )
-                    Mixer::manager().session()->addRecorder(new FrameRecorder);
+                    Mixer::manager().session()->addRecorder(new PNGRecorder);
 
                 if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                     Settings::application.widget.preview = false;

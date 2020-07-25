@@ -3,7 +3,6 @@
 
 #include <string>
 #include <list>
-using namespace std;
 
 #define NAV_COUNT 68
 #define NAV_MAX 64
