@@ -2,16 +2,11 @@
 #define __GST_MEDIA_PLAYER_H_
 
 #include <string>
-#include <atomic>
 #include <sstream>
 #include <set>
 #include <list>
-#include <map>
-#include <utility>
 #include <mutex>
 
-#include <gst/gst.h>
-#include <gst/gl/gl.h>
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsink.h>
 
