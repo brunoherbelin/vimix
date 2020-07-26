@@ -115,26 +115,43 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        // create a gstreamer pipeline
 
        // Control x264 encoder quality :
-       // pass=5
+       // pass=4
        //    quant (4) – Constant Quantizer
        //    qual  (5) – Constant Quality
-       // quantizer=25
+       // quantizer=23
        //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
        //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
-       // speed-preset
+       // speed-preset=3
        //    veryfast (3)
        //    faster (4)
        //    fast (5)
-//       string description = "appsrc name=src ! videoconvert ! x264enc pass=5 quantizer=25 speed-preset=6 ! video/x-h264, profile=high ! qtmux ! filesink name=sink";
+       string description = "appsrc name=src ! videoconvert ! "
+               "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! "
+               "qtmux ! filesink name=sink";
 
-       string description = "appsrc name=src ! videoconvert ! vp9enc cq-level=35 threads=4 cpu-used=4 end-usage=cq ! video/x-vp9 ! qtmux ! filesink name=sink";
+       // WebM VP9 encoding parameters
+       // https://www.webmproject.org/docs/encoder-parameters/
+       // https://developers.google.com/media/vp9/settings/vod/
+//       string description = "appsrc name=src ! videoconvert ! "
+//               "vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
+//               "webmmux ! filesink name=sink";
 
        //       string description = "appsrc name=src ! videoconvert ! avenc_prores ! qtmux ! filesink name=sink";
 
+       // x265 encoder quality
+//       string description = "appsrc name=src ! videoconvert ! "
+//               "x265enc tune=4 speed-preset=2 option-string='crf=28' ! h265parse ! "
+//               "qtmux ! filesink name=sink";
 
-//       string description = "appsrc name=src ! videoconvert ! x265enc tune=4 speed-preset=4 ! video/x-h265, profile=main ! matroskamux ! filesink name=sink";
 
-
+       // Apple ProRes encoding parameters
+       //  pass=2
+       //       cbr (0) – Constant Bitrate Encoding
+       //      quant (2) – Constant Quantizer
+       //      pass1 (512) – VBR Encoding - Pass 1
+//       string description = "appsrc name=src ! videoconvert ! "
+//               "avenc_prores bitrate=60000 pass=2 ! "
+//               "qtmux ! filesink name=sink";
 
        // parse pipeline descriptor
        GError *error = NULL;
@@ -169,18 +186,18 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
                          "is-live", TRUE,
                          "format", GST_FORMAT_TIME,
                          //                     "do-timestamp", TRUE,
-                         //                         "size", 120,
                          NULL);
 
            // 2 sec buffer
-           gst_app_src_set_max_bytes( src_, 60 * buf_size_);
+           gst_app_src_set_max_bytes( src_, 0   );
+//           gst_app_src_set_max_bytes( src_, 2 * buf_size_);
 
            // instruct src to use the required caps
            GstCaps *caps = gst_caps_new_simple ("video/x-raw",
                                 "format", G_TYPE_STRING, "RGB",
                                 "width",  G_TYPE_INT, width_,
                                 "height", G_TYPE_INT, height_,
-//                                "framerate", GST_TYPE_FRACTION, 30, 1,
+                                "framerate", GST_TYPE_FRACTION, 30, 1,
                                 NULL);
            gst_app_src_set_caps (src_, caps);
            gst_caps_unref (caps);
@@ -221,20 +238,23 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
             frame_buffer->height() != height_ ||
             frame_buffer->use_alpha() != frame_buffer_->use_alpha()) {
 
-           enabled_ = false;
+           // end stream and stop
+           gst_app_src_end_of_stream (src_);
            recording_ = false;
        }
    }
 
    static int count = 0;
-   // store a frame if enabled
-   if (enabled_ && buf_size_ > 0)
+
+   // store a frame if recording is active
+   if (recording_ && buf_size_ > 0)
    {
        // calculate dt in ns
        time_ +=  gst_gdouble_to_guint64( dt * 1000000.f);
 
        // if time is passed one frame duration (with 10% margin)
-       if ( time_ > frame_duration_ - 3000000 ) {
+       // and if the encoder accepts data
+       if ( time_ > frame_duration_ - 3000000 && accept_buffer_) {
 
            GstBuffer *buffer = gst_buffer_new_and_alloc (buf_size_);
            GLenum format = frame_buffer_->use_alpha() ? GL_RGBA : GL_RGB;
@@ -249,32 +269,19 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
            glGetTextureSubImage( frame_buffer_->texture(), 0, 0, 0, 0, width_, height_, 1, format, GL_UNSIGNED_BYTE, buf_size_, map.data);
            gst_buffer_unmap (buffer, &map);
 
+           // push
+//           Log::Info("H264Recorder push data %ld", buffer->pts);
+           gst_app_src_push_buffer (src_, buffer);
+           // NB: buffer will be unrefed by the appsrc
 
-           // push the buffer if the appsrc accepts
-           if (accept_buffer_)
+           // TODO : detect user request for end
+           count++;
+           if (count > 120)
            {
-               Log::Info("H264Recorder push data %ld", buffer->pts);
-               // push
-               gst_app_src_push_buffer (src_, buffer);
-               // NB: buffer will be unrefed by the appsrc
+//               Log::Info("H264Recorder push EOS");
+               gst_app_src_end_of_stream (src_);
 
-               // TODO : detect user request for end
-               count++;
-               if (count > 120)
-               {
-                   Log::Info("H264Recorder push EOS");
-                   gst_app_src_end_of_stream (src_);
-
-                   recording_ = false;
-               }
-
-           }
-           // the appsrc refuses to take anymore buffer
-           else {
-               // drop frame
-               gst_buffer_unref (buffer);
-
-               // TODO: if encoding is too busy, maybe we should stack the frame instead of skipping it
+               recording_ = false;
            }
 
            // restart counter
@@ -285,27 +292,35 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
    }
-
    // did the recording terminate with sink receiving end-of-stream ?
-   if ( !recording_ && sink_->eos)
+   else
    {
-       // stop the pipeline
-       GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
-       if (ret == GST_STATE_CHANGE_FAILURE)
-           Log::Warning("H264Recorder Could not stop");
-       else
-           Log::Notify("H264Recording finished");
+       // Wait for EOS message
+       GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
+       GstMessage *msg = gst_bus_poll(bus, GST_MESSAGE_EOS, GST_TIME_AS_USECONDS(1));
 
-       count = 0;
-       finished_ = true;
+       if (msg) {
+//           Log::Info("received EOS");
+
+           // stop the pipeline
+           GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
+           if (ret == GST_STATE_CHANGE_FAILURE)
+               Log::Warning("H264Recorder Could not stop");
+           else
+               Log::Notify("H264Recording finished");
+
+           count = 0;
+           finished_ = true;
+       }
    }
+
 
 }
 
 // appsrc needs data and we should start sending
 void H264Recorder::callback_need_data (GstAppSrc *src, guint length, gpointer p)
 {
-    Log::Info("H264Recording callback_need_data");
+//    Log::Info("H264Recording callback_need_data");
     H264Recorder *rec = (H264Recorder *)p;
     if (rec) {
         rec->accept_buffer_ = rec->recording_ ? true : false;
@@ -316,7 +331,7 @@ void H264Recorder::callback_need_data (GstAppSrc *src, guint length, gpointer p)
 // appsrc has enough data and we can stop sending
 void H264Recorder::callback_enough_data (GstAppSrc *src, gpointer p)
 {
-    Log::Info("H264Recording callback_enough_data");
+//    Log::Info("H264Recording callback_enough_data");
     H264Recorder *rec = (H264Recorder *)p;
     if (rec) {
         rec->accept_buffer_ = false;
