@@ -245,6 +245,21 @@ bool SystemToolkit::file_exists(const string& path)
     // TODO : WIN32 implementation
 }
 
+
+// tests if dir is a directory and return its path, empty string otherwise
+std::string SystemToolkit::path_directory(const std::string& path)
+{
+    string directorypath = "";
+
+    DIR *dir;
+    if ((dir = opendir (path.c_str())) != NULL) {
+        directorypath = path + PATH_SEP;
+        closedir (dir);
+    }
+
+    return directorypath;
+}
+
 list<string> SystemToolkit::list_directory(const string& path, const string& filter)
 {
     list<string> ls;

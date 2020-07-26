@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <string>
+#include <vector>
 
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsrc.h>
@@ -22,15 +23,12 @@ public:
     virtual ~Recorder() {}
 
     virtual void addFrame(FrameBuffer *frame_buffer, float dt) = 0;
+    virtual void stop() { }
+    virtual std::string info() { return ""; }
 
-    inline void finish() { finished_ = true; }
     inline bool finished() const { return finished_; }
 
-    inline void setEnabled( bool on ) { enabled_ = on; }
-    inline bool enabled() const { return enabled_; }
-
 protected:
-    std::atomic<bool> enabled_;
     std::atomic<bool> finished_;
 };
 
@@ -46,7 +44,7 @@ public:
 };
 
 
-class H264Recorder : public Recorder
+class VideoRecorder : public Recorder
 {
     std::string  filename_;
 
@@ -73,11 +71,15 @@ class H264Recorder : public Recorder
 
 public:
 
-    H264Recorder();
-    ~H264Recorder();
+    static const char* profile_name[4];
+    static const std::vector<std::string> profile_description;
+
+    VideoRecorder();
+    ~VideoRecorder();
 
     void addFrame(FrameBuffer *frame_buffer, float dt);
-
+    void stop() override;
+    std::string info() override;
 
 };
 

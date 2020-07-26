@@ -42,6 +42,9 @@ namespace SystemToolkit
     // extract the extension of a filename
     std::string extension_filename(const std::string& filename);
 
+    // tests if dir is a directory and return its path, empty string otherwise
+    std::string path_directory(const std::string& path);
+
     // list all files of a directory mathing the given filter extension (if any)
     std::list<std::string> list_directory(const std::string& path, const std::string& filter = "");
 

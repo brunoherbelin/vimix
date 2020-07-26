@@ -45,7 +45,7 @@
 #define IMGUI_TITLE_MEDIAPLAYER ICON_FA_FILM "  Player"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_WRENCH "  Tools"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Display"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Ouput"
 #define IMGUI_TITLE_DELETE ICON_FA_BROOM " Delete?"
 #define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()

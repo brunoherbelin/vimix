@@ -292,7 +292,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            Mixer::manager().session()->addRecorder(new H264Recorder);
+            Mixer::manager().session()->addRecorder(new VideoRecorder);
         }
 
     }
@@ -850,6 +850,14 @@ void UserInterface::RenderPreview()
         }
     };
 
+    // return from thread for folder openning
+    static char record_browser_path_[2048] = {};
+    static std::atomic<bool> record_path_selected = false;
+    if (record_path_selected)  {
+        record_path_selected = false;
+        Settings::application.record.path = std::string(record_browser_path_);
+    }
+
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
@@ -861,7 +869,11 @@ void UserInterface::RenderPreview()
         {
             ImGui::End();
             return;
+
         }
+        // adapt rendering if there is a recording ongoing
+        Recorder *rec = Mixer::manager().session()->frontRecorder();
+
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
@@ -870,11 +882,40 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
+                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+                    Settings::application.widget.preview = false;
+
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Record"))
+            {
                 if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save frame") )
                     Mixer::manager().session()->addRecorder(new PNGRecorder);
 
-                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
-                    Settings::application.widget.preview = false;
+                ImGui::Separator();
+
+                // Stop recording menu if recording exists
+                if (rec) {
+
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record") )
+                        rec->stop();
+                }
+                // start recording menu
+                else {
+                    // start rec
+                    if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record") )
+                        Mixer::manager().session()->addRecorder(new VideoRecorder);
+
+                    ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+
+                    if (Settings::application.record.path.empty())
+                        Settings::application.record.path = SystemToolkit::home_path();
+
+                    if (ImGui::MenuItem( Settings::application.record.path.c_str() ) ){
+                        std::thread (FolderDialogOpen, record_browser_path_, &record_path_selected, Settings::application.record.path).detach();
+                    }
+
+                }
 
                 ImGui::EndMenu();
             }
@@ -888,12 +929,22 @@ void UserInterface::RenderPreview()
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        // recording indicator overlay
+        if (rec)
+        {
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
+            ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
         // tooltip overlay
-        if (ImGui::IsItemHovered()) {
-
+        if (ImGui::IsItemHovered())
+        {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(5, 5, 5, 100));
-
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
         }
@@ -1157,7 +1208,7 @@ void MediaController::Render()
         center.x -= ImGui::GetTextLineHeight() * 2.f;
         center.y += ImGui::GetTextLineHeight() * 0.5f;
         ImGui::SetCursorPos(center);
-        ImGui::Text("No selection");
+        ImGui::Text("No media");
         ImGui::PopFont();
         ImGui::PopStyleColor(1);
     }

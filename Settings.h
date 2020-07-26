@@ -58,6 +58,17 @@ struct ViewConfig
 
 };
 
+struct RecordConfig
+{
+    std::string path;
+    int profile;
+
+    RecordConfig() : path("") {
+        profile = 0;
+    }
+
+};
+
 struct History
 {
     std::string path;
@@ -142,6 +153,9 @@ struct Application
 
     // settings render
     RenderConfig render;
+
+    // settings render
+    RecordConfig record;
 
     // settings transition
     TransitionConfig transition;

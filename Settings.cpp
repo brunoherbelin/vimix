@@ -79,6 +79,12 @@ void Settings::Save()
     RenderNode->SetAttribute("res", application.render.res);
     pRoot->InsertEndChild(RenderNode);
 
+    // Record
+    XMLElement *RecordNode = xmlDoc.NewElement( "Record" );
+    RecordNode->SetAttribute("path", application.record.path.c_str());
+    RecordNode->SetAttribute("profile", application.record.profile);
+    pRoot->InsertEndChild(RecordNode);
+
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
     TransitionNode->SetAttribute("auto_open", application.transition.auto_open);
@@ -217,6 +223,19 @@ void Settings::Load()
         rendernode->QueryBoolAttribute("blit", &application.render.blit);
         rendernode->QueryIntAttribute("ratio", &application.render.ratio);
         rendernode->QueryIntAttribute("res", &application.render.res);
+    }
+
+
+    // Render
+    XMLElement * recordnode = pRoot->FirstChildElement("Record");
+    if (recordnode != nullptr) {
+        recordnode->QueryIntAttribute("profile", &application.record.profile);
+
+        const char *path_ = recordnode->Attribute("path");
+        if (path_)
+            application.record.path = std::string(path_);
+        else
+            application.record.path = SystemToolkit::home_path();
     }
 
     // Transition

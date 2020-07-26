@@ -79,8 +79,7 @@ void Session::update(float dt)
     {
         Recorder *rec = *iter;
 
-        if (rec->enabled())
-            rec->addFrame(render_.frame(), dt);
+        rec->addFrame(render_.frame(), dt);
 
         if (rec->finished()) {
             iter = recorders_.erase(iter);
@@ -231,6 +230,15 @@ int Session::index(SourceList::iterator it) const
 void Session::addRecorder(Recorder *rec)
 {
     recorders_.push_back(rec);
+}
+
+
+Recorder *Session::frontRecorder()
+{
+    if (recorders_.empty())
+        return nullptr;
+    else
+        return recorders_.front();
 }
 
 void Session::clearRecorders()

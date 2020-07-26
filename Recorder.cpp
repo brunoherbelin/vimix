@@ -11,6 +11,8 @@
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
+#include "Settings.h"
+#include "GstToolkit.h"
 #include "defines.h"
 #include "SystemToolkit.h"
 #include "FrameBuffer.h"
@@ -20,17 +22,19 @@
 
 using namespace std;
 
-Recorder::Recorder() : enabled_(true), finished_(false)
+Recorder::Recorder() : finished_(false)
 {
 
 }
-
 
 PNGRecorder::PNGRecorder() : Recorder()
 {
-    filename_ = SystemToolkit::home_path() + SystemToolkit::date_time_string() + "_vimix.png";
-}
+    std::string path = SystemToolkit::path_directory(Settings::application.record.path);
+    if (path.empty())
+        path = SystemToolkit::home_path();
 
+    filename_ = path + SystemToolkit::date_time_string() + "_vimix.png";
+}
 
 // Thread to perform slow operation of saving to file
 void save_png(std::string filename, unsigned char *data, uint w, uint h, uint c)
@@ -48,40 +52,68 @@ void save_png(std::string filename, unsigned char *data, uint w, uint h, uint c)
 
 void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 {
-    if (enabled_)
-    {
-        uint w = frame_buffer->width();
-        uint h = frame_buffer->height();
-        uint c = frame_buffer->use_alpha() ? 4 : 3;
-        GLenum format = frame_buffer->use_alpha() ? GL_RGBA : GL_RGB;
-        uint size = w * h * c;
-        unsigned char * data = (unsigned char*) malloc(size);
 
-        glGetTextureSubImage( frame_buffer->texture(), 0, 0, 0, 0, w, h, 1, format, GL_UNSIGNED_BYTE, size, data);
+    uint w = frame_buffer->width();
+    uint h = frame_buffer->height();
+    uint c = frame_buffer->use_alpha() ? 4 : 3;
+    GLenum format = frame_buffer->use_alpha() ? GL_RGBA : GL_RGB;
+    uint size = w * h * c;
+    unsigned char * data = (unsigned char*) malloc(size);
 
-        // save in separate thread
-        std::thread(save_png, filename_, data, w, h, c).detach();
-    }
+    glGetTextureSubImage( frame_buffer->texture(), 0, 0, 0, 0, w, h, 1, format, GL_UNSIGNED_BYTE, size, data);
+
+    // save in separate thread
+    std::thread(save_png, filename_, data, w, h, c).detach();
 
     // record one frame only
     finished_ = true;
 }
 
+const char* VideoRecorder::profile_name[4] = { "H264 (high)", "H264 (low)", "Apple ProRes 4444", "WebM VP9" };
+const std::vector<std::string> VideoRecorder::profile_description {
+    // Control x264 encoder quality :
+    // pass=4
+    //    quant (4) – Constant Quantizer
+    //    qual  (5) – Constant Quality
+    // quantizer=23
+    //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
+    //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
+    // speed-preset=3
+    //    veryfast (3)
+    //    faster (4)
+    //    fast (5)
+    "x264enc pass=4 quantizer=20 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! ",
+    "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=baseline ! h264parse ! ",
+    // Apple ProRes encoding parameters
+    //  pass=2
+    //       cbr (0) – Constant Bitrate Encoding
+    //      quant (2) – Constant Quantizer
+    //      pass1 (512) – VBR Encoding - Pass 1
+    "avenc_prores bitrate=60000 pass=2 ! ",
+    // WebM VP9 encoding parameters
+    // https://www.webmproject.org/docs/encoder-parameters/
+    // https://developers.google.com/media/vp9/settings/vod/
+    "vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
+
+};
 
 
-H264Recorder::H264Recorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0), buf_size_(0),
+VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0), buf_size_(0),
     recording_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0), time_(0), accept_buffer_(false)
 {
     // auto filename
-    filename_ = SystemToolkit::home_path() + SystemToolkit::date_time_string() + "_vimix.mov";
+    std::string path = SystemToolkit::path_directory(Settings::application.record.path);
+    if (path.empty())
+        path = SystemToolkit::home_path();
 
-    // configure H264stream
+    filename_ = path + SystemToolkit::date_time_string() + "_vimix.mov";
+
+    // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
     time_ = 2 * frame_duration_;
-
 }
 
-H264Recorder::~H264Recorder()
+VideoRecorder::~VideoRecorder()
 {
     if (pipeline_ != nullptr) {
         gst_element_set_state (pipeline_, GST_STATE_NULL);
@@ -89,11 +121,9 @@ H264Recorder::~H264Recorder()
     }
     if (src_ != nullptr)
         gst_object_unref (src_);
-
 }
 
-
-void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
+void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
 {
     // TODO : avoid software videoconvert by using a GPU shader to produce Y444 frames
 
@@ -113,6 +143,9 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        buf_size_ = width_ * height_ * (frame_buffer_->use_alpha() ? 4 : 3);
 
        // create a gstreamer pipeline
+       string description = "appsrc name=src ! videoconvert ! ";
+       description += profile_description[Settings::application.record.profile];
+       description += "qtmux ! filesink name=sink";
 
        // Control x264 encoder quality :
        // pass=4
@@ -125,9 +158,9 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        //    veryfast (3)
        //    faster (4)
        //    fast (5)
-       string description = "appsrc name=src ! videoconvert ! "
-               "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! "
-               "qtmux ! filesink name=sink";
+//       string description = "appsrc name=src ! videoconvert ! "
+//               "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! "
+//               "qtmux ! filesink name=sink";
 
        // WebM VP9 encoding parameters
        // https://www.webmproject.org/docs/encoder-parameters/
@@ -157,7 +190,7 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        GError *error = NULL;
        pipeline_ = gst_parse_launch (description.c_str(), &error);
        if (error != NULL) {
-           Log::Warning("H264Recorder Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+           Log::Warning("VideoRecorder Could not construct pipeline %s:\n%s", description.c_str(), error->message);
            g_clear_error (&error);
            finished_ = true;
            return;
@@ -172,7 +205,7 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
                          NULL);
        }
        else {
-           Log::Warning("H264Recorder Could not configure file");
+           Log::Warning("VideoRecorder Could not configure file");
            finished_ = true;
            return;
        }
@@ -211,7 +244,7 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
 
        }
        else {
-           Log::Warning("H264Recorder Could not configure capture source");
+           Log::Warning("VideoRecorder Could not configure capture source");
            finished_ = true;
            return;
        }
@@ -219,13 +252,13 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
        // start recording
        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
        if (ret == GST_STATE_CHANGE_FAILURE) {
-           Log::Warning("H264Recorder Could not record %s", filename_.c_str());
+           Log::Warning("VideoRecorder Could not record %s", filename_.c_str());
            finished_ = true;
            return;
        }
 
        // all good
-       Log::Info("H264Recorder start recording (%d x %d)", width_, height_);
+       Log::Info("VideoRecorder start recording (%d x %d)", width_, height_);
 
        // start recording !!
        recording_ = true;
@@ -270,19 +303,16 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
            gst_buffer_unmap (buffer, &map);
 
            // push
-//           Log::Info("H264Recorder push data %ld", buffer->pts);
+//           Log::Info("VideoRecorder push data %ld", buffer->pts);
            gst_app_src_push_buffer (src_, buffer);
            // NB: buffer will be unrefed by the appsrc
 
-           // TODO : detect user request for end
-           count++;
-           if (count > 120)
-           {
-//               Log::Info("H264Recorder push EOS");
-               gst_app_src_end_of_stream (src_);
-
-               recording_ = false;
-           }
+//           // TODO : detect user request for end
+//           count++;
+//           if (count > 120)
+//           {
+//               stop();
+//           }
 
            // restart counter
            time_ = 0;
@@ -305,34 +335,49 @@ void H264Recorder::addFrame (FrameBuffer *frame_buffer, float dt)
            // stop the pipeline
            GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
            if (ret == GST_STATE_CHANGE_FAILURE)
-               Log::Warning("H264Recorder Could not stop");
+               Log::Warning("VideoRecorder Could not stop");
            else
-               Log::Notify("H264Recording finished");
+               Log::Notify("Recording %s ready.", filename_.c_str());
 
            count = 0;
            finished_ = true;
        }
    }
+}
 
+void VideoRecorder::stop ()
+{
+    // send end of stream
+    gst_app_src_end_of_stream (src_);
+//    Log::Info("VideoRecorder push EOS");
 
+    // stop recording
+    recording_ = false;
+}
+
+std::string VideoRecorder::info()
+{
+    if (recording_)
+        return GstToolkit::time_to_string(timestamp_);
+    else
+        return "Saving file...";
 }
 
 // appsrc needs data and we should start sending
-void H264Recorder::callback_need_data (GstAppSrc *src, guint length, gpointer p)
+void VideoRecorder::callback_need_data (GstAppSrc *src, guint length, gpointer p)
 {
 //    Log::Info("H264Recording callback_need_data");
-    H264Recorder *rec = (H264Recorder *)p;
+    VideoRecorder *rec = (VideoRecorder *)p;
     if (rec) {
         rec->accept_buffer_ = rec->recording_ ? true : false;
     }
 }
 
-
 // appsrc has enough data and we can stop sending
-void H264Recorder::callback_enough_data (GstAppSrc *src, gpointer p)
+void VideoRecorder::callback_enough_data (GstAppSrc *src, gpointer p)
 {
 //    Log::Info("H264Recording callback_enough_data");
-    H264Recorder *rec = (H264Recorder *)p;
+    VideoRecorder *rec = (VideoRecorder *)p;
     if (rec) {
         rec->accept_buffer_ = false;
     }

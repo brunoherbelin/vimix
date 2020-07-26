@@ -49,6 +49,7 @@ public:
 
     // add recorders
     void addRecorder(Recorder *rec);
+    Recorder *frontRecorder();
     void clearRecorders();
 
     // configure rendering resolution
