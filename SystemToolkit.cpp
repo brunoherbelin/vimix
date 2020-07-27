@@ -204,7 +204,7 @@ std::string SystemToolkit::username()
     return string(user);
 }
 
-bool create_directory(const string& path)
+bool SystemToolkit::create_directory(const string& path)
 {
     return !mkdir(path.c_str(), 0755) || errno == EEXIST;
 

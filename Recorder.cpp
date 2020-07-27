@@ -122,7 +122,14 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 
 }
 
-const char* VideoRecorder::profile_name[4] = { "H264 (low)", "H264 (high)", "Apple ProRes 4444", "WebM VP9" };
+const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
+    "H264 (Standard)",
+    "H264 (high)",
+    "Apple ProRes (Standard)",
+    "Apple ProRes (HQ 4444)",
+    "WebM VP8 (Standard)",
+    "Multiple JPEG"
+};
 const std::vector<std::string> VideoRecorder::profile_description {
     // Control x264 encoder quality :
     // pass=4
@@ -138,17 +145,27 @@ const std::vector<std::string> VideoRecorder::profile_description {
     "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=baseline ! h264parse ! ",
     "x264enc pass=5 quantizer=18 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
     // Apple ProRes encoding parameters
-    //  pass=2
+    //  pass
     //      cbr (0) – Constant Bitrate Encoding
     //      quant (2) – Constant Quantizer
     //      pass1 (512) – VBR Encoding - Pass 1
-    "avenc_prores bitrate=60000 pass=2 ! ",
-    // WebM VP9 encoding parameters
-    // https://www.webmproject.org/docs/encoder-parameters/
-    // https://developers.google.com/media/vp9/settings/vod/
-    "vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
-
+    //  profile
+    //      0 ‘proxy’
+    //      1 ‘lt’
+    //      2 ‘standard’
+    //      3 ‘hq’
+    //      4 ‘4444’
+    "avenc_prores_ks pass=2 profile=2 quantizer=25 ! ",
+    "avenc_prores_ks pass=2 profile=4 quantizer=8 ! ",
+    "vp8enc end-usage=vbr cpu-used=8 max-quantizer=35 deadline=100000 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=100 ! ",
+    "jpegenc ! "
 };
+
+// Too slow
+//// WebM VP9 encoding parameters
+//// https://www.webmproject.org/docs/encoder-parameters/
+//// https://developers.google.com/media/vp9/settings/vod/
+//"vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
 
 // FAILED
 // x265 encoder quality
@@ -158,14 +175,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 
 VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0),
-    recording_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timeframe_(0), timestamp_(0)
+    recording_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0)
 {
-    // auto filename
-    std::string path = SystemToolkit::path_directory(Settings::application.record.path);
-    if (path.empty())
-        path = SystemToolkit::home_path();
-
-    filename_ = path + SystemToolkit::date_time_string() + "_vimix.mov";
 
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
@@ -213,7 +224,27 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        // create a gstreamer pipeline
        string description = "appsrc name=src ! videoconvert ! ";
        description += profile_description[Settings::application.record.profile];
-       description += "qtmux ! filesink name=sink";
+
+       // verify location path (path is always terminated by the OS dependent separator)
+       std::string path = SystemToolkit::path_directory(Settings::application.record.path);
+       if (path.empty())
+           path = SystemToolkit::home_path();
+
+       // setup filename & muxer
+       if( Settings::application.record.profile == JPEG_MULTI) {
+           std::string folder = path + SystemToolkit::date_time_string() + "_vimix_jpg";
+           filename_ = SystemToolkit::full_filename(folder, "%05d.jpg");
+           if (SystemToolkit::create_directory(folder))
+               description += "multifilesink name=sink";
+       }
+       else if( Settings::application.record.profile == VP8) {
+           filename_ = path + SystemToolkit::date_time_string() + "_vimix.webm";
+           description += "webmmux ! filesink name=sink";
+       }
+       else {
+           filename_ = path + SystemToolkit::date_time_string() + "_vimix.mov";
+           description += "qtmux ! filesink name=sink";
+       }
 
        // parse pipeline descriptor
        GError *error = NULL;
@@ -389,6 +420,9 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
            finished_ = true;
        }
    }
+
+//   if (timestamp_ > 10000000000)
+//       stop();
 }
 
 void VideoRecorder::stop ()

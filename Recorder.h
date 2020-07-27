@@ -75,7 +75,16 @@ class VideoRecorder : public Recorder
 
 public:
 
-    static const char* profile_name[4];
+    typedef enum {
+        H264_STANDARD = 0,
+        H264_HQ,
+        PRORES_STANDARD,
+        PRORES_HQ,
+        VP8,
+        JPEG_MULTI,
+        DEFAULT
+    } Profile;
+    static const char* profile_name[DEFAULT];
     static const std::vector<std::string> profile_description;
 
     VideoRecorder();
