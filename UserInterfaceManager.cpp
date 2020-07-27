@@ -2236,6 +2236,7 @@ void ShowAboutGStreamer(bool* p_open)
                         filteredlist.push_back( i );
                 }
             }
+            filteredlist.unique();
         }
 
         // display list
