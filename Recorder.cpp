@@ -20,7 +20,7 @@
 
 #include "Recorder.h"
 
-// use glReadPixel or glGetTextImage ?
+// use glReadPixel or glGetTextImage
 // read pixels & pbo should be the fastest
 // https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
 #define USE_GLREADPIXEL
@@ -139,7 +139,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     "x264enc pass=5 quantizer=18 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
     // Apple ProRes encoding parameters
     //  pass=2
-    //       cbr (0) – Constant Bitrate Encoding
+    //      cbr (0) – Constant Bitrate Encoding
     //      quant (2) – Constant Quantizer
     //      pass1 (512) – VBR Encoding - Pass 1
     "avenc_prores bitrate=60000 pass=2 ! ",
@@ -158,7 +158,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 
 VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0),
-    recording_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0), timeframe_(0), accept_buffer_(false)
+    recording_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timeframe_(0), timestamp_(0)
 {
     // auto filename
     std::string path = SystemToolkit::path_directory(Settings::application.record.path);
@@ -410,7 +410,7 @@ std::string VideoRecorder::info()
 }
 
 // appsrc needs data and we should start sending
-void VideoRecorder::callback_need_data (GstAppSrc *src, guint length, gpointer p)
+void VideoRecorder::callback_need_data (GstAppSrc *, guint , gpointer p)
 {
 //    Log::Info("H264Recording callback_need_data");
     VideoRecorder *rec = (VideoRecorder *)p;
@@ -420,7 +420,7 @@ void VideoRecorder::callback_need_data (GstAppSrc *src, guint length, gpointer p
 }
 
 // appsrc has enough data and we can stop sending
-void VideoRecorder::callback_enough_data (GstAppSrc *src, gpointer p)
+void VideoRecorder::callback_enough_data (GstAppSrc *, gpointer p)
 {
 //    Log::Info("H264Recording callback_enough_data");
     VideoRecorder *rec = (VideoRecorder *)p;

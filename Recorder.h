@@ -45,7 +45,7 @@ class PNGRecorder : public Recorder
 public:
 
     PNGRecorder();
-    void addFrame(FrameBuffer *frame_buffer, float);
+    void addFrame(FrameBuffer *frame_buffer, float) override;
 
 };
 
@@ -70,8 +70,8 @@ class VideoRecorder : public Recorder
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
 
-    static void callback_need_data (GstAppSrc *src, guint length, gpointer user_data);
-    static void callback_enough_data (GstAppSrc *src, gpointer user_data);
+    static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
+    static void callback_enough_data (GstAppSrc *, gpointer user_data);
 
 public:
 
@@ -81,7 +81,7 @@ public:
     VideoRecorder();
     ~VideoRecorder();
 
-    void addFrame(FrameBuffer *frame_buffer, float dt);
+    void addFrame(FrameBuffer *frame_buffer, float dt) override;
     void stop() override;
     std::string info() override;
 
