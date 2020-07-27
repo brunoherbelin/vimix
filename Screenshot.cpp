@@ -24,6 +24,7 @@ Screenshot::Screenshot()
 
 Screenshot::~Screenshot()
 {
+    glDeleteBuffers(1, &Pbo);
     if (Data)  free(Data);
 }
 

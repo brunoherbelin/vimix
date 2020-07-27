@@ -20,11 +20,16 @@
 
 #include "Recorder.h"
 
+// use glReadPixel or glGetTextImage ?
+// read pixels & pbo should be the fastest
+// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
+#define USE_GLREADPIXEL
+
 using namespace std;
 
-Recorder::Recorder() : finished_(false)
+Recorder::Recorder() : finished_(false), pbo_index_(0), pbo_next_index_(0), size_(0)
 {
-
+    pbo_[0] = pbo_[1] = 0;
 }
 
 PNGRecorder::PNGRecorder() : Recorder()
@@ -34,6 +39,7 @@ PNGRecorder::PNGRecorder() : Recorder()
         path = SystemToolkit::home_path();
 
     filename_ = path + SystemToolkit::date_time_string() + "_vimix.png";
+
 }
 
 // Thread to perform slow operation of saving to file
@@ -44,7 +50,7 @@ void save_png(std::string filename, unsigned char *data, uint w, uint h, uint c)
         // save file
         stbi_write_png(filename.c_str(), w, h, c, data, w * c);
         // notify
-        Log::Notify("Capture %s saved.", filename.c_str());
+        Log::Notify("Capture %s ready (%d x %d %d)", filename.c_str(), w, h, c);
         // done
         free(data);
     }
@@ -52,21 +58,68 @@ void save_png(std::string filename, unsigned char *data, uint w, uint h, uint c)
 
 void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 {
+    // ignore
+    if (frame_buffer == nullptr)
+        return;
 
+    // get what is needed from frame buffer
     uint w = frame_buffer->width();
     uint h = frame_buffer->height();
     uint c = frame_buffer->use_alpha() ? 4 : 3;
-    GLenum format = frame_buffer->use_alpha() ? GL_RGBA : GL_RGB;
-    uint size = w * h * c;
-    unsigned char * data = (unsigned char*) malloc(size);
 
-    glGetTextureSubImage( frame_buffer->texture(), 0, 0, 0, 0, w, h, 1, format, GL_UNSIGNED_BYTE, size, data);
+    // first iteration: initialize and get frame
+    if (size_ < 1)
+    {
+        // init size
+        size_ = w * h * c;
 
-    // save in separate thread
-    std::thread(save_png, filename_, data, w, h, c).detach();
+        // create PBO
+        glGenBuffers(2, pbo_);
 
-    // record one frame only
-    finished_ = true;
+        // set writing PBO
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[0]);
+        glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
+
+#ifdef USE_GLREADPIXEL
+        // get frame
+        frame_buffer->readPixels();
+#else
+        glBindTexture(GL_TEXTURE_2D, frame_buffer->texture());
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+#endif
+    }
+    // second iteration; get frame and save file
+    else {
+
+        // set reading PBO
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[0]);
+
+        // get pixels
+        unsigned char* ptr = (unsigned char*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+        if (NULL != ptr) {
+            // prepare memory buffer0
+            unsigned char * data = (unsigned char*) malloc(size_);
+            // transfer frame to data
+            memmove(data, ptr, size_);
+            // save in separate thread
+            std::thread(save_png, filename_, data, w, h, c).detach();
+        }
+        // unmap
+        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+
+        // ok done
+        glDeleteBuffers(2, pbo_);
+
+        // recorded one frame
+        finished_ = true;
+    }
+
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+//    unsigned char * data = (unsigned char*) malloc(size);
+//    GLenum format = frame_buffer->use_alpha() ? GL_RGBA : GL_RGB;
+//    glGetTextureSubImage( frame_buffer->texture(), 0, 0, 0, 0, w, h, 1, format, GL_UNSIGNED_BYTE, size, data);
+
 }
 
 const char* VideoRecorder::profile_name[4] = { "H264 (low)", "H264 (high)", "Apple ProRes 4444", "WebM VP9" };
@@ -104,7 +157,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
 //               "qtmux ! filesink name=sink";
 
 
-VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0), buf_size_(0),
+VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0),
     recording_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0), timeframe_(0), accept_buffer_(false)
 {
     // auto filename
@@ -121,12 +174,14 @@ VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), 
 
 VideoRecorder::~VideoRecorder()
 {
+    if (src_ != nullptr)
+        gst_object_unref (src_);
     if (pipeline_ != nullptr) {
         gst_element_set_state (pipeline_, GST_STATE_NULL);
         gst_object_unref (pipeline_);
     }
-    if (src_ != nullptr)
-        gst_object_unref (src_);
+
+    glDeleteBuffers(2, pbo_);
 }
 
 void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
@@ -146,7 +201,14 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        // define stream properties
        width_ = frame_buffer_->width();
        height_ = frame_buffer_->height();
-       buf_size_ = width_ * height_ * (frame_buffer_->use_alpha() ? 4 : 3);
+       size_ = width_ * height_ * (frame_buffer_->use_alpha() ? 4 : 3);
+
+       // create PBOs
+       glGenBuffers(2, pbo_);
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[1]);
+       glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[0]);
+       glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
 
        // create a gstreamer pipeline
        string description = "appsrc name=src ! videoconvert ! ";
@@ -164,18 +226,10 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // setup file sink
-       sink_ = GST_BASE_SINK( gst_bin_get_by_name (GST_BIN (pipeline_), "sink") );
-       if (sink_) {
-           g_object_set (G_OBJECT (sink_),
-                         "location", filename_.c_str(),
-                         "sync", FALSE,
-                         NULL);
-       }
-       else {
-           Log::Warning("VideoRecorder Could not configure file");
-           finished_ = true;
-           return;
-       }
+       g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                     "location", filename_.c_str(),
+                     "sync", FALSE,
+                     NULL);
 
        // setup custom app source
        src_ = GST_APP_SRC( gst_bin_get_by_name (GST_BIN (pipeline_), "src") );
@@ -239,7 +293,7 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
             frame_buffer->use_alpha() != frame_buffer_->use_alpha()) {
 
            stop();
-           Log::Info("Recording interrupted: new session (%d x %d) incompatible with recording (%d x %d)", frame_buffer->width(), frame_buffer->height(), width_, height_);
+           Log::Warning("Recording interrupted: new session (%d x %d) incompatible with recording (%d x %d)", frame_buffer->width(), frame_buffer->height(), width_, height_);
        }
        else {
            // accepting a new frame buffer as input
@@ -247,10 +301,8 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        }
    }
 
-   static int count = 0;
-
    // store a frame if recording is active
-   if (recording_ && buf_size_ > 0)
+   if (recording_ && size_ > 0)
    {
        // calculate dt in ns
        timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f);
@@ -259,28 +311,62 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        // and if the encoder accepts data
        if ( timeframe_ > frame_duration_ - 3000000 && accept_buffer_) {
 
-           GstBuffer *buffer = gst_buffer_new_and_alloc (buf_size_);
-           GLenum format = frame_buffer_->use_alpha() ? GL_RGBA : GL_RGB;
+           // set buffer target for writing in a new frame
+           glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[pbo_index_]);
 
-           // set timing of buffer
-           buffer->pts = timestamp_;
-           buffer->duration = frame_duration_;
+#ifdef USE_GLREADPIXEL
+           // get frame
+           frame_buffer->readPixels();
+#else
+           glBindTexture(GL_TEXTURE_2D, frame_buffer->texture());
+           glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+#endif
 
-           // OpenGL capture
-           GstMapInfo map;
-           gst_buffer_map (buffer, &map, GST_MAP_WRITE);
-           glGetTextureSubImage( frame_buffer_->texture(), 0, 0, 0, 0, width_, height_, 1, format, GL_UNSIGNED_BYTE, buf_size_, map.data);
-           gst_buffer_unmap (buffer, &map);
+           // update case ; alternating indices
+           if ( pbo_next_index_ != pbo_index_ ) {
 
-           // push
-//           Log::Info("VideoRecorder push data %ld", buffer->pts);
-           gst_app_src_push_buffer (src_, buffer);
-           // NB: buffer will be unrefed by the appsrc
+               // set buffer target for saving the frame
+               glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[pbo_next_index_]);
 
-           // restart counter
+               // new buffer
+               GstBuffer *buffer = gst_buffer_new_and_alloc (size_);
+
+               // set timing of buffer
+               buffer->pts = timestamp_;
+               buffer->duration = frame_duration_;
+
+               // map gst buffer into a memory  WRITE target
+               GstMapInfo map;
+               gst_buffer_map (buffer, &map, GST_MAP_WRITE);
+
+               // map PBO pixels into a memory READ pointer
+               unsigned char* ptr = (unsigned char*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+               // transfer pixels from PBO memory to buffer memory
+               if (NULL != ptr)
+                   memmove(map.data, ptr, size_);
+
+               // un-map
+               glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+               gst_buffer_unmap (buffer, &map);
+
+               // push
+    //           Log::Info("VideoRecorder push data %ld", buffer->pts);
+               gst_app_src_push_buffer (src_, buffer);
+               // NB: buffer will be unrefed by the appsrc
+
+               // next timestamp
+               timestamp_ += frame_duration_;
+           }
+
+           glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+           // alternate indices
+           pbo_next_index_ = pbo_index_;
+           pbo_index_ = (pbo_index_ + 1) % 2;
+
+           // restart frame counter
            timeframe_ = 0;
-           // next timestamp
-           timestamp_ += frame_duration_;
        }
 
    }
@@ -293,7 +379,6 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
 
        if (msg) {
 //           Log::Info("received EOS");
-
            // stop the pipeline
            GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
            if (ret == GST_STATE_CHANGE_FAILURE)
@@ -301,7 +386,6 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
            else
                Log::Notify("Recording %s ready.", filename_.c_str());
 
-           count = 0;
            finished_ = true;
        }
    }
