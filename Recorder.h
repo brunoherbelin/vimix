@@ -62,7 +62,7 @@ class VideoRecorder : public Recorder
     GstElement   *pipeline_;
     GstAppSrc    *src_;
     GstBaseSink  *sink_;
-    GstClockTime time_;
+    GstClockTime timeframe_;
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
 

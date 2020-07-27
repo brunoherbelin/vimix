@@ -47,10 +47,12 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
-    // add recorders
+    // Recorders
     void addRecorder(Recorder *rec);
     Recorder *frontRecorder();
+    void stopRecorders();
     void clearRecorders();
+    void transferRecorders(Session *dest);
 
     // configure rendering resolution
     void setResolution(glm::vec3 resolution);

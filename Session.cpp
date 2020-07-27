@@ -30,12 +30,14 @@ Session::Session() : filename_(""), failedSource_(nullptr), active_(true)
 
 Session::~Session()
 {
+    // delete all recorders
+    clearRecorders();
+
     // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // erase this source from the list
         it = deleteSource(*it);
     }
-
 }
 
 void Session::setActive (bool on)
@@ -241,14 +243,35 @@ Recorder *Session::frontRecorder()
         return recorders_.front();
 }
 
+void Session::stopRecorders()
+{
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+        (*iter)->stop();
+}
+
 void Session::clearRecorders()
 {
     std::list<Recorder *>::iterator iter;
     for (iter=recorders_.begin(); iter != recorders_.end(); )
     {
         Recorder *rec = *iter;
+        rec->stop();
         iter = recorders_.erase(iter);
         delete rec;
+    }
+}
+
+void Session::transferRecorders(Session *dest)
+{
+    if (dest == nullptr)
+        return;
+
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        dest->recorders_.push_back(*iter);
+        iter = recorders_.erase(iter);
     }
 }
 

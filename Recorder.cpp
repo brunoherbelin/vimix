@@ -69,7 +69,7 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
     finished_ = true;
 }
 
-const char* VideoRecorder::profile_name[4] = { "H264 (high)", "H264 (low)", "Apple ProRes 4444", "WebM VP9" };
+const char* VideoRecorder::profile_name[4] = { "H264 (low)", "H264 (high)", "Apple ProRes 4444", "WebM VP9" };
 const std::vector<std::string> VideoRecorder::profile_description {
     // Control x264 encoder quality :
     // pass=4
@@ -82,8 +82,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "x264enc pass=4 quantizer=20 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! ",
     "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "x264enc pass=5 quantizer=18 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
     // Apple ProRes encoding parameters
     //  pass=2
     //       cbr (0) – Constant Bitrate Encoding
@@ -97,9 +97,15 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 };
 
+// FAILED
+// x265 encoder quality
+//       string description = "appsrc name=src ! videoconvert ! "
+//               "x265enc tune=4 speed-preset=2 option-string='crf=28' ! h265parse ! "
+//               "qtmux ! filesink name=sink";
+
 
 VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0), buf_size_(0),
-    recording_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0), time_(0), accept_buffer_(false)
+    recording_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0), timeframe_(0), accept_buffer_(false)
 {
     // auto filename
     std::string path = SystemToolkit::path_directory(Settings::application.record.path);
@@ -110,7 +116,7 @@ VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), 
 
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
-    time_ = 2 * frame_duration_;
+    timeframe_ = 2 * frame_duration_;
 }
 
 VideoRecorder::~VideoRecorder()
@@ -134,7 +140,7 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
     // first frame for initialization
    if (frame_buffer_ == nullptr) {
 
-       // accepting a new frame buffer as input
+       // set frame buffer as input
        frame_buffer_ = frame_buffer;
 
        // define stream properties
@@ -146,45 +152,6 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        string description = "appsrc name=src ! videoconvert ! ";
        description += profile_description[Settings::application.record.profile];
        description += "qtmux ! filesink name=sink";
-
-       // Control x264 encoder quality :
-       // pass=4
-       //    quant (4) – Constant Quantizer
-       //    qual  (5) – Constant Quality
-       // quantizer=23
-       //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
-       //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
-       // speed-preset=3
-       //    veryfast (3)
-       //    faster (4)
-       //    fast (5)
-//       string description = "appsrc name=src ! videoconvert ! "
-//               "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=high ! h264parse ! "
-//               "qtmux ! filesink name=sink";
-
-       // WebM VP9 encoding parameters
-       // https://www.webmproject.org/docs/encoder-parameters/
-       // https://developers.google.com/media/vp9/settings/vod/
-//       string description = "appsrc name=src ! videoconvert ! "
-//               "vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
-//               "webmmux ! filesink name=sink";
-
-       //       string description = "appsrc name=src ! videoconvert ! avenc_prores ! qtmux ! filesink name=sink";
-
-       // x265 encoder quality
-//       string description = "appsrc name=src ! videoconvert ! "
-//               "x265enc tune=4 speed-preset=2 option-string='crf=28' ! h265parse ! "
-//               "qtmux ! filesink name=sink";
-
-
-       // Apple ProRes encoding parameters
-       //  pass=2
-       //       cbr (0) – Constant Bitrate Encoding
-       //      quant (2) – Constant Quantizer
-       //      pass1 (512) – VBR Encoding - Pass 1
-//       string description = "appsrc name=src ! videoconvert ! "
-//               "avenc_prores bitrate=60000 pass=2 ! "
-//               "qtmux ! filesink name=sink";
 
        // parse pipeline descriptor
        GError *error = NULL;
@@ -221,8 +188,8 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
                          //                     "do-timestamp", TRUE,
                          NULL);
 
-           // 2 sec buffer
-           gst_app_src_set_max_bytes( src_, 0   );
+           // Direct encoding (no buffering)
+           gst_app_src_set_max_bytes( src_, 0 );
 //           gst_app_src_set_max_bytes( src_, 2 * buf_size_);
 
            // instruct src to use the required caps
@@ -271,9 +238,12 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
             frame_buffer->height() != height_ ||
             frame_buffer->use_alpha() != frame_buffer_->use_alpha()) {
 
-           // end stream and stop
-           gst_app_src_end_of_stream (src_);
-           recording_ = false;
+           stop();
+           Log::Info("Recording interrupted: new session (%d x %d) incompatible with recording (%d x %d)", frame_buffer->width(), frame_buffer->height(), width_, height_);
+       }
+       else {
+           // accepting a new frame buffer as input
+           frame_buffer_ = frame_buffer;
        }
    }
 
@@ -283,11 +253,11 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
    if (recording_ && buf_size_ > 0)
    {
        // calculate dt in ns
-       time_ +=  gst_gdouble_to_guint64( dt * 1000000.f);
+       timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f);
 
        // if time is passed one frame duration (with 10% margin)
        // and if the encoder accepts data
-       if ( time_ > frame_duration_ - 3000000 && accept_buffer_) {
+       if ( timeframe_ > frame_duration_ - 3000000 && accept_buffer_) {
 
            GstBuffer *buffer = gst_buffer_new_and_alloc (buf_size_);
            GLenum format = frame_buffer_->use_alpha() ? GL_RGBA : GL_RGB;
@@ -307,18 +277,10 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
            gst_app_src_push_buffer (src_, buffer);
            // NB: buffer will be unrefed by the appsrc
 
-//           // TODO : detect user request for end
-//           count++;
-//           if (count > 120)
-//           {
-//               stop();
-//           }
-
            // restart counter
-           time_ = 0;
+           timeframe_ = 0;
            // next timestamp
            timestamp_ += frame_duration_;
-
        }
 
    }

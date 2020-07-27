@@ -889,7 +889,7 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Save frame") )
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame") )
                     Mixer::manager().session()->addRecorder(new PNGRecorder);
 
                 ImGui::Separator();
@@ -902,19 +902,37 @@ void UserInterface::RenderPreview()
                 }
                 // start recording menu
                 else {
-                    // start rec
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record") )
                         Mixer::manager().session()->addRecorder(new VideoRecorder);
 
+                    ImGui::SetNextItemWidth(300);
                     ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+                }
 
+                // Options menu
+                ImGui::MenuItem("Destination", nullptr, false, false);
+                {
+                    static char* name_path[4] = { nullptr };
+                    if ( name_path[0] == nullptr ) {
+                        for (int i = 0; i < 4; ++i)
+                            name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                        sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
+                        sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                        sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+                    }
                     if (Settings::application.record.path.empty())
                         Settings::application.record.path = SystemToolkit::home_path();
+                    sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
 
-                    if (ImGui::MenuItem( Settings::application.record.path.c_str() ) ){
+                    int selected_path = 0;
+                    ImGui::SetNextItemWidth(300);
+                    ImGui::Combo("##RecDestination", &selected_path, name_path, 4);
+                    if (selected_path > 2)
                         std::thread (FolderDialogOpen, record_browser_path_, &record_path_selected, Settings::application.record.path).detach();
-                    }
-
+                    else if (selected_path > 1)
+                        Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                    else if (selected_path > 0)
+                        Settings::application.record.path = SystemToolkit::home_path();
                 }
 
                 ImGui::EndMenu();
