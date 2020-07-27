@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <thread>
 
+using namespace std;
+
 // vmix
 #include "defines.h"
 #include "Log.h"
@@ -16,10 +18,7 @@
 #include <glad/glad.h>  
 
 // GStreamer
-#include <gst/gl/gl.h>
-#include <gst/gstformat.h>
 #include <gst/pbutils/gstdiscoverer.h>
-//#include <gst/app/gstappsink.h>
 
 #ifndef NDEBUG
 #define MEDIA_PLAYER_DEBUG
@@ -157,6 +156,8 @@ void MediaPlayer::execute_open()
 
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
+    GstBaseSink *s = GST_BASE_SINK(sink);
+    s->eos;
     if (sink) {
 
         // instruct the sink to send samples synched in time

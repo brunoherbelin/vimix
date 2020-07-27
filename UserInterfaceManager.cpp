@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <map>
 
+using namespace std;
+
 // ImGui
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -44,6 +46,7 @@
 #include "ImGuiVisitor.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
+#include "Recorder.h"
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
@@ -275,17 +278,21 @@ void UserInterface::handleKeyboard()
             // Shader Editor
             Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
             // Logs
             Settings::application.widget.preview = !Settings::application.widget.preview;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             // select all
             Mixer::manager().view()->selectAll();
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
+            // toggle recording
+            Mixer::manager().session()->addRecorder(new VideoRecorder);
         }
 
     }
@@ -300,8 +307,6 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
-//        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 )) // TODO REMOVE (DEBUG ONLY)
-//            Mixer::manager().setView(View::TRANSITION);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
             Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
@@ -845,6 +850,14 @@ void UserInterface::RenderPreview()
         }
     };
 
+    // return from thread for folder openning
+    static char record_browser_path_[2048] = {};
+    static std::atomic<bool> record_path_selected = false;
+    if (record_path_selected)  {
+        record_path_selected = false;
+        Settings::application.record.path = std::string(record_browser_path_);
+    }
+
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
@@ -856,17 +869,71 @@ void UserInterface::RenderPreview()
         {
             ImGui::End();
             return;
+
         }
+        // adapt rendering if there is a recording ongoing
+        Recorder *rec = Mixer::manager().session()->frontRecorder();
+
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
-            if (ImGui::BeginMenu(ICON_FA_DESKTOP " Preview"))
+            if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
                 if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                     Settings::application.widget.preview = false;
+
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Record"))
+            {
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame") )
+                    Mixer::manager().session()->addRecorder(new PNGRecorder);
+
+                ImGui::Separator();
+
+                // Stop recording menu if recording exists
+                if (rec) {
+
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record") )
+                        rec->stop();
+                }
+                // start recording menu
+                else {
+                    if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record") )
+                        Mixer::manager().session()->addRecorder(new VideoRecorder);
+
+                    ImGui::SetNextItemWidth(300);
+                    ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+                }
+
+                // Options menu
+                ImGui::MenuItem("Destination", nullptr, false, false);
+                {
+                    static char* name_path[4] = { nullptr };
+                    if ( name_path[0] == nullptr ) {
+                        for (int i = 0; i < 4; ++i)
+                            name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                        sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
+                        sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                        sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+                    }
+                    if (Settings::application.record.path.empty())
+                        Settings::application.record.path = SystemToolkit::home_path();
+                    sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
+
+                    int selected_path = 0;
+                    ImGui::SetNextItemWidth(300);
+                    ImGui::Combo("##RecDestination", &selected_path, name_path, 4);
+                    if (selected_path > 2)
+                        std::thread (FolderDialogOpen, record_browser_path_, &record_path_selected, Settings::application.record.path).detach();
+                    else if (selected_path > 1)
+                        Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                    else if (selected_path > 0)
+                        Settings::application.record.path = SystemToolkit::home_path();
+                }
 
                 ImGui::EndMenu();
             }
@@ -880,12 +947,22 @@ void UserInterface::RenderPreview()
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        // recording indicator overlay
+        if (rec)
+        {
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
+            ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
         // tooltip overlay
-        if (ImGui::IsItemHovered()) {
-
+        if (ImGui::IsItemHovered())
+        {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(5, 5, 5, 100));
-
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
         }
@@ -973,6 +1050,28 @@ void MediaController::Render()
 
             ImGui::EndMenu();
         }
+        if (mp_ && current_ != LABEL_AUTO_MEDIA_PLAYER && MediaPlayer::registered().size() > 1) {
+            bool tmp = false;
+            if ( ImGui::Selectable(ICON_FA_CHEVRON_LEFT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
+
+                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
+                if (mpit == MediaPlayer::begin()) {
+                    mpit = MediaPlayer::end();
+                }
+                mpit--;
+                setMediaPlayer(*mpit);
+
+            }
+            if ( ImGui::Selectable(ICON_FA_CHEVRON_RIGHT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
+
+                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
+                mpit++;
+                if (mpit == MediaPlayer::end()) {
+                    mpit = MediaPlayer::begin();
+                }
+                setMediaPlayer(*mpit);
+            }
+        }
         if (ImGui::BeginMenu(current_.c_str()))
         {
             if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
@@ -988,6 +1087,8 @@ void MediaController::Render()
 
             ImGui::EndMenu();
         }
+
+
         ImGui::EndMenuBar();
     }
 
@@ -1125,7 +1226,7 @@ void MediaController::Render()
         center.x -= ImGui::GetTextLineHeight() * 2.f;
         center.y += ImGui::GetTextLineHeight() * 0.5f;
         ImGui::SetCursorPos(center);
-        ImGui::Text("No selection");
+        ImGui::Text("No media");
         ImGui::PopFont();
         ImGui::PopStyleColor(1);
     }
@@ -1917,8 +2018,8 @@ void Navigator::RenderMainPannel()
         // WINDOWS
         ImGui::Text(" ");
         ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "P");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "M");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
 #ifndef NDEBUG
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");

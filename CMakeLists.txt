@@ -223,6 +223,7 @@ set(VMIX_SRCS
     GarbageVisitor.cpp
     SessionCreator.cpp
     Mixer.cpp
+    Recorder.cpp
     Settings.cpp
     Screenshot.cpp
     Resource.cpp

@@ -5,6 +5,7 @@
 #include "FrameBuffer.h"
 #include "Session.h"
 #include "GarbageVisitor.h"
+#include "Recorder.h"
 
 #include "Log.h"
 
@@ -29,12 +30,14 @@ Session::Session() : filename_(""), failedSource_(nullptr), active_(true)
 
 Session::~Session()
 {
+    // delete all recorders
+    clearRecorders();
+
     // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // erase this source from the list
         it = deleteSource(*it);
     }
-
 }
 
 void Session::setActive (bool on)
@@ -71,6 +74,23 @@ void Session::update(float dt)
 
     // draw render view in Frame Buffer
     render_.draw();
+
+    // send frame to recorders
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        Recorder *rec = *iter;
+
+        rec->addFrame(render_.frame(), dt);
+
+        if (rec->finished()) {
+            iter = recorders_.erase(iter);
+            delete rec;
+        }
+        else {
+            iter++;
+        }
+    }
 }
 
 
@@ -209,4 +229,49 @@ int Session::index(SourceList::iterator it) const
     return index;
 }
 
+void Session::addRecorder(Recorder *rec)
+{
+    recorders_.push_back(rec);
+}
+
+
+Recorder *Session::frontRecorder()
+{
+    if (recorders_.empty())
+        return nullptr;
+    else
+        return recorders_.front();
+}
+
+void Session::stopRecorders()
+{
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+        (*iter)->stop();
+}
+
+void Session::clearRecorders()
+{
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        Recorder *rec = *iter;
+        rec->stop();
+        iter = recorders_.erase(iter);
+        delete rec;
+    }
+}
+
+void Session::transferRecorders(Session *dest)
+{
+    if (dest == nullptr)
+        return;
+
+    std::list<Recorder *>::iterator iter;
+    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    {
+        dest->recorders_.push_back(*iter);
+        iter = recorders_.erase(iter);
+    }
+}
 
