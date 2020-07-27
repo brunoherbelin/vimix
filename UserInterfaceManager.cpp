@@ -957,13 +957,14 @@ void UserInterface::RenderPreview()
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         // recording indicator overlay
-        if (main_video_recorder)
+        Recorder *rec = Mixer::manager().session()->frontRecorder();
+        if (rec)
         {
             float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
-            ImGui::Text(ICON_FA_CIRCLE " %s", main_video_recorder->info().c_str() );
+            ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
