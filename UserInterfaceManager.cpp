@@ -57,6 +57,7 @@ using namespace std;
 
 #include "TextEditor.h"
 static TextEditor editor;
+static Recorder *main_video_recorder = nullptr;
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -292,7 +293,14 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            Mixer::manager().session()->addRecorder(new VideoRecorder);
+            if (main_video_recorder){
+                main_video_recorder->stop();
+                main_video_recorder = nullptr;
+            }
+            else {
+                main_video_recorder = new VideoRecorder;
+                Mixer::manager().session()->addRecorder(main_video_recorder);
+            }
         }
 
     }
@@ -871,9 +879,6 @@ void UserInterface::RenderPreview()
             return;
 
         }
-        // adapt rendering if there is a recording ongoing
-        Recorder *rec = Mixer::manager().session()->frontRecorder();
-
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
@@ -895,15 +900,19 @@ void UserInterface::RenderPreview()
                 ImGui::Separator();
 
                 // Stop recording menu if recording exists
-                if (rec) {
+                if (main_video_recorder) {
 
-                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record") )
-                        rec->stop();
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
+                        main_video_recorder->stop();
+                        main_video_recorder = nullptr;
+                    }
                 }
                 // start recording menu
                 else {
-                    if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record") )
-                        Mixer::manager().session()->addRecorder(new VideoRecorder);
+                    if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
+                        main_video_recorder = new VideoRecorder;
+                        Mixer::manager().session()->addRecorder(main_video_recorder);
+                    }
 
                     ImGui::SetNextItemWidth(300);
                     ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
@@ -948,13 +957,13 @@ void UserInterface::RenderPreview()
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         // recording indicator overlay
-        if (rec)
+        if (main_video_recorder)
         {
             float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
-            ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
+            ImGui::Text(ICON_FA_CIRCLE " %s", main_video_recorder->info().c_str() );
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }

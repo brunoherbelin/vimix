@@ -116,17 +116,12 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
-void FrameBuffer::bind()
+void FrameBuffer::begin()
 {
     if (!framebufferid_)
         init();
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
-}
-
-void FrameBuffer::begin()
-{
-    bind();
 
     Rendering::manager().pushAttrib(attrib_);
 
@@ -152,6 +147,21 @@ void FrameBuffer::end()
 
 void FrameBuffer::release()
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void FrameBuffer::readPixels()
+{
+    if (!framebufferid_)
+        return;
+
+    if (use_multi_sampling_)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, intermediate_framebufferid_);
+    else
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);   
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

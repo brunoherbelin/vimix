@@ -18,8 +18,6 @@ public:
     FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
     ~FrameBuffer();
 
-    // bind the FrameBuffer as current to draw into
-    void bind();
     // unbind any framebuffer object
     static void release();
     // Bind & push attribs to prepare draw
@@ -29,6 +27,9 @@ public:
 
     // blit copy to another, returns true on success
     bool blit(FrameBuffer *other);
+    // bind the FrameBuffer in READ and perform glReadPixels
+    // return the size of the buffer
+    void readPixels();
 
     // clear color
     inline void setClearColor(glm::vec4 color) { attrib_.clear_color = color; }

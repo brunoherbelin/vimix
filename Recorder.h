@@ -29,7 +29,13 @@ public:
     inline bool finished() const { return finished_; }
 
 protected:
+    // thread-safe testing termination
     std::atomic<bool> finished_;
+
+    // PBO
+    guint pbo_[2];
+    guint pbo_index_, pbo_next_index_;
+    guint size_;
 };
 
 class PNGRecorder : public Recorder
@@ -52,7 +58,6 @@ class VideoRecorder : public Recorder
     FrameBuffer  *frame_buffer_;
     uint width_;
     uint height_;
-    uint buf_size_;
 
     // operation
     std::atomic<bool> recording_;
@@ -61,7 +66,6 @@ class VideoRecorder : public Recorder
     // gstreamer pipeline
     GstElement   *pipeline_;
     GstAppSrc    *src_;
-    GstBaseSink  *sink_;
     GstClockTime timeframe_;
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
