@@ -25,6 +25,7 @@ public:
     virtual void addFrame(FrameBuffer *frame_buffer, float dt) = 0;
     virtual void stop() { }
     virtual std::string info() { return ""; }
+    virtual double duration() { return 0.0; }
 
     inline bool finished() const { return finished_; }
 
@@ -93,6 +94,8 @@ public:
     void addFrame(FrameBuffer *frame_buffer, float dt) override;
     void stop() override;
     std::string info() override;
+
+    double duration() override;
 
 };
 

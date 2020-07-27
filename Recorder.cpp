@@ -123,27 +123,27 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 }
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
-    "H264 (Standard)",
+    "H264 (Baseline)",
     "H264 (high)",
     "Apple ProRes (Standard)",
     "Apple ProRes (HQ 4444)",
-    "WebM VP8 (Standard)",
+    "WebM VP8 (2MB/s)",
     "Multiple JPEG"
 };
 const std::vector<std::string> VideoRecorder::profile_description {
     // Control x264 encoder quality :
-    // pass=4
+    // pass
     //    quant (4) – Constant Quantizer
     //    qual  (5) – Constant Quality
-    // quantizer=23
+    // quantizer
     //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
     //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
-    // speed-preset=3
+    // speed-preset
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "x264enc pass=4 quantizer=23 speed-preset=3 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "x264enc pass=5 quantizer=18 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
+    "x264enc pass=5 quantizer=23 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "x264enc pass=4 quantizer=16 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -421,8 +421,6 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        }
    }
 
-//   if (timestamp_ > 10000000000)
-//       stop();
 }
 
 void VideoRecorder::stop ()
@@ -441,6 +439,12 @@ std::string VideoRecorder::info()
         return GstToolkit::time_to_string(timestamp_);
     else
         return "Saving file...";
+}
+
+
+double VideoRecorder::duration()
+{
+    return gst_guint64_to_gdouble( GST_TIME_AS_MSECONDS(timestamp_) ) / 1000.0;
 }
 
 // appsrc needs data and we should start sending

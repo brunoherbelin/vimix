@@ -631,6 +631,12 @@ void UserInterface::Render()
     if (Settings::application.widget.stats)
         ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
 
+    // TODO: better management of main_video_recorder
+    if (main_video_recorder && main_video_recorder->duration() > Settings::application.record.timeout ){
+        main_video_recorder->stop();
+        main_video_recorder = nullptr;
+    }
+
     // all IMGUI Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -894,32 +900,30 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame") )
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
                     Mixer::manager().session()->addRecorder(new PNGRecorder);
 
-                ImGui::Separator();
-
-                // Stop recording menu if recording exists
+                // Stop recording menu if main recorder already exists
                 if (main_video_recorder) {
-
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         main_video_recorder->stop();
                         main_video_recorder = nullptr;
                     }
                 }
-                // start recording menu
+                // start recording
                 else {
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         main_video_recorder = new VideoRecorder;
                         Mixer::manager().session()->addRecorder(main_video_recorder);
                     }
-
+                    // select profile
                     ImGui::SetNextItemWidth(300);
                     ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
 
                 // Options menu
-                ImGui::MenuItem("Destination", nullptr, false, false);
+                ImGui::Separator();
+                ImGui::MenuItem("Options", nullptr, false, false);
                 {
                     static char* name_path[4] = { nullptr };
                     if ( name_path[0] == nullptr ) {
@@ -934,14 +938,18 @@ void UserInterface::RenderPreview()
                     sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
 
                     int selected_path = 0;
-                    ImGui::SetNextItemWidth(300);
-                    ImGui::Combo("##RecDestination", &selected_path, name_path, 4);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::Combo("Path", &selected_path, name_path, 4);
                     if (selected_path > 2)
                         std::thread (FolderDialogOpen, record_browser_path_, &record_path_selected, Settings::application.record.path).detach();
                     else if (selected_path > 1)
                         Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
                     else if (selected_path > 0)
                         Settings::application.record.path = SystemToolkit::home_path();
+
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::SliderFloat("Timeout", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
+                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "None", 3.f);
                 }
 
                 ImGui::EndMenu();

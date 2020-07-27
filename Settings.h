@@ -58,13 +58,17 @@ struct ViewConfig
 
 };
 
+#define RECORD_MAX_TIMEOUT 1800.f
+
 struct RecordConfig
 {
     std::string path;
     int profile;
+    float timeout;
 
     RecordConfig() : path("") {
         profile = 0;
+        timeout = RECORD_MAX_TIMEOUT;
     }
 
 };

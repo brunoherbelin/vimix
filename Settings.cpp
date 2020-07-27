@@ -83,6 +83,7 @@ void Settings::Save()
     XMLElement *RecordNode = xmlDoc.NewElement( "Record" );
     RecordNode->SetAttribute("path", application.record.path.c_str());
     RecordNode->SetAttribute("profile", application.record.profile);
+    RecordNode->SetAttribute("timeout", application.record.timeout);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -225,11 +226,11 @@ void Settings::Load()
         rendernode->QueryIntAttribute("res", &application.render.res);
     }
 
-
-    // Render
+    // Record
     XMLElement * recordnode = pRoot->FirstChildElement("Record");
     if (recordnode != nullptr) {
         recordnode->QueryIntAttribute("profile", &application.record.profile);
+        recordnode->QueryFloatAttribute("timeout", &application.record.timeout);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)
