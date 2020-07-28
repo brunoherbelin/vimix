@@ -170,6 +170,8 @@ void ShadingProgram::checkLinkingErr()
 }
 
 
+bool Shader::force_blending_opacity = false;
+
 Shader::Shader() : blending(BLEND_OPACITY)
 {
     // create unique id
@@ -209,13 +211,20 @@ void Shader::use()
     program_->setUniform("iResolution", iResolution);
 
     // Blending Function
-    if ( blending != BLEND_CUSTOM) {
+    if (force_blending_opacity) {
+        glEnable(GL_BLEND);
+        glBlendEquation(blending_equation[BLEND_OPACITY]);
+        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
+
+    }
+    else if ( blending != BLEND_CUSTOM ) {
         glEnable(GL_BLEND);
         glBlendEquation(blending_equation[blending]);
         glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
 
-//        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
-//        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        // TODO different blending for alpha and color
+        //        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
+        //        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     }
     else

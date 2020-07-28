@@ -88,6 +88,7 @@ class MixingView : public View
 public:
     MixingView();
 
+    void draw () override;
     void zoom (float factor) override;
     void centerSource(Source *) override;
 

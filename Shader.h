@@ -65,6 +65,8 @@ public:
     } BlendMode;
     BlendMode blending;
 
+    static bool force_blending_opacity;
+
 protected:
     ShadingProgram *program_;
     glm::vec3 iResolution;

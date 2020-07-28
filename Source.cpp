@@ -255,6 +255,18 @@ void Source::setActive (bool on)
     groups_[View::LAYER]->visible_ = active_;
 
 }
+// Transfer functions from coordinates to alpha (1 - transparency)
+float linear_(float x, float y) {
+    return 1.f - CLAMP( sqrt( ( x * x ) + ( y * y ) ), 0.f, 1.f );
+}
+
+float quad_(float x, float y) {
+    return 1.f - CLAMP( ( x * x ) + ( y * y ), 0.f, 1.f );
+}
+
+float sin_quad(float x, float y) {
+    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
+}
 
 void Source::update(float dt)
 {
@@ -267,8 +279,8 @@ void Source::update(float dt)
         // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-        float alpha = 1.0 - CLAMP( ( dist.x * dist.x ) + ( dist.y * dist.y ), 0.f, 1.f );
-        blendingshader_->color.a = alpha;
+        // use the prefered transfer function
+        blendingshader_->color.a = sin_quad( dist.x, dist.y );
 
         // CHANGE update status based on limbo
         setActive( glm::length(dist) < 1.3f );

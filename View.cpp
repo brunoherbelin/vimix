@@ -243,6 +243,16 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
 }
 
 
+void MixingView::draw()
+{
+    // temporarily force shaders to use opacity blending for rendering icons
+    Shader::force_blending_opacity = true;
+    // draw scene of this view
+    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+    // restore state
+    Shader::force_blending_opacity = false;
+}
+
 void MixingView::zoom( float factor )
 {
     float z = scene.root()->scale_.x;
@@ -331,6 +341,10 @@ void MixingView::setAlpha(Source *s)
     s->touch();
 }
 
+float sin_quad_texture(float x, float y) {
+    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ) / CIRCLE_PIXEL_RADIUS, 0.f, 1.f ) );
+}
+
 uint MixingView::textureMixingQuadratic()
 {
     static GLuint texid = 0;
@@ -349,14 +363,16 @@ uint MixingView::textureMixingQuadratic()
             c = -CIRCLE_PIXELS / 2 + 1;
             for (int j=0; j < CIRCLE_PIXELS / 2; ++j) {
                 // distance to the center
-                distance = (GLfloat) ((c * c) + (l * l)) / CIRCLE_PIXEL_RADIUS;
-//                distance = (GLfloat) sqrt( (GLfloat) ((c * c) + (l * l))) / (GLfloat) sqrt(CIRCLE_PIXEL_RADIUS); // linear
-                // luminance
-                luminance = 255.f * CLAMP( 0.95f - 0.8f * distance, 0.f, 1.f);
-                color[0] = color[1] = color[2] = static_cast<GLubyte>(luminance);
-                // alpha
-                alpha = 255.f * CLAMP( 1.f - distance , 0.f, 1.f);
+                distance = sin_quad_texture( (float) c , (float) l  );
+//                distance = 1.f - (GLfloat) ((c * c) + (l * l)) / CIRCLE_PIXEL_RADIUS;  // quadratic
+//                distance = 1.f - (GLfloat) sqrt( (GLfloat) ((c * c) + (l * l))) / (GLfloat) sqrt(CIRCLE_PIXEL_RADIUS); // linear
+
+                // transparency
+                alpha = 255.f * CLAMP( distance , 0.f, 1.f);
                 color[3] = static_cast<GLubyte>(alpha);
+                // luminance adjustment
+                luminance = 255.f * CLAMP( 0.2f + 0.75f * distance, 0.f, 1.f);
+                color[0] = color[1] = color[2] = static_cast<GLubyte>(luminance);
 
                 // 1st quadrant
                 memmove(&matrix[ j * 4 + i * CIRCLE_PIXELS * 4 ], color, 4);
