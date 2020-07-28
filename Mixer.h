@@ -70,10 +70,13 @@ public:
     void save   ();
     void saveas (const std::string& filename);
     void load   (const std::string& filename);
-    void open   (const std::string& filename);
     void import (const std::string& filename);
     void merge  (Session *s);
     void set    (Session *s);
+
+    // operations depending on transition mode
+    void close  ();
+    void open   (const std::string& filename);
 
 protected:
 

@@ -612,7 +612,9 @@ void Mixer::open(const std::string& filename)
     {
         // create special SessionSource to be used for the smooth transition
         SessionSource *ts = new SessionSource();
-        ts->load(filename);
+        // open filename if specified
+        if (!filename.empty())
+            ts->load(filename);
         // propose a new name based on uri
         renameSource(ts, SystemToolkit::base_filename(filename));
 
@@ -704,6 +706,23 @@ void Mixer::swap()
     // delete back
     delete back_session_;
     back_session_ = nullptr;
+}
+
+void Mixer::close()
+{
+    if (Settings::application.smooth_transition)
+    {
+        // create empty SessionSource to be used for the smooth transition
+        SessionSource *ts = new SessionSource();
+
+        // insert source and switch to transition view
+        insertSource(ts, View::TRANSITION);
+
+        // attach the SessionSource to the transition view
+        transition_.attach(ts);
+    }
+    else
+        clear();
 }
 
 void Mixer::clear()

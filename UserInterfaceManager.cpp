@@ -264,7 +264,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
             // New Session
-            Mixer::manager().clear();
+            Mixer::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
@@ -650,19 +650,10 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
-void UserInterface::showMenuOptions()
-{
-    ImGui::MenuItem( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", nullptr, &Settings::application.smooth_transition);
-
-    ImGui::Separator();
-    ImGui::MenuItem( ICON_FA_HISTORY " Restore session on start", nullptr, &Settings::application.recentSessions.load_at_start);
-    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
-}
-
 void UserInterface::showMenuFile()
 {
     if (ImGui::MenuItem( ICON_FA_FILE "  New", CTRL_MOD "W")) {
-        Mixer::manager().clear();
+        Mixer::manager().close();
         navigator.hidePannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
@@ -671,6 +662,8 @@ void UserInterface::showMenuFile()
     ImGui::Combo("##HEIGHT", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
     ImGui::Separator();
+
+    ImGui::MenuItem( ICON_FA_HISTORY " Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
 
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O")) {
         // launch file dialog to open a session file
@@ -695,6 +688,8 @@ void UserInterface::showMenuFile()
         std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
         navigator.hidePannel();
     }
+
+    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q")) {
@@ -1531,7 +1526,6 @@ void Navigator::Render()
             Mixer::manager().setView(View::GEOMETRY);
         }
         if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
-//            if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
         }
@@ -1734,7 +1728,7 @@ void Navigator::RenderNewPannel()
                 // show preview
                 new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, true);
                 // or press Validate button
-                ImGui::Text(" ");
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
                 if ( ImGui::Button(ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                     Mixer::manager().addSource(new_source_preview_.getSource());
                     selected_button[NAV_NEW] = false;
@@ -1820,7 +1814,7 @@ void Navigator::RenderTransitionPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
 
         // Transition options
-        ImGui::Text(" ");
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
         ImGui::Text("Animation");
         if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
         ImGui::SameLine(0, 10);
@@ -1831,7 +1825,7 @@ void Navigator::RenderTransitionPannel()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
-        ImGui::Text(" ");
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
         if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
@@ -1879,13 +1873,6 @@ void Navigator::RenderMainPannel()
         if (ImGui::BeginMenu("File"))
         {
             UserInterface::manager().showMenuFile();
-            ImGui::EndMenu();
-        }
-
-        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginMenu("Option"))
-        {
-            UserInterface::manager().showMenuOptions();
             ImGui::EndMenu();
         }
 
@@ -1988,7 +1975,7 @@ void Navigator::RenderMainPannel()
         // display the sessions list and detect if one was selected (double clic)
         bool session_selected = false;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##Sessions", 7);
+        ImGui::ListBoxHeader("##Sessions", 5);
         static std::string file_info = "";
         static std::list<std::string>::iterator file_selected = sessions_list.end();
         for(auto filename = sessions_list.begin(); filename != sessions_list.end(); filename++) {
@@ -2028,9 +2015,15 @@ void Navigator::RenderMainPannel()
             selection_session_mode_changed = true;
         }
 
+        // options session
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Text("Options");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
+
+
         // Continue Main pannel
         // WINDOWS
-        ImGui::Text(" ");
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
         ImGui::Text("Windows");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
@@ -2042,7 +2035,7 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         // Settings application appearance
-        ImGui::Text("  ");
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.8f, 1.2f, "%.1f"))
