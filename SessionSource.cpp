@@ -70,7 +70,7 @@ SessionSource::SessionSource() : Source(), path_("")
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
     loadFailed_ = false;
-    loadFinished_ = false;
+    loadFinished_ = true;
     wait_for_sources_ = false;
 
     session_ = new Session;
@@ -92,13 +92,12 @@ SessionSource::~SessionSource()
         delete session_;
 }
 
-
-
 void SessionSource::load(const std::string &p)
 {
     path_ = p;
 
     // launch a thread to load the session
+    loadFinished_ = false;
     std::thread ( SessionSource::loadSession, path_, this).detach();
 
     Log::Notify("Opening %s", p.c_str());
