@@ -57,7 +57,6 @@ using namespace std;
 
 #include "TextEditor.h"
 static TextEditor editor;
-static Recorder *main_video_recorder = nullptr;
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -293,14 +292,11 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            if (main_video_recorder){
-                main_video_recorder->stop();
-                main_video_recorder = nullptr;
-            }
-            else {
-                main_video_recorder = new VideoRecorder;
-                Mixer::manager().session()->addRecorder(main_video_recorder);
-            }
+            Recorder *rec = Mixer::manager().session()->frontRecorder();
+            if (rec)
+                rec->stop();
+            else
+                Mixer::manager().session()->addRecorder(new VideoRecorder);
         }
 
     }
@@ -632,9 +628,9 @@ void UserInterface::Render()
         ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
 
     // TODO: better management of main_video_recorder
-    if (main_video_recorder && main_video_recorder->duration() > Settings::application.record.timeout ){
-        main_video_recorder->stop();
-        main_video_recorder = nullptr;
+    Recorder *rec = Mixer::manager().session()->frontRecorder();
+    if (rec && rec->duration() > Settings::application.record.timeout ){
+        rec->stop();
     }
 
     // all IMGUI Rendering
@@ -885,6 +881,9 @@ void UserInterface::RenderPreview()
             return;
 
         }
+
+        Recorder *rec = Mixer::manager().session()->frontRecorder();
+
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
@@ -904,17 +903,15 @@ void UserInterface::RenderPreview()
                     Mixer::manager().session()->addRecorder(new PNGRecorder);
 
                 // Stop recording menu if main recorder already exists
-                if (main_video_recorder) {
+                if (rec) {
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
-                        main_video_recorder->stop();
-                        main_video_recorder = nullptr;
+                        rec->stop();
                     }
                 }
                 // start recording
                 else {
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        main_video_recorder = new VideoRecorder;
-                        Mixer::manager().session()->addRecorder(main_video_recorder);
+                        Mixer::manager().session()->addRecorder(new VideoRecorder);
                     }
                     // select profile
                     ImGui::SetNextItemWidth(300);
@@ -965,7 +962,6 @@ void UserInterface::RenderPreview()
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         // recording indicator overlay
-        Recorder *rec = Mixer::manager().session()->frontRecorder();
         if (rec)
         {
             float r = ImGui::GetTextLineHeightWithSpacing();
