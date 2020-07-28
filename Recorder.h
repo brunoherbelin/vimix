@@ -79,6 +79,8 @@ public:
     typedef enum {
         H264_STANDARD = 0,
         H264_HQ,
+        H265_REALTIME,
+        H265_ANIMATION,
         PRORES_STANDARD,
         PRORES_HQ,
         VP8,

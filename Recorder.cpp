@@ -123,10 +123,12 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 }
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
-    "H264 (Baseline)",
-    "H264 (high 4:4:4)",
-    "Apple ProRes (Standard)",
-    "Apple ProRes (HQ 4444)",
+    "H264   (Baseline)",
+    "H264   (High 4:4:4)",
+    "H265   (Realtime)",
+    "H265   (HQ Animation)",
+    "ProRes (Standard)",
+    "ProRes (HQ 4444)",
     "WebM VP8 (2MB/s)",
     "Multiple JPEG"
 };
@@ -144,6 +146,24 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    fast (5)
     "x264enc pass=4 quantizer=23 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
     "x264enc pass=4 quantizer=16 speed-preset=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    // Control x2654 encoder quality :
+    // NB: apparently x265 only accepts I420 format :(
+    // speed-preset
+    //    veryfast (3)
+    //    faster (4)
+    //    fast (5)
+    // Tune
+    //   psnr (1)
+    //   ssim (2) DEFAULT
+    //   grain (3)
+    //   zerolatency (4)  Encoder latency is removed
+    //   fastdecode (5)
+    //   animation (6) optimize the encode quality for animation content without impacting the encode speed
+    // crf Quality-controlled variable bitrate [0 51]
+    // default 28
+    // 24 for x265 should be visually transparent; anything lower will probably just waste file size
+    "video/x-raw, format=I420 ! x265enc tune=4 speed-preset=3 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=6 speed-preset=4 option-string=\"crf=22\" ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -223,6 +243,8 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
 
        // create a gstreamer pipeline
        string description = "appsrc name=src ! videoconvert ! ";
+       if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
+           Settings::application.record.profile = H264_STANDARD;
        description += profile_description[Settings::application.record.profile];
 
        // verify location path (path is always terminated by the OS dependent separator)
