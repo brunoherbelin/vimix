@@ -129,10 +129,18 @@ void MediaPlayer::execute_open()
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
 
     // build string describing pipeline
-    string description = "uridecodebin uri=" + uri_ + " name=decoder !";
+    // NB: video convertion chroma-resampler
+    //            Duplicates the samples when upsampling and drops when downsampling 0
+    //            Uses linear interpolation 1 (default)
+    //            Uses cubic interpolation 2
+    //            Uses sinc interpolation 3
+    // Enable buffering on the parsed/demuxed data with the use-buffering property:
+    // This is interesting to enable buffering on slower random access media such as a network file server.
+    // buffer-duration in ns (500000 = 0.5s)
+    string description = "uridecodebin uri=" + uri_ + " use-buffering=true buffer-duration=500000 ! ";
     if (interlaced_)
-        description += " deinterlace !";
-    description += " videoconvert ! appsink name=sink";
+        description += "deinterlace ! ";
+    description += "videoconvert chroma-resampler=2 ! appsink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -1015,19 +1023,15 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                 // try to fill-in the codec information
                 GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
                 if (caps) {
-                    m->codec_name_ = std::string( gst_pb_utils_get_codec_description(caps) );
+                    m->codec_name_ = std::string( gst_pb_utils_get_codec_description(caps) ) + " ";
                     gst_caps_unref (caps);
                 }
-//                const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
-//                if ( tags ) {
-//                    gchar *container = NULL;
-//                    gst_tag_list_get_string(tags, GST_TAG_CONTAINER_FORMAT, &container);
-//                    if (container)  m->codec_name = std::string(container) + " ";
-//                    gchar *codec = NULL;
-//                    gst_tag_list_get_string(tags, GST_TAG_VIDEO_CODEC, &codec);
-//                    if (!codec) gst_tag_list_get_string (tags, GST_TAG_CODEC, &codec);
-//                    if (codec)  m->codec_name += std::string(codec);
-//                }
+                const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
+                if ( tags ) {
+                    gchar *container = NULL;
+                    gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
+                    if (container)  m->codec_name_ += std::string(container);
+                }
                 // exit loop
                 foundvideostream = true;
             }
