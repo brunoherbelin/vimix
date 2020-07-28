@@ -13,13 +13,13 @@ public:
     static const char* resolution_name[4];
     static float resolution_height[4];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
+    // unbind any framebuffer object
+    static void release();
 
     FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
     FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
     ~FrameBuffer();
 
-    // unbind any framebuffer object
-    static void release();
     // Bind & push attribs to prepare draw
     void begin();
     // pop attrib and unbind to end draw
@@ -38,11 +38,14 @@ public:
     // width & height
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
-    inline bool use_alpha() const { return use_alpha_; }
     glm::vec3 resolution() const;
     float aspectRatio() const;
 
-    // texture index for draw
+    // internal pixel format
+    inline bool use_alpha() const { return use_alpha_; }
+    inline bool use_multisampling() const { return use_multi_sampling_; }
+
+    // index for texturing
     uint texture() const;
 
 private:

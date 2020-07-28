@@ -161,7 +161,7 @@ void FrameBuffer::readPixels()
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);   
+    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

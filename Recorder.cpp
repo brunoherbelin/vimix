@@ -124,7 +124,7 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Baseline)",
-    "H264 (high)",
+    "H264 (high 4:4:4)",
     "Apple ProRes (Standard)",
     "Apple ProRes (HQ 4444)",
     "WebM VP8 (2MB/s)",
@@ -142,8 +142,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "x264enc pass=5 quantizer=23 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "x264enc pass=4 quantizer=16 speed-preset=4 ! video/x-h264, profile=high ! h264parse ! ",
+    "x264enc pass=4 quantizer=23 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "x264enc pass=4 quantizer=16 speed-preset=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -279,7 +279,7 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
 
            // instruct src to use the required caps
            GstCaps *caps = gst_caps_new_simple ("video/x-raw",
-                                "format", G_TYPE_STRING, "RGB",
+                                "format", G_TYPE_STRING, frame_buffer_->use_alpha() ? "RGBA" : "RGB",
                                 "width",  G_TYPE_INT, width_,
                                 "height", G_TYPE_INT, height_,
                                 "framerate", GST_TYPE_FRACTION, 30, 1,
