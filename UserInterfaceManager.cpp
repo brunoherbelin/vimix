@@ -398,20 +398,19 @@ void UserInterface::handleMouse()
         //
         // RIGHT Mouse button
         //
-
         if ( ImGui::IsMouseDragging(ImGuiMouseButton_Right, 10.0f) )
         {
             // right mouse drag => drag current view
             View::Cursor c = Mixer::manager().view()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
             setMouseCursor(io.MousePos, c);
         }
-        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-
+        else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right))
+        {
             Mixer::manager().unsetCurrentSource();
             navigator.hidePannel();
 //                glm::vec3 point = Rendering::manager().unProject(mousepos, Mixer::manager().currentView()->scene.root()->transform_ );
-
         }
+
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right) )
         {
             Mixer::manager().view()->recenter();
@@ -503,7 +502,6 @@ void UserInterface::handleMouse()
 
             // only operate if the view didn't change
             if (view_drag == Mixer::manager().view()) {
-
 
                 // action on current source
                 Source *current = Mixer::manager().currentSource();
@@ -1147,7 +1145,7 @@ void MediaController::Render()
 
             float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
-            if (ImGui::Button(ICON_FA_FAST_BACKWARD))
+            if (ImGui::Button(mp_->playSpeed() > 0 ? ICON_FA_FAST_BACKWARD :ICON_FA_FAST_FORWARD))
                 mp_->rewind();
             ImGui::SameLine(0, spacing);
 
@@ -1157,8 +1155,7 @@ void MediaController::Render()
 
             // display buttons Play/Stop depending on current playing mode
             if (media_playing_mode_) {
-
-                if (ImGui::Button(ICON_FA_PAUSE "  Pause"))
+                if (ImGui::Button(ICON_FA_PAUSE "  Pause", ImVec2(100, 0)))
                     media_playing_mode_ = false;
                 ImGui::SameLine(0, spacing);
 
@@ -1168,8 +1165,7 @@ void MediaController::Render()
                 ImGui::PopButtonRepeat();
             }
             else {
-
-                if (ImGui::Button(ICON_FA_PLAY "  Play    "))
+                if (ImGui::Button(mp_->playSpeed() < 0 ? ICON_FA_LESS_THAN "  Play": ICON_FA_GREATER_THAN "  Play", ImVec2(100, 0)))
                     media_playing_mode_ = true;
                 ImGui::SameLine(0, spacing);
 

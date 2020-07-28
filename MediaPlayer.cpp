@@ -439,6 +439,9 @@ void MediaPlayer::seekNextFrame()
     if (!enabled_ || isPlaying())
         return;
 
+    if ( position_ == ( rate_ < 0.0 ? start_position_ : duration() ) )
+        rewind();
+
     // step 
     gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE));
 }
@@ -840,7 +843,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
     }
     // give a position to EOS
     else {
-        frame_[write_index_].position = duration();
+        frame_[write_index_].position = rate_ > 0.0 ? duration() : start_position_;
     }
 
     // unlock access to frame
