@@ -610,8 +610,9 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
 
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-    // This hint can improve the speed of shading when dFdx dFdy aren't needed in GLSL
-    glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_FASTEST);
+    //
+    glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+    glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
 
     // if not main window
     if ( master_ != NULL ) {

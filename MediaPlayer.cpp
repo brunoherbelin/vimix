@@ -518,11 +518,11 @@ void MediaPlayer::init_texture(guint index)
     glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                    GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
 
     if (!isimage_) {
 

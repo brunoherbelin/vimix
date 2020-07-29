@@ -38,12 +38,11 @@ void FrameBuffer::init()
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
+    glTexStorage2D(GL_TEXTURE_2D, 1, use_alpha_ ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y,
-                     0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // create a framebuffer object
@@ -58,10 +57,10 @@ void FrameBuffer::init()
         // create a multisample texture
         glGenTextures(1, &intermediate_textureid_);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_);
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.render.multisampling,
+                                use_alpha_ ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.render.multisampling,
-                                use_alpha_ ? GL_RGBA : GL_RGB, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
         // attach the multisampled texture to FBO (currently binded)
@@ -160,7 +159,11 @@ void FrameBuffer::readPixels()
     else
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
 
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    if (use_alpha())
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    else
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
     glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

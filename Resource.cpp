@@ -35,7 +35,8 @@ uint Resource::getTextureBlack()
         glBindTexture( GL_TEXTURE_2D, tex_index_black);
         unsigned char clearColor[4] = {0, 0, 0, 255};
         // texture with one black pixel
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
     }
 
     return tex_index_black;
@@ -51,7 +52,8 @@ uint Resource::getTextureWhite()
         glBindTexture( GL_TEXTURE_2D, tex_index_white);
         unsigned char clearColor[4] = {255, 255, 255, 255};
         // texture with one black pixel
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
     }
 
     return tex_index_white;
@@ -241,12 +243,11 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 
     glGenTextures(1, &textureID);
 	glBindTexture( GL_TEXTURE_2D, textureID);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
 
     // free memory
 	stbi_image_free(img);

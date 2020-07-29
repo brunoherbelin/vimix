@@ -28,8 +28,6 @@
 #include "UpdateCallback.h"
 #include "Log.h"
 
-#define CIRCLE_PIXELS 64
-#define CIRCLE_PIXEL_RADIUS 1024.0
 
 bool View::need_deep_update_ = true;
 
@@ -418,6 +416,13 @@ void MixingView::setAlpha(Source *s)
     s->touch();
 }
 
+#define CIRCLE_PIXELS 64
+#define CIRCLE_PIXEL_RADIUS 1024.0
+//#define CIRCLE_PIXELS 256
+//#define CIRCLE_PIXEL_RADIUS 16384.0
+//#define CIRCLE_PIXELS 1024
+//#define CIRCLE_PIXEL_RADIUS 262144.0
+
 float sin_quad_texture(float x, float y) {
     return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ) / CIRCLE_PIXEL_RADIUS, 0.f, 1.f ) );
 }
@@ -427,8 +432,6 @@ uint MixingView::textureMixingQuadratic()
     static GLuint texid = 0;
     if (texid == 0) {
         // generate the texture with alpha exactly as computed for sources
-        glGenTextures(1, &texid);
-        glBindTexture(GL_TEXTURE_2D, texid);
         GLubyte matrix[CIRCLE_PIXELS*CIRCLE_PIXELS * 4];
         GLubyte color[4] = {0,0,0,0};
         GLfloat luminance = 1.f;
@@ -447,27 +450,31 @@ uint MixingView::textureMixingQuadratic()
                 // transparency
                 alpha = 255.f * CLAMP( distance , 0.f, 1.f);
                 color[3] = static_cast<GLubyte>(alpha);
+
                 // luminance adjustment
                 luminance = 255.f * CLAMP( 0.2f + 0.75f * distance, 0.f, 1.f);
                 color[0] = color[1] = color[2] = static_cast<GLubyte>(luminance);
 
                 // 1st quadrant
-                memmove(&matrix[ j * 4 + i * CIRCLE_PIXELS * 4 ], color, 4);
+                memmove(&matrix[ j * 4 + i * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
                 // 4nd quadrant
-                memmove(&matrix[ (CIRCLE_PIXELS -j -1)* 4 + i * CIRCLE_PIXELS * 4 ], color, 4);
+                memmove(&matrix[ (CIRCLE_PIXELS -j -1)* 4 + i * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
                 // 3rd quadrant
-                memmove(&matrix[ j * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4);
+                memmove(&matrix[ j * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
                 // 4th quadrant
-                memmove(&matrix[ (CIRCLE_PIXELS -j -1) * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4);
+                memmove(&matrix[ (CIRCLE_PIXELS -j -1) * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
 
                 ++c;
             }
             ++l;
         }
-        // two components texture : luminance and alpha
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // setup texture
+        glGenTextures(1, &texid);
+        glBindTexture(GL_TEXTURE_2D, texid);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, CIRCLE_PIXELS, CIRCLE_PIXELS);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CIRCLE_PIXELS, CIRCLE_PIXELS, GL_BGRA, GL_UNSIGNED_BYTE, matrix);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, CIRCLE_PIXELS, CIRCLE_PIXELS, 0, GL_RGBA, GL_UNSIGNED_BYTE, (float *) matrix);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     }
     return texid;
