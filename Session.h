@@ -58,7 +58,7 @@ public:
     void setResolution(glm::vec3 resolution);
 
     // manipulate fading of output
-    void setFading(float f);
+    void setFading(float f, bool forcenow = false);
     inline float fading() const { return fading_target_; }
 
     // configuration for group nodes of views

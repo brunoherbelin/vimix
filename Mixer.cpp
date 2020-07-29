@@ -552,7 +552,8 @@ void Mixer::setView(View::Mode m)
     case View::MIXING:
     default:
         current_view_ = &mixing_;
-        mixing_.setFading( session_->fading() );
+        // need to deeply update mixer view to apply fading change
+        View::need_deep_update_ = true;
         break;
     }
 
@@ -690,6 +691,9 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
+
+    // transfer fading
+    session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
 
     // request complete update for views
     View::need_deep_update_ = true;

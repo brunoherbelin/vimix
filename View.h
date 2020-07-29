@@ -24,6 +24,7 @@ public:
     virtual void draw ();
 
     virtual void zoom (float) {}
+    virtual void recenter();
     virtual void centerSource(Source *) {}
 
     typedef enum {
@@ -66,8 +67,6 @@ public:
         return Cursor();
     }
 
-    virtual void recenter();
-
     // accessible scene
     Scene scene;
 
@@ -89,6 +88,7 @@ public:
     MixingView();
 
     void draw () override;
+    void update (float dt) override;
     void zoom (float factor) override;
     void centerSource(Source *) override;
     void selectAll() override;
@@ -99,7 +99,6 @@ public:
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
 
-    void setFading (float f);
 
 private:
     uint textureMixingQuadratic();
@@ -112,6 +111,7 @@ private:
 
 class RenderView : public View
 {
+    FrameBuffer *intermediate_buffer_;
     FrameBuffer *frame_buffer_;
     Surface *fading_overlay_;
 

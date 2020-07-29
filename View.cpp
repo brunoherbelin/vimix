@@ -305,15 +305,23 @@ void MixingView::selectAll()
     }
 }
 
-void MixingView::setFading(float f)
+void MixingView::update(float dt)
 {
-    // reverse calculate angle from fading
-    float angle = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
-    // move slider
-    slider_root_->rotation_.z  = angle;
-    // visual feedback on mixing circle
-    f = 1.f - f;
-    mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+    View::update(dt);
+
+    // a more complete update is requested
+    if (View::need_deep_update_) {
+
+        // reverse calculate angle from fading
+        float f = Mixer::manager().session()->fading();
+        float angle = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
+        // move slider
+        slider_root_->rotation_.z  = angle;
+        // visual feedback on mixing circle
+        f = 1.f - f;
+        mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+
+    }
 }
 
 View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)

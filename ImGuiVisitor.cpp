@@ -302,6 +302,14 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGuiToolkit::Icon(4,9);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
+
+    if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFading(0.f);
+    float f = s.session()->fading();
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
+        s.session()->setFading(f);
+
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
     if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
