@@ -664,7 +664,7 @@ void RenderingWindow::makeCurrent()
     glViewport(0, 0, window_attributes_.viewport.x, window_attributes_.viewport.y);
     glClearColor(window_attributes_.clear_color.r, window_attributes_.clear_color.g,
                  window_attributes_.clear_color.b, window_attributes_.clear_color.a);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 // TODO update parameters for draw on resize event (not every frame)
@@ -685,7 +685,7 @@ void RenderingWindow::draw(FrameBuffer *fb)
 
         // setup attribs
         Rendering::manager().pushAttrib(window_attributes_);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // blit framebuffer
         if (Settings::application.render.blit) {
