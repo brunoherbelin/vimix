@@ -105,11 +105,12 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
         // select top-most Node picked
         pick = pv.picked().back();
 
+        Log::Info("picked %d", pick.first->id());
     }
     return pick;
 }
 
-void View::initiate()
+void View::storeStatus()
 {
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
@@ -227,19 +228,40 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
         restoreSettings();
 
     // Mixing scene background
-    Mesh *disk = new Mesh("mesh/disk.ply");
-    disk->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
-    disk->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
-    scene.bg()->attach(disk);
+    Mesh *tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
+    tmp->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
+    scene.bg()->attach(tmp);
 
-    disk = new Mesh("mesh/disk.ply");
-    disk->setTexture(textureMixingQuadratic());
-    scene.bg()->attach(disk);
+    mixingCircle_ = new Mesh("mesh/disk.ply");
+    mixingCircle_->setTexture(textureMixingQuadratic());
+    mixingCircle_->shader()->color = glm::vec4( 1.f, 1.f, 1.f, 1.f );
+    scene.bg()->attach(mixingCircle_);
 
-    Mesh *circle = new Mesh("mesh/circle.ply");
-    circle->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
-    scene.bg()->attach(circle);
+    Symbol *dot = new Symbol(Symbol::POINT, glm::vec3(0.f, 1.f, 0.1f));
+    dot->scale_ = glm::vec3( 0.33f, 0.33f, 1.f);
+    dot->color = glm::vec4( COLOR_FRAME, 1.f );
+    scene.bg()->attach(dot);
 
+    tmp = new Mesh("mesh/circle.ply");
+    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    scene.bg()->attach(tmp);
+
+    // Mixing scene foreground
+    slider_root_ = new Group;
+    scene.fg()->attach(slider_root_);
+
+    tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.08f, 0.08f, 1.f);
+    tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
+    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    slider_root_->attach(tmp);
+
+    slider_ = new Disk();
+    slider_->scale_ = glm::vec3(0.075f, 0.075f, 1.f);
+    slider_->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
+    slider_->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
+    slider_root_->attach(slider_);
 }
 
 
@@ -275,7 +297,6 @@ void MixingView::centerSource(Source *s)
 
 }
 
-
 void MixingView::selectAll()
 {
     for(auto sit = Mixer::manager().session()->begin();
@@ -284,15 +305,63 @@ void MixingView::selectAll()
     }
 }
 
-View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>)
+void MixingView::setFading(float f)
 {
-    if (!s)
-        return Cursor();
+    // reverse calculate angle from fading
+    float angle = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
+    // move slider
+    slider_root_->rotation_.z  = angle;
+    // visual feedback on mixing circle
+    f = 1.f - f;
+    mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+}
 
+View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
+{
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
+    // No source is given
+    if (!s) {
+
+        // if interaction with slider
+        if (pick.first == slider_) {
+
+            // apply rotation to match angle with mouse cursor
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(0.f, 1.0)), glm::normalize(glm::vec2(gl_Position_to)));
+
+            // snap on 0 and PI angles
+            if ( ABS_DIFF(angle, 0.f) < 0.05)
+                angle = 0.f;
+            else if ( ABS_DIFF(angle, M_PI) < 0.05)
+                angle = M_PI;
+
+            // animate slider (rotation angle on its parent)
+            slider_root_->rotation_.z  = angle;
+
+            // calculate fading from angle
+            float fading = sin( ABS(angle) * 0.5f);
+
+            // apply fading to session
+            Mixer::manager().session()->setFading(fading);
+
+            // visual feedback on mixing circle
+            fading = 1.f - fading;
+            mixingCircle_->shader()->color = glm::vec4(fading, fading, fading, 1.f);
+
+            // cursor feedback
+            std::ostringstream info;
+            info  << "Global opacity " << int(fading * 100.0) << " %";
+            return Cursor(Cursor_Hand, info.str() );
+        }
+
+        // nothing to do
+        return Cursor();
+    }
+    //
+    // Interaction with source
+    //
     // compute delta translation
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
@@ -459,7 +528,6 @@ void RenderView::draw()
     frame_buffer_->end();
 }
 
-
 GeometryView::GeometryView() : View(GEOMETRY)
 {
     // read default settings
@@ -585,8 +653,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 {
     View::Cursor ret = Cursor();
 
-    std::ostringstream info;
-
     // work on the given source
     if (!s)
         return ret;
@@ -607,6 +673,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 //    Log::Info("                    ( %.1f, %.1f, %.1f ) ", S_to.x, S_to.y, S_to.z);
 
     // which manipulation to perform?
+    std::ostringstream info;
     if (pick.first)  {
         // picking on the resizing handles in the corners
         if ( pick.first == s->handle_[Handles::RESIZE] ) {
@@ -1112,14 +1179,13 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     if (!s)
         return Cursor();
 
-    std::ostringstream info;
-
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // compute delta translation
     float d = s->stored_status_->translation_.x + gl_Position_to.x - gl_Position_from.x;
+    std::ostringstream info;
     if (d > 0.2) {
         s->group(View::TRANSITION)->translation_.x = 0.4;
         info << "Open session";

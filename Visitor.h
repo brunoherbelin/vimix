@@ -19,6 +19,7 @@ class LineCircle;
 class Mesh;
 class Frame;
 class Handles;
+class Disk;
 class MediaPlayer;
 class Shader;
 class ImageShader;
@@ -51,6 +52,7 @@ public:
     virtual void visit (Mesh&) {}
     virtual void visit (Frame&) {}
     virtual void visit (Handles&) {}
+    virtual void visit (Disk&) {}
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}

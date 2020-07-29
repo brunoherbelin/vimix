@@ -59,8 +59,7 @@ public:
 
     // manipulate fading of output
     void setFading(float f);
-    void fadeIn();
-    void fadeOut();
+    inline float fading() const { return fading_target_; }
 
     // configuration for group nodes of views
     inline Group *config (View::Mode m) const { return config_.at(m); }
@@ -77,7 +76,7 @@ protected:
     std::map<View::Mode, Group*> config_;
     bool active_;
     std::list<Recorder *> recorders_;
-
+    float fading_target_;
 };
 
 #endif // SESSION_H

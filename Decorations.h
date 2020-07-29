@@ -72,20 +72,35 @@ protected:
     Type type_;
 };
 
-class SelectionBox : public Group
+class Disk : public Node
 {
 public:
-    SelectionBox();
+    Disk();
+    ~Disk();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
 
     glm::vec4 color;
 
 protected:
-    LineSquare *square_;
-    GlmToolkit::AxisAlignedBoundingBox bbox_;
-
+    static Mesh *disk_;
 };
+
+//class SelectionBox : public Group
+//{
+//public:
+//    SelectionBox();
+
+//    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+
+//    glm::vec4 color;
+
+//protected:
+//    LineSquare *square_;
+//    GlmToolkit::AxisAlignedBoundingBox bbox_;
+
+//};
 
 
 #endif // DECORATIONS_H

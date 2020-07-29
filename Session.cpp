@@ -9,7 +9,7 @@
 
 #include "Log.h"
 
-Session::Session() : filename_(""), failedSource_(nullptr), active_(true)
+Session::Session() : filename_(""), failedSource_(nullptr), active_(true), fading_target_(0.f)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = render_.resolution();
@@ -67,6 +67,12 @@ void Session::update(float dt)
             // update the source
             (*it)->update(dt);
         }
+    }
+
+    // apply fading (smooth dicotomic reaching)
+    float f = render_.fading();
+    if ( ABS_DIFF(f, fading_target_) > EPSILON) {
+        render_.setFading( f + ( fading_target_ - f ) / 2.f);
     }
 
     // update the scene tree
@@ -152,20 +158,22 @@ void Session::setResolution(glm::vec3 resolution)
 
 void Session::setFading(float f)
 {
-    render_.setFading(f);
+    fading_target_ = CLAMP(f, 0.f, 1.f);
 }
 
-void Session::fadeIn() {
-    float f = render_.fading();
-    if ( f > EPSILON)
-        render_.setFading( f / 2.f);
-}
 
-void Session::fadeOut() {
-    float f = render_.fading();
-    if ( f < 1.f - EPSILON)
-        render_.setFading( f * 2.f);
-}
+
+//void Session::fadeIn() {
+//    float f = render_.fading();
+//    if ( f > EPSILON)
+//        render_.setFading( f / 2.f);
+//}
+
+//void Session::fadeOut() {
+//    float f = render_.fading();
+//    if ( f < 1.f - EPSILON)
+//        render_.setFading( f * 2.f);
+//}
 
 SourceList::iterator Session::begin()
 {

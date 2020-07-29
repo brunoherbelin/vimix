@@ -56,6 +56,7 @@ public:
     virtual Cursor drag (glm::vec2, glm::vec2);
 
     // grab a source provided a start and an end point in screen coordinates and the picking point
+    virtual void storeStatus();
     virtual Cursor grab (Source*, glm::vec2, glm::vec2, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
@@ -65,7 +66,6 @@ public:
         return Cursor();
     }
 
-    virtual void initiate();
     virtual void recenter();
 
     // accessible scene
@@ -91,17 +91,23 @@ public:
     void draw () override;
     void zoom (float factor) override;
     void centerSource(Source *) override;
-
     void selectAll() override;
+
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
 
+    void setFading (float f);
+
 private:
     uint textureMixingQuadratic();
     float limbo_scale_;
+
+    Group *slider_root_;
+    class Disk *slider_;
+    class Mesh *mixingCircle_;
 };
 
 class RenderView : public View
@@ -132,13 +138,12 @@ public:
     void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
+
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
-//    void select(glm::vec2, glm::vec2) override;
 
-//    class Box *selection_box_;
 };
 
 class LayerView : public View
@@ -148,6 +153,7 @@ public:
 
     void update (float dt) override;
     void zoom (float factor) override;
+
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
@@ -162,18 +168,18 @@ class TransitionView : public View
 public:
     TransitionView();
 
-    void attach(SessionSource *ts);
-    class Session *detach();
-
-    void play(bool open);
-
     void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
-    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     void selectAll() override;
+
+    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
+
+    void attach(SessionSource *ts);
+    class Session *detach();
+    void play(bool open);
 
 private:
     class Surface *output_surface_;

@@ -355,55 +355,95 @@ void Symbol::accept(Visitor& v)
     v.visit(*this);
 }
 
+Mesh *Disk::disk_ = nullptr;
 
-SelectionBox::SelectionBox()
+Disk::Disk() : Node()
 {
-//    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-    color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
-    square_ = new LineSquare( 3 );
+    if (Disk::disk_ == nullptr)
+        Disk::disk_ = new Mesh("mesh/disk.ply");
+
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+}
+
+Disk::~Disk()
+{
 
 }
 
-void SelectionBox::draw (glm::mat4 modelview, glm::mat4 projection)
+void Disk::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        square_->init();
+        if (!Disk::disk_->initialized())
+            Disk::disk_->init();
         init();
     }
 
-    if (visible_) {
-
-        // use a visitor bounding box to calculate extend of all selected nodes
-        BoundingBoxVisitor vbox;
-
-        // visit every child of the selection
-        for (NodeSet::iterator node = children_.begin();
-             node != children_.end(); node++) {
-            // reset the transform before
-            vbox.setModelview(glm::identity<glm::mat4>());
-            (*node)->accept(vbox);
-        }
-
-        // get the bounding box
-        bbox_ = vbox.bbox();
-
-//        Log::Info("                                       -------- visitor box (%f, %f)-(%f, %f)", bbox_.min().x, bbox_.min().y, bbox_.max().x, bbox_.max().y);
+    if ( visible_ ) {
 
         // set color
-        square_->shader()->color = color;
+        Disk::disk_->shader()->color = color;
 
-        // compute transformation from bounding box
-//        glm::mat4 ctm = modelview * GlmToolkit::transform(glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f));
-        glm::mat4 ctm = modelview * GlmToolkit::transform(bbox_.center(), glm::vec3(0.f), bbox_.scale());
+        glm::mat4 ctm = modelview * transform_;
+        Disk::disk_->draw( ctm, projection);
 
-        // draw bbox
-//        square_->draw( modelview, projection);
-        square_->draw( ctm, projection);
-
-        // DEBUG
-//        visible_=false;
     }
-
 }
+
+void Disk::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}
+
+
+//SelectionBox::SelectionBox()
+//{
+////    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+//    color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
+//    square_ = new LineSquare( 3 );
+
+//}
+
+//void SelectionBox::draw (glm::mat4 modelview, glm::mat4 projection)
+//{
+//    if ( !initialized() ) {
+//        square_->init();
+//        init();
+//    }
+
+//    if (visible_) {
+
+//        // use a visitor bounding box to calculate extend of all selected nodes
+//        BoundingBoxVisitor vbox;
+
+//        // visit every child of the selection
+//        for (NodeSet::iterator node = children_.begin();
+//             node != children_.end(); node++) {
+//            // reset the transform before
+//            vbox.setModelview(glm::identity<glm::mat4>());
+//            (*node)->accept(vbox);
+//        }
+
+//        // get the bounding box
+//        bbox_ = vbox.bbox();
+
+////        Log::Info("                                       -------- visitor box (%f, %f)-(%f, %f)", bbox_.min().x, bbox_.min().y, bbox_.max().x, bbox_.max().y);
+
+//        // set color
+//        square_->shader()->color = color;
+
+//        // compute transformation from bounding box
+////        glm::mat4 ctm = modelview * GlmToolkit::transform(glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f));
+//        glm::mat4 ctm = modelview * GlmToolkit::transform(bbox_.center(), glm::vec3(0.f), bbox_.scale());
+
+//        // draw bbox
+////        square_->draw( modelview, projection);
+//        square_->draw( ctm, projection);
+
+//        // DEBUG
+////        visible_=false;
+//    }
+
+//}
 
 

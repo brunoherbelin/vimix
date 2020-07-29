@@ -58,10 +58,9 @@ void PickingVisitor::visit(Switch &n)
     modelview_ = mv;
 }
 
-void PickingVisitor::visit(Primitive &n)
+void PickingVisitor::visit(Primitive &)
 {
-    // TODO: generic visitor for primitive with random shape ?
-
+    // by default, a Primitive is not interactive
 }
 
 void PickingVisitor::visit(Surface &n)
@@ -97,10 +96,20 @@ void PickingVisitor::visit(Surface &n)
     }
 }
 
-void PickingVisitor::visit(Frame &n)
+void PickingVisitor::visit(Disk &n)
 {
-//    if (n.border())
-//        n.border()->accept(*this);
+    // discard if not visible or if not exactly one point given for picking
+    if (!n.visible_ || points_.size() != 1)
+        return;
+
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
+
+    // test distance for picking from a single point
+    if ( glm::length(glm::vec2(P)) < 1.f )
+        // add this surface to the nodes picked
+        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+
 }
 
 void PickingVisitor::visit(Handles &n)
@@ -147,29 +156,6 @@ void PickingVisitor::visit(Handles &n)
 
 }
 
-void PickingVisitor::visit(LineSquare &)
-{
-//    // apply inverse transform to the point of interest
-//    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_A_, 0.f, 1.f );
-
-//    // lower left corner
-//    glm::vec3 LL = glm::vec3( -1.f, -1.f, 0.f );
-//    // up right corner
-//    glm::vec3 UR = glm::vec3( 1.f, 1.f, 0.f );
-
-//    // if P is over a line [LL UR] rectangle:
-//    // TODO
-}
-
-void PickingVisitor::visit(LineCircle &n)
-{
-//    // apply inverse transform to the point of interest
-//    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( point_A_, 0.f, 1.f );
-
-//    float r = glm::length( glm::vec2(P) );
-//    if ( r < 1.02 && r > 0.98)
-//        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
-}
 
 void PickingVisitor::visit(Scene &n)
 {

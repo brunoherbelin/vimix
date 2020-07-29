@@ -7,6 +7,15 @@
 
 #include "Visitor.h"
 
+/**
+ * @brief The PickingVisitor class is used to
+ * capture which objects  of a scene are located at the screen
+ * coordinate. Typically at mouse cursor coordinates for
+ * user interaction.
+ *
+ * Only a subset of interactive objects (surface and Decorations)
+ * are interactive.
+ */
 class PickingVisitor: public Visitor
 {
     std::vector<glm::vec3> points_;
@@ -26,11 +35,21 @@ public:
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
 
+    /**
+     * @brief visit Surface : picking source rendering surface
+     * @param n
+     */
     void visit(Surface& n) override;
-    void visit(Frame& n) override;
+    /**
+     * @brief visit Handles : picking grabbers of source in geometry view
+     * @param n
+     */
     void visit(Handles& n) override;
-    void visit(LineSquare&) override;
-    void visit(LineCircle& n) override;
+    /**
+     * @brief visit Disk : picking grabber for mixing view
+     * @param n
+     */
+    void visit(Disk& n) override;
 
 };
 

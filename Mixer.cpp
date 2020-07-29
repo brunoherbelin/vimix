@@ -231,9 +231,6 @@ void Mixer::draw()
     // draw the current view in the window
     current_view_->draw();
 
-    // make sure we disable fading of session rendering
-    if (current_view_ != &transition_)
-        session_->fadeIn();
 }
 
 // manangement of sources
@@ -555,6 +552,7 @@ void Mixer::setView(View::Mode m)
     case View::MIXING:
     default:
         current_view_ = &mixing_;
+        mixing_.setFading( session_->fading() );
         break;
     }
 

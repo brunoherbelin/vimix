@@ -428,20 +428,16 @@ void UserInterface::handleMouse()
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
 
+                bool clear_selection = false;
                 // if nothing picked,
                 if ( picked.first == nullptr ) {
-                    // unset current
-                    Mixer::manager().unsetCurrentSource();
-                    navigator.hidePannel();
-                    // clear selection
-                    Mixer::selection().clear();
+                    clear_selection = true;
                 }
                 // something was picked
                 else {
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource(picked.first);
                     if (s != nullptr) {
-
                         // CTRL + clic = multiple selection
                         if (keyboard_modifier_active) {
                             if ( !Mixer::selection().contains(s) )
@@ -455,14 +451,24 @@ void UserInterface::handleMouse()
                                 }
                             }
                         }
-
+                        // making the picked source the current one
                         Mixer::manager().setCurrentSource( s );
                         if (navigator.pannelVisible())
                             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
                         // indicate to view that an action can be initiated (e.g. grab)
-                        Mixer::manager().view()->initiate();
+                        Mixer::manager().view()->storeStatus();
                     }
+                    // no source is selected
+                    else
+                        clear_selection = true;
+                }
+                if (clear_selection) {
+                    // unset current
+                    Mixer::manager().unsetCurrentSource();
+                    navigator.hidePannel();
+                    // clear selection
+                    Mixer::selection().clear();
                 }
             }
         }
@@ -497,7 +503,7 @@ void UserInterface::handleMouse()
                 view_drag = Mixer::manager().view();
 
                 // indicate to view that an action can be initiated (e.g. grab)
-                Mixer::manager().view()->initiate();
+                Mixer::manager().view()->storeStatus();
             }
 
             // only operate if the view didn't change
@@ -513,6 +519,11 @@ void UserInterface::handleMouse()
                         c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
                     setMouseCursor(io.MousePos, c);
                 }
+                else if ( picked.first != nullptr )
+                {
+                    View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    setMouseCursor(io.MousePos, c);
+                }
                 // Selection area
                 else {
                     ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
@@ -526,6 +537,11 @@ void UserInterface::handleMouse()
 
             }
         }
+    }
+    else {
+        // cancel all operations on view when interacting on GUI
+        view_drag = nullptr;
+        mousedown = false;
     }
 }
 
