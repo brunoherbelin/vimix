@@ -134,10 +134,7 @@ void MediaPlayer::execute_open()
     //            Uses linear interpolation 1 (default)
     //            Uses cubic interpolation 2
     //            Uses sinc interpolation 3
-    // Enable buffering on the parsed/demuxed data with the use-buffering property:
-    // This is interesting to enable buffering on slower random access media such as a network file server.
-    // buffer-duration in ns (500000 = 0.5s)
-    string description = "uridecodebin uri=" + uri_ + " use-buffering=true buffer-duration=500000 ! ";
+    string description = "uridecodebin uri=" + uri_ + " ! ";
     if (interlaced_)
         description += "deinterlace ! ";
     description += "videoconvert chroma-resampler=2 ! appsink name=sink";
