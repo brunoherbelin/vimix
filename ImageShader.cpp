@@ -74,6 +74,6 @@ void ImageShader::operator = (const ImageShader &S )
 
 
 void ImageShader::accept(Visitor& v) {
-    Shader::accept(v);
+//    Shader::accept(v);
     v.visit(*this);
 }

@@ -121,6 +121,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
 
     // those will be associated to nodes later
     blendingshader_ = new ImageShader;
+//    rendershader_   = new ImageShader;
     rendershader_   = new ImageProcessingShader;
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;

@@ -63,6 +63,7 @@ public:
     bool contains (Node *node) const;
 
     // a Source has a shader to control image processing effects
+//    inline ImageShader *processingShader () const { return rendershader_; }
     inline ImageProcessingShader *processingShader () const { return rendershader_; }
 
     // a Source has a shader to control mixing effects
@@ -137,6 +138,7 @@ protected:
     FrameBufferSurface *rendersurface_;
 
     // rendershader performs image processing
+//    ImageShader *rendershader_;
     ImageProcessingShader *rendershader_;
 
     // blendingshader provides mixing controls
