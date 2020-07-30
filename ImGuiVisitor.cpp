@@ -91,6 +91,9 @@ void ImGuiVisitor::visit(Group &n)
 
 //        ImGui::TreePop();
 //    }
+
+    // spacing
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
 }
 
 void ImGuiVisitor::visit(Switch &n)
@@ -182,12 +185,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(n.id());
 
-//    if (ImGuiToolkit::ButtonIcon(6, 2)) {
-//        ImageProcessingShader defaultvalues;
-//        n = defaultvalues;
-//    }
-//    ImGui::SameLine(0, 10);
-//    ImGui::Text("Filters");
+    if (ImGuiToolkit::ButtonIcon(6, 2)) {
+        ImageProcessingShader defaultvalues;
+        n = defaultvalues;
+    }
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Filters");
 
     if (ImGuiToolkit::ButtonIcon(6, 4)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     ImGui::SameLine(0, 10);
@@ -258,6 +261,8 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
 
     ImGui::PopID();
+
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
 }
 
 
@@ -271,15 +276,19 @@ void ImGuiVisitor::visit (Source& s)
     ImVec2 imagesize ( preview_width, preview_width / s.frame()->aspectRatio());
     ImGui::Image((void*)(uintptr_t) s.frame()->texture(), imagesize);
 
+    ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
+
+    // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
-    if (ImGuiToolkit::ButtonIconToggle(11, 4, 10, 4, &on)) {
+    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );
+    const char *tooltip[2] = {"GPU Image processing\nCurrently disabled", "GPU Image processing\nCurrently enabled"};
+    if (ImGuiToolkit::IconToggle(12, 11, 14, 1, &on, tooltip))
         s.setImageProcessingEnabled(on);
-    }
-    ImGui::SameLine(0, 10);
-    ImGui::Text("Filters");
+
+    ImGui::SetCursorPos(pos); // ...come back
 
     // image processing pannel
-    if (on)
+    if (s.imageProcessingEnabled())
         s.processingShader()->accept(*this);
 
     // geometry direct control

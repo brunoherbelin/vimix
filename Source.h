@@ -65,8 +65,11 @@ public:
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader() const { return renderingshader_; }
 
-    // the rendering shader is either a simple or an image processing shader
+    // the rendering shader always have an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
+
+    // the image processing shader can be enabled or disabled
+    // (NB: when disabled, a simple ImageShader is applied)
     void setImageProcessingEnabled (bool on);
     bool imageProcessingEnabled();
 
@@ -141,10 +144,13 @@ protected:
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
 
-    // render and image processing shaders
-    virtual void replaceRenderingShader() = 0;
-    Shader *renderingshader_;
+    // image processing shaders
     ImageProcessingShader *processingshader_;
+    // pointer to the currently attached shader
+    // (will be processingshader_ if image processing is enabled)
+    Shader *renderingshader_;
+    // every sub class will attach the shader to a different node / hierarchy
+    virtual void replaceRenderingShader() = 0;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
