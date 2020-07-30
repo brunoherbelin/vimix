@@ -199,20 +199,32 @@ void Source::setMode(Source::Mode m)
 
 void Source::setImageProcessingEnabled (bool on)
 {
+    // avoid repeating
     if ( on == imageProcessingEnabled() )
         return;
 
     // set pointer
     if (on) {
-        processingshader_   = new ImageProcessingShader;
+        // set the current rendering shader to be the
+        // (previously prepared) processing shader
         renderingshader_ = (Shader *) processingshader_;
-
-    } else {
-        processingshader_   = nullptr;
+    }
+    else {
+        // clone the current Image processing shader
+        //  (because the one currently attached to the source
+        //   will be deleted in replaceRenderngShader().)
+        ImageProcessingShader *tmp = new ImageProcessingShader(*processingshader_);
+        // loose reference to current processing shader (to delete)
+        // and keep reference to the newly created one
+        // and keep it for later
+        processingshader_ = tmp;
+        // set the current rendering shader to a simple one
         renderingshader_ = (Shader *) new ImageShader;
     }
 
     // apply to nodes in subclasses
+    // this calls replaceShader() on the Primitive and
+    // will delete the previously attached shader
     replaceRenderingShader();
 }
 

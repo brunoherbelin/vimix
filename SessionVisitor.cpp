@@ -317,6 +317,7 @@ void SessionVisitor::visit (Source& s)
     s.blendingShader()->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
+    xmlCurrent_->SetAttribute("enabled", s.imageProcessingEnabled());
     sourceNode->InsertEndChild(xmlCurrent_);
     s.processingShader()->accept(*this);
 

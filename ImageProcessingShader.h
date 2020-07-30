@@ -11,7 +11,7 @@ class ImageProcessingShader : public Shader
 public:
 
     ImageProcessingShader();
-//    virtual ~ImageProcessingShader() {}
+    ImageProcessingShader(const ImageProcessingShader &model);
 
     void use() override;
     void reset() override;

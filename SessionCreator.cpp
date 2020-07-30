@@ -261,7 +261,9 @@ void SessionCreator::visit (Source& s)
     s.blendingShader()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
+    bool on = xmlCurrent_->BoolAttribute("enabled", true);
     s.processingShader()->accept(*this);
+    s.setImageProcessingEnabled(on);
 
     // restore current
     xmlCurrent_ = sourceNode;

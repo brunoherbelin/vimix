@@ -15,6 +15,25 @@ ImageProcessingShader::ImageProcessingShader()
     reset();
 }
 
+ImageProcessingShader::ImageProcessingShader(const ImageProcessingShader &S)
+{
+    program_ = &imageProcessingShadingProgram;
+    reset();
+    brightness = S.brightness;
+    contrast = S.contrast;
+    saturation = S.saturation;
+    hueshift = S.hueshift;
+    threshold = S.threshold;
+    lumakey = S.lumakey;
+    nbColors = S.nbColors;
+    invert = S.invert;
+    filterid = S.filterid;
+    gamma = S.gamma;
+    levels = S.levels;
+    chromakey = S.chromakey;
+    chromadelta = S.chromadelta;
+}
+
 void ImageProcessingShader::use()
 {
     Shader::use();
