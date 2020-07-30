@@ -62,9 +62,13 @@ public:
     // tests if a given node is part of the source
     bool contains (Node *node) const;
 
-    // a Source has a shader to control image processing effects
-//    inline ImageShader *processingShader () const { return rendershader_; }
-    inline ImageProcessingShader *processingShader () const { return rendershader_; }
+    // a Source has a shader used to render in fbo
+    inline Shader *renderingShader() const { return renderingshader_; }
+
+    // the rendering shader is either a simple or an image processing shader
+    inline ImageProcessingShader *processingShader () const { return processingshader_; }
+    void setImageProcessingEnabled (bool on);
+    bool imageProcessingEnabled();
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
@@ -137,9 +141,10 @@ protected:
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
 
-    // rendershader performs image processing
-//    ImageShader *rendershader_;
-    ImageProcessingShader *rendershader_;
+    // render and image processing shaders
+    virtual void replaceRenderingShader() = 0;
+    Shader *renderingshader_;
+    ImageProcessingShader *processingshader_;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
@@ -186,6 +191,7 @@ protected:
     CloneSource(Source *origin);
 
     void init() override;
+    void replaceRenderingShader() override;
     Surface *clonesurface_;
     Source *origin_;
 };

@@ -182,12 +182,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(n.id());
 
-    if (ImGuiToolkit::ButtonIcon(6, 2)) {
-        ImageProcessingShader defaultvalues;
-        n = defaultvalues;
-    }
-    ImGui::SameLine(0, 10);
-    ImGui::Text("Filters");
+//    if (ImGuiToolkit::ButtonIcon(6, 2)) {
+//        ImageProcessingShader defaultvalues;
+//        n = defaultvalues;
+//    }
+//    ImGui::SameLine(0, 10);
+//    ImGui::Text("Filters");
 
     if (ImGuiToolkit::ButtonIcon(6, 4)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     ImGui::SameLine(0, 10);
@@ -271,8 +271,16 @@ void ImGuiVisitor::visit (Source& s)
     ImVec2 imagesize ( preview_width, preview_width / s.frame()->aspectRatio());
     ImGui::Image((void*)(uintptr_t) s.frame()->texture(), imagesize);
 
+    bool on = s.imageProcessingEnabled();
+    if (ImGuiToolkit::ButtonIconToggle(11, 4, 10, 4, &on)) {
+        s.setImageProcessingEnabled(on);
+    }
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Filters");
+
     // image processing pannel
-    s.processingShader()->accept(*this);
+    if (on)
+        s.processingShader()->accept(*this);
 
     // geometry direct control
     s.groupNode(View::GEOMETRY)->accept(*this);

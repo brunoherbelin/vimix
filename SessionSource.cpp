@@ -79,7 +79,7 @@ SessionSource::SessionSource() : Source(), path_("")
     // - textured with original texture from session
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
-    sessionsurface_ = new Surface(rendershader_);
+    sessionsurface_ = new Surface(processingshader_);
 }
 
 SessionSource::~SessionSource()
@@ -128,6 +128,11 @@ uint SessionSource::texture() const
     if (session_ == nullptr)
         return Resource::getTextureBlack();
     return session_->frame()->texture();
+}
+
+void SessionSource::replaceRenderingShader()
+{
+    sessionsurface_->replaceShader(renderingshader_);
 }
 
 void SessionSource::init()
@@ -247,7 +252,7 @@ void SessionSource::accept(Visitor& v)
 RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
     // create  surface:
-    sessionsurface_ = new Surface(rendershader_);
+    sessionsurface_ = new Surface(processingshader_);
 }
 
 RenderSource::~RenderSource()
@@ -267,6 +272,11 @@ uint RenderSource::texture() const
         return Resource::getTextureBlack();
     else
         return session_->frame()->texture();
+}
+
+void RenderSource::replaceRenderingShader()
+{
+    sessionsurface_->replaceShader(renderingshader_);
 }
 
 void RenderSource::init()

@@ -25,6 +25,7 @@ public:
 protected:
 
     void init() override;
+    void replaceRenderingShader() override;
 
     Surface *mediasurface_;
     std::string path_;

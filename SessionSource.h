@@ -28,6 +28,7 @@ public:
 protected:
 
     void init() override;
+    void replaceRenderingShader() override;
     static void loadSession(const std::string& filename, SessionSource *source);
 
     Surface *sessionsurface_;
@@ -55,6 +56,7 @@ public:
 protected:
 
     void init() override;
+    void replaceRenderingShader() override;
     Surface *sessionsurface_;
     Session *session_;
 };

@@ -121,12 +121,15 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
 
     // those will be associated to nodes later
     blendingshader_ = new ImageShader;
-//    rendershader_   = new ImageShader;
-    rendershader_   = new ImageProcessingShader;
+    processingshader_   = new ImageProcessingShader;
+    // default to image processing enabled
+    renderingshader_ = (Shader *) processingshader_;
+
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
 
 }
+
 
 Source::~Source()
 {
@@ -191,6 +194,31 @@ void Source::setMode(Source::Mode m)
         (*o).second->visible_ = current;
 
     mode_ = m;
+}
+
+
+void Source::setImageProcessingEnabled (bool on)
+{
+    if ( on == imageProcessingEnabled() )
+        return;
+
+    // set pointer
+    if (on) {
+        processingshader_   = new ImageProcessingShader;
+        renderingshader_ = (Shader *) processingshader_;
+
+    } else {
+        processingshader_   = nullptr;
+        renderingshader_ = (Shader *) new ImageShader;
+    }
+
+    // apply to nodes in subclasses
+    replaceRenderingShader();
+}
+
+bool Source::imageProcessingEnabled()
+{
+    return ( renderingshader_ == processingshader_ );
 }
 
 void Source::attach(FrameBuffer *renderbuffer)
@@ -360,7 +388,7 @@ CloneSource *Source::clone()
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
     // create surface:
-    clonesurface_ = new Surface(rendershader_);
+    clonesurface_ = new Surface(renderingshader_);
 }
 
 CloneSource::~CloneSource()
@@ -376,6 +404,11 @@ CloneSource *CloneSource::clone()
         return origin_->clone();
     else
         return nullptr;
+}
+
+void CloneSource::replaceRenderingShader()
+{
+    clonesurface_->replaceShader(renderingshader_);
 }
 
 void CloneSource::init()

@@ -20,7 +20,7 @@ MediaSource::MediaSource() : Source(), path_("")
     // - textured with original texture from media player
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
-    mediasurface_ = new Surface(rendershader_);
+    mediasurface_ = new Surface(renderingshader_);
 
 }
 
@@ -58,6 +58,11 @@ bool MediaSource::failed() const
 uint MediaSource::texture() const
 {
     return mediaplayer_->texture();
+}
+
+void MediaSource::replaceRenderingShader()
+{
+    mediasurface_->replaceShader(renderingshader_);
 }
 
 void MediaSource::init()
