@@ -104,7 +104,7 @@ class UserInterface
     MediaController mediacontrol;
 
     bool keyboard_modifier_active;
-    bool show_about;
+    bool show_vimix_config;
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;

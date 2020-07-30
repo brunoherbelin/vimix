@@ -61,7 +61,7 @@ static TextEditor editor;
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
-void ShowAbout(bool* p_open);
+void ShowConfig(bool* p_open);
 
 // static objects for multithreaded file dialog
 static std::atomic<bool> fileDialogPending_ = false;
@@ -163,7 +163,7 @@ static void FolderDialogOpen(char *folder, std::atomic<bool> *success, const std
 
 UserInterface::UserInterface()
 {
-    show_about = false;
+    show_vimix_config = false;
     show_imgui_about = false;
     show_gst_about = false;
     show_opengl_about = false;
@@ -627,8 +627,8 @@ void UserInterface::Render()
             Log::ShowLogWindow(&Settings::application.widget.logs);
 
         // about dialogs
-        if (show_about)
-            ShowAbout(&show_about);
+        if (show_vimix_config)
+            ShowConfig(&show_vimix_config);
         if (show_imgui_about)
             ImGui::ShowAboutWindow(&show_imgui_about);
         if (show_gst_about)
@@ -778,12 +778,9 @@ void ToolBox::Render()
             if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot") )
                 UserInterface::manager().StartScreenshot();
 
-            ImGui::MenuItem("Blit", nullptr, &Settings::application.render.blit);
-            ImGui::MenuItem("Multisampling", nullptr, (Settings::application.render.multisampling > 0), false);
-
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Dev"))
+        if (ImGui::BeginMenu("Gui"))
         {
             ImGui::MenuItem("Icons", nullptr, &show_icons_window);
             ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
@@ -2068,14 +2065,13 @@ void Navigator::RenderMainPannel()
         if ( ImGui::GetCursorPosY() + h + 128.f < height_ ) {
             ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -h - 128.f));
             ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
-            ImGui::Text("");
         }
         else {
             ImGui::SetCursorPosY(height_ -h);
-            ImGui::Text("About");
         }
-        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            UserInterface::manager().show_about = true;
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeightWithSpacing());
+        if ( ImGui::Button( ICON_FA_CROW " vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+            UserInterface::manager().show_vimix_config = true;
         if ( ImGui::Button("    ImGui    "))
             UserInterface::manager().show_imgui_about = true;
         ImGui::SameLine();
@@ -2090,7 +2086,7 @@ void Navigator::RenderMainPannel()
 }
 
 
-void ShowAbout(bool* p_open)
+void ShowConfig(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
@@ -2106,6 +2102,26 @@ void ShowAbout(bool* p_open)
     ImGui::Text("vimix is a video mixing software for live performance.");
     ImGui::Text("vimix is licensed under the GNU GPL version 3. Copyright 2019-2020 Bruno Herbelin.");
     ImGuiToolkit::ButtonOpenUrl("https://github.com/brunoherbelin/v-mix");
+    ImGui::SameLine();
+
+    static bool show_config = false;
+    ImGui::SetNextItemWidth(-100.f);
+    ImGui::Text("          Details");
+    ImGui::SameLine();
+
+    ImGuiToolkit::IconToggle(10,0,11,0,&show_config);
+    if (show_config)
+    {
+        ImGui::Text("\nOpenGL options: enable all for best performance.");
+        ImGui::Checkbox("Blit framebuffer (fast draw to output)", &Settings::application.render.blit);
+        bool multi = (Settings::application.render.multisampling > 0);
+        ImGui::Checkbox("Antialiasing framebuffer (fast multisampling)", &multi);
+        Settings::application.render.multisampling = multi ? 3 : 0;
+        bool vsync = (Settings::application.render.vsync < 2);
+        ImGui::Checkbox("Sync refresh with monitor (v-sync 60Hz)", &vsync);
+        Settings::application.render.vsync = vsync ? 1 : 2;
+        ImGui::Text( ICON_FA_EXCLAMATION "  Restart the application for change to take effect.");
+    }
 
     ImGui::End();
 }
