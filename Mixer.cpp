@@ -221,7 +221,6 @@ void Mixer::update()
     layer_.update(dt_);
     transition_.update(dt_);
 
-    // optimize the reordering in depth for views;
     // deep updates shall be performed only 1 frame
     View::need_deep_update_ = false;
 }
@@ -552,10 +551,11 @@ void Mixer::setView(View::Mode m)
     case View::MIXING:
     default:
         current_view_ = &mixing_;
-        // need to deeply update mixer view to apply fading change
-        View::need_deep_update_ = true;
         break;
     }
+
+    // need to deeply update view to apply eventual changes
+    View::need_deep_update_ = true;
 
     Settings::application.current_view = (int) m;
 }

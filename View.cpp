@@ -99,12 +99,10 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 
     // picking visitor found nodes?
     if ( !pv.picked().empty()) {
-
         // select top-most Node picked
         pick = pv.picked().back();
-
-        Log::Info("picked %d", pick.first->id());
     }
+
     return pick;
 }
 
@@ -236,16 +234,35 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     mixingCircle_->shader()->color = glm::vec4( 1.f, 1.f, 1.f, 1.f );
     scene.bg()->attach(mixingCircle_);
 
-    Symbol *dot = new Symbol(Symbol::POINT, glm::vec3(0.f, 1.f, 0.1f));
-    dot->scale_ = glm::vec3( 0.33f, 0.33f, 1.f);
-    dot->color = glm::vec4( COLOR_FRAME, 1.f );
-    scene.bg()->attach(dot);
-
     tmp = new Mesh("mesh/circle.ply");
     tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
     scene.bg()->attach(tmp);
 
     // Mixing scene foreground
+    tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    scene.fg()->attach(tmp);
+
+    button_white_ = new Disk();
+    button_white_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_white_->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    button_white_->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.0f );
+    scene.fg()->attach(button_white_);
+
+    tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    scene.fg()->attach(tmp);
+
+    button_black_ = new Disk();
+    button_black_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_black_->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    button_black_->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.0f );
+    scene.fg()->attach(button_black_);
+
     slider_root_ = new Group;
     scene.fg()->attach(slider_root_);
 
@@ -308,19 +325,71 @@ void MixingView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested
+    // for mixing, this means restore position of the fading slider
     if (View::need_deep_update_) {
 
-        // reverse calculate angle from fading
+        //
+        // Set slider to match the actual fading of the session
+        //
         float f = Mixer::manager().session()->fading();
-        float angle = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
-        // move slider
-        slider_root_->rotation_.z  = angle;
+
+        // reverse calculate angle from fading & move slider
+        slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
+
         // visual feedback on mixing circle
         f = 1.f - f;
         mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
     }
+    else {
+        //
+        // Set session fading to match the slider angle
+        //
+
+        // calculate fading from angle
+        float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
+
+        // apply fading
+        if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
+        {
+            // apply fading to session
+            Mixer::manager().session()->setFading(f);
+
+            // visual feedback on mixing circle
+            f = 1.f - f;
+            mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+        }
+    }
+
 }
+
+
+std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
+{
+    // get picking from generic View
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
+
+    // deal with internal interactive objects and do not forward
+    if ( pick.first == button_white_ || pick.first == button_black_ ) {
+
+        RotateToCallback *anim = nullptr;
+        if (pick.first == button_white_)
+            anim = new RotateToCallback(0.f, 500.f);
+        else
+            anim = new RotateToCallback(SIGN(slider_root_->rotation_.z) * M_PI, 500.f);
+
+        // reset & start animation
+        slider_root_->update_callbacks_.clear();
+        slider_root_->update_callbacks_.push_back(anim);
+
+        // capture this pick
+        pick = { nullptr, glm::vec2(0.f) };
+    }
+
+    return pick;
+}
+
+
 
 View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
@@ -344,21 +413,11 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
                 angle = M_PI;
 
             // animate slider (rotation angle on its parent)
-            slider_root_->rotation_.z  = angle;
-
-            // calculate fading from angle
-            float fading = sin( ABS(angle) * 0.5f);
-
-            // apply fading to session
-            Mixer::manager().session()->setFading(fading);
-
-            // visual feedback on mixing circle
-            fading = 1.f - fading;
-            mixingCircle_->shader()->color = glm::vec4(fading, fading, fading, 1.f);
+            slider_root_->rotation_.z = angle;
 
             // cursor feedback
             std::ostringstream info;
-            info  << "Global opacity " << int(fading * 100.0) << " %";
+            info  << "Global opacity " << 100 - int(Mixer::manager().session()->fading() * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
         }
 
@@ -980,6 +1039,23 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
 
 void TransitionView::update(float dt)
 {
+    // update scene
+    View::update(dt);
+
+    // a more complete update is requested
+    if  (View::need_deep_update_) {
+
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            float aspect_ratio = output->aspectRatio();
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = aspect_ratio;
+            }
+            output_surface_->setTextureIndex( output->texture() );
+        }
+    }
+
     // Update transition source
     if ( transition_source_ != nullptr) {
 
@@ -1001,8 +1077,6 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
-            // reset / no fading
-            Mixer::manager().session()->setFading( 0.f );
         }
         // fade to black
         else
@@ -1016,7 +1090,7 @@ void TransitionView::update(float dt)
             if (Settings::application.transition.profile == 0)
                 f = ABS(2.f * d + 1.f);  // linear
             else {
-                f = ( 2 * d + 1.f);  // quadratic
+                f = ( 2.f * d + 1.f);  // quadratic
                 f *= f;
             }
             Mixer::manager().session()->setFading( 1.f - f );
@@ -1030,22 +1104,6 @@ void TransitionView::update(float dt)
 
     }
 
-    // update scene
-    View::update(dt);
-
-    // a more complete update is requested
-    if  (View::need_deep_update_) {
-
-        // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output){
-            float aspect_ratio = output->aspectRatio();
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = aspect_ratio;
-            }
-            output_surface_->setTextureIndex( output->texture() );
-        }
-    }
 
 }
 
@@ -1108,6 +1166,20 @@ void TransitionView::attach(SessionSource *ts)
         Group *tg = transition_source_->group(View::TRANSITION);
         tg->visible_ = true;
         scene.ws()->attach(tg);
+
+        // in fade to black transition, start transition from current fading value
+        if ( !Settings::application.transition.cross_fade) {
+
+            // reverse calculate x position to match actual vading of session
+            float d = 0.f;
+            if (Settings::application.transition.profile == 0)
+                d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
+            else {
+                d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
+            }
+
+            transition_source_->group(View::TRANSITION)->translation_.x = d;
+        }
     }
 }
 

@@ -39,6 +39,37 @@ void MoveToCallback::update(Node *n, float dt)
     }
 }
 
+RotateToCallback::RotateToCallback(float target, float duration) : UpdateCallback(),
+    target_(target), duration_(duration), progress_(0.f), initialized_(false)
+{
+
+}
+
+void RotateToCallback::update(Node *n, float dt)
+{
+    // set start position on first run or upon call of reset()
+    if (!initialized_){
+        startingangle_ = n->rotation_.z;
+        initialized_ = true;
+        // TODO select direction for shorter animation (CW or CCW)
+
+            Log::Info("starting angle %.2f", startingangle_);
+            Log::Info("target_        %.2f", target_);
+    }
+
+    // calculate amplitude of movement
+    progress_ += dt / duration_;
+
+    // perform movement
+    n->rotation_.z = startingangle_ + progress_ * (target_ - startingangle_);
+
+    // end of movement
+    if ( progress_ > 1.f ) {
+        n->rotation_.z = target_;
+        finished_ = true;
+    }
+}
+
 BounceScaleCallback::BounceScaleCallback(float duration) : UpdateCallback(),
     duration_(duration), progress_(0.f), initialized_(false)
 {
@@ -65,6 +96,7 @@ void BounceScaleCallback::update(Node *n, float dt)
         finished_ = true;
     }
 }
+
 InfiniteGlowCallback::InfiniteGlowCallback(float amplitude) : UpdateCallback(),
     amplitude_(amplitude), time_(0.f), initialized_(false)
 {

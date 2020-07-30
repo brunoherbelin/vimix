@@ -159,11 +159,14 @@ void SessionCreator::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
             return;
 
         XMLElement *scaleNode = node->FirstChildElement("scale");
-        tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), n.scale_);
+        if (scaleNode)
+            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), n.scale_);
         XMLElement *translationNode = node->FirstChildElement("translation");
-        tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"), n.translation_);
+        if (translationNode)
+            tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"), n.translation_);
         XMLElement *rotationNode = node->FirstChildElement("rotation");
-        tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
+        if (rotationNode)
+            tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
     }
 }
 
@@ -191,13 +194,14 @@ void SessionCreator::visit(MediaPlayer &n)
 void SessionCreator::visit(Shader &n)
 {
     XMLElement* color = xmlCurrent_->FirstChildElement("color");
-    tinyxml2::XMLElementToGLM( color->FirstChildElement("vec4"), n.color);
-
-    XMLElement* blending = xmlCurrent_->FirstChildElement("blending");
-    if (blending) {
-        int blend = 0;
-        blending->QueryIntAttribute("mode", &blend);
-        n.blending = (Shader::BlendMode) blend;
+    if ( color ) {
+        tinyxml2::XMLElementToGLM( color->FirstChildElement("vec4"), n.color);
+        XMLElement* blending = xmlCurrent_->FirstChildElement("blending");
+        if (blending) {
+            int blend = 0;
+            blending->QueryIntAttribute("mode", &blend);
+            n.blending = (Shader::BlendMode) blend;
+        }
     }
 }
 
@@ -235,11 +239,14 @@ void SessionCreator::visit(ImageProcessingShader &n)
     }
 
     XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
-    tinyxml2::XMLElementToGLM( gamma->FirstChildElement("vec4"), n.gamma);
+    if (gamma)
+        tinyxml2::XMLElementToGLM( gamma->FirstChildElement("vec4"), n.gamma);
     XMLElement* levels = xmlCurrent_->FirstChildElement("levels");
-    tinyxml2::XMLElementToGLM( levels->FirstChildElement("vec4"), n.levels);
+    if (levels)
+        tinyxml2::XMLElementToGLM( levels->FirstChildElement("vec4"), n.levels);
     XMLElement* chromakey = xmlCurrent_->FirstChildElement("chromakey");
-    tinyxml2::XMLElementToGLM( chromakey->FirstChildElement("vec4"), n.chromakey);
+    if (chromakey)
+        tinyxml2::XMLElementToGLM( chromakey->FirstChildElement("vec4"), n.chromakey);
 }
 
 void SessionCreator::visit (Source& s)

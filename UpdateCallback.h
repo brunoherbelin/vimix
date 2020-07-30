@@ -26,7 +26,7 @@ class MoveToCallback : public UpdateCallback
 {
     float duration_;
     float progress_;
-    bool initialized_;
+    bool  initialized_;
     glm::vec3 startingpoint_;
     glm::vec3 target_;
 
@@ -37,11 +37,26 @@ public:
     inline void reset() { initialized_ = false; }
 };
 
+class RotateToCallback : public UpdateCallback
+{
+    float duration_;
+    float progress_;
+    bool  initialized_;
+    float startingangle_;
+    float target_;
+
+public:
+    RotateToCallback(float target, float speed = 1000.f);
+    void update(Node *n, float dt);
+
+    inline void reset() { initialized_ = false; }
+};
+
 class BounceScaleCallback : public UpdateCallback
 {
     float duration_;
     float progress_;
-    bool initialized_;
+    bool  initialized_;
     glm::vec3 initial_scale_;
 
 public:
@@ -53,7 +68,7 @@ class InfiniteGlowCallback : public UpdateCallback
 {
     float amplitude_;
     float time_;
-    bool initialized_;
+    bool  initialized_;
     glm::vec3 initial_scale_;
 
 public:

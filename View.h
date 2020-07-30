@@ -93,12 +93,12 @@ public:
     void centerSource(Source *) override;
     void selectAll() override;
 
+    std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
-
 
 private:
     uint textureMixingQuadratic();
@@ -106,6 +106,8 @@ private:
 
     Group *slider_root_;
     class Disk *slider_;
+    class Disk *button_white_;
+    class Disk *button_black_;
     class Mesh *mixingCircle_;
 };
 

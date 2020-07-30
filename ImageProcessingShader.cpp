@@ -103,7 +103,8 @@ void ImageProcessingShader::operator = (const ImageProcessingShader &S )
 }
 
 
-void ImageProcessingShader::accept(Visitor& v) {
+void ImageProcessingShader::accept(Visitor& v)
+{
 //    Shader::accept(v);
     v.visit(*this);
 }
