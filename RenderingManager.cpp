@@ -1,4 +1,4 @@
-#include <cstring>
+﻿#include <cstring>
 #include <thread>
 #include <mutex>
 #include <chrono>
@@ -616,7 +616,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
 
     // if not main window
     if ( master_ != NULL ) {
-        // Disable vsync
+        // Enable vsync on output window
         glfwSwapInterval(Settings::application.render.vsync);
         // no need for multisampling
         glDisable(GL_MULTISAMPLE);
@@ -626,9 +626,9 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         glfwMakeContextCurrent(master_);
     }
     else {
-        // Enable vsync on main window
+        // Disable vsync on main window
         glfwSwapInterval(0);
-        // enable Antialiasing multisampling
+        // Enable Antialiasing multisampling
         if (Settings::application.render.multisampling > 0) {
             glEnable(GL_MULTISAMPLE);
             glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
