@@ -25,7 +25,7 @@ if(UNIX)
 elseif(WIN32)
     add_definitions(-DWIN32)
     add_definitions(-DMINGW32)
-endif(UNIX)
+endif()
 
 
 # Include the CMake RC module
@@ -97,10 +97,12 @@ set(GLFW_LIBRARY glfw)
 
 find_package(OpenGL REQUIRED)
 
+# static sub packages in ext
+set(BUILD_STATIC_LIBS ON)
+
 #
 # GLM
 #
-set(BUILD_STATIC_LIBS ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
 message(STATUS "Compiling 'GLM' OpenGL Mathematics https://glm.g-truc.net.")
 
