@@ -10,6 +10,8 @@ shape for producing live graphics during concerts and VJ-ing sessions.
 The ouput image is typically projected full-screen on an external
 monitor or a projector, but can be recorded live (no audio).
 
+![screenshot](vimix_0.2_beta.jpg)
+
 vimix is the successor for [GLMixer](https://sourceforge.net/projects/glmixer/)
 
 ## Install vimix
