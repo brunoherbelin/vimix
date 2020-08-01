@@ -1,1 +1,6 @@
-theme: jekyll-theme-midnight
+theme: jekyll-theme-minimal
+title: vimix
+description: Video Live Mixer
+logo: vimix_256x256.png
+show_downloads: true
+
