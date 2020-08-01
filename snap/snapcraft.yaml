@@ -18,8 +18,6 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 plugs:
   config-vimix:
     interface: personal-files
-    read: 
-    - $HOME/.config/vimix
     write:
     - $HOME/.config/vimix
     

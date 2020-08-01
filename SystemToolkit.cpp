@@ -167,13 +167,17 @@ std::string SystemToolkit::home_path()
 {
     // 1. find home
     char *mHomePath;
-    // try the system user info
-    struct passwd* pwd = getpwuid(getuid());
-    if (pwd)
-        mHomePath = pwd->pw_dir;
-    else
-        // try the $HOME environment variable
-        mHomePath = getenv("HOME");
+
+    // try the environment variable
+    mHomePath = getenv("HOME");
+
+    if (!mHomePath) {
+        // try the system user info
+        struct passwd* pwd = getpwuid(getuid());
+        if (pwd)
+            mHomePath = pwd->pw_dir;
+
+    }
 
     return string(mHomePath) + PATH_SEP;
 }
