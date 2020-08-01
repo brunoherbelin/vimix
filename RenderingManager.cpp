@@ -399,7 +399,7 @@ RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr),
 }
 
 RenderingWindow::~RenderingWindow()
-{    
+{
     if (surface_ != nullptr)
         delete surface_;
     if (fbo_ != 0)
@@ -448,7 +448,14 @@ GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
         int i = 0;
         for (; i < count_monitors;  i++) {
             int workarea_x, workarea_y, workarea_width, workarea_height;
+#if GLFW_VERSION_MINOR > 2
             glfwGetMonitorWorkarea(monitors[i], &workarea_x, &workarea_y, &workarea_width, &workarea_height);
+#else
+            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
+            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+            workarea_width = vm->width;
+            workarea_height = vm->height;
+#endif
             if ( x >= workarea_x && x <= workarea_x + workarea_width &&
                  y >= workarea_y && y <= workarea_y + workarea_height)
                 break;
@@ -545,10 +552,7 @@ int RenderingWindow::height()
 
 int RenderingWindow::maxHeight()
 {
-    int workarea_x, workarea_y, workarea_width, workarea_height;
-    glfwGetMonitorWorkarea(monitor(), &workarea_x, &workarea_y, &workarea_width, &workarea_height);
-
-    return workarea_height * dpi_scale_;
+    return glfwGetVideoMode(monitor())->height;
 }
 
 float RenderingWindow::aspectRatio()
