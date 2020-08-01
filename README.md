@@ -16,32 +16,28 @@ vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 
 ### Linux
 
+Download and install a release package from https://snapcraft.io/vimix
+
     snap install vimix
 
 ### Mac OSX
 
-    Download and open the releases from https://github.com/brunoherbelin/vimix/releases
-
+Download and open a release package from https://github.com/brunoherbelin/vimix/releases
+NB: You'll need to accept the exception in OSX security preference.
 
 ## Clone
 
     git clone --recursive https://github.com/brunoherbelin/vimix.git
 
 This will create the directory 'vimix', download the latest version of vimix code,
-and (recursively) clone all the other git Dependencies.
-
-If you want to compile a stable version, you could get the latest tagged version.
-After the clone, you can list the tags with '$ git tag -l' and then checkout a specific tag:
-
-    $ cd vimix
-    $ git checkout tags/0.2
+and (recursively) clone all the internal git Dependencies.
 
 ## Compile
 
-    $ mkdir vimix-build
-    $ cd vimix-build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ../vimix
-    $ cmake --build .
+    mkdir vimix-build
+    cd vimix-build
+    cmake -DCMAKE_BUILD_TYPE=Release ../vimix
+    cmake --build .
 
 ### Dependencies
 
@@ -54,16 +50,16 @@ After the clone, you can list the tags with '$ git tag -l' and then checkout a s
 **Libraries:**
 
 - gstreamer
+- gst-plugins : base, good, bad & ugly
 - libpng
 - libglfw3
 
+#### Install Dependencies
 
-#### Ubuntu
+**Ubuntu**
 
-**tools:**
+    apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
-    apt-get install build-essential cmake ninja-build
+**OSX with Brew**
 
-**libs:**
-
-    apt-get install libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+    brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly
