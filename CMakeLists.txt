@@ -11,6 +11,9 @@ if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
 
+        # the RPATH to be used when installing
+        set(CMAKE_SKIP_RPATH TRUE)
+
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
         set(CMAKE_OSX_ARCHITECTURES x86_64)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
@@ -90,12 +93,13 @@ set(PNG_LIBRARY PNG::PNG)
 
 #
 # GLFW3
+# NB: set glfw3_PATH to /usr/local/Cellar/glfw/3.3.2/lib/cmake/glfw3
 #
 find_package(glfw3 3.2 REQUIRED)
 macro_log_feature(glfw3_FOUND "GLFW3" "Open Source, multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
 set(GLFW_LIBRARY glfw)
 
-find_package(OpenGL REQUIRED)
+#find_package(OpenGL REQUIRED)
 
 # static sub packages in ext
 set(BUILD_STATIC_LIBS ON)
@@ -352,7 +356,7 @@ message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git
 
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE 
     ${GLFW_LIBRARY}
-    ${OPENGL_LIBRARY}
+#    ${OPENGL_LIBRARY}
     GLAD
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
@@ -422,11 +426,12 @@ IF(APPLE)
         PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         COMPONENT Runtime
     )
+
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.16.2_3/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.16.2_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.16.2_2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.16.2/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # package runtime fixup bundle
