@@ -51,10 +51,12 @@ long SystemToolkit::memory_usage()
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
         unsigned long m = 0;
-        fscanf (file, "%lu", &m);  // virtual mem program size,
-        fscanf (file, "%lu", &m);  // resident set size,
+        int ret = 0;
+        ret = fscanf (file, "%lu", &m);  // virtual mem program size,
+        ret = fscanf (file, "%lu", &m);  // resident set size,
         fclose (file);
-        size = (size_t)m * getpagesize();
+        if (ret>0)
+            size = (size_t)m * getpagesize();
     }
     return (long)size;
 
@@ -167,17 +169,14 @@ std::string SystemToolkit::home_path()
 {
     // 1. find home
     char *mHomePath;
-
-    // try the environment variable
-    mHomePath = getenv("HOME");
-
-    if (!mHomePath) {
-        // try the system user info
-        struct passwd* pwd = getpwuid(getuid());
-        if (pwd)
-            mHomePath = pwd->pw_dir;
-
-    }
+    // try the system user info
+    // NB: avoids depending on changes of the $HOME env. variable
+    struct passwd* pwd = getpwuid(getuid());
+    if (pwd)
+        mHomePath = pwd->pw_dir;
+    else
+        // try the $HOME environment variable
+        mHomePath = getenv("HOME");
 
     return string(mHomePath) + PATH_SEP;
 }
@@ -217,13 +216,16 @@ bool SystemToolkit::create_directory(const string& path)
 
 string SystemToolkit::settings_path()
 {
-    string home(home_path());
+    // start from home folder
+    // NB: use the env.variable $HOME to allow system to specify
+    // another directory (e.g. inside a snap)
+    string home(getenv("HOME"));
 
     // 2. try to access user settings folder
     string settingspath = home + PATH_SETTINGS;
     if (SystemToolkit::file_exists(settingspath)) {
         // good, we have a place to put the settings file
-        // settings should be in 'vmix' subfolder
+        // settings should be in 'vimix' subfolder
         settingspath += APP_NAME;
 
         // 3. create the vmix subfolder in settings folder if not existing already
