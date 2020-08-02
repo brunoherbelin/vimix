@@ -124,7 +124,7 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Baseline)",
-    "H264 (High 4:4:4)",
+    "H264 (High)",
     "H265 (Realtime)",
     "H265 (HQ Animation)",
     "ProRes (Standard)",
@@ -144,8 +144,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "x264enc pass=4 quantizer=23 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "x264enc pass=4 quantizer=16 speed-preset=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "x264enc pass=4 quantizer=16 speed-preset=4 threads=4 ! video/x-h264, profile=high ! h264parse ! ",
     // Control x265 encoder quality :
     // NB: apparently x265 only accepts I420 format :(
     // speed-preset
