@@ -14,12 +14,6 @@ icon: snap/gui/vimix.svg
 license: GPL-3.0+
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
-
-plugs:
-  config-vimix:
-    interface: personal-files
-    write:
-    - $HOME/.config/vimix
     
 apps:
   vimix:
@@ -35,7 +29,6 @@ apps:
       - x11
       - opengl
       - home
-      - config-vimix
       - network
       - camera
     environment:
