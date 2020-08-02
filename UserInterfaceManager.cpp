@@ -2089,7 +2089,7 @@ void Navigator::RenderMainPannel()
 void ShowConfig(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("About " APP_NAME APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -2099,9 +2099,9 @@ void ShowConfig(bool* p_open)
     ImGui::Text("%s %d.%d", APP_NAME, APP_VERSION_MAJOR, APP_VERSION_MINOR);
     ImGui::PopFont();
     ImGui::Separator();
-    ImGui::Text("vimix is a video mixing software for live performance.");
-    ImGui::Text("vimix is licensed under the GNU GPL version 3. Copyright 2019-2020 Bruno Herbelin.");
-    ImGuiToolkit::ButtonOpenUrl("https://github.com/brunoherbelin/v-mix");
+    ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
+    ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2020 Bruno Herbelin.");
+    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/");
     ImGui::SameLine();
 
     static bool show_config = false;
@@ -2112,7 +2112,7 @@ void ShowConfig(bool* p_open)
     ImGuiToolkit::IconToggle(10,0,11,0,&show_config);
     if (show_config)
     {
-        ImGui::Text("\nOpenGL options: enable all for best performance.");
+        ImGui::Text("\nOpenGL options (enable all for optimal performance).");
         ImGui::Checkbox("Blit framebuffer (fast draw to output)", &Settings::application.render.blit);
         bool multi = (Settings::application.render.multisampling > 0);
         ImGui::Checkbox("Antialiasing framebuffer (fast multisampling)", &multi);
