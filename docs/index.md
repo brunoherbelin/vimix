@@ -13,19 +13,19 @@ monitor or a projector, but can be recorded live (no audio).
 
 ### Linux
 
-Download and install a release package from [Snapcraft](https://snapcraft.io/vimix) or simply type in a terminal:
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-white.svg)](https://snapcraft.io/vimix)
 
     snap install vimix
 
 ### Mac OSX
 
-Download and open a release package from [Github](https://github.com/brunoherbelin/vimix/releases)
+Download package from [Github Release](https://github.com/brunoherbelin/vimix/releases)
 
 *NB: You'll need to accept the exception in OSX security preference.*
 
 ### Windows
 
-Please consider helping by compiling vimix providing packages for Windows.
+*Please consider helping by compiling vimix providing packages for Windows.*
 
 
 
@@ -43,3 +43,5 @@ vimix welcomes contributors and support.
 
 
 
+
+[comment]: # (webpage hosted at https://brunoherbelin.github.io/vimix/)
