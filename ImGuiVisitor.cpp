@@ -281,10 +281,8 @@ void ImGuiVisitor::visit (Source& s)
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );
-    const char *tooltip[2] = {"Image editing filters\nDisabled: showing raw frames",
-                              "Image editing filters\nEnabled : using GPU image processing"};
-    if (ImGuiToolkit::IconToggle(2, 9, 3, 9, &on, tooltip))
-        s.setImageProcessingEnabled(on);
+    ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on);
+    s.setImageProcessingEnabled(on);
 
     ImGui::SetCursorPos(pos); // ...come back
 
