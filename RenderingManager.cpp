@@ -552,7 +552,7 @@ int RenderingWindow::height()
 
 int RenderingWindow::maxHeight()
 {
-    return glfwGetVideoMode(monitor())->height;
+    return static_cast<int>( static_cast<float>(glfwGetVideoMode(monitor())->height) * dpi_scale_);
 }
 
 float RenderingWindow::aspectRatio()
