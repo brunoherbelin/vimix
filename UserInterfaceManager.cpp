@@ -62,6 +62,7 @@ static TextEditor editor;
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowConfig(bool* p_open);
+void ShowSandbox(bool* p_open);
 
 // static objects for multithreaded file dialog
 static std::atomic<bool> fileDialogPending_ = false;
@@ -716,6 +717,7 @@ ToolBox::ToolBox()
 {
     show_demo_window = false;
     show_icons_window = false;
+    show_sandbox = false;
 }
 
 void UserInterface::StartScreenshot()
@@ -782,6 +784,7 @@ void ToolBox::Render()
         }
         if (ImGui::BeginMenu("Gui"))
         {
+            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
             ImGui::MenuItem("Icons", nullptr, &show_icons_window);
             ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
 
@@ -850,7 +853,9 @@ void ToolBox::Render()
 
     // About and other utility windows
     if (show_icons_window)
-        ImGuiToolkit::ShowIconsWindow(&show_icons_window);
+        ImGuiToolkit::ShowIconsWindow(&show_icons_window);    
+    if (show_sandbox)
+        ShowSandbox(&show_sandbox);
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
 
@@ -1119,13 +1124,20 @@ void MediaController::Render()
     // Something to show ?
     if (mp_ && mp_->isOpen())
     {
-        float width = ImGui::GetContentRegionAvail().x;
+        static float timeline_zoom = 1.f;
+        const float width = ImGui::GetContentRegionAvail().x;
+        const float timeline_height = 2.f * (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y);
 
-        if (Settings::application.widget.media_player_view) {
+        if (Settings::application.widget.media_player_view)
+        {
             // set an image height to fill the vertical space, minus the height of control bar
             float image_height = ImGui::GetContentRegionAvail().y;
-            if (mp_->duration() != GST_CLOCK_TIME_NONE)
-                image_height -= 3.f * ImGui::GetFrameHeight();
+            if (mp_->duration() != GST_CLOCK_TIME_NONE) {
+                // leave space for buttons, spacing and timeline
+                image_height -= ImGui::GetFrameHeight() + timeline_height + 3.f * ImGui::GetStyle().ItemSpacing.y;
+                // leave space for scrollbar
+                image_height -= ImGui::GetStyle().ScrollbarSize;
+            }
 
             // display media
             ImVec2 imagesize ( image_height * mp_->aspectRatio(), image_height);
@@ -1133,6 +1145,8 @@ void MediaController::Render()
             ImGui::SetCursorPosX(ImGui::GetCursorPos().x + (ImGui::GetContentRegionAvail().x - imagesize.x) / 2.0);
             ImGui::Image((void*)(uintptr_t)mp_->texture(), imagesize);
             ImVec2 return_to_pos = ImGui::GetCursorPos();
+
+            // display media information
             if (ImGui::IsItemHovered()) {
 
                 float tooltip_height = (follow_active_source_? 3.f:2.f)* ImGui::GetTextLineHeightWithSpacing();
@@ -1150,6 +1164,13 @@ void MediaController::Render()
                     ImGui::Text(" %d x %d px", mp_->width(), mp_->height());
 
             }
+
+            // display time
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetCursorPos( ImVec2(return_to_pos.x + 5, return_to_pos.y - ImGui::GetTextLineHeightWithSpacing()) );
+            ImGui::Text("%s", GstToolkit::time_to_string(mp_->position()).c_str());
+            ImGui::PopFont();
+
             ImGui::SetCursorPos(return_to_pos);
         }
 
@@ -1211,11 +1232,26 @@ void MediaController::Render()
                 mp_->setLoop( MediaPlayer::LOOP_REWIND );
             }
 
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3, 3));
+
+            // scrolling sub-window
+            ImGui::BeginChild("##scrolling",
+                              ImVec2(ImGui::GetContentRegionAvail().x - 20.0,
+                                     timeline_height + ImGui::GetStyle().ScrollbarSize ),
+                              false, ImGuiWindowFlags_HorizontalScrollbar);
+
             // custom timeline slider
             guint64 current_t = mp_->position();
             guint64 seek_t = current_t;
-            slider_pressed_ = ImGuiToolkit::TimelineSlider( "simpletimeline", &seek_t,
-                                                                mp_->duration(), mp_->frameDuration());
+            slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t,
+                                                           mp_->duration(), mp_->frameDuration(), timeline_zoom);
+            ImGui::EndChild();
+
+            // zoom slider
+            ImGui::SameLine();
+            ImGui::VSliderFloat("##zoom", ImVec2(17, timeline_height), &timeline_zoom, 1.0, 5.f, "");
+            ImGui::PopStyleVar();
+
             // if the seek target time is different from the current position time
             // (i.e. the difference is less than one frame)
             if ( ABS_DIFF (current_t, seek_t) > mp_->frameDuration() ) {
@@ -1823,7 +1859,7 @@ void Navigator::RenderTransitionPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
 
         // Transition options
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Spacing();
         ImGui::Text("Animation");
         if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
         ImGui::SameLine(0, 10);
@@ -1834,7 +1870,7 @@ void Navigator::RenderTransitionPannel()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Spacing();
         if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
@@ -2025,14 +2061,14 @@ void Navigator::RenderMainPannel()
         }
 
         // options session
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Spacing();
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
 
 
         // Continue Main pannel
         // WINDOWS
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Spacing();
         ImGui::Text("Windows");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
@@ -2044,7 +2080,7 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         // Settings application appearance
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+        ImGui::Spacing();
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.8f, 1.2f, "%.1f"))
@@ -2085,6 +2121,184 @@ void Navigator::RenderMainPannel()
     ImGui::End();
 }
 
+
+namespace ImGui
+{
+
+int hover(const char *label)
+{
+    const ImGuiStyle& Style = GetStyle();
+    const ImGuiIO& IO = GetIO();
+    ImDrawList* DrawList = GetWindowDrawList();
+    ImGuiWindow* Window = GetCurrentWindow();
+    if (Window->SkipItems)
+        return 0;
+
+    int hovered = IsItemActive() || IsItemHovered();
+    Dummy(ImVec2(0,3));
+
+    // prepare canvas
+    const float avail = GetContentRegionAvailWidth();
+    const float dim = ImMin(avail, 128.f);
+    ImVec2 Canvas(dim, dim);
+
+    ImRect bb(Window->DC.CursorPos, Window->DC.CursorPos + Canvas);
+    const ImGuiID id = Window->GetID(label);
+    ItemSize(bb);
+    if (!ItemAdd(bb, id))
+        return 0;
+
+    hovered |= 0 != IsItemClicked();
+
+    RenderFrame(bb.Min, bb.Max, GetColorU32(ImGuiCol_FrameBg, 1), true, Style.FrameRounding);
+
+
+    return 1;
+}
+
+}
+
+bool hoverer(const char* label, uint *index, int min, int max, ImVec2 size)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // get id
+//    ImGuiContext& g = *GImGui;
+    const ImGuiID id = window->GetID(label);
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    // read user input from system
+    bool left_mouse_press = false;
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (focus_requested || left_mouse_press)
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+
+    // time Slider behavior
+    ImRect grab_slider_bb;
+    uint _zero = min;
+    uint _end = max;
+    bool pressed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
+                                               &_end, "%d", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+
+//    bbox = ImRect(pos, pos + ImVec2(size.x, size.y / 2.f));
+//    if (ImGui::IsMouseHoveringRect(bbox.GetTL(), bbox.GetBR()))
+//        *val = 1.f;
+//    else
+//        *val = 0.f;
+
+    return pressed;
+
+}
+
+
+void ShowSandbox(bool* p_open)
+{
+    ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin( ICON_FA_BABY_CARRIAGE "  Sandbox", p_open))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Testing sandox");
+
+    std::list< std::pair<guint64, guint64> > segments;
+    segments.push_back( std::make_pair<guint64, guint64>(GST_SECOND*1, GST_SECOND*2) );
+    guint64 duration = GST_SECOND * 4;
+    guint64 step = GST_MSECOND * 20;
+    static guint64 t = 0;
+
+    bool slider_pressed = ImGuiToolkit::TimelineSliderEdit("timeline", &t, duration, step, segments);
+
+
+
+    static float arr[] = { 0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f };
+
+    ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 20);
+
+    // draw position when entering
+    ImVec2 draw_pos = ImGui::GetCursorPos();
+    // plot the histogram
+    uint press_index = IM_ARRAYSIZE(arr);
+    bool pressed = hoverer("test", &press_index, 0, IM_ARRAYSIZE(arr)-1, size);
+
+    static bool active = false;
+    static float target_value = 0.f;
+    static uint starting_index = IM_ARRAYSIZE(arr);
+
+    if (pressed != active) {
+        active = pressed;
+        starting_index = press_index;
+        target_value = arr[starting_index] > 0.f ? 0.f : 1.f;
+    }
+
+    if (active) {
+        for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+            arr[i] = target_value;
+    }
+
+
+
+    // back to
+    ImGui::SetCursorPos(draw_pos);
+//    ImGui::PlotLines("Lines", arr, IM_ARRAYSIZE(arr), 0, NULL, 0.0f, 1.0f, size);
+
+//    ImVec4* colors = ImGui::GetStyle().Colors;
+//    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, colors[ImGuiCol_Tab]);
+
+    ImGui::PlotHistogram("Histogram", arr, IM_ARRAYSIZE(arr)-1, 0, NULL, 0.0f, 1.0f, size);
+
+//    ImGui::PopStyleColor(1);
+
+    ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
+    ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
+    ImGui::Text("Hover    Pressed %s   v = %d", pressed ? "on" : "off", press_index);
+
+    static int w = 0;
+    ImGui::SetNextItemWidth(size.x);
+    ImGui::SliderInt("##int", &w, 0, IM_ARRAYSIZE(arr)-1);
+
+    ImGui::End();
+}
 
 void ShowConfig(bool* p_open)
 {

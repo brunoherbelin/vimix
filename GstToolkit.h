@@ -9,7 +9,7 @@
 namespace GstToolkit
 {
 
-    std::string time_to_string(guint64 t);
+    std::string time_to_string(guint64 t, bool stripped = false);
 
     std::string gst_version();
     std::list<std::string> all_plugins();

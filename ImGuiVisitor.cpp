@@ -93,7 +93,7 @@ void ImGuiVisitor::visit(Group &n)
 //    }
 
     // spacing
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+    ImGui::Spacing();
 }
 
 void ImGuiVisitor::visit(Switch &n)
@@ -262,7 +262,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
     ImGui::PopID();
 
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+    ImGui::Spacing();
 }
 
 

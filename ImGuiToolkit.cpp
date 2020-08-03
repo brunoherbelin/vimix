@@ -283,9 +283,12 @@ void ImGuiToolkit::HelpMarker(const char* desc)
 // a) Returns TRUE if the left mouse button LMB is pressed over the timeline
 // b) the value of *time is changed to the position of the slider handle from user input (LMB)
 
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step)
+#define NUM_MARKS 10
+#define LARGE_TICK_INCREMENT 1
+#define LABEL_TICK_INCREMENT 3
+bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step, float scale)
 {
-    static guint64 optimal_tick_marks[12] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE };
+    static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -306,6 +309,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     const float height = 2.f * (fontsize + style.FramePadding.y);
     ImVec2 pos = window->DC.CursorPos;
     ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), height);
+    size.x *= scale;
     ImRect bbox(pos, pos + size);
     ImGui::ItemSize(size, style.FramePadding.y);
     if (!ImGui::ItemAdd(bbox, id))
@@ -371,15 +375,17 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // by default, put a tick mark at every frame step and a large mark every second
     guint64 tick_step = step;
     guint64 large_tick_step = SECOND;
+    guint64 label_tick_step = 5 * SECOND;
 
     // how many pixels to represent one frame step?
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;     
-    // while there is less than 3 pixels between two tick marks (or at last optimal tick mark)
+    // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
     for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
     {
         // try to use the optimal tick marks pre-defined
         tick_step = optimal_tick_marks[i];
-        large_tick_step = optimal_tick_marks[i+1];
+        large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
+        label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
         tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
     }
 
@@ -388,10 +394,35 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     pos = timeline_bbox.GetTL();
     guint64 tick = 0;
     float tick_percent = 0.f;
+    char overlay_buf[24];
+    ImVec2 overlay_size = ImVec2(0.f, 0.f);
+    ImVec2 mini = ImVec2(0.f, 0.f);
+    ImVec2 maxi = ImVec2(0.f, 0.f);
+
+    // render text duration
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
+    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
+    ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
+    if (overlay_size.x > 0.0f)
+        ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
+
+
     while ( tick < duration)
     {
         // large tick mark every large tick
-        float tick_length = !(tick%large_tick_step) ? fontsize : style.FramePadding.y;
+        float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
+
+        if ( !(tick%label_tick_step) ) {
+            tick_length = fontsize;
+
+            ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(tick, true).c_str());
+            overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
+            mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
+            maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
+            // do not overlap with label for duration
+            if (maxi.x < duration_label.x)
+                ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
+        }
 
         // draw a tick mark each step 
         window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), color);
@@ -405,20 +436,12 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // tick EOF
     window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetTR() + ImVec2(0.f, fontsize), color);
 
-    // render text : duration and current time
-    char overlay_buf[24];
-    ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    overlay_size += ImVec2(3.f, 3.f);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( bbox.GetBR() - overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
-
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( bbox.GetBL() + overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
+// disabled: render position
+//    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
+//    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
+//    overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
+//    if (overlay_size.x > 0.0f)
+//        ImGui::RenderTextClipped( bbox.GetBL() + overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
@@ -924,10 +947,10 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TabActive]              = ImVec4(0.80f, 0.49f, 0.25f, 1.00f);
         colors[ImGuiCol_TabUnfocused]           = ImVec4(0.15f, 0.10f, 0.07f, 0.97f);
         colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.42f, 0.26f, 0.14f, 1.00f);
-        colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.94f, 0.57f, 0.01f, 1.00f);
-        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.82f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotLines]              = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.59f, 0.73f, 0.90f, 1.00f);
+        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.59f, 0.73f, 0.90f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.98f, 0.59f, 0.26f, 0.64f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.98f, 0.59f, 0.26f, 1.00f);
@@ -976,9 +999,9 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TabUnfocused]           = ImVec4(0.10f, 0.10f, 0.10f, 0.97f);
         colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.94f, 0.57f, 0.01f, 1.00f);
-        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.82f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.64f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
@@ -1026,8 +1049,8 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TabActive]              = ImVec4(0.25f, 0.49f, 0.80f, 1.00f);
         colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
         colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
-        colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+        colors[ImGuiCol_PlotLines]              = ImVec4(0.94f, 0.57f, 0.01f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.82f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.94f, 0.57f, 0.01f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.82f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.64f);

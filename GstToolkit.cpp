@@ -4,7 +4,7 @@ using namespace std;
 
 #include "GstToolkit.h"
 
-string GstToolkit::time_to_string(guint64 t)
+string GstToolkit::time_to_string(guint64 t, bool stripped)
 {
     if (t == GST_CLOCK_TIME_NONE)
         return "00:00:00.00";
@@ -13,14 +13,37 @@ string GstToolkit::time_to_string(guint64 t)
     guint s = ms / 1000;
 
     ostringstream oss;
-    if (s / 3600)
-        oss << setw(2) << setfill('0') << s / 3600 << ':';
-    if ((s % 3600) / 60)
-        oss << setw(2) << setfill('0') << (s % 3600) / 60 << ':';
-    oss << setw(2) << setfill('0') << (s % 3600) % 60 << '.';
-    oss << setw(2) << setfill('0') << (ms % 1000) / 10;
 
-    // fixed length string (11 chars) HH:mm:ss.ii"
+    if (stripped) {
+        int count = 0;
+
+        if (s / 3600) {
+            oss << s / 3600 << ':';
+            count++;
+        }
+        if ((s % 3600) / 60) {
+            oss << (s % 3600) / 60 << ':';
+            count++;
+        }
+        if (count < 2) {
+            oss << setw(count > 0 ? 2 : 1) << setfill('0') << (s % 3600) % 60;
+            count++;
+        }
+        if (count < 2 )
+            oss << '.'<< setw(1) << setfill('0') << (ms % 1000) / 10;
+
+    }
+    else {
+        if (s / 3600)
+            oss << setw(2) << setfill('0') << s / 3600 << ':';
+        if ((s % 3600) / 60)
+            oss << setw(2) << setfill('0') << (s % 3600) / 60 << ':';
+        oss << setw(2) << setfill('0') << (s % 3600) % 60 << '.';
+        oss << setw(2) << setfill('0') << (ms % 1000) / 10;
+    }
+
+    // non-stripped : fixed length string (11 chars) HH:mm:ss.ii"
+    // stripped : adapted to precision
     return oss.str();
 }
 

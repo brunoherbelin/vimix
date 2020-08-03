@@ -25,7 +25,7 @@ Download package from [Github Release](https://github.com/brunoherbelin/vimix/re
 
 ### Windows
 
-*Please consider helping by compiling vimix providing packages for Windows.*
+*Please consider helping by compiling & providing packages for Windows.*
 
 
 

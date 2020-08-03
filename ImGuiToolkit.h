@@ -27,7 +27,7 @@ namespace ImGuiToolkit
 
     // utility sliders
     void Bar (float value, float in, float out, float min, float max, const char* title, bool expand);
-    bool TimelineSlider (const char* label, guint64 *time, guint64 duration, guint64 step);
+    bool TimelineSlider (const char* label, guint64 *time, guint64 duration, guint64 step, float scale = 1.f);
     bool TimelineSliderEdit (const char* label, guint64 *time, guint64 duration, guint64 step,
                         std::list<std::pair<guint64, guint64> >& segments);
     

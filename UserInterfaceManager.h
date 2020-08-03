@@ -71,6 +71,7 @@ class ToolBox
 {
     bool show_demo_window;
     bool show_icons_window;
+    bool show_sandbox;
 
 public:
     ToolBox();
