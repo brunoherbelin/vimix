@@ -400,22 +400,25 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     ImVec2 maxi = ImVec2(0.f, 0.f);
 
     // render text duration
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
+    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
+                   GstToolkit::time_to_string(duration, GstToolkit::TIME_STRING_MINIMAL).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
 
-
+    // render tick marks
     while ( tick < duration)
     {
-        // large tick mark every large tick
+        // large tick mark
         float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
 
+        // label tick mark
         if ( !(tick%label_tick_step) ) {
             tick_length = fontsize;
 
-            ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(tick, true).c_str());
+            ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
+                           GstToolkit::time_to_string(tick, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
             mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
             maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
@@ -424,7 +427,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
                 ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
         }
 
-        // draw a tick mark each step 
+        // draw the tick mark each step
         window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), color);
 
         // next tick

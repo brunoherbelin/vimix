@@ -9,13 +9,19 @@
 namespace GstToolkit
 {
 
-    std::string time_to_string(guint64 t, bool stripped = false);
+typedef enum {
+    TIME_STRING_FIXED = 0,
+    TIME_STRING_ADJUSTED,
+    TIME_STRING_MINIMAL
+} time_string_mode;
 
-    std::string gst_version();
-    std::list<std::string> all_plugins();
-    std::list<std::string> all_plugin_features(std::string pluginname);
+std::string time_to_string(guint64 t, time_string_mode m = TIME_STRING_ADJUSTED);
 
-    bool enable_feature (std::string name, bool enable);
+std::string gst_version();
+std::list<std::string> all_plugins();
+std::list<std::string> all_plugin_features(std::string pluginname);
+
+bool enable_feature (std::string name, bool enable);
 
 }
 

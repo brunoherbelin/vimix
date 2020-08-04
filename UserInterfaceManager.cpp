@@ -1168,7 +1168,7 @@ void MediaController::Render()
             // display time
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::SetCursorPos( ImVec2(return_to_pos.x + 5, return_to_pos.y - ImGui::GetTextLineHeightWithSpacing()) );
-            ImGui::Text("%s", GstToolkit::time_to_string(mp_->position()).c_str());
+            ImGui::Text("%s", GstToolkit::time_to_string(mp_->position(), GstToolkit::TIME_STRING_FIXED).c_str());
             ImGui::PopFont();
 
             ImGui::SetCursorPos(return_to_pos);
