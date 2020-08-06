@@ -1,24 +1,19 @@
-#include "MediaPlayer.h"
-#include <algorithm>
 #include <thread>
 
 using namespace std;
 
+//  Desktop OpenGL function loader
+#include <glad/glad.h>
+
+
 // vmix
 #include "defines.h"
 #include "Log.h"
-#include "RenderingManager.h"
 #include "Resource.h"
 #include "Visitor.h"
-#include "UserInterfaceManager.h"
 #include "SystemToolkit.h"
-#include "GstToolkit.h"
 
-//  Desktop OpenGL function loader
-#include <glad/glad.h>  
-
-// GStreamer
-#include <gst/pbutils/gstdiscoverer.h>
+#include "MediaPlayer.h"
 
 #ifndef NDEBUG
 #define MEDIA_PLAYER_DEBUG
@@ -52,7 +47,6 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     frame_duration_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
-    current_segment_ = segments_.begin();
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -209,6 +203,9 @@ void MediaPlayer::execute_open()
         failed_ = true;
         return;
     }
+
+    // create & init segment array
+
 
     // all good
     Log::Info("MediaPlayer %s Open %s (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
@@ -436,7 +433,7 @@ void MediaPlayer::rewind()
 }
 
 
-void MediaPlayer::seekNextFrame()
+void MediaPlayer::step()
 {
     // useful only when Paused
     if (!enabled_ || isPlaying())
@@ -449,7 +446,7 @@ void MediaPlayer::seekNextFrame()
     gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE));
 }
 
-void MediaPlayer::seekTo(GstClockTime pos)
+void MediaPlayer::seek(GstClockTime pos)
 {
     if (!enabled_ || !seekable_)
         return;
@@ -460,52 +457,12 @@ void MediaPlayer::seekTo(GstClockTime pos)
 
 }
 
-void MediaPlayer::fastForward()
+void MediaPlayer::jump()
 {
-    if (!enabled_ || !seekable_)
+    if (!enabled_ || !isPlaying())
         return;
 
     gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, 30.f * ABS(rate_), TRUE,  FALSE));
-}
-
-bool MediaPlayer::addPlaySegment(GstClockTime begin, GstClockTime end)
-{
-    return addPlaySegment( MediaSegment(begin, end) );
-}
-
-bool MediaPlayer::addPlaySegment(MediaSegment s)
-{
-    if ( s.is_valid() )
-        return segments_.insert(s).second;
-
-    return false;
-}
-
-bool MediaPlayer::removeAllPlaySegmentOverlap(MediaSegment s)
-{
-    bool ret = removePlaySegmentAt(s.begin);
-    return removePlaySegmentAt(s.end) || ret;
-}
-
-bool MediaPlayer::removePlaySegmentAt(GstClockTime t)
-{
-    MediaSegmentSet::const_iterator s = std::find_if(segments_.begin(), segments_.end(), containsTime(t));
-
-    if ( s != segments_.end() ) {
-        segments_.erase(s);
-        return true;
-    }
-
-    return false;
-}
-
-std::list< std::pair<guint64, guint64> > MediaPlayer::getPlaySegments() const
-{
-    std::list< std::pair<guint64, guint64> > ret;
-    for (MediaSegmentSet::iterator it = segments_.begin(); it != segments_.end(); it++)
-        ret.push_back( std::make_pair( it->begin, it->end ) );
-
-    return ret;
 }
 
 void MediaPlayer::init_texture(guint index)
@@ -694,6 +651,12 @@ void MediaPlayer::update()
     if (need_loop && !isimage_) {
         execute_loop_command();
     }
+
+    // manage timeline
+//    if (position_!=GST_CLOCK_TIME_NONE) {
+
+
+//    }
 
 }
 
@@ -1055,12 +1018,12 @@ void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaP
     }
 }
 
-TimeCounter::TimeCounter() {
+MediaPlayer::TimeCounter::TimeCounter() {
 
     reset();
 }
 
-void TimeCounter::tic ()
+void MediaPlayer::TimeCounter::tic ()
 {
     // how long since last time
     GstClockTime t = gst_util_get_timestamp ();
@@ -1083,7 +1046,7 @@ void TimeCounter::tic ()
     }
 }
 
-GstClockTime TimeCounter::dt ()
+GstClockTime MediaPlayer::TimeCounter::dt ()
 {
     GstClockTime t = gst_util_get_timestamp ();
     GstClockTime dt = t - tic_time;
@@ -1093,7 +1056,7 @@ GstClockTime TimeCounter::dt ()
     return dt;
 }
 
-void TimeCounter::reset ()
+void MediaPlayer::TimeCounter::reset ()
 {
     last_time = gst_util_get_timestamp ();;
     tic_time = last_time;
@@ -1101,7 +1064,7 @@ void TimeCounter::reset ()
     fps = 0.0;
 }
 
-double TimeCounter::frameRate() const
+double MediaPlayer::TimeCounter::frameRate() const
 {
     return fps;
 }

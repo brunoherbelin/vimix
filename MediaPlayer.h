@@ -2,14 +2,14 @@
 #define __GST_MEDIA_PLAYER_H_
 
 #include <string>
-#include <sstream>
-#include <set>
-#include <list>
 #include <mutex>
 
+// GStreamer
+#include <gst/pbutils/gstdiscoverer.h>
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsink.h>
 
+#include "Timeline.h"
 
 // Forward declare classes referenced
 class Visitor;
@@ -18,81 +18,13 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 3
 
-struct TimeCounter {
-
-    GstClockTime last_time;
-    GstClockTime tic_time;
-    int nbFrames;
-    gdouble fps;
-public:
-    TimeCounter();
-    GstClockTime dt();
-    void tic();
-    void reset();
-    gdouble frameRate() const;
-};
-
-struct MediaSegment
-{
-    GstClockTime begin;
-    GstClockTime end;
-
-    MediaSegment()
-    {
-        begin = GST_CLOCK_TIME_NONE;
-        end = GST_CLOCK_TIME_NONE;
-    }
-
-    MediaSegment(GstClockTime b, GstClockTime e)
-    {
-        if ( b < e ) {
-            begin = b;
-            end = e;
-        } else {
-            begin = GST_CLOCK_TIME_NONE;
-            end = GST_CLOCK_TIME_NONE;
-        }
-    }
-    inline bool is_valid() const
-    {
-        return begin != GST_CLOCK_TIME_NONE && end != GST_CLOCK_TIME_NONE && begin < end;
-    }
-    inline bool operator < (const MediaSegment b) const
-    {
-        return (this->is_valid() && b.is_valid() && this->end < b.begin);
-    }
-    inline bool operator == (const MediaSegment b) const
-    {
-        return (this->begin == b.begin && this->end == b.end);
-    }
-    inline bool operator != (const MediaSegment b) const
-    {
-        return (this->begin != b.begin || this->end != b.end);
-    }
-};
-
-struct containsTime: public std::unary_function<MediaSegment, bool>
-{
-    inline bool operator()(const MediaSegment s) const
-    {
-       return ( s.is_valid() && _t > s.begin && _t < s.end );
-    }
-
-    containsTime(GstClockTime t) : _t(t) { }
-
-private:
-    GstClockTime _t;
-};
-
-
-typedef std::set<MediaSegment> MediaSegmentSet;
 
 class MediaPlayer {
 
 public:
 
     /**
-     * Constructor of a GStreamer Media
+     * Constructor of a GStreamer Media Player
      */
     MediaPlayer( std::string name = std::string() );
     /**
@@ -103,6 +35,14 @@ public:
      * Open a media using gstreamer URI 
      * */
     void open( std::string path);
+    /**
+     * Get name of the media
+     * */
+    std::string uri() const;
+    /**
+     * Get name of the file
+     * */
+    std::string filename() const;
     /**
      * True if a media was oppenned
      * */
@@ -120,19 +60,24 @@ public:
      * Must be called in update loop
      * */
     void update();
-    void update_old();
-
+    /**
+     * Enable / Disable
+     * Suspend playing activity
+     * (restores playing state when re-enabled)
+     * */
     void enable(bool on);
-
+    /**
+     * True if enabled
+     * */
     bool isEnabled() const;
-
     /**
      * Pause / Play
      * Can play backward if play speed is negative
      * */
     void play(bool on);
     /**
-     * Get Pause / Play
+     * Get Pause / Play status
+     * Performs a full check of the Gstreamer pipeline if testpipeline is true
      * */
     bool isPlaying(bool testpipeline = false) const;
     /**
@@ -146,36 +91,42 @@ public:
      * */
     void setPlaySpeed(double s);
     /**
-     * True if the player will loop when at begin or end
+     * Loop Mode: Behavior when reaching an extremity
      * */
     typedef enum {
         LOOP_NONE = 0,
         LOOP_REWIND = 1,
         LOOP_BIDIRECTIONAL = 2
     } LoopMode;
+    /**
+     * Get the current loop mode
+     * */
     LoopMode loop() const;
     /**
-     * Set the player to loop
+     * Set the loop mode
      * */
     void setLoop(LoopMode mode);
     /**
-     * Restart from zero
-     * */
-    void rewind();
-    /**
      * Seek to next frame when paused
+     * (aka next frame)
      * Can go backward if play speed is negative
      * */
-    void seekNextFrame();
+    void step();
+    /**
+     * Jump fast when playing
+     * (aka fast-forward)
+     * Can go backward if play speed is negative
+     * */
+    void jump();
+    /**
+     * Seek to zero
+     * */
+    void rewind();
     /**
      * Seek to any position in media
      * pos in nanoseconds.
      * */
-    void seekTo(GstClockTime pos);
-    /**
-     * Jump by 10% of the duration
-     * */
-    void fastForward();
+    void seek(GstClockTime pos);
     /**
      * Get position time
      * */
@@ -193,37 +144,38 @@ public:
      * */
     double frameRate() const;
     /**
-     * Get name of Codec of the media
-     * */
-    std::string codec() const;
-    /**
      * Get rendering update framerate
      * measured during play
      * */
     double updateFrameRate() const;
     /**
+     * Get name of Codec of the media
+     * */
+    std::string codec() const;
+    /**
+     * Get frame width
+     * */
+    guint width() const;
+    /**
+     * Get frame height
+     * */
+    guint height() const;
+    /**
+     * Get frames displayt aspect ratio
+     * NB: can be different than width() / height()
+     * */
+    float aspectRatio() const;
+    /**
      * Get the OpenGL texture
      * Must be called in OpenGL context
      * */
     guint texture() const;
-    /**
-     * Get Image properties
-     * */
-    guint width() const;
-    guint height() const;
-    float aspectRatio() const;
-
-    /**
-     * Get name of the media
-     * */
-    std::string uri() const;
-    std::string filename() const;
 
     /**
      * Accept visitors
+     * Used for saving session file
      * */
     void accept(Visitor& v);
-
     /**
      * @brief registered
      * @return list of media players currently registered
@@ -234,12 +186,7 @@ public:
 
 private:
 
-    bool addPlaySegment(GstClockTime begin, GstClockTime end);
-    bool addPlaySegment(MediaSegment s);
-    bool removePlaySegmentAt(GstClockTime t);
-    bool removeAllPlaySegmentOverlap(MediaSegment s);
-    std::list< std::pair<guint64, guint64> > getPlaySegments() const;
-
+    // video player description
     std::string id_;
     std::string filename_;
     std::string uri_;
@@ -254,7 +201,6 @@ private:
     GstClockTime frame_duration_;
     gdouble rate_;
     LoopMode loop_;
-    TimeCounter timecount_;
     gdouble framerate_;
     GstState desired_state_;
     GstElement *pipeline_;
@@ -262,6 +208,30 @@ private:
     std::stringstream discoverer_message_;
     std::string codec_name_;
     GstVideoInfo v_frame_video_info_;
+
+    // status
+    bool ready_;
+    bool failed_;
+    bool seekable_;
+    bool isimage_;
+    bool interlaced_;
+    bool enabled_;
+
+    // fps counter
+    struct TimeCounter {
+
+        GstClockTime last_time;
+        GstClockTime tic_time;
+        int nbFrames;
+        gdouble fps;
+    public:
+        TimeCounter();
+        GstClockTime dt();
+        void tic();
+        void reset();
+        gdouble frameRate() const;
+    };
+    TimeCounter timecount_;
 
     // frame stack
     typedef enum  {
@@ -293,16 +263,7 @@ private:
     guint pbo_index_, pbo_next_index_;
     guint pbo_size_;
 
-    MediaSegmentSet segments_;
-    MediaSegmentSet::iterator current_segment_;
-
-    bool ready_;
-    bool failed_;
-    bool seekable_;
-    bool isimage_;
-    bool interlaced_;
-    bool enabled_;
-
+    // gst pipeline control
     void execute_open();
     void execute_loop_command();
     void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);
@@ -311,13 +272,15 @@ private:
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);
+
+    // gst callbacks
     static void callback_end_of_stream (GstAppSink *, gpointer);
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
-
     static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
     static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 
+    // global list of registered media player
     static std::list<MediaPlayer*> registered_;
 };
 
