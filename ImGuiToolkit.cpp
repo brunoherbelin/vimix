@@ -374,19 +374,28 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
 
     // by default, put a tick mark at every frame step and a large mark every second
     guint64 tick_step = step;
-    guint64 large_tick_step = SECOND;
-    guint64 label_tick_step = 5 * SECOND;
+    guint64 large_tick_step = optimal_tick_marks[1+LARGE_TICK_INCREMENT];
+    guint64 label_tick_step = optimal_tick_marks[1+LABEL_TICK_INCREMENT];
 
     // how many pixels to represent one frame step?
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;     
-    // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
-    for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
+
+    // tick at each step: add a label every 30 frames (1 second?)
+    if (tick_step_pixels > 5.f)
     {
-        // try to use the optimal tick marks pre-defined
-        tick_step = optimal_tick_marks[i];
-        large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
-        label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
-        tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
+        large_tick_step = 10 * step;
+        label_tick_step = 30 * step;
+    }
+    else {
+        // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
+        for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
+        {
+            // try to use the optimal tick marks pre-defined
+            tick_step = optimal_tick_marks[i];
+            large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
+            label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
+            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
+        }
     }
 
     // render the tick marks along TIMELINE
@@ -744,6 +753,48 @@ void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, c
     // if (overlay_size.x > 0.0f)
     //     ImGui::RenderTextClipped(ImVec2( ImClamp(fill_br.x + style.ItemSpacing.x,bb.Min.x, bb.Max.x - overlay_size.x - style.ItemInnerSpacing.x), bb.Min.y), 
     //                                             bb.Max, title, NULL, &overlay_size, ImVec2(0.0f,0.5f), &bb);
+}
+
+bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, int min, int max, ImVec2 size)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // get id
+    const ImGuiID id = window->GetID(label);
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    // read user input from system
+    bool left_mouse_press = false;
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (focus_requested || left_mouse_press)
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+
+    // time Slider behavior
+    ImRect grab_slider_bb;
+    uint _zero = min;
+    uint _end = max;
+    bool pressed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
+                                               &_end, "%d", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+
+    return pressed;
 }
 
 

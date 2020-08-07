@@ -30,7 +30,9 @@ namespace ImGuiToolkit
     bool TimelineSlider (const char* label, guint64 *time, guint64 duration, guint64 step, float scale = 1.f);
     bool TimelineSliderEdit (const char* label, guint64 *time, guint64 duration, guint64 step,
                         std::list<std::pair<guint64, guint64> >& segments);
-    
+    bool InvisibleSliderInt(const char* label, uint *index, int min, int max, ImVec2 size);
+
+
     // fonts from ressources 'fonts/'
     typedef enum {
         FONT_DEFAULT =0,

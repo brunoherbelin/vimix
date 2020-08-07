@@ -44,6 +44,10 @@ public:
      * */
     std::string filename() const;
     /**
+     * Get name of Codec of the media
+     * */
+    std::string codec() const;
+    /**
      * True if a media was oppenned
      * */
     bool isOpen() const;
@@ -56,8 +60,8 @@ public:
      * */
     void close();
     /**
-     * Update status
-     * Must be called in update loop
+     * Update texture with latest frame
+     * Must be called in rendering update loop
      * */
     void update();
     /**
@@ -149,10 +153,6 @@ public:
      * */
     double updateFrameRate() const;
     /**
-     * Get name of Codec of the media
-     * */
-    std::string codec() const;
-    /**
      * Get frame width
      * */
     guint width() const;
@@ -170,7 +170,6 @@ public:
      * Must be called in OpenGL context
      * */
     guint texture() const;
-
     /**
      * Accept visitors
      * Used for saving session file
