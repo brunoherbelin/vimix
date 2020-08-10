@@ -42,9 +42,9 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     width_ = par_width_ = 640;
     height_ = 480;
     position_ = GST_CLOCK_TIME_NONE;
-    duration_ = GST_CLOCK_TIME_NONE;
-    start_position_ = GST_CLOCK_TIME_NONE;
-    frame_duration_ = GST_CLOCK_TIME_NONE;
+//    duration_ = GST_CLOCK_TIME_NONE;
+//    start_position_ = GST_CLOCK_TIME_NONE;
+//    frame_duration_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
 
@@ -82,14 +82,16 @@ void MediaPlayer::open(string path)
 {
     // set uri to open
     filename_ = path;
-    uri_ = string( gst_uri_construct("file", path.c_str()) );
+    gchar *uritmp = gst_filename_to_uri(path.c_str(), NULL);
+    uri_ = string( uritmp );
+    g_free(uritmp);
 
     // reset
     ready_ = false;
 
     /* Instantiate the Discoverer */
     GError *err = NULL;
-    discoverer_ = gst_discoverer_new (5 * GST_SECOND, &err);
+    discoverer_ = gst_discoverer_new (45 * GST_SECOND, &err);
     if (!discoverer_) {
         Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
         g_clear_error (&err);
@@ -117,7 +119,7 @@ void MediaPlayer::open(string path)
 
 
 void MediaPlayer::execute_open() 
-{
+{   
     // Create the simplest gstreamer pipeline possible :
     //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
@@ -169,19 +171,26 @@ void MediaPlayer::execute_open()
         gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 100);
         gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
-        // set the callbacks
-        GstAppSinkCallbacks callbacks;
-        callbacks.new_preroll = callback_new_preroll;
-        if (isimage_) {
-            callbacks.eos = NULL;
-            callbacks.new_sample = NULL;
-        }
-        else {
-            callbacks.eos = callback_end_of_stream;
-            callbacks.new_sample = callback_new_sample;
-        }
-        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+//        // set the callbacks
+//        GstAppSinkCallbacks callbacks;
+//        callbacks.new_preroll = callback_new_preroll;
+//        if (isimage_) {
+//            callbacks.eos = NULL;
+//            callbacks.new_sample = NULL;
+//        }
+//        else {
+//            callbacks.eos = callback_end_of_stream;
+//            callbacks.new_sample = callback_new_sample;
+//        }
+//        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+//        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+
+        // connect callbacks
+        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
+        g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
+        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
+
 
         // done with ref to sink
         gst_object_unref (sink);
@@ -204,13 +213,18 @@ void MediaPlayer::execute_open()
         return;
     }
 
-    // create & init segment array
-
-
     // all good
     Log::Info("MediaPlayer %s Open %s (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
     ready_ = true;
 
+//    // in case discoverer failed to get duration
+//    if (timeline.end() == GST_CLOCK_TIME_NONE) {
+//        gint64 d = GST_CLOCK_TIME_NONE;
+//        if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
+//            timeline.setEnd(d);
+//    }
+
+    // register media player
     MediaPlayer::registered_.push_back(this);
 }
 
@@ -233,61 +247,50 @@ void MediaPlayer::close()
         discoverer_ = nullptr;
     }
 
+    // not openned? nothing to close!
     if (!ready_)
         return;
 
+    // un-ready the media player
+    ready_ = false;
+
+    // reset timeline
+    timeline.reset();
+
     // clean up GST
     if (pipeline_ != nullptr) {
-        gst_element_set_state (pipeline_, GST_STATE_NULL);
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
+        if (ret == GST_STATE_CHANGE_ASYNC) {
+            GstState state;
+            gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        }
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
 
-    // cleanup eventual remaining frame related memory
-    for(guint i = 0; i < N_VFRAME; i++){
-        frame_[i].access.lock();
-        if (frame_[i].vframe.buffer)
-            gst_video_frame_unmap(&frame_[i].vframe);
-        frame_[i].status = EMPTY;
-        frame_[i].access.unlock();
-    }
+//    // cleanup eventual remaining frame related memory
+//    for(guint i = 0; i < N_VFRAME; i++){
+////        frame_[i].access.lock();
+//        if (frame_[i].vframe.buffer)
+//            gst_video_frame_unmap(&frame_[i].vframe);
+//        frame_[i].status = EMPTY;
+////        frame_[i].access.unlock();
+//    }
 
     // cleanup opengl texture
     if (textureindex_)
         glDeleteTextures(1, &textureindex_);
     textureindex_ = 0;
 
-    // delete picture buffer
+    // cleanup picture buffer
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
     pbo_size_ = 0;
 
-    // un-ready the media player
-    ready_ = false;
-
+    // unregister media player
     MediaPlayer::registered_.remove(this);
 }
 
-
-GstClockTime MediaPlayer::duration()
-{
-    // cannot play an image
-    if (isimage_)
-        return GST_CLOCK_TIME_NONE;
-
-    if (duration_ == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
-        gint64 d = GST_CLOCK_TIME_NONE;
-        if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
-            duration_ = d;
-    }
-
-    return duration_;
-}
-
-GstClockTime MediaPlayer::frameDuration()
-{
-    return frame_duration_;
-}
 
 guint MediaPlayer::width() const
 {
@@ -314,7 +317,7 @@ GstClockTime MediaPlayer::position()
             pos = p;
     }
     
-    return pos - start_position_;
+    return pos - timeline.start();
 }
 
 void MediaPlayer::enable(bool on)
@@ -347,6 +350,12 @@ bool MediaPlayer::isEnabled() const
     return enabled_;
 }
 
+
+bool MediaPlayer::isImage() const
+{
+    return isimage_;
+}
+
 void MediaPlayer::play(bool on)
 {
     // cannot play an image
@@ -369,7 +378,7 @@ void MediaPlayer::play(bool on)
 
     // requesting to play, but stopped at end of stream : rewind first !
     if ( desired_state_ == GST_STATE_PLAYING) {
-        if ( ( rate_>0.0 ? duration_ - position() : position() ) < 2 * frame_duration_ )
+        if ( ( rate_>0.0 ? timeline.end() - position() : position() ) < 2 * timeline.step() )
             rewind();
     }
 
@@ -429,7 +438,7 @@ void MediaPlayer::rewind()
         execute_seek_command(0);
     else
         // playing backward, loop to end
-        execute_seek_command(duration_ - frame_duration_);
+        execute_seek_command(timeline.end() - timeline.step());
 }
 
 
@@ -439,7 +448,7 @@ void MediaPlayer::step()
     if (!enabled_ || isPlaying())
         return;
 
-    if ( position_ == ( rate_ < 0.0 ? start_position_ : duration() ) )
+    if ( position_ == ( rate_ < 0.0 ? timeline.start() : timeline.end() ) )
         rewind();
 
     // step 
@@ -452,7 +461,9 @@ void MediaPlayer::seek(GstClockTime pos)
         return;
 
     // apply seek
-    GstClockTime target = CLAMP(pos, 0, duration_);
+    GstClockTime target = CLAMP(pos, 0, timeline.end());
+//    GstClockTime target = CLAMP(pos, timeline.start(), timeline.end());
+    // TODO: confirm that PTS are not possibly ZERO (use of start() is neceessary)
     execute_seek_command(target);
 
 }
@@ -647,14 +658,20 @@ void MediaPlayer::update()
     // unkock frame after reading it
     frame_[read_index].access.unlock();
 
+    if (isimage_)
+        return;
+
     // manage loop mode
-    if (need_loop && !isimage_) {
+    if (need_loop) {
         execute_loop_command();
     }
 
     // manage timeline
-//    if (position_!=GST_CLOCK_TIME_NONE) {
+//    TimeInterval gap;
+//    if (position_ != GST_CLOCK_TIME_NONE && timeline.gapAt(position_, gap)) {
+//        seek( (rate_>0.f) ? gap.end : gap.begin);
 
+//        // TODO : manage loop when jumping out of timeline
 
 //    }
 
@@ -688,7 +705,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
         // create seek event with current position (rate changed ?)
         seek_pos = position();
     // target is given but useless
-    else if ( ABS_DIFF(target, position()) < frame_duration_) {
+    else if ( ABS_DIFF(target, position()) < timeline.step()) {
         // ignore request
         return;
     }
@@ -698,6 +715,24 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     // seek with trick mode if fast speed
     if ( ABS(rate_) > 1.0 )
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;
+
+//    bool ret = false;
+
+//    if (rate_ > 0) {
+
+//        ret = gst_element_seek (pipeline_, rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+//                                 GST_SEEK_TYPE_SET, seek_pos,
+//                                 GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+//    }
+//    else {
+
+//        ret = gst_element_seek (pipeline_, rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+//                                GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE,
+//                                GST_SEEK_TYPE_SET, seek_pos);
+//    }
+
+//    if (!ret)
+//         Log::Warning("MediaPlayer %s Seek failed", gst_element_get_name(pipeline_));
 
     // create seek event depending on direction
     GstEvent *seek_event = nullptr;
@@ -712,12 +747,13 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 
     // Send the event (ASYNC)
     if (seek_event && !gst_element_send_event(pipeline_, seek_event) )
-        Log::Warning("MediaPlayer %s Seek failed", gst_element_get_name(pipeline_));
+        Log::Warning("MediaPlayer %s Seek failed", id_.c_str());
     else {
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Seek %ld %f", gst_element_get_name(pipeline_), seek_pos, rate_);
+        Log::Info("MediaPlayer %s Seek %ld %f", id_.c_str(), seek_pos, rate_);
 #endif
     }
+
 }
 
 void MediaPlayer::setPlaySpeed(double s)
@@ -803,13 +839,13 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
             frame_[write_index_].position = buf->pts;
 
             // set the start position (i.e. pts of first frame we got)
-            if (start_position_ == GST_CLOCK_TIME_NONE)
-                start_position_ = buf->pts;
+            if (timeline.start() == GST_CLOCK_TIME_NONE)
+                timeline.setStart(buf->pts);
         }
     }
     // give a position to EOS
     else {
-        frame_[write_index_].position = rate_ > 0.0 ? duration() : start_position_;
+        frame_[write_index_].position = rate_ > 0.0 ? timeline.end() : timeline.start();
     }
 
     // unlock access to frame
@@ -833,7 +869,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
 void MediaPlayer::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     MediaPlayer *m = (MediaPlayer *)p;
-    if (m) {
+    if (m && m->ready_) {
         m->fill_frame(NULL, MediaPlayer::EOS);
     }
 }
@@ -849,22 +885,22 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
     if (sample != NULL) {
 
         // get buffer from sample
-        GstBuffer *buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
+        GstBuffer *buf = /*gst_buffer_ref */( gst_sample_get_buffer (sample) );
 
         MediaPlayer *m = (MediaPlayer *)p;
-        if (m) {
+        if (m && m->ready_) {
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;
 
             // loop negative rate: emulate an EOS
-            if (m->playSpeed() < 0.f && buf->pts == m->start_position_) {
+            if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }
 
         // free buffers
-        gst_buffer_unref (buf);
+//        gst_buffer_unref (buf);
         gst_sample_unref (sample);
     }
     else
@@ -884,29 +920,29 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
         // get buffer from sample
-        GstBuffer *buf = gst_buffer_ref ( gst_sample_get_buffer (sample) );
+        GstBuffer *buf = /*gst_buffer_ref*/ ( gst_sample_get_buffer (sample) );
 
         MediaPlayer *m = (MediaPlayer *)p;
-        if (m) {
+        if (m && m->ready_) {
 
             // fill frame with buffer
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
 
             // loop negative rate: emulate an EOS
-            if (m->playSpeed() < 0.f && buf->pts == m->start_position_) {
+            if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
 
         }
 
         // free buffer & sample
-        gst_buffer_unref (buf);
+//        gst_buffer_unref (buf);
         gst_sample_unref (sample);
 
     }
-    else
-        ret = GST_FLOW_FLUSHING;
+//    else
+//        ret = GST_FLOW_FLUSHING;
 
     return ret;
 }
@@ -967,7 +1003,7 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                 m->par_width_ = (m->width_ * parn) / pard;
                 // if its a video, it duration, framerate, etc.
                 if ( !m->isimage_ ) {
-                    m->duration_ = gst_discoverer_info_get_duration (info);
+                    m->timeline.setEnd( gst_discoverer_info_get_duration (info) );
                     m->seekable_ = gst_discoverer_info_get_seekable (info);
                     guint frn = gst_discoverer_video_info_get_framerate_num(vinfo);
                     guint frd = gst_discoverer_video_info_get_framerate_denom(vinfo);
@@ -976,20 +1012,22 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                         frd = 1;
                     }
                     m->framerate_ = static_cast<double>(frn) / static_cast<double>(frd);
-                    m->frame_duration_ = (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn));
+                    m->timeline.setStep( (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn)) );
                 }
                 // try to fill-in the codec information
                 GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
                 if (caps) {
-                    m->codec_name_ = std::string( gst_pb_utils_get_codec_description(caps) ) + " ";
+                    gchar *codecstring = gst_pb_utils_get_codec_description(caps);
+                    m->codec_name_ = std::string( codecstring ) + " ";
+                    g_free(codecstring);
                     gst_caps_unref (caps);
                 }
-                const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
-                if ( tags ) {
-                    gchar *container = NULL;
-                    gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
-                    if (container)  m->codec_name_ += std::string(container);
-                }
+//                const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
+//                if ( tags ) {
+//                    gchar *container = NULL;
+//                    gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
+//                    if (container)  m->codec_name_ += std::string(container);
+//                }
                 // exit loop
                 foundvideostream = true;
             }

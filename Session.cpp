@@ -38,6 +38,11 @@ Session::~Session()
         // erase this source from the list
         it = deleteSource(*it);
     }
+
+    delete config_[View::RENDERING];
+    delete config_[View::GEOMETRY];
+    delete config_[View::LAYER];
+    delete config_[View::MIXING];
 }
 
 void Session::setActive (bool on)

@@ -286,7 +286,7 @@ void ImGuiToolkit::HelpMarker(const char* desc)
 #define NUM_MARKS 10
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step, float scale)
+bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step, const float width)
 {
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
@@ -308,8 +308,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // widget bounding box
     const float height = 2.f * (fontsize + style.FramePadding.y);
     ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), height);
-    size.x *= scale;
+    ImVec2 size = ImVec2(width, height);
     ImRect bbox(pos, pos + size);
     ImGui::ItemSize(size, style.FramePadding.y);
     if (!ImGui::ItemAdd(bbox, id))
@@ -380,7 +379,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     // how many pixels to represent one frame step?
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;     
 
-    // tick at each step: add a label every 30 frames (1 second?)
+    // tick at each step: add a label every 0 frames
     if (tick_step_pixels > 5.f)
     {
         large_tick_step = 10 * step;
@@ -467,212 +466,6 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
 
     return left_mouse_press;
 }
-
-// Draws a timeline showing
-// 1) a cursor at position *time in the range [0 duration]
-// 2) a line of tick marks indicating time, every step if possible
-// 3) a slider handle below the cursor: user can move the slider
-// 4) different blocs for each time segment [first second] of the list of segments
-// Behavior
-// a) Returns TRUE if the left mouse button LMB is pressed over the timeline
-// b) the value of *time is changed to the position of the slider handle from user input (LMB)
-// c) the list segments is replaced with the list of new segments created by user (empty list otherwise)
-
-bool ImGuiToolkit::TimelineSliderEdit(const char* label, guint64 *time, guint64 duration, guint64 step,
-                                  std::list<std::pair<guint64, guint64> >& segments)
-{
-    static guint64 optimal_tick_marks[12] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE };
-
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-
-    // get style & id
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float fontsize = ImGui::GetFontSize();
-    ImGuiContext& g = *GImGui;
-    const ImGuiID id = window->GetID(label);
-
-    //
-    // FIRST PREPARE ALL data structures
-    //
-
-    // widget bounding box
-    const float height = 2.f * (fontsize + style.FramePadding.y);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), height);
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    // cursor size
-    const float cursor_scale = 1.f;
-    const float cursor_width = 0.5f * fontsize * cursor_scale;
-
-    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-    ImRect timeline_bbox(bbox);
-    timeline_bbox.Expand( ImVec2(-cursor_width, -style.FramePadding.y) );
-
-    // SLIDER is inside the timeline
-    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
-
-    // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(duration) );
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
-
-    //
-    // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
-    //
-
-    // read user input from system
-    bool left_mouse_press = false;
-    bool right_mouse_press = false;
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        right_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Right);
-        if (focus_requested || left_mouse_press || right_mouse_press || g.NavActivateId == id || g.NavInputId == id)
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-
-    // active slider if inside bb
-    ImRect grab_slider_bb;
-    ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
-    ImGuiID slider_id = window->GetID("werwerwsdvcsdgfdghdfsgagewrgsvdfhfdghkjfghsdgsdtgewfszdvgfkjfg"); // FIXME: cleaner way to create a valid but useless id that is never active
-    if ( slider_bbox.Contains(g.IO.MousePos)  ) {
-        slider_id = id; // active id
-        grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
-    }
-
-    // time Slider behavior
-    float time_slider = time_ * 10.f; // x 10 precision on grab
-    float time_zero = 0.f;
-    float time_end = 10.f;
-    bool value_changed = ImGui::SliderBehavior(slider_bbox, slider_id, ImGuiDataType_Float, &time_slider, &time_zero,
-                                               &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
-    if (value_changed){
-        //        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(duration) );
-    }
-
-    // segments behavior
-    float time_segment_begin = 0.f;
-//    float time_segment_end = 0.f;
-    if (right_mouse_press) {
-        time_segment_begin = 0.f;
-    }
-
-    //
-    // THIRD RENDER
-    //
-
-    // Render the bounding box
-    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
-
-    // by default, put a tick mark at every frame step and a large mark every second
-    guint64 tick_step = step;
-    guint64 large_tick_step = SECOND;
-
-    // how many pixels to represent one frame step?
-    float tick_step_pixels = timeline_bbox.GetWidth() * step_;
-    // while there is less than 3 pixels between two tick marks (or at last optimal tick mark)
-    for ( int i=0; i<10 && tick_step_pixels < 3.f; ++i )
-    {
-        // try to use the optimal tick marks pre-defined
-        tick_step = optimal_tick_marks[i];
-        large_tick_step = optimal_tick_marks[i+1];
-        tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
-    }
-
-    // render the tick marks along TIMELINE
-    ImU32 color_in = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-    ImU32 color_out = ImGui::GetColorU32( style.Colors[ImGuiCol_TextDisabled] );
-    ImU32 color = color_in;
-    pos = timeline_bbox.GetTL();
-    guint64 tick = 0;
-    float tick_percent = 0.f;
-    std::list< std::pair<guint64, guint64> >::iterator it = segments.begin();
-    while ( tick < duration)
-    {
-        // large tick mark every large tick
-        float tick_length = !(tick%large_tick_step) ? fontsize : style.FramePadding.y;
-
-        // different colors for inside and outside [begin end] of segments
-        if ( it != segments.end() ) {
-
-            if ( tick < it->first  )
-                color = color_out;
-            else if ( tick > it->second ){
-                color = color_out;
-                it ++;
-            }
-            else
-                color = color_in;
-        }
-
-        // draw a tick mark each step
-        window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), color);
-
-        // next tick
-        tick += tick_step;
-        tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
-    }
-
-    // loop over segments and EMPTY the list
-    // ticks for segments begin & end
-    for (std::list< std::pair<guint64, guint64> >::iterator s = segments.begin(); s != segments.end(); s++){
-        tick_percent = static_cast<float> ( static_cast<double>(s->first) / static_cast<double>(duration) );
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
-        window->DrawList->AddLine( pos, pos + ImVec2(0.f, timeline_bbox.GetHeight()), color_in);
-        tick_percent = static_cast<float> ( static_cast<double>(s->second) / static_cast<double>(duration) );
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
-        window->DrawList->AddLine( pos, pos + ImVec2(0.f, timeline_bbox.GetHeight()), color_in);
-    }
-    segments.clear();
-
-    // tick EOF
-    window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetTR() + ImVec2(0.f, fontsize), color_in);
-
-    // render text : duration and current time
-    char overlay_buf[24];
-    ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(duration).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    overlay_size += ImVec2(3.f, 3.f);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( bbox.GetBR() - overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
-
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( bbox.GetBL() + overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
-
-
-    // draw slider grab handle
-    if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
-        window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
-    }
-
-    // draw the cursor
-    color = ImGui::GetColorU32(style.Colors[ImGuiCol_SliderGrab]);
-    pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-    ImGui::RenderArrow(window->DrawList, pos, color, ImGuiDir_Up, cursor_scale);
-
-    return left_mouse_press;
-}
-
 
 void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, const char* title, bool expand)
 {

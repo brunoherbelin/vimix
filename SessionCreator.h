@@ -18,6 +18,7 @@ class SessionCreator : public Visitor {
 
 public:
     SessionCreator(Session *session = nullptr);
+    ~SessionCreator();
 
     bool load(const std::string& filename);
     inline Session *session() const { return session_; }

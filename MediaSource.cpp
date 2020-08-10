@@ -86,7 +86,7 @@ void MediaSource::init()
             attach(renderbuffer);
 
             // icon in mixing view
-            if (mediaplayer_->duration() == GST_CLOCK_TIME_NONE) {
+            if (mediaplayer_->isImage()) {
                 overlays_[View::MIXING]->attach( new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
                 overlays_[View::LAYER]->attach( new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
             }

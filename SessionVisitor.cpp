@@ -147,7 +147,16 @@ void SessionVisitor::visit(MediaPlayer &n)
     newelement->SetAttribute("loop", (int) n.loop());
     newelement->SetAttribute("speed", n.playSpeed());
 
- // TODO Segments
+    // gaps in timeline
+    XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
+    std::list< std::pair<guint64, guint64> > gaps = n.timeline.gaps();
+    for( auto it = gaps.begin(); it!= gaps.end(); it++) {
+        XMLElement *g = xmlDoc_->NewElement("Interval");
+        g->SetAttribute("begin", (*it).first);
+        g->SetAttribute("end", (*it).second);
+        gapselement->InsertEndChild(g);
+    }
+    newelement->InsertEndChild(gapselement);
 
     xmlCurrent_->InsertEndChild(newelement);
 }

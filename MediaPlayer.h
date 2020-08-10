@@ -75,6 +75,10 @@ public:
      * */
     bool isEnabled() const;
     /**
+     * True if its an image
+     * */
+    bool isImage() const;
+    /**
      * Pause / Play
      * Can play backward if play speed is negative
      * */
@@ -136,13 +140,13 @@ public:
      * */
     GstClockTime position();
     /**
-     * Get total duration time
-     * */
-    GstClockTime duration();
-    /**
-     * Get duration of one frame
-     * */
-    GstClockTime frameDuration();
+     * @brief timeline contains all info on timing:
+     * - start position : timeline.start()
+     * - end position   : timeline.end()
+     * - duration       : timeline.duration()
+     * - frame duration : timeline.step()
+     */
+    Timeline timeline;
     /**
      * Get framerate of the media
      * */
@@ -195,9 +199,11 @@ private:
     guint par_width_;  // width to match pixel aspect ratio
     guint bitrate_;
     GstClockTime position_;
-    GstClockTime start_position_;
-    GstClockTime duration_;
-    GstClockTime frame_duration_;
+
+//    GstClockTime start_position_;
+//    GstClockTime duration_;
+//    GstClockTime frame_duration_;
+
     gdouble rate_;
     LoopMode loop_;
     gdouble framerate_;
@@ -276,6 +282,7 @@ private:
     static void callback_end_of_stream (GstAppSink *, gpointer);
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
+
     static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
     static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 

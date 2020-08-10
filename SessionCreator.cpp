@@ -44,6 +44,11 @@ SessionCreator::SessionCreator(Session *session): Visitor(), session_(session)
 
 }
 
+SessionCreator::~SessionCreator()
+{
+    delete xmlDoc_;
+}
+
 bool SessionCreator::load(const std::string& filename)
 {
     XMLError eResult = xmlDoc_->LoadFile(filename.c_str());
@@ -179,6 +184,20 @@ void SessionCreator::visit(MediaPlayer &n)
 {
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
     if (mediaplayerNode) {
+        // timeline
+        XMLElement *gapselement = mediaplayerNode->FirstChildElement("Gaps");
+        if (gapselement) {
+            XMLElement* gap = gapselement->FirstChildElement("Interval");
+            for( ; gap ; gap = gap->NextSiblingElement())
+            {
+                GstClockTime a = GST_CLOCK_TIME_NONE;
+                GstClockTime b = GST_CLOCK_TIME_NONE;
+                gap->QueryUnsigned64Attribute("begin", &a);
+                gap->QueryUnsigned64Attribute("end", &b);
+                n.timeline.addGap( a, b );
+            }
+        }
+        // playing properties
         double speed = 1.0;
         mediaplayerNode->QueryDoubleAttribute("speed", &speed);
         n.setPlaySpeed(speed);

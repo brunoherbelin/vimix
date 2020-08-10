@@ -234,6 +234,7 @@ set(VMIX_SRCS
     Screenshot.cpp
     Resource.cpp
     FileDialog.cpp
+    Timeline.cpp
     MediaPlayer.cpp
     MediaSource.cpp
     FrameBuffer.cpp

@@ -297,7 +297,7 @@ void ImGuiVisitor::visit (Source& s)
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    if ( s.mediaplayer()->duration() == GST_CLOCK_TIME_NONE) {
+    if ( s.mediaplayer()->isImage() ) {
         ImGuiToolkit::Icon(2,9);
         ImGui::SameLine(0, 10);
         ImGui::Text("Image File");

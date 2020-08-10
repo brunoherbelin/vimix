@@ -987,7 +987,7 @@ void UserInterface::RenderPreview()
         if (ImGui::IsItemHovered())
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IM_COL32(5, 5, 5, 100));
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
         }
@@ -1066,7 +1066,7 @@ void MediaController::Render()
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu(ICON_FA_FILM))
+        if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
 
@@ -1127,16 +1127,18 @@ void MediaController::Render()
         static float timeline_zoom = 1.f;
         const float width = ImGui::GetContentRegionAvail().x;
         const float timeline_height = 2.f * (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y);
+        const float segments_height = ImGui::GetFontSize();
+        const float slider_zoom_width = segments_height;
 
         if (Settings::application.widget.media_player_view)
         {
             // set an image height to fill the vertical space, minus the height of control bar
             float image_height = ImGui::GetContentRegionAvail().y;
-            if (mp_->duration() != GST_CLOCK_TIME_NONE) {
-                // leave space for buttons, spacing and timeline
-                image_height -= ImGui::GetFrameHeight() + timeline_height + 3.f * ImGui::GetStyle().ItemSpacing.y;
-                // leave space for scrollbar
-                image_height -= ImGui::GetStyle().ScrollbarSize;
+            if ( !mp_->isImage() ) {
+                // leave space for buttons and timelines
+                image_height -= ImGui::GetFrameHeight() + timeline_height + segments_height ;
+                // leave space for scrollbar & spacing
+                image_height -= ImGui::GetStyle().ScrollbarSize + 3.f * ImGui::GetStyle().ItemSpacing.y;
             }
 
             // display media
@@ -1149,14 +1151,14 @@ void MediaController::Render()
             // display media information
             if (ImGui::IsItemHovered()) {
 
-                float tooltip_height = (follow_active_source_? 3.f:2.f)* ImGui::GetTextLineHeightWithSpacing();
+                float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
 
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                draw_list->AddRectFilled(tooltip_pos,  ImVec2(tooltip_pos.x + width, tooltip_pos.y + tooltip_height), IM_COL32(5, 5, 5, 100));
+                draw_list->AddRectFilled(ImVec2(tooltip_pos.x - 10.f, tooltip_pos.y),
+                                         ImVec2(tooltip_pos.x + width + 10.f, tooltip_pos.y + tooltip_height), IMGUI_COLOR_OVERLAY);
 
                 ImGui::SetCursorScreenPos(tooltip_pos);
-                if (follow_active_source_)
-                    ImGui::Text(" %s", mp_->filename().c_str());
+                ImGui::Text(" %s", mp_->filename().c_str());
                 ImGui::Text(" %s", mp_->codec().c_str());
                 if ( mp_->frameRate() > 0.f )
                     ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
@@ -1166,16 +1168,18 @@ void MediaController::Render()
             }
 
             // display time
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::SetCursorPos( ImVec2(return_to_pos.x + 5, return_to_pos.y - ImGui::GetTextLineHeightWithSpacing()) );
-            ImGui::Text("%s", GstToolkit::time_to_string(mp_->position(), GstToolkit::TIME_STRING_FIXED).c_str());
-            ImGui::PopFont();
+            if ( !mp_->isImage() ) {
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+                ImGui::SetCursorPos( ImVec2(return_to_pos.x + 5, return_to_pos.y - ImGui::GetTextLineHeightWithSpacing()) );
+                ImGui::Text("%s", GstToolkit::time_to_string(mp_->position(), GstToolkit::TIME_STRING_FIXED).c_str());
+                ImGui::PopFont();
+            }
 
             ImGui::SetCursorPos(return_to_pos);
         }
 
         // Control bar
-        if ( mp_->isEnabled() && mp_->duration() != GST_CLOCK_TIME_NONE) {
+        if ( mp_->isEnabled() && !mp_->isImage()) {
 
             float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
@@ -1195,7 +1199,7 @@ void MediaController::Render()
 
                 ImGui::PushButtonRepeat(true);
                 if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD))
-                    mp_->fastForward ();
+                    mp_->jump ();
                 ImGui::PopButtonRepeat();
             }
             else {
@@ -1205,7 +1209,7 @@ void MediaController::Render()
 
                 ImGui::PushButtonRepeat(true);
                 if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_STEP_BACKWARD : ICON_FA_STEP_FORWARD))
-                    mp_->seekNextFrame();
+                    mp_->step();
                 ImGui::PopButtonRepeat();
             }
 
@@ -1224,39 +1228,85 @@ void MediaController::Render()
             // ImGui::SetNextItemWidth(width - 90.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
-            // reset play to x1
+
+            // reset
             ImGui::SameLine(0, spacing);
-            if (ImGuiToolkit::ButtonIcon(19, 15)) {
+            if (ImGuiToolkit::ButtonIcon(11, 14)) {
+                timeline_zoom = 1.f;
                 speed = 1.f;
                 mp_->setPlaySpeed( static_cast<double>(speed) );
                 mp_->setLoop( MediaPlayer::LOOP_REWIND );
             }
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3, 3));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.f, 3.f));
+
+            // Prepare controllibg the current media player with timeline
+//            float *array = mp_->timeline.array();
+//            size_t array_size = mp_->timeline.arraySize();
+            guint64 current_t = mp_->position();
+            guint64 seek_t = current_t;
 
             // scrolling sub-window
             ImGui::BeginChild("##scrolling",
-                              ImVec2(ImGui::GetContentRegionAvail().x - 20.0,
-                                     timeline_height + ImGui::GetStyle().ScrollbarSize ),
+                              ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
+                                     timeline_height + segments_height + ImGui::GetStyle().ScrollbarSize ),
                               false, ImGuiWindowFlags_HorizontalScrollbar);
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
 
-            // custom timeline slider
-            guint64 current_t = mp_->position();
-            guint64 seek_t = current_t;
-            slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t,
-                                                           mp_->duration(), mp_->frameDuration(), timeline_zoom);
+                ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), segments_height -1);
+                size.x *= timeline_zoom;
+
+                // draw position when entering
+//                ImVec2 draw_pos = ImGui::GetCursorPos();
+
+//                // capture user input (invisible)
+//                uint press_index = mp_->timeline.arraySize();
+//                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size-1, size);
+
+//                // behavior on action on array of segments
+//                static bool  active = false;
+//                static float target_value = 0.f;
+//                static uint  starting_index = array_size;
+//                if (pressed != active) {
+//                    active = pressed;
+//                    if (pressed) {
+//                        starting_index = press_index;
+//                        target_value = array[starting_index] > 0.f ? 0.f : 1.f;
+//                    }
+//                    else// action on released
+//                    {
+//                        mp_->timeline.updateGapsFromArray();
+//                    }
+//                }
+//                if (active) {
+//                    for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+//                        array[i] = target_value;
+//                }
+
+//                // back to drawing position to draw the segments data with historgram
+//                ImGui::SetCursorPos(draw_pos);
+//                ImGui::PlotHistogram("##TimelineHistogram", array, array_size-1.f, 0, NULL, 0.0f, 1.0f, size);
+
+                // custom timeline slider
+                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t,
+                                                               mp_->timeline.end(), mp_->timeline.step(), size.x);
+
+                ImGui::PopStyleVar(2);
+            }
             ImGui::EndChild();
 
             // zoom slider
             ImGui::SameLine();
-            ImGui::VSliderFloat("##zoom", ImVec2(17, timeline_height), &timeline_zoom, 1.0, 5.f, "");
+            ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height + segments_height), &timeline_zoom, 1.0, 5.f, "");
             ImGui::PopStyleVar();
 
             // if the seek target time is different from the current position time
             // (i.e. the difference is less than one frame)
-            if ( ABS_DIFF (current_t, seek_t) > mp_->frameDuration() ) {
+            if ( ABS_DIFF (current_t, seek_t) > mp_->timeline.step() ) {
                 // request seek (ASYNC)
-                mp_->seekTo(seek_t);
+                mp_->seek(seek_t);
                 slider_pressed_ = false;
             }
             // play/stop command should be following the playing mode (buttons)
@@ -1267,7 +1317,8 @@ void MediaController::Render()
             // NB: The seek command performed an ASYNC state change, but
             // gst_element_get_state called in isPlaying(true) will wait
             // for the state change to complete : do not remove it!
-            if ( mp_->isPlaying(true) != media_play ) {
+// TODO : DO NOT ask for status every frame : high performance cost
+            if ( mp_->isPlaying() != media_play ) {
                 mp_->play( media_play );
             }
 
@@ -1759,10 +1810,11 @@ void Navigator::RenderNewPannel()
                 std::list<std::string> recent = Settings::application.recentImport.filenames;
                 for (std::list<std::string>::iterator path = recent.begin(); path != recent.end(); path++ )
                 {
-                    if ( SystemToolkit::file_exists(*path)) {
-                        std::string label = path->substr( path->size() - MIN( 35, path->size()) );
+                    std::string recentpath(*path);
+                    if ( SystemToolkit::file_exists(recentpath)) {
+                        std::string label = SystemToolkit::trunc_filename(recentpath, 35);
                         if (ImGui::Selectable( label.c_str() )) {
-                            new_source_preview_.setSource( Mixer::manager().createSourceFile(path->c_str()), label);
+                            new_source_preview_.setSource( Mixer::manager().createSourceFile(recentpath.c_str()), label);
                         }
                     }
                 }
@@ -1773,7 +1825,7 @@ void Navigator::RenderNewPannel()
                 // show preview
                 new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, true);
                 // or press Validate button
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeight() / 2.f);
+                ImGui::Spacing();
                 if ( ImGui::Button(ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                     Mixer::manager().addSource(new_source_preview_.getSource());
                     selected_button[NAV_NEW] = false;
@@ -2023,18 +2075,22 @@ void Navigator::RenderMainPannel()
         ImGui::ListBoxHeader("##Sessions", 5);
         static std::string file_info = "";
         static std::list<std::string>::iterator file_selected = sessions_list.end();
-        for(auto filename = sessions_list.begin(); filename != sessions_list.end(); filename++) {
-            if (ImGui::Selectable( SystemToolkit::filename(*filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
-                if (ImGui::IsMouseDoubleClicked(0)) {
-                    Mixer::manager().open( *filename );
+        for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
+            std::string sessionfilename(*it);
+            std::string shortname = SystemToolkit::filename(*it);
+            if (sessionfilename.empty())
+                break;
+            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    Mixer::manager().open( sessionfilename );
                     session_selected = true;
                 }
                 else  {
-                    file_info = SessionCreator::info(*filename);
-                    file_selected = filename;
+                    file_info = SessionCreator::info(sessionfilename);
+                    file_selected = it;
                 }
             }
-            if (ImGui::IsItemHovered() && file_selected != filename) {
+            if (ImGui::IsItemHovered() && file_selected != it) {
                 file_info.clear();
                 file_selected = sessions_list.end();
             }
@@ -2105,7 +2161,7 @@ void Navigator::RenderMainPannel()
         else {
             ImGui::SetCursorPosY(height_ -h);
         }
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetTextLineHeightWithSpacing());
+        ImGui::Spacing();
         if ( ImGui::Button( ICON_FA_CROW " vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().show_vimix_config = true;
         if ( ImGui::Button("    ImGui    "))
@@ -2158,55 +2214,7 @@ int hover(const char *label)
 
 }
 
-bool hoverer(const char* label, uint *index, int min, int max, ImVec2 size)
-{
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-
-    // get id
-//    ImGuiContext& g = *GImGui;
-    const ImGuiID id = window->GetID(label);
-
-    ImVec2 pos = window->DC.CursorPos;
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    // read user input from system
-    bool left_mouse_press = false;
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        if (focus_requested || left_mouse_press)
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-
-    // time Slider behavior
-    ImRect grab_slider_bb;
-    uint _zero = min;
-    uint _end = max;
-    bool pressed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
-                                               &_end, "%d", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
-
-//    bbox = ImRect(pos, pos + ImVec2(size.x, size.y / 2.f));
-//    if (ImGui::IsMouseHoveringRect(bbox.GetTL(), bbox.GetBR()))
-//        *val = 1.f;
-//    else
-//        *val = 0.f;
-
-    return pressed;
-
-}
+#define SEGMENT_ARRAY_MAX 1000
 
 
 void ShowSandbox(bool* p_open)
@@ -2223,79 +2231,108 @@ void ShowSandbox(bool* p_open)
 
     std::list< std::pair<guint64, guint64> > segments;
     segments.push_back( std::make_pair<guint64, guint64>(GST_SECOND*1, GST_SECOND*2) );
-    guint64 duration = GST_SECOND * 4;
+    guint64 duration = GST_SECOND * 6;
     guint64 step = GST_MSECOND * 20;
     static guint64 t = 0;
 
-    bool slider_pressed = ImGuiToolkit::TimelineSliderEdit("timeline", &t, duration, step, segments);
+//    bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, duration, step);
 
+    static float *arr = nullptr;
+    static size_t array_size = 0;
+    //    static float arr[] = { 0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+    //                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f };
 
+    MediaPlayer *mp_ = nullptr;
+    auto po = MediaPlayer::begin();
+    if (po != MediaPlayer::end())
+        mp_ = *po;
+    if (mp_) {
+//        duration = mp_->duration();
+//        step = mp_->frameDuration();
+//        t = mp_->position();
 
-    static float arr[] = { 0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                           0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                         0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f };
+//        arr = mp_->timelineArray();
+//        array_size = mp_->timelineArraySize();
 
-    ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 20);
+//        if (arr == nullptr) {
+//            array_size = MIN( SEGMENT_ARRAY_MAX, (size_t) duration / (size_t) step);
 
-    // draw position when entering
-    ImVec2 draw_pos = ImGui::GetCursorPos();
-    // plot the histogram
-    uint press_index = IM_ARRAYSIZE(arr);
-    bool pressed = hoverer("test", &press_index, 0, IM_ARRAYSIZE(arr)-1, size);
+//            arr = (float *) malloc(array_size * sizeof(float));
 
-    static bool active = false;
-    static float target_value = 0.f;
-    static uint starting_index = IM_ARRAYSIZE(arr);
+//            for (int i = 0; i < array_size; ++i) {
+//                arr[i] = 1.f;
+//            }
+//        }
 
-    if (pressed != active) {
-        active = pressed;
-        starting_index = press_index;
-        target_value = arr[starting_index] > 0.f ? 0.f : 1.f;
     }
 
-    if (active) {
-        for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-            arr[i] = target_value;
+    if (arr != nullptr)
+    {
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
+
+        ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 20);
+
+        // draw position when entering
+        ImVec2 draw_pos = ImGui::GetCursorPos();
+        // plot the histogram
+        uint press_index = IM_ARRAYSIZE(arr);
+        bool pressed = ImGuiToolkit::InvisibleSliderInt("test", &press_index, 0, array_size-1, size);
+
+        static bool  active = false;
+        static float target_value = 0.f;
+        static uint  starting_index = array_size;
+
+        if (pressed != active) {
+            active = pressed;
+            starting_index = press_index;
+            target_value = arr[starting_index] > 0.f ? 0.f : 1.f;
+        }
+
+        if (active) {
+            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+                arr[i] = target_value;
+        }
+
+        // back to
+        ImGui::SetCursorPos(draw_pos);
+        ImGui::PlotHistogram("Histogram", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
+
+        //    ImGui::PopStyleColor(1);
+
+        bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, duration, step, size.x);
+
+        ImGui::PopStyleVar(2);
+
+        ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
+        ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
+        ImGui::Text("Hover    Pressed %s   v = %d", pressed ? "on" : "off", press_index);
+
+        static int w = 0;
+        ImGui::SetNextItemWidth(size.x);
+        ImGui::SliderInt("##int", &w, 0, array_size-1);
+
     }
-
-
-
-    // back to
-    ImGui::SetCursorPos(draw_pos);
-//    ImGui::PlotLines("Lines", arr, IM_ARRAYSIZE(arr), 0, NULL, 0.0f, 1.0f, size);
-
-//    ImVec4* colors = ImGui::GetStyle().Colors;
-//    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, colors[ImGuiCol_Tab]);
-
-    ImGui::PlotHistogram("Histogram", arr, IM_ARRAYSIZE(arr)-1, 0, NULL, 0.0f, 1.0f, size);
-
-//    ImGui::PopStyleColor(1);
-
-    ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
-    ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
-    ImGui::Text("Hover    Pressed %s   v = %d", pressed ? "on" : "off", press_index);
-
-    static int w = 0;
-    ImGui::SetNextItemWidth(size.x);
-    ImGui::SliderInt("##int", &w, 0, IM_ARRAYSIZE(arr)-1);
 
     ImGui::End();
 }
