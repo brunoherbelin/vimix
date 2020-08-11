@@ -154,6 +154,10 @@ Source::~Source()
     for (auto it = clones_.begin(); it != clones_.end(); it++)
         (*it)->origin_ = nullptr;
 
+    // don't forget that the processing shader
+    // could be created but not used
+    if ( renderingshader_ != processingshader_ )
+        delete processingshader_;
 }
 
 void Source::setName (const std::string &name)

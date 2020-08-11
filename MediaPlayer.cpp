@@ -42,9 +42,6 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     width_ = par_width_ = 640;
     height_ = 480;
     position_ = GST_CLOCK_TIME_NONE;
-//    duration_ = GST_CLOCK_TIME_NONE;
-//    start_position_ = GST_CLOCK_TIME_NONE;
-//    frame_duration_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
 
@@ -124,7 +121,7 @@ void MediaPlayer::execute_open()
     //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
 
-    // build string describing pipeline
+    // Build string describing pipeline
     // NB: video convertion chroma-resampler
     //            Duplicates the samples when upsampling and drops when downsampling 0
     //            Uses linear interpolation 1 (default)
@@ -161,8 +158,6 @@ void MediaPlayer::execute_open()
 
         // instruct the sink to send samples synched in time
         gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
-//        gst_base_sink_set_max_lateness (GST_BASE_SINK(sink), 0 );
-//        gst_base_sink_set_processing_deadline (GST_BASE_SINK(sink), 0 );
 
         // instruct sink to use the required caps
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
@@ -213,16 +208,17 @@ void MediaPlayer::execute_open()
         return;
     }
 
+    // in case discoverer failed to get duration
+    if (timeline.end() == GST_CLOCK_TIME_NONE) {
+        gint64 d = GST_CLOCK_TIME_NONE;
+        if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
+            timeline.setEnd(d);
+    }
+
     // all good
     Log::Info("MediaPlayer %s Open %s (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
     ready_ = true;
 
-//    // in case discoverer failed to get duration
-//    if (timeline.end() == GST_CLOCK_TIME_NONE) {
-//        gint64 d = GST_CLOCK_TIME_NONE;
-//        if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
-//            timeline.setEnd(d);
-//    }
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -268,14 +264,13 @@ void MediaPlayer::close()
         pipeline_ = nullptr;
     }
 
-//    // cleanup eventual remaining frame related memory
-//    for(guint i = 0; i < N_VFRAME; i++){
-////        frame_[i].access.lock();
-//        if (frame_[i].vframe.buffer)
-//            gst_video_frame_unmap(&frame_[i].vframe);
-//        frame_[i].status = EMPTY;
-////        frame_[i].access.unlock();
-//    }
+    // cleanup eventual remaining frame memory
+    for(guint i = 0; i < N_VFRAME; i++){
+        if ( frame_[i].full ) {
+            gst_video_frame_unmap(&frame_[i].vframe);
+            frame_[i].status = INVALID;
+        }
+    }
 
     // cleanup opengl texture
     if (textureindex_)
@@ -463,7 +458,6 @@ void MediaPlayer::seek(GstClockTime pos)
     // apply seek
     GstClockTime target = CLAMP(pos, 0, timeline.end());
 //    GstClockTime target = CLAMP(pos, timeline.start(), timeline.end());
-    // TODO: confirm that PTS are not possibly ZERO (use of start() is neceessary)
     execute_seek_command(target);
 
 }
@@ -603,7 +597,7 @@ void MediaPlayer::update()
     guint read_index = 0;
     bool need_loop = false;
 
-    // locked access to last index
+    // locked access to changing index
     index_lock_.lock();
     read_index = last_index_;
     // Do NOT miss an EOS or a pre-roll
@@ -615,15 +609,11 @@ void MediaPlayer::update()
     }
     index_lock_.unlock();
 
-//    // lock frame while reading it
-//    if (!frame_[read_index].access.try_lock())
-//        // do not block rendering if everything is too busy
-//        return;
-
+    // lock frame while reading it
     frame_[read_index].access.lock();
 
     // do not fill a frame twice
-    if (frame_[read_index].status != EMPTY ) {
+    if (frame_[read_index].status != INVALID ) {
 
 
         // is this an End-of-Stream frame ?
@@ -632,22 +622,22 @@ void MediaPlayer::update()
             // will execute seek command below (after unlock)
             need_loop = true;
         }
-        // otherwise just fill non-empty samples
-        else
+        // otherwise just fill non-empty SAMPLE or PREROLL
+        else if (frame_[read_index].full)
         {
             // fill the texture with the frame at reading index
             fill_texture(read_index);
 
-            // double update for pre-roll and dual FPO (ensure frame is displayed now)
+            // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
             if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
                 fill_texture(read_index);
         }
 
-        // we just displayed a vframe : set position time to vframe PTS
+        // we just displayed a vframe : set position time to frame PTS
         position_ = frame_[read_index].position;
 
         // avoid reading it again
-        frame_[read_index].status = EMPTY;
+        frame_[read_index].status = INVALID;
 
 //        // TODO : try to do something when the update is too slow :(
 //        if ( timecount_.dt() > frame_duration_  * 2) {
@@ -805,18 +795,18 @@ double MediaPlayer::updateFrameRate() const
 
 // CALLBACKS
 
-bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
+bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 {
     // lock access to frame
     frame_[write_index_].access.lock();
 
     // always empty frame before filling it again
-    if (frame_[write_index_].vframe.buffer) {
+    if ( frame_[write_index_].full ) {
         gst_video_frame_unmap(&frame_[write_index_].vframe);
-        frame_[write_index_].vframe.buffer = nullptr;
+        frame_[write_index_].full = false;
     }
 
-    // indicate status of frame received
+    // accept status of frame received
     frame_[write_index_].status = status;
 
     // a buffer is given (not EOS)
@@ -827,10 +817,13 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
         {
             Log::Info("MediaPlayer %s Failed to map the video buffer", id_.c_str());
             // free access to frame & exit
-            frame_[write_index_].status = EMPTY;
+            frame_[write_index_].status = INVALID;
             frame_[write_index_].access.unlock();
             return false;
         }
+
+        // successfully filled the frame
+        frame_[write_index_].full = true;
 
         // validate frame format
         if( GST_VIDEO_INFO_IS_RGB(&(frame_[write_index_].vframe).info) && GST_VIDEO_INFO_N_PLANES(&(frame_[write_index_].vframe).info) == 1)
@@ -842,9 +835,14 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, MediaPlayer::FrameStatus status)
             if (timeline.start() == GST_CLOCK_TIME_NONE)
                 timeline.setStart(buf->pts);
         }
+        // full but invalid frame : will be deleted next iteration
+        // (should never happen)
+        else
+            frame_[write_index_].status = INVALID;
     }
-    // give a position to EOS
+    // else; null buffer for EOS: give a position
     else {
+        frame_[write_index_].status = EOS;
         frame_[write_index_].position = rate_ > 0.0 ? timeline.end() : timeline.start();
     }
 
@@ -885,26 +883,25 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
     if (sample != NULL) {
 
         // get buffer from sample
-        GstBuffer *buf = /*gst_buffer_ref */( gst_sample_get_buffer (sample) );
+        GstBuffer *buf = gst_sample_get_buffer (sample);
 
+        // send frames to media player only if ready
         MediaPlayer *m = (MediaPlayer *)p;
         if (m && m->ready_) {
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;
-
             // loop negative rate: emulate an EOS
-            if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
+            else if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }
-
-        // free buffers
-//        gst_buffer_unref (buf);
-        gst_sample_unref (sample);
     }
     else
         ret = GST_FLOW_FLUSHING;
+
+    // release sample
+    gst_sample_unref (sample);
 
     return ret;
 }
@@ -914,35 +911,31 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
     GstFlowReturn ret = GST_FLOW_OK;
 
     // non-blocking read new sample
-    GstSample *sample = gst_app_sink_try_pull_sample(sink, 0);
+    GstSample *sample = gst_app_sink_pull_sample(sink);
 
     // if got a valid sample
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
-        // get buffer from sample
-        GstBuffer *buf = /*gst_buffer_ref*/ ( gst_sample_get_buffer (sample) );
+        // get buffer from sample (valid until sample is released)
+        GstBuffer *buf = gst_sample_get_buffer (sample) ;
 
+        // send frames to media player only if ready
         MediaPlayer *m = (MediaPlayer *)p;
         if (m && m->ready_) {
-
             // fill frame with buffer
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
-
             // loop negative rate: emulate an EOS
-            if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
+            else if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
-
         }
-
-        // free buffer & sample
-//        gst_buffer_unref (buf);
-        gst_sample_unref (sample);
-
     }
-//    else
-//        ret = GST_FLOW_FLUSHING;
+    else
+        ret = GST_FLOW_FLUSHING;
+
+    // release sample
+    gst_sample_unref (sample);
 
     return ret;
 }

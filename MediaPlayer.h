@@ -240,21 +240,22 @@ private:
 
     // frame stack
     typedef enum  {
-        EMPTY = 0,
-        SAMPLE = 1,
-        PREROLL = 2,
-        EOS = 4
+        SAMPLE = 0,
+        PREROLL = 1,
+        EOS = 2,
+        INVALID = 3
     } FrameStatus;
 
     struct Frame {
         GstVideoFrame vframe;
         FrameStatus status;
+        bool full;
         GstClockTime position;
         std::mutex access;
 
         Frame() {
-            vframe.buffer = nullptr;
-            status = EMPTY;
+            full = false;
+            status = INVALID;
             position = GST_CLOCK_TIME_NONE;
         }
     };
