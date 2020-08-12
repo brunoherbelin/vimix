@@ -73,53 +73,67 @@ static std::string sessionFileDialogFilename_ = "";
 
 static void SessionFileDialogOpen(std::string path)
 {
-     fileDialogPending_ = true;
-     sessionFileDialogLoadFinished_ = false;
+    if (fileDialogPending_)
+        return;
 
-     char const * open_file_name;
-     char const * open_pattern[1] = { "*.mix" };
+    fileDialogPending_ = true;
+    sessionFileDialogLoadFinished_ = false;
 
-     open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
+    char const * open_file_name;
+    char const * open_pattern[1] = { "*.mix" };
 
-     if (!open_file_name)
+    open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
+
+    if (!open_file_name)
         sessionFileDialogFilename_ = "";
-     else
+    else
         sessionFileDialogFilename_ = std::string( open_file_name );
 
-     sessionFileDialogLoadFinished_ = true;
+    sessionFileDialogLoadFinished_ = true;
+    fileDialogPending_ = false;
 }
 
 static void SessionFileDialogSave(std::string path)
 {
-     fileDialogPending_ = true;
-     sessionFileDialogSaveFinished_ = false;
+    if (fileDialogPending_)
+        return;
 
-     char const * save_file_name;
-     char const * save_pattern[1] = { "*.mix" };
+    fileDialogPending_ = true;
+    sessionFileDialogSaveFinished_ = false;
 
-     save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
+    char const * save_file_name;
+    char const * save_pattern[1] = { "*.mix" };
 
-     if (!save_file_name)
+    save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
+
+    if (!save_file_name)
         sessionFileDialogFilename_ = "";
-     else
-     {
+    else
+    {
         sessionFileDialogFilename_ = std::string( save_file_name );
         // check extension
         std::string extension = sessionFileDialogFilename_.substr(sessionFileDialogFilename_.find_last_of(".") + 1);
         if (extension != "mix")
             sessionFileDialogFilename_ += ".mix";
-     }
+    }
 
-     sessionFileDialogSaveFinished_ = true;
+    sessionFileDialogSaveFinished_ = true;
+    fileDialogPending_ = false;
 }
 
 static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, const std::string &path)
 {
     if (fileDialogPending_)
         return;
+
     fileDialogPending_ = true;
 
-    char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg", "*.avi", "*.mov", "*.mkv",  "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.asf", "*.jpg", "*.png", "*.gif", "*.tif", "*.svg" };
+    char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg",
+                                      "*.avi", "*.mov", "*.mkv",
+                                      "*.webm", "*.mod", "*.wmv",
+                                      "*.mxf", "*.ogg", "*.flv",
+                                      "*.asf", "*.jpg", "*.png",
+                                      "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
 
     if (SystemToolkit::file_exists(path))
@@ -142,6 +156,7 @@ static void FolderDialogOpen(char *folder, std::atomic<bool> *success, const std
 {
     if (fileDialogPending_)
         return;
+
     fileDialogPending_ = true;
 
      char const * open_file_name;
@@ -251,10 +266,15 @@ void UserInterface::handleKeyboard()
             Rendering::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
-            // Open session
-            sessionFileDialogImport_ = false;
-            std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
-            navigator.hidePannel();
+            // SHIFT + CTRL + O : reopen current session
+            if (keyboard_modifier_active && !Mixer::manager().session()->filename().empty())
+                Mixer::manager().load( Mixer::manager().session()->filename() );
+            else {
+                // CTRL + O : Open session
+                sessionFileDialogImport_ = false;
+                std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
+                navigator.hidePannel();
+            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
@@ -568,7 +588,6 @@ void UserInterface::NewFrame()
                 Mixer::manager().open(sessionFileDialogFilename_);
             Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
-        fileDialogPending_ = false;
     }
     if (sessionFileDialogSaveFinished_) {
         sessionFileDialogSaveFinished_ = false;
@@ -576,7 +595,6 @@ void UserInterface::NewFrame()
             Mixer::manager().saveas(sessionFileDialogFilename_);
             Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
         }
-        fileDialogPending_ = false;
     }
 
     // overlay to ensure file dialog is modal
