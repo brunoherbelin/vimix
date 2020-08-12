@@ -14,6 +14,7 @@
 #include "MediaPlayer.h"
 
 #include <tinyxml2.h>
+#include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 
@@ -40,22 +41,20 @@ std::string SessionCreator::info(const std::string& filename)
 
 SessionCreator::SessionCreator(Session *session): Visitor(), session_(session)
 {
-    xmlDoc_ = new XMLDocument;
 
 }
 
 SessionCreator::~SessionCreator()
 {
-    delete xmlDoc_;
 }
 
 bool SessionCreator::load(const std::string& filename)
 {
-    XMLError eResult = xmlDoc_->LoadFile(filename.c_str());
+    XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
     if ( XMLResultError(eResult))
         return false;
 
-    XMLElement *header = xmlDoc_->FirstChildElement(APP_NAME);
+    XMLElement *header = xmlDoc_.FirstChildElement(APP_NAME);
     if (header == nullptr) {
         Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
         return false;
@@ -70,10 +69,10 @@ bool SessionCreator::load(const std::string& filename)
     }
 
     // ok, ready to read sources
-    loadSession( xmlDoc_->FirstChildElement("Session") );
+    loadSession( xmlDoc_.FirstChildElement("Session") );
     // excellent, session was created: load optionnal config
     if (session_){
-        loadConfig( xmlDoc_->FirstChildElement("Views") );
+        loadConfig( xmlDoc_.FirstChildElement("Views") );
     }
 
     return true;

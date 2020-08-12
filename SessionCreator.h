@@ -2,13 +2,13 @@
 #define SESSIONCREATOR_H
 
 #include "Visitor.h"
-#include "tinyxml2Toolkit.h"
+#include <tinyxml2.h>
 
 class Session;
 
 class SessionCreator : public Visitor {
 
-    tinyxml2::XMLDocument *xmlDoc_;
+    tinyxml2::XMLDocument xmlDoc_;
     tinyxml2::XMLElement *xmlCurrent_;
     Session *session_;
 
