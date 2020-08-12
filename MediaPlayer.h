@@ -2,6 +2,7 @@
 #define __GST_MEDIA_PLAYER_H_
 
 #include <string>
+#include <atomic>
 #include <mutex>
 
 // GStreamer
@@ -199,11 +200,6 @@ private:
     guint par_width_;  // width to match pixel aspect ratio
     guint bitrate_;
     GstClockTime position_;
-
-//    GstClockTime start_position_;
-//    GstClockTime duration_;
-//    GstClockTime frame_duration_;
-
     gdouble rate_;
     LoopMode loop_;
     gdouble framerate_;
@@ -215,9 +211,10 @@ private:
     GstVideoInfo v_frame_video_info_;
 
     // status
-    bool ready_;
-    bool failed_;
+    std::atomic<bool> ready_;
+    std::atomic<bool> failed_;
     bool seekable_;
+    bool seeking_;
     bool isimage_;
     bool interlaced_;
     bool enabled_;

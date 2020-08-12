@@ -19,6 +19,8 @@ using namespace std;
 #define MEDIA_PLAYER_DEBUG
 #endif
 
+#define USE_GST_APPSINK_CALLBACKS
+
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
 MediaPlayer::MediaPlayer(string name) : id_(name)
@@ -33,11 +35,13 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     ready_ = false;
     failed_ = false;
     seekable_ = false;
+    seeking_ = false;
     isimage_ = false;
     interlaced_ = false;
     enabled_ = true;
     rate_ = 1.0;
     framerate_ = 0.0;
+    bitrate_ = 0;
 
     width_ = par_width_ = 640;
     height_ = 480;
@@ -100,17 +104,21 @@ void MediaPlayer::open(string path)
     g_signal_connect (discoverer_, "discovered", G_CALLBACK (callback_discoverer_process), this);
     // set callback when finished discovering
     g_signal_connect (discoverer_, "finished", G_CALLBACK (callback_discoverer_finished), this);
-    
+
     // start discoverer
     gst_discoverer_start(discoverer_);
+
     // Add the request to process asynchronously the URI 
     if (!gst_discoverer_discover_uri_async (discoverer_, uri_.c_str())) {
-        Log::Warning("MediaPlayer %s Failed to start discovering URI '%s'\n", id_.c_str(), uri_.c_str());
+        Log::Warning("MediaPlayer %s Failed to open file '%s'\n", id_.c_str(), uri_.c_str());
         g_object_unref (discoverer_);
         discoverer_ = nullptr;
         failed_ = true;
     }
 
+#ifdef MEDIA_PLAYER_DEBUG
+        Log::Info("MediaPlayer %s checking '%s'", id_.c_str(), uri_.c_str());
+#endif
     // and wait for discoverer to finish...
 }
 
@@ -163,30 +171,30 @@ void MediaPlayer::execute_open()
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
 
         // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 100);
+        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
         gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
-//        // set the callbacks
-//        GstAppSinkCallbacks callbacks;
-//        callbacks.new_preroll = callback_new_preroll;
-//        if (isimage_) {
-//            callbacks.eos = NULL;
-//            callbacks.new_sample = NULL;
-//        }
-//        else {
-//            callbacks.eos = callback_end_of_stream;
-//            callbacks.new_sample = callback_new_sample;
-//        }
-//        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
-//        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-
-        // connect callbacks
+#ifdef USE_GST_APPSINK_CALLBACKS
+        // set the callbacks
+        GstAppSinkCallbacks callbacks;
+        callbacks.new_preroll = callback_new_preroll;
+        if (isimage_) {
+            callbacks.eos = NULL;
+            callbacks.new_sample = NULL;
+        }
+        else {
+            callbacks.eos = callback_end_of_stream;
+            callbacks.new_sample = callback_new_sample;
+        }
+        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+#else
+        // connect signals callbacks
         g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
         g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
         g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
         gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
-
-
+#endif
         // done with ref to sink
         gst_object_unref (sink);
     } 
@@ -203,7 +211,7 @@ void MediaPlayer::execute_open()
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("MediaPlayer %s Could not open %s", id_.c_str(), uri_.c_str());
+        Log::Warning("MediaPlayer %s Could not open '%s'", id_.c_str(), uri_.c_str());
         failed_ = true;
         return;
     }
@@ -216,9 +224,8 @@ void MediaPlayer::execute_open()
     }
 
     // all good
-    Log::Info("MediaPlayer %s Open %s (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
+    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
     ready_ = true;
-
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -324,8 +331,10 @@ void MediaPlayer::enable(bool on)
 
         enabled_ = on;
 
+        // default to pause
         GstState requested_state = GST_STATE_PAUSED;
 
+        // unpause only if enabled
         if (enabled_) {
             requested_state = desired_state_;
         }
@@ -353,7 +362,7 @@ bool MediaPlayer::isImage() const
 
 void MediaPlayer::play(bool on)
 {
-    // cannot play an image
+    // ignore if disabled, and cannot play an image
     if (!enabled_ || isimage_)
         return;
 
@@ -443,7 +452,7 @@ void MediaPlayer::step()
     if (!enabled_ || isPlaying())
         return;
 
-    if ( position_ == ( rate_ < 0.0 ? timeline.start() : timeline.end() ) )
+    if ( ( rate_ < 0.0 && position_ <= timeline.start() ) || ( rate_ > 0.0 && position_ >= timeline.end() ) )
         rewind();
 
     // step 
@@ -651,10 +660,17 @@ void MediaPlayer::update()
     if (isimage_)
         return;
 
+    if (seeking_) {
+        GstState state;
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        seeking_ = false;
+    }
+
     // manage loop mode
     if (need_loop) {
         execute_loop_command();
     }
+
 
     // manage timeline
 //    TimeInterval gap;
@@ -706,24 +722,6 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     if ( ABS(rate_) > 1.0 )
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;
 
-//    bool ret = false;
-
-//    if (rate_ > 0) {
-
-//        ret = gst_element_seek (pipeline_, rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-//                                 GST_SEEK_TYPE_SET, seek_pos,
-//                                 GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
-//    }
-//    else {
-
-//        ret = gst_element_seek (pipeline_, rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-//                                GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE,
-//                                GST_SEEK_TYPE_SET, seek_pos);
-//    }
-
-//    if (!ret)
-//         Log::Warning("MediaPlayer %s Seek failed", gst_element_get_name(pipeline_));
-
     // create seek event depending on direction
     GstEvent *seek_event = nullptr;
     if (rate_ > 0) {
@@ -739,6 +737,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     if (seek_event && !gst_element_send_event(pipeline_, seek_event) )
         Log::Warning("MediaPlayer %s Seek failed", id_.c_str());
     else {
+        seeking_ = true;
 #ifdef MEDIA_PLAYER_DEBUG
         Log::Info("MediaPlayer %s Seek %ld %f", id_.c_str(), seek_pos, rate_);
 #endif
@@ -832,8 +831,10 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             frame_[write_index_].position = buf->pts;
 
             // set the start position (i.e. pts of first frame we got)
-            if (timeline.start() == GST_CLOCK_TIME_NONE)
+            if (timeline.start() == GST_CLOCK_TIME_NONE) {
                 timeline.setStart(buf->pts);
+                Log::Info("Timeline %ld  [%ld %ld]", timeline.numFrames(), timeline.start(), timeline.end());
+            }
         }
         // full but invalid frame : will be deleted next iteration
         // (should never happen)
@@ -954,7 +955,7 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
             m->discoverer_message_ << "Invalid URI: " << uri;
         break;
         case GST_DISCOVERER_ERROR:
-            m->discoverer_message_ << "Error: " << err->message;
+            m->discoverer_message_ << "Warning: " << err->message;
         break;
         case GST_DISCOVERER_TIMEOUT:
             m->discoverer_message_ << "Time out";
@@ -966,10 +967,11 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            m->discoverer_message_ << "Unknown file format / " << str;
+            m->discoverer_message_ << "Warning: Unknown file format / " << str;
             g_free (str);
         }
         break;
+        default:
         case GST_DISCOVERER_OK:
         break;
     }
@@ -988,12 +990,12 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
                 GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
                 m->width_ = gst_discoverer_video_info_get_width(vinfo);
                 m->height_ = gst_discoverer_video_info_get_height(vinfo);
-                m->isimage_ = gst_discoverer_video_info_is_image(vinfo);
                 m->interlaced_ = gst_discoverer_video_info_is_interlaced(vinfo);
                 m->bitrate_ = gst_discoverer_video_info_get_bitrate(vinfo);
                 guint parn = gst_discoverer_video_info_get_par_num(vinfo);
                 guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
                 m->par_width_ = (m->width_ * parn) / pard;
+                m->isimage_ = gst_discoverer_video_info_is_image(vinfo);
                 // if its a video, it duration, framerate, etc.
                 if ( !m->isimage_ ) {
                     m->timeline.setEnd( gst_discoverer_info_get_duration (info) );
@@ -1028,7 +1030,7 @@ void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDis
         gst_discoverer_stream_info_list_free(streams);
 
         if (!foundvideostream) {
-            m->discoverer_message_ << "No video stream.";
+            m->discoverer_message_ << "Warning: No video stream.";
         }
     
     }
@@ -1042,7 +1044,7 @@ void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaP
         if ( m->discoverer_message_.str().empty())
             m->execute_open();
         else {
-            Log::Warning("MediaPlayer %s Failed to open %s\n%s", m->id_.c_str(), m->uri_.c_str(), m->discoverer_message_.str().c_str());
+            Log::Warning("MediaPlayer %s Failed to open '%s'\n%s", m->id_.c_str(), m->uri_.c_str(), m->discoverer_message_.str().c_str());
             m->discoverer_message_.clear();
             m->failed_ = true;
         }
