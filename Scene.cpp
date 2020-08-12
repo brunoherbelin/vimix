@@ -19,12 +19,15 @@
 #include <ctime>
 #include <algorithm>
 
+int Node::node_counter = 0;
+
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)
 {
     // create unique id
-    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
+    id_ = ++node_counter;
+//    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
+//    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
 
     transform_ = glm::identity<glm::mat4>();
     scale_ = glm::vec3(1.f);
