@@ -25,6 +25,8 @@ using namespace tinyxml2;
 
 #include "Mixer.h"
 
+//#define THREADED_LOADING
+
 // static semaphore to prevent multiple threads for load / save
 static std::atomic<bool> sessionThreadActive_ = false;
 static std::atomic<bool> sessionSwapRequested_ = false;
@@ -617,9 +619,13 @@ void Mixer::load(const std::string& filename)
     // create empty session
     back_session_ = new Session;
 
+#ifdef THREADED_LOADING
     // launch a thread to load the session into back_session
     // lock will be unlocked when thread ends
     std::thread (loadSession, filename, back_session_).detach();
+#else
+    loadSession (filename, back_session_);
+#endif
 }
 
 void Mixer::open(const std::string& filename)
@@ -659,9 +665,13 @@ void Mixer::import(const std::string& filename)
     // create empty session
     back_session_ = new Session;
 
+#ifdef THREADED_LOADING
     // launch a thread to load the session into back_session
     // lock will be unlocked when thread ends
     std::thread (importSession, filename, back_session_).detach();
+#else
+    importSession (filename, back_session_);
+#endif
 }
 
 void Mixer::merge(Session *session)
