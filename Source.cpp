@@ -447,7 +447,7 @@ void CloneSource::init()
         // done init
         initialized_ = true;
 
-        Log::Info("Source Clone linked to source %s).", origin_->name().c_str() );
+        Log::Info("Source Clone %s linked to source %s.", name().c_str(), origin_->name().c_str() );
     }
 }
 
@@ -459,14 +459,14 @@ void CloneSource::setActive (bool on)
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
-    if (origin_)
+    if (initialized_ && origin_ != nullptr)
         origin_->touch();
 }
 
 
 uint CloneSource::texture() const
 {
-    if (origin_)
+    if (initialized_ && origin_ != nullptr)
         return origin_->texture();
     else
         return Resource::getTextureBlack();
