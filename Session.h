@@ -1,6 +1,7 @@
 #ifndef SESSION_H
 #define SESSION_H
 
+#include <mutex>
 
 #include "View.h"
 #include "Source.h"
@@ -68,6 +69,10 @@ public:
     void setFilename(const std::string &filename) { filename_ = filename; }
     std::string filename() const { return filename_; }
 
+    // lock and unlock access (e.g. while saving)
+    void lock();
+    void unlock();
+
 protected:
     RenderView render_;
     std::string filename_;
@@ -77,6 +82,7 @@ protected:
     bool active_;
     std::list<Recorder *> recorders_;
     float fading_target_;
+    std::mutex access_;
 };
 
 #endif // SESSION_H

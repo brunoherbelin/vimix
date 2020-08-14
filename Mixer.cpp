@@ -4,6 +4,7 @@
 #include <mutex>
 #include <vector>
 #include <chrono>
+#include <future>
 
 //  GStreamer
 #include <gst/gst.h>
@@ -25,76 +26,46 @@ using namespace tinyxml2;
 
 #include "Mixer.h"
 
-//#define THREADED_LOADING
+#define THREADED_LOADING
 
 // static semaphore to prevent multiple threads for load / save
 static std::atomic<bool> sessionThreadActive_ = false;
-static std::atomic<bool> sessionSwapRequested_ = false;
-static std::mutex lock_session_;
+
+static std::vector< std::future<Session *> > sessionLoaders_;
+static std::vector< std::future<Session *> > sessionImporters_;
+static std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 // static multithreaded session loading
-static void loadSession(const std::string& filename, Session *session)
+static Session *loadSession_(const std::string& filename)
 {
-    if (sessionThreadActive_)
-        return;
-    sessionThreadActive_ = true;
+    Session *s = new Session;
 
     // actual loading of xml file
-    SessionCreator creator( session );
+    SessionCreator creator( s );
 
     if (creator.load(filename)) {
         // loaded ok
-        session->setFilename(filename);
-
-        // internal update flag
-        sessionSwapRequested_ = true;
+        s->setFilename(filename);
 
         // notification
-        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), session->numSource());
+        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), s->numSource());
     }
     else {
         // error loading
         Log::Warning("Failed to load Session file %s.", filename.c_str());
+        delete s;
+        s = nullptr;
     }
 
-    // always unlock
-    lock_session_.unlock();
-    sessionThreadActive_ = false;
+    return s;
 }
 
-static std::atomic<bool> sessionImportRequested_ = false;
-static void importSession(const std::string& filename, Session *session)
-{
-    if (sessionThreadActive_)
-        return;
-    sessionThreadActive_ = true;
-
-    // actual loading of xml file
-    SessionCreator creator( session );
-
-    if (creator.load(filename)) {
-
-        // internal update flag
-        sessionImportRequested_ = true;
-
-        Log::Notify("Session %s loaded. %d source(s) imported.", filename.c_str(), session->numSource());
-    }
-    else {
-        // error loading
-        Log::Warning("Failed to import Session file %s.", filename.c_str());
-    }
-
-    // always unlock
-    lock_session_.unlock();
-    sessionThreadActive_ = false;
-}
 
 // static multithreaded session saving
 static void saveSession(const std::string& filename, Session *session)
 {
-    if (sessionThreadActive_)
-        return;
-    sessionThreadActive_ = true;
+    // lock access while saving
+    session->lock();
 
     // creation of XML doc
     XMLDocument xmlDoc;
@@ -142,20 +113,20 @@ static void saveSession(const std::string& filename, Session *session)
     // save file to disk
     if ( XMLSaveDoc(&xmlDoc, filename) ) {
         // all ok
+        // set session filename
         session->setFilename(filename);
         // cosmetics saved ok
         Rendering::manager().mainWindow().setTitle(filename);
         Settings::application.recentSessions.push(filename);
         Log::Notify("Session %s saved.", filename.c_str());
 
-        // set session filename
     }
     else {
-        // error loading
+        // error
         Log::Warning("Failed to save Session file %s.", filename.c_str());
     }
 
-    sessionThreadActive_ = false;
+    session->unlock();
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
@@ -181,7 +152,29 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 
 void Mixer::update()
 {
-    // change session when threaded loading is finished
+    // if there is a session importer pending
+    if (!sessionImporters_.empty()) {
+        // check status of loader: did it finish ?
+        if (sessionImporters_.back().wait_for(timeout_) == std::future_status::ready ) {
+            // get the session loaded by this loader
+            merge( sessionImporters_.back().get() );
+            // done with this session loader
+            sessionImporters_.pop_back();
+        }
+    }
+
+    // if there is a session loader pending
+    if (!sessionLoaders_.empty()) {
+        // check status of loader: did it finish ?
+        if (sessionLoaders_.back().wait_for(timeout_) == std::future_status::ready ) {
+            // get the session loaded by this loader
+            set( sessionLoaders_.back().get() );
+            // done with this session loader
+            sessionLoaders_.pop_back();
+        }
+    }
+
+    // if a change of session is requested
     if (sessionSwapRequested_) {
         sessionSwapRequested_ = false;
         // successfully loading
@@ -193,15 +186,8 @@ void Mixer::update()
             Settings::application.recentSessions.push(session_->filename());
         }
     }
-    // merge session when threaded loading is finished
-    if (sessionImportRequested_ && back_session_) {
-        sessionImportRequested_ = false;
-        merge(back_session_);
-        delete back_session_;
-        back_session_ = nullptr;
-    }
 
-    // insert source candidate for this session
+    // if there is a source candidate for this session
     if (candidate_sources_.size() > 0) {
         // NB: only make the last candidate the current source in Mixing view
         insertSource(candidate_sources_.front(), candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
@@ -606,26 +592,10 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::load(const std::string& filename)
 {
-    if (sessionSwapRequested_)
-        return;
-
-    Log::Info("\nLoading session %s", filename.c_str());
-
-    lock_session_.lock();
-
-    if (back_session_)
-        delete back_session_;
-
-    // create empty session
-    back_session_ = new Session;
-
-#ifdef THREADED_LOADING
-    // launch a thread to load the session into back_session
-    // lock will be unlocked when thread ends
-    std::thread (loadSession, filename, back_session_).detach();
-#else
-    loadSession (filename, back_session_);
-#endif
+    // load only one at a time
+    if (sessionLoaders_.empty()) {
+        sessionLoaders_.emplace_back( std::async(std::launch::async, loadSession_, filename) );
+    }
 }
 
 void Mixer::open(const std::string& filename)
@@ -654,24 +624,11 @@ void Mixer::open(const std::string& filename)
 
 void Mixer::import(const std::string& filename)
 {
-    if (sessionImportRequested_)
-        return;
+    // import only one at a time
+    if (sessionImporters_.empty()) {
+        sessionImporters_.emplace_back( std::async(std::launch::async, loadSession_, filename) );
+    }
 
-    lock_session_.lock();
-
-    if (back_session_)
-        delete back_session_;
-
-    // create empty session
-    back_session_ = new Session;
-
-#ifdef THREADED_LOADING
-    // launch a thread to load the session into back_session
-    // lock will be unlocked when thread ends
-    std::thread (importSession, filename, back_session_).detach();
-#else
-    importSession (filename, back_session_);
-#endif
 }
 
 void Mixer::merge(Session *session)
@@ -702,14 +659,10 @@ void Mixer::swap()
         }
     }
 
-    lock_session_.lock();
-
     // swap back and front
     Session *tmp = session_;
     session_ = back_session_;
     back_session_ = tmp;
-
-    lock_session_.unlock();
 
     // swap recorders
     back_session_->transferRecorders(session_);
@@ -767,16 +720,12 @@ void Mixer::close()
 
 void Mixer::clear()
 {
-    lock_session_.lock();
-
     // delete previous back session if needed
     if (back_session_)
         delete back_session_;
 
     // create empty session
-    back_session_ = new Session;   
-
-    lock_session_.unlock();
+    back_session_ = new Session;
 
     // swap current with empty
     sessionSwapRequested_ = true;
@@ -789,16 +738,12 @@ void Mixer::set(Session *s)
     if ( s == nullptr )
         return;
 
-    lock_session_.lock();
-
     // delete previous back session if needed
     if (back_session_)
         delete back_session_;
 
     // set to new given session
     back_session_ = s;
-
-    lock_session_.unlock();
 
     // swap current with given session
     sessionSwapRequested_ = true;

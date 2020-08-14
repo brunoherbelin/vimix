@@ -82,6 +82,7 @@ protected:
 
     Session *session_;
     Session *back_session_;
+    bool sessionSwapRequested_;
     void swap();
 
     SourceList candidate_sources_;

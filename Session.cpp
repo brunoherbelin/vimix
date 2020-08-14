@@ -107,16 +107,26 @@ void Session::update(float dt)
 
 SourceList::iterator Session::addSource(Source *s)
 {
+    // lock before change
+    access_.lock();
+
     // insert the source in the rendering
     render_.scene.ws()->attach(s->group(View::RENDERING));
     // insert the source to the beginning of the list
     sources_.push_front(s);
+
+    // unlock access
+    access_.unlock();
+
     // return the iterator to the source created at the beginning
     return sources_.begin();
 }
 
 SourceList::iterator Session::deleteSource(Source *s)
 {
+    // lock before change
+    access_.lock();
+
     // find the source
     SourceList::iterator its = find(s);
     // ok, its in the list !
@@ -131,6 +141,9 @@ SourceList::iterator Session::deleteSource(Source *s)
         // delete the source : safe now
         delete s;
     }
+
+    // unlock access
+    access_.unlock();
 
     // return end of next element
     return its;
@@ -275,5 +288,16 @@ void Session::transferRecorders(Session *dest)
         dest->recorders_.push_back(*iter);
         iter = recorders_.erase(iter);
     }
+}
+
+
+void Session::lock()
+{
+    access_.lock();
+}
+
+void Session::unlock()
+{
+    access_.unlock();
 }
 
