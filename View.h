@@ -113,7 +113,6 @@ private:
 
 class RenderView : public View
 {
-    FrameBuffer *intermediate_buffer_;
     FrameBuffer *frame_buffer_;
     Surface *fading_overlay_;
 

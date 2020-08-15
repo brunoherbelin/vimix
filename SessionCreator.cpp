@@ -193,7 +193,7 @@ void SessionCreator::visit(MediaPlayer &n)
                 GstClockTime b = GST_CLOCK_TIME_NONE;
                 gap->QueryUnsigned64Attribute("begin", &a);
                 gap->QueryUnsigned64Attribute("end", &b);
-                n.timeline().addGap( a, b ); // TODO ref access to timeline of source
+                n.timeline().addGap( a, b );
             }
         }
         // playing properties

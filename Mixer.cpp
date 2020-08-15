@@ -26,7 +26,7 @@ using namespace tinyxml2;
 
 #include "Mixer.h"
 
-#define THREADED_LOADING
+//#define THREADED_LOADING
 
 // static semaphore to prevent multiple threads for load / save
 static std::atomic<bool> sessionThreadActive_ = false;
@@ -40,17 +40,19 @@ static Session *loadSession_(const std::string& filename)
 {
     Session *s = new Session;
 
-    // actual loading of xml file
-    SessionCreator creator( s );
+    if (s) {
+        // actual loading of xml file
+        SessionCreator creator( s );
 
-    if (creator.load(filename)) {
-        // loaded ok
-        s->setFilename(filename);
-    }
-    else {
-        // error loading
-        delete s;
-        s = nullptr;
+        if (creator.load(filename)) {
+            // loaded ok
+            s->setFilename(filename);
+        }
+        else {
+            // error loading
+            delete s;
+            s = nullptr;
+        }
     }
 
     return s;
@@ -148,6 +150,14 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 
 void Mixer::update()
 {
+    if (garbage_.size()>0) {
+
+        delete garbage_.back();
+        garbage_.pop_back();
+    }
+
+
+#ifdef THREADED_LOADING
     // if there is a session importer pending
     if (!sessionImporters_.empty()) {
         // check status of loader: did it finish ?
@@ -169,6 +179,7 @@ void Mixer::update()
             sessionLoaders_.pop_back();
         }
     }
+#endif
 
     // if a change of session is requested
     if (sessionSwapRequested_) {
@@ -588,10 +599,32 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::load(const std::string& filename)
 {
+
+#ifdef THREADED_LOADING
     // load only one at a time
     if (sessionLoaders_.empty()) {
+        // Start async thread for loading the session
+        // Will be obtained in the future in update()
         sessionLoaders_.emplace_back( std::async(std::launch::async, loadSession_, filename) );
+
+
+//        Session *se = new Session;
+
+//        sessionLoaders_.emplace_back(std::async(std::launch::async,
+//                                                [](Session *s, const std::string& filename){
+//                                         // actual loading of xml file
+//                                         SessionCreator creator( s );
+//                                         if (creator.load(filename)) {
+//                                             // loaded ok
+//                                             s->setFilename(filename);
+//                                         }
+//                                         return s;
+//                                     }, se, filename));
+
     }
+#else
+    set( loadSession_(filename) );
+#endif
 }
 
 void Mixer::open(const std::string& filename)
@@ -622,9 +655,10 @@ void Mixer::import(const std::string& filename)
 {
     // import only one at a time
     if (sessionImporters_.empty()) {
+        // Start async thread for loading the session
+        // Will be obtained in the future in update()
         sessionImporters_.emplace_back( std::async(std::launch::async, loadSession_, filename) );
     }
-
 }
 
 void Mixer::merge(Session *session)
@@ -695,8 +729,9 @@ void Mixer::swap()
     // reset timer
     update_time_ = GST_CLOCK_TIME_NONE;
 
-    // delete back
-    delete back_session_;
+    // delete back (former front session)
+//    delete back_session_;
+    garbage_.push_back(back_session_);
     back_session_ = nullptr;
 
     // notification
@@ -724,7 +759,8 @@ void Mixer::clear()
 {
     // delete previous back session if needed
     if (back_session_)
-        delete back_session_;
+        garbage_.push_back(back_session_);
+//        delete back_session_;
 
     // create empty session
     back_session_ = new Session;
@@ -744,7 +780,8 @@ void Mixer::set(Session *s)
 
     // delete previous back session if needed
     if (back_session_)
-        delete back_session_;
+        garbage_.push_back(back_session_);
+//        delete back_session_;
 
     // set to new given session
     back_session_ = s;

@@ -96,7 +96,7 @@ set(PNG_LIBRARY PNG::PNG)
 # NB: set glfw3_PATH to /usr/local/Cellar/glfw/3.3.2/lib/cmake/glfw3
 #
 find_package(glfw3 3.2 REQUIRED)
-macro_log_feature(glfw3_FOUND "GLFW3" "Open Source, multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
+macro_log_feature(glfw3_FOUND "GLFW3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
 set(GLFW_LIBRARY glfw)
 
 #find_package(OpenGL REQUIRED)
@@ -108,14 +108,14 @@ set(BUILD_STATIC_LIBS ON)
 # GLM
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
-message(STATUS "Compiling 'GLM' OpenGL Mathematics https://glm.g-truc.net.")
+message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net.")
 
 #
 # GLAD
 #
 set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
 add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Compiling 'GLAD' generated at https://glad.dav1d.de/ -- ${GLAD_INCLUDE_DIR}.")
+message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de/ -- ${GLAD_INCLUDE_DIR}.")
 
 #
 # DEAR IMGUI
@@ -357,8 +357,8 @@ message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git
 
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE 
     ${GLFW_LIBRARY}
-#    ${OPENGL_LIBRARY}
     GLAD
+    glm::glm
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
     ${GSTREAMER_LIBRARY}
@@ -375,7 +375,6 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     TINYXML2
     TINYFD
     IMGUI
-    glm::glm
     vmix::rc
 )
 

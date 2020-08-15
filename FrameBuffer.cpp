@@ -21,13 +21,17 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
     return res;
 }
 
-FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling): textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0), use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
+FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling):
+    textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0),
+    use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(resolution);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
 }
 
-FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling): textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0), use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
+FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling):
+    textureid_(0), intermediate_textureid_(0), framebufferid_(0), intermediate_framebufferid_(0),
+    use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(width, height);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
@@ -63,14 +67,14 @@ void FrameBuffer::init()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
-        // attach the multisampled texture to FBO (currently binded)
+        // attach the multisampled texture to FBO (framebufferid_  currently binded)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, intermediate_textureid_, 0);
 
-        // create an intermediate FBO
+        // create an intermediate FBO : this is the FBO to use for reading
         glGenFramebuffers(1, &intermediate_framebufferid_);
         glBindFramebuffer(GL_FRAMEBUFFER, intermediate_framebufferid_);
 
-        // attach the 2D texture to intermediate FBO
+        // attach the 2D texture to intermediate FBO (intermediate_framebufferid_)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
 //        Log::Info("New FBO %d Multi Sampling ", framebufferid_);

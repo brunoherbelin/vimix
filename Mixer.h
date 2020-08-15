@@ -82,6 +82,7 @@ protected:
 
     Session *session_;
     Session *back_session_;
+    std::list<Session *> garbage_;
     bool sessionSwapRequested_;
     void swap();
 

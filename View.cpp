@@ -541,7 +541,7 @@ uint MixingView::textureMixingQuadratic()
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr)
 {
-    // set resolution to settings or default
+    // set resolution to settings default
     setResolution();
 }
 
@@ -571,7 +571,8 @@ float RenderView::fading() const
 
 void RenderView::setResolution(glm::vec3 resolution)
 {
-    if (resolution.x < 128.f || resolution.y < 128.f)
+    // use default resolution if invalid resolution is given (default behavior)
+    if (resolution.x < 2.f || resolution.y < 2.f)
         resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
 
     // do we need to change resolution ?

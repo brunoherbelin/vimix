@@ -438,6 +438,7 @@ Scene::Scene()
 
 Scene::~Scene()
 {
+    clear();
     // bg and fg are deleted as children of root
     delete root_;
 }

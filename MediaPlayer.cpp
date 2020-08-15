@@ -77,6 +77,8 @@ static MediaInfo UriDiscoverer_(std::string uri)
 #endif
 
     MediaInfo video_stream_info;
+    // assume it will fail
+    video_stream_info.failed = true;
 
     /* Instantiate the Discoverer */
     GError *err = NULL;
@@ -123,6 +125,8 @@ static MediaInfo UriDiscoverer_(std::string uri)
                 GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
                 if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
                 {
+                    // inform that it succeeded
+                    video_stream_info.failed = false;
                     // found a video / image stream : fill-in information
                     GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
                     video_stream_info.width = gst_discoverer_video_info_get_width(vinfo);
@@ -167,8 +171,6 @@ static MediaInfo UriDiscoverer_(std::string uri)
             gst_discoverer_stream_info_list_free(streams);
 
             if (!foundvideostream) {
-                // inform that it failed
-                video_stream_info.failed = true;
                 Log::Warning("Warning: No video stream in '%s'", uri.c_str());
             }
         }

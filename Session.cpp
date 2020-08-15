@@ -9,10 +9,12 @@
 
 #include "Log.h"
 
-Session::Session() : filename_(""), failedSource_(nullptr), active_(true), fading_target_(0.f)
+Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
 {
+    filename_ = "";
+
     config_[View::RENDERING] = new Group;
-    config_[View::RENDERING]->scale_ = render_.resolution();
+    config_[View::RENDERING]->scale_ = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
 
     config_[View::GEOMETRY] = new Group;
     config_[View::GEOMETRY]->scale_ = Settings::application.views[View::GEOMETRY].default_scale;
