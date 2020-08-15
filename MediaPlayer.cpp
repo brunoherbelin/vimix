@@ -82,7 +82,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
 
     /* Instantiate the Discoverer */
     GError *err = NULL;
-    GstDiscoverer *discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
+    GstDiscoverer *discoverer = gst_discoverer_new (15 * GST_SECOND, &err);
     if (!discoverer) {
         Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
         g_clear_error (&err);
@@ -174,7 +174,10 @@ static MediaInfo UriDiscoverer_(std::string uri)
                 Log::Warning("Warning: No video stream in '%s'", uri.c_str());
             }
         }
+
+        g_object_unref (discoverer);
     }
+
 
     // return the info
     return video_stream_info;
