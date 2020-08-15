@@ -1309,7 +1309,7 @@ void MediaController::Render()
 
                 // custom timeline slider
                 slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t,
-                                                               mp_->timeline.end(), mp_->timeline.step(), size.x);
+                                                               mp_->timeline().end(), mp_->timeline().step(), size.x);
 
                 ImGui::PopStyleVar(2);
             }
@@ -1322,7 +1322,7 @@ void MediaController::Render()
 
             // if the seek target time is different from the current position time
             // (i.e. the difference is less than one frame)
-            if ( ABS_DIFF (current_t, seek_t) > mp_->timeline.step() ) {
+            if ( ABS_DIFF (current_t, seek_t) > mp_->timeline().step() ) {
                 // request seek (ASYNC)
                 mp_->seek(seek_t);
                 slider_pressed_ = false;

@@ -30,21 +30,11 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
 
     uri_ = "undefined";
     pipeline_ = nullptr;
-    discoverer_ = nullptr;
 
     ready_ = false;
-    failed_ = false;
-    seekable_ = false;
     seeking_ = false;
-    isimage_ = false;
-    interlaced_ = false;
     enabled_ = true;
     rate_ = 1.0;
-    framerate_ = 0.0;
-    bitrate_ = 0;
-
-    width_ = par_width_ = 640;
-    height_ = 480;
     position_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
@@ -59,6 +49,7 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     pbo_index_ = 0;
     pbo_next_index_ = 0;
 
+    // OpenGL texture
     textureindex_ = 0;
 }
 
@@ -79,10 +70,120 @@ guint MediaPlayer::texture() const
     return textureindex_;
 }
 
+static MediaInfo UriDiscoverer_(std::string uri)
+{
+#ifdef MEDIA_PLAYER_DEBUG
+    Log::Info("Checking '%s'", uri.c_str());
+#endif
+
+    MediaInfo video_stream_info;
+
+    /* Instantiate the Discoverer */
+    GError *err = NULL;
+    GstDiscoverer *discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
+    if (!discoverer) {
+        Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
+        g_clear_error (&err);
+    }
+    else {
+        GstDiscovererInfo *info = gst_discoverer_discover_uri (discoverer, uri.c_str(), &err);
+        GstDiscovererResult result = gst_discoverer_info_get_result (info);
+        switch (result) {
+        case GST_DISCOVERER_URI_INVALID:
+            Log::Warning("Invalid URI '%s'", uri.c_str());
+            break;
+        case GST_DISCOVERER_ERROR:
+            Log::Warning("Warning: %s", err->message);
+            break;
+        case GST_DISCOVERER_TIMEOUT:
+            Log::Warning("Timeout loading URI '%s'", uri.c_str());
+            break;
+        case GST_DISCOVERER_BUSY:
+            Log::Warning("Busy URI '%s'", uri.c_str());
+            break;
+        case GST_DISCOVERER_MISSING_PLUGINS:
+        {
+            const GstStructure *s = gst_discoverer_info_get_misc (info);
+            gchar *str = gst_structure_to_string (s);
+            Log::Warning("Warning: Unknown file format %s", str);
+            g_free (str);
+        }
+            break;
+        default:
+        case GST_DISCOVERER_OK:
+            break;
+        }
+        // no error, handle information found
+        if ( result == GST_DISCOVERER_OK ) {
+
+            bool foundvideostream = false;
+            GList *streams = gst_discoverer_info_get_video_streams(info);
+            GList *tmp;
+            for (tmp = streams; tmp && !foundvideostream; tmp = tmp->next ) {
+                GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
+                if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
+                {
+                    // found a video / image stream : fill-in information
+                    GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
+                    video_stream_info.width = gst_discoverer_video_info_get_width(vinfo);
+                    video_stream_info.height = gst_discoverer_video_info_get_height(vinfo);
+                    guint parn = gst_discoverer_video_info_get_par_num(vinfo);
+                    guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
+                    video_stream_info.par_width = (video_stream_info.width * parn) / pard;
+                    video_stream_info.interlaced = gst_discoverer_video_info_is_interlaced(vinfo);
+                    video_stream_info.bitrate = gst_discoverer_video_info_get_bitrate(vinfo);
+                    video_stream_info.isimage = gst_discoverer_video_info_is_image(vinfo);
+                    // if its a video, it duration, framerate, etc.
+                    if ( !video_stream_info.isimage ) {
+                        video_stream_info.timeline.setEnd( gst_discoverer_info_get_duration (info) );
+                        video_stream_info.seekable = gst_discoverer_info_get_seekable (info);
+                        guint frn = gst_discoverer_video_info_get_framerate_num(vinfo);
+                        guint frd = gst_discoverer_video_info_get_framerate_denom(vinfo);
+                        if (frn == 0 || frd == 0) {
+                            frn = 25;
+                            frd = 1;
+                        }
+                        video_stream_info.framerate = static_cast<double>(frn) / static_cast<double>(frd);
+                        video_stream_info.timeline.setStep( (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn)) );
+                    }
+                    // try to fill-in the codec information
+                    GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
+                    if (caps) {
+                        gchar *codecstring = gst_pb_utils_get_codec_description(caps);
+                        video_stream_info.codec_name = std::string( codecstring );
+                        g_free(codecstring);
+                        gst_caps_unref (caps);
+                    }
+                    const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
+                    if ( tags ) {
+                        gchar *container = NULL;
+                        gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
+                        if (container)  video_stream_info.codec_name += " " + std::string(container);
+                    }
+                    // exit loop
+                    foundvideostream = true;
+                }
+            }
+            gst_discoverer_stream_info_list_free(streams);
+
+            if (!foundvideostream) {
+                // inform that it failed
+                video_stream_info.failed = true;
+                Log::Warning("Warning: No video stream in '%s'", uri.c_str());
+            }
+        }
+    }
+
+    // return the info
+    return video_stream_info;
+}
+
 void MediaPlayer::open(string path)
 {
-    // set uri to open
+    // set path
     filename_ = path;
+
+    // set uri to open
     gchar *uritmp = gst_filename_to_uri(path.c_str(), NULL);
     uri_ = string( uritmp );
     g_free(uritmp);
@@ -90,36 +191,10 @@ void MediaPlayer::open(string path)
     // reset
     ready_ = false;
 
-    /* Instantiate the Discoverer */
-    GError *err = NULL;
-    discoverer_ = gst_discoverer_new (45 * GST_SECOND, &err);
-    if (!discoverer_) {
-        Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
-        g_clear_error (&err);
-        failed_ = true;
-        return;
-    }
+    // start URI discovering thread:
+    discoverer_ = std::async( UriDiscoverer_, uri_);
 
-    // set callback for filling in information into this MediaPlayer 
-    g_signal_connect (discoverer_, "discovered", G_CALLBACK (callback_discoverer_process), this);
-    // set callback when finished discovering
-    g_signal_connect (discoverer_, "finished", G_CALLBACK (callback_discoverer_finished), this);
-
-    // start discoverer
-    gst_discoverer_start(discoverer_);
-
-    // Add the request to process asynchronously the URI 
-    if (!gst_discoverer_discover_uri_async (discoverer_, uri_.c_str())) {
-        Log::Warning("MediaPlayer %s Failed to open file '%s'\n", id_.c_str(), uri_.c_str());
-        g_object_unref (discoverer_);
-        discoverer_ = nullptr;
-        failed_ = true;
-    }
-
-#ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s checking '%s'", id_.c_str(), uri_.c_str());
-#endif
-    // and wait for discoverer to finish...
+    // wait for discoverer to finish in the future (test in update)
 }
 
 
@@ -136,7 +211,7 @@ void MediaPlayer::execute_open()
     //            Uses cubic interpolation 2
     //            Uses sinc interpolation 3
     string description = "uridecodebin uri=" + uri_ + " ! ";
-    if (interlaced_)
+    if (media_.interlaced)
         description += "deinterlace ! ";
     description += "videoconvert chroma-resampler=2 ! appsink name=sink";
 
@@ -146,17 +221,18 @@ void MediaPlayer::execute_open()
     if (error != NULL) {
         Log::Warning("MediaPlayer %s Could not construct pipeline %s:\n%s", id_.c_str(), description.c_str(), error->message);
         g_clear_error (&error);
-        failed_ = true;
+        media_.failed = true;
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", id_.c_str(), NULL);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);    
-    string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) + ",height=" + std::to_string(height_);
+    string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
+            ",height=" + std::to_string(media_.height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
         Log::Warning("MediaPlayer %s Could not configure video frame info", id_.c_str());
-        failed_ = true;
+        media_.failed = true;
         return;
     }
 
@@ -178,7 +254,7 @@ void MediaPlayer::execute_open()
         // set the callbacks
         GstAppSinkCallbacks callbacks;
         callbacks.new_preroll = callback_new_preroll;
-        if (isimage_) {
+        if (media_.isimage) {
             callbacks.eos = NULL;
             callbacks.new_sample = NULL;
         }
@@ -200,7 +276,7 @@ void MediaPlayer::execute_open()
     } 
     else {
         Log::Warning("MediaPlayer %s Could not configure  sink", id_.c_str());
-        failed_ = true;
+        media_.failed = true;
         return;
     }
     gst_caps_unref (caps);
@@ -212,19 +288,20 @@ void MediaPlayer::execute_open()
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Could not open '%s'", id_.c_str(), uri_.c_str());
-        failed_ = true;
+        media_.failed = true;
         return;
     }
 
     // in case discoverer failed to get duration
-    if (timeline.end() == GST_CLOCK_TIME_NONE) {
+    if (media_.timeline.end() == GST_CLOCK_TIME_NONE) {
         gint64 d = GST_CLOCK_TIME_NONE;
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
-            timeline.setEnd(d);
+            media_.timeline.setEnd(d);
     }
 
+
     // all good
-    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", id_.c_str(), uri_.c_str(), codec_name_.c_str(), width_, height_);
+    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", id_.c_str(), uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
     ready_ = true;
 
     // register media player
@@ -238,27 +315,21 @@ bool MediaPlayer::isOpen() const
 
 bool MediaPlayer::failed() const
 {
-    return failed_;
+    return media_.failed;
 }
 
 void MediaPlayer::close()
 {
-    // stop discovering stream
-    if (discoverer_ != nullptr) {
-        gst_discoverer_stop (discoverer_);
-        g_object_unref (discoverer_);
-        discoverer_ = nullptr;
-    }
-
-    // not openned? nothing to close!
-    if (!ready_)
+    // not openned?
+    if (!ready_) {
+        // wait for loading to finish
+        discoverer_.wait();
+        // nothing else to change
         return;
+    }
 
     // un-ready the media player
     ready_ = false;
-
-    // reset timeline
-    timeline.reset();
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -296,17 +367,17 @@ void MediaPlayer::close()
 
 guint MediaPlayer::width() const
 {
-    return width_;
+    return media_.width;
 }
 
 guint MediaPlayer::height() const
 {
-    return height_;
+    return media_.height;
 }
 
 float MediaPlayer::aspectRatio() const
 {
-    return static_cast<float>(par_width_) / static_cast<float>(height_);
+    return static_cast<float>(media_.par_width) / static_cast<float>(media_.height);
 }
 
 GstClockTime MediaPlayer::position()
@@ -319,7 +390,7 @@ GstClockTime MediaPlayer::position()
             pos = p;
     }
     
-    return pos - timeline.start();
+    return pos - media_.timeline.start();
 }
 
 void MediaPlayer::enable(bool on)
@@ -343,7 +414,7 @@ void MediaPlayer::enable(bool on)
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
         if (ret == GST_STATE_CHANGE_FAILURE) {
             Log::Warning("MediaPlayer %s Failed to enable", gst_element_get_name(pipeline_));
-            failed_ = true;
+            media_.failed = true;
         }
 
     }
@@ -354,16 +425,15 @@ bool MediaPlayer::isEnabled() const
     return enabled_;
 }
 
-
 bool MediaPlayer::isImage() const
 {
-    return isimage_;
+    return media_.isimage;
 }
 
 void MediaPlayer::play(bool on)
 {
     // ignore if disabled, and cannot play an image
-    if (!enabled_ || isimage_)
+    if (!enabled_ || media_.isimage)
         return;
 
     // request state 
@@ -382,7 +452,7 @@ void MediaPlayer::play(bool on)
 
     // requesting to play, but stopped at end of stream : rewind first !
     if ( desired_state_ == GST_STATE_PLAYING) {
-        if ( ( rate_>0.0 ? timeline.end() - position() : position() ) < 2 * timeline.step() )
+        if ( ( rate_>0.0 ? media_.timeline.end() - position() : position() ) < 2 * media_.timeline.step() )
             rewind();
     }
 
@@ -390,7 +460,7 @@ void MediaPlayer::play(bool on)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Failed to play", gst_element_get_name(pipeline_));
-        failed_ = true;
+        media_.failed = true;
     }    
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
@@ -399,16 +469,15 @@ void MediaPlayer::play(bool on)
         Log::Info("MediaPlayer %s Stop", gst_element_get_name(pipeline_));
 #endif
 
-    // reset time counter on stop
-    if (!on)
-        timecount_.reset();
+    // reset time counter
+    timecount_.reset();
 
 }
 
 bool MediaPlayer::isPlaying(bool testpipeline) const
 {
     // image cannot play
-    if (isimage_)
+    if (media_.isimage)
         return false;
 
     // if not ready yet, answer with requested state
@@ -434,7 +503,7 @@ void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
 
 void MediaPlayer::rewind()
 {
-    if (!enabled_ || !seekable_)
+    if (!enabled_ || !media_.seekable)
         return;
 
     if (rate_ > 0.0)
@@ -442,7 +511,7 @@ void MediaPlayer::rewind()
         execute_seek_command(0);
     else
         // playing backward, loop to end
-        execute_seek_command(timeline.end() - timeline.step());
+        execute_seek_command(media_.timeline.end() - media_.timeline.step());
 }
 
 
@@ -452,7 +521,7 @@ void MediaPlayer::step()
     if (!enabled_ || isPlaying())
         return;
 
-    if ( ( rate_ < 0.0 && position_ <= timeline.start() ) || ( rate_ > 0.0 && position_ >= timeline.end() ) )
+    if ( ( rate_ < 0.0 && position_ <= media_.timeline.start() ) || ( rate_ > 0.0 && position_ >= media_.timeline.end() ) )
         rewind();
 
     // step 
@@ -461,11 +530,11 @@ void MediaPlayer::step()
 
 void MediaPlayer::seek(GstClockTime pos)
 {
-    if (!enabled_ || !seekable_)
+    if (!enabled_ || !media_.seekable)
         return;
 
     // apply seek
-    GstClockTime target = CLAMP(pos, 0, timeline.end());
+    GstClockTime target = CLAMP(pos, 0, media_.timeline.end());
 //    GstClockTime target = CLAMP(pos, timeline.start(), timeline.end());
     execute_seek_command(target);
 
@@ -484,16 +553,16 @@ void MediaPlayer::init_texture(guint index)
     glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, media_.width, media_.height);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
                     GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    if (!isimage_) {
+    if (!media_.isimage) {
 
         // set pbo image size
-        pbo_size_ = height_ * width_ * 4;
+        pbo_size_ = media_.height * media_.width * 4;
 
         // create pixel buffer objects,
         if (pbo_[0])
@@ -556,7 +625,7 @@ void MediaPlayer::fill_texture(guint index)
             // bind PBO to read pixels
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
             // copy pixels from PBO to texture object
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
             // bind the next PBO to write pixels
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
             // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
@@ -577,7 +646,7 @@ void MediaPlayer::fill_texture(guint index)
         }
         else {
             // without PBO, use standard opengl (slower)
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
                             GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
         }
     }
@@ -586,20 +655,26 @@ void MediaPlayer::fill_texture(guint index)
 void MediaPlayer::update()
 {
     // discard
+    if (media_.failed)
+        return;
+
+    // not ready yet
     if (!ready_) {
-        timecount_.reset();
+        // try to get info from discoverer
+        if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+        {
+            // ok, discovering thread is finished ! Get the info
+            media_ = discoverer_.get();
+            // if its ok, open the media
+            if (!media_.failed)
+                execute_open();
+        }
+        // wait next frame to display
         return;
     }
 
-    // done discovering stream
-    if (discoverer_ != nullptr) {
-        gst_discoverer_stop (discoverer_);
-        g_object_unref (discoverer_);
-        discoverer_ = nullptr;
-    }
-
-    // prevent unnecessary updates
-    if (!enabled_ || (isimage_ && textureindex_>0 ) )
+    // prevent unnecessary updates: disabled or already filled image
+    if (!enabled_ || (media_.isimage && textureindex_>0 ) )
         return;
 
     // local variables before trying to update
@@ -657,9 +732,6 @@ void MediaPlayer::update()
     // unkock frame after reading it
     frame_[read_index].access.unlock();
 
-    if (isimage_)
-        return;
-
     if (seeking_) {
         GstState state;
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
@@ -700,7 +772,7 @@ void MediaPlayer::execute_loop_command()
 
 void MediaPlayer::execute_seek_command(GstClockTime target)
 {
-    if ( pipeline_ == nullptr || !seekable_)
+    if ( pipeline_ == nullptr || !media_.seekable)
         return;
 
     // seek position : default to target
@@ -711,7 +783,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
         // create seek event with current position (rate changed ?)
         seek_pos = position();
     // target is given but useless
-    else if ( ABS_DIFF(target, position()) < timeline.step()) {
+    else if ( ABS_DIFF(target, position()) < media_.timeline.step()) {
         // ignore request
         return;
     }
@@ -747,7 +819,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 
 void MediaPlayer::setPlaySpeed(double s)
 {
-    if (isimage_)
+    if (media_.isimage)
         return;
 
     // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED] 
@@ -765,10 +837,14 @@ double MediaPlayer::playSpeed() const
     return rate_;
 }
 
+Timeline MediaPlayer::timeline()
+{
+    return media_.timeline;
+}
 
 std::string MediaPlayer::codec() const
 {
-    return codec_name_;
+    return media_.codec_name;
 }
 
 std::string MediaPlayer::uri() const
@@ -783,7 +859,7 @@ std::string MediaPlayer::filename() const
 
 double MediaPlayer::frameRate() const
 {
-    return framerate_;
+    return media_.framerate;
 }
 
 double MediaPlayer::updateFrameRate() const
@@ -831,9 +907,9 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             frame_[write_index_].position = buf->pts;
 
             // set the start position (i.e. pts of first frame we got)
-            if (timeline.start() == GST_CLOCK_TIME_NONE) {
-                timeline.setStart(buf->pts);
-                Log::Info("Timeline %ld  [%ld %ld]", timeline.numFrames(), timeline.start(), timeline.end());
+            if (media_.timeline.start() == GST_CLOCK_TIME_NONE) {
+                media_.timeline.setStart(buf->pts);
+                Log::Info("Timeline %ld  [%ld %ld]", media_.timeline.numFrames(), media_.timeline.start(), media_.timeline.end());
             }
         }
         // full but invalid frame : will be deleted next iteration
@@ -844,7 +920,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     // else; null buffer for EOS: give a position
     else {
         frame_[write_index_].status = EOS;
-        frame_[write_index_].position = rate_ > 0.0 ? timeline.end() : timeline.start();
+        frame_[write_index_].position = rate_ > 0.0 ? media_.timeline.end() : media_.timeline.start();
     }
 
     // unlock access to frame
@@ -893,7 +969,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
-            else if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
+            else if (m->playSpeed() < 0.f && buf->pts <= m->media_.timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }
@@ -927,7 +1003,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
-            else if (m->playSpeed() < 0.f && buf->pts <= m->timeline.start()) {
+            else if (m->playSpeed() < 0.f && buf->pts <= m->media_.timeline.start()) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }
@@ -942,114 +1018,6 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 }
 
 
-void MediaPlayer::callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m)
-{
-    if (!discoverer || !m)
-        return;
-
-    // handle general errors
-    const gchar *uri = gst_discoverer_info_get_uri (info);
-    GstDiscovererResult result = gst_discoverer_info_get_result (info);
-    switch (result) {
-        case GST_DISCOVERER_URI_INVALID:
-            m->discoverer_message_ << "Invalid URI: " << uri;
-        break;
-        case GST_DISCOVERER_ERROR:
-            m->discoverer_message_ << "Warning: " << err->message;
-        break;
-        case GST_DISCOVERER_TIMEOUT:
-            m->discoverer_message_ << "Time out";
-        break;
-        case GST_DISCOVERER_BUSY:
-            m->discoverer_message_ << "Busy";
-        break;
-        case GST_DISCOVERER_MISSING_PLUGINS:
-        {
-            const GstStructure *s = gst_discoverer_info_get_misc (info);
-            gchar *str = gst_structure_to_string (s);
-            m->discoverer_message_ << "Warning: Unknown file format / " << str;
-            g_free (str);
-        }
-        break;
-        default:
-        case GST_DISCOVERER_OK:
-        break;
-    }
-    // no error, handle information found
-    if ( result == GST_DISCOVERER_OK ) {
-
-        // look for video stream at that uri
-        bool foundvideostream = false;
-        GList *streams = gst_discoverer_info_get_video_streams(info);
-        GList *tmp;
-        for (tmp = streams; tmp && !foundvideostream; tmp = tmp->next ) {
-            GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
-            if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
-            {
-                // found a video / image stream : fill-in information
-                GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
-                m->width_ = gst_discoverer_video_info_get_width(vinfo);
-                m->height_ = gst_discoverer_video_info_get_height(vinfo);
-                m->interlaced_ = gst_discoverer_video_info_is_interlaced(vinfo);
-                m->bitrate_ = gst_discoverer_video_info_get_bitrate(vinfo);
-                guint parn = gst_discoverer_video_info_get_par_num(vinfo);
-                guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
-                m->par_width_ = (m->width_ * parn) / pard;
-                m->isimage_ = gst_discoverer_video_info_is_image(vinfo);
-                // if its a video, it duration, framerate, etc.
-                if ( !m->isimage_ ) {
-                    m->timeline.setEnd( gst_discoverer_info_get_duration (info) );
-                    m->seekable_ = gst_discoverer_info_get_seekable (info);
-                    guint frn = gst_discoverer_video_info_get_framerate_num(vinfo);
-                    guint frd = gst_discoverer_video_info_get_framerate_denom(vinfo);
-                    if (frn == 0 || frd == 0) {
-                        frn = 25;
-                        frd = 1;
-                    }
-                    m->framerate_ = static_cast<double>(frn) / static_cast<double>(frd);
-                    m->timeline.setStep( (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn)) );
-                }
-                // try to fill-in the codec information
-                GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
-                if (caps) {
-                    gchar *codecstring = gst_pb_utils_get_codec_description(caps);
-                    m->codec_name_ = std::string( codecstring ) + " ";
-                    g_free(codecstring);
-                    gst_caps_unref (caps);
-                }
-//                const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
-//                if ( tags ) {
-//                    gchar *container = NULL;
-//                    gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
-//                    if (container)  m->codec_name_ += std::string(container);
-//                }
-                // exit loop
-                foundvideostream = true;
-            }
-        }
-        gst_discoverer_stream_info_list_free(streams);
-
-        if (!foundvideostream) {
-            m->discoverer_message_ << "Warning: No video stream.";
-        }
-    
-    }
-}
-
-void MediaPlayer::callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m)
-{
-    // finished the discoverer : finalize open status
-    if (discoverer && m) {
-        // no error message, open media
-        if ( m->discoverer_message_.str().empty())
-            m->execute_open();
-        else {
-            Log::Warning("MediaPlayer %s Failed to open '%s'\n%s", m->id_.c_str(), m->uri_.c_str(), m->discoverer_message_.str().c_str());
-            m->discoverer_message_.clear();
-            m->failed_ = true;
-        }
-    }
-}
 
 MediaPlayer::TimeCounter::TimeCounter() {
 

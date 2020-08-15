@@ -46,13 +46,9 @@ static Session *loadSession_(const std::string& filename)
     if (creator.load(filename)) {
         // loaded ok
         s->setFilename(filename);
-
-        // notification
-        Log::Notify("Session %s loaded. %d source(s) created.", filename.c_str(), s->numSource());
     }
     else {
         // error loading
-        Log::Warning("Failed to load Session file %s.", filename.c_str());
         delete s;
         s = nullptr;
     }
@@ -633,12 +629,15 @@ void Mixer::import(const std::string& filename)
 
 void Mixer::merge(Session *session)
 {
-    if (session) {
-
-        for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
-            insertSource(s);
-
+    if ( session == nullptr ) {
+        Log::Warning("Failed to import Session.");
+        return;
     }
+
+    // import every sources
+    for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
+        insertSource(s);
+
 }
 
 void Mixer::swap()
@@ -699,6 +698,9 @@ void Mixer::swap()
     // delete back
     delete back_session_;
     back_session_ = nullptr;
+
+    // notification
+    Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());
 }
 
 void Mixer::close()
@@ -735,8 +737,10 @@ void Mixer::clear()
 
 void Mixer::set(Session *s)
 {
-    if ( s == nullptr )
+    if ( s == nullptr ) {
+        Log::Warning("Failed to load Session.");
         return;
+    }
 
     // delete previous back session if needed
     if (back_session_)

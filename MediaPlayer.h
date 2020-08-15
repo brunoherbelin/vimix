@@ -4,6 +4,7 @@
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <future>
 
 // GStreamer
 #include <gst/pbutils/gstdiscoverer.h>
@@ -19,6 +20,50 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 3
 
+struct MediaInfo {
+
+    Timeline timeline;
+    guint width;
+    guint par_width;  // width to match pixel aspect ratio
+    guint height;
+    guint bitrate;
+    gdouble framerate;
+    std::string codec_name;
+    bool isimage;
+    bool interlaced;
+    bool seekable;
+    bool failed;
+
+    MediaInfo() {
+        width = par_width = 640;
+        height = 480;
+        bitrate = 0;
+        framerate = 0.0;
+        codec_name = "unknown";
+        isimage = false;
+        interlaced = false;
+        seekable = false;
+        failed = false;
+    }
+
+    inline MediaInfo& operator = (const MediaInfo& b)
+    {
+        if (this != &b) {
+            this->timeline = b.timeline;
+            this->width = b.width;
+            this->par_width = b.par_width;
+            this->height = b.height;
+            this->bitrate = b.bitrate;
+            this->framerate = b.framerate;
+            this->codec_name = b.codec_name;
+            this->failed = b.failed;
+            this->isimage = b.isimage;
+            this->interlaced = b.interlaced;
+            this->seekable = b.seekable;
+        }
+        return *this;
+    }
+};
 
 class MediaPlayer {
 
@@ -137,17 +182,17 @@ public:
      * */
     void seek(GstClockTime pos);
     /**
-     * Get position time
-     * */
-    GstClockTime position();
-    /**
      * @brief timeline contains all info on timing:
      * - start position : timeline.start()
      * - end position   : timeline.end()
      * - duration       : timeline.duration()
      * - frame duration : timeline.step()
      */
-    Timeline timeline;
+    Timeline timeline();
+    /**
+     * Get position time
+     * */
+    GstClockTime position();
     /**
      * Get framerate of the media
      * */
@@ -195,28 +240,20 @@ private:
     std::string filename_;
     std::string uri_;
     guint textureindex_;
-    guint width_;
-    guint height_;
-    guint par_width_;  // width to match pixel aspect ratio
-    guint bitrate_;
+
+    // general properties of media
+    MediaInfo media_;
+    std::future<MediaInfo> discoverer_;
+
+    // GST & Play status
     GstClockTime position_;
     gdouble rate_;
     LoopMode loop_;
-    gdouble framerate_;
     GstState desired_state_;
     GstElement *pipeline_;
-    GstDiscoverer *discoverer_;
-    std::stringstream discoverer_message_;
-    std::string codec_name_;
     GstVideoInfo v_frame_video_info_;
-
-    // status
     std::atomic<bool> ready_;
-    std::atomic<bool> failed_;
-    bool seekable_;
     bool seeking_;
-    bool isimage_;
-    bool interlaced_;
     bool enabled_;
 
     // fps counter
@@ -280,9 +317,6 @@ private:
     static void callback_end_of_stream (GstAppSink *, gpointer);
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
-
-    static void callback_discoverer_process (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MediaPlayer *m);
-    static void callback_discoverer_finished(GstDiscoverer *discoverer, MediaPlayer *m);
 
     // global list of registered media player
     static std::list<MediaPlayer*> registered_;

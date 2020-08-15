@@ -99,6 +99,7 @@ public:
     inline GstClockTime end() const { return timing_.end; }
     inline GstClockTime step() const { return step_; }
     inline GstClockTime duration() const { return timing_.duration(); }
+    inline size_t numFrames() const { return duration() / step_; }
 
     // Add / remove gaps in the timeline
     bool addGap(TimeInterval s);

@@ -149,7 +149,7 @@ void SessionVisitor::visit(MediaPlayer &n)
 
     // gaps in timeline
     XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
-    std::list< std::pair<guint64, guint64> > gaps = n.timeline.gaps();
+    std::list< std::pair<guint64, guint64> > gaps = n.timeline().gaps();
     for( auto it = gaps.begin(); it!= gaps.end(); it++) {
         XMLElement *g = xmlDoc_->NewElement("Interval");
         g->SetAttribute("begin", (*it).first);
