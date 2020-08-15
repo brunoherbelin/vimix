@@ -26,7 +26,7 @@ using namespace tinyxml2;
 
 #include "Mixer.h"
 
-//#define THREADED_LOADING
+#define THREADED_LOADING
 
 // static semaphore to prevent multiple threads for load / save
 static std::atomic<bool> sessionThreadActive_ = false;
