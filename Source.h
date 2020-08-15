@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <atomic>
 #include <list>
 
 #include "View.h"
@@ -24,6 +25,7 @@ typedef std::list<CloneSource *> CloneList;
 
 class Source
 {
+    friend class CloneSource;
     friend class View;
     friend class MixingView;
     friend class GeometryView;
@@ -43,7 +45,10 @@ public:
 
     // cloning mechanism
     virtual CloneSource *clone ();
-    inline size_t numClones() const { return clones_.size(); }
+//    void unClone(CloneSource *clone);
+//    inline size_t numClones() const { return clones_.size(); }
+//    inline CloneList::iterator beginClones () { return clones_.begin(); }
+//    inline CloneList::iterator endClones () { return clones_.end(); }
 
     // Display mode
     typedef enum {
@@ -190,6 +195,7 @@ public:
     void accept (Visitor& v) override;
 
     CloneSource *clone() override;
+    inline void unlink() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
 protected:

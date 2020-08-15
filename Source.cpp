@@ -133,6 +133,11 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
 
 Source::~Source()
 {
+    // inform clones that they lost their origin
+    for (auto it = clones_.begin(); it != clones_.end(); it++)
+        (*it)->unlink();
+    clones_.clear();
+
     // delete objects
     delete stored_status_;
     if (renderbuffer_)
@@ -149,10 +154,6 @@ Source::~Source()
     groups_.clear();
     frames_.clear();
     overlays_.clear();
-
-    // inform clones that they lost their origin
-    for (auto it = clones_.begin(); it != clones_.end(); it++)
-        (*it)->origin_ = nullptr;
 
     // don't forget that the processing shader
     // could be created but not used
@@ -401,6 +402,7 @@ CloneSource *Source::clone()
     return s;
 }
 
+
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
     // create surface:
@@ -409,6 +411,9 @@ CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 
 CloneSource::~CloneSource()
 {
+    if (origin_)
+        origin_->clones_.remove(this);
+
     // delete surface
     if (clonesurface_)
         delete clonesurface_;
@@ -478,7 +483,7 @@ void CloneSource::render()
 {
     if (!initialized_)
         init();
-    else {
+    else if (origin_) {
         // render the view into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
