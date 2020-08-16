@@ -20,7 +20,7 @@ public:
     void accept (Visitor& v) override;
 
     // Session Source specific interface
-    void load(const std::string &p);
+    void load(const std::string &p = "");
     Session *detach();
 
     inline std::string path() const { return path_; }

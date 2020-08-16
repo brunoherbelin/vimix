@@ -18,27 +18,6 @@
 #include "Mixer.h"
 
 
-//void SessionSource::loadSession(const std::string& filename, SessionSource *source)
-//{
-//    source->loadFinished_ = false;
-
-//    // actual loading of xml file
-//    SessionCreator creator( source->session_ );
-
-//    if (creator.load(filename)) {
-//        // all ok, validate session filename
-//        source->session_->setFilename(filename);
-//    }
-//    else {
-//        // error loading
-//        Log::Notify("Failed to load Session file %s.", filename.c_str());
-//        source->failed_ = true;
-//    }
-
-//    // end thread
-//    source->loadFinished_ = true;
-//}
-
 SessionSource::SessionSource() : Source(), path_("")
 {
     // specific node for transition view
@@ -94,8 +73,12 @@ void SessionSource::load(const std::string &p)
 {
     path_ = p;
 
-    // launch a thread to load the session    
-    sessionLoader_ = std::async(std::launch::async, loadSession_, path_);
+    if ( path_.empty() )
+        // empty session
+        session_ = new Session;
+    else
+        // launch a thread to load the session file
+        sessionLoader_ = std::async(std::launch::async, loadSession_, path_);
 
     Log::Notify("Opening %s", p.c_str());
 }

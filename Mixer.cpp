@@ -701,6 +701,7 @@ void Mixer::close()
     {
         // create empty SessionSource to be used for the smooth transition
         SessionSource *ts = new SessionSource();
+        ts->load();
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);
