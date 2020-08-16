@@ -32,7 +32,7 @@ struct MediaInfo {
     bool isimage;
     bool interlaced;
     bool seekable;
-    bool failed;
+    bool valid;
 
     MediaInfo() {
         width = par_width = 640;
@@ -43,7 +43,7 @@ struct MediaInfo {
         isimage = false;
         interlaced = false;
         seekable = false;
-        failed = false;
+        valid = false;
     }
 
     inline MediaInfo& operator = (const MediaInfo& b)
@@ -56,7 +56,7 @@ struct MediaInfo {
             this->bitrate = b.bitrate;
             this->framerate = b.framerate;
             this->codec_name = b.codec_name;
-            this->failed = b.failed;
+            this->valid = b.valid;
             this->isimage = b.isimage;
             this->interlaced = b.interlaced;
             this->seekable = b.seekable;
@@ -253,6 +253,7 @@ private:
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> ready_;
+    std::atomic<bool> failed_;
     bool seeking_;
     bool enabled_;
 

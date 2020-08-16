@@ -124,8 +124,7 @@ void MediaSource::update(float dt)
     Source::update(dt);
 
     // update video
-    if (active_)
-        mediaplayer_->update();
+    mediaplayer_->update();
 }
 
 void MediaSource::render()

@@ -32,6 +32,7 @@ MediaPlayer::MediaPlayer(string name) : id_(name)
     pipeline_ = nullptr;
 
     ready_ = false;
+    failed_ = false;
     seeking_ = false;
     enabled_ = true;
     rate_ = 1.0;
@@ -77,8 +78,6 @@ static MediaInfo UriDiscoverer_(std::string uri)
 #endif
 
     MediaInfo video_stream_info;
-    // assume it will fail
-    video_stream_info.failed = true;
 
     /* Instantiate the Discoverer */
     GError *err = NULL;
@@ -118,15 +117,12 @@ static MediaInfo UriDiscoverer_(std::string uri)
         // no error, handle information found
         if ( result == GST_DISCOVERER_OK ) {
 
-            bool foundvideostream = false;
             GList *streams = gst_discoverer_info_get_video_streams(info);
             GList *tmp;
-            for (tmp = streams; tmp && !foundvideostream; tmp = tmp->next ) {
+            for (tmp = streams; tmp && !video_stream_info.valid; tmp = tmp->next ) {
                 GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
                 if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
                 {
-                    // inform that it succeeded
-                    video_stream_info.failed = false;
                     // found a video / image stream : fill-in information
                     GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
                     video_stream_info.width = gst_discoverer_video_info_get_width(vinfo);
@@ -161,16 +157,18 @@ static MediaInfo UriDiscoverer_(std::string uri)
                     const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
                     if ( tags ) {
                         gchar *container = NULL;
-                        gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container);
-                        if (container)  video_stream_info.codec_name += " " + std::string(container);
+                        if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
+                             video_stream_info.codec_name += " " + std::string(container);
+                        g_free(container);
                     }
                     // exit loop
-                    foundvideostream = true;
+                    // inform that it succeeded
+                    video_stream_info.valid = true;
                 }
             }
             gst_discoverer_stream_info_list_free(streams);
 
-            if (!foundvideostream) {
+            if (!video_stream_info.valid) {
                 Log::Warning("Warning: No video stream in '%s'", uri.c_str());
             }
         }
@@ -226,7 +224,7 @@ void MediaPlayer::execute_open()
     if (error != NULL) {
         Log::Warning("MediaPlayer %s Could not construct pipeline %s:\n%s", id_.c_str(), description.c_str(), error->message);
         g_clear_error (&error);
-        media_.failed = true;
+        failed_ = true;
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", id_.c_str(), NULL);
@@ -237,7 +235,7 @@ void MediaPlayer::execute_open()
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
         Log::Warning("MediaPlayer %s Could not configure video frame info", id_.c_str());
-        media_.failed = true;
+        failed_ = true;
         return;
     }
 
@@ -281,7 +279,7 @@ void MediaPlayer::execute_open()
     } 
     else {
         Log::Warning("MediaPlayer %s Could not configure  sink", id_.c_str());
-        media_.failed = true;
+        failed_ = true;
         return;
     }
     gst_caps_unref (caps);
@@ -293,7 +291,7 @@ void MediaPlayer::execute_open()
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Could not open '%s'", id_.c_str(), uri_.c_str());
-        media_.failed = true;
+        failed_ = true;
         return;
     }
 
@@ -320,7 +318,7 @@ bool MediaPlayer::isOpen() const
 
 bool MediaPlayer::failed() const
 {
-    return media_.failed;
+    return failed_;
 }
 
 void MediaPlayer::close()
@@ -419,7 +417,7 @@ void MediaPlayer::enable(bool on)
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
         if (ret == GST_STATE_CHANGE_FAILURE) {
             Log::Warning("MediaPlayer %s Failed to enable", gst_element_get_name(pipeline_));
-            media_.failed = true;
+            failed_ = true;
         }
 
     }
@@ -465,7 +463,7 @@ void MediaPlayer::play(bool on)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Failed to play", gst_element_get_name(pipeline_));
-        media_.failed = true;
+        failed_ = true;
     }    
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
@@ -660,7 +658,7 @@ void MediaPlayer::fill_texture(guint index)
 void MediaPlayer::update()
 {
     // discard
-    if (media_.failed)
+    if (failed_)
         return;
 
     // not ready yet
@@ -671,7 +669,7 @@ void MediaPlayer::update()
             // ok, discovering thread is finished ! Get the info
             media_ = discoverer_.get();
             // if its ok, open the media
-            if (!media_.failed)
+            if (media_.valid)
                 execute_open();
         }
         // wait next frame to display

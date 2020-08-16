@@ -45,10 +45,6 @@ public:
 
     // cloning mechanism
     virtual CloneSource *clone ();
-//    void unClone(CloneSource *clone);
-//    inline size_t numClones() const { return clones_.size(); }
-//    inline CloneList::iterator beginClones () { return clones_.begin(); }
-//    inline CloneList::iterator endClones () { return clones_.end(); }
 
     // Display mode
     typedef enum {
@@ -195,7 +191,7 @@ public:
     void accept (Visitor& v) override;
 
     CloneSource *clone() override;
-    inline void unlink() { origin_ = nullptr; }
+    inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
 protected:

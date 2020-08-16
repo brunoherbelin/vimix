@@ -135,7 +135,7 @@ Source::~Source()
 {
     // inform clones that they lost their origin
     for (auto it = clones_.begin(); it != clones_.end(); it++)
-        (*it)->unlink();
+        (*it)->detach();
     clones_.clear();
 
     // delete objects
@@ -406,7 +406,7 @@ CloneSource *Source::clone()
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
     // create surface:
-    clonesurface_ = nullptr;
+    clonesurface_ = new Surface(renderingshader_);
 }
 
 CloneSource::~CloneSource()
@@ -415,8 +415,7 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 
     // delete surface
-    if (clonesurface_)
-        delete clonesurface_;
+    delete clonesurface_;
 }
 
 CloneSource *CloneSource::clone()
@@ -438,7 +437,6 @@ void CloneSource::init()
     if (origin_ && origin_->ready()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
-        clonesurface_ = new Surface(renderingshader_);
         clonesurface_->setTextureIndex( origin_->texture() );
 
         // create Frame buffer matching size of session
