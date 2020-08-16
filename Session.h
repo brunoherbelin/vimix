@@ -85,4 +85,7 @@ protected:
     std::mutex access_;
 };
 
+
+Session *loadSession_(const std::string& filename);
+
 #endif // SESSION_H

@@ -18,26 +18,26 @@
 #include "Mixer.h"
 
 
-void SessionSource::loadSession(const std::string& filename, SessionSource *source)
-{
-    source->loadFinished_ = false;
+//void SessionSource::loadSession(const std::string& filename, SessionSource *source)
+//{
+//    source->loadFinished_ = false;
 
-    // actual loading of xml file
-    SessionCreator creator( source->session_ );
+//    // actual loading of xml file
+//    SessionCreator creator( source->session_ );
 
-    if (creator.load(filename)) {
-        // all ok, validate session filename
-        source->session_->setFilename(filename);
-    }
-    else {
-        // error loading
-        Log::Notify("Failed to load Session file %s.", filename.c_str());
-        source->loadFailed_ = true;
-    }
+//    if (creator.load(filename)) {
+//        // all ok, validate session filename
+//        source->session_->setFilename(filename);
+//    }
+//    else {
+//        // error loading
+//        Log::Notify("Failed to load Session file %s.", filename.c_str());
+//        source->failed_ = true;
+//    }
 
-    // end thread
-    source->loadFinished_ = true;
-}
+//    // end thread
+//    source->loadFinished_ = true;
+//}
 
 SessionSource::SessionSource() : Source(), path_("")
 {
@@ -69,11 +69,9 @@ SessionSource::SessionSource() : Source(), path_("")
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
-    loadFailed_ = false;
-    loadFinished_ = true;
+    failed_ = false;
     wait_for_sources_ = false;
-
-    session_ = new Session;
+    session_ = nullptr;
 
     // create surface:
     // - textured with original texture from session
@@ -96,9 +94,8 @@ void SessionSource::load(const std::string &p)
 {
     path_ = p;
 
-    // launch a thread to load the session
-    loadFinished_ = false;
-    std::thread ( SessionSource::loadSession, path_, this).detach();
+    // launch a thread to load the session    
+    sessionLoader_ = std::async(std::launch::async, loadSession_, path_);
 
     Log::Notify("Opening %s", p.c_str());
 }
@@ -113,14 +110,14 @@ Session *SessionSource::detach()
 
     // make disabled
     initialized_ = false;
-    loadFailed_ = true;
+    failed_ = true;
 
     return giveaway;
 }
 
 bool SessionSource::failed() const
 {
-    return loadFailed_;
+    return failed_;
 }
 
 uint SessionSource::texture() const
@@ -137,66 +134,71 @@ void SessionSource::replaceRenderingShader()
 
 void SessionSource::init()
 {
-    if (session_ == nullptr)
-        return;
+    // init is first about getting the loaded session
+    if (session_ == nullptr) {
+        // did the loader finish ?
+        if (sessionLoader_.wait_for(std::chrono::milliseconds(4)) == std::future_status::ready) {
+            session_ = sessionLoader_.get();
+            if (session_ == nullptr)
+                failed_ = true;
+        }
+    }
+    else {
 
-    if (wait_for_sources_) {
+        if (wait_for_sources_) {
 
-        // force update of of all sources
-        active_ = true;
-        touch();
+            // force update of of all sources
+            active_ = true;
+            touch();
 
-        // check that every source is ready..
-        bool ready = true;
-        for (SourceList::iterator iter = session_->begin(); iter != session_->end(); iter++)
-        {
-            // interrupt if any source is NOT ready
-            if ( !(*iter)->ready() ){
-                ready = false;
-                break;
+            // check that every source is ready..
+            bool ready = true;
+            for (SourceList::iterator iter = session_->begin(); iter != session_->end(); iter++)
+            {
+                // interrupt if any source is NOT ready
+                if ( !(*iter)->ready() ){
+                    ready = false;
+                    break;
+                }
+            }
+            // if all sources are ready, done with initialization!
+            if (ready) {
+                // remove the loading icon
+                Node *loader = overlays_[View::TRANSITION]->back();
+                overlays_[View::TRANSITION]->detatch(loader);
+                delete loader;
+                // done init
+                wait_for_sources_ = false;
+                initialized_ = true;
+                Log::Info("Source Session %s loaded %d sources.", path_.c_str(), session_->numSource());
             }
         }
-        // if all sources are ready, done with initialization!
-        if (ready) {
-            // remove the loading icon
-            Node *loader = overlays_[View::TRANSITION]->back();
-            overlays_[View::TRANSITION]->detatch(loader);
-            delete loader;
-            // done init
-            wait_for_sources_ = false;
-            initialized_ = true;
-            Log::Info("Source Session %s loaded %d sources.", path_.c_str(), session_->numSource());
+        else if ( !failed_ ) {
+
+            // set resolution
+            session_->setResolution( session_->config(View::RENDERING)->scale_ );
+
+            // deep update once to draw framebuffer
+            View::need_deep_update_ = true;
+            session_->update(dt_);
+
+            // get the texture index from framebuffer of session, apply it to the surface
+            sessionsurface_->setTextureIndex( session_->frame()->texture() );
+
+            // create Frame buffer matching size of session
+            FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution());
+
+            // set the renderbuffer of the source and attach rendering nodes
+            attach(renderbuffer);
+
+            // icon in mixing view
+            overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
+            overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
+
+            // wait for all sources to init
+            wait_for_sources_ = true;
         }
     }
-
-    if ( loadFinished_ && !loadFailed_ && session_ != nullptr) {
-        loadFinished_ = false;
-
-        // set resolution
-        session_->setResolution( session_->config(View::RENDERING)->scale_ );
-
-        // deep update once to draw framebuffer
-        View::need_deep_update_ = true;
-        session_->update(dt_);
-
-        // get the texture index from framebuffer of session, apply it to the surface
-        sessionsurface_->setTextureIndex( session_->frame()->texture() );
-
-        // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution());
-
-        // set the renderbuffer of the source and attach rendering nodes
-        attach(renderbuffer);
-
-        // icon in mixing view
-        overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-
-        // wait for all sources to init
-        wait_for_sources_ = true;
-
-    }
-
 }
 
 void SessionSource::setActive (bool on)
@@ -212,7 +214,7 @@ void SessionSource::setActive (bool on)
 void SessionSource::update(float dt)
 {
     if (session_ == nullptr)
-        loadFailed_ = true;
+        return;
 
     // update content
     if (active_)
@@ -223,7 +225,7 @@ void SessionSource::update(float dt)
         session_->deleteSource(session_->failedSource());
         // fail session if all sources failed
         if ( session_->numSource() < 1)
-            loadFailed_ = true;
+            failed_ = true;
     }
 
     Source::update(dt);

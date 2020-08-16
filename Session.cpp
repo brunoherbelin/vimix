@@ -6,6 +6,7 @@
 #include "Session.h"
 #include "GarbageVisitor.h"
 #include "Recorder.h"
+#include "SessionCreator.h"
 
 #include "Log.h"
 
@@ -301,5 +302,28 @@ void Session::lock()
 void Session::unlock()
 {
     access_.unlock();
+}
+
+
+Session *loadSession_(const std::string& filename)
+{
+    Session *s = new Session;
+
+    if (s) {
+        // actual loading of xml file
+        SessionCreator creator( s );
+
+        if (creator.load(filename)) {
+            // loaded ok
+            s->setFilename(filename);
+        }
+        else {
+            // error loading
+            delete s;
+            s = nullptr;
+        }
+    }
+
+    return s;
 }
 

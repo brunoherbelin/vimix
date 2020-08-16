@@ -2,6 +2,7 @@
 #define SESSIONSOURCE_H
 
 #include <atomic>
+#include <future>
 #include "Source.h"
 
 class SessionSource : public Source
@@ -35,9 +36,9 @@ protected:
     std::string path_;
     Session *session_;
 
-    std::atomic<bool> loadFailed_;
-    std::atomic<bool> loadFinished_;
+    std::atomic<bool> failed_;
     std::atomic<bool> wait_for_sources_;
+    std::future<Session *> sessionLoader_;
 };
 
 

@@ -20,43 +20,15 @@ using namespace tinyxml2;
 #include "SystemToolkit.h"
 //#include "GarbageVisitor.h"
 #include "SessionVisitor.h"
-#include "SessionCreator.h"
 #include "SessionSource.h"
 #include "MediaSource.h"
 
 #include "Mixer.h"
 
 #define THREADED_LOADING
-
-// static semaphore to prevent multiple threads for load / save
-static std::atomic<bool> sessionThreadActive_ = false;
-
 static std::vector< std::future<Session *> > sessionLoaders_;
 static std::vector< std::future<Session *> > sessionImporters_;
-static std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
-
-// static multithreaded session loading
-static Session *loadSession_(const std::string& filename)
-{
-    Session *s = new Session;
-
-    if (s) {
-        // actual loading of xml file
-        SessionCreator creator( s );
-
-        if (creator.load(filename)) {
-            // loaded ok
-            s->setFilename(filename);
-        }
-        else {
-            // error loading
-            delete s;
-            s = nullptr;
-        }
-    }
-
-    return s;
-}
+const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
 // static multithreaded session saving
@@ -586,9 +558,6 @@ void Mixer::save()
 
 void Mixer::saveas(const std::string& filename)
 {
-    if (sessionThreadActive_)
-        return;
-
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
