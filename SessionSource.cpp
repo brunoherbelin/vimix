@@ -146,10 +146,6 @@ void SessionSource::init()
             }
             // if all sources are ready, done with initialization!
             if (ready) {
-                // remove the loading icon
-                Node *loader = overlays_[View::TRANSITION]->back();
-                overlays_[View::TRANSITION]->detatch(loader);
-                delete loader;
                 // done init
                 wait_for_sources_ = false;
                 initialized_ = true;
@@ -179,8 +175,20 @@ void SessionSource::init()
             overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
             // wait for all sources to init
-            wait_for_sources_ = true;
+            if (session_->numSource() > 0)
+                wait_for_sources_ = true;
+            else {
+                initialized_ = true;
+                Log::Info("New Session created.");
+            }
         }
+    }
+
+    if (initialized_){
+        // remove the loading icon
+        Node *loader = overlays_[View::TRANSITION]->back();
+        overlays_[View::TRANSITION]->detatch(loader);
+        delete loader;
     }
 }
 
