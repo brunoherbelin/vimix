@@ -65,68 +65,51 @@ void ShowConfig(bool* p_open);
 void ShowSandbox(bool* p_open);
 
 // static objects for multithreaded file dialog
+const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
 static std::atomic<bool> fileDialogPending_ = false;
-static std::atomic<bool> sessionFileDialogLoadFinished_ = false;
-static std::atomic<bool> sessionFileDialogImport_ = false;
-static std::atomic<bool> sessionFileDialogSaveFinished_ = false;
-static std::string sessionFileDialogFilename_ = "";
 
-static void SessionFileDialogOpen(std::string path)
+
+static std::vector< std::future<std::string> > saveSessionFileDialogs;
+static std::string saveSessionFileDialog(const std::string &path)
 {
-    if (fileDialogPending_)
-        return;
-
-    fileDialogPending_ = true;
-    sessionFileDialogLoadFinished_ = false;
-
-    char const * open_file_name;
-    char const * open_pattern[1] = { "*.mix" };
-
-    open_file_name = tinyfd_openFileDialog( "Open a session file", path.c_str(), 1, open_pattern, "vimix session", 0);
-
-    if (!open_file_name)
-        sessionFileDialogFilename_ = "";
-    else
-        sessionFileDialogFilename_ = std::string( open_file_name );
-
-    sessionFileDialogLoadFinished_ = true;
-    fileDialogPending_ = false;
-}
-
-static void SessionFileDialogSave(std::string path)
-{
-    if (fileDialogPending_)
-        return;
-
-    fileDialogPending_ = true;
-    sessionFileDialogSaveFinished_ = false;
-
+    std::string filename = "";
     char const * save_file_name;
     char const * save_pattern[1] = { "*.mix" };
 
     save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
-    if (!save_file_name)
-        sessionFileDialogFilename_ = "";
-    else
-    {
-        sessionFileDialogFilename_ = std::string( save_file_name );
-        // check extension
-        std::string extension = sessionFileDialogFilename_.substr(sessionFileDialogFilename_.find_last_of(".") + 1);
+    if (save_file_name) {
+        filename = std::string(save_file_name);
+        std::string extension = filename.substr(filename.find_last_of(".") + 1);
         if (extension != "mix")
-            sessionFileDialogFilename_ += ".mix";
+            filename += ".mix";
     }
 
-    sessionFileDialogSaveFinished_ = true;
-    fileDialogPending_ = false;
+    return filename;
 }
 
-static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, const std::string &path)
+static std::vector< std::future<std::string> > openSessionFileDialogs;
+static std::vector< std::future<std::string> > importSessionFileDialogs;
+static std::string openSessionFileDialog(const std::string &path)
 {
-    if (fileDialogPending_)
-        return;
+    std::string filename = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
 
-    fileDialogPending_ = true;
+    char const * open_pattern[18] = { "*.mix" };
+    char const * open_file_name;
+    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 1, open_pattern, "vimix session", 0);
+
+    if (open_file_name)
+        filename = std::string(open_file_name);
+
+    return filename;
+}
+
+static std::vector< std::future<std::string> > fileImportFileDialogs;
+static std::string ImportFileDialog(const std::string &path)
+{
+    std::string filename = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
 
     char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg",
                                       "*.avi", "*.mov", "*.mkv",
@@ -135,45 +118,28 @@ static void ImportFileDialogOpen(char *filename, std::atomic<bool> *success, con
                                       "*.asf", "*.jpg", "*.png",
                                       "*.gif", "*.tif", "*.svg" };
     char const * open_file_name;
+    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 18, open_pattern, "All supported formats", 0);
 
-    if (SystemToolkit::file_exists(path))
-        open_file_name = tinyfd_openFileDialog( "Import a file", path.c_str(), 18, open_pattern, "All supported formats", 0);
-    else
-        open_file_name = tinyfd_openFileDialog( "Import a file", SystemToolkit::home_path().c_str(), 18, open_pattern, "All supported formats", 0);
+    if (open_file_name)
+        filename = std::string(open_file_name);
 
-    if (open_file_name) {
-        sprintf(filename, "%s", open_file_name);
-        *success = true;
-    }
-    else {
-        *success = false;
-    }
-
-    fileDialogPending_ = false;
+    return filename;
 }
 
-static void FolderDialogOpen(char *folder, std::atomic<bool> *success, const std::string &path)
+static std::vector< std::future<std::string> > recentFolderFileDialogs;
+static std::vector< std::future<std::string> > recordFolderFileDialogs;
+static std::string FolderDialog(const std::string &path)
 {
-    if (fileDialogPending_)
-        return;
+    std::string foldername = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
 
-    fileDialogPending_ = true;
+    char const * open_folder_name;
+    open_folder_name = tinyfd_selectFolderDialog("Select a folder", startpath.c_str());
 
-     char const * open_file_name;
-     if (SystemToolkit::file_exists(path))
-         open_file_name = tinyfd_selectFolderDialog("Select a folder", path.c_str());
-     else
-         open_file_name = tinyfd_selectFolderDialog("Select a folder", SystemToolkit::home_path().c_str());
+    if (open_folder_name)
+        foldername = std::string(open_folder_name);
 
-     if (open_file_name) {
-         sprintf(folder, "%s", open_file_name);
-         *success = true;
-     }
-     else {
-         *success = false;
-     }
-
-     fileDialogPending_ = false;
+    return foldername;
 }
 
 
@@ -269,17 +235,15 @@ void UserInterface::handleKeyboard()
             // SHIFT + CTRL + O : reopen current session
             if (keyboard_modifier_active && !Mixer::manager().session()->filename().empty())
                 Mixer::manager().load( Mixer::manager().session()->filename() );
-            else {
-                // CTRL + O : Open session
-                sessionFileDialogImport_ = false;
-                std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
-                navigator.hidePannel();
-            }
+            // CTRL + O : Open session
+            else
+                selectOpenFilename();
+
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
             if (Mixer::manager().session()->filename().empty())
-                std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
+                selectSaveFilename();
             else
                 Mixer::manager().save();
         }
@@ -567,6 +531,26 @@ void UserInterface::handleMouse()
 }
 
 
+void UserInterface::selectSaveFilename()
+{
+    // launch file dialog to select a session filename to save
+    if ( saveSessionFileDialogs.empty()) {
+        saveSessionFileDialogs.emplace_back( std::async(std::launch::async, saveSessionFileDialog, Settings::application.recentSessions.path) );
+        fileDialogPending_ = true;
+    }
+    navigator.hidePannel();
+}
+
+void UserInterface::selectOpenFilename()
+{
+    // launch file dialog to select a session filename to open
+    if ( openSessionFileDialogs.empty()) {
+        openSessionFileDialogs.emplace_back( std::async(std::launch::async, openSessionFileDialog, Settings::application.recentSessions.path) );
+        fileDialogPending_ = true;
+    }
+    navigator.hidePannel();
+}
+
 void UserInterface::NewFrame()
 {
     // Start the Dear ImGui frame
@@ -578,24 +562,69 @@ void UserInterface::NewFrame()
     handleKeyboard();
     handleMouse();
     handleScreenshot();
+
     // handle FileDialog
-    if (sessionFileDialogLoadFinished_) {
-        sessionFileDialogLoadFinished_ = false;
-        if (!sessionFileDialogFilename_.empty()) {
-            if (sessionFileDialogImport_)
-                Mixer::manager().import(sessionFileDialogFilename_);
-            else
-                Mixer::manager().open(sessionFileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
+
+    // if a file dialog future was registered
+    if ( !openSessionFileDialogs.empty() ) {
+        // check that file dialog thread finished
+        if (openSessionFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::string open_filename = openSessionFileDialogs.back().get();
+            if (!open_filename.empty()) {
+                Mixer::manager().open(open_filename);
+                Settings::application.recentSessions.path = SystemToolkit::path_filename(open_filename);
+            }
+            // done with this file dialog
+            openSessionFileDialogs.pop_back();
+            fileDialogPending_ = false;
         }
     }
-    if (sessionFileDialogSaveFinished_) {
-        sessionFileDialogSaveFinished_ = false;
-        if (!sessionFileDialogFilename_.empty()) {
-            Mixer::manager().saveas(sessionFileDialogFilename_);
-            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
+    if ( !importSessionFileDialogs.empty() ) {
+        // check that file dialog thread finished
+        if (importSessionFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::string open_filename = importSessionFileDialogs.back().get();
+            if (!open_filename.empty()) {
+                Mixer::manager().import(open_filename);
+                Settings::application.recentSessions.path = SystemToolkit::path_filename(open_filename);
+            }
+            // done with this file dialog
+            importSessionFileDialogs.pop_back();
+            fileDialogPending_ = false;
         }
     }
+    if ( !saveSessionFileDialogs.empty() ) {
+        // check that file dialog thread finished
+        if (saveSessionFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::string save_filename = saveSessionFileDialogs.back().get();
+            if (!save_filename.empty()) {
+                Mixer::manager().saveas(save_filename);
+                Settings::application.recentSessions.path = SystemToolkit::path_filename(save_filename);
+            }
+            // done with this file dialog
+            saveSessionFileDialogs.pop_back();
+            fileDialogPending_ = false;
+        }
+    }
+//    if (sessionFileDialogLoadFinished_) {
+//        sessionFileDialogLoadFinished_ = false;
+//        if (!sessionFileDialogFilename_.empty()) {
+//            if (sessionFileDialogImport_)
+//                Mixer::manager().import(sessionFileDialogFilename_);
+//            else
+//                Mixer::manager().open(sessionFileDialogFilename_);
+//            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
+//        }
+//    }
+//    if (sessionFileDialogSaveFinished_) {
+//        sessionFileDialogSaveFinished_ = false;
+//        if (!sessionFileDialogFilename_.empty()) {
+//            Mixer::manager().saveas(sessionFileDialogFilename_);
+//            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
+//        }
+//    }
 
     // overlay to ensure file dialog is modal
     if (fileDialogPending_){
@@ -698,36 +727,34 @@ void UserInterface::showMenuFile()
 
     ImGui::MenuItem( ICON_FA_HISTORY " Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
 
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O")) {
-        // launch file dialog to open a session file
-        sessionFileDialogImport_ = false;
-        std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
-        navigator.hidePannel();
-    }
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
+        selectOpenFilename();
+
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
         // launch file dialog to open a session file
-        sessionFileDialogImport_ = true;
-        std::thread (SessionFileDialogOpen, Settings::application.recentSessions.path).detach();
+        if ( importSessionFileDialogs.empty()) {
+            importSessionFileDialogs.emplace_back( std::async(std::launch::async, openSessionFileDialog, Settings::application.recentSessions.path) );
+            fileDialogPending_ = true;
+        }
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", CTRL_MOD "S")) {
         if (Mixer::manager().session()->filename().empty())
-            std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
-        else
+            selectSaveFilename();
+        else {
             Mixer::manager().save();
-        navigator.hidePannel();
+            navigator.hidePannel();
+        }
     }
-    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as")) {
-        std::thread (SessionFileDialogSave, Settings::application.recentSessions.path).detach();
-        navigator.hidePannel();
-    }
+    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as"))
+        selectSaveFilename();
 
     ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
-    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q")) {
+    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q"))
         Rendering::manager().close();
-    }
+
 }
 
 
@@ -889,14 +916,6 @@ void UserInterface::RenderPreview()
         }
     };
 
-    // return from thread for folder openning
-    static char record_browser_path_[2048] = {};
-    static std::atomic<bool> record_path_selected = false;
-    if (record_path_selected)  {
-        record_path_selected = false;
-        Settings::application.record.path = std::string(record_browser_path_);
-    }
-
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
@@ -912,6 +931,18 @@ void UserInterface::RenderPreview()
         }
 
         Recorder *rec = Mixer::manager().session()->frontRecorder();
+
+        // return from thread for folder openning
+        if ( !recordFolderFileDialogs.empty() ) {
+            // check that file dialog thread finished
+            if (recordFolderFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+                // get the folder from this file dialog
+                Settings::application.record.path = recordFolderFileDialogs.back().get();
+                // done with this file dialog
+                recordFolderFileDialogs.pop_back();
+                fileDialogPending_ = false;
+            }
+        }
 
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
@@ -966,8 +997,12 @@ void UserInterface::RenderPreview()
                     int selected_path = 0;
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::Combo("Path", &selected_path, name_path, 4);
-                    if (selected_path > 2)
-                        std::thread (FolderDialogOpen, record_browser_path_, &record_path_selected, Settings::application.record.path).detach();
+                    if (selected_path > 2) {
+                        if (recordFolderFileDialogs.empty()) {
+                            recordFolderFileDialogs.emplace_back(  std::async(std::launch::async, FolderDialog, Settings::application.record.path) );
+                            fileDialogPending_ = true;
+                        }
+                    }
                     else if (selected_path > 1)
                         Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
                     else if (selected_path > 0)
@@ -982,6 +1017,7 @@ void UserInterface::RenderPreview()
             }
             ImGui::EndMenuBar();
         }
+
 
         float width = ImGui::GetContentRegionAvail().x;
 
@@ -1802,23 +1838,32 @@ void Navigator::RenderNewPannel()
 
             ImGui::SetCursorPosY(2.f * width_);
 
-            // browse for a filename
-            static std::atomic<bool> file_selected = false;
+            // clic button to load file
             if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
-                // clear string before selection
-                file_selected = false;
-                std::thread (ImportFileDialogOpen, file_browser_path_, &file_selected, Settings::application.recentImport.path).detach();
+                // launch async call to file dialog and get its future.
+                if (fileImportFileDialogs.empty()) {
+                    fileImportFileDialogs.emplace_back(  std::async(std::launch::async, ImportFileDialog, Settings::application.recentImport.path) );
+                    fileDialogPending_ = true;
+                }
             }
+
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.mix)\n\nEquivalent to dropping the file in the workspace.");
 
-            if ( file_selected ) {
-                file_selected = false;
-                std::string open_filename(file_browser_path_);
-                // create a source with this file
-                std::string label = open_filename.substr( open_filename.size() - MIN( 35, open_filename.size()) );
-                new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+            // if a file dialog future was registered
+            if ( !fileImportFileDialogs.empty() ) {
+                // check that file dialog thread finished
+                if (fileImportFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+                    // get the filename from this file dialog
+                    std::string open_filename = fileImportFileDialogs.back().get();
+                    // done with this file dialog
+                    fileImportFileDialogs.pop_back();
+                    fileDialogPending_ = false;
+                    // create a source with this file
+                    std::string label = open_filename.substr( open_filename.size() - MIN( 35, open_filename.size()) );
+                    new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+                }
             }
 
             // combo of recent media filenames
@@ -1998,16 +2043,6 @@ void Navigator::RenderMainPannel()
         // Session quick selection pannel
         //
 
-        // return from thread for folder openning
-        static std::atomic<bool> folder_selected = false;
-        if (folder_selected)  {
-            folder_selected = false;
-            selection_session_mode = 1;
-            selection_session_mode_changed = true;
-            Settings::application.recentFolders.push(file_browser_path_);
-            Settings::application.recentFolders.path.assign(file_browser_path_);
-        }
-
         // Show combo box of quick selection modes
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
@@ -2032,9 +2067,29 @@ void Navigator::RenderMainPannel()
             }
             // Option 2 : add a folder
             if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
-                std::thread (FolderDialogOpen, file_browser_path_, &folder_selected, Settings::application.recentFolders.path).detach();
+                if (recentFolderFileDialogs.empty()) {
+                    recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, FolderDialog, Settings::application.recentFolders.path) );
+                    fileDialogPending_ = true;
+                }
             }
             ImGui::EndCombo();
+        }
+
+        // return from thread for folder openning
+        if ( !recentFolderFileDialogs.empty() ) {
+            // check that file dialog thread finished
+            if (recentFolderFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+                // get the filename from this file dialog
+                std::string foldername = recentFolderFileDialogs.back().get();
+                Settings::application.recentFolders.push(foldername);
+                Settings::application.recentFolders.path.assign(foldername);
+                // done with this file dialog
+                recentFolderFileDialogs.pop_back();
+
+                selection_session_mode = 1;
+                selection_session_mode_changed = true;
+                fileDialogPending_ = false;
+            }
         }
 
         // icon to clear list

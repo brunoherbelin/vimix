@@ -159,6 +159,8 @@ public:
 protected:
 
     void showMenuFile();
+    void selectSaveFilename();
+    void selectOpenFilename();
 
     void RenderPreview();
     void RenderShaderEditor();
