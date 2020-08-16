@@ -124,7 +124,7 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Baseline)",
-    "H264 (High)",
+    "H264 (High 4:4:4)",
     "H265 (Realtime)",
     "H265 (HQ Animation)",
     "ProRes (Standard)",
@@ -144,8 +144,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "x264enc pass=4 quantizer=16 speed-preset=4 threads=4 ! video/x-h264, profile=high ! h264parse ! ",
+    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=16 speed-preset=4 threads=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control x265 encoder quality :
     // NB: apparently x265 only accepts I420 format :(
     // speed-preset
@@ -176,7 +176,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //      3 ‘hq’
     //      4 ‘4444’
     "avenc_prores_ks pass=2 profile=2 quantizer=26 ! ",
-    "avenc_prores_ks pass=2 profile=4 quantizer=18 ! ",
+    "video/x-raw, format=Y444_10LE ! avenc_prores_ks pass=2 profile=4 quantizer=12 ! ",
+    // VP8 WebM encoding
     "vp8enc end-usage=vbr cpu-used=8 max-quantizer=35 deadline=100000 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=100 ! ",
     "jpegenc ! "
 };
