@@ -548,7 +548,8 @@ void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, c
     //                                             bb.Max, title, NULL, &overlay_size, ImVec2(0.0f,0.5f), &bb);
 }
 
-bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, int min, int max, ImVec2 size)
+//bool ImGuiToolkit::InvisibleSliderInt(const char* label, guint64 *index, guint64 min, guint64 max, ImVec2 size)
+bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, uint max, ImVec2 size)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -565,14 +566,13 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, int min, i
         return false;
 
     // read user input from system
-    bool left_mouse_press = false;
+    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
     const bool hovered = ImGui::ItemHoverable(bbox, id);
     bool temp_input_is_active = ImGui::TempInputIsActive(id);
     if (!temp_input_is_active)
     {
         const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        if (focus_requested || left_mouse_press)
+        if (focus_requested || (hovered && left_mouse_press) )
         {
             ImGui::SetActiveID(id, window);
             ImGui::SetFocusID(id, window);
@@ -582,12 +582,12 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, int min, i
 
     // time Slider behavior
     ImRect grab_slider_bb;
-    uint _zero = min;
-    uint _end = max;
-    bool pressed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
-                                               &_end, "%d", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    guint64 _zero = min;
+    guint64 _end = max;
+    bool valuechanged = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
+                                               &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
 
-    return pressed;
+    return left_mouse_press;
 }
 
 

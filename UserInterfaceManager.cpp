@@ -1295,8 +1295,18 @@ void MediaController::Render()
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.f, 3.f));
 
             // Prepare controllibg the current media player with timeline
-//            float *array = mp_->timeline.array();
-//            size_t array_size = mp_->timeline.arraySize();
+//            static size_t array_size = 1000;
+//            static float *array = (float *) malloc( sizeof(float) * array_size);
+//            mp_->timeline().fillArrayFromGaps(array, array_size);
+
+            static Timeline working_timeline;
+            static MediaPlayer *timeline_mp = nullptr;
+            static size_t array_size = 1200;
+            static float *array = (float *) malloc( sizeof(float) * array_size);
+
+//            static guint64 interval_time_from = GST_CLOCK_TIME_NONE;
+//            static bool  interval_slider_active = false;
+
             guint64 current_t = mp_->position();
             guint64 seek_t = current_t;
 
@@ -1313,35 +1323,64 @@ void MediaController::Render()
                 size.x *= timeline_zoom;
 
                 // draw position when entering
-//                ImVec2 draw_pos = ImGui::GetCursorPos();
+                ImVec2 draw_pos = ImGui::GetCursorPos();
 
-//                // capture user input (invisible)
-//                uint press_index = mp_->timeline.arraySize();
-//                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size-1, size);
+                // capture user input (invisible)
+//                static guint64 interval_time_current = 0;
+//                bool interval_slider_pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &interval_time_current, 0, mp_->timeline().end(), size);
 
-//                // behavior on action on array of segments
-//                static bool  active = false;
-//                static float target_value = 0.f;
-//                static uint  starting_index = array_size;
-//                if (pressed != active) {
-//                    active = pressed;
-//                    if (pressed) {
-//                        starting_index = press_index;
-//                        target_value = array[starting_index] > 0.f ? 0.f : 1.f;
+//
+                if (timeline_mp != mp_) {
+                    timeline_mp = mp_;
+                    working_timeline = timeline_mp->timeline();
+                    working_timeline.fillArrayFromGaps(array, array_size);
+                }
+
+//                if (interval_slider_pressed != interval_slider_active) {
+
+//                    interval_slider_active = interval_slider_pressed;
+//                    // on press
+//                    if (interval_slider_pressed) {
+//                        interval_time_from = interval_time_current;
 //                    }
-//                    else// action on released
-//                    {
-//                        mp_->timeline.updateGapsFromArray();
+//                    // on release
+//                    else {
+//                        interval_timeline.reset();
+//                        mp_->toggleGapInTimeline(interval_time_from, interval_time_current);
+//                        interval_time_from = GST_CLOCK_TIME_NONE;
 //                    }
 //                }
-//                if (active) {
-//                    for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-//                        array[i] = target_value;
-//                }
 
-//                // back to drawing position to draw the segments data with historgram
-//                ImGui::SetCursorPos(draw_pos);
-//                ImGui::PlotHistogram("##TimelineHistogram", array, array_size-1.f, 0, NULL, 0.0f, 1.0f, size);
+
+                uint press_index = array_size;
+                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size-1, size);
+
+                // behavior on action on array of segments
+                static bool  active = false;
+                static float target_value = 0.f;
+                static uint  starting_index = array_size;
+                if (pressed != active) {
+                    active = pressed;
+                    if (pressed) {
+                        starting_index = press_index;
+                        target_value = array[starting_index] > 0.f ? 0.f : 1.f;
+                    }
+                    else  // action on released
+                    {
+                        working_timeline.updateGapsFromArray(array, array_size);
+                        timeline_mp->setTimeline(working_timeline);
+                    }
+                }
+                if (active) {
+                    for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+                        array[i] = target_value;
+                }
+
+                // back to drawing position to draw the segments data with historgram
+                ImGui::SetCursorPos(draw_pos);
+                {
+                    ImGui::PlotHistogram("##TimelineHistogram", array, array_size-1.f, 0, NULL, 0.0f, 1.0f, size);
+                }
 
                 // custom timeline slider
                 slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t,
@@ -1368,10 +1407,6 @@ void MediaController::Render()
             bool media_play = media_playing_mode_ & (!slider_pressed_);
 
             // apply play action to media only if status should change
-            // NB: The seek command performed an ASYNC state change, but
-            // gst_element_get_state called in isPlaying(true) will wait
-            // for the state change to complete : do not remove it!
-// TODO : DO NOT ask for status every frame : high performance cost
             if ( mp_->isPlaying() != media_play ) {
                 mp_->play( media_play );
             }
@@ -2358,54 +2393,54 @@ void ShowSandbox(bool* p_open)
 
     }
 
-    if (arr != nullptr)
-    {
+//    if (arr != nullptr)
+//    {
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
+//        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+//        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
 
-        ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 20);
+//        ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 20);
 
-        // draw position when entering
-        ImVec2 draw_pos = ImGui::GetCursorPos();
-        // plot the histogram
-        uint press_index = IM_ARRAYSIZE(arr);
-        bool pressed = ImGuiToolkit::InvisibleSliderInt("test", &press_index, 0, array_size-1, size);
+//        // draw position when entering
+//        ImVec2 draw_pos = ImGui::GetCursorPos();
+//        // plot the histogram
+//        uint press_index = IM_ARRAYSIZE(arr);
+//        bool pressed = ImGuiToolkit::InvisibleSliderInt("test", &press_index, 0, array_size-1, size);
 
-        static bool  active = false;
-        static float target_value = 0.f;
-        static uint  starting_index = array_size;
+//        static bool  active = false;
+//        static float target_value = 0.f;
+//        static uint  starting_index = array_size;
 
-        if (pressed != active) {
-            active = pressed;
-            starting_index = press_index;
-            target_value = arr[starting_index] > 0.f ? 0.f : 1.f;
-        }
+//        if (pressed != active) {
+//            active = pressed;
+//            starting_index = press_index;
+//            target_value = arr[starting_index] > 0.f ? 0.f : 1.f;
+//        }
 
-        if (active) {
-            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-                arr[i] = target_value;
-        }
+//        if (active) {
+//            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+//                arr[i] = target_value;
+//        }
 
-        // back to
-        ImGui::SetCursorPos(draw_pos);
-        ImGui::PlotHistogram("Histogram", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
+//        // back to
+//        ImGui::SetCursorPos(draw_pos);
+//        ImGui::PlotHistogram("Histogram", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
 
-        //    ImGui::PopStyleColor(1);
+//        //    ImGui::PopStyleColor(1);
 
-        bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, duration, step, size.x);
+//        bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, duration, step, size.x);
 
-        ImGui::PopStyleVar(2);
+//        ImGui::PopStyleVar(2);
 
-        ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
-        ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
-        ImGui::Text("Hover    Pressed %s   v = %d", pressed ? "on" : "off", press_index);
+//        ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
+//        ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
+//        ImGui::Text("Hover    Pressed %s   v = %d", pressed ? "on" : "off", press_index);
 
-        static int w = 0;
-        ImGui::SetNextItemWidth(size.x);
-        ImGui::SliderInt("##int", &w, 0, array_size-1);
+//        static int w = 0;
+//        ImGui::SetNextItemWidth(size.x);
+//        ImGui::SliderInt("##int", &w, 0, array_size-1);
 
-    }
+//    }
 
     ImGui::End();
 }

@@ -12,22 +12,21 @@ struct TimeInterval
 {
     GstClockTime begin;
     GstClockTime end;
-
     TimeInterval()
+    {
+        reset();
+    }
+    TimeInterval(GstClockTime a, GstClockTime b) : TimeInterval()
+    {
+        if ( a != GST_CLOCK_TIME_NONE && b != GST_CLOCK_TIME_NONE) {
+            begin = MIN(a, b);
+            end = MAX(a, b);
+        }
+    }
+    inline void reset()
     {
         begin = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
-    }
-
-    TimeInterval(GstClockTime b, GstClockTime e)
-    {
-        if ( b < e ) {
-            begin = b;
-            end = e;
-        } else {
-            begin = GST_CLOCK_TIME_NONE;
-            end = GST_CLOCK_TIME_NONE;
-        }
     }
     inline GstClockTime duration() const
     {
@@ -63,21 +62,16 @@ struct TimeInterval
     }
 };
 
-struct includesTime: public std::unary_function<TimeInterval, bool>
+
+struct order_comparator
 {
-    inline bool operator()(const TimeInterval s) const
+    inline bool operator () (const TimeInterval a, const TimeInterval b) const
     {
-       return s.includes(_t);
+        return (a < b);
     }
-
-    includesTime(GstClockTime t) : _t(t) { }
-
-private:
-    GstClockTime _t;
 };
 
-
-typedef std::set<TimeInterval> TimeIntervalSet;
+typedef std::set<TimeInterval, order_comparator> TimeIntervalSet;
 
 
 class Timeline
@@ -85,8 +79,10 @@ class Timeline
 public:
     Timeline();
     ~Timeline();
+    Timeline& operator = (const Timeline& b);
 
     void reset();
+    bool is_valid();
 
     // global properties of the timeline
     // timeline is invalid untill all 3 are set
@@ -106,19 +102,16 @@ public:
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);
     void clearGaps();
+    void toggleGaps(GstClockTime from, GstClockTime to);
 
     // get gaps
     size_t numGaps();
     bool gapAt(const GstClockTime t, TimeInterval &gap);
     std::list< std::pair<guint64, guint64> > gaps() const;
 
-    // direct access to the array representation of the timeline
-    // TODO : implement an ImGui widget to plot a timeline instead of an array
-    float *array();
-    size_t arraySize();
     // synchronize data structures
-    void updateGapsFromArray();
-    void updateArrayFromGaps();
+    void updateGapsFromArray(float *array_, size_t array_size_);
+    void fillArrayFromGaps(float *array_, size_t array_size_);
 
 private:
 
@@ -128,12 +121,6 @@ private:
 
     // main data structure containing list of gaps in the timeline
     TimeIntervalSet gaps_;
-
-    // supplementary data structure needed to display and edit the timeline
-    bool need_update_;
-    void init_array();
-    float *array_;
-    size_t array_size_;
 
 };
 

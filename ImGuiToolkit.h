@@ -28,7 +28,7 @@ namespace ImGuiToolkit
     // utility sliders
     void Bar (float value, float in, float out, float min, float max, const char* title, bool expand);
     bool TimelineSlider (const char* label, guint64 *time, guint64 duration, guint64 step, const float width);
-    bool InvisibleSliderInt(const char* label, uint *index, int min, int max, const ImVec2 size);
+    bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
 
     // fonts from ressources 'fonts/'
     typedef enum {

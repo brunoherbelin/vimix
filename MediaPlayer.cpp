@@ -746,15 +746,17 @@ void MediaPlayer::update()
         execute_loop_command();
     }
 
-
     // manage timeline
-//    TimeInterval gap;
-//    if (position_ != GST_CLOCK_TIME_NONE && timeline.gapAt(position_, gap)) {
-//        seek( (rate_>0.f) ? gap.end : gap.begin);
+    TimeInterval gap;
+    if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
 
-//        // TODO : manage loop when jumping out of timeline
 
-//    }
+        if (gap.is_valid())
+            seek( (rate_>0.f) ? gap.end : gap.begin);
+
+        // TODO : manage loop when jumping out of timeline
+
+    }
 
 }
 
@@ -844,6 +846,17 @@ Timeline MediaPlayer::timeline()
 {
     return media_.timeline;
 }
+
+
+void MediaPlayer::setTimeline(Timeline tl)
+{
+    media_.timeline = tl;
+}
+
+//void MediaPlayer::toggleGapInTimeline(GstClockTime from, GstClockTime to)
+//{
+//    return media_.timeline.toggleGaps(from, to);
+//}
 
 std::string MediaPlayer::codec() const
 {

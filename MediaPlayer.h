@@ -189,6 +189,10 @@ public:
      * - frame duration : timeline.step()
      */
     Timeline timeline();
+
+    void setTimeline(Timeline tl);
+//    void toggleGapInTimeline(GstClockTime from, GstClockTime to);
+
     /**
      * Get position time
      * */
