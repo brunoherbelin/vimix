@@ -176,7 +176,7 @@ Shader::Shader() : blending(BLEND_OPACITY)
 {
     // create unique id
     auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 100000000;
+    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
 
     program_ = &simpleShadingProgram;
     reset();

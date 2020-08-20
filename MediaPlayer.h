@@ -72,7 +72,7 @@ public:
     /**
      * Constructor of a GStreamer Media Player
      */
-    MediaPlayer( std::string name = std::string() );
+    MediaPlayer();
     /**
      * Destructor.
      */
@@ -240,7 +240,7 @@ public:
 private:
 
     // video player description
-    std::string id_;
+    int id_;
     std::string filename_;
     std::string uri_;
     guint textureindex_;

@@ -41,7 +41,6 @@ class Group;
  */
 class Node {
 
-    static int node_counter;
     int       id_;
     bool      initialized_;
 

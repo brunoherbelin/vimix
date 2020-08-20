@@ -23,10 +23,11 @@ using namespace std;
 
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
-MediaPlayer::MediaPlayer(string name) : id_(name)
+MediaPlayer::MediaPlayer()
 {
-    if (std::empty(id_))
-        id_ = SystemToolkit::date_time_string();
+    // create unique id
+    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
+    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
 
     uri_ = "undefined";
     pipeline_ = nullptr;
@@ -222,19 +223,19 @@ void MediaPlayer::execute_open()
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("MediaPlayer %s Could not construct pipeline %s:\n%s", id_.c_str(), description.c_str(), error->message);
+        Log::Warning("MediaPlayer %s Could not construct pipeline %s:\n%s", std::to_string(id_).c_str(), description.c_str(), error->message);
         g_clear_error (&error);
         failed_ = true;
         return;
     }
-    g_object_set(G_OBJECT(pipeline_), "name", id_.c_str(), NULL);
+    g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);    
     string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
             ",height=" + std::to_string(media_.height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
-        Log::Warning("MediaPlayer %s Could not configure video frame info", id_.c_str());
+        Log::Warning("MediaPlayer %s Could not configure video frame info", std::to_string(id_).c_str());
         failed_ = true;
         return;
     }
@@ -278,7 +279,7 @@ void MediaPlayer::execute_open()
         gst_object_unref (sink);
     } 
     else {
-        Log::Warning("MediaPlayer %s Could not configure  sink", id_.c_str());
+        Log::Warning("MediaPlayer %s Could not configure  sink", std::to_string(id_).c_str());
         failed_ = true;
         return;
     }
@@ -290,7 +291,7 @@ void MediaPlayer::execute_open()
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("MediaPlayer %s Could not open '%s'", id_.c_str(), uri_.c_str());
+        Log::Warning("MediaPlayer %s Could not open '%s'", std::to_string(id_).c_str(), uri_.c_str());
         failed_ = true;
         return;
     }
@@ -304,7 +305,8 @@ void MediaPlayer::execute_open()
 
 
     // all good
-    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", id_.c_str(), uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
+    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
+              uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
     ready_ = true;
 
     // register media player
@@ -601,7 +603,7 @@ void MediaPlayer::init_texture(guint index)
         pbo_next_index_ = 1;
 
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Using Pixel Buffer Object texturing.", id_.c_str());
+        Log::Info("MediaPlayer %s Using Pixel Buffer Object texturing.", std::to_string(id_).c_str());
 #endif
     }
 }
@@ -807,11 +809,11 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 
     // Send the event (ASYNC)
     if (seek_event && !gst_element_send_event(pipeline_, seek_event) )
-        Log::Warning("MediaPlayer %s Seek failed", id_.c_str());
+        Log::Warning("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
     else {
         seeking_ = true;
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Seek %ld %f", id_.c_str(), seek_pos, rate_);
+        Log::Info("MediaPlayer %s Seek %ld %f", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
 
@@ -905,7 +907,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
         // get the frame from buffer
         if ( !gst_video_frame_map (&frame_[write_index_].vframe, &v_frame_video_info_, buf, GST_MAP_READ ) )
         {
-            Log::Info("MediaPlayer %s Failed to map the video buffer", id_.c_str());
+            Log::Info("MediaPlayer %s Failed to map the video buffer", std::to_string(id_).c_str());
             // free access to frame & exit
             frame_[write_index_].status = INVALID;
             frame_[write_index_].access.unlock();
