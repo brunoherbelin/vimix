@@ -684,16 +684,11 @@ void MediaPlayer::update()
     guint read_index = 0;
     bool need_loop = false;
 
-    // locked access to changing index
+    // locked access to current index
     index_lock_.lock();
+    // get the last frame filled from fill_frame()
     read_index = last_index_;
-    // Do NOT miss an EOS or a pre-roll
-    for (guint i = 0; i < N_VFRAME; ++i) {
-        if ( frame_[i].status == EOS || frame_[i].status == PREROLL) {
-            read_index = i;
-            break;
-        }
-    }
+    // unlock access to index change
     index_lock_.unlock();
 
     // lock frame while reading it
@@ -888,6 +883,10 @@ double MediaPlayer::updateFrameRate() const
 
 bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 {
+    // Do NOT overwrite an unread EOS
+    if ( frame_[write_index_].status == EOS )
+        return true;
+
     // lock access to frame
     frame_[write_index_].access.lock();
 
@@ -942,14 +941,15 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     // unlock access to frame
     frame_[write_index_].access.unlock();
 
-    // lock access to index change (very quick)
+    // lock access to change current index (very quick)
     index_lock_.lock();
-    // indicate update that this is the last frame filled (and unlocked)
+    // indicate update() that this is the last frame filled (and unlocked)
     last_index_ = write_index_;
-    // for writing, we will access the next in stack
-    write_index_ = (write_index_ + 1) % N_VFRAME;
     // unlock access to index change
     index_lock_.unlock();
+
+    // for writing, we will access the next in stack
+    write_index_ = (write_index_ + 1) % N_VFRAME;
 
     // calculate actual FPS of update
     timecount_.tic();
