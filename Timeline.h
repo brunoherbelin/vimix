@@ -58,7 +58,7 @@ struct TimeInterval
     }
     inline bool includes(const GstClockTime t) const
     {
-        return (is_valid() && t != GST_CLOCK_TIME_NONE && t > this->begin && t < this->end);
+        return (is_valid() && t != GST_CLOCK_TIME_NONE && !(t < this->begin) && !(t > this->end) );
     }
 };
 
@@ -86,27 +86,32 @@ public:
 
     // global properties of the timeline
     // timeline is invalid untill all 3 are set
-    void setStart(GstClockTime start);
+    void setFirst(GstClockTime first);
     void setEnd(GstClockTime end);
     void setStep(GstClockTime dt);
 
     // get properties
     inline GstClockTime start() const { return timing_.begin; }
     inline GstClockTime end() const { return timing_.end; }
+    inline GstClockTime first() const { return first_; }
+    inline GstClockTime last() const { return timing_.end - step_; }
     inline GstClockTime step() const { return step_; }
     inline GstClockTime duration() const { return timing_.duration(); }
     inline size_t numFrames() const { return duration() / step_; }
+
+    GstClockTime next(GstClockTime time) const;
+    GstClockTime previous(GstClockTime time) const;
 
     // Add / remove gaps in the timeline
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);
     void clearGaps();
-    void toggleGaps(GstClockTime from, GstClockTime to);
+//    void toggleGaps(GstClockTime from, GstClockTime to);
 
     // get gaps
     size_t numGaps();
-    bool gapAt(const GstClockTime t, TimeInterval &gap);
+    bool gapAt(const GstClockTime t, TimeInterval &gap) const;
     std::list< std::pair<guint64, guint64> > gaps() const;
 
     // synchronize data structures
@@ -117,6 +122,7 @@ private:
 
     // global information on the timeline
     TimeInterval timing_;
+    GstClockTime first_;
     GstClockTime step_;
 
     // main data structure containing list of gaps in the timeline

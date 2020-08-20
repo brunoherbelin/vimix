@@ -44,6 +44,7 @@ void Timeline::reset()
 {
     // reset timing
     timing_.reset();
+    first_ = GST_CLOCK_TIME_NONE;
     step_ = GST_CLOCK_TIME_NONE;
 
     // clear gaps
@@ -55,9 +56,10 @@ bool Timeline::is_valid()
     return timing_.is_valid() && step_ != GST_CLOCK_TIME_NONE;
 }
 
-void Timeline::setStart(GstClockTime start)
+void Timeline::setFirst(GstClockTime first)
 {
-    timing_.begin = start;
+    timing_.begin = 0;
+    first_ = first;
 }
 
 void Timeline::setEnd(GstClockTime end)
@@ -68,6 +70,28 @@ void Timeline::setEnd(GstClockTime end)
 void Timeline::setStep(GstClockTime dt)
 {
     step_ = dt;
+}
+
+
+GstClockTime Timeline::next(GstClockTime time) const
+{
+    GstClockTime next_time = time;
+
+    TimeInterval gap;
+    if (gapAt(time, gap) && gap.is_valid())
+        next_time = gap.end;
+
+    return next_time;
+}
+
+GstClockTime Timeline::previous(GstClockTime time) const
+{
+    GstClockTime prev_time = time;
+    TimeInterval gap;
+    if (gapAt(time, gap) && gap.is_valid())
+        prev_time = gap.begin;
+
+    return prev_time;
 }
 
 void Timeline::updateGapsFromArray(float *array_, size_t array_size_)
@@ -123,7 +147,7 @@ size_t Timeline::numGaps()
     return gaps_.size();
 }
 
-bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap)
+bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
 {
     TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
 
@@ -148,37 +172,37 @@ bool Timeline::addGap(TimeInterval s)
     return false;
 }
 
-void Timeline::toggleGaps(GstClockTime from, GstClockTime to)
-{
-    TimeInterval interval(from, to);
-    TimeInterval gap;
-    bool is_a_gap_ = gapAt(from, gap);
+//void Timeline::toggleGaps(GstClockTime from, GstClockTime to)
+//{
+//    TimeInterval interval(from, to);
+//    TimeInterval gap;
+//    bool is_a_gap_ = gapAt(from, gap);
 
-    if (interval.is_valid())
-    {
-        // fill gap
-        if (is_a_gap_) {
+//    if (interval.is_valid())
+//    {
+//        // fill gap
+//        if (is_a_gap_) {
 
-        }
-        // else create gap (from time is not in a gap)
-        else {
+//        }
+//        // else create gap (from time is not in a gap)
+//        else {
 
-            TimeIntervalSet::iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(to));
-            // if there is a gap overlap with [from to] (or [to from]), expand the gap
-            if ( g != gaps_.end() ) {
-                interval.begin = MIN( (*g).begin, interval.begin);
-                interval.end   = MAX( (*g).end , interval.end);
-                gaps_.erase(g);
-            }
-            //  add the new gap
-            addGap(interval);
-            Log::Info("add gap [ %ld  %ld ]", interval.begin, interval.end);
-        }
+//            TimeIntervalSet::iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(to));
+//            // if there is a gap overlap with [from to] (or [to from]), expand the gap
+//            if ( g != gaps_.end() ) {
+//                interval.begin = MIN( (*g).begin, interval.begin);
+//                interval.end   = MAX( (*g).end , interval.end);
+//                gaps_.erase(g);
+//            }
+//            //  add the new gap
+//            addGap(interval);
+//            Log::Info("add gap [ %ld  %ld ]", interval.begin, interval.end);
+//        }
 
 
-    }
-    Log::Info("%d gaps in timeline", numGaps());
-}
+//    }
+//    Log::Info("%d gaps in timeline", numGaps());
+//}
 
 bool Timeline::removeGaptAt(GstClockTime t)
 {

@@ -387,15 +387,13 @@ float MediaPlayer::aspectRatio() const
 
 GstClockTime MediaPlayer::position()
 {
-    GstClockTime pos = position_;
-    
-    if (pos == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
+    if (position_ == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
         gint64 p = GST_CLOCK_TIME_NONE;
         if ( gst_element_query_position (pipeline_, GST_FORMAT_TIME, &p) )
-            pos = p;
+            position_ = p;
     }
-    
-    return pos - media_.timeline.start();
+
+    return position_;
 }
 
 void MediaPlayer::enable(bool on)
@@ -457,7 +455,8 @@ void MediaPlayer::play(bool on)
 
     // requesting to play, but stopped at end of stream : rewind first !
     if ( desired_state_ == GST_STATE_PLAYING) {
-        if ( ( rate_>0.0 ? media_.timeline.end() - position() : position() ) < 2 * media_.timeline.step() )
+        if ( ( rate_ < 0.0 && position_ <= media_.timeline.next(0)  )
+             || ( rate_ > 0.0 && position_ >= media_.timeline.previous(media_.timeline.last()) ) )
             rewind();
     }
 
@@ -511,12 +510,18 @@ void MediaPlayer::rewind()
     if (!enabled_ || !media_.seekable)
         return;
 
-    if (rate_ > 0.0)
-        // playing forward, loop to begin
-        execute_seek_command(0);
-    else
-        // playing backward, loop to end
-        execute_seek_command(media_.timeline.end() - media_.timeline.step());
+    // playing forward, loop to begin
+    if (rate_ > 0.0) {
+        // begin is the end of a gab which includes the first PTS (if exists)
+        // normal case, begin is zero
+        execute_seek_command( media_.timeline.next(0) );
+    }
+    // playing backward, loop to endTimeInterval gap;
+    else {
+        // end is the start of a gab which includes the last PTS (if exists)
+        // normal case, end is last frame
+        execute_seek_command( media_.timeline.previous(media_.timeline.last()));
+    }
 }
 
 
@@ -526,7 +531,8 @@ void MediaPlayer::step()
     if (!enabled_ || isPlaying())
         return;
 
-    if ( ( rate_ < 0.0 && position_ <= media_.timeline.start() ) || ( rate_ > 0.0 && position_ >= media_.timeline.end() ) )
+    if ( ( rate_ < 0.0 && position_ <= media_.timeline.next(0)  )
+         || ( rate_ > 0.0 && position_ >= media_.timeline.previous(media_.timeline.last()) ) )
         rewind();
 
     // step 
@@ -539,8 +545,7 @@ void MediaPlayer::seek(GstClockTime pos)
         return;
 
     // apply seek
-    GstClockTime target = CLAMP(pos, 0, media_.timeline.end());
-//    GstClockTime target = CLAMP(pos, timeline.start(), timeline.end());
+    GstClockTime target = CLAMP(pos, media_.timeline.start(), media_.timeline.end());
     execute_seek_command(target);
 
 }
@@ -690,6 +695,13 @@ void MediaPlayer::update()
     index_lock_.lock();
     // get the last frame filled from fill_frame()
     read_index = last_index_;
+    // Do NOT miss and jump directly (after seek) to a pre-roll
+    for (guint i = 0; i < N_VFRAME; ++i) {
+        if (frame_[i].status == PREROLL) {
+            read_index = i;
+            break;
+        }
+    }
     // unlock access to index change
     index_lock_.unlock();
 
@@ -738,22 +750,28 @@ void MediaPlayer::update()
         seeking_ = false;
     }
 
+    // manage timeline
+    TimeInterval gap;
+    if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
+
+        if (gap.is_valid()) {
+
+            GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
+
+            if (jumpPts > media_.timeline.first() && jumpPts < media_.timeline.last())
+                seek( jumpPts);
+            else
+                need_loop = true;
+
+        }
+
+    }
+
     // manage loop mode
     if (need_loop) {
         execute_loop_command();
     }
 
-    // manage timeline
-    TimeInterval gap;
-    if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
-
-
-        if (gap.is_valid())
-            seek( (rate_>0.f) ? gap.end : gap.begin);
-
-        // TODO : manage loop when jumping out of timeline
-
-    }
 
 }
 
@@ -783,9 +801,9 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     // no target given
     if (target == GST_CLOCK_TIME_NONE) 
         // create seek event with current position (rate changed ?)
-        seek_pos = position();
+        seek_pos = position_;
     // target is given but useless
-    else if ( ABS_DIFF(target, position()) < media_.timeline.step()) {
+    else if ( ABS_DIFF(target, position_) < media_.timeline.step()) {
         // ignore request
         return;
     }
@@ -887,7 +905,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 {
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
-        return true;
+        write_index_ = (write_index_ + 1) % N_VFRAME;
 
     // lock access to frame
     frame_[write_index_].access.lock();
@@ -925,8 +943,8 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 
             // set the start position (i.e. pts of first frame we got)
             if (media_.timeline.start() == GST_CLOCK_TIME_NONE) {
-                media_.timeline.setStart(buf->pts);
-                Log::Info("Timeline %ld  [%ld %ld]", media_.timeline.numFrames(), media_.timeline.start(), media_.timeline.end());
+                media_.timeline.setFirst(buf->pts);
+                Log::Info("Timeline %ld  [%ld %ld]", media_.timeline.numFrames(), media_.timeline.first(), media_.timeline.end());
             }
         }
         // full but invalid frame : will be deleted next iteration
@@ -987,7 +1005,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
-            else if (m->playSpeed() < 0.f && buf->pts <= m->media_.timeline.start()) {
+            else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }
@@ -1021,7 +1039,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
-            else if (m->playSpeed() < 0.f && buf->pts <= m->media_.timeline.start()) {
+            else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {
                 m->fill_frame(NULL, MediaPlayer::EOS);
             }
         }

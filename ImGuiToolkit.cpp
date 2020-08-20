@@ -286,7 +286,7 @@ void ImGuiToolkit::HelpMarker(const char* desc)
 #define NUM_MARKS 10
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 duration, guint64 step, const float width)
+bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width)
 {
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
@@ -326,8 +326,8 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
     ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(duration) );
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
+    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(end) );
+    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(end) );
 
     //
     // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
@@ -359,7 +359,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
                                                &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
     if (value_changed){
         //        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(duration) );
+        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end) ) + start;
         grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
     }
 
@@ -393,7 +393,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
             tick_step = optimal_tick_marks[i];
             large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
             label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
-            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
+            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(end) );
         }
     }
 
@@ -409,14 +409,14 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
 
     // render text duration
     ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
-                   GstToolkit::time_to_string(duration, GstToolkit::TIME_STRING_MINIMAL).c_str());
+                   GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
     overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
 
     // render tick marks
-    while ( tick < duration)
+    while ( tick < end)
     {
         // large tick mark
         float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
@@ -440,7 +440,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 dura
 
         // next tick
         tick += tick_step;
-        tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
+        tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
     }
 
