@@ -520,7 +520,7 @@ void MediaPlayer::rewind()
     else {
         // end is the start of a gab which includes the last PTS (if exists)
         // normal case, end is last frame
-        execute_seek_command( media_.timeline.previous(media_.timeline.last()));
+        execute_seek_command( media_.timeline.previous(media_.timeline.last()) );
     }
 }
 
@@ -673,8 +673,12 @@ void MediaPlayer::update()
         // try to get info from discoverer
         if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
         {
-            // ok, discovering thread is finished ! Get the info
+            // remember loaded gaps
+            TimeIntervalSet  gaps = media_.timeline.gaps();
+            // ok, discovering thread is finished ! Get the media info
             media_ = discoverer_.get();
+            // restore loaded gaps (overwriten above)
+            media_.timeline.setGaps( gaps );
             // if its ok, open the media
             if (media_.valid)
                 execute_open();
@@ -686,6 +690,13 @@ void MediaPlayer::update()
     // prevent unnecessary updates: disabled or already filled image
     if (!enabled_ || (media_.isimage && textureindex_>0 ) )
         return;
+
+//    if (seeking_) {
+//        GstState state;
+//        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+//        seeking_ = false;
+//        return;
+//    }
 
     // local variables before trying to update
     guint read_index = 0;
@@ -744,34 +755,38 @@ void MediaPlayer::update()
     // unkock frame after reading it
     frame_[read_index].access.unlock();
 
+    // if already seeking (asynch)
     if (seeking_) {
+        // request status update to pipeline (re-sync gst thread)
         GstState state;
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        // seek should be resolved next frame
         seeking_ = false;
+        // do NOT do another seek yet
     }
+    // otherwise check for need to seek (pipeline management)
+    else {
+        // manage timeline: test if position falls into a gap
+        TimeInterval gap;
+        if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
+            // if in a gap, seek to next section
+            if (gap.is_valid()) {
+                // jump in one or the other direction
+                GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
+                // seek to next valid time (if not beginnig or end of timeline)
+                if (jumpPts > media_.timeline.first() && jumpPts < media_.timeline.last())
+                    seek( jumpPts );
+                // otherwise, we should loop
+                else
+                    need_loop = true;
+            }
 
-    // manage timeline: test if position falls into a gap
-    TimeInterval gap;
-    if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
-        // if in a gap, seek to next section
-        if (gap.is_valid()) {
-            // jump in one or the other direction
-            GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
-            // seek to next valid time (if not beginnig or end of timeline)
-            if (jumpPts > media_.timeline.first() && jumpPts < media_.timeline.last())
-                seek( jumpPts);
-            // otherwise, we should loop
-            else
-                need_loop = true;
         }
-
+        // manage loop mode
+        if (need_loop) {
+            execute_loop_command();
+        }
     }
-
-    // manage loop mode
-    if (need_loop) {
-        execute_loop_command();
-    }
-
 
 }
 
@@ -791,7 +806,7 @@ void MediaPlayer::execute_loop_command()
 
 void MediaPlayer::execute_seek_command(GstClockTime target)
 {
-    if ( pipeline_ == nullptr || !media_.seekable)
+    if ( pipeline_ == nullptr || !media_.seekable )
         return;
 
     // seek position : default to target
@@ -943,7 +958,8 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             // set the start position (i.e. pts of first frame we got)
             if (media_.timeline.start() == GST_CLOCK_TIME_NONE) {
                 media_.timeline.setFirst(buf->pts);
-                Log::Info("Timeline %ld  [%ld %ld]", media_.timeline.numFrames(), media_.timeline.first(), media_.timeline.end());
+                Log::Info("Timeline %ld  [%ld %ld] %d gaps", media_.timeline.numFrames(),
+                          media_.timeline.first(), media_.timeline.end(), media_.timeline.numGaps());
             }
         }
         // full but invalid frame : will be deleted next iteration

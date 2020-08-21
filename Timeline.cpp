@@ -142,11 +142,6 @@ void Timeline::fillArrayFromGaps(float *array_, size_t array_size_)
     }
 }
 
-size_t Timeline::numGaps()
-{
-    return gaps_.size();
-}
-
 bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
 {
     TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
@@ -170,6 +165,11 @@ bool Timeline::addGap(TimeInterval s)
         return gaps_.insert(s).second;
 
     return false;
+}
+
+void Timeline::setGaps(TimeIntervalSet g)
+{
+    gaps_ = g;
 }
 
 //void Timeline::toggleGaps(GstClockTime from, GstClockTime to)
@@ -221,12 +221,4 @@ void Timeline::clearGaps()
     gaps_.clear();
 }
 
-std::list< std::pair<guint64, guint64> > Timeline::gaps() const
-{
-    std::list< std::pair<guint64, guint64> > ret;
-    for (TimeIntervalSet::iterator it = gaps_.begin(); it != gaps_.end(); it++)
-        ret.push_back( std::make_pair( it->begin, it->end ) );
-
-    return ret;
-}
 

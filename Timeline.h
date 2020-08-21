@@ -98,21 +98,19 @@ public:
     inline GstClockTime step() const { return step_; }
     inline GstClockTime duration() const { return timing_.duration(); }
     inline size_t numFrames() const { return duration() / step_; }
+    inline TimeIntervalSet gaps() const { return gaps_; }
+    inline size_t numGaps() const { return gaps_.size(); }
 
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
 
-    // Add / remove gaps in the timeline
+    // Add / remove / get gaps in the timeline
+    void clearGaps();
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);
-    void clearGaps();
-//    void toggleGaps(GstClockTime from, GstClockTime to);
-
-    // get gaps
-    size_t numGaps();
     bool gapAt(const GstClockTime t, TimeInterval &gap) const;
-    std::list< std::pair<guint64, guint64> > gaps() const;
+    void setGaps(TimeIntervalSet g);
 
     // synchronize data structures
     void updateGapsFromArray(float *array_, size_t array_size_);

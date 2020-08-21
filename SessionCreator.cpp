@@ -186,6 +186,7 @@ void SessionCreator::visit(MediaPlayer &n)
         // timeline
         XMLElement *gapselement = mediaplayerNode->FirstChildElement("Gaps");
         if (gapselement) {
+            Timeline tl;
             XMLElement* gap = gapselement->FirstChildElement("Interval");
             for( ; gap ; gap = gap->NextSiblingElement())
             {
@@ -193,8 +194,9 @@ void SessionCreator::visit(MediaPlayer &n)
                 GstClockTime b = GST_CLOCK_TIME_NONE;
                 gap->QueryUnsigned64Attribute("begin", &a);
                 gap->QueryUnsigned64Attribute("end", &b);
-                n.timeline().addGap( a, b );
+                tl.addGap( a, b );
             }
+            n.setTimeline(tl);
         }
         // playing properties
         double speed = 1.0;
