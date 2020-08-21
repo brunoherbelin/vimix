@@ -470,7 +470,7 @@ void MediaPlayer::play(bool on)
     else if (on)
         Log::Info("MediaPlayer %s Start", gst_element_get_name(pipeline_));
     else
-        Log::Info("MediaPlayer %s Stop", gst_element_get_name(pipeline_));
+        Log::Info("MediaPlayer %s Stop [%ld]", gst_element_get_name(pipeline_), position());
 #endif
 
     // reset time counter
@@ -541,7 +541,7 @@ void MediaPlayer::step()
 
 void MediaPlayer::seek(GstClockTime pos)
 {
-    if (!enabled_ || !media_.seekable)
+    if (!enabled_ || !media_.seekable || seeking_)
         return;
 
     // apply seek
@@ -750,19 +750,19 @@ void MediaPlayer::update()
         seeking_ = false;
     }
 
-    // manage timeline
+    // manage timeline: test if position falls into a gap
     TimeInterval gap;
     if (position_ != GST_CLOCK_TIME_NONE && media_.timeline.gapAt(position_, gap)) {
-
+        // if in a gap, seek to next section
         if (gap.is_valid()) {
-
+            // jump in one or the other direction
             GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
-
+            // seek to next valid time (if not beginnig or end of timeline)
             if (jumpPts > media_.timeline.first() && jumpPts < media_.timeline.last())
                 seek( jumpPts);
+            // otherwise, we should loop
             else
                 need_loop = true;
-
         }
 
     }
@@ -774,7 +774,6 @@ void MediaPlayer::update()
 
 
 }
-
 
 void MediaPlayer::execute_loop_command()
 {

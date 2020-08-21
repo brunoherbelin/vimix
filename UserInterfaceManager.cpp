@@ -1353,7 +1353,7 @@ void MediaController::Render()
 
 
                 uint press_index = array_size;
-                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size-1, size);
+                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size, size);
 
                 // behavior on action on array of segments
                 static bool  active = false;
@@ -1379,7 +1379,7 @@ void MediaController::Render()
                 // back to drawing position to draw the segments data with historgram
                 ImGui::SetCursorPos(draw_pos);
                 {
-                    ImGui::PlotHistogram("##TimelineHistogram", array, array_size-1.f, 0, NULL, 0.0f, 1.0f, size);
+                    ImGui::PlotHistogram("##TimelineHistogram", array, array_size, 0, NULL, 0.0f, 1.0f, size);
                 }
 
                 // custom timeline slider
