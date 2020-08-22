@@ -539,6 +539,30 @@ void MediaPlayer::step()
     gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE));
 }
 
+bool MediaPlayer::go_to(GstClockTime pos)
+{
+    bool ret = false;
+    TimeInterval gap;
+    if (pos != GST_CLOCK_TIME_NONE ) {
+
+        GstClockTime jumpPts = pos;
+
+        if (media_.timeline.gapAt(pos, gap)) {
+            // if in a gap, find closest seek target
+            if (gap.is_valid()) {
+                // jump in one or the other direction
+                jumpPts = (rate_>0.f) ? gap.end : gap.begin;
+            }
+        }
+
+        if (ABS_DIFF (position_, jumpPts) > 2 * media_.timeline.step() ) {
+            ret = true;
+            seek( jumpPts );
+        }
+    }
+    return ret;
+}
+
 void MediaPlayer::seek(GstClockTime pos)
 {
     if (!enabled_ || !media_.seekable || seeking_)

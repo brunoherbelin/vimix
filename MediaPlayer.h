@@ -177,6 +177,12 @@ public:
      * */
     void rewind();
     /**
+     * go to a valid position in media timeline
+     * pos in nanoseconds.
+     * return true if seek is performed
+     * */
+    bool go_to(GstClockTime pos);
+    /**
      * Seek to any position in media
      * pos in nanoseconds.
      * */

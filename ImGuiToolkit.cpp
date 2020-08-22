@@ -580,15 +580,114 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
         }
     }
 
-    // time Slider behavior
-    ImRect grab_slider_bb;
-    guint64 _zero = min;
-    guint64 _end = max;
-    bool valuechanged = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
-                                               &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    bool value_changed = false;
 
-    return left_mouse_press;
+    if (ImGui::GetFocusID() == id) {
+        // time Slider behavior
+        ImRect grab_slider_bb;
+        uint _zero = min;
+        uint _end = max;
+        value_changed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
+                                              &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+
+    }
+
+    return value_changed;
 }
+
+bool ImGuiToolkit::InvisibleCoordinatesFloat(const char* label, float *x, float *y, ImVec2 size)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // get id
+    const ImGuiID id = window->GetID(label);
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    // read user input from system
+    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        if (focus_requested || (hovered && left_mouse_press) )
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+
+    bool value_changed = false;
+
+    if (ImGui::GetActiveID() == id) {
+
+
+    *x = CLAMP( (ImGui::GetIO().MousePos.x - bbox.Max.x + 2.f) / (bbox.GetWidth()-4.f), 0.f, 1.f);
+    *y = CLAMP( (ImGui::GetIO().MousePos.y - bbox.Max.y + 2.f) / -(bbox.GetHeight()-4.f), 0.f, 1.f);
+        value_changed = true;
+
+    }
+
+    return value_changed;
+}
+
+//bool ImGuiToolkit::InvisibleDoubleSliderFloat(const char* label, uint *index, float *value, uint min, uint max, ImVec2 size)
+//{
+//    // get window
+//    ImGuiWindow* window = ImGui::GetCurrentWindow();
+//    if (window->SkipItems)
+//        return false;
+
+//    // get id
+//    const ImGuiID id = window->GetID(label);
+
+//    ImVec2 pos = window->DC.CursorPos;
+//    ImRect bbox(pos, pos + size);
+//    ImGui::ItemSize(size);
+//    if (!ImGui::ItemAdd(bbox, id))
+//        return false;
+
+//    // read user input from system
+//    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+//    const bool hovered = ImGui::ItemHoverable(bbox, id);
+//    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+//    if (!temp_input_is_active)
+//    {
+//        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+//        if (focus_requested || (hovered && left_mouse_press) )
+//        {
+//            ImGui::SetActiveID(id, window);
+//            ImGui::SetFocusID(id, window);
+//            ImGui::FocusWindow(window);
+//        }
+//    }
+
+//    bool value_changed = false;
+
+//    if (ImGui::GetFocusID() == id) {
+//    // time Slider behavior
+//    ImRect grab_slider_bb;
+//    uint _zero = min;
+//    uint _end = max;
+//    value_changed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
+//                                               &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+
+
+//    *value = CLAMP( (ImGui::GetIO().MousePos.y - bbox.Max.y + 2.f) / -(bbox.GetHeight()-4.f), 0.f, 1.f);
+
+//    }
+////    return left_mouse_press;
+//    return value_changed;
+//}
 
 
 void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
