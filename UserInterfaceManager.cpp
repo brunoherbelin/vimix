@@ -1368,7 +1368,7 @@ void MediaController::Render()
             ImGui::PopStyleVar();
 
             // request seek (ASYNC)
-            if ( mp_->go_to(seek_t) )
+            if ( slider_pressed_ && mp_->go_to(seek_t) )
                 slider_pressed_ = false;
 
             // play/stop command should be following the playing mode (buttons)
@@ -2312,38 +2312,40 @@ void ShowSandbox(bool* p_open)
 
 //    bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, duration, step);
 
-//    static float *arr = nullptr;
-        static float arr[] = { 0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
-                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f };
+    static float *arr_lines = nullptr;
+    static float *arr_histo = nullptr;
+//        static float arr[] = { 0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                               0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f,
+//                             0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f, 0.f, 1.f, 0.4f };
 
-        static uint array_size = IM_ARRAYSIZE(arr);
+    static uint array_size = 200;
 
 //    MediaPlayer *mp_ = nullptr;
 //    auto po = MediaPlayer::begin();
 //    if (po != MediaPlayer::end())
 //        mp_ = *po;
 //    if (mp_) {
+        //    }
 ////        duration = mp_->duration();
 ////        step = mp_->frameDuration();
 ////        t = mp_->position();
@@ -2351,60 +2353,67 @@ void ShowSandbox(bool* p_open)
 ////        arr = mp_->timelineArray();
 ////        array_size = mp_->timelineArraySize();
 
-////        if (arr == nullptr) {
-////            array_size = MIN( SEGMENT_ARRAY_MAX, (size_t) duration / (size_t) step);
+    if (arr_lines == nullptr) {
 
-////            arr = (float *) malloc(array_size * sizeof(float));
+        arr_lines = (float *) malloc(array_size * sizeof(float));
+        arr_histo = (float *) malloc(array_size * sizeof(float));
 
-////            for (int i = 0; i < array_size; ++i) {
-////                arr[i] = 1.f;
-////            }
-////        }
+        for (int i = 0; i < array_size; ++i) {
+            arr_lines[i] = 1.f;
+            arr_histo[i] = 0.f;
+        }
+    }
 
-//    }
+    // scrolling sub-window
+    ImGui::BeginChild("##scrolling",
+                      ImVec2(ImGui::GetContentRegionAvail().x, 250),
+                      false, ImGuiWindowFlags_HorizontalScrollbar);
 
-    if (arr != nullptr)
+
+    if (arr_lines != nullptr)
     {
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
 
         ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 40);
+        size.x *= 2.f;
 
-        // draw position when entering
-        ImVec2 draw_pos = ImGui::GetCursorPos();
+//        // draw position when entering
+//        ImVec2 draw_pos = ImGui::GetCursorPos();
 
-//        // capture user input
-//        uint press_index = array_size-1;
-//        float val = 0.f;
-//        bool pressed = false;
+////        // capture user input
+////        uint press_index = array_size-1;
+////        float val = 0.f;
+////        bool pressed = false;
 
-//        uint starting_index = press_index;
-//        pressed = ImGuiToolkit::InvisibleDoubleSliderFloat("test", &press_index, &val, 0, array_size-1, size);
-//        if (pressed)
-//        {
-//            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-//                arr[i] = val;
+////        uint starting_index = press_index;
+////        pressed = ImGuiToolkit::InvisibleDoubleSliderFloat("test", &press_index, &val, 0, array_size-1, size);
+////        if (pressed)
+////        {
+////            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
+////                arr[i] = val;
 
-////            starting_index = press_index;
+//////            starting_index = press_index;
+////        }
+
+//        float x = -1.f;
+//        float y = -1.f;
+//        bool clicked = ImGuiToolkit::InvisibleCoordinatesFloat("test", &x, &y, size);
+//        if (clicked) {
+//            Log::Info("clic %f %f  in [%f  %f]", x, y, size.x, size.y);
 //        }
 
-        float x = -1.f;
-        float y = -1.f;
-        bool clicked = ImGuiToolkit::InvisibleCoordinatesFloat("test", &x, &y, size);
-        if (clicked) {
-            Log::Info("clic %f %f  in [%f  %f]", x, y, size.x, size.y);
-        }
 
+//        // back to
+//        ImGui::SetCursorPos(draw_pos);
+//        // plot lines
+//        ImGui::PlotLines("Lines", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
 
-        // back to
-        ImGui::SetCursorPos(draw_pos);
-        // plot lines
-        ImGui::PlotLines("Lines", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
+////        size.y = 20;
+////        ImGui::PlotHistogram("Hisfd", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
 
-//        size.y = 20;
-//        ImGui::PlotHistogram("Hisfd", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
-
+        ImGuiToolkit::EditPlotHistoLines("Alpha", arr_histo, arr_lines, array_size, 0.f, 1.f, size);
 
         bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, 0, duration, step, size.x);
 
@@ -2418,6 +2427,8 @@ void ShowSandbox(bool* p_open)
         ImGui::SliderInt("##int", &w, 0, array_size-1);
 
     }
+
+    ImGui::EndChild();
 
     ImGui::End();
 }

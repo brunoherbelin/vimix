@@ -467,87 +467,6 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     return left_mouse_press;
 }
 
-void ImGuiToolkit::Bar(float value, float in, float out, float min, float max, const char* title, bool expand)
-{
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return;
-
-    ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-
-    ImVec2 size_arg = expand ? ImVec2(-FLT_MIN, 0.0f) : ImVec2(0.0f, 0.0f);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImGui::CalcItemSize(size_arg, ImGui::CalcItemWidth(), (g.FontSize + style.FramePadding.y)* 2.0f);
-    ImRect bb(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bb, 0))
-        return;
-
-    // calculations
-    float range_in = in / (max - min) + min;
-    float range_out = out / (max - min) + min;
-    float slider = value / (max - min) + min;
-    slider = ImSaturate(slider);
-
-    // Render
-    ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
-
-    // tics
-    const ImU32 col_base = ImGui::GetColorU32( ImGuiCol_PlotLines );
-
-
-    ImVec2 pos0 = ImLerp(bb.Min, bb.Max, 0.1);
-//    ImVec2 pos1 = ImLerp(bb.Min, bb.Max, 0.2);
-    float step = (bb.Max.x - bb.Min.x) / 100.f;
-    int i = 0;
-    for (float tic = bb.Min.x; tic < bb.Max.x; tic += step, ++i) {
-        float tic_lengh = i % 10 ?  style.FramePadding.y : g.FontSize;
-        window->DrawList->AddLine( ImVec2(tic, bb.Min.y), ImVec2(tic, bb.Min.y + tic_lengh), col_base);
-    }
-
-    bb.Min.y += g.FontSize;
-    bb.Expand(ImVec2(-style.FrameBorderSize, -style.FrameBorderSize));
-    const ImVec2 fill_br = ImVec2(ImLerp(bb.Min.x, bb.Max.x, slider), bb.Max.y);
-
-    ImGui::RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_CheckMark), range_in, range_out, style.FrameRounding);
-
-    char overlay_buf[32];
-    ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%.0f", in);
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped(ImVec2( ImClamp(fill_br.x + style.ItemSpacing.x,bb.Min.x, bb.Max.x - overlay_size.x - style.ItemInnerSpacing.x), bb.Min.y), 
-                                                bb.Max, title, NULL, &overlay_size, ImVec2(0.0f,0.5f), &bb);
-
-
-    // Draw handle to move cursor (seek position)
-    // ImRect grab_bb;
-    // grab_bb.Min.x = 
-    // window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, ImGui::GetColorU32(ImGuiCol_SliderGrabActive), style.GrabRounding);
-    
-    // Draw cursor (actual position)
-    ImU32 color = ImGui::GetColorU32(1 ? ImGuiCol_Text : ImGuiCol_TextDisabled);
-    ImGui::RenderArrow(window->DrawList, pos0, color, ImGuiDir_Up);
-
-
-    // window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
-
-
-    // Default displaying the fraction as percentage string, but user can override it
-    // char overlay_buf[32];
-    // if (!title)
-    // {
-    //     ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%.0f", fraction*100+0.01f);
-    //     title = overlay_buf;
-    // }
-
-    // ImVec2 overlay_size = ImGui::CalcTextSize(title, NULL);
-    // if (overlay_size.x > 0.0f)
-    //     ImGui::RenderTextClipped(ImVec2( ImClamp(fill_br.x + style.ItemSpacing.x,bb.Min.x, bb.Max.x - overlay_size.x - style.ItemInnerSpacing.x), bb.Min.y), 
-    //                                             bb.Max, title, NULL, &overlay_size, ImVec2(0.0f,0.5f), &bb);
-}
-
 //bool ImGuiToolkit::InvisibleSliderInt(const char* label, guint64 *index, guint64 min, guint64 max, ImVec2 size)
 bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, uint max, ImVec2 size)
 {
@@ -579,11 +498,13 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
             ImGui::FocusWindow(window);
         }
     }
+    else
+        return false;
 
     bool value_changed = false;
 
-    if (ImGui::GetFocusID() == id) {
-        // time Slider behavior
+    if (ImGui::GetActiveID() == id) {
+        // Slider behavior
         ImRect grab_slider_bb;
         uint _zero = min;
         uint _end = max;
@@ -595,23 +516,31 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
     return value_changed;
 }
 
-bool ImGuiToolkit::InvisibleCoordinatesFloat(const char* label, float *x, float *y, ImVec2 size)
+bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
+    static uint previous_index = UINT32_MAX;
+    bool array_changed = false;
+
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
         return false;
 
+    // capture coordinates before any draw or action
+    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
+
     // get id
     const ImGuiID id = window->GetID(label);
 
+    // add item
     ImVec2 pos = window->DC.CursorPos;
     ImRect bbox(pos, pos + size);
     ImGui::ItemSize(size);
     if (!ImGui::ItemAdd(bbox, id))
         return false;
 
-    // read user input from system
+    // read user input and activate widget
     const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
     const bool hovered = ImGui::ItemHoverable(bbox, id);
     bool temp_input_is_active = ImGui::TempInputIsActive(id);
@@ -625,69 +554,178 @@ bool ImGuiToolkit::InvisibleCoordinatesFloat(const char* label, float *x, float 
             ImGui::FocusWindow(window);
         }
     }
+    else
+        return false;
 
-    bool value_changed = false;
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    ImVec4 bg_color = hovered ? colors[ImGuiCol_FrameBgHovered] : colors[ImGuiCol_FrameBg];
 
+    // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
 
+        bg_color = colors[ImGuiCol_FrameBgActive];
 
-    *x = CLAMP( (ImGui::GetIO().MousePos.x - bbox.Max.x + 2.f) / (bbox.GetWidth()-4.f), 0.f, 1.f);
-    *y = CLAMP( (ImGui::GetIO().MousePos.y - bbox.Max.y + 2.f) / -(bbox.GetHeight()-4.f), 0.f, 1.f);
-        value_changed = true;
+        // keep active area while mouse is pressed
+        if (left_mouse_press)
+        {
+
+            float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
+            uint index = CLAMP( (int) floor(x), 0, values_count-1);
+
+            float y = mouse_pos_in_canvas.y / bbox.GetHeight();
+            y = CLAMP( (y * (values_max-values_min)) + values_min, values_min, values_max);
+
+
+            if (previous_index == UINT32_MAX)
+                previous_index = index;
+
+            array[index] = values_max - y;
+            for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                array[i] = values_max - y;
+
+            previous_index = index;
+
+            array_changed = true;
+        }
+        // release active widget on mouse release
+        else {
+            ImGui::ClearActiveID();
+            previous_index = UINT32_MAX;
+        }
 
     }
 
-    return value_changed;
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot lines
+    char buf[128];
+    sprintf(buf, "##Lines%s", label);
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    ImGui::PlotLines(buf, array, values_count, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(1);
+
+    return array_changed;
 }
 
-//bool ImGuiToolkit::InvisibleDoubleSliderFloat(const char* label, uint *index, float *value, uint min, uint max, ImVec2 size)
-//{
-//    // get window
-//    ImGuiWindow* window = ImGui::GetCurrentWindow();
-//    if (window->SkipItems)
-//        return false;
+bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size)
+{
+    static bool  active = false;
+    static uint previous_index = UINT32_MAX;
+    bool array_changed = false;
 
-//    // get id
-//    const ImGuiID id = window->GetID(label);
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
 
-//    ImVec2 pos = window->DC.CursorPos;
-//    ImRect bbox(pos, pos + size);
-//    ImGui::ItemSize(size);
-//    if (!ImGui::ItemAdd(bbox, id))
-//        return false;
+    // capture coordinates before any draw or action
+    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
 
-//    // read user input from system
-//    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-//    const bool hovered = ImGui::ItemHoverable(bbox, id);
-//    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-//    if (!temp_input_is_active)
-//    {
-//        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-//        if (focus_requested || (hovered && left_mouse_press) )
-//        {
-//            ImGui::SetActiveID(id, window);
-//            ImGui::SetFocusID(id, window);
-//            ImGui::FocusWindow(window);
-//        }
-//    }
+    // get id
+    const ImGuiID id = window->GetID(label);
 
-//    bool value_changed = false;
+    // add item
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
 
-//    if (ImGui::GetFocusID() == id) {
-//    // time Slider behavior
-//    ImRect grab_slider_bb;
-//    uint _zero = min;
-//    uint _end = max;
-//    value_changed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
-//                                               &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    // read user input and activate widget
+    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool right_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+    const bool mouse_press = left_mouse_press | right_mouse_press;
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        if (focus_requested || (hovered && mouse_press) )
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+    else
+        return false;
 
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    ImVec4 bg_color = hovered ? colors[ImGuiCol_FrameBgHovered] : colors[ImGuiCol_FrameBg];
 
-//    *value = CLAMP( (ImGui::GetIO().MousePos.y - bbox.Max.y + 2.f) / -(bbox.GetHeight()-4.f), 0.f, 1.f);
+    // enter edit if widget is active
+    if (ImGui::GetActiveID() == id) {
 
-//    }
-////    return left_mouse_press;
-//    return value_changed;
-//}
+        bg_color = colors[ImGuiCol_FrameBgActive];
+
+        // keep active area while mouse is pressed
+        if (mouse_press)
+        {
+
+            float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
+            uint index = CLAMP( (int) floor(x), 0, values_count-1);
+
+            float y = mouse_pos_in_canvas.y / bbox.GetHeight();
+            y = CLAMP( (y * (values_max-values_min)) + values_min, values_min, values_max);
+
+            if (previous_index == UINT32_MAX)
+                previous_index = index;
+
+            if (left_mouse_press) {
+                lines_array[index] = values_max - y;
+                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                    lines_array[i] = values_max - y;
+            }
+            else {
+                static float target_value = values_min;
+
+                // toggle value histo
+                if (!active) {
+                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
+                    active = true;
+                }
+
+                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                    histogram_array[i] = target_value;
+            }
+
+            previous_index = index;
+
+            array_changed = true;
+        }
+        // release active widget on mouse release
+        else {
+            active = false;
+            ImGui::ClearActiveID();
+            previous_index = UINT32_MAX;
+        }
+
+    }
+
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot transparent histogram
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, colors[ImGuiCol_TitleBg]);
+    char buf[128];
+    sprintf(buf, "##Histo%s", label);
+    ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(2);
+
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot lines
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+    sprintf(buf, "##Lines%s", label);
+    ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(1);
+
+    return array_changed;
+}
 
 
 void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
@@ -863,8 +901,8 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
         colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
         colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);
-        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
-        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 0.78f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.29f, 0.29f, 0.29f, 0.60f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 0.80f);
         colors[ImGuiCol_TitleBg]                = ImVec4(0.14f, 0.14f, 0.14f, 0.94f);
         colors[ImGuiCol_TitleBgActive]          = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
         colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
@@ -914,8 +952,8 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
         colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
         colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);
-        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.39f, 0.39f, 0.39f, 0.78f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.29f, 0.29f, 0.29f, 0.60f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 0.80f);
         colors[ImGuiCol_TitleBg]                = ImVec4(0.14f, 0.14f, 0.14f, 0.94f);
         colors[ImGuiCol_TitleBgActive]          = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
         colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
@@ -965,8 +1003,8 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
         colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
         colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);
-        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
-        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 0.78f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.29f, 0.29f, 0.29f, 0.60f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 0.80f);
         colors[ImGuiCol_TitleBg]                = ImVec4(0.14f, 0.14f, 0.14f, 0.94f);
         colors[ImGuiCol_TitleBgActive]          = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
         colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
