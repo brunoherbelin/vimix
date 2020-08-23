@@ -49,7 +49,9 @@ struct MediaInfo {
     inline MediaInfo& operator = (const MediaInfo& b)
     {
         if (this != &b) {
-            this->timeline = b.timeline;
+            this->timeline.setEnd( b.timeline.end() );
+            this->timeline.setStep( b.timeline.step() );
+            this->timeline.setFirst( b.timeline.first() );
             this->width = b.width;
             this->par_width = b.par_width;
             this->height = b.height;
@@ -194,11 +196,10 @@ public:
      * - duration       : timeline.duration()
      * - frame duration : timeline.step()
      */
-    Timeline timeline();
-
+    Timeline *timeline();
     void setTimeline(Timeline tl);
-//    void toggleGapInTimeline(GstClockTime from, GstClockTime to);
 
+    float currentTimelineFading();
     /**
      * Get position time
      * */
@@ -261,6 +262,7 @@ private:
     LoopMode loop_;
     GstState desired_state_;
     GstElement *pipeline_;
+    GstElement *converter_;
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> ready_;
     std::atomic<bool> failed_;

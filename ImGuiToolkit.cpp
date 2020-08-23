@@ -636,7 +636,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     // read user input and activate widget
     const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    const bool right_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+    const bool right_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Right) | (ImGui::GetIO().KeyAlt & left_mouse_press) ;
     const bool mouse_press = left_mouse_press | right_mouse_press;
     const bool hovered = ImGui::ItemHoverable(bbox, id);
     bool temp_input_is_active = ImGui::TempInputIsActive(id);
@@ -653,7 +653,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     else
         return false;
 
-    ImVec4* colors = ImGui::GetStyle().Colors;
+    static ImVec4* colors = ImGui::GetStyle().Colors;
     ImVec4 bg_color = hovered ? colors[ImGuiCol_FrameBgHovered] : colors[ImGuiCol_FrameBg];
 
     // enter edit if widget is active
@@ -674,12 +674,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             if (previous_index == UINT32_MAX)
                 previous_index = index;
 
-            if (left_mouse_press) {
-                lines_array[index] = values_max - y;
-                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
-                    lines_array[i] = values_max - y;
-            }
-            else {
+            if (right_mouse_press){
                 static float target_value = values_min;
 
                 // toggle value histo
@@ -690,6 +685,11 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
                 for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
                     histogram_array[i] = target_value;
+            }
+            else  {
+                lines_array[index] = values_max - y;
+                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                    lines_array[i] = values_max - y;
             }
 
             previous_index = index;

@@ -31,6 +31,7 @@ MediaPlayer::MediaPlayer()
 
     uri_ = "undefined";
     pipeline_ = nullptr;
+    converter_ = nullptr;
 
     ready_ = false;
     failed_ = false;
@@ -209,15 +210,22 @@ void MediaPlayer::execute_open()
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
 
     // Build string describing pipeline
-    // NB: video convertion chroma-resampler
-    //            Duplicates the samples when upsampling and drops when downsampling 0
-    //            Uses linear interpolation 1 (default)
-    //            Uses cubic interpolation 2
-    //            Uses sinc interpolation 3
+    // video deinterlacing method
+    //      tomsmocomp (0) – Motion Adaptive: Motion Search
+    //      greedyh (1) – Motion Adaptive: Advanced Detection
+    //      greedyl (2) – Motion Adaptive: Simple Detection
+    //      vfir (3) – Blur Vertical
+    //      linear (4) – Linear
+    //      scalerbob (6) – Double lines
+    // video convertion chroma-resampler
+    //      Duplicates the samples when upsampling and drops when downsampling 0
+    //      Uses linear interpolation 1 (default)
+    //      Uses cubic interpolation 2
+    //      Uses sinc interpolation 3
     string description = "uridecodebin uri=" + uri_ + " ! ";
     if (media_.interlaced)
-        description += "deinterlace ! ";
-    description += "videoconvert chroma-resampler=2 ! appsink name=sink";
+        description += "deinterlace method=2 ! ";
+    description += "videoconvert chroma-resampler=2 n-threads=2 ! appsink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -335,6 +343,10 @@ void MediaPlayer::close()
 
     // un-ready the media player
     ready_ = false;
+
+    // no more need to reference converter
+    if (converter_ != nullptr)
+        gst_object_unref (converter_);
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -697,12 +709,7 @@ void MediaPlayer::update()
         // try to get info from discoverer
         if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
         {
-            // remember loaded gaps
-            TimeIntervalSet  gaps = media_.timeline.gaps();
-            // ok, discovering thread is finished ! Get the media info
             media_ = discoverer_.get();
-            // restore loaded gaps (overwriten above)
-            media_.timeline.setGaps( gaps );
             // if its ok, open the media
             if (media_.valid)
                 execute_open();
@@ -714,13 +721,6 @@ void MediaPlayer::update()
     // prevent unnecessary updates: disabled or already filled image
     if (!enabled_ || (media_.isimage && textureindex_>0 ) )
         return;
-
-//    if (seeking_) {
-//        GstState state;
-//        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-//        seeking_ = false;
-//        return;
-//    }
 
     // local variables before trying to update
     guint read_index = 0;
@@ -895,11 +895,15 @@ double MediaPlayer::playSpeed() const
     return rate_;
 }
 
-Timeline MediaPlayer::timeline()
+Timeline *MediaPlayer::timeline()
 {
-    return media_.timeline;
+    return &media_.timeline;
 }
 
+float MediaPlayer::currentTimelineFading()
+{
+    return media_.timeline.fadingAt(position_);
+}
 
 void MediaPlayer::setTimeline(Timeline tl)
 {
@@ -1040,6 +1044,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
         // send frames to media player only if ready
         MediaPlayer *m = (MediaPlayer *)p;
         if (m && m->ready_) {
+
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;

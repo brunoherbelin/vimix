@@ -8,6 +8,8 @@
 
 #include <gst/pbutils/pbutils.h>
 
+#define MAX_TIMELINE_ARRAY 2000
+
 struct TimeInterval
 {
     GstClockTime begin;
@@ -81,16 +83,16 @@ public:
     ~Timeline();
     Timeline& operator = (const Timeline& b);
 
-    void reset();
     bool is_valid();
+    void update();
 
     // global properties of the timeline
-    // timeline is invalid untill all 3 are set
+    // timeline is valid only if all 3 are set
     void setFirst(GstClockTime first);
     void setEnd(GstClockTime end);
     void setStep(GstClockTime dt);
 
-    // get properties
+    // Timing manipulation
     inline GstClockTime start() const { return timing_.begin; }
     inline GstClockTime end() const { return timing_.end; }
     inline GstClockTime first() const { return first_; }
@@ -98,25 +100,30 @@ public:
     inline GstClockTime step() const { return step_; }
     inline GstClockTime duration() const { return timing_.duration(); }
     inline size_t numFrames() const { return duration() / step_; }
-    inline TimeIntervalSet gaps() const { return gaps_; }
-    inline size_t numGaps() const { return gaps_.size(); }
-
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
 
-    // Add / remove / get gaps in the timeline
+    // Manipulation of gaps in the timeline
+    inline TimeIntervalSet gaps() const { return gaps_; }
+    inline TimeIntervalSet sections() const;
+    inline size_t numGaps() const { return gaps_.size(); }
+    float *gapsArray();
     void clearGaps();
+    void setGaps(TimeIntervalSet g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);
     bool gapAt(const GstClockTime t, TimeInterval &gap) const;
-    void setGaps(TimeIntervalSet g);
 
-    // synchronize data structures
-    void updateGapsFromArray(float *array_, size_t array_size_);
-    void fillArrayFromGaps(float *array_, size_t array_size_);
+    float fadingAt(const GstClockTime t);
+    inline float *fadingArray() { return fadingArray_; }
+    void clearFading();
+    void smoothFading(uint N = 1);
+    void autoFading(uint milisecond = 100);
 
 private:
+
+    void reset();
 
     // global information on the timeline
     TimeInterval timing_;
@@ -124,7 +131,14 @@ private:
     GstClockTime step_;
 
     // main data structure containing list of gaps in the timeline
-    TimeIntervalSet gaps_;
+    TimeIntervalSet gaps_;    
+    float gapsArray_[MAX_TIMELINE_ARRAY];
+    bool gaps_array_need_update_;
+    // synchronize data structures
+    void updateGapsFromArray(float *array, size_t array_size);
+    void fillArrayFromGaps(float *array, size_t array_size);
+
+    float fadingArray_[MAX_TIMELINE_ARRAY];
 
 };
 

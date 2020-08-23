@@ -184,17 +184,25 @@ void SessionCreator::visit(MediaPlayer &n)
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
     if (mediaplayerNode) {
         // timeline
-        XMLElement *gapselement = mediaplayerNode->FirstChildElement("Gaps");
-        if (gapselement) {
+        XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
+        if (timelineelement) {
             Timeline tl;
-            XMLElement* gap = gapselement->FirstChildElement("Interval");
-            for( ; gap ; gap = gap->NextSiblingElement())
-            {
-                GstClockTime a = GST_CLOCK_TIME_NONE;
-                GstClockTime b = GST_CLOCK_TIME_NONE;
-                gap->QueryUnsigned64Attribute("begin", &a);
-                gap->QueryUnsigned64Attribute("end", &b);
-                tl.addGap( a, b );
+            XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
+            if (gapselement) {
+                XMLElement* gap = gapselement->FirstChildElement("Interval");
+                for( ; gap ; gap = gap->NextSiblingElement())
+                {
+                    GstClockTime a = GST_CLOCK_TIME_NONE;
+                    GstClockTime b = GST_CLOCK_TIME_NONE;
+                    gap->QueryUnsigned64Attribute("begin", &a);
+                    gap->QueryUnsigned64Attribute("end", &b);
+                    tl.addGap( a, b );
+                }
+            }
+            XMLElement *fadingselement = timelineelement->FirstChildElement("Fading");
+            if (fadingselement) {
+                XMLElement* array = fadingselement->FirstChildElement("array");
+                XMLElementDecodeArray(array, tl.fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
             }
             n.setTimeline(tl);
         }

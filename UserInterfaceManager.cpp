@@ -1181,8 +1181,8 @@ void MediaController::Render()
         static float timeline_zoom = 1.f;
         const float width = ImGui::GetContentRegionAvail().x;
         const float timeline_height = 2.f * (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y);
-        const float segments_height = ImGui::GetFontSize();
-        const float slider_zoom_width = segments_height;
+        const float segments_height = timeline_height;
+        const float slider_zoom_width = segments_height / 2.f;
 
         if (Settings::application.widget.media_player_view)
         {
@@ -1267,44 +1267,57 @@ void MediaController::Render()
                 ImGui::PopButtonRepeat();
             }
 
-            ImGui::SameLine(0, MAX(spacing * 4.f, width - 400.f) );
-
             // loop modes button
+            ImGui::SameLine(0, spacing);
             static int current_loop = 0;
             static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
             current_loop = (int) mp_->loop();
             if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
                 mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
+
             // speed slider
+            ImGui::SameLine(0, MAX(spacing * 4.f, width - 400.f) );
             float speed = static_cast<float>(mp_->playSpeed());
-            ImGui::SameLine(0, spacing);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
 
-            // reset
+            // Timeline popup menu
             ImGui::SameLine(0, spacing);
-            if (ImGuiToolkit::ButtonIcon(11, 14)) {
-                timeline_zoom = 1.f;
-                speed = 1.f;
-                mp_->setPlaySpeed( static_cast<double>(speed) );
-                mp_->setLoop( MediaPlayer::LOOP_REWIND );
+            if (ImGuiToolkit::ButtonIcon(5, 8))
+                ImGui::OpenPopup("MenuTimeline");
+            if (ImGui::BeginPopup("MenuTimeline")) {
+                if (ImGui::Selectable( "Reset Speed" )){
+                    speed = 1.f;
+                    mp_->setPlaySpeed( static_cast<double>(speed) );
+                }
+                if (ImGui::Selectable( "Reset Timeline" )){
+                    timeline_zoom = 1.f;
+                    mp_->timeline()->clearFading();
+                    mp_->timeline()->clearGaps();
+                }
+                ImGui::Separator();
+                static int smoothfactor = 10;
+                ImGui::SetNextItemWidth(100);
+                if (ImGui::Button( "Smooth Curve" )){
+                    mp_->timeline()->smoothFading(smoothfactor);
+                }
+                ImGui::SameLine(0);
+                ImGui::SetNextItemWidth(100);
+                ImGui::DragInt("##smoothfactor", &smoothfactor, 5.f, 5, 50, "x %d");
+                static int milisec = 500;
+                ImGui::SetNextItemWidth(100);
+                if (ImGui::Button( "Auto Fading" )){
+                    mp_->timeline()->autoFading(milisec);
+                    mp_->timeline()->smoothFading(10);
+                }
+                ImGui::SameLine(0);
+                ImGui::SetNextItemWidth(100);
+                ImGui::DragInt("##milisecfading", &milisec, 100.f, 100, 2000, "%d ms");
+                ImGui::EndPopup();
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.f, 3.f));
-
-            // For controlling the current media player with timeline
-            static Timeline working_timeline;
-            static MediaPlayer *timeline_mp = nullptr;
-            static size_t array_size = 1200;
-            static float *array = (float *) malloc( sizeof(float) * array_size);
-
-            // detect change of media player to update the timeline array
-            if (timeline_mp != mp_ || !working_timeline.is_valid()) {
-                timeline_mp = mp_;
-                working_timeline = timeline_mp->timeline();
-                working_timeline.fillArrayFromGaps(array, array_size);
-            }
 
             guint64 current_t = mp_->position();
             guint64 seek_t = current_t;
@@ -1320,43 +1333,15 @@ void MediaController::Render()
                 ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), segments_height -1);
                 size.x *= timeline_zoom;
 
-                // draw position when entering
-                ImVec2 draw_pos = ImGui::GetCursorPos();
-
-                // start slider at a position which forces to change value
-                uint press_index = array_size;
-                bool pressed = ImGuiToolkit::InvisibleSliderInt("##TimelinePicking", &press_index, 0, array_size, size);
-
-                // behavior on action on array of segments
-                static bool  active = false;
-                static float target_value = 0.f;
-                static uint  starting_index = array_size;
-                if (pressed != active) {
-                    active = pressed;
-                    if (pressed) {
-                        starting_index = press_index;
-                        target_value = array[starting_index] > 0.f ? 0.f : 1.f;
-                    }
-                    else  // action on released
-                    {
-                        // update the timeline
-                        working_timeline.updateGapsFromArray(array, array_size);
-                        // apply it to the media player
-                        timeline_mp->setTimeline(working_timeline);
-                    }
+                if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", mp_->timeline()->gapsArray(),
+                                                 mp_->timeline()->fadingArray(), MAX_TIMELINE_ARRAY, 0.f, 1.f, size) )
+                {
+                    mp_->timeline()->update();
                 }
-                if (active) {
-                    for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-                        array[i] = target_value;
-                }
-
-                // back to drawing position to draw the segments data with historgram
-                ImGui::SetCursorPos(draw_pos);
-                ImGui::PlotHistogram("##TimelineHistogram", array, array_size, 0, NULL, 0.0f, 1.0f, size);
 
                 // custom timeline slider
-                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp_->timeline().first(),
-                                                               mp_->timeline().end(), mp_->timeline().step(), size.x);
+                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp_->timeline()->first(),
+                                                               mp_->timeline()->end(), mp_->timeline()->step(), size.x);
 
                 ImGui::PopStyleVar(2);
             }
@@ -2377,7 +2362,7 @@ void ShowSandbox(bool* p_open)
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
 
         ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 40);
-        size.x *= 2.f;
+        size.x *= 1.f;
 
 //        // draw position when entering
 //        ImVec2 draw_pos = ImGui::GetCursorPos();

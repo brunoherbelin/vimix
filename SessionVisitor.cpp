@@ -147,17 +147,27 @@ void SessionVisitor::visit(MediaPlayer &n)
     newelement->SetAttribute("loop", (int) n.loop());
     newelement->SetAttribute("speed", n.playSpeed());
 
+    // timeline
+    XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
+
     // gaps in timeline
     XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
-    TimeIntervalSet gaps = n.timeline().gaps();
+    TimeIntervalSet gaps = n.timeline()->gaps();
     for( auto it = gaps.begin(); it!= gaps.end(); it++) {
         XMLElement *g = xmlDoc_->NewElement("Interval");
         g->SetAttribute("begin", (*it).begin);
         g->SetAttribute("end", (*it).end);
         gapselement->InsertEndChild(g);
     }
-    newelement->InsertEndChild(gapselement);
+    timelineelement->InsertEndChild(gapselement);
 
+    // fading in timeline
+    XMLElement *fadingelement = xmlDoc_->NewElement("Fading");
+    XMLElement *array = XMLElementEncodeArray(xmlDoc_, n.timeline()->fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
+    fadingelement->InsertEndChild(array);
+    timelineelement->InsertEndChild(fadingelement);
+
+    newelement->InsertEndChild(timelineelement);
     xmlCurrent_->InsertEndChild(newelement);
 }
 

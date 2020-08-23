@@ -135,6 +135,7 @@ void MediaSource::render()
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
+        mediasurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
         mediasurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }

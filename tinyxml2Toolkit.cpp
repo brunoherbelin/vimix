@@ -1,6 +1,9 @@
 #include "SystemToolkit.h"
 #include "Log.h"
 
+#include <glib.h>
+#include <glib/gi18n.h>
+
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -79,6 +82,39 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
         matrix[2][r] = vector[2];
         matrix[3][r] = vector[3];
     }
+}
+
+
+XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, uint64_t arraysize)
+{
+    gchar *encoded_string = g_base64_encode( (guchar *) array, arraysize);
+
+    XMLElement *newelement = doc->NewElement( "array" );
+    newelement->SetAttribute("len", arraysize);
+
+    XMLText *text = doc->NewText( encoded_string );
+    newelement->InsertEndChild( text );
+
+    g_free(encoded_string);
+    return newelement;
+}
+
+bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, uint64_t arraysize)
+{
+    if ( !elem || std::string(elem->Name()).find("array") == std::string::npos )
+        return false;
+
+    uint64_t len = 0;
+    elem->QueryUnsigned64Attribute("len", &len);
+    if ( arraysize != len )
+        return false;
+
+    guchar *decoded_array = g_base64_decode(elem->GetText(), &len);
+    if ( arraysize != len )
+        return false;
+
+    memcpy(array, decoded_array, len);
+    return true;
 }
 
 bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
