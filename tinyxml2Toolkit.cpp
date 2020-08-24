@@ -85,7 +85,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
 }
 
 
-XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, uint64_t arraysize)
+XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsigned int arraysize)
 {
     gchar *encoded_string = g_base64_encode( (guchar *) array, arraysize);
 
@@ -99,18 +99,19 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, uint6
     return newelement;
 }
 
-bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, uint64_t arraysize)
+bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int arraysize)
 {
     if ( !elem || std::string(elem->Name()).find("array") == std::string::npos )
         return false;
 
-    uint64_t len = 0;
-    elem->QueryUnsigned64Attribute("len", &len);
+    unsigned int len = 0;
+    elem->QueryUnsignedAttribute("len", &len);
     if ( arraysize != len )
         return false;
 
-    guchar *decoded_array = g_base64_decode(elem->GetText(), &len);
-    if ( arraysize != len )
+    gsize declen = 0;
+    guchar *decoded_array = g_base64_decode(elem->GetText(), &declen);
+    if ( arraysize != declen )
         return false;
 
     memcpy(array, decoded_array, len);
