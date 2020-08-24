@@ -93,7 +93,7 @@ public:
     void setStep(GstClockTime dt);
 
     // Timing manipulation
-    inline GstClockTime start() const { return timing_.begin; }
+    inline GstClockTime begin() const { return timing_.begin; }
     inline GstClockTime end() const { return timing_.end; }
     inline GstClockTime first() const { return first_; }
     inline GstClockTime last() const { return timing_.end - step_; }

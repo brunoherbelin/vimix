@@ -44,7 +44,8 @@ void Timeline::reset()
 {
     // reset timing
     timing_.reset();
-    first_ = GST_CLOCK_TIME_NONE;
+    timing_.begin = 0;
+    first_ = 0;
     step_ = GST_CLOCK_TIME_NONE;
 
     clearGaps();
@@ -59,9 +60,6 @@ bool Timeline::is_valid()
 void Timeline::setFirst(GstClockTime first)
 {
     first_ = first;
-    // validate timing
-    if (first_ != GST_CLOCK_TIME_NONE)
-        timing_.begin = 0;
 }
 
 void Timeline::setEnd(GstClockTime end)

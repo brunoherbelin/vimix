@@ -313,8 +313,12 @@ void MediaPlayer::execute_open()
 
 
     // all good
-    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
+    Log::Info("MediaPlayer %d Opened '%s' (%s %d x %d)", id_,
               uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
+
+    Log::Info("MediaPlayer %d Timeline [%ld %ld] %ld frames, %d gaps", id_,
+              media_.timeline.begin(), media_.timeline.end(), media_.timeline.numFrames(), media_.timeline.numGaps());
+
     ready_ = true;
 
     // register media player
@@ -581,7 +585,7 @@ void MediaPlayer::seek(GstClockTime pos)
         return;
 
     // apply seek
-    GstClockTime target = CLAMP(pos, media_.timeline.start(), media_.timeline.end());
+    GstClockTime target = CLAMP(pos, media_.timeline.begin(), media_.timeline.end());
     execute_seek_command(target);
 
 }
@@ -984,10 +988,8 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             frame_[write_index_].position = buf->pts;
 
             // set the start position (i.e. pts of first frame we got)
-            if (media_.timeline.start() == GST_CLOCK_TIME_NONE) {
+            if (media_.timeline.begin() == GST_CLOCK_TIME_NONE) {
                 media_.timeline.setFirst(buf->pts);
-                Log::Info("Timeline %ld  [%ld %ld] %d gaps", media_.timeline.numFrames(),
-                          media_.timeline.first(), media_.timeline.end(), media_.timeline.numGaps());
             }
         }
         // full but invalid frame : will be deleted next iteration
@@ -998,7 +1000,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     // else; null buffer for EOS: give a position
     else {
         frame_[write_index_].status = EOS;
-        frame_[write_index_].position = rate_ > 0.0 ? media_.timeline.end() : media_.timeline.start();
+        frame_[write_index_].position = rate_ > 0.0 ? media_.timeline.end() : media_.timeline.begin();
     }
 
     // unlock access to frame

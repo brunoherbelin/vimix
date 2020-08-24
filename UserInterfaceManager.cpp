@@ -1334,7 +1334,7 @@ void MediaController::Render()
                 }
 
                 // custom timeline slider
-                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp_->timeline()->first(),
+                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp_->timeline()->begin(),
                                                                mp_->timeline()->end(), mp_->timeline()->step(), size.x);
 
                 ImGui::PopStyleVar(2);
