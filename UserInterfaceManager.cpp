@@ -1297,23 +1297,17 @@ void MediaController::Render()
                     mp_->timeline()->clearGaps();
                 }
                 ImGui::Separator();
-                static int smoothfactor = 10;
-                ImGui::SetNextItemWidth(100);
-                if (ImGui::Button( "Smooth Curve" )){
-                    mp_->timeline()->smoothFading(smoothfactor);
+                ImGui::SetNextItemWidth(150);
+                int smoothcurve = 0;
+                if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
+                    mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
                 }
-                ImGui::SameLine(0);
-                ImGui::SetNextItemWidth(100);
-                ImGui::DragInt("##smoothfactor", &smoothfactor, 5.f, 5, 50, "x %d");
-                static int milisec = 500;
-                ImGui::SetNextItemWidth(100);
-                if (ImGui::Button( "Auto Fading" )){
-                    mp_->timeline()->autoFading(milisec);
-                    mp_->timeline()->smoothFading(10);
+                ImGui::SetNextItemWidth(150);
+                int autofade = 0;
+                if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
+                    mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );
+                    mp_->timeline()->smoothFading( 10 * autofade );
                 }
-                ImGui::SameLine(0);
-                ImGui::SetNextItemWidth(100);
-                ImGui::DragInt("##milisecfading", &milisec, 100.f, 100, 2000, "%d ms");
                 ImGui::EndPopup();
             }
 
