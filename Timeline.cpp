@@ -1,6 +1,6 @@
 
 #include <algorithm>
-
+#include <cmath>
 
 #include "defines.h"
 #include "Log.h"
@@ -194,14 +194,13 @@ void Timeline::clearGaps()
 
 float Timeline::fadingAt(const GstClockTime t)
 {
-    GstClockTime modulo = t % step_;
-    GstClockTime keyframe = t - modulo;
-    size_t keyframe_index = CLAMP( (MAX_TIMELINE_ARRAY * keyframe) / timing_.end, 0, MAX_TIMELINE_ARRAY-1);
+    double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
+    double previous_index = floor(true_index);
+    float percent = static_cast<float>(true_index - previous_index);
+    size_t keyframe_index = CLAMP( static_cast<size_t>(previous_index), 0, MAX_TIMELINE_ARRAY-1);
     size_t keyframe_next_index = CLAMP( keyframe_index+1, 0, MAX_TIMELINE_ARRAY-1);
-
-    float interpol = static_cast<float>( static_cast<double>(modulo) / static_cast<double>(step_) );
     float v = fadingArray_[keyframe_index];
-    v += interpol * (fadingArray_[keyframe_next_index] - fadingArray_[keyframe_index]);
+    v += percent * (fadingArray_[keyframe_next_index] - fadingArray_[keyframe_index]);
 
     return v;
 }
