@@ -121,3 +121,122 @@ string GstToolkit::gst_version()
 
     return oss.str();
 }
+
+////EXAMPLE :
+///
+//v4l2deviceprovider, udev-probed=(boolean)true,
+//device.bus_path=(string)pci-0000:00:14.0-usb-0:2:1.0,
+//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/video4linux/video0,
+//device.bus=(string)usb,
+//device.subsystem=(string)video4linux,
+//device.vendor.id=(string)1bcf,
+//device.vendor.name=(string)"Sunplus\\x20IT\\x20Co\\x20",
+//device.product.id=(string)2286,
+//device.product.name=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
+//device.serial=(string)Sunplus_IT_Co_AUSDOM_FHD_Camera,
+//device.capabilities=(string):capture:,
+//device.api=(string)v4l2,
+//device.path=(string)/dev/video0,
+//v4l2.device.driver=(string)uvcvideo,
+//v4l2.device.card=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
+//v4l2.device.bus_info=(string)usb-0000:00:14.0-2,
+//v4l2.device.version=(uint)328748,
+//v4l2.device.capabilities=(uint)2225078273,
+//v4l2.device.device_caps=(uint)69206017;
+//Device added: AUSDOM FHD Camera: AUSDOM FHD C - v4l2src device=/dev/video0
+
+//v4l2deviceprovider, udev-probed=(boolean)true,
+//device.bus_path=(string)pci-0000:00:14.0-usb-0:4:1.0,
+//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4:1.0/video4linux/video2,
+//device.bus=(string)usb,
+//device.subsystem=(string)video4linux,
+//device.vendor.id=(string)046d,
+//device.vendor.name=(string)046d,
+//device.product.id=(string)080f,
+//device.product.name=(string)"UVC\ Camera\ \(046d:080f\)",
+//device.serial=(string)046d_080f_3EA77580,
+//device.capabilities=(string):capture:,
+//device.api=(string)v4l2,
+//device.path=(string)/dev/video2,
+//v4l2.device.driver=(string)uvcvideo,
+//v4l2.device.card=(string)"UVC\ Camera\ \(046d:080f\)",
+//v4l2.device.bus_info=(string)usb-0000:00:14.0-4,
+//v4l2.device.version=(uint)328748,
+//v4l2.device.capabilities=(uint)2225078273,
+//v4l2.device.device_caps=(uint)69206017; // decimal of hexadecimal v4l code Device Caps      : 0x04200001
+//Device added: UVC Camera (046d:080f) - v4l2src device=/dev/video2
+
+static gboolean
+my_bus_func (GstBus * bus, GstMessage * message, gpointer user_data)
+{
+   GstDevice *device;
+   gchar *name;
+   gchar *stru;
+
+   switch (GST_MESSAGE_TYPE (message)) {
+     case GST_MESSAGE_DEVICE_ADDED:
+       gst_message_parse_device_added (message, &device);
+       name = gst_device_get_display_name (device);
+
+       stru = gst_structure_to_string( gst_device_get_properties(device) );
+       g_print("%s \n", stru);
+       g_print("Device added: %s - %ssrc device=%s\n", name,
+               gst_structure_get_string(gst_device_get_properties(device), "device.api"),
+               gst_structure_get_string(gst_device_get_properties(device), "device.path"));
+
+       g_free (name);
+       gst_object_unref (device);
+       break;
+     case GST_MESSAGE_DEVICE_REMOVED:
+       gst_message_parse_device_removed (message, &device);
+       name = gst_device_get_display_name (device);
+       g_print("Device removed: %s\n", name);
+       g_free (name);
+       gst_object_unref (device);
+       break;
+     default:
+       break;
+   }
+
+   return G_SOURCE_CONTINUE;
+}
+
+GstDeviceMonitor *GstToolkit::setup_raw_video_source_device_monitor()
+{
+   GstDeviceMonitor *monitor;
+   GstBus *bus;
+   GstCaps *caps;
+
+   monitor = gst_device_monitor_new ();
+
+   bus = gst_device_monitor_get_bus (monitor);
+   gst_bus_add_watch (bus, my_bus_func, NULL);
+   gst_object_unref (bus);
+
+   caps = gst_caps_new_empty_simple ("video/x-raw");
+   gst_device_monitor_add_filter (monitor, "Video/Source", caps);
+   gst_caps_unref (caps);
+
+   gst_device_monitor_set_show_all_devices(monitor, true);
+
+   gst_device_monitor_start (monitor);
+
+   GList *devices = gst_device_monitor_get_devices(monitor);
+
+   GList *tmp;
+   for (tmp = devices; tmp ; tmp = tmp->next ) {
+
+       GstDevice *device = (GstDevice *) tmp->data;
+
+       gchar *name = gst_device_get_display_name (device);
+       g_print("Device already plugged: %s - %ssrc device=%s\n", name,
+               gst_structure_get_string(gst_device_get_properties(device), "device.api"),
+               gst_structure_get_string(gst_device_get_properties(device), "device.path"));
+
+       g_free (name);
+   }
+   g_list_free(devices);
+
+   return monitor;
+}
+
