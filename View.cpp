@@ -752,7 +752,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     if (pick.first)  {
         // picking on the resizing handles in the corners
         if ( pick.first == s->handle_[Handles::RESIZE] ) {
-            if (UserInterface::manager().keyboardModifier())
+            if (UserInterface::manager().altModifier())
                 S_resize.y = S_resize.x;
             sourceNode->scale_ = s->stored_status_->scale_ * S_resize;
 
@@ -774,7 +774,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the resizing handles left or right
         else if ( pick.first == s->handle_[Handles::RESIZE_H] ) {
             sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(S_resize.x, 1.f, 1.f);
-            if (UserInterface::manager().keyboardModifier())
+            if (UserInterface::manager().altModifier())
                 sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
 
             ret.type = Cursor_ResizeEW;
@@ -784,7 +784,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the resizing handles top or bottom
         else if ( pick.first == s->handle_[Handles::RESIZE_V] ) {
             sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(1.f, S_resize.y, 1.f);
-            if (UserInterface::manager().keyboardModifier())
+            if (UserInterface::manager().altModifier())
                 sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
 
             ret.type = Cursor_ResizeNS;
@@ -803,7 +803,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
 
             int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
-            if (UserInterface::manager().keyboardModifier()) {
+            if (UserInterface::manager().altModifier()) {
                 degrees = (degrees / 10) * 10;
                 sourceNode->rotation_.z = glm::radians( float(degrees) );
             }
@@ -815,7 +815,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         else {
             sourceNode->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
-            if (UserInterface::manager().keyboardModifier()) {
+            if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = float( int( sourceNode->translation_.x * 10.f ) ) / 10.f;
                 sourceNode->translation_.y = float( int( sourceNode->translation_.y * 10.f ) ) / 10.f;
             }

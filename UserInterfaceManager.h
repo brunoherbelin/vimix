@@ -104,7 +104,8 @@ class UserInterface
     ToolBox toolbox;
     MediaController mediacontrol;
 
-    bool keyboard_modifier_active;
+    bool ctrl_modifier_active;
+    bool alt_modifier_active;
     bool show_vimix_config;
     bool show_imgui_about;
     bool show_gst_about;
@@ -145,7 +146,8 @@ public:
     void Terminate();
 
     // status querries
-    inline bool keyboardModifier() { return keyboard_modifier_active; }
+    inline bool ctrlModifier() const { return ctrl_modifier_active; }
+    inline bool altModifier() const  { return alt_modifier_active; }
 
     void StartScreenshot();
     void showPannel(int id = 0);

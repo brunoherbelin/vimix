@@ -219,13 +219,14 @@ bool UserInterface::Init()
 
 void UserInterface::handleKeyboard()
 {
-    ImGuiIO& io = ImGui::GetIO(); 
+    ImGuiIO& io = ImGui::GetIO();
+    alt_modifier_active = io.KeyAlt;
     auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl ) {
 
-        keyboard_modifier_active = true;
+        ctrl_modifier_active = true;
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
             // Quit
@@ -233,7 +234,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // SHIFT + CTRL + O : reopen current session
-            if (keyboard_modifier_active && !Mixer::manager().session()->filename().empty())
+            if (ctrl_modifier_active && !Mixer::manager().session()->filename().empty())
                 Mixer::manager().load( Mixer::manager().session()->filename() );
             // CTRL + O : Open session
             else
@@ -287,7 +288,7 @@ void UserInterface::handleKeyboard()
     }
     // No CTRL modifier
     else {
-        keyboard_modifier_active = false;
+        ctrl_modifier_active = false;
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -424,7 +425,7 @@ void UserInterface::handleMouse()
                     Source *s = Mixer::manager().findSource(picked.first);
                     if (s != nullptr) {
                         // CTRL + clic = multiple selection
-                        if (keyboard_modifier_active) {
+                        if (ctrl_modifier_active) {
                             if ( !Mixer::selection().contains(s) )
                                 Mixer::selection().add( s );
                             else {
