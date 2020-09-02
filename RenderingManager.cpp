@@ -46,6 +46,7 @@
 #include "Primitives.h"
 #include "Mixer.h"
 #include "SystemToolkit.h"
+#include "GstToolkit.h"
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
 
@@ -184,6 +185,9 @@ bool Rendering::init()
     // special callbacks for user input in output window
     glfwSetKeyCallback( output_.window(), WindowEscapeFullscreen);
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
+
+
+//    GstDeviceMonitor *dm = GstToolkit::setup_raw_video_source_device_monitor();
 
     return true;
 }

@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
 
@@ -734,46 +735,65 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     Group *sourceNode = s->group(mode_);
 
     // grab coordinates in scene-View reference frame
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+    glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+    glm::vec3 scene_translation = scene_to - scene_from;
 
+    // make sure matrix transform of stored status is updated
+    s->stored_status_->update(0);
     // grab coordinates in source-root reference frame
-    glm::vec4 S_from = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_from,  1.f );
-    glm::vec4 S_to   = glm::inverse(sourceNode->transform_) * glm::vec4( gl_Position_to,  1.f );
-    glm::vec3 S_resize = glm::vec3(S_to) / glm::vec3(S_from);
-
-//    Log::Info(" screen coordinates ( %.1f, %.1f ) ", to.x, to.y);
-//    Log::Info(" scene  coordinates ( %.1f, %.1f ) ", gl_Position_to.x, gl_Position_to.y);
-//    Log::Info(" source coordinates ( %.1f, %.1f, %.1f ) ", S_from.x, S_from.y, S_from.z);
-//    Log::Info("                    ( %.1f, %.1f, %.1f ) ", S_to.x, S_to.y, S_to.z);
+    glm::vec4 source_from = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_from,  1.f );
+    glm::vec4 source_to   = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_to,  1.f );
+    glm::vec3 source_scaling     = glm::vec3(source_to) / glm::vec3(source_from);
 
     // which manipulation to perform?
     std::ostringstream info;
     if (pick.first)  {
         // picking on the resizing handles in the corners
         if ( pick.first == s->handle_[Handles::RESIZE] ) {
-            if (UserInterface::manager().altModifier())
-                S_resize.y = S_resize.x;
-            sourceNode->scale_ = s->stored_status_->scale_ * S_resize;
 
-//            Log::Info(" resize            ( %.1f, %.1f ) ", S_resize.x, S_resize.y);
-//            glm::vec3 factor = S_resize * glm::vec3(0.5f, 0.5f, 1.f);
-////            glm::vec3 factor = S_resize * glm::vec3(1.f, 1.f, 1.f);
-////            factor *= glm::sign( glm::vec3(pick.second, 1.f) );
-//            sourceNode->scale_ = start_scale + factor;
+            // which corner was picked ?
+            glm::vec2 corner = glm::sign(pick.second);
 
-//            sourceNode->translation_ = start_translation + factor;
-////            sourceNode->translation_ = start_translation + S_resize * factor;
+            // transform from source center to corner
+            glm::mat4 T = GlmToolkit::transform(glm::vec3(corner.x, corner.y, 0.f),
+                                                glm::vec3(0.f, 0.f, 0.f),
+                                                glm::vec3(1.f / s->frame()->aspectRatio(), 1.f, 1.f));
 
-            // select cursor depending on diagonal
-            glm::vec2 axis = glm::sign(pick.second);
-            ret.type = axis.x * axis.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
+            // transformation from scene to corner:
+            glm::mat4 scene_to_corner_transform = T * glm::inverse(s->stored_status_->transform_);
+            glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+
+
+            // A) OPERATION: SCALING IN CORNER REF
+            // compute cursor movement in corner reference frame
+            glm::vec4 corner_from = scene_to_corner_transform * glm::vec4( scene_from,  1.f );
+            glm::vec4 corner_to   = scene_to_corner_transform * glm::vec4( scene_to,  1.f );
+            // operation of scaling in corner reference frame
+            glm::vec3 sca = glm::vec3(corner_to) / glm::vec3(corner_from);
+            glm::mat4 corner_scale_op = glm::scale(glm::identity<glm::mat4>(), sca);
+
+            // B) MOVES THE SOURCE CENTER
+            // convert source position in corner reference frame
+            glm::vec4 center = scene_to_corner_transform * glm::vec4( s->stored_status_->translation_, 1.f);
+            // transform source center (in corner reference frame)
+            center = corner_scale_op * center;
+            // convert center back into scene reference frame
+            center = corner_to_scene_transform * center;
+            // apply to source node
+            sourceNode->translation_ = glm::vec3(center);
+
+            // C) SCALE THE SOURCE
+            sourceNode->scale_ = sca * s->stored_status_->scale_;
+
+            // show cursor depending on diagonal (corner picked)
+            ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the resizing handles left or right
         else if ( pick.first == s->handle_[Handles::RESIZE_H] ) {
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(S_resize.x, 1.f, 1.f);
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(source_scaling.x, 1.f, 1.f);
             if (UserInterface::manager().altModifier())
                 sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
 
@@ -783,7 +803,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         }
         // picking on the resizing handles top or bottom
         else if ( pick.first == s->handle_[Handles::RESIZE_V] ) {
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(1.f, S_resize.y, 1.f);
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(1.f, source_scaling.y, 1.f);
             if (UserInterface::manager().altModifier())
                 sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
 
@@ -795,10 +815,10 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         else if ( pick.first == s->handle_[Handles::ROTATE] ) {
             // rotation center to center of source
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            S_from = glm::inverse(T) * glm::vec4( gl_Position_from,  1.f );
-            S_to   = glm::inverse(T) * glm::vec4( gl_Position_to,  1.f );
+            source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
+            source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
             // angle
-            float angle = glm::orientedAngle( glm::normalize(glm::vec2(S_from)), glm::normalize(glm::vec2(S_to)));
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
             // apply rotation on Z axis
             sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
 
@@ -813,7 +833,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
-            sourceNode->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
+            sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
 
             if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = float( int( sourceNode->translation_.x * 10.f ) ) / 10.f;
