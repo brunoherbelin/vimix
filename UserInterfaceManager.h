@@ -106,6 +106,7 @@ class UserInterface
 
     bool ctrl_modifier_active;
     bool alt_modifier_active;
+    bool shift_modifier_active;
     bool show_vimix_config;
     bool show_imgui_about;
     bool show_gst_about;
@@ -148,6 +149,7 @@ public:
     // status querries
     inline bool ctrlModifier() const { return ctrl_modifier_active; }
     inline bool altModifier() const  { return alt_modifier_active; }
+    inline bool shiftModifier() const  { return shift_modifier_active; }
 
     void StartScreenshot();
     void showPannel(int id = 0);

@@ -221,6 +221,7 @@ void UserInterface::handleKeyboard()
 {
     ImGuiIO& io = ImGui::GetIO();
     alt_modifier_active = io.KeyAlt;
+    shift_modifier_active = io.KeyShift;
     auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
 
     // Application "CTRL +"" Shortcuts
