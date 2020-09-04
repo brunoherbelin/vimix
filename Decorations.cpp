@@ -62,32 +62,6 @@ Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), 
         break;
     }
 
-//    switch (type) {
-//    case SHARP_LARGE:
-//        square_ = sharpframe;
-//        shadow_ = shadows[0];
-//        break;
-//    case SHARP_THIN:
-//        square_ = sharpframe;
-//        break;
-//    case ROUND_LARGE:
-//        side_  = frames[2];
-//        top_   = frames[3];
-//        shadow_ = shadows[1];
-//        break;
-//    default:
-//    case ROUND_THIN:
-//        side_  = frames[0];
-//        top_   = frames[1];
-//        shadow_ = shadows[1];
-//        break;
-//    case ROUND_THIN_PERSPECTIVE:
-//        side_  = frames[0];
-//        top_   = frames[1];
-//        shadow_ = shadows[2];
-//        break;
-//    }
-
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
@@ -181,12 +155,16 @@ void Frame::accept(Visitor& v)
 
 Handles::Handles(Type type) : Node(), type_(type)
 {
-    static Mesh *handle_rotation_ = new Mesh("mesh/border_handles_rotation.ply");
-    static Mesh *handle_corner    = new Mesh("mesh/border_handles_overlay.ply");
+    static Mesh *handle_rotation = new Mesh("mesh/border_handles_rotation.ply");
+    static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
+    static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
 
     color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
-    if ( type_ == ROTATE ) {
-        handle_ = handle_rotation_;
+    if ( type_ == Handles::ROTATE ) {
+        handle_ = handle_rotation;
+    }
+    else if ( type_ == Handles::SCALE ) {
+        handle_ = handle_scale;
     }
     else {
         handle_ = handle_corner;
@@ -227,7 +205,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 
 //        Log::Info(" (0,1) becomes (%f, %f)", scale.x, scale.y);
 
-        if ( type_ == RESIZE ) {
+        if ( type_ == Handles::RESIZE ) {
 
             // 4 corners
             vec = modelview * glm::vec4(1.f, -1.f, 0.f, 1.f);
@@ -246,7 +224,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
-        else if ( type_ == RESIZE_H ){
+        else if ( type_ == Handles::RESIZE_H ){
             // left and right
             vec = modelview * glm::vec4(1.f, 0.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
@@ -256,7 +234,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
-        else if ( type_ == RESIZE_V ){
+        else if ( type_ == Handles::RESIZE_V ){
             // top and bottom
             vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
@@ -266,7 +244,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
         }
-        else if ( type_ == ROTATE ){
+        else if ( type_ == Handles::ROTATE ){
             // one icon in top right corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
@@ -290,6 +268,17 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 
             handle_->draw( ctm, projection );
         }
+        else if ( type_ == Handles::SCALE ){
+            // one icon in top right corner
+            // 1. Fixed displacement by (0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
+            glm::vec4 pos = ctm * glm::vec4(0.12f, -0.12f, 0.f, 1.f);
+            // 2. ..from the bottom right corner (1,1)
+            vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 3. draw
+            handle_->draw( ctm, projection );
+        }
     }
 }
 
@@ -303,7 +292,7 @@ void Handles::accept(Visitor& v)
 
 Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
-    static Mesh *icons[9] = {nullptr};
+    static Mesh *icons[11] = {nullptr};
     if (icons[0] == nullptr)  {
         icons[POINT]   = new Mesh("mesh/point.ply");
         icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
@@ -313,6 +302,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
         icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
         icons[CIRCLES] = new Mesh("mesh/icon_circles.ply");
+        icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
+        icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 

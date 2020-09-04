@@ -149,6 +149,12 @@ void PickingVisitor::visit(Handles &n)
         float l = glm::length( glm::vec2(vec) );
         picked  = glm::length( glm::vec2( 1.f + l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
     }
+    else if ( n.type() == Handles::SCALE ){
+        // the icon for scaling is on the right bottom corner at (0.12, -0.12) in scene coordinates
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
+        float l = glm::length( glm::vec2(vec) );
+        picked  = glm::length( glm::vec2( 1.f + l, -1.f - l) - glm::vec2(P) ) < 1.5f * scale;
+    }
 
     if ( picked )
         // add this to the nodes picked

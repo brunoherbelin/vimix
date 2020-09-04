@@ -293,6 +293,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_large_round.ply
     ./rsc/mesh/border_large_top.ply
     ./rsc/mesh/border_handles_rotation.ply
+    ./rsc/mesh/border_handles_scale.ply
     ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_large_sharp.ply
@@ -309,6 +310,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_circles.ply
     ./rsc/mesh/icon_dots.ply
     ./rsc/mesh/icon_empty.ply
+    ./rsc/mesh/icon_lock.ply
+    ./rsc/mesh/icon_unlock.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

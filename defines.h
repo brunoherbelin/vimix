@@ -21,6 +21,7 @@
 #define LOG100(val) (50.0/log(10.0)*log((float)val + 1.0))
 #define EXP100(val) (exp(log(10.0)/50.0*(float)(val))-1.0)
 #define EUCLIDEAN(P1, P2) sqrt((P1.x() - P2.x()) * (P1.x() - P2.x()) + (P1.y() - P2.y()) * (P1.y() - P2.y()))
+#define ROUND(val, factor) float( int( val * factor ) ) / factor;
 
 #define SCENE_UNIT 5.f
 #define SCENE_DEPTH 12.f

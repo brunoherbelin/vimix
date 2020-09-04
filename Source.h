@@ -162,7 +162,7 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    Handles *handle_[4];
+    Handles *handle_[5];
 
     // update
     bool  active_;

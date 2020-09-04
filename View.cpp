@@ -771,11 +771,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // operation of scaling in corner reference frame
         glm::vec3 corner_scaling = glm::vec3(corner_to) / glm::vec3(corner_from);
 
-//        if (UserInterface::manager().shiftModifier()) {
-//            corner_scaling.x = float( int( corner_scaling.x * 10.f ) ) / 10.f;
-//            corner_scaling.y = float( int( corner_scaling.y * 10.f ) ) / 10.f;
-//        }
-
         // convert source position in corner reference frame
         glm::vec4 center = scene_to_corner_transform * glm::vec4( s->stored_status_->translation_, 1.f);
 
@@ -787,8 +782,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier()) {
-                    sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
-                    sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
+                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
+                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
                 }
             }
             // normal resize: corner scale
@@ -797,12 +792,10 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier()) {
-                    sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
-                    sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
-
+                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
+                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
                     corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
                 }
-
                 // transform source center (in corner reference frame)
                 center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
                 // convert center back into scene reference frame
@@ -824,19 +817,19 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(source_scaling.x, 1.f, 1.f);
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier())
-                    sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
+                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
             }
             // normal resize: side scale
             else {
+                // HORIZONTAL only
+                corner_scaling = glm::vec3(corner_scaling.x, 1.f, 1.f);
                 // scale node
                 sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier()) {
-                    sourceNode->scale_.x = float( int( sourceNode->scale_.x * 10.f ) ) / 10.f;
+                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
                     corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
                 }
-                // HORIZONTAL only
-                corner_scaling = glm::vec3(corner_scaling.x, 1.f, 1.f);
                 // transform source center (in corner reference frame)
                 center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
                 // convert center back into scene reference frame
@@ -857,19 +850,19 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(1.f, source_scaling.y, 1.f);
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier())
-                    sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
+                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
             }
             // normal resize: side scale
             else {
+                // VERTICAL ONLY
+                corner_scaling = glm::vec3(1.f, corner_scaling.y, 1.f);
                 // scale
                 sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
                 // discretized scaling with SHIFT
                 if (UserInterface::manager().shiftModifier()) {
-                    sourceNode->scale_.y = float( int( sourceNode->scale_.y * 10.f ) ) / 10.f;
+                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
                     corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
                 }
-                // VERTICAL ONLY
-                corner_scaling = glm::vec3(1.f, corner_scaling.y, 1.f);
                 // transform source center (in corner reference frame)
                 center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
                 // convert center back into scene reference frame
@@ -882,9 +875,32 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
+        // picking on the proportional scaling handle
+        else if ( pick.first == s->handle_[Handles::SCALE] ) {
+            // PROPORTIONAL ONLY
+            source_scaling = glm::vec3(source_scaling.x, source_scaling.x, 1.f);
+            sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
+            // discretized scaling with SHIFT
+            if (UserInterface::manager().shiftModifier()) {
+                sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
+                source_scaling.x = sourceNode->scale_.x / s->stored_status_->scale_.x;
+
+                sourceNode->scale_.y = s->stored_status_->scale_.y * source_scaling.x;
+            }
+            // ALT resize : scaling original source proportion
+            if (UserInterface::manager().altModifier()) {
+                sourceNode->scale_.y =  sourceNode->scale_.x ;
+            }
+            // show cursor depending on diagonal (corner picked)
+            ret.type = Cursor_ResizeNWSE;
+            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << " x "  << sourceNode->scale_.y;
+
+        }
         // picking on the rotating handle
         else if ( pick.first == s->handle_[Handles::ROTATE] ) {
 
+        //    sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
 
             // rotation center to center of source
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
@@ -892,10 +908,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
             // angle
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
-
             // apply rotation on Z axis
             sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
-
+            // discretized rotation with SHIFT
             int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
             if (UserInterface::manager().shiftModifier()) {
                 degrees = (degrees / 10) * 10;
@@ -908,12 +923,11 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking anywhere but on a handle: user wants to move the source
         else {
             sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
-
+            // discretized translation with SHIFT
             if (UserInterface::manager().shiftModifier()) {
-                sourceNode->translation_.x = float( int( sourceNode->translation_.x * 10.f ) ) / 10.f;
-                sourceNode->translation_.y = float( int( sourceNode->translation_.y * 10.f ) ) / 10.f;
+                sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
+                sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
             }
-
             // ALT: single axis movement
             if (UserInterface::manager().altModifier()) {
                 glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;

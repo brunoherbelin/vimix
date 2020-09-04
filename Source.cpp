@@ -87,6 +87,11 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     handle_[Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     handle_[Handles::ROTATE]->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(handle_[Handles::ROTATE]);
+    handle_[Handles::SCALE] = new Handles(Handles::SCALE);
+    handle_[Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handle_[Handles::SCALE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handle_[Handles::SCALE]);
+
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.7f);
