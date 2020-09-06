@@ -252,7 +252,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // 2. ..from the top right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
-
+            // 3. draw
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::SCALE ){

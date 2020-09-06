@@ -746,7 +746,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     glm::vec4 source_to   = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_to,  1.f );
     glm::vec3 source_scaling     = glm::vec3(source_to) / glm::vec3(source_from);
 
-
     // which manipulation to perform?
     std::ostringstream info;
     if (pick.first)  {
@@ -806,8 +805,10 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             center = corner_to_scene_transform * center;
             // apply to node
             sourceNode->translation_ = glm::vec3(center);
-
             // show cursor depending on diagonal (corner picked)
+            T = glm::rotate(glm::identity<glm::mat4>(), s->stored_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
+            T = glm::scale(T, s->stored_status_->scale_);
+            corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
@@ -838,8 +839,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             center = corner_to_scene_transform * center;
             // apply to node
             sourceNode->translation_ = glm::vec3(center);
-
-            ret.type = Cursor_ResizeEW;
+            // show cursor depending on angle
+            float c = tan(sourceNode->rotation_.z);
+            ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
@@ -869,8 +871,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             center = corner_to_scene_transform * center;
             // apply to node
             sourceNode->translation_ = glm::vec3(center);
-
-            ret.type = Cursor_ResizeNS;
+            // show cursor depending on angle
+            float c = tan(sourceNode->rotation_.z);
+            ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
@@ -925,18 +928,17 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
                 info << " x "  << sourceNode->scale_.y ;
             }
-
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
             sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
-            // discretized translation with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
+            // discretized translation with ALT
+            if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
                 sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
             }
             // ALT: single axis movement
-            if (UserInterface::manager().altModifier()) {
+            if (UserInterface::manager().shiftModifier()) {
                 glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
                 if (ABS(dif.x) > ABS(dif.y) )
                     sourceNode->translation_.y = s->stored_status_->translation_.y;
