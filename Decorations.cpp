@@ -202,7 +202,8 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
 
         // extract scaling and mirroring
-        vec = modelview * glm::vec4(1.f, 1.f, 1.f, 0.f);
+        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+        vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
         glm::vec4 mirror = glm::sign(vec);
 
         if ( type_ == Handles::RESIZE ) {
@@ -248,7 +249,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // one icon in top right corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
-            glm::vec4 pos = ctm * glm::vec4( mirror.x * 0.12f, mirror.x * 0.12f, 0.f, 1.f);
+            glm::vec4 pos = ctm * glm::vec4( 0.12f, 0.12f, 0.f, 1.f);
             // 2. ..from the top right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
