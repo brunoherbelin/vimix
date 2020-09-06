@@ -818,7 +818,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
             // SHIFT: HORIZONTAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
-                sourceNode->scale_.x = sourceNode->scale_.y;
+                sourceNode->scale_.x = ABS(sourceNode->scale_.y) * SIGN(sourceNode->scale_.x);
                 corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
             }
             // HORIZONTAL RESIZE (normal case)
@@ -850,7 +850,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
             // SHIFT: VERTICAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
-                sourceNode->scale_.y = sourceNode->scale_.x;
+                sourceNode->scale_.y = ABS(sourceNode->scale_.x) * SIGN(sourceNode->scale_.y);
                 corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
             }
             // VERTICAL RESIZE (normal case)
