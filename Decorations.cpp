@@ -195,15 +195,15 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         // set color
         handle_->shader()->color = color;
 
+        // extract rotation from modelview
         glm::mat4 ctm;
         glm::vec3 rot(0.f);
         glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
         rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
-//        vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
-//        glm::vec3 scale( vec.x > 0.f ? 1.f : -1.f, vec.y > 0.f ? 1.f : -1.f, 1.f);
-//        glm::vec3 scale(1.f, 1.f, 1.f);
 
-//        Log::Info(" (0,1) becomes (%f, %f)", scale.x, scale.y);
+        // extract scaling and mirroring
+        vec = modelview * glm::vec4(1.f, 1.f, 1.f, 0.f);
+        glm::vec4 mirror = glm::sign(vec);
 
         if ( type_ == Handles::RESIZE ) {
 
@@ -247,35 +247,22 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         else if ( type_ == Handles::ROTATE ){
             // one icon in top right corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
-            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
-            glm::vec4 pos = ctm * glm::vec4(0.12f, 0.12f, 0.f, 1.f);
-//            Log::Info(" (0.12,0.12) becomes (%f, %f)", pos.x, pos.y);
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( mirror.x * 0.12f, mirror.x * 0.12f, 0.f, 1.f);
             // 2. ..from the top right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
 
-// TODO fix problem with negative scale
-//            glm::vec4 target = modelview * glm::vec4(1.2f, 1.2f, 0.f, 1.f);
-
-//            vec = modelview * glm::vec4(1.f, 1.f, 0.f, 1.f);
-//            glm::vec4 dv = target - vec;
-
-//            Log::Info("dv  (%f, %f)", dv.x, dv.y);
-//            float m = dv.x < dv.y ? dv.x : dv.y;
-//            Log::Info("min  %f", m);
-
-//            ctm = GlmToolkit::transform( glm::vec3(target), rot, glm::vec3(1.f));
-
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::SCALE ){
-            // one icon in top right corner
+            // one icon in bottom right corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
-            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, glm::vec3(1.f));
-            glm::vec4 pos = ctm * glm::vec4(0.12f, -0.12f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * -0.12f, 0.f, 1.f);
             // 2. ..from the bottom right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
             // 3. draw
             handle_->draw( ctm, projection );
         }
