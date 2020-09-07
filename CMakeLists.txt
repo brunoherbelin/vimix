@@ -286,7 +286,6 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/disk.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
-    ./rsc/mesh/target.ply
     ./rsc/mesh/border_round.ply
     ./rsc/mesh/border_top.ply
     ./rsc/mesh/border_sharp.ply
@@ -312,6 +311,9 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_empty.ply
     ./rsc/mesh/icon_lock.ply
     ./rsc/mesh/icon_unlock.ply
+    ./rsc/mesh/icon_circle.ply
+    ./rsc/mesh/icon_clock.ply
+    ./rsc/mesh/icon_grid.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

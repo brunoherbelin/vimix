@@ -145,6 +145,10 @@ public:
     Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
+private:
+    Node *overlay_rotation_circle_;
+    Node *overlay_rotation_clock_;
+    Node *overlay_grid_;
 };
 
 class LayerView : public View

@@ -628,6 +628,16 @@ GeometryView::GeometryView() : View(GEOMETRY)
 //    selection_box_ = new Box;
 //    selection_box_->visible_ = false;
 //    scene.ws()->attach(selection_box_);
+
+
+    Symbol *circle = new Symbol(Symbol::CIRCLE);
+    circle->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
+    scene.fg()->attach(circle);
+
+    Symbol *clock = new Symbol(Symbol::CLOCK);
+    clock->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
+    scene.fg()->attach(clock);
+
 }
 
 void GeometryView::update(float dt)

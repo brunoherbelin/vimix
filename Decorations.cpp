@@ -280,7 +280,7 @@ void Handles::accept(Visitor& v)
 
 Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
-    static Mesh *icons[11] = {nullptr};
+    static Mesh *icons[(int)EMPTY+1] = {nullptr};
     if (icons[0] == nullptr)  {
         icons[POINT]   = new Mesh("mesh/point.ply");
         icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
@@ -289,9 +289,12 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
         icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
-        icons[CIRCLES] = new Mesh("mesh/icon_circles.ply");
+        icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
         icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
+        icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
+        icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
+        icons[CLOCK]   = new Mesh("mesh/icon_grid.ply");
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 
