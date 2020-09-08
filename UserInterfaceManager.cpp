@@ -444,7 +444,7 @@ void UserInterface::handleMouse()
                             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
                         // indicate to view that an action can be initiated (e.g. grab)
-                        Mixer::manager().view()->storeStatus();
+                        Mixer::manager().view()->initiate();
                     }
                     // no source is selected
                     else
@@ -464,6 +464,7 @@ void UserInterface::handleMouse()
             view_drag = nullptr;
             mousedown = false;
             picked = { nullptr, glm::vec2(0.f) };
+            Mixer::manager().view()->terminate();
         }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
@@ -490,7 +491,7 @@ void UserInterface::handleMouse()
                 view_drag = Mixer::manager().view();
 
                 // indicate to view that an action can be initiated (e.g. grab)
-                Mixer::manager().view()->storeStatus();
+                Mixer::manager().view()->initiate();
             }
 
             // only operate if the view didn't change
@@ -529,6 +530,7 @@ void UserInterface::handleMouse()
         // cancel all operations on view when interacting on GUI
         view_drag = nullptr;
         mousedown = false;
+        Mixer::manager().view()->terminate();
     }
 }
 

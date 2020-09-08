@@ -57,15 +57,16 @@ public:
     virtual Cursor drag (glm::vec2, glm::vec2);
 
     // grab a source provided a start and an end point in screen coordinates and the picking point
-    virtual void storeStatus();
+    virtual void initiate();
+    virtual void terminate() {}
     virtual Cursor grab (Source*, glm::vec2, glm::vec2, std::pair<Node *, glm::vec2>) {
         return Cursor();
     }
 
-    // test mouse over provided a point in screen coordinates and the picking point
-    virtual Cursor over (Source*, glm::vec2, std::pair<Node *, glm::vec2>) {
-        return Cursor();
-    }
+//    // test mouse over provided a point in screen coordinates and the picking point
+//    virtual Cursor over (Source*, glm::vec2, std::pair<Node *, glm::vec2>) {
+//        return Cursor();
+//    }
 
     // accessible scene
     Scene scene;
@@ -142,12 +143,14 @@ public:
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
-    Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
+//    Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
+    void terminate();
 
 private:
     Node *overlay_rotation_circle_;
     Node *overlay_rotation_clock_;
+    Node *overlay_scaling_;
     Node *overlay_grid_;
 };
 

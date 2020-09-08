@@ -57,7 +57,7 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { POINT = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, DOTS, BUSY, LOCK, UNLOCK, CIRCLE, CLOCK, GRID, EMPTY } Type;
+    typedef enum { POINT = 0, IMAGE, VIDEO, SESSION, CLONE, RENDER, DOTS, BUSY, LOCK, UNLOCK, CIRCLE, SQUARE, CLOCK, GRID, EMPTY } Type;
     Symbol(Type t = POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 
