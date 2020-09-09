@@ -52,7 +52,7 @@ void Node::copyTransform(Node *other)
 {
     if (!other)
         return;
-    transform_ = glm::identity<glm::mat4>();
+    transform_ = other->transform_;
     scale_ = other->scale_;
     rotation_ = other->rotation_;
     translation_ = other->translation_;

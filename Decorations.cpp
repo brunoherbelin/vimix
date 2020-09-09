@@ -296,6 +296,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
         icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
         icons[GRID]    = new Mesh("mesh/icon_grid.ply");
+        icons[CROSS]   = new Mesh("mesh/icon_cross.ply");
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 
@@ -322,10 +323,29 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // set color
         symbol_->shader()->color = color;
 
-        glm::mat4 ctm = modelview * transform_;
-        // correct for aspect ratio
-        glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
-        ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
+//        glm::mat4 ctm = modelview * transform_;
+//        // correct for aspect ratio
+//        glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
+//        ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
+
+        // rebuild a matrix with rotation (see handles) and translation from modelview + translation_
+        // and define scale to be 1, 1
+
+        glm::mat4 ctm;
+        glm::vec3 rot(0.f);
+        glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
+        rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+
+        // extract scaling
+        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+        vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
+        glm::vec3 sca = glm::vec3(vec.y , vec.y, 1.f) * glm::vec3(scale_.y, scale_.y, 1.f);
+
+        glm::vec3 tran = glm::vec3(modelview[3][0], modelview[3][1], modelview[3][2]) ;
+        tran += translation_ * glm::vec3(vec);
+
+        rot.z += rotation_.z;
+        ctm = GlmToolkit::transform(tran, rot, sca);
 
         symbol_->draw( ctm, projection);
     }

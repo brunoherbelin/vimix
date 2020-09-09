@@ -148,10 +148,11 @@ public:
     void terminate();
 
 private:
-    Node *overlay_rotation_circle_;
+    Node *overlay_rotation_;
     Node *overlay_rotation_clock_;
     Node *overlay_scaling_;
-    Node *overlay_grid_;
+    Node *overlay_scaling_cross_;
+    Node *overlay_scaling_grid_;
 };
 
 class LayerView : public View
