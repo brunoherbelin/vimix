@@ -29,10 +29,6 @@ void PickingVisitor::visit(Node &n)
 {
     // use the transform modified during update
     modelview_ *= n.transform_;
-
-//      modelview_ *= transform(n.translation_, n.rotation_, n.scale_);
-//    Log::Info("Node %d", n.id());
-//    Log::Info("%s", glm::to_string(modelview_).c_str());
 }
 
 void PickingVisitor::visit(Group &n)
@@ -73,26 +69,24 @@ void PickingVisitor::visit(Surface &n)
         // create bounding box for those points (2 in practice)
         GlmToolkit::AxisAlignedBoundingBox bb_points;
         bb_points.extend(points_);
-
         // apply inverse transform
         bb_points = bb_points.transformed(glm::inverse(modelview_)) ;
-
         // test bounding box for overlap with inverse transform bbox
-        if ( bb_points.intersect( n.bbox() ) )
-//            if ( n.bbox().contains( bb_points ) )
+        if ( bb_points.intersect( n.bbox() ) ) {
+//            if ( n.bbox().contains( bb_points ) ) // alternative selection by total inclusion of source inside BB
             // add this surface to the nodes picked
             nodes_.push_back( std::pair(&n, glm::vec2(0.f)) );
+        }
     }
     // only one point
     else if (points_.size() > 0) {
-
         // apply inverse transform to the point of interest
         glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
-
         // test bounding box for picking from a single point
-        if ( n.bbox().contains( glm::vec3(P)) )
+        if ( n.bbox().contains( glm::vec3(P)) ) {
             // add this surface to the nodes picked
             nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+        }
     }
 }
 

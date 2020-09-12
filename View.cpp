@@ -99,9 +99,9 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
     scene.accept(pv);
 
     // picking visitor found nodes?
-    if ( !pv.picked().empty()) {
+    if ( !pv.empty()) {
         // select top-most Node picked
-        pick = pv.picked().back();
+        pick = pv.back();
     }
 
     return pick;
@@ -193,13 +193,14 @@ void View::select(glm::vec2 A, glm::vec2 B)
     Mixer::selection().clear();
 
     // picking visitor found nodes in the area?
-    if ( !pv.picked().empty()) {
+    if ( !pv.empty()) {
 
         // create a list of source matching the list of picked nodes
         SourceList selection;
-        std::vector< std::pair<Node *, glm::vec2> > pick = pv.picked();
+//        std::vector< std::pair<Node *, glm::vec2> > pick = pv.picked();
         // loop over the nodes and add all sources found.
-        for(std::vector< std::pair<Node *, glm::vec2> >::iterator p = pick.begin(); p != pick.end(); p++){
+//        for(std::vector< std::pair<Node *, glm::vec2> >::iterator p = pick.begin(); p != pick.end(); p++){
+        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
             Source *s = Mixer::manager().findSource( p->first );
             if (s)
                 selection.push_back( s );
@@ -756,28 +757,29 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
     scene.accept(pv);
 
     // picking visitor found nodes?
-    if ( pv.picked().size() > 0) {
-
+    if ( !pv.empty() ) {
+        // keep current source active if it is clicked
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
-
             // find if the current source was picked
-            auto itp = pv.picked().rbegin();
-            for (; itp != pv.picked().rend(); itp++){
-                if ( s->contains( (*itp).first ) ){
+            auto itp = pv.rbegin();
+            for (; itp != pv.rend(); itp++){
+                // test if source contains this node
+                Source::hasNode is_in_source((*itp).first );
+                if ( is_in_source( s ) ){
+                    // a node in the current source was clicked !
                     pick = *itp;
                     break;
                 }
             }
             // not found: the current source was not clicked
-            if (itp == pv.picked().rend())
+            if (itp == pv.rend())
                 s = nullptr;
         }
-        // maybe the source changed
-        if (s == nullptr)
-        {
+        // the clicked source changed (not the current source)
+        if (s == nullptr) {
             // select top-most Node picked
-            pick = pv.picked().back();
+            pick = pv.back();
         }
     }
 

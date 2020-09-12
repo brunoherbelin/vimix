@@ -388,7 +388,14 @@ bool Source::hasNode::operator()(const Source* elem) const
 
         // general case: traverse tree of all Groups recursively using a SearchVisitor
         SearchVisitor sv(_n);
+        // search in groups for all views
         for (auto g = elem->groups_.begin(); g != elem->groups_.end(); g++) {
+            (*g).second->accept(sv);
+            if (sv.found())
+                return true;
+        }
+        // search in overlays for all views
+        for (auto g = elem->overlays_.begin(); g != elem->overlays_.end(); g++) {
             (*g).second->accept(sv);
             if (sv.found())
                 return true;
