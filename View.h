@@ -148,6 +148,8 @@ public:
     void terminate();
 
 private:
+    Node *overlay_position_;
+    Node *overlay_position_cross_;
     Node *overlay_rotation_;
     Node *overlay_rotation_fix_;
     Node *overlay_rotation_clock_;

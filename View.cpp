@@ -627,6 +627,17 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
     // User interface foreground
     //
+    // point to show POSITION
+    overlay_position_ = new Symbol(Symbol::SQUARE_POINT);
+    overlay_position_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
+    scene.fg()->attach(overlay_position_);
+    overlay_position_->visible_ = false;
+    // cross to show the axis for POSITION
+    overlay_position_cross_ = new Symbol(Symbol::CROSS);
+    overlay_position_cross_->rotation_ = glm::vec3(0.f, 0.f, M_PI_4);
+    overlay_position_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
+    scene.fg()->attach(overlay_position_cross_);
+    overlay_position_cross_->visible_ = false;
     // 'clock' : tic marks every 10 degrees for ROTATION
     // with dark background
     Group *g = new Group;
@@ -1011,6 +1022,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
+            ret.type = Cursor_ResizeAll;
             sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
             // discretized translation with ALT
             if (UserInterface::manager().altModifier()) {
@@ -1018,15 +1030,28 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
             }
             // ALT: single axis movement
+            overlay_position_cross_->visible_ = false;
             if (UserInterface::manager().shiftModifier()) {
-                glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
-                if (ABS(dif.x) > ABS(dif.y) )
-                    sourceNode->translation_.y = s->stored_status_->translation_.y;
-                else
-                    sourceNode->translation_.x = s->stored_status_->translation_.x;
-            }
+                overlay_position_cross_->visible_ = true;
+                overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
+                overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
+                overlay_position_cross_->update(0);
 
-            ret.type = Cursor_ResizeAll;
+                glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
+                if (ABS(dif.x) > ABS(dif.y) ) {
+                    sourceNode->translation_.y = s->stored_status_->translation_.y;
+                    ret.type = Cursor_ResizeEW;
+                } else {
+                    sourceNode->translation_.x = s->stored_status_->translation_.x;
+                    ret.type = Cursor_ResizeNS;
+                }
+            }
+            // Show center overlay for POSITION
+            overlay_position_->visible_ = true;
+            overlay_position_->translation_.x = sourceNode->translation_.x;
+            overlay_position_->translation_.y = sourceNode->translation_.y;
+            overlay_position_->update(0);
+            // Show move cursor
             info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
             info << ", "  << sourceNode->translation_.y << ")";
         }
@@ -1043,6 +1068,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 void GeometryView::terminate()
 {
     // hide all overlays
+    overlay_position_->visible_       = false;
+    overlay_position_cross_->visible_ = false;
     overlay_rotation_clock_->visible_ = false;
     overlay_rotation_fix_->visible_   = false;
     overlay_rotation_->visible_       = false;
