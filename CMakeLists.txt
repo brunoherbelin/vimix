@@ -295,6 +295,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_rotation.ply
     ./rsc/mesh/border_handles_scale.ply
     ./rsc/mesh/border_handles_overlay.ply
+    ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply

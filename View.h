@@ -149,6 +149,7 @@ public:
 
 private:
     Node *overlay_rotation_;
+    Node *overlay_rotation_fix_;
     Node *overlay_rotation_clock_;
     Node *overlay_scaling_;
     Node *overlay_scaling_cross_;

@@ -46,10 +46,13 @@ public:
 
     Type type() const { return type_; }
     Primitive *handle() const { return handle_; }
+    void overlayActiveCorner(glm::vec2 v) {corner_ = v;}
+
     glm::vec4 color;
 
 protected:
     Primitive *handle_;
+    glm::vec2 corner_;
     Type type_;
 
 };

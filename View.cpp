@@ -628,7 +628,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     // User interface foreground
     //
     // 'clock' : tic marks every 10 degrees for ROTATION
-    // (with opaque background)
+    // with dark background
     Group *g = new Group;
     Symbol *s = new Symbol(Symbol::CLOCK);
     g->attach(s);
@@ -641,12 +641,18 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_rotation_clock_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
     scene.fg()->attach(overlay_rotation_clock_);
     overlay_rotation_clock_->visible_ = false;
+    // circle to show fixed-size  ROTATION
+    overlay_rotation_fix_ = new Symbol(Symbol::SQUARE);
+    overlay_rotation_fix_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_fix_);
+    overlay_rotation_fix_->visible_ = false;
     // circle to show the center of ROTATION
     overlay_rotation_ = new Symbol(Symbol::CIRCLE);
     overlay_rotation_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
     scene.fg()->attach(overlay_rotation_);
     overlay_rotation_->visible_ = false;
     // 'grid' : tic marks every 0.1 step for SCALING
+    // with dark background
     g = new Group;
     s = new Symbol(Symbol::GRID);
     g->attach(s);
@@ -814,12 +820,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the resizing handles in the corners
         if ( pick.first == s->handle_[Handles::RESIZE] ) {
 
-//            overlay_scaling_->visible_ = true;
-//            glm::vec4 icon = corner_to_scene_transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
-//            overlay_scaling_->translation_.x = icon.x;
-//            overlay_scaling_->translation_.y = icon.y;
-//            overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
-//            overlay_scaling_->update(0);
+            // inform on which corner should be overlayed (opposite)
+            s->handle_[Handles::RESIZE]->overlayActiveCorner(-corner);
 
             // RESIZE CORNER
             // proportional SCALING with SHIFT
@@ -865,12 +867,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handle_[Handles::RESIZE_H] ) {
 
-//            overlay_scaling_->visible_ = true;
-//            glm::vec4 icon = corner_to_scene_transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
-//            overlay_scaling_->translation_.x = icon.x;
-//            overlay_scaling_->translation_.y = icon.y;
-//            overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
-//            overlay_scaling_->update(0);
+            // inform on which corner should be overlayed (opposite)
+            s->handle_[Handles::RESIZE_H]->overlayActiveCorner(-corner);
 
             // SHIFT: HORIZONTAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
@@ -904,12 +902,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the BORDER RESIZING handles top or bottom
         else if ( pick.first == s->handle_[Handles::RESIZE_V] ) {
 
-//            overlay_scaling_->visible_ = true;
-//            glm::vec4 icon = corner_to_scene_transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
-//            overlay_scaling_->translation_.x = icon.x;
-//            overlay_scaling_->translation_.y = icon.y;
-//            overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
-//            overlay_scaling_->update(0);
+            // inform on which corner should be overlayed (opposite)
+            s->handle_[Handles::RESIZE_V]->overlayActiveCorner(-corner);
 
             // SHIFT: VERTICAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
@@ -977,6 +971,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
             // ROTATION on CENTER
             overlay_rotation_clock_->visible_ = false;
+            overlay_rotation_fix_->visible_ = true;
             overlay_rotation_->visible_ = true;
             overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
             overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
@@ -1009,7 +1004,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 // apply center scaling
                 sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
                 info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-                info << " x "  << sourceNode->scale_.y ;
+                info << " x "  << sourceNode->scale_.y ;                
+                overlay_rotation_fix_->visible_ = false;
+                overlay_rotation_fix_->copyTransform(overlay_rotation_);
             }
         }
         // picking anywhere but on a handle: user wants to move the source
@@ -1045,11 +1042,24 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
 void GeometryView::terminate()
 {
+    // hide all overlays
     overlay_rotation_clock_->visible_ = false;
-    overlay_rotation_->visible_ = false;
-    overlay_scaling_grid_->visible_ = false;
-    overlay_scaling_cross_->visible_ = false;
-    overlay_scaling_->visible_ = false;
+    overlay_rotation_fix_->visible_   = false;
+    overlay_rotation_->visible_       = false;
+    overlay_scaling_grid_->visible_   = false;
+    overlay_scaling_cross_->visible_  = false;
+    overlay_scaling_->visible_        = false;
+
+    // cancel of all handles overlays
+    glm::vec2 c(0.f, 0.f);
+    for (auto sit = Mixer::manager().session()->begin();
+         sit != Mixer::manager().session()->end(); sit++){
+
+        (*sit)->handle_[Handles::RESIZE]->overlayActiveCorner(c);
+        (*sit)->handle_[Handles::RESIZE_H]->overlayActiveCorner(c);
+        (*sit)->handle_[Handles::RESIZE_V]->overlayActiveCorner(c);
+    }
+
 }
 
 //View::Cursor GeometryView::over (Source*, glm::vec2, std::pair<Node *, glm::vec2>)

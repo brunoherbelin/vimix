@@ -170,6 +170,7 @@ Handles::Handles(Type type) : Node(), type_(type)
         handle_ = handle_corner;
     }
 
+    corner_ = glm::vec2(0.f, 0.f);
 }
 
 Handles::~Handles()
@@ -184,6 +185,8 @@ void Handles::update( float dt )
 
 void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 {
+    static Mesh *handle_active   = new Mesh("mesh/border_handles_overlay_filled.ply");
+
     if ( !initialized() ) {
         if(handle_ && !handle_->initialized())
             handle_->init();
@@ -224,6 +227,12 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
+
+            if ( glm::length(corner_) > 0.f ) {
+                vec = modelview * glm::vec4(corner_.x, corner_.y, 0.f, 1.f);
+                ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+                handle_active->draw( ctm, projection );
+            }
         }
         else if ( type_ == Handles::RESIZE_H ){
             // left and right
@@ -234,6 +243,12 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = modelview * glm::vec4(-1.f, 0.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
+
+            if ( glm::length(corner_) > 0.f ) {
+                vec = modelview * glm::vec4(corner_.x, corner_.y, 0.f, 1.f);
+                ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+                handle_active->draw( ctm, projection );
+            }
         }
         else if ( type_ == Handles::RESIZE_V ){
             // top and bottom
@@ -244,6 +259,12 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = modelview * glm::vec4(0.f, -1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             handle_->draw( ctm, projection );
+
+            if ( glm::length(corner_) > 0.f ) {
+                vec = modelview * glm::vec4(corner_.x, corner_.y, 0.f, 1.f);
+                ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+                handle_active->draw( ctm, projection );
+            }
         }
         else if ( type_ == Handles::ROTATE ){
             // one icon in top right corner
@@ -324,28 +345,22 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // set color
         symbol_->shader()->color = color;
 
-//        glm::mat4 ctm = modelview * transform_;
-//        // correct for aspect ratio
-//        glm::vec4 vec = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
-//        ctm *= glm::scale(glm::identity<glm::mat4>(), glm::vec3( vec.y / vec.x, 1.f, 1.f));
-
         // rebuild a matrix with rotation (see handles) and translation from modelview + translation_
         // and define scale to be 1, 1
-
         glm::mat4 ctm;
         glm::vec3 rot(0.f);
         glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
         rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
-
         // extract scaling
         ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
         vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
         glm::vec3 sca = glm::vec3(vec.y , vec.y, 1.f) * glm::vec3(scale_.y, scale_.y, 1.f);
-
+        // extract translation
         glm::vec3 tran = glm::vec3(modelview[3][0], modelview[3][1], modelview[3][2]) ;
         tran += translation_ * glm::vec3(vec);
-
+        // apply local rotation
         rot.z += rotation_.z;
+        // generate matrix
         ctm = GlmToolkit::transform(tran, rot, sca);
 
         symbol_->draw( ctm, projection);
