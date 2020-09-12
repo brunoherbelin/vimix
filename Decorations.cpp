@@ -282,22 +282,23 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
     static Mesh *icons[(int)EMPTY+1] = {nullptr};
     if (icons[0] == nullptr)  {
-        icons[POINT]   = new Mesh("mesh/point.ply");
+        icons[CIRCLE_POINT]   = new Mesh("mesh/point.ply");
+        icons[SQUARE_POINT]   = new Mesh("mesh/square_point.ply");
         icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
         icons[VIDEO]   = new Mesh("mesh/icon_video.ply");
         icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
         icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
+        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
         icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
         icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
         icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
         icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
-        icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
         icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
-        icons[GRID]    = new Mesh("mesh/icon_grid.ply");
+        icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
         icons[CROSS]   = new Mesh("mesh/icon_cross.ply");
-        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
+        icons[GRID]    = new Mesh("mesh/icon_grid.ply");
     }
 
     symbol_ = icons[type_];

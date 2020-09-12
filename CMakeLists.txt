@@ -284,6 +284,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/glow.dds
     ./rsc/images/shadow_perspective.dds
     ./rsc/mesh/disk.ply
+    ./rsc/mesh/circle.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
     ./rsc/mesh/border_round.ply
@@ -300,7 +301,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/perspective_layer.ply
     ./rsc/mesh/shadow_perspective.ply
     ./rsc/mesh/point.ply
-    ./rsc/mesh/circle.ply
+    ./rsc/mesh/square_point.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply

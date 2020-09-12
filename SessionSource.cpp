@@ -44,7 +44,7 @@ SessionSource::SessionSource() : Source(), path_("")
     loader->scale_ = glm::vec3(2.f, 2.f, 1.f);
     loader->update_callbacks_.push_back(new InfiniteGlowCallback);
     overlays_[View::TRANSITION]->attach(loader);
-    Symbol *center = new Symbol(Symbol::POINT, glm::vec3(0.f, -1.05f, 0.1f));
+    Symbol *center = new Symbol(Symbol::CIRCLE_POINT, glm::vec3(0.f, -1.05f, 0.1f));
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 

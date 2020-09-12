@@ -632,7 +632,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     Group *g = new Group;
     Symbol *s = new Symbol(Symbol::CLOCK);
     g->attach(s);
-    s = new Symbol(Symbol::POINT);
+    s = new Symbol(Symbol::CIRCLE_POINT);
     s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
     s->scale_ = glm::vec3(28.f, 28.f, 1.f);
     s->translation_.z = -0.1;
@@ -650,23 +650,23 @@ GeometryView::GeometryView() : View(GEOMETRY)
     g = new Group;
     s = new Symbol(Symbol::GRID);
     g->attach(s);
-    s = new Symbol(Symbol::POINT);
+    s = new Symbol(Symbol::SQUARE_POINT);
     s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
-    s->scale_ = glm::vec3(23.f, 23.f, 1.f);
+    s->scale_ = glm::vec3(18.f, 18.f, 1.f);
     s->translation_.z = -0.1;
     g->attach(s);
     overlay_scaling_grid_ = g;
-    overlay_scaling_grid_->scale_ = glm::vec3(0.28f, 0.28f, 1.f);
+    overlay_scaling_grid_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_grid_);
     overlay_scaling_grid_->visible_ = false;
     // cross in the square for proportional SCALING
     overlay_scaling_cross_ = new Symbol(Symbol::CROSS);
-    overlay_scaling_cross_->scale_ = glm::vec3(0.28f, 0.28f, 1.f);
+    overlay_scaling_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_cross_);
     overlay_scaling_cross_->visible_ = false;
     // square to show the center of SCALING
     overlay_scaling_ = new Symbol(Symbol::SQUARE);
-    overlay_scaling_->scale_ = glm::vec3(0.28f, 0.28f, 1.f);
+    overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
 
