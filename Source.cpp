@@ -334,7 +334,11 @@ void Source::update(float dt)
         blendingshader_->color.a = sin_quad( dist.x, dist.y );
 
         // CHANGE update status based on limbo
-        setActive( glm::length(dist) < 1.3f );
+        bool a = glm::length(dist) < 1.3f;
+        setActive( a );
+        groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f) - ( a ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
+        // TODO : find a use for a dynamic scaling of mixing source?
+        //        groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f) - glm::vec3(0.03 * blendingshader_->color.a, 0.03 * blendingshader_->color.a, 0.f);
 
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
@@ -351,6 +355,7 @@ void Source::update(float dt)
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
         groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
         groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
+
 
         need_update_ = false;
     }
