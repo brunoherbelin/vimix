@@ -654,6 +654,10 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_rotation_clock_);
     overlay_rotation_clock_->visible_ = false;
     // circle to show fixed-size  ROTATION
+    overlay_rotation_clock_hand_ = new Symbol(Symbol::CLOCK_H);
+    overlay_rotation_clock_hand_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_clock_hand_);
+    overlay_rotation_clock_hand_->visible_ = false;
     overlay_rotation_fix_ = new Symbol(Symbol::SQUARE);
     overlay_rotation_fix_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
     scene.fg()->attach(overlay_rotation_fix_);
@@ -836,6 +840,13 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // inform on which corner should be overlayed (opposite)
             s->handle_[Handles::RESIZE]->overlayActiveCorner(-corner);
 
+//            overlay_scaling_grid_->visible_ = false;
+//            glm::vec4 icon = corner_to_scene_transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
+//            overlay_scaling_grid_->translation_.x = icon.x;
+//            overlay_scaling_grid_->translation_.y = icon.y;
+//            overlay_scaling_grid_->rotation_.z = s->stored_status_->rotation_.z;
+//            overlay_scaling_grid_->update(0);
+
             // RESIZE CORNER
             // proportional SCALING with SHIFT
             if (UserInterface::manager().shiftModifier()) {
@@ -974,8 +985,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 overlay_scaling_grid_->visible_ = true;
                 overlay_scaling_grid_->copyTransform(overlay_scaling_);
             }
-            // show cursor depending on diagonal (corner picked)
-            ret.type = Cursor_ResizeNWSE;
+            // show cursor depending on diagonal
+            corner = glm::sign(sourceNode->scale_);
+            ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
@@ -983,12 +995,13 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         else if ( pick.first == s->handle_[Handles::ROTATE] ) {
 
             // ROTATION on CENTER
-            overlay_rotation_clock_->visible_ = false;
-            overlay_rotation_fix_->visible_ = true;
             overlay_rotation_->visible_ = true;
             overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
             overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
             overlay_rotation_->update(0);
+            overlay_rotation_fix_->visible_ = true;
+            overlay_rotation_fix_->copyTransform(overlay_rotation_);
+            overlay_rotation_clock_->visible_ = false;
 
             // rotation center to center of source (disregarding scale)
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
@@ -998,6 +1011,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
             // apply rotation on Z axis
             sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
+
             // POST-CORRECTION ; discretized rotation with ALT
             int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
             if (UserInterface::manager().altModifier()) {
@@ -1005,10 +1019,19 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->rotation_.z = glm::radians( float(degrees) );
                 overlay_rotation_clock_->visible_ = true;
                 overlay_rotation_clock_->copyTransform(overlay_rotation_);
+                info << "Angle " << degrees << "\u00b0"; // degree symbol
             }
+            else
+                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
+
+            overlay_rotation_clock_hand_->visible_ = true;
+            overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
+            overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
+            overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
+            overlay_rotation_clock_hand_->update(0);
+
             // show cursor for rotation
             ret.type = Cursor_Hand;
-            info << "Angle " << degrees << "\u00b0"; // degree symbol
             // + SHIFT = no scaling /  NORMAL = with scaling
             if (!UserInterface::manager().shiftModifier()) {
                 // compute scaling to match cursor
@@ -1019,7 +1042,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
                 info << " x "  << sourceNode->scale_.y ;                
                 overlay_rotation_fix_->visible_ = false;
-                overlay_rotation_fix_->copyTransform(overlay_rotation_);
             }
         }
         // picking anywhere but on a handle: user wants to move the source
@@ -1073,6 +1095,7 @@ void GeometryView::terminate()
     overlay_position_->visible_       = false;
     overlay_position_cross_->visible_ = false;
     overlay_rotation_clock_->visible_ = false;
+    overlay_rotation_clock_hand_->visible_ = false;
     overlay_rotation_fix_->visible_   = false;
     overlay_rotation_->visible_       = false;
     overlay_scaling_grid_->visible_   = false;

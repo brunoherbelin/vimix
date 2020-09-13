@@ -317,6 +317,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_square.ply
     ./rsc/mesh/icon_cross.ply
     ./rsc/mesh/icon_clock.ply
+    ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
