@@ -57,6 +57,7 @@ void Settings::Save()
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
+    applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -202,6 +203,7 @@ void Settings::Load()
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+        applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
     }
 
     // Widgets

@@ -147,6 +147,7 @@ struct Application
     int  accent_color;
     bool pannel_stick;
     bool smooth_transition;
+    bool smooth_cursor;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -177,6 +178,7 @@ struct Application
         accent_color = 0;
         pannel_stick = false;
         smooth_transition = true;
+        smooth_cursor = false;
         current_view = 1;
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;

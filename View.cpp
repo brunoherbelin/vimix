@@ -432,10 +432,10 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // compute delta translation
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
-    // diagonal translation with SHIFT
-    if (UserInterface::manager().shiftModifier()) {
-
-    }
+//    // diagonal translation with SHIFT
+//    if (UserInterface::manager().shiftModifier()) {
+//        s->group(mode_)->translation_.y = s->group(mode_)->translation_.x * s->stored_status_->translation_.y / s->stored_status_->translation_.x;
+//    }
 
     // request update
     s->touch();

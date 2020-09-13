@@ -356,6 +356,9 @@ void UserInterface::handleMouse()
     ImGuiIO& io = ImGui::GetIO();
     glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.y, io.MousePos.y* io.DisplayFramebufferScale.x);
     mousepos = glm::clamp(mousepos, glm::vec2(0.f), glm::vec2(io.DisplaySize.x * io.DisplayFramebufferScale.x, io.DisplaySize.y * io.DisplayFramebufferScale.y));
+
+    static glm::vec2 mouse_smooth = mousepos;
+
     static glm::vec2 mouseclic[2];
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
     mouseclic[ImGuiMouseButton_Right] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Right].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Right].y* io.DisplayFramebufferScale.x);
@@ -411,6 +414,7 @@ void UserInterface::handleMouse()
             if ( !mousedown )
             {
                 mousedown = true;
+                mouse_smooth = mousepos;
 
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
@@ -497,16 +501,25 @@ void UserInterface::handleMouse()
             // only operate if the view didn't change
             if (view_drag == Mixer::manager().view()) {
 
+                // Smooth cursor
+                if (Settings::application.smooth_cursor) {
+                    // TODO : physics implementation
+                    float smoothing = 10.f / ( MAX(io.Framerate, 1.f) );
+                    mouse_smooth += smoothing * ( mousepos - mouse_smooth);
+                }
+                else
+                    mouse_smooth = mousepos;
+
                 // action on current source
                 Source *current = Mixer::manager().currentSource();
                 if (current)
                 {
                     // grab current sources
-                    View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
                     // grab others from selection
                     for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
                         if ( *it != current )
-                            Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                            Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
                     }
                     setMouseCursor(io.MousePos, c);
                 }
@@ -2184,6 +2197,7 @@ void Navigator::RenderMainPannel()
         ImGui::Spacing();
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
 
 
         // Continue Main pannel
