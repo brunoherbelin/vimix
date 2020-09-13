@@ -2090,14 +2090,16 @@ void Navigator::RenderMainPannel()
             if (recentFolderFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
                 // get the filename from this file dialog
                 std::string foldername = recentFolderFileDialogs.back().get();
-                Settings::application.recentFolders.push(foldername);
-                Settings::application.recentFolders.path.assign(foldername);
+                if (!foldername.empty()) {
+                    Settings::application.recentFolders.push(foldername);
+                    Settings::application.recentFolders.path.assign(foldername);
+                    selection_session_mode = 1;
+                    selection_session_mode_changed = true;
+                }
                 // done with this file dialog
                 recentFolderFileDialogs.pop_back();
-
-                selection_session_mode = 1;
-                selection_session_mode_changed = true;
                 fileDialogPending_ = false;
+
             }
         }
 
