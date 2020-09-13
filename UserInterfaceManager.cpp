@@ -501,12 +501,16 @@ void UserInterface::handleMouse()
                 Source *current = Mixer::manager().currentSource();
                 if (current)
                 {
-                    // grab selected sources (current is also selected by default)
-                    View::Cursor c = View::Cursor_Arrow;
-                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++)
-                        c = Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    // grab current sources
+                    View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    // grab others from selection
+                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                        if ( *it != current )
+                            Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
+                    }
                     setMouseCursor(io.MousePos, c);
                 }
+                // action on other (non-source) elements in the view
                 else if ( picked.first != nullptr )
                 {
                     View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mousepos, picked);

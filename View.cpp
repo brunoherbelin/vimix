@@ -432,6 +432,11 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // compute delta translation
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
+    // diagonal translation with SHIFT
+    if (UserInterface::manager().shiftModifier()) {
+
+    }
+
     // request update
     s->touch();
 
@@ -1206,20 +1211,21 @@ float LayerView::setDepth(Source *s, float d)
 
     // move the layer node of the source
     Group *sourceNode = s->group(mode_);
-
-    // diagonal movement only
+    // move on x
     sourceNode->translation_.x = CLAMP( -depth, -(SCENE_DEPTH - 2.f), 0.f);
+    // discretized translation with ALT
+    if (UserInterface::manager().altModifier()) {
+        sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 5.f);
+    }
+    // diagonal movement only
     sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
-
     // change depth
     sourceNode->translation_.z = -sourceNode->translation_.x;
 
     // request reordering of scene at next update
     View::need_deep_update_ = true;
-
     // request update of source
     s->touch();
-
     return sourceNode->translation_.z;
 }
 
