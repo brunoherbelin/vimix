@@ -2248,8 +2248,6 @@ namespace ImGui
 int hover(const char *label)
 {
     const ImGuiStyle& Style = GetStyle();
-    const ImGuiIO& IO = GetIO();
-    ImDrawList* DrawList = GetWindowDrawList();
     ImGuiWindow* Window = GetCurrentWindow();
     if (Window->SkipItems)
         return 0;

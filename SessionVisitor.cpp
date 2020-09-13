@@ -19,7 +19,7 @@ using namespace tinyxml2;
 
 SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
                                tinyxml2::XMLElement *root,
-                               bool recursive) : Visitor(), xmlCurrent_(root), recursive_(recursive)
+                               bool recursive) : Visitor(), recursive_(recursive), xmlCurrent_(root)
 {    
     if (doc == nullptr)
         xmlDoc_ = new XMLDocument;

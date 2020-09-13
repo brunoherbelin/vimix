@@ -265,7 +265,6 @@ std::string Resource::listDirectory()
 {
 	// enter icons directory
     auto fs = cmrc::vmix::get_filesystem();
-    cmrc::file file;
 	cmrc::directory_iterator it = fs.iterate_directory("");
 	cmrc::directory_iterator itend = it.end();
 

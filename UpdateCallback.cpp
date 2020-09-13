@@ -12,7 +12,7 @@ UpdateCallback::UpdateCallback() : enabled_(true), finished_(false)
 }
 
 MoveToCallback::MoveToCallback(glm::vec3 target, float duration) : UpdateCallback(),
-    target_(target), duration_(duration), progress_(0.f), initialized_(false)
+    duration_(duration), progress_(0.f), initialized_(false), target_(target)
 {
 
 }
@@ -40,7 +40,7 @@ void MoveToCallback::update(Node *n, float dt)
 }
 
 RotateToCallback::RotateToCallback(float target, float duration) : UpdateCallback(),
-    target_(target), duration_(duration), progress_(0.f), initialized_(false)
+    duration_(duration), progress_(0.f), initialized_(false), target_(target)
 {
 
 }

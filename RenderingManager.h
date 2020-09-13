@@ -10,8 +10,9 @@
 
 #include "Screenshot.h"
 
-class GLFWmonitor;
-class GLFWwindow;
+
+typedef struct GLFWmonitor GLFWmonitor;
+typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;
 
 struct RenderingAttrib

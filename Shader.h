@@ -41,6 +41,7 @@ class Shader
 
 public:
     Shader();
+    virtual ~Shader() {}
 
     // unique identifyer generated at instanciation
     inline int id () const { return id_; }
