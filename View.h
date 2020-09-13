@@ -145,7 +145,7 @@ public:
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
 //    Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
-    void terminate();
+    void terminate() override;
 
 private:
     Node *overlay_position_;

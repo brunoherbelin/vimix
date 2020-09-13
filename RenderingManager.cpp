@@ -29,7 +29,7 @@
 #include <gst/gl/gstglcontext.h>
 
 #ifdef GLFW_EXPOSE_NATIVE_COCOA
-#include <gst/gl/cocoa/gstgldisplay_cocoa.h>
+//#include <gst/gl/cocoa/gstgldisplay_cocoa.h>
 #endif
 #ifdef GLFW_EXPOSE_NATIVE_GLX
 #include <gst/gl/x11/gstgldisplay_x11.h>
