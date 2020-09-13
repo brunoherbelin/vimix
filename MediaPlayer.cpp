@@ -93,22 +93,22 @@ static MediaInfo UriDiscoverer_(std::string uri)
         GstDiscovererResult result = gst_discoverer_info_get_result (info);
         switch (result) {
         case GST_DISCOVERER_URI_INVALID:
-            Log::Warning("Invalid URI '%s'", uri.c_str());
+            Log::Warning("'%s': Invalid URI", uri.c_str());
             break;
         case GST_DISCOVERER_ERROR:
-            Log::Warning("Warning: %s", err->message);
+            Log::Warning("'%s': %s", uri.c_str(), err->message);
             break;
         case GST_DISCOVERER_TIMEOUT:
-            Log::Warning("Timeout loading URI '%s'", uri.c_str());
+            Log::Warning("'%s': Timeout loading", uri.c_str());
             break;
         case GST_DISCOVERER_BUSY:
-            Log::Warning("Busy URI '%s'", uri.c_str());
+            Log::Warning("'%s': Busy", uri.c_str());
             break;
         case GST_DISCOVERER_MISSING_PLUGINS:
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            Log::Warning("Warning: Unknown file format %s", str);
+            Log::Warning("'%s': Unknown file format %s", uri.c_str(), str);
             g_free (str);
         }
             break;
@@ -709,7 +709,7 @@ void MediaPlayer::update()
         return;
 
     // not ready yet
-    if (!ready_) {
+    if (!ready_ && discoverer_.valid()) {
         // try to get info from discoverer
         if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
         {
