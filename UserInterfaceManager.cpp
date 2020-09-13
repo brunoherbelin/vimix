@@ -501,36 +501,38 @@ void UserInterface::handleMouse()
             // only operate if the view didn't change
             if (view_drag == Mixer::manager().view()) {
 
-                // Smooth cursor
-                if (Settings::application.smooth_cursor) {
-                    // TODO : physics implementation
-                    float smoothing = 10.f / ( MAX(io.Framerate, 1.f) );
-                    glm::vec2 d = mousepos - mouse_smooth;
-                    mouse_smooth += smoothing * d;
-                    ImVec2 start = ImVec2(mouse_smooth.x / io.DisplayFramebufferScale.x, mouse_smooth.y / io.DisplayFramebufferScale.y);
-                    ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_ResizeGripHovered), 5.f);
-                }
-                else
-                    mouse_smooth = mousepos;
-
-                // action on current source
-                Source *current = Mixer::manager().currentSource();
-                if (current)
-                {
-                    // grab current sources
-                    View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
-                    // grab others from selection
-                    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
-                        if ( *it != current )
-                            Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                if ( picked.first != nullptr ) {
+                    // Smooth cursor
+                    if (Settings::application.smooth_cursor) {
+                        // TODO : physics implementation
+                        float smoothing = 10.f / ( MAX(io.Framerate, 1.f) );
+                        glm::vec2 d = mousepos - mouse_smooth;
+                        mouse_smooth += smoothing * d;
+                        ImVec2 start = ImVec2(mouse_smooth.x / io.DisplayFramebufferScale.x, mouse_smooth.y / io.DisplayFramebufferScale.y);
+                        ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_ResizeGripHovered), 5.f);
                     }
-                    setMouseCursor(io.MousePos, c);
-                }
-                // action on other (non-source) elements in the view
-                else if ( picked.first != nullptr )
-                {
-                    View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-                    setMouseCursor(io.MousePos, c);
+                    else
+                        mouse_smooth = mousepos;
+
+                    // action on current source
+                    Source *current = Mixer::manager().currentSource();
+                    if (current)
+                    {
+                        // grab current sources
+                        View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        // grab others from selection
+                        for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                            if ( *it != current )
+                                Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        }
+                        setMouseCursor(io.MousePos, c);
+                    }
+                    // action on other (non-source) elements in the view
+                    else //if ( picked.first != nullptr )
+                    {
+                        View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        setMouseCursor(io.MousePos, c);
+                    }
                 }
                 // Selection area
                 else {
