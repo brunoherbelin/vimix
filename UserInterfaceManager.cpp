@@ -354,7 +354,7 @@ void UserInterface::handleMouse()
 {
 
     ImGuiIO& io = ImGui::GetIO();
-    glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.y, io.MousePos.y* io.DisplayFramebufferScale.x);
+    glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.x, io.MousePos.y * io.DisplayFramebufferScale.y);
     mousepos = glm::clamp(mousepos, glm::vec2(0.f), glm::vec2(io.DisplaySize.x * io.DisplayFramebufferScale.x, io.DisplaySize.y * io.DisplayFramebufferScale.y));
 
     static glm::vec2 mouse_smooth = mousepos;
@@ -505,7 +505,10 @@ void UserInterface::handleMouse()
                 if (Settings::application.smooth_cursor) {
                     // TODO : physics implementation
                     float smoothing = 10.f / ( MAX(io.Framerate, 1.f) );
-                    mouse_smooth += smoothing * ( mousepos - mouse_smooth);
+                    glm::vec2 d = mousepos - mouse_smooth;
+                    mouse_smooth += smoothing * d;
+                    ImVec2 start = ImVec2(mouse_smooth.x / io.DisplayFramebufferScale.x, mouse_smooth.y / io.DisplayFramebufferScale.y);
+                    ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_ResizeGripHovered), 5.f);
                 }
                 else
                     mouse_smooth = mousepos;
