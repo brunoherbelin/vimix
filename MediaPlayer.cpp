@@ -338,7 +338,7 @@ bool MediaPlayer::failed() const
 void MediaPlayer::close()
 {
     // not openned?
-    if (!ready_) {
+    if (!ready_  && discoverer_.valid()) {
         // wait for loading to finish
         discoverer_.wait();
         // nothing else to change
