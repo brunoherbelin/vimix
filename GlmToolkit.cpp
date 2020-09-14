@@ -110,9 +110,10 @@ bool GlmToolkit::AxisAlignedBoundingBox::contains(const AxisAlignedBoundingBox& 
     if ( !intersect(bb, ignore_z))
         return false;
 
-    if (    (mMin.x <= bb.mMin.x) && (mMax.x >= bb.mMax.x) &&
-            (mMin.y <= bb.mMin.y) && (mMax.y >= bb.mMax.y) &&
-            ( ignore_z || ((mMin.z <= bb.mMin.z) && (mMax.z >= bb.mMax.z)) )  )
+    if (    (mMin.x < bb.mMin.x) && (mMax.x > bb.mMax.x) &&
+            (mMin.y < bb.mMin.y) && (mMax.y > bb.mMax.y)
+            && ( ignore_z || ((mMin.z < bb.mMin.z) && (mMax.z > bb.mMax.z)) )
+            )
     {
         return true;
     }
@@ -131,7 +132,7 @@ bool GlmToolkit::AxisAlignedBoundingBox::contains(glm::vec3 point, bool ignore_z
 }
 
 
-GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::translated(glm::vec3 t)
+GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::translated(glm::vec3 t) const
 {
     GlmToolkit::AxisAlignedBoundingBox bb;
     bb = *this;
@@ -142,26 +143,38 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::translate
     return bb;
 }
 
-GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::scaled(glm::vec3 s)
+GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::scaled(glm::vec3 s) const
 {
-    GlmToolkit::AxisAlignedBoundingBox bb;
-    bb = *this;
+    GlmToolkit::AxisAlignedBoundingBox bb;    
+    glm::vec3 vec;
 
-    bb.mMin *= s;
-    bb.mMax *= s;
+    // Apply scaling to min & max corners (can be inverted) and update bbox accordingly
+    vec = mMin * s;
+    bb.extend(vec);
+
+    vec = mMax * s;
+    bb.extend(vec);
 
     return bb;
 }
 
-GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transformed(glm::mat4 m)
+GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transformed(glm::mat4 m) const
 {
     GlmToolkit::AxisAlignedBoundingBox bb;
     glm::vec4 vec;
+
+    // Apply transform to all four corners (can be rotated) and update bbox accordingly
     vec = m * glm::vec4(mMin, 1.f);
-    bb.mMin = glm::vec3(vec);
+    bb.extend(glm::vec3(vec));
 
     vec = m * glm::vec4(mMax, 1.f);
-    bb.mMax = glm::vec3(vec);
+    bb.extend(glm::vec3(vec));
+
+    vec = m * glm::vec4(mMin.x, mMax.y, 0.f, 1.f);
+    bb.extend(glm::vec3(vec));
+
+    vec = m * glm::vec4(mMax.x, mMin.y, 0.f, 1.f);
+    bb.extend(glm::vec3(vec));
 
     return bb;
 }

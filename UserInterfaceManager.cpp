@@ -469,6 +469,10 @@ void UserInterface::handleMouse()
             mousedown = false;
             picked = { nullptr, glm::vec2(0.f) };
             Mixer::manager().view()->terminate();
+
+            // special case of one single source in selection : make current after release
+            if (Mixer::selection().size() == 1)
+                Mixer::manager().setCurrentSource( Mixer::selection().front() );
         }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )

@@ -207,6 +207,7 @@ void View::select(glm::vec2 A, glm::vec2 B)
         }
         // set the selection with list of picked (overlaped) sources
         Mixer::selection().set(selection);
+
     }
 
 }

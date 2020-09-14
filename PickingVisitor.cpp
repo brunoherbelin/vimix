@@ -69,14 +69,22 @@ void PickingVisitor::visit(Surface &n)
         // create bounding box for those points (2 in practice)
         GlmToolkit::AxisAlignedBoundingBox bb_points;
         bb_points.extend(points_);
-        // apply inverse transform
-        bb_points = bb_points.transformed(glm::inverse(modelview_)) ;
-        // test bounding box for overlap with inverse transform bbox
-        if ( bb_points.intersect( n.bbox() ) ) {
-//            if ( n.bbox().contains( bb_points ) ) // alternative selection by total inclusion of source inside BB
+        // update the coordinates of the Surface bounding box to match transform
+        GlmToolkit::AxisAlignedBoundingBox surf;
+        surf = n.bbox().transformed(modelview_);
+        // Test inclusion of all four corners of the Surface inside the selection bounding box
+        if ( bb_points.contains( surf) ) {
             // add this surface to the nodes picked
             nodes_.push_back( std::pair(&n, glm::vec2(0.f)) );
         }
+//        // ALTERNATIVE BEHAVIOR : test bounding box for overlap only
+//        // apply inverse transform
+//        bb_points = bb_points.transformed(glm::inverse(modelview_)) ;
+//        if ( bb_points.intersect( n.bbox() ) ) {
+//            // add this surface to the nodes picked
+//            nodes_.push_back( std::pair(&n, glm::vec2(0.f)) );
+//        }
+
     }
     // only one point
     else if (points_.size() > 0) {

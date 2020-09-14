@@ -39,9 +39,9 @@ public:
     void extend(std::vector<glm::vec3> points);
     void extend(const AxisAlignedBoundingBox& bb);
 
-    AxisAlignedBoundingBox translated(glm::vec3 t);
-    AxisAlignedBoundingBox scaled(glm::vec3 s);
-    AxisAlignedBoundingBox transformed(glm::mat4 m);
+    AxisAlignedBoundingBox translated(glm::vec3 t) const;
+    AxisAlignedBoundingBox scaled(glm::vec3 s) const;
+    AxisAlignedBoundingBox transformed(glm::mat4 m) const;
 };
 
 }
