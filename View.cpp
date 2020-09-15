@@ -744,6 +744,13 @@ void GeometryView::draw()
     // draw scene of this view
     scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
+    // re-draw frames of all sources on top
+    for (auto source_iter = Mixer::manager().session()->begin(); source_iter != Mixer::manager().session()->end(); source_iter++)
+    {
+        DrawVisitor dv((*source_iter)->frames_[mode_], Rendering::manager().Projection());
+        scene.accept(dv);
+    }
+
     // re-draw overlay of current source on top
     // (allows manipulation current source even when hidden below others)
     if (s != nullptr) {
@@ -751,6 +758,8 @@ void GeometryView::draw()
         DrawVisitor dv(s->overlays_[mode_], Rendering::manager().Projection());
         scene.accept(dv);
     }
+
+
 }
 
 
