@@ -458,6 +458,9 @@ IF(APPLE)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+
 
 
     # package runtime fixup bundle
