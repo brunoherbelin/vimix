@@ -108,7 +108,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            Log::Warning("'%s': Unknown file format %s", uri.c_str(), str);
+            Log::Warning("'%s': Unknown file format (%s)", uri.c_str(), str);
             g_free (str);
         }
             break;
@@ -171,13 +171,12 @@ static MediaInfo UriDiscoverer_(std::string uri)
             gst_discoverer_stream_info_list_free(streams);
 
             if (!video_stream_info.valid) {
-                Log::Warning("Warning: No video stream in '%s'", uri.c_str());
+                Log::Warning("'%s': No video stream", uri.c_str());
             }
         }
 
         g_object_unref (discoverer);
     }
-
 
     // return the info
     return video_stream_info;
@@ -432,7 +431,7 @@ void MediaPlayer::enable(bool on)
         //  apply state change
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
         if (ret == GST_STATE_CHANGE_FAILURE) {
-            Log::Warning("MediaPlayer %s Failed to enable", gst_element_get_name(pipeline_));
+            Log::Warning("MediaPlayer %s Failed to enable", std::to_string(id_).c_str());
             failed_ = true;
         }
 
@@ -479,14 +478,14 @@ void MediaPlayer::play(bool on)
     // all ready, apply state change immediately
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("MediaPlayer %s Failed to play", gst_element_get_name(pipeline_));
+        Log::Warning("MediaPlayer %s Failed to play", std::to_string(id_).c_str());
         failed_ = true;
     }    
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
-        Log::Info("MediaPlayer %s Start", gst_element_get_name(pipeline_));
+        Log::Info("MediaPlayer %s Start", std::to_string(id_).c_str());
     else
-        Log::Info("MediaPlayer %s Stop [%ld]", gst_element_get_name(pipeline_), position());
+        Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
 
     // reset time counter
@@ -717,6 +716,10 @@ void MediaPlayer::update()
             // if its ok, open the media
             if (media_.valid)
                 execute_open();
+            else {
+                Log::Warning("MediaPlayer %s Loading cancelled", std::to_string(id_).c_str());
+                failed_ = true;
+            }
         }
         // wait next frame to display
         return;

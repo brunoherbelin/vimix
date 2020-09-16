@@ -2165,30 +2165,33 @@ void Navigator::RenderMainPannel()
         static std::list<std::string>::iterator file_selected = sessions_list.end();
         for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
             std::string sessionfilename(*it);
-            std::string shortname = SystemToolkit::filename(*it);
             if (sessionfilename.empty())
                 break;
+            std::string shortname = SystemToolkit::filename(*it);
             if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
                     Mixer::manager().open( sessionfilename );
                     session_selected = true;
+                    file_info.clear();
                 }
                 else  {
                     file_info = SessionCreator::info(sessionfilename);
                     file_selected = it;
                 }
             }
-            if (ImGui::IsItemHovered() && file_selected != it) {
-                file_info.clear();
-                file_selected = sessions_list.end();
+            if (ImGui::IsItemHovered()) {
+                if (file_selected != it) {
+                    file_info.clear();
+                    file_selected = sessions_list.end();
+                }
+                if (!file_info.empty()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%s", file_info.c_str());
+                    ImGui::EndTooltip();
+                }
             }
         }
         ImGui::ListBoxFooter();
-        if (!file_info.empty()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("%s", file_info.c_str());
-            ImGui::EndTooltip();
-        }
 
         pos = ImGui::GetCursorPos();
         ImGui::SameLine();
