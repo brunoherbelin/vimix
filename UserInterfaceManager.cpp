@@ -2231,7 +2231,7 @@ void Navigator::RenderMainPannel()
         ImGui::Spacing();
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.8f, 1.2f, "%.1f"))
+        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
 
 //        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
