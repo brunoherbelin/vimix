@@ -430,13 +430,20 @@ IF(APPLE)
             RUNTIME DESTINATION bin COMPONENT Runtime
     )
 
+    # create GST plugins directory in Bundle Resources subfolder
     set(plugin_dest_dir vimix.app/Contents/Resources/)
+
+    # intall the gst-plugin-scanner program (used by plugins at load time)
     install(FILES "/usr/local/Cellar/gstreamer/1.18.0/libexec/gstreamer-1.0/gst-plugin-scanner"
         DESTINATION "${plugin_dest_dir}"
         PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         COMPONENT Runtime
     )
 
+    # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
+    install(FILES "/usr/local/Cellar/icu4c/67.1/lib/libicudata.67.1.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.67.dylib" COMPONENT Runtime)
+
+    # Install the gst-plugins (all those installed with brew )
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
@@ -444,12 +451,25 @@ IF(APPLE)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
+    # install locally recompiled gst-plugins-bad
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/x265/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+
+
+
     # package runtime fixup bundle
     install(CODE "
             file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
+            list(APPEND LIBS_PATH \"/usr/local/Cellar/icu4c/67.1/lib\")
             include(BundleUtilities)
             set(BU_CHMOD_BUNDLE_ITEMS TRUE)
-            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"\")
+            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"${LIBS_PATH}\")
             "
             COMPONENT Runtime
     )
