@@ -38,7 +38,7 @@ from these 10 years of refinement of User-Experience design since its [first dra
 
 vimix is in its early infancy, open to [feature requests and bug reports](https://github.com/brunoherbelin/vimix/issues).
 
-vimix welcomes contributors and support. 
+vimix welcomes contributors and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info
 
 
 
