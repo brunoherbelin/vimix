@@ -7,6 +7,7 @@
 #include "Source.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
+#include "PatternSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
@@ -378,4 +379,14 @@ void SessionVisitor::visit (CloneSource& s)
     xmlCurrent_->InsertEndChild(origin);
     XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
     origin->InsertEndChild( text );
+}
+
+void SessionVisitor::visit (PatternSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "PatternSource");
+    xmlCurrent_->SetAttribute("pattern", s.pattern() );
+
+    XMLElement *resolution = xmlDoc_->NewElement("resolution");
+    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.resolution() ) );
+    xmlCurrent_->InsertEndChild(resolution);
 }

@@ -262,7 +262,6 @@ private:
     LoopMode loop_;
     GstState desired_state_;
     GstElement *pipeline_;
-    GstElement *converter_;
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> ready_;
     std::atomic<bool> failed_;

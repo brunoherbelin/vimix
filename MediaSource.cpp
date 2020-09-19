@@ -79,8 +79,8 @@ void MediaSource::init()
             mediasurface_->setTextureIndex( mediaplayer_->texture() );
 
             // create Frame buffer matching size of media player
-            float height = float(mediaplayer()->width()) / mediaplayer()->aspectRatio();
-            FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer()->width(), (uint)height, true);
+            float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
+            FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, true);
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
@@ -115,7 +115,7 @@ void MediaSource::setActive (bool on)
 
     // change status of media player (only if status changed)
     if ( active_ != was_active ) {
-        mediaplayer()->enable(active_);
+        mediaplayer_->enable(active_);
     }
 }
 

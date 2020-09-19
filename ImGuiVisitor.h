@@ -27,6 +27,7 @@ public:
     void visit (SessionSource& s) override;
     void visit (RenderSource& s) override;
     void visit (CloneSource& s) override;
+    void visit (PatternSource& s) override;
 };
 
 #endif // IMGUIVISITOR_H

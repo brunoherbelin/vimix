@@ -310,7 +310,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
         icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
-        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
+        icons[PATTERN] = new Mesh("mesh/icon_gear.ply");
         icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
         icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
@@ -321,6 +321,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
         icons[CROSS]   = new Mesh("mesh/icon_cross.ply");
         icons[GRID]    = new Mesh("mesh/icon_grid.ply");
+        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 
     symbol_ = icons[type_];

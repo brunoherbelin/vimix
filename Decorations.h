@@ -60,7 +60,8 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, DOTS, BUSY, LOCK, UNLOCK, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
+    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, PATTERN,
+                   DOTS, BUSY, LOCK, UNLOCK, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
     Symbol(Type t = CIRCLE_POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 

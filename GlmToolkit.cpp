@@ -179,3 +179,17 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transform
     return bb;
 }
 
+
+glm::ivec2 GlmToolkit::resolutionFromDescription(int aspectratio, int height)
+{
+    int ar = glm::clamp(aspectratio, 0, 5);
+    int h  = glm::clamp(height, 0, 8);
+
+    static glm::vec2 aspect_ratio_size[6] = { glm::vec2(1.f,1.f), glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f), glm::vec2(21.f,9.f) };
+    static float resolution_height[9] = { 16.f, 64.f, 200.f, 320.f, 480.f, 720.f, 1080.f, 1440.f, 2160.f };
+
+    float width = aspect_ratio_size[ar].x * resolution_height[h] / aspect_ratio_size[ar].y;
+    glm::ivec2 res = glm::ivec2( width, resolution_height[h]);
+
+    return res;
+}

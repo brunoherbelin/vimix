@@ -49,7 +49,6 @@ class Navigator
     void RenderMainPannel();
     void RenderTransitionPannel();
     void RenderNewPannel();
-    int new_source_type_;
     char file_browser_path_[2048];
 
     SourcePreview new_source_preview_;

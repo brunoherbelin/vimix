@@ -96,6 +96,14 @@ void Settings::Save()
     TransitionNode->SetAttribute("profile", application.transition.profile);
     pRoot->InsertEndChild(TransitionNode);
 
+    // Source
+    XMLElement *SourceConfNode = xmlDoc.NewElement( "Source" );
+    SourceConfNode->SetAttribute("new_type", application.source.new_type);
+    SourceConfNode->SetAttribute("pattern_type", application.source.pattern_type);
+    SourceConfNode->SetAttribute("ratio", application.source.ratio);
+    SourceConfNode->SetAttribute("res", application.source.res);
+    pRoot->InsertEndChild(SourceConfNode);
+
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
@@ -239,6 +247,15 @@ void Settings::Load()
             application.record.path = std::string(path_);
         else
             application.record.path = SystemToolkit::home_path();
+    }
+
+    // Source
+    XMLElement * sourceconfnode = pRoot->FirstChildElement("Source");
+    if (sourceconfnode != nullptr) {
+        sourceconfnode->QueryIntAttribute("new_type", &application.source.new_type);
+        sourceconfnode->QueryIntAttribute("pattern_type", &application.source.pattern_type);
+        sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
+        sourceconfnode->QueryIntAttribute("res", &application.source.res);
     }
 
     // Transition

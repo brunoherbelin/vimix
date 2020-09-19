@@ -36,9 +36,10 @@ public:
     void draw();
 
     // creation of sources
-    Source * createSourceFile   (std::string path);
-    Source * createSourceClone  (std::string namesource = "");
+    Source * createSourceFile   (const std::string &path);
+    Source * createSourceClone  (const std::string &namesource = "");
     Source * createSourceRender ();
+    Source * createSourcePattern(int pattern, glm::ivec2 res);
 
     // operations on sources
     void addSource    (Source *s);

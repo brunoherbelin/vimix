@@ -44,6 +44,7 @@ using namespace std;
 #include "SessionCreator.h"
 #include "ImGuiToolkit.h"
 #include "ImGuiVisitor.h"
+#include "GlmToolkit.h"
 #include "GstToolkit.h"
 #include "Mixer.h"
 #include "Recorder.h"
@@ -51,6 +52,7 @@ using namespace std;
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
+#include "PatternSource.h"
 #include "PickingVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -1532,7 +1534,6 @@ Navigator::Navigator()
     pannel_width_ = 5.f * width_;
     height_ = 100;
     padding_width_ = 100;
-    new_source_type_ = 0;
 
     // clean start
     clearButtonSelection();
@@ -1841,13 +1842,13 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 
-        static const char* origin_names[2] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal" };
+        static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_COG " Generated" };
         // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
-        if (ImGui::Combo("Origin", &new_source_type_, origin_names, IM_ARRAYSIZE(origin_names)) )
+        if (ImGui::Combo("Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
 
         // File Source creation
-        if (new_source_type_ == 0) {
+        if (Settings::application.source.new_type == 0) {
 
             ImGui::SetCursorPosY(2.f * width_);
 
@@ -1896,20 +1897,9 @@ void Navigator::RenderNewPannel()
                 }
                 ImGui::EndCombo();
             }
-            // if a new source was added
-            if (new_source_preview_.ready()) {
-                // show preview
-                new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, true);
-                // or press Validate button
-                ImGui::Spacing();
-                if ( ImGui::Button(ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
-                    Mixer::manager().addSource(new_source_preview_.getSource());
-                    selected_button[NAV_NEW] = false;
-                }
-            }
         }
         // Software Source creator
-        else if (new_source_type_ == 1){
+        else if (Settings::application.source.new_type == 1){
 
             ImGui::SetCursorPosY(2.f * width_);
 
@@ -1934,25 +1924,59 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source generating images\nfrom internal vimix objects\nor from software algorithms.");
+            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.");
+        }
+        // Software Source creator
+        else if (Settings::application.source.new_type == 2){
 
-            // if a new source was added
-            if (new_source_preview_.ready()) {
-                // show preview
-                new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-                // ask to import the source in the mixer
-                ImGui::Text(" ");
-                if ( ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
-                    Mixer::manager().addSource(new_source_preview_.getSource());
-                    selected_button[NAV_NEW] = false;
-                }
+            ImGui::SetCursorPosY(2.f * width_);
+
+            bool update_new_source = false;
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::Combo("Aspect Ratio", &Settings::application.source.ratio,
+                         GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
+                update_new_source = true;
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::Combo("Height", &Settings::application.source.res,
+                         GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
+                update_new_source = true;
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::Combo("Pattern", &Settings::application.source.pattern_type,
+                              Pattern::pattern_names, IM_ARRAYSIZE(Pattern::pattern_names) ) )
+                update_new_source = true;
+
+            if (update_new_source)
+            {
+                std::string label = Pattern::pattern_names[Settings::application.source.pattern_type];
+                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                new_source_preview_.setSource( Mixer::manager().createSourcePattern(Settings::application.source.pattern_type, res), label);
             }
+
+            // Indication
+            ImGui::SameLine();
+            ImGuiToolkit::HelpMarker("Create a source generated algorithmically.");
+
         }
         // Hardware
         else {
             // helper
             ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source capturing images\nfrom external devices or network.");
+        }
+
+        // if a new source was added
+        if (new_source_preview_.ready()) {
+            // show preview
+            new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, Settings::application.source.new_type != 1);
+            // ask to import the source in the mixer
+            ImGui::NewLine();
+            if ( ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+                Mixer::manager().addSource(new_source_preview_.getSource());
+                selected_button[NAV_NEW] = false;
+            }
         }
 
     }
@@ -2208,6 +2232,7 @@ void Navigator::RenderMainPannel()
         }
 
         // options session
+        ImGui::Spacing();
         ImGui::Spacing();
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);

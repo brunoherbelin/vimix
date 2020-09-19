@@ -136,6 +136,22 @@ struct RenderConfig
     }
 };
 
+struct SourceConfig
+{
+    int new_type;
+    int pattern_type;
+    int ratio;
+    int res;
+
+    SourceConfig() {
+        new_type = 0;
+        pattern_type = 0;
+        ratio = 3;
+        res = 1;
+    }
+};
+
+
 struct Application
 {
     // Verification
@@ -161,6 +177,9 @@ struct Application
 
     // settings render
     RecordConfig record;
+
+    // settings new source
+    SourceConfig source;
 
     // settings transition
     TransitionConfig transition;

@@ -3,6 +3,8 @@
 
 #include "Source.h"
 
+class MediaPlayer;
+
 class MediaSource : public Source
 {
 public:

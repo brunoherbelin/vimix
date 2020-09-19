@@ -12,6 +12,14 @@ using namespace tinyxml2;
 
 #include <string>
 
+XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector)
+{
+    XMLElement *newelement = doc->NewElement( "ivec2" );
+    newelement->SetAttribute("x", vector.x);
+    newelement->SetAttribute("y", vector.y);
+    return newelement;
+}
+
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec3" );
@@ -44,6 +52,13 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::mat4 matrix)
     return newelement;
 }
 
+void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector)
+{
+    if ( !elem || std::string(elem->Name()).find("ivec2") == std::string::npos )
+        return;
+    elem->QueryIntAttribute("x", &vector.x); // If this fails, original value is left as-is
+    elem->QueryIntAttribute("y", &vector.y);
+}
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
 {

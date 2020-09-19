@@ -20,12 +20,14 @@ class Mesh;
 class Frame;
 class Handles;
 class Disk;
+class Stream;
 class MediaPlayer;
 class Shader;
 class ImageShader;
 class ImageProcessingShader;
 class Source;
 class MediaSource;
+class PatternSource;
 class SessionSource;
 class RenderSource;
 class CloneSource;
@@ -53,6 +55,7 @@ public:
     virtual void visit (Frame&) {}
     virtual void visit (Handles&) {}
     virtual void visit (Disk&) {}
+    virtual void visit (Stream&) {}
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
@@ -61,6 +64,7 @@ public:
     // utility
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
+    virtual void visit (PatternSource&) {}
     virtual void visit (SessionSource&) {}
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}

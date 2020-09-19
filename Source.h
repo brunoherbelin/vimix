@@ -13,7 +13,6 @@ class ImageShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
-class MediaPlayer;
 class Surface;
 class Session;
 class Frame;

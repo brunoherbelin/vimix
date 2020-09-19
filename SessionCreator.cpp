@@ -8,6 +8,7 @@
 #include "Source.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
+#include "PatternSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -109,6 +110,17 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 RenderSource *new_render_source = new RenderSource(session_);
                 new_render_source->accept(*this);
                 session_->addSource(new_render_source);
+            }
+            else if ( std::string(pType) == "PatternSource") {
+
+                glm::ivec2 resolution(800, 600);
+                XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
+                if (res)
+                    tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
+
+                PatternSource *new_pattern_source = new PatternSource(resolution);
+                new_pattern_source->accept(*this);
+                session_->addSource(new_pattern_source);
             }
             // TODO : create other types of source
 
@@ -326,6 +338,12 @@ void SessionCreator::visit (SessionSource& s)
         s.load(path);
     }
 
+}
+
+void SessionCreator::visit (PatternSource& s)
+{
+    uint p = xmlCurrent_->UnsignedAttribute("pattern");
+    s.setPattern(p);
 }
 
 

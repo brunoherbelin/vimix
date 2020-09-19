@@ -235,8 +235,10 @@ set(VMIX_SRCS
     Resource.cpp
     FileDialog.cpp
     Timeline.cpp
+    Stream.cpp
     MediaPlayer.cpp
     MediaSource.cpp
+    PatternSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
@@ -306,6 +308,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply
+    ./rsc/mesh/icon_gear.ply
     ./rsc/mesh/icon_clone.ply
     ./rsc/mesh/icon_vimix.ply
     ./rsc/mesh/icon_circles.ply
@@ -433,6 +436,8 @@ IF(APPLE)
     # create GST plugins directory in Bundle Resources subfolder
     set(plugin_dest_dir vimix.app/Contents/Resources/)
 
+    ### TODO configure auto to find installation dir of gst
+
     # intall the gst-plugin-scanner program (used by plugins at load time)
     install(FILES "/usr/local/Cellar/gstreamer/1.18.0/libexec/gstreamer-1.0/gst-plugin-scanner"
         DESTINATION "${plugin_dest_dir}"
@@ -457,7 +462,6 @@ IF(APPLE)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 

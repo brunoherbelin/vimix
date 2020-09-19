@@ -48,6 +48,7 @@ public:
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
+    void visit (PatternSource& s) override;
 
     static std::string info(const std::string& filename);
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);

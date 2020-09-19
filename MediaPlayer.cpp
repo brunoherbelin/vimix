@@ -31,7 +31,6 @@ MediaPlayer::MediaPlayer()
 
     uri_ = "undefined";
     pipeline_ = nullptr;
-    converter_ = nullptr;
 
     ready_ = false;
     failed_ = false;
@@ -346,10 +345,6 @@ void MediaPlayer::close()
 
     // un-ready the media player
     ready_ = false;
-
-    // no more need to reference converter
-    if (converter_ != nullptr)
-        gst_object_unref (converter_);
 
     // clean up GST
     if (pipeline_ != nullptr) {

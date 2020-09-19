@@ -16,6 +16,7 @@
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
+#include "PatternSource.h"
 #include "Settings.h"
 #include "Mixer.h"
 
@@ -351,5 +352,19 @@ void ImGuiVisitor::visit (CloneSource& s)
     std::string label = "Select " + s.origin()->name();
     if ( ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
+}
+
+void ImGuiVisitor::visit (PatternSource& s)
+{
+    ImGuiToolkit::Icon(13,5);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Pattern %s", Pattern::pattern_names[s.pattern()]);
+
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int p = s.pattern();
+    if ( ImGui::Combo("Pattern", &p, Pattern::pattern_names, IM_ARRAYSIZE(Pattern::pattern_names) ) )
+    {
+        s.setPattern(p);
+    }
 }
 
