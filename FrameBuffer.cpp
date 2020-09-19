@@ -7,8 +7,8 @@
 
 #include <glad/glad.h>
 
-const char* FrameBuffer::aspect_ratio_name[4] = { "4:3", "3:2", "16:10", "16:9" };
-glm::vec2 FrameBuffer::aspect_ratio_size[4] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) };
+const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
+glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
 const char* FrameBuffer::resolution_name[4] = { "720p", "1080p", "1440", "4K" };
 float FrameBuffer::resolution_height[4] = { 720.f, 1080.f, 1440.f, 2160.f };
 
