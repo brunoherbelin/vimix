@@ -984,6 +984,9 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
+                if ( ImGui::MenuItem( ICON_FA_SHARE_SQUARE "  Create Source") )
+                    Mixer::manager().addSource( Mixer::manager().createSourceRender() );
+
                 if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                     Settings::application.widget.preview = false;
 
@@ -1559,6 +1562,7 @@ void Navigator::clearButtonSelection()
     // clear new source pannel
     sprintf(file_browser_path_, " ");
     new_source_preview_.setSource();
+    pattern_type = -1;
 }
 
 void Navigator::showPannelSource(int index)
@@ -1799,8 +1803,14 @@ void SourcePreview::Render(float width, bool controlbutton)
 {
     if(source_) {
         // cancel if failed
-        if (source_->failed())
+        if (source_->failed()) {
+            // remove from list of recent import files if relevant
+            MediaSource *failedFile = dynamic_cast<MediaSource *>(source_);
+            if (failedFile != nullptr) {
+                Settings::application.recentImport.remove( failedFile->path() );
+            }
             setSource();
+        }
         else
         {
             bool active = source_->active();
@@ -1842,7 +1852,9 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 
-        static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_COG " Generated" };
+        static const char* origin_names[3] = { ICON_FA_FILE "    File",
+                                               ICON_FA_SITEMAP "  Internal",
+                                               ICON_FA_COG "   Generated" };
         // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
         if (ImGui::Combo("Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
@@ -1905,7 +1917,7 @@ void Navigator::RenderNewPannel()
 
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Source", "Select input"))
+            if (ImGui::BeginCombo("##Source", "Select object"))
             {
                 std::string label = "Rendering output";
                 if (ImGui::Selectable( label.c_str() )) {
@@ -1914,8 +1926,9 @@ void Navigator::RenderNewPannel()
                 SourceList::iterator iter;
                 for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++)
                 {
-                    label = std::string("Clone of ") + (*iter)->name();
+                    label = std::string("Source ") + (*iter)->name();
                     if (ImGui::Selectable( label.c_str() )) {
+                        label = std::string("Clone of ") + label;
                         new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name()),label);
                     }
                 }
@@ -1934,31 +1947,45 @@ void Navigator::RenderNewPannel()
             bool update_new_source = false;
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::Combo("Aspect Ratio", &Settings::application.source.ratio,
-                         GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
-                update_new_source = true;
-
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::Combo("Height", &Settings::application.source.res,
-                         GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
-                update_new_source = true;
-
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if ( ImGui::Combo("Pattern", &Settings::application.source.pattern_type,
-                              Pattern::pattern_names, IM_ARRAYSIZE(Pattern::pattern_names) ) )
-                update_new_source = true;
-
-            if (update_new_source)
+            if (ImGui::BeginCombo("##Pattern", "Select generator"))
             {
-                std::string label = Pattern::pattern_names[Settings::application.source.pattern_type];
-                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
-                new_source_preview_.setSource( Mixer::manager().createSourcePattern(Settings::application.source.pattern_type, res), label);
+                for (int p = 0; p < Pattern::pattern_types.size(); ++p){
+                    if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
+                        pattern_type = p;
+                        update_new_source = true;
+                    }
+                }
+                ImGui::EndCombo();
             }
 
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source generated algorithmically.");
 
+            // resolution (if pattern selected
+            if (pattern_type > 0) {
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
+                                 GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
+                    update_new_source = true;
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Height", &Settings::application.source.res,
+                                 GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
+                    update_new_source = true;
+            }
+
+            // create preview
+            if (update_new_source)
+            {
+                std::ostringstream oss;
+                oss << Pattern::pattern_types[pattern_type];
+
+                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);                
+                oss << " (" << res.x << " x " << res.y << " px)";
+
+                new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res), oss.str());
+            }
         }
         // Hardware
         else {
@@ -1966,6 +1993,8 @@ void Navigator::RenderNewPannel()
             ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
             ImGuiToolkit::HelpMarker("Create a source capturing images\nfrom external devices or network.");
         }
+
+        ImGui::NewLine();
 
         // if a new source was added
         if (new_source_preview_.ready()) {
@@ -2154,7 +2183,7 @@ void Navigator::RenderMainPannel()
             const char *tooltip[2] = {"Clear history", "Clear history"};
             if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
                 Settings::application.recentSessions.filenames.clear();
-                Settings::application.recentSessions.valid_file = false;
+                Settings::application.recentSessions.front_is_valid = false;
                 // reload the list next time
                 selection_session_mode_changed = true;
             }

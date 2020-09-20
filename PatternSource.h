@@ -1,21 +1,25 @@
 #ifndef PATTERNSOURCE_H
 #define PATTERNSOURCE_H
 
-
-#include "Source.h"
+#include <vector>
 
 #include "Stream.h"
+#include "Source.h"
 
 class Pattern : public Stream
 {
 public:
-    static const char* pattern_names[25];
+    static std::vector<std::string> pattern_types;
 
     Pattern(glm::ivec2 res);
     void open( uint pattern );
 
+    glm::ivec2 resolution();
+    inline uint type() const { return type_; }
+
 private:
     void open( std::string description ) override;
+    uint type_;
 };
 
 class PatternSource : public Source
@@ -33,10 +37,8 @@ public:
     void accept (Visitor& v) override;
 
     // Pattern specific interface
-    inline uint pattern() const { return pattern_; }
+    inline Pattern *pattern() const { return stream_; }
     void setPattern(int id);
-
-    glm::ivec2 resolution();
 
 protected:
 
@@ -46,7 +48,6 @@ protected:
     Surface *patternsurface_;
     Pattern *stream_;
 
-    uint pattern_;
 };
 
 #endif // PATTERNSOURCE_H

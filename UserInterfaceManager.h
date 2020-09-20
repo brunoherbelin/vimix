@@ -41,6 +41,7 @@ class Navigator
     // behavior pannel
     bool pannel_visible_;
     bool selected_button[NAV_COUNT];
+    int  pattern_type;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 

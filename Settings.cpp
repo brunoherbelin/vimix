@@ -99,7 +99,6 @@ void Settings::Save()
     // Source
     XMLElement *SourceConfNode = xmlDoc.NewElement( "Source" );
     SourceConfNode->SetAttribute("new_type", application.source.new_type);
-    SourceConfNode->SetAttribute("pattern_type", application.source.pattern_type);
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
     pRoot->InsertEndChild(SourceConfNode);
@@ -141,7 +140,7 @@ void Settings::Save()
         recentsession->SetAttribute("path", application.recentSessions.path.c_str());
         recentsession->SetAttribute("autoload", application.recentSessions.load_at_start);
         recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
-        recentsession->SetAttribute("valid", application.recentSessions.valid_file);
+        recentsession->SetAttribute("valid", application.recentSessions.front_is_valid);
         for(auto it = application.recentSessions.filenames.begin();
             it != application.recentSessions.filenames.end(); it++) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
@@ -253,7 +252,6 @@ void Settings::Load()
     XMLElement * sourceconfnode = pRoot->FirstChildElement("Source");
     if (sourceconfnode != nullptr) {
         sourceconfnode->QueryIntAttribute("new_type", &application.source.new_type);
-        sourceconfnode->QueryIntAttribute("pattern_type", &application.source.pattern_type);
         sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
         sourceconfnode->QueryIntAttribute("res", &application.source.res);
     }
@@ -344,7 +342,7 @@ void Settings::Load()
                 }
                 pSession->QueryBoolAttribute("autoload", &application.recentSessions.load_at_start);
                 pSession->QueryBoolAttribute("autosave", &application.recentSessions.save_on_exit);
-                pSession->QueryBoolAttribute("valid", &application.recentSessions.valid_file);
+                pSession->QueryBoolAttribute("valid", &application.recentSessions.front_is_valid);
             }
             // recent session filenames
             XMLElement * pFolder = pElement->FirstChildElement("Folder");

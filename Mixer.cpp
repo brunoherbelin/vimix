@@ -110,7 +110,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
 
     // auto load if Settings ask to
     if ( Settings::application.recentSessions.load_at_start &&
-         Settings::application.recentSessions.valid_file &&
+         Settings::application.recentSessions.front_is_valid &&
          Settings::application.recentSessions.filenames.size() > 0 )
         load( Settings::application.recentSessions.filenames.front() );
     else
@@ -187,8 +187,14 @@ void Mixer::update()
     session_->update(dt_);
 
     // delete sources which failed update (one by one)
-    if (session()->failedSource() != nullptr)
-        deleteSource(session()->failedSource());
+    Source *failure = session()->failedSource();
+    if (failure != nullptr) {
+        MediaSource *failedFile = dynamic_cast<MediaSource *>(failure);
+        if (failedFile != nullptr) {
+            Settings::application.recentImport.remove( failedFile->path() );
+        }
+        deleteSource(failure);
+    }
 
     // update views
     mixing_.update(dt_);
@@ -240,8 +246,10 @@ Source * Mixer::createSourceFile(const std::string &path)
         renameSource(s, SystemToolkit::base_filename(path));
 
     }
-    else
+    else {
+        Settings::application.recentImport.remove(path);
         Log::Notify("File %s does not exist.", path.c_str());
+    }
 
     return s;
 }
@@ -264,7 +272,7 @@ Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
     s->setPattern(pattern);
 
     // propose a new name based on pattern name
-    renameSource(s, Pattern::pattern_names[pattern]);
+    renameSource(s, Pattern::pattern_types[pattern]);
 
     return s;
 }

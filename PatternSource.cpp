@@ -64,33 +64,32 @@ const char* pattern_internal_[25] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
                                     };
 
-
-const char* Pattern::pattern_names[25] = { "100% Black",
-                                           "100% White",
-                                           "Gray bars",
-                                           "Gradient",
-                                           "Checkers 1x1 px",
-                                           "Checkerboard",
-                                           "Circles",
-                                           "Pinwheel",
-                                           "Spokes",
-                                           "100% Red",
-                                           "100% Green",
-                                           "100% Blue",
-                                           "Color bars",
-                                           "Color Gradient",
-                                           "Color grid",
-                                           "SMPTE test pattern",
-                                           "Television snow",
-                                           "Blink",
-                                           "Fresnel zone plate",
-                                           "Chroma zone plate",
-                                           "Moving bar",
-                                           "Moving ball",
-                                           "Blob",
-                                           "Timer",
-                                           "Clock"
-                                         };
+std::vector<std::string> Pattern::pattern_types = { "100% Black",
+                                         "100% White",
+                                         "Gray bars",
+                                         "Gradient",
+                                         "Checkers 1x1 px",
+                                         "Checkerboard",
+                                         "Circles",
+                                         "Pinwheel",
+                                         "Spokes",
+                                         "100% Red",
+                                         "100% Green",
+                                         "100% Blue",
+                                         "Color bars",
+                                         "Color Gradient",
+                                         "Color grid",
+                                         "SMPTE test pattern",
+                                         "Television snow",
+                                         "Blink",
+                                         "Fresnel zone plate",
+                                         "Chroma zone plate",
+                                         "Moving bar",
+                                         "Moving ball",
+                                         "Blob",
+                                         "Timer",
+                                         "Clock"
+                                       };
 
 Pattern::Pattern(glm::ivec2 res) : Stream()
 {
@@ -99,16 +98,22 @@ Pattern::Pattern(glm::ivec2 res) : Stream()
     height_ = res.y;
 }
 
+glm::ivec2 Pattern::resolution()
+{
+    return glm::ivec2( width_, height_);
+}
+
 
 void Pattern::open( uint pattern )
 {
-    std::string gstreamer_pattern = pattern_internal_[pattern];
+    type_ = CLAMP(pattern, 0, 25);
+    std::string gstreamer_pattern = pattern_internal_[type_];
 
     // always some special cases...
-    switch(pattern)
+    switch(type_)
     {
-    case 16:
-    case 17:
+    case 18:
+    case 19:
     {
         std::ostringstream oss;
         oss << " kx2=" << (int)(aspectRatio() * 10.f) << " ky2=10 kt=4";
@@ -121,7 +126,7 @@ void Pattern::open( uint pattern )
     }
 
     // all patterns before index are single frames (not animated)
-    single_frame_ = pattern < 13;
+    single_frame_ = type_ < 15;
 
     // (private) open stream
     open(gstreamer_pattern);
@@ -149,11 +154,6 @@ PatternSource::PatternSource(glm::ivec2 resolution) : Source()
     patternsurface_ = new Surface(renderingshader_);
 }
 
-glm::ivec2 PatternSource::resolution()
-{
-    return glm::ivec2( stream_->width(), stream_->height());
-}
-
 PatternSource::~PatternSource()
 {
     // delete media surface & stream
@@ -178,12 +178,10 @@ void PatternSource::replaceRenderingShader()
 
 void PatternSource::setPattern(int id)
 {
-    pattern_ = CLAMP(id, 0, 25);
-
-    stream_->open(pattern_);
+    stream_->open(id);
     stream_->play(true);
 
-    Log::Notify("Creating pattern %s", Pattern::pattern_names[pattern_]);
+    Log::Notify("Creating pattern %s", Pattern::pattern_types[id].c_str());
 }
 
 

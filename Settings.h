@@ -77,26 +77,33 @@ struct History
 {
     std::string path;
     std::list<std::string> filenames;
-    bool valid_file;
+    bool front_is_valid;
     bool load_at_start;
     bool save_on_exit;
 
     History() {
         path = IMGUI_LABEL_RECENT_FILES;
-        valid_file = false;
+        front_is_valid = false;
         load_at_start = false;
         save_on_exit = false;
     }
-    void push(std::string filename) {
+    void push(const std::string &filename) {
         if (filename.empty()) {
-            valid_file = false;
+            front_is_valid = false;
             return;
         }
         filenames.remove(filename);
         filenames.push_front(filename);
         if (filenames.size() > MAX_RECENT_HISTORY)
             filenames.pop_back();
-        valid_file = true;
+        front_is_valid = true;
+    }
+    void remove(const std::string &filename) {
+        if (filename.empty())
+            return;
+        if (filenames.front() == filename)
+            front_is_valid = false;
+        filenames.remove(filename);
     }
 };
 
@@ -139,13 +146,11 @@ struct RenderConfig
 struct SourceConfig
 {
     int new_type;
-    int pattern_type;
     int ratio;
     int res;
 
     SourceConfig() {
         new_type = 0;
-        pattern_type = 0;
         ratio = 3;
         res = 1;
     }
