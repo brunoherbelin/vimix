@@ -23,6 +23,7 @@ using namespace tinyxml2;
 #include "SessionSource.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
+#include "DeviceSource.h"
 
 #include "Mixer.h"
 
@@ -276,6 +277,19 @@ Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
 
     return s;
 }
+
+Source * Mixer::createSourceDevice(int id)
+{
+    // ready to create a source
+    DeviceSource *s = new DeviceSource();
+    s->setDevice(id);
+
+    // propose a new name based on pattern name
+    renameSource(s, "Device");
+
+    return s;
+}
+
 
 Source * Mixer::createSourceClone(const std::string &namesource)
 {

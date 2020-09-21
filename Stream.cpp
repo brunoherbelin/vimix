@@ -123,12 +123,18 @@ void Stream::execute_open()
 #ifdef USE_GST_APPSINK_CALLBACKS_
         // set the callbacks
         GstAppSinkCallbacks callbacks;
-        callbacks.new_preroll = callback_new_preroll;
         if (single_frame_) {
+            callbacks.new_preroll = callback_new_preroll;
             callbacks.eos = NULL;
             callbacks.new_sample = NULL;
         }
+//        else if (live_) {
+//            callbacks.new_preroll = NULL;
+//            callbacks.eos = NULL;
+//            callbacks.new_sample = callback_new_sample;
+//        }
         else {
+            callbacks.new_preroll = callback_new_preroll;
             callbacks.eos = callback_end_of_stream;
             callbacks.new_sample = callback_new_sample;
         }
@@ -136,9 +142,11 @@ void Stream::execute_open()
         gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 #else
         // connect signals callbacks
-        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
         g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
-        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+        if (!single_frame_) {
+            g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
+            g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+        }
         gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
 #endif
         // done with ref to sink
@@ -157,10 +165,17 @@ void Stream::execute_open()
         Log::Warning("Stream %s Could not open '%s'", std::to_string(id_).c_str(), description_.c_str());
         failed_ = true;
         return;
+    } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
+        Log::Info("Stream %s is a live stream", std::to_string(id_).c_str());
+        live_ = true;
     }
 
     // all good
-    Log::Info("Stream %d Opened '%s' (%d x %d)", id_, description_.c_str(), width_, height_);
+    Log::Info("Stream %d Opened '%s' (%d x %d)", id_, description.c_str(), width_, height_);
+//    if (desired_state_ == GST_STATE_PLAYING)
+//        Log::Info("Stream %d Playing", id_);
+//    else
+//        Log::Info("Stream %d Paused", id_);
 
     ready_ = true;
 }
@@ -272,6 +287,11 @@ bool Stream::singleFrame() const
     return single_frame_;
 }
 
+bool Stream::live() const
+{
+    return live_;
+}
+
 void Stream::play(bool on)
 {
     // ignore if disabled, and cannot play an image
@@ -304,6 +324,18 @@ void Stream::play(bool on)
     else
         Log::Info("Stream %s Stop", std::to_string(id_).c_str());
 #endif
+
+    // DEBUG  : LIVE SOURCE ??
+    if (live_) {
+        GstState state;
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+
+        while (state != desired_state_) {
+            Log::Info("Stream %s Live stream did not change state", std::to_string(id_).c_str());
+            gst_element_set_state (pipeline_, desired_state_);
+            gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        }
+    }
 
     // reset time counter
     timecount_.reset();
@@ -441,6 +473,9 @@ void Stream::update()
 //    if (!enabled_)
 //        return;
 
+//    // DEBUG  : LIVE SOURCE ??
+//    GstState state;
+//    gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
 
     // local variables before trying to update
     guint read_index = 0;
@@ -451,7 +486,7 @@ void Stream::update()
     // get the last frame filled from fill_frame()
     read_index = last_index_;
 
-    // Do NOT miss and jump directly (after seek) to a pre-roll
+    // Do NOT miss and jump directly to a pre-roll
     for (guint i = 0; i < N_FRAME; ++i) {
         if (frame_[i].status == PREROLL) {
             read_index = i;
@@ -506,7 +541,7 @@ double Stream::updateFrameRate() const
 
 bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 {
-//    Log::Info("Stream fill frame");
+    Log::Info("Stream fill frame");
 
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
@@ -548,12 +583,17 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
         }
         // full but invalid frame : will be deleted next iteration
         // (should never happen)
-        else
-            frame_[write_index_].status = INVALID;
+        else {
+            Log::Info("Stream %s Invalid frame", std::to_string(id_).c_str());
+            frame_[write_index_].status = INVALID;            
+            frame_[write_index_].access.unlock();
+            return false;
+        }
     }
     // else; null buffer for EOS: give a position
     else {
         frame_[write_index_].status = EOS;
+        Log::Info("Stream EOS");
     }
 
     // unlock access to frame
@@ -616,6 +656,8 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
 GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 {
     GstFlowReturn ret = GST_FLOW_OK;
+
+    Log::Info("callback_new_sample");
 
     // non-blocking read new sample
     GstSample *sample = gst_app_sink_pull_sample(sink);

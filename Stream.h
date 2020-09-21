@@ -66,6 +66,10 @@ public:
      * */
     bool singleFrame() const;
     /**
+     * True if its a live stream
+     * */
+    bool live() const;
+    /**
      * Pause / Play
      * Can play backward if play speed is negative
      * */
@@ -115,6 +119,7 @@ protected:
     guint width_;
     guint height_;
     bool single_frame_;
+    bool live_;
 
     // GST & Play status
     GstState desired_state_;

@@ -109,7 +109,7 @@ void Pattern::open( uint pattern )
     type_ = CLAMP(pattern, 0, 25);
     std::string gstreamer_pattern = pattern_internal_[type_];
 
-    // always some special cases...
+    // there is always a special case...
     switch(type_)
     {
     case 18:
@@ -178,10 +178,10 @@ void PatternSource::replaceRenderingShader()
 
 void PatternSource::setPattern(int id)
 {
+    Log::Notify("Creating pattern %s", Pattern::pattern_types[id].c_str());
+
     stream_->open(id);
     stream_->play(true);
-
-    Log::Notify("Creating pattern %s", Pattern::pattern_types[id].c_str());
 }
 
 
@@ -238,7 +238,6 @@ void PatternSource::update(float dt)
     Source::update(dt);
 
     // update stream
-    // TODO : update only if animated pattern
     stream_->update();
 }
 

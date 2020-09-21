@@ -1835,6 +1835,11 @@ void SourcePreview::Render(float width, bool controlbutton)
     }
 }
 
+bool SourcePreview::ready() const
+{
+    return source_ != nullptr && source_->ready();
+}
+
 void Navigator::RenderNewPannel()
 {
     // Next window is a side pannel
@@ -1852,9 +1857,11 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 
-        static const char* origin_names[3] = { ICON_FA_FILE "    File",
+        static const char* origin_names[4] = { ICON_FA_FILE "    File",
                                                ICON_FA_SITEMAP "  Internal",
-                                               ICON_FA_COG "   Generated" };
+                                               ICON_FA_COG "   Generated",
+                                               ICON_FA_CUBES "  External"
+                                             };
         // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
         if (ImGui::Combo("Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
@@ -1988,21 +1995,35 @@ void Navigator::RenderNewPannel()
             }
         }
         // Hardware
-        else {
-            // helper
-            ImGui::SetCursorPosX(pannel_width_ - 30 + IMGUI_RIGHT_ALIGN);
-            ImGuiToolkit::HelpMarker("Create a source capturing images\nfrom external devices or network.");
+        else if (Settings::application.source.new_type == 3){
+
+            ImGui::SetCursorPosY(2.f * width_);
+
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("##Hardware", "Select device"))
+            {
+                if (ImGui::Selectable( "device 0" )) {
+
+                    new_source_preview_.setSource( Mixer::manager().createSourceDevice(0), "device");
+                }
+                ImGui::EndCombo();
+            }
+
+            // Indication
+            ImGui::SameLine();
+            ImGuiToolkit::HelpMarker("Create a source images\nfrom external devices or network.");
+
         }
 
         ImGui::NewLine();
 
         // if a new source was added
-        if (new_source_preview_.ready()) {
+        if (new_source_preview_.filled()) {
             // show preview
             new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, Settings::application.source.new_type != 1);
             // ask to import the source in the mixer
             ImGui::NewLine();
-            if ( ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+            if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                 Mixer::manager().addSource(new_source_preview_.getSource());
                 selected_button[NAV_NEW] = false;
             }

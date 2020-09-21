@@ -26,7 +26,8 @@ public:
     Source *getSource();
 
     void Render(float width, bool controlbutton = false);
-    inline bool ready() const { return source_ != nullptr; }
+    bool ready() const;
+    inline bool filled() const { return source_ != nullptr; }
 };
 
 class Navigator

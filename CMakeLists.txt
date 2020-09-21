@@ -239,6 +239,7 @@ set(VMIX_SRCS
     MediaPlayer.cpp
     MediaSource.cpp
     PatternSource.cpp
+    DeviceSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
