@@ -29,11 +29,11 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    virtual void open( std::string description ) = 0;
+    void open(const std::string &gstreamer_description );
     /**
      * Get description string
      * */
-    virtual std::string description() const;
+    std::string description() const;
     /**
      * True if a media was oppenned
      * */

@@ -28,6 +28,8 @@ class ImageProcessingShader;
 class Source;
 class MediaSource;
 class PatternSource;
+class DeviceSource;
+class GenericStreamSource;
 class SessionSource;
 class RenderSource;
 class CloneSource;
@@ -64,6 +66,8 @@ public:
     // utility
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
+    virtual void visit (GenericStreamSource&) {}
+    virtual void visit (DeviceSource&) {}
     virtual void visit (PatternSource&) {}
     virtual void visit (SessionSource&) {}
     virtual void visit (RenderSource&) {}

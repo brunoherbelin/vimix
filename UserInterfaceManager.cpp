@@ -53,6 +53,8 @@ using namespace std;
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
+#include "DeviceSource.h"
+#include "StreamSource.h"
 #include "PickingVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -854,7 +856,7 @@ void ToolBox::Render()
     {
         if (ImGui::BeginMenu("Render"))
         {
-            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot") )
+            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", "F12") )
                 UserInterface::manager().StartScreenshot();
 
             ImGui::EndMenu();
@@ -871,6 +873,17 @@ void ToolBox::Render()
     }
 
 
+    static char buf1[64] = "";
+    ImGui::InputText("gstreamer pipeline", buf1, 64);
+    if (ImGui::Button("Create Generic Stream Source") )
+    {
+//        GenericStreamSource *s =
+        Mixer::manager().addSource( Mixer::manager().createSourceStream(buf1) );
+    }
+
+    //
+    // display histogram of update time and plot framerate
+    //
     // keep array of 120 values, i.e. approx 2 seconds of recording
     static float framerate_values[2][120] = {{}};
     static float sum[2] = { 0.f, 0.f };

@@ -24,6 +24,7 @@ using namespace tinyxml2;
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "StreamSource.h"
 
 #include "Mixer.h"
 
@@ -262,6 +263,18 @@ Source * Mixer::createSourceRender()
 
     // propose a new name based on session name
     renameSource(s, SystemToolkit::base_filename(session_->filename()));
+
+    return s;
+}
+
+Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
+{
+    // ready to create a source
+    GenericStreamSource *s = new GenericStreamSource;
+    s->setDescription(gstreamerpipeline);
+
+    // propose a new name based on pattern name
+    renameSource(s, gstreamerpipeline.substr(0,10));
 
     return s;
 }

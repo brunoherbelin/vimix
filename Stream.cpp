@@ -33,7 +33,7 @@ Stream::Stream()
 
     width_ = 800;
     height_ = 600;
-    single_frame_ = true;
+    single_frame_ = false;
     ready_ = false;
     failed_ = false;
     enabled_ = true;
@@ -70,6 +70,18 @@ guint Stream::texture() const
     return textureindex_;
 }
 
+
+void Stream::open(const std::string &gstreamer_description)
+{
+    // set gstreamer pipeline source
+    description_ = gstreamer_description;
+
+    // close before re-openning
+    if (isOpen())
+        close();
+
+    execute_open();
+}
 
 
 std::string Stream::description() const
@@ -541,7 +553,7 @@ double Stream::updateFrameRate() const
 
 bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 {
-    Log::Info("Stream fill frame");
+//    Log::Info("Stream fill frame");
 
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
@@ -593,7 +605,9 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
     // else; null buffer for EOS: give a position
     else {
         frame_[write_index_].status = EOS;
+#ifdef STREAM_DEBUG
         Log::Info("Stream EOS");
+#endif
     }
 
     // unlock access to frame
@@ -657,7 +671,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 {
     GstFlowReturn ret = GST_FLOW_OK;
 
-    Log::Info("callback_new_sample");
+//    Log::Info("callback_new_sample");
 
     // non-blocking read new sample
     GstSample *sample = gst_app_sink_pull_sample(sink);

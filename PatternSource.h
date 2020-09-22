@@ -3,8 +3,7 @@
 
 #include <vector>
 
-#include "Stream.h"
-#include "Source.h"
+#include "StreamSource.h"
 
 class Pattern : public Stream
 {
@@ -18,35 +17,23 @@ public:
     inline uint type() const { return type_; }
 
 private:
-    void open( std::string description ) override;
     uint type_;
 };
 
-class PatternSource : public Source
+class PatternSource : public StreamSource
 {
 public:
     PatternSource(glm::ivec2 resolution);
-    ~PatternSource();
 
-    // implementation of source API
-    void update (float dt) override;
-    void setActive (bool on) override;
-    void render() override;
-    bool failed() const override;
-    uint texture() const override;
+    // Source interface
     void accept (Visitor& v) override;
 
-    // Pattern specific interface
-    inline Pattern *pattern() const { return stream_; }
+    // StreamSource interface
+    Stream *stream() const override { return stream_; }
+
+    // specific interface
+    Pattern *pattern() const;
     void setPattern(int id);
-
-protected:
-
-    void init() override;
-    void replaceRenderingShader() override;
-
-    Surface *patternsurface_;
-    Pattern *stream_;
 
 };
 

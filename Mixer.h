@@ -39,6 +39,7 @@ public:
     Source * createSourceFile   (const std::string &path);
     Source * createSourceClone  (const std::string &namesource = "");
     Source * createSourceRender ();
+    Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(int pattern, glm::ivec2 res);
     Source * createSourceDevice (int id);
 

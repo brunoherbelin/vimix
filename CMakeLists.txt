@@ -238,6 +238,7 @@ set(VMIX_SRCS
     Stream.cpp
     MediaPlayer.cpp
     MediaSource.cpp
+    StreamSource.cpp
     PatternSource.cpp
     DeviceSource.cpp
     FrameBuffer.cpp

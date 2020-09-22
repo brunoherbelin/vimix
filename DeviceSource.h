@@ -1,8 +1,7 @@
 #ifndef DEVICESOURCE_H
 #define DEVICESOURCE_H
 
-#include "Stream.h"
-#include "Source.h"
+#include "StreamSource.h"
 
 class Device : public Stream
 {
@@ -14,35 +13,24 @@ public:
     glm::ivec2 resolution();
 
 private:
-    void open( std::string description ) override;
     uint device_;
 };
 
-class DeviceSource : public Source
+class DeviceSource : public StreamSource
 {
 public:
     DeviceSource();
-    ~DeviceSource();
 
-    // implementation of source API
-    void update (float dt) override;
-    void setActive (bool on) override;
-    void render() override;
-    bool failed() const override;
-    uint texture() const override;
+    // Source interface
     void accept (Visitor& v) override;
 
-    // Pattern specific interface
-    inline Device *device() const { return stream_; }
+    // StreamSource interface
+    Stream *stream() const override { return stream_; }
+
+    // specific interface
+    Device *device() const;
     void setDevice(int id);
 
-protected:
-
-    void init() override;
-    void replaceRenderingShader() override;
-
-    Surface *devicesurface_;
-    Device  *stream_;
 };
 
 #endif // DEVICESOURCE_H

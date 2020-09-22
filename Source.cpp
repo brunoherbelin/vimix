@@ -179,7 +179,6 @@ void Source::accept(Visitor& v)
     v.visit(*this);
 }
 
-
 Source::Mode Source::mode() const
 {
     return mode_;
