@@ -468,7 +468,7 @@ void CloneSource::init()
         // done init
         initialized_ = true;
 
-        Log::Info("Source Clone %s linked to source %s.", name().c_str(), origin_->name().c_str() );
+        Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
     }
 }
 

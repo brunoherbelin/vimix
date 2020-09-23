@@ -34,6 +34,7 @@ Stream::Stream()
     width_ = 800;
     height_ = 600;
     single_frame_ = false;
+    live_ = false;
     ready_ = false;
     failed_ = false;
     enabled_ = true;
@@ -89,6 +90,12 @@ std::string Stream::description() const
     return description_;
 }
 
+int Stream::id() const
+{
+    return id_;
+}
+
+
 void Stream::execute_open()
 {
     // reset
@@ -102,7 +109,7 @@ void Stream::execute_open()
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("Stream %s Could not construct pipeline %s:\n%s", std::to_string(id_).c_str(), description.c_str(), error->message);
+        Log::Warning("Stream %d Could not construct pipeline %s:\n%s", id_, description.c_str(), error->message);
         g_clear_error (&error);
         failed_ = true;
         return;
@@ -113,8 +120,8 @@ void Stream::execute_open()
     string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) +
             ",height=" + std::to_string(height_);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
-    if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
-        Log::Warning("Stream %s Could not configure video frame info", std::to_string(id_).c_str());
+    if (!caps || !gst_video_info_from_caps (&v_frame_video_info_, caps)) {
+        Log::Warning("Stream %d Could not configure video frame info", id_);
         failed_ = true;
         return;
     }
@@ -122,8 +129,8 @@ void Stream::execute_open()
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
     if (sink) {
-        // instruct the sink to send samples synched in time
-        gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
+//        // instruct the sink to send samples synched in time
+//        gst_base_sink_set_sync (GST_BASE_SINK(sink), false);
 
         // instruct sink to use the required caps
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
@@ -140,11 +147,6 @@ void Stream::execute_open()
             callbacks.eos = NULL;
             callbacks.new_sample = NULL;
         }
-//        else if (live_) {
-//            callbacks.new_preroll = NULL;
-//            callbacks.eos = NULL;
-//            callbacks.new_sample = callback_new_sample;
-//        }
         else {
             callbacks.new_preroll = callback_new_preroll;
             callbacks.eos = callback_end_of_stream;
@@ -161,35 +163,35 @@ void Stream::execute_open()
         }
         gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
 #endif
-        // done with ref to sink
-        gst_object_unref (sink);
     }
     else {
-        Log::Warning("Stream %s Could not configure  sink", std::to_string(id_).c_str());
+        Log::Warning("Stream %d Could not configure  sink", id_);
         failed_ = true;
         return;
     }
-    gst_caps_unref (caps);
 
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Stream %s Could not open '%s'", std::to_string(id_).c_str(), description_.c_str());
+        Log::Warning("Stream %d Could not open '%s'", id_, description_.c_str());
         failed_ = true;
         return;
-    } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
-        Log::Info("Stream %s is a live stream", std::to_string(id_).c_str());
+    }
+    else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
+        Log::Info("Stream %d is a live stream", id_);
         live_ = true;
     }
 
+    // instruct the sink to send samples synched in time if not live source
+    gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
+
     // all good
     Log::Info("Stream %d Opened '%s' (%d x %d)", id_, description.c_str(), width_, height_);
-//    if (desired_state_ == GST_STATE_PLAYING)
-//        Log::Info("Stream %d Playing", id_);
-//    else
-//        Log::Info("Stream %d Paused", id_);
-
     ready_ = true;
+
+    // done with refs
+    gst_object_unref (sink);
+    gst_caps_unref (caps);
 }
 
 bool Stream::isOpen() const
@@ -282,14 +284,14 @@ void Stream::enable(bool on)
         //  apply state change
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
         if (ret == GST_STATE_CHANGE_FAILURE) {
-            Log::Warning("Stream %s Failed to enable", std::to_string(id_).c_str());
+            Log::Warning("Stream %d Failed to enable", id_);
             failed_ = true;
         }
 
     }
 }
 
-bool Stream::isEnabled() const
+bool Stream::enabled() const
 {
     return enabled_;
 }
@@ -327,26 +329,20 @@ void Stream::play(bool on)
     // all ready, apply state change immediately
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Stream %s Failed to play", std::to_string(id_).c_str());
+        Log::Warning("Stream %d Failed to play", id_);
         failed_ = true;
     }
 #ifdef STREAM_DEBUG
     else if (on)
-        Log::Info("Stream %s Start", std::to_string(id_).c_str());
+        Log::Info("Stream %d Start", id_);
     else
-        Log::Info("Stream %s Stop", std::to_string(id_).c_str());
+        Log::Info("Stream %d Stop", id_);
 #endif
 
-    // DEBUG  : LIVE SOURCE ??
+    // activate live-source
     if (live_) {
         GstState state;
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-
-        while (state != desired_state_) {
-            Log::Info("Stream %s Live stream did not change state", std::to_string(id_).c_str());
-            gst_element_set_state (pipeline_, desired_state_);
-            gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-        }
     }
 
     // reset time counter
@@ -417,7 +413,7 @@ void Stream::init_texture(guint index)
     pbo_next_index_ = 1;
 
 #ifdef STREAM_DEBUG
-        Log::Info("Stream %s Using Pixel Buffer Object texturing.", std::to_string(id_).c_str());
+        Log::Info("Stream %d Use Pixel Buffer Object texturing.", id_);
 #endif
 
 }
@@ -484,10 +480,6 @@ void Stream::update()
 //    // prevent unnecessary updates: disabled or already filled image
 //    if (!enabled_)
 //        return;
-
-//    // DEBUG  : LIVE SOURCE ??
-//    GstState state;
-//    gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
 
     // local variables before trying to update
     guint read_index = 0;
@@ -576,7 +568,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
         // get the frame from buffer
         if ( !gst_video_frame_map (&frame_[write_index_].vframe, &v_frame_video_info_, buf, GST_MAP_READ ) )
         {
-            Log::Info("Stream %s Failed to map the video buffer", std::to_string(id_).c_str());
+            Log::Info("Stream %d Failed to map the video buffer", id_);
             // free access to frame & exit
             frame_[write_index_].status = INVALID;
             frame_[write_index_].access.unlock();
@@ -596,7 +588,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
         // full but invalid frame : will be deleted next iteration
         // (should never happen)
         else {
-            Log::Info("Stream %s Invalid frame", std::to_string(id_).c_str());
+            Log::Info("Stream %d Received an Invalid frame", id_);
             frame_[write_index_].status = INVALID;            
             frame_[write_index_].access.unlock();
             return false;
@@ -606,7 +598,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
     else {
         frame_[write_index_].status = EOS;
 #ifdef STREAM_DEBUG
-        Log::Info("Stream EOS");
+        Log::Info("Stream %d Reached End Of Stream", id_);
 #endif
     }
 

@@ -872,14 +872,15 @@ void ToolBox::Render()
         ImGui::EndMenuBar();
     }
 
-
-    static char buf1[64] = "";
-    ImGui::InputText("gstreamer pipeline", buf1, 64);
+    static char buf1[128] = "videotestsrc pattern=smpte";
+    ImGui::InputText("gstreamer pipeline", buf1, 128);
     if (ImGui::Button("Create Generic Stream Source") )
     {
 //        GenericStreamSource *s =
         Mixer::manager().addSource( Mixer::manager().createSourceStream(buf1) );
     }
+
+
 
     //
     // display histogram of update time and plot framerate

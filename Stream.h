@@ -29,7 +29,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description );
+    void open(const std::string &gstreamer_description);
     /**
      * Get description string
      * */
@@ -60,7 +60,7 @@ public:
     /**
      * True if enabled
      * */
-    bool isEnabled() const;
+    bool enabled() const;
     /**
      * True if its an image
      * */
@@ -107,6 +107,8 @@ public:
      * Used for saving session file
      * */
     void accept(Visitor& v);
+
+    int id() const;
 
 protected:
 

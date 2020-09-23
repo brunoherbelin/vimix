@@ -135,16 +135,14 @@ PatternSource::PatternSource(glm::ivec2 resolution) : StreamSource()
     // create stream
     stream_ = (Stream *) new Pattern(resolution);
 
-//    // create surface
-//    surface_ = new Surface(renderingshader_);
-
+    // set icons
     overlays_[View::MIXING]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
     overlays_[View::LAYER]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
 void PatternSource::setPattern(int id)
 {
-    Log::Notify("Creating pattern %s", Pattern::pattern_types[id].c_str());
+    Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[id].c_str());
 
     pattern()->open( (uint) id );
     stream_->play(true);
@@ -162,94 +160,3 @@ Pattern *PatternSource::pattern() const
 }
 
 
-//PatternSource::~PatternSource()
-//{
-//    // delete media surface & stream
-//    delete patternsurface_;
-//    delete stream_;
-//}
-
-//bool PatternSource::failed() const
-//{
-//    return stream_->failed();
-//}
-
-//uint PatternSource::texture() const
-//{
-//    return stream_->texture();
-//}
-
-//void PatternSource::replaceRenderingShader()
-//{
-//    patternsurface_->replaceShader(renderingshader_);
-//}
-
-
-//void PatternSource::init()
-//{
-//    if ( stream_->isOpen() ) {
-
-//        // update video
-//        stream_->update();
-
-//        // once the texture of media player is created
-//        if (stream_->texture() != Resource::getTextureBlack()) {
-
-//            // get the texture index from media player, apply it to the media surface
-//            patternsurface_->setTextureIndex( stream_->texture() );
-
-//            // create Frame buffer matching size of media player
-//            float height = float(stream_->width()) / stream_->aspectRatio();
-//            FrameBuffer *renderbuffer = new FrameBuffer(stream_->width(), (uint)height, true);
-
-//            // set the renderbuffer of the source and attach rendering nodes
-//            attach(renderbuffer);
-
-//            // icon in mixing view
-//            overlays_[View::MIXING]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
-//            overlays_[View::LAYER]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
-
-//            // done init
-//            initialized_ = true;
-//            Log::Info("Source Pattern linked to Stream %d.", stream_->description().c_str());
-
-//            // force update of activation mode
-//            active_ = true;
-//            touch();
-//        }
-//    }
-
-//}
-
-//void PatternSource::setActive (bool on)
-//{
-//    bool was_active = active_;
-
-//    Source::setActive(on);
-
-//    // change status of media player (only if status changed)
-//    if ( active_ != was_active ) {
-//        stream_->enable(active_);
-//    }
-//}
-
-//void PatternSource::update(float dt)
-//{
-//    Source::update(dt);
-
-//    // update stream
-//    stream_->update();
-//}
-
-//void PatternSource::render()
-//{
-//    if (!initialized_)
-//        init();
-//    else {
-//        // render the media player into frame buffer
-//        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-//        renderbuffer_->begin();
-//        patternsurface_->draw(glm::identity<glm::mat4>(), projection);
-//        renderbuffer_->end();
-//    }
-//}

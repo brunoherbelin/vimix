@@ -24,7 +24,7 @@ GenericStreamSource::GenericStreamSource() : StreamSource()
 
 void GenericStreamSource::setDescription(const std::string &desc)
 {
-    Log::Notify("Creating Stream %s", desc);
+    Log::Notify("Creating Source with Stream description '%s'", desc.c_str());
 
     stream_->open(desc);
     stream_->play(true);
@@ -87,7 +87,7 @@ void StreamSource::init()
 
             // done init
             initialized_ = true;
-            Log::Info("Source Stream linked to Stream %d.", stream_->description().c_str());
+            Log::Info("Source '%s' linked to Stream %d.", name().c_str(), stream_->id());
 
             // force update of activation mode
             active_ = true;

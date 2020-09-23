@@ -33,11 +33,11 @@ MediaSource::~MediaSource()
 
 void MediaSource::setPath(const std::string &p)
 {
+    Log::Notify("Creating Source with media '%s'", p.c_str());
+
     path_ = p;
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
-
-    Log::Notify("Opening %s", p.c_str());
 }
 
 std::string MediaSource::path() const
@@ -97,7 +97,7 @@ void MediaSource::init()
 
             // done init
             initialized_ = true;
-            Log::Info("Source Media linked to Media %s.", mediaplayer()->uri().c_str());
+            Log::Info("Source '%s' linked to Media %s.", name().c_str(), mediaplayer()->uri().c_str());
 
             // force update of activation mode
             active_ = true;

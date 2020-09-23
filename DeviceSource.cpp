@@ -27,14 +27,14 @@ void Device::open( uint device )
 {
     device_ = CLAMP(device, 0, 2);
 
-    live_ = true;
-
 //    std::string desc = "v4l2src ! video/x-raw,width=320,height=240,framerate=30/1 ! videoconvert";
 //    std::string desc = "v4l2src ! jpegdec ! videoconvert";
-//    std::string desc = "v4l2src ! image/jpeg,width=640,height=480,framerate=30/1 ! jpegdec ! videoconvert";
+    std::string desc = "v4l2src ! image/jpeg,width=640,height=480,framerate=30/1 ! jpegdec ! videoscale ! videoconvert";
+
+//        std::string desc = "v4l2src ! jpegdec ! videoscale ! videoconvert";
 
 //    std::string desc = "videotestsrc pattern=snow is-live=true ";
-    std::string desc = "ximagesrc endx=640 endy=480 ! video/x-raw,framerate=5/1 ! videoconvert ! queue";
+//    std::string desc = "ximagesrc endx=800 endy=600 ! video/x-raw,framerate=15/1 ! videoscale ! videoconvert";
 
     // (private) open stream
     Stream::open(desc);
@@ -45,14 +45,14 @@ DeviceSource::DeviceSource() : StreamSource()
     // create stream
     stream_ = (Stream *) new Device();
 
-    // icon in mixing view
+    // set icons TODO
     overlays_[View::MIXING]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
     overlays_[View::LAYER]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
 void DeviceSource::setDevice(int id)
 {
-    Log::Notify("Openning device %d", id);
+    Log::Notify("Creating Source with device '%d'", id);
 
     device()->open(id);
     stream_->play(true);
