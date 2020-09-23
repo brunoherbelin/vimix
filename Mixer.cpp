@@ -291,14 +291,14 @@ Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
     return s;
 }
 
-Source * Mixer::createSourceDevice(int id)
+Source * Mixer::createSourceDevice(const std::string &namedevice)
 {
     // ready to create a source
     DeviceSource *s = new DeviceSource();
-    s->setDevice(id);
+    s->setDevice(namedevice);
 
     // propose a new name based on pattern name
-    renameSource(s, "Device");
+    renameSource(s, namedevice);
 
     return s;
 }

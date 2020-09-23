@@ -2013,12 +2013,16 @@ void Navigator::RenderNewPannel()
 
             ImGui::SetCursorPosY(2.f * width_);
 
+
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Hardware", "Select device"))
             {
-                if (ImGui::Selectable( "device 0" )) {
+                for (int d = 0; d < Device::manager().numDevices(); ++d){
+                    std::string namedev = Device::manager().name(d);
+                    if (ImGui::Selectable( namedev.c_str() )) {
 
-                    new_source_preview_.setSource( Mixer::manager().createSourceDevice(0), "device");
+                        new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
+                    }
                 }
                 ImGui::EndCombo();
             }

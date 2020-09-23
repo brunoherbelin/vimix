@@ -128,47 +128,43 @@ void Stream::execute_open()
 
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
-    if (sink) {
-//        // instruct the sink to send samples synched in time
-//        gst_base_sink_set_sync (GST_BASE_SINK(sink), false);
-
-        // instruct sink to use the required caps
-        gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
-
-        // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
-        gst_app_sink_set_drop (GST_APP_SINK(sink), true);
-
-#ifdef USE_GST_APPSINK_CALLBACKS_
-        // set the callbacks
-        GstAppSinkCallbacks callbacks;
-        if (single_frame_) {
-            callbacks.new_preroll = callback_new_preroll;
-            callbacks.eos = NULL;
-            callbacks.new_sample = NULL;
-        }
-        else {
-            callbacks.new_preroll = callback_new_preroll;
-            callbacks.eos = callback_end_of_stream;
-            callbacks.new_sample = callback_new_sample;
-        }
-        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-#else
-        // connect signals callbacks
-        g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
-        if (!single_frame_) {
-            g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
-            g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
-        }
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
-#endif
-    }
-    else {
+    if (!sink) {
         Log::Warning("Stream %d Could not configure  sink", id_);
         failed_ = true;
         return;
     }
+
+    // instruct sink to use the required caps
+    gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+
+    // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
+    gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
+    gst_app_sink_set_drop (GST_APP_SINK(sink), true);
+
+#ifdef USE_GST_APPSINK_CALLBACKS_
+    // set the callbacks
+    GstAppSinkCallbacks callbacks;
+    if (single_frame_) {
+        callbacks.new_preroll = callback_new_preroll;
+        callbacks.eos = NULL;
+        callbacks.new_sample = NULL;
+    }
+    else {
+        callbacks.new_preroll = callback_new_preroll;
+        callbacks.eos = callback_end_of_stream;
+        callbacks.new_sample = callback_new_sample;
+    }
+    gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+#else
+    // connect signals callbacks
+    g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
+    if (!single_frame_) {
+        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
+        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+    }
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
+#endif
 
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);

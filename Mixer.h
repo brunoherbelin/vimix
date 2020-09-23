@@ -41,7 +41,7 @@ public:
     Source * createSourceRender ();
     Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(int pattern, glm::ivec2 res);
-    Source * createSourceDevice (int id);
+    Source * createSourceDevice (const std::string &namedevice);
 
     // operations on sources
     void addSource    (Source *s);
