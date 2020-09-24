@@ -72,10 +72,13 @@ guint Stream::texture() const
 }
 
 
-void Stream::open(const std::string &gstreamer_description)
+void Stream::open(const std::string &gstreamer_description, int w, int h)
 {
     // set gstreamer pipeline source
     description_ = gstreamer_description;
+
+    if (w>0) width_ = w;
+    if (h>0) height_ = h;
 
     // close before re-openning
     if (isOpen())
@@ -94,7 +97,6 @@ int Stream::id() const
 {
     return id_;
 }
-
 
 void Stream::execute_open()
 {

@@ -2,6 +2,10 @@
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <gst/pbutils/gstdiscoverer.h>
+#include <gst/pbutils/pbutils.h>
+#include <gst/gst.h>
+
 #include "DeviceSource.h"
 
 #include "defines.h"
@@ -30,7 +34,7 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
 
        std::ostringstream pipe;
        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
-       pipe << "src device=";
+       pipe << "src name=devsrc device=";
        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
        manager().pipelines_.push_back(pipe.str());
 
@@ -108,7 +112,7 @@ Device::Device()
 
         std::ostringstream pipe;
         pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
-        pipe << "src device=";
+        pipe << "src name=devsrc device=";
         pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
         pipelines_.push_back(pipe.str());
 
@@ -179,14 +183,31 @@ DeviceSource::DeviceSource() : StreamSource()
 }
 
 void DeviceSource::setDevice(const std::string &devicename)
-{
+{   
     device_ = devicename;
     Log::Notify("Creating Source with device '%s'", device_.c_str());
 
-    std::string pipeline = Device::manager().pipeline(device_);
-    pipeline += " ! jpegdec ! videoscale ! videoconvert";
+    std::ostringstream pipeline;
+    pipeline << Device::manager().pipeline(device_);
 
-    stream_->open( pipeline );
+    DeviceInfoSet confs = getDeviceConfigs(pipeline.str());
+    DeviceInfoSet::reverse_iterator best = confs.rbegin();
+
+    pipeline << " ! " << (*best).format;
+    pipeline << ",framerate=" << (*best).fps_numerator << "/" << (*best).fps_denominator;
+    pipeline << ",width=" << (*best).width;
+    pipeline << ",height=" << (*best).height;
+
+    if ( (*best).format.find("jpeg") != std::string::npos )
+        pipeline << " ! jpegdec";
+
+//    for( DeviceInfoSet::iterator it = confs.begin(); it != confs.end(); it++ ){
+//        Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
+//    }
+
+    pipeline << " ! videoconvert";
+
+    stream_->open( pipeline.str(), (*best).width, (*best).height);
     stream_->play(true);
 }
 
@@ -200,5 +221,118 @@ bool DeviceSource::failed() const
 {
     return stream_->failed() || !Device::manager().exists(device_);
 }
+
+
+DeviceInfoSet DeviceSource::getDeviceConfigs(const std::string &pipeline)
+{
+    DeviceInfoSet configs;
+
+    // create dummy pipeline to be tested
+    std::string description = pipeline;
+    description += " ! fakesink name=sink";
+
+    // parse pipeline descriptor
+    GError *error = NULL;
+    GstElement *pipeline_ = gst_parse_launch (description.c_str(), &error);
+    if (error != NULL) {
+        Log::Warning("DeviceSource Could not construct test pipeline %s:\n%s", description.c_str(), error->message);
+        g_clear_error (&error);
+        return configs;
+    }
+
+    // get the pipeline element named "devsrc" from the Device class
+    GstElement *elem = gst_bin_get_by_name (GST_BIN (pipeline_), "devsrc");
+    if (elem) {
+
+        // initialize the pipeline
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PAUSED);
+        if (ret != GST_STATE_CHANGE_FAILURE) {
+
+            // get the first pad and its content
+            GstIterator *iter = gst_element_iterate_src_pads(elem);
+            GValue vPad = G_VALUE_INIT;
+            GstPad* ret = NULL;
+            if (gst_iterator_next(iter, &vPad) == GST_ITERATOR_OK)
+            {
+                ret = GST_PAD(g_value_get_object(&vPad));
+                GstCaps *device_caps = gst_pad_query_caps (ret, NULL);
+
+                // loop over all caps offered by the pad
+                int C = gst_caps_get_size(device_caps);
+                for (int c = 0; c < C; ++c) {
+                    GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
+                    DeviceInfo config;
+
+                    // NAME : typically video/x-raw or image/jpeg
+                    config.format = gst_structure_get_name (decice_cap_struct);
+
+                    // FRAMERATE : can be a fraction of a list of fractions
+                    if ( gst_structure_has_field (decice_cap_struct, "framerate")) {
+
+                        // get generic value
+                        const GValue *val = gst_structure_get_value(decice_cap_struct, "framerate");
+                        // if its a single fraction
+                        if ( GST_VALUE_HOLDS_FRACTION(val)) {
+                            config.fps_numerator = gst_value_get_fraction_numerator(val);
+                            config.fps_denominator= gst_value_get_fraction_denominator(val);
+                        }
+                        // deal otherwise with a list of fractions
+                        else {
+                            gdouble fps_max = 1.0;
+                            // loop over all fractions
+                            int N = gst_value_list_get_size(val);
+                            for (int n = 0; n < N; n++ ){
+                                const GValue *frac = gst_value_list_get_value(val, n);
+                                // read one fraction in the list
+                                if ( GST_VALUE_HOLDS_FRACTION(frac)) {
+                                    int n = gst_value_get_fraction_numerator(frac);
+                                    int d = gst_value_get_fraction_denominator(frac);
+                                    // keep only the higher FPS
+                                    gdouble f = 1.0;
+                                    gst_util_fraction_to_double( n, d, &f );
+                                    if ( f > fps_max ) {
+                                        config.fps_numerator = n;
+                                        config.fps_denominator = d;
+                                        fps_max = f;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if ( gst_structure_has_field (decice_cap_struct, "width"))
+                        gst_structure_get_int (decice_cap_struct, "width", &config.width);
+                    if ( gst_structure_has_field (decice_cap_struct, "height"))
+                        gst_structure_get_int (decice_cap_struct, "height", &config.height);
+
+//                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
+//                    Log::Info("DeviceSource found cap struct %s", capstext);
+//                    g_free(capstext);
+                    configs.insert(config);
+                }
+
+            }
+            gst_iterator_free(iter);
+
+            // terminate pipeline
+            gst_element_set_state (pipeline_, GST_STATE_NULL);
+        }
+
+        g_object_unref (elem);
+    }
+
+    gst_object_unref (pipeline_);
+
+    return configs;
+}
+
+
+
+
+
+
+
+
+
+
 
 
