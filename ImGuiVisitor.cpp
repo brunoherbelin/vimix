@@ -364,7 +364,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     {
         for (int p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
-                s.setPattern(p);
+                s.setPattern(p, s.pattern()->resolution());
             }
         }
         ImGui::EndCombo();

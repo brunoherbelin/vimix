@@ -99,12 +99,12 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
             if (!pType)
                 continue;
             if ( std::string(pType) == "MediaSource") {
-                MediaSource *new_media_source = new MediaSource();
+                MediaSource *new_media_source = new MediaSource;
                 new_media_source->accept(*this);
                 session_->addSource(new_media_source);
             }
             else if ( std::string(pType) == "SessionSource") {
-                SessionSource *new_session_source = new SessionSource();
+                SessionSource *new_session_source = new SessionSource;
                 new_session_source->accept(*this);
                 session_->addSource(new_session_source);
             }
@@ -114,13 +114,7 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 session_->addSource(new_render_source);
             }
             else if ( std::string(pType) == "PatternSource") {
-
-                glm::ivec2 resolution(800, 600);
-                XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
-                if (res)
-                    tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
-
-                PatternSource *new_pattern_source = new PatternSource(resolution);
+                PatternSource *new_pattern_source = new PatternSource;
                 new_pattern_source->accept(*this);
                 session_->addSource(new_pattern_source);
             }
@@ -345,7 +339,13 @@ void SessionCreator::visit (SessionSource& s)
 void SessionCreator::visit (PatternSource& s)
 {
     uint p = xmlCurrent_->UnsignedAttribute("pattern");
-    s.setPattern(p);
+
+    glm::ivec2 resolution(800, 600);
+    XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
+    if (res)
+        tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
+
+    s.setPattern(p, resolution);
 }
 
 

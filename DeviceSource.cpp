@@ -29,17 +29,20 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
      case GST_MESSAGE_DEVICE_ADDED: {
        gst_message_parse_device_added (message, &device);
        name = gst_device_get_display_name (device);
-       manager().names_.push_back(name);
+       manager().src_name_.push_back(name);
        g_free (name);
 
        std::ostringstream pipe;
        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
        pipe << "src name=devsrc device=";
        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
-       manager().pipelines_.push_back(pipe.str());
+       manager().src_description_.push_back(pipe.str());
 
-       stru = gst_structure_to_string( gst_device_get_properties(device) );
-       g_print("New device %s \n", stru);
+       DeviceConfigSet confs = getDeviceConfigs(pipe.str());
+       manager().src_config_.push_back(confs);
+
+//       stru = gst_structure_to_string( gst_device_get_properties(device) );
+//       g_print("New device %s \n", stru);
 
        gst_object_unref (device);
    }
@@ -48,7 +51,7 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        gst_message_parse_device_removed (message, &device);
        name = gst_device_get_display_name (device);
        manager().remove(name);
-       g_print("Device removed: %s\n", name);
+//       g_print("Device removed: %s\n", name);
        g_free (name);
 
        gst_object_unref (device);
@@ -63,19 +66,22 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
 
 void Device::remove(const char *device)
 {
-    std::vector< std::string >::iterator nameit = names_.begin();
-    std::vector< std::string >::iterator pipeit = pipelines_.begin();
-    while (nameit != names_.end()){
+    std::vector< std::string >::iterator nameit   = src_name_.begin();
+    std::vector< std::string >::iterator descit   = src_description_.begin();
+    std::vector< DeviceConfigSet >::iterator coit = src_config_.begin();
+    while (nameit != src_name_.end()){
 
         if ( (*nameit).compare(device) == 0 )
         {
-            names_.erase(nameit);
-            pipelines_.erase(pipeit);
+            src_name_.erase(nameit);
+            src_description_.erase(descit);
+            src_config_.erase(coit);
             break;
         }
 
         nameit++;
-        pipeit++;
+        descit++;
+        coit++;
     }
 }
 
@@ -107,15 +113,17 @@ Device::Device()
         GstDevice *device = (GstDevice *) tmp->data;
 
         gchar *name = gst_device_get_display_name (device);
-        names_.push_back(name);
+        src_name_.push_back(name);
         g_free (name);
 
         std::ostringstream pipe;
         pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
         pipe << "src name=devsrc device=";
         pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
-        pipelines_.push_back(pipe.str());
+        src_description_.push_back(pipe.str());
 
+        DeviceConfigSet confs = getDeviceConfigs(pipe.str());
+        src_config_.push_back(confs);
     }
     g_list_free(devices);
 
@@ -124,41 +132,47 @@ Device::Device()
 
 int Device::numDevices() const
 {
-    return names_.size();
+    return src_name_.size();
 }
 
 bool Device::exists(const std::string &device) const
 {
-    std::vector< std::string >::const_iterator d = std::find(names_.begin(), names_.end(), device);
-    return d != names_.end();
+    std::vector< std::string >::const_iterator d = std::find(src_name_.begin(), src_name_.end(), device);
+    return d != src_name_.end();
 }
 
 std::string Device::name(int index) const
 {
-    if (index > -1 && index < names_.size())
-        return names_[index];
+    if (index > -1 && index < src_name_.size())
+        return src_name_[index];
     else
         return "";
 }
 
-std::string Device::pipeline(int index) const
+std::string Device::description(int index) const
 {
-    if (index > -1 && index < pipelines_.size())
-        return pipelines_[index];
+    if (index > -1 && index < src_description_.size())
+        return src_description_[index];
     else
         return "";
 }
 
-std::string Device::pipeline(const std::string &device) const
+DeviceConfigSet Device::config(int index) const
 {
-    std::string pip = "";
-    std::vector< std::string >::const_iterator p = std::find(names_.begin(), names_.end(), device);
-    if (p != names_.end())
-    {
-        int index = std::distance(names_.begin(), p);
-        pip = pipelines_[index];
-    }
-    return pip;
+    if (index > -1 && index < src_config_.size())
+        return src_config_[index];
+    else
+        return DeviceConfigSet();
+}
+
+int  Device::index(const std::string &device) const
+{
+    int i = -1;
+    std::vector< std::string >::const_iterator p = std::find(src_name_.begin(), src_name_.end(), device);
+    if (p != src_name_.end())
+        i = std::distance(src_name_.begin(), p);
+
+    return i;
 }
 
 
@@ -187,28 +201,35 @@ void DeviceSource::setDevice(const std::string &devicename)
     device_ = devicename;
     Log::Notify("Creating Source with device '%s'", device_.c_str());
 
-    std::ostringstream pipeline;
-    pipeline << Device::manager().pipeline(device_);
+    int index = Device::manager().index(device_);
+    if (index > -1) {
 
-    DeviceInfoSet confs = getDeviceConfigs(pipeline.str());
-    DeviceInfoSet::reverse_iterator best = confs.rbegin();
+        // start filling in the gstreamer pipeline
+        std::ostringstream pipeline;
+        pipeline << Device::manager().description(index);
 
-    pipeline << " ! " << (*best).format;
-    pipeline << ",framerate=" << (*best).fps_numerator << "/" << (*best).fps_denominator;
-    pipeline << ",width=" << (*best).width;
-    pipeline << ",height=" << (*best).height;
+        // test the device and get config
+        DeviceConfigSet confs = Device::manager().config(index);
+        //    for( DeviceInfoSet::iterator it = confs.begin(); it != confs.end(); it++ ){
+        //        Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
+        //    }
+        DeviceConfigSet::reverse_iterator best = confs.rbegin();
 
-    if ( (*best).format.find("jpeg") != std::string::npos )
-        pipeline << " ! jpegdec";
+        pipeline << " ! " << (*best).format;
+        pipeline << ",framerate=" << (*best).fps_numerator << "/" << (*best).fps_denominator;
+        pipeline << ",width=" << (*best).width;
+        pipeline << ",height=" << (*best).height;
 
-//    for( DeviceInfoSet::iterator it = confs.begin(); it != confs.end(); it++ ){
-//        Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
-//    }
+        if ( (*best).format.find("jpeg") != std::string::npos )
+            pipeline << " ! jpegdec";
 
-    pipeline << " ! videoconvert";
+        pipeline << " ! videoconvert";
 
-    stream_->open( pipeline.str(), (*best).width, (*best).height);
-    stream_->play(true);
+        stream_->open( pipeline.str(), (*best).width, (*best).height);
+        stream_->play(true);
+    }
+    else
+        Log::Warning("No such device '%s'", device_.c_str());
 }
 
 void DeviceSource::accept(Visitor& v)
@@ -223,12 +244,12 @@ bool DeviceSource::failed() const
 }
 
 
-DeviceInfoSet DeviceSource::getDeviceConfigs(const std::string &pipeline)
+DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
 {
-    DeviceInfoSet configs;
+    DeviceConfigSet configs;
 
     // create dummy pipeline to be tested
-    std::string description = pipeline;
+    std::string description = src_description;
     description += " ! fakesink name=sink";
 
     // parse pipeline descriptor
@@ -261,7 +282,7 @@ DeviceInfoSet DeviceSource::getDeviceConfigs(const std::string &pipeline)
                 int C = gst_caps_get_size(device_caps);
                 for (int c = 0; c < C; ++c) {
                     GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
-                    DeviceInfo config;
+                    DeviceConfig config;
 
                     // NAME : typically video/x-raw or image/jpeg
                     config.format = gst_structure_get_name (decice_cap_struct);
@@ -299,6 +320,8 @@ DeviceInfoSet DeviceSource::getDeviceConfigs(const std::string &pipeline)
                             }
                         }
                     }
+
+                    // WIDTH and HEIGHT
                     if ( gst_structure_has_field (decice_cap_struct, "width"))
                         gst_structure_get_int (decice_cap_struct, "width", &config.width);
                     if ( gst_structure_has_field (decice_cap_struct, "height"))
@@ -307,6 +330,8 @@ DeviceInfoSet DeviceSource::getDeviceConfigs(const std::string &pipeline)
 //                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
 //                    Log::Info("DeviceSource found cap struct %s", capstext);
 //                    g_free(capstext);
+
+                    // add this config
                     configs.insert(config);
                 }
 

@@ -10,8 +10,8 @@ class Pattern : public Stream
 public:
     static std::vector<std::string> pattern_types;
 
-    Pattern(glm::ivec2 res);
-    void open( uint pattern );
+    Pattern();
+    void open( uint pattern, glm::ivec2 res);
 
     glm::ivec2 resolution();
     inline uint type() const { return type_; }
@@ -23,7 +23,7 @@ private:
 class PatternSource : public StreamSource
 {
 public:
-    PatternSource(glm::ivec2 resolution);
+    PatternSource();
 
     // Source interface
     void accept (Visitor& v) override;
@@ -33,7 +33,7 @@ public:
 
     // specific interface
     Pattern *pattern() const;
-    void setPattern(int id);
+    void setPattern(int type, glm::ivec2 resolution);
 
 };
 

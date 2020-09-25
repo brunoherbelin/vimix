@@ -90,11 +90,9 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "Clock"
                                        };
 
-Pattern::Pattern(glm::ivec2 res) : Stream()
+Pattern::Pattern() : Stream()
 {
 
-    width_ = res.x;
-    height_ = res.y;
 }
 
 glm::ivec2 Pattern::resolution()
@@ -103,7 +101,7 @@ glm::ivec2 Pattern::resolution()
 }
 
 
-void Pattern::open( uint pattern )
+void Pattern::open( uint pattern, glm::ivec2 res )
 {
     type_ = CLAMP(pattern, 0, 25);
     std::string gstreamer_pattern = pattern_internal_[type_];
@@ -127,24 +125,24 @@ void Pattern::open( uint pattern )
     single_frame_ = type_ < 15;
 
     // (private) open stream
-    Stream::open(gstreamer_pattern);
+    Stream::open(gstreamer_pattern, res.x, res.y);
 }
 
-PatternSource::PatternSource(glm::ivec2 resolution) : StreamSource()
+PatternSource::PatternSource() : StreamSource()
 {
     // create stream
-    stream_ = (Stream *) new Pattern(resolution);
+    stream_ = (Stream *) new Pattern;
 
     // set icons
     overlays_[View::MIXING]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
     overlays_[View::LAYER]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
-void PatternSource::setPattern(int id)
+void PatternSource::setPattern(int type, glm::ivec2 resolution)
 {
-    Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[id].c_str());
+    Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[type].c_str());
 
-    pattern()->open( (uint) id );
+    pattern()->open( (uint) type, resolution );
     stream_->play(true);
 }
 

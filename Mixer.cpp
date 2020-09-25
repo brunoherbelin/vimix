@@ -282,8 +282,8 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
 Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
 {
     // ready to create a source
-    PatternSource *s = new PatternSource(res);
-    s->setPattern(pattern);
+    PatternSource *s = new PatternSource;
+    s->setPattern(pattern, res);
 
     // propose a new name based on pattern name
     renameSource(s, Pattern::pattern_types[pattern]);

@@ -7,6 +7,50 @@
 #include "GstToolkit.h"
 #include "StreamSource.h"
 
+struct DeviceConfig {
+    gint width;
+    gint height;
+    gint fps_numerator;
+    gint fps_denominator;
+    std::string format;
+
+    DeviceConfig() {
+        width = 0;
+        height = 0;
+        fps_numerator = 1;
+        fps_denominator = 1;
+        format = "";
+    }
+
+    inline DeviceConfig& operator = (const DeviceConfig& b)
+    {
+        if (this != &b) {
+            this->width = b.width;
+            this->height = b.height;
+            this->fps_numerator = b.fps_numerator;
+            this->fps_denominator = b.fps_denominator;
+            this->format = b.format;
+        }
+        return *this;
+    }
+
+    inline bool operator < (const DeviceConfig b) const
+    {
+        return ( this->fps_numerator * this->height < b.fps_numerator * b.height );
+    }
+};
+
+struct better_device_comparator
+{
+    inline bool operator () (const DeviceConfig a, const DeviceConfig b) const
+    {
+        return (a < b);
+    }
+};
+
+typedef std::set<DeviceConfig, better_device_comparator> DeviceConfigSet;
+
+
 class Device
 {
     Device();
@@ -24,64 +68,26 @@ public:
 
     int numDevices () const;
     std::string name (int index) const;
-    std::string pipeline (int index) const;
+    std::string description (int index) const;
+    DeviceConfigSet config (int index) const;
 
     bool exists (const std::string &device) const;
-    std::string pipeline (const std::string &device) const;
+    int  index  (const std::string &device) const;
 
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
 
 private:
 
     void remove(const char *device);
-    std::vector< std::string > names_;
-    std::vector< std::string > pipelines_;
+    std::vector< std::string > src_name_;
+    std::vector< std::string > src_description_;
+
+    std::vector< DeviceConfigSet > src_config_;
+    static DeviceConfigSet getDeviceConfigs(const std::string &src_description);
+
     GstDeviceMonitor *monitor_;
 };
 
-
-struct DeviceInfo {
-    gint width;
-    gint height;
-    gint fps_numerator;
-    gint fps_denominator;
-    std::string format;
-
-    DeviceInfo() {
-        width = 0;
-        height = 0;
-        fps_numerator = 1;
-        fps_denominator = 1;
-        format = "";
-    }
-
-    inline DeviceInfo& operator = (const DeviceInfo& b)
-    {
-        if (this != &b) {
-            this->width = b.width;
-            this->height = b.height;
-            this->fps_numerator = b.fps_numerator;
-            this->fps_denominator = b.fps_denominator;
-            this->format = b.format;
-        }
-        return *this;
-    }
-
-    inline bool operator < (const DeviceInfo b) const
-    {
-        return ( this->fps_numerator * this->height < b.fps_numerator * b.height );
-    }
-};
-
-struct better_device_comparator
-{
-    inline bool operator () (const DeviceInfo a, const DeviceInfo b) const
-    {
-        return (a < b);
-    }
-};
-
-typedef std::set<DeviceInfo, better_device_comparator> DeviceInfoSet;
 
 class DeviceSource : public StreamSource
 {
@@ -102,7 +108,6 @@ public:
 private:
     std::string device_;
 
-    DeviceInfoSet getDeviceConfigs(const std::string &pipeline);
 
 };
 
