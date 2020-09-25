@@ -23,7 +23,6 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
 {
    GstDevice *device;
    gchar *name;
-   gchar *stru;
 
    switch (GST_MESSAGE_TYPE (message)) {
      case GST_MESSAGE_DEVICE_ADDED: {
@@ -41,6 +40,9 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        DeviceConfigSet confs = getDeviceConfigs(pipe.str());
        manager().src_config_.push_back(confs);
 
+       manager().list_uptodate_ = false;
+
+//       gchar *stru;
 //       stru = gst_structure_to_string( gst_device_get_properties(device) );
 //       g_print("New device %s \n", stru);
 
@@ -53,6 +55,8 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        manager().remove(name);
 //       g_print("Device removed: %s\n", name);
        g_free (name);
+
+       manager().list_uptodate_ = false;
 
        gst_object_unref (device);
    }
@@ -126,7 +130,7 @@ Device::Device()
         src_config_.push_back(confs);
     }
     g_list_free(devices);
-
+    list_uptodate_ = true;
 }
 
 
@@ -139,6 +143,13 @@ bool Device::exists(const std::string &device) const
 {
     std::vector< std::string >::const_iterator d = std::find(src_name_.begin(), src_name_.end(), device);
     return d != src_name_.end();
+}
+
+bool Device::unplugged(const std::string &device) const
+{
+    if (list_uptodate_)
+        return false;
+    return !exists(device);
 }
 
 std::string Device::name(int index) const
@@ -240,7 +251,7 @@ void DeviceSource::accept(Visitor& v)
 
 bool DeviceSource::failed() const
 {
-    return stream_->failed() || !Device::manager().exists(device_);
+    return stream_->failed() || Device::manager().unplugged(device_);
 }
 
 

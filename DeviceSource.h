@@ -72,6 +72,7 @@ public:
     DeviceConfigSet config (int index) const;
 
     bool exists (const std::string &device) const;
+    bool unplugged (const std::string &device) const;
     int  index  (const std::string &device) const;
 
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
@@ -85,6 +86,7 @@ private:
     std::vector< DeviceConfigSet > src_config_;
     static DeviceConfigSet getDeviceConfigs(const std::string &src_description);
 
+    bool list_uptodate_;
     GstDeviceMonitor *monitor_;
 };
 

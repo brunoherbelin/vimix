@@ -31,8 +31,8 @@ Stream::Stream()
     description_ = "undefined";
     pipeline_ = nullptr;
 
-    width_ = 800;
-    height_ = 600;
+    width_ = -1;
+    height_ = -1;
     single_frame_ = false;
     live_ = false;
     ready_ = false;
@@ -76,9 +76,8 @@ void Stream::open(const std::string &gstreamer_description, int w, int h)
 {
     // set gstreamer pipeline source
     description_ = gstreamer_description;
-
-    if (w>0) width_ = w;
-    if (h>0) height_ = h;
+    width_ = w;
+    height_ = h;
 
     // close before re-openning
     if (isOpen())

@@ -29,7 +29,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, int w = -1, int h = -1);
+    void open(const std::string &gstreamer_description, int w = 1024, int h = 576);
     /**
      * Get description string
      * */
