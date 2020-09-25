@@ -45,6 +45,7 @@ public:
     void visit (RenderSource& s) override;
     void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
+    void visit (DeviceSource& s) override;
 
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
 };

@@ -221,10 +221,11 @@ void DeviceSource::setDevice(const std::string &devicename)
 
         // test the device and get config
         DeviceConfigSet confs = Device::manager().config(index);
-        //    for( DeviceInfoSet::iterator it = confs.begin(); it != confs.end(); it++ ){
-        //        Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
-        //    }
+//            for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); it++ ){
+//                Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
+//            }
         DeviceConfigSet::reverse_iterator best = confs.rbegin();
+        Log::Info("Auto select optimal config for '%s': %s %dx%d @ %d fps", device_.c_str(), (*best).format.c_str(), (*best).width, (*best).height, (*best).fps_numerator);
 
         pipeline << " ! " << (*best).format;
         pipeline << ",framerate=" << (*best).fps_numerator << "/" << (*best).fps_denominator;

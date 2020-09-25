@@ -118,6 +118,11 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 new_pattern_source->accept(*this);
                 session_->addSource(new_pattern_source);
             }
+            else if ( std::string(pType) == "DeviceSource") {
+                DeviceSource *new_pattern_source = new DeviceSource;
+                new_pattern_source->accept(*this);
+                session_->addSource(new_pattern_source);
+            }
             // TODO : create other types of source
 
         }
@@ -346,6 +351,12 @@ void SessionCreator::visit (PatternSource& s)
         tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
 
     s.setPattern(p, resolution);
+}
+
+void SessionCreator::visit (DeviceSource& s)
+{
+    const char *devname = xmlCurrent_->Attribute("device");
+    s.setDevice(devname);
 }
 
 

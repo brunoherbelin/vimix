@@ -8,6 +8,7 @@
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
+#include "DeviceSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
@@ -389,4 +390,10 @@ void SessionVisitor::visit (PatternSource& s)
     XMLElement *resolution = xmlDoc_->NewElement("resolution");
     resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
     xmlCurrent_->InsertEndChild(resolution);
+}
+
+void SessionVisitor::visit (DeviceSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "DeviceSource");
+    xmlCurrent_->SetAttribute("device", s.device().c_str() );
 }
