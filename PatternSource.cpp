@@ -109,7 +109,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     case 17:
     {
         std::ostringstream oss;
-        oss << " kx2=" << (int)(aspectRatio() * 10.f) << " ky2=10 kt=4";
+        oss << " kx2=" << (int)(res.x * 10.f / res.y) << " ky2=10 kt=4";
         gstreamer_pattern += oss.str(); // Zone plate
     }
         break;
