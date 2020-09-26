@@ -178,7 +178,7 @@ bool UserInterface::Init()
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
     //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  float(Rendering::manager().mainWindow().maxHeight()) / 100.f ;
+    float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
@@ -2336,27 +2336,33 @@ void Navigator::RenderMainPannel()
         if (b || o || g)
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-        // Bottom aligned Logo & About
         static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-        static float h = 4.f * ImGui::GetTextLineHeightWithSpacing();
-        if ( ImGui::GetCursorPosY() + h + 128.f < height_ ) {
-            ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -h - 128.f));
-            ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
+        static float height_about = 3.f * ImGui::GetTextLineHeightWithSpacing();
+        bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
+        bool show_about = ImGui::GetCursorPosY() + height_about < height_ ;
+
+        // Bottom aligned About buttons
+        if ( show_about) {
+            // Bottom aligned Logo
+            if ( show_icon ) {
+                ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -height_about - 128.f));
+                ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
+            }
+            else {
+                ImGui::SetCursorPosY(height_ -height_about);
+            }
+            ImGui::Spacing();
+            if ( ImGui::Button( ICON_FA_CROW " vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+                UserInterface::manager().show_vimix_config = true;
+            if ( ImGui::Button("    ImGui    "))
+                UserInterface::manager().show_imgui_about = true;
+            ImGui::SameLine();
+            if ( ImGui::Button(" GStreamer "))
+                UserInterface::manager().show_gst_about = true;
+            ImGui::SameLine();
+            if ( ImGui::Button("OpenGL", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+                UserInterface::manager().show_opengl_about = true;
         }
-        else {
-            ImGui::SetCursorPosY(height_ -h);
-        }
-        ImGui::Spacing();
-        if ( ImGui::Button( ICON_FA_CROW " vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            UserInterface::manager().show_vimix_config = true;
-        if ( ImGui::Button("    ImGui    "))
-            UserInterface::manager().show_imgui_about = true;
-        ImGui::SameLine();
-        if ( ImGui::Button(" GStreamer "))
-            UserInterface::manager().show_gst_about = true;
-        ImGui::SameLine();
-        if ( ImGui::Button("OpenGL", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-            UserInterface::manager().show_opengl_about = true;
 
     }
     ImGui::End();

@@ -67,8 +67,8 @@ public:
     int height();
     // get aspect ratio of rendering area
     float aspectRatio();
-    // get total height available in monitor
-    int maxHeight();
+    // get number of pixels to render X milimeters in height
+    int pixelsforRealHeight(float milimeters);
 
     inline float dpiScale() const { return dpi_scale_; }
 

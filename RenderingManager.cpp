@@ -503,6 +503,8 @@ GLFWmonitor *RenderingWindow::monitor()
     int x, y;
     glfwGetWindowPos(window_, &x, &y);
 
+    Log::Info("testing window monitor at %d %d", x, y );
+
     return monitorAt(x, y);
 }
 
@@ -554,9 +556,18 @@ int RenderingWindow::height()
      return window_attributes_.viewport.y;
 }
 
-int RenderingWindow::maxHeight()
+int RenderingWindow::pixelsforRealHeight(float milimeters)
 {
-    return static_cast<int>( static_cast<float>(glfwGetVideoMode(monitor())->height) * dpi_scale_);
+    GLFWmonitor *mo = monitor();
+
+    int mm_w = 0;
+    int mm_h = 0;
+    glfwGetMonitorPhysicalSize(mo, &mm_w, &mm_h);
+
+    float pixels = milimeters * static_cast<float>(glfwGetVideoMode(mo)->height) / static_cast<float>(mm_h);
+    pixels *= dpi_scale_;
+
+    return static_cast<int>( pixels );
 }
 
 float RenderingWindow::aspectRatio()
@@ -583,9 +594,13 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         Log::Error("Failed to create GLFW Window %d", id_);
         return false;
     }
+    Log::Info("Window size %d %d", winset.w, winset.h);
+
 
     // set position
     glfwSetWindowPos(window_, winset.x, winset.y);
+
+    Log::Info("Window position %d %d", winset.x, winset.y);
 
     /// CALLBACKS
     // store global ref to pointers (used by callbacks)
@@ -615,6 +630,8 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
     // DPI scaling (retina)
     dpi_scale_ = float(window_attributes_.viewport.y) / float(winset.h);
+
+    Log::Info("Window Frame Buffer sixe %d %d", window_attributes_.viewport.x, window_attributes_.viewport.y);
 
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
