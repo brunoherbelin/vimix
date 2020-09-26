@@ -149,6 +149,7 @@ void Stream::execute_open()
         callbacks.new_preroll = callback_new_preroll;
         callbacks.eos = NULL;
         callbacks.new_sample = NULL;
+        Log::Info("Stream %d contains a single frame", id_);
     }
     else {
         callbacks.new_preroll = callback_new_preroll;

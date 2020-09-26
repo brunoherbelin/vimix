@@ -17,6 +17,53 @@
 #include "Visitor.h"
 #include "Log.h"
 
+#ifndef NDEBUG
+#define DEVICE_DEBUG
+#endif
+
+////EXAMPLE :
+///
+//v4l2deviceprovider, udev-probed=(boolean)true,
+//device.bus_path=(string)pci-0000:00:14.0-usb-0:2:1.0,
+//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/video4linux/video0,
+//device.bus=(string)usb,
+//device.subsystem=(string)video4linux,
+//device.vendor.id=(string)1bcf,
+//device.vendor.name=(string)"Sunplus\\x20IT\\x20Co\\x20",
+//device.product.id=(string)2286,
+//device.product.name=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
+//device.serial=(string)Sunplus_IT_Co_AUSDOM_FHD_Camera,
+//device.capabilities=(string):capture:,
+//device.api=(string)v4l2,
+//device.path=(string)/dev/video0,
+//v4l2.device.driver=(string)uvcvideo,
+//v4l2.device.card=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
+//v4l2.device.bus_info=(string)usb-0000:00:14.0-2,
+//v4l2.device.version=(uint)328748,
+//v4l2.device.capabilities=(uint)2225078273,
+//v4l2.device.device_caps=(uint)69206017;
+//Device added: AUSDOM FHD Camera: AUSDOM FHD C - v4l2src device=/dev/video0
+
+//v4l2deviceprovider, udev-probed=(boolean)true,
+//device.bus_path=(string)pci-0000:00:14.0-usb-0:4:1.0,
+//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4:1.0/video4linux/video2,
+//device.bus=(string)usb,
+//device.subsystem=(string)video4linux,
+//device.vendor.id=(string)046d,
+//device.vendor.name=(string)046d,
+//device.product.id=(string)080f,
+//device.product.name=(string)"UVC\ Camera\ \(046d:080f\)",
+//device.serial=(string)046d_080f_3EA77580,
+//device.capabilities=(string):capture:,
+//device.api=(string)v4l2,
+//device.path=(string)/dev/video2,
+//v4l2.device.driver=(string)uvcvideo,
+//v4l2.device.card=(string)"UVC\ Camera\ \(046d:080f\)",
+//v4l2.device.bus_info=(string)usb-0000:00:14.0-4,
+//v4l2.device.version=(uint)328748,
+//v4l2.device.capabilities=(uint)2225078273,
+//v4l2.device.device_caps=(uint)69206017; // decimal of hexadecimal v4l code Device Caps      : 0x04200001
+//Device added: UVC Camera (046d:080f) - v4l2src device=/dev/video2
 
 gboolean
 Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer user_data)
@@ -29,6 +76,11 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        gst_message_parse_device_added (message, &device);
        name = gst_device_get_display_name (device);
        manager().src_name_.push_back(name);
+#ifdef DEVICE_DEBUG
+       gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
+       g_print("Device %s plugged : %s", name, stru);
+       g_free (stru);
+#endif
        g_free (name);
 
        std::ostringstream pipe;
@@ -42,10 +94,6 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
 
        manager().list_uptodate_ = false;
 
-//       gchar *stru;
-//       stru = gst_structure_to_string( gst_device_get_properties(device) );
-//       g_print("New device %s \n", stru);
-
        gst_object_unref (device);
    }
        break;
@@ -53,7 +101,9 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        gst_message_parse_device_removed (message, &device);
        name = gst_device_get_display_name (device);
        manager().remove(name);
-//       g_print("Device removed: %s\n", name);
+#ifdef DEVICE_DEBUG
+       g_print("Device %s unplugged", name);
+#endif
        g_free (name);
 
        manager().list_uptodate_ = false;
@@ -130,6 +180,22 @@ Device::Device()
         src_config_.push_back(confs);
     }
     g_list_free(devices);
+
+    // Add config for plugged screen
+    src_name_.push_back("Screen");
+    src_description_.push_back("ximagesrc ");
+    // Try to auto find resolution
+    DeviceConfigSet confs = getDeviceConfigs("ximagesrc name=devsrc");
+    // fix the framerate (otherwise at 1 FPS
+    DeviceConfig best = *confs.rbegin();
+    DeviceConfigSet confscreen;
+    best.fps_numerator = 15;
+    confscreen.insert(best);
+    src_config_.push_back(confscreen);
+
+    // TODO Use lib glfw to get monitors
+    // TODO Detect auto removal of monitors
+
     list_uptodate_ = true;
 }
 
@@ -186,21 +252,10 @@ int  Device::index(const std::string &device) const
     return i;
 }
 
-
-////    std::string desc = "v4l2src ! video/x-raw,width=320,height=240,framerate=30/1 ! videoconvert";
-////    std::string desc = "v4l2src ! jpegdec ! videoconvert";
-//    std::string desc = "v4l2src ! image/jpeg,width=640,height=480,framerate=30/1 ! jpegdec ! videoscale ! videoconvert";
-
-////        std::string desc = "v4l2src ! jpegdec ! videoscale ! videoconvert";
-
-////    std::string desc = "videotestsrc pattern=snow is-live=true ";
-////    std::string desc = "ximagesrc endx=800 endy=600 ! video/x-raw,framerate=15/1 ! videoscale ! videoconvert";
-
-
 DeviceSource::DeviceSource() : StreamSource()
 {
     // create stream
-    stream_ = (Stream *) new Stream();
+    stream_ = new Stream;
 
     // set icons TODO
     overlays_[View::MIXING]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
@@ -220,24 +275,30 @@ void DeviceSource::setDevice(const std::string &devicename)
         pipeline << Device::manager().description(index);
 
         // test the device and get config
-        DeviceConfigSet confs = Device::manager().config(index);
-//            for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); it++ ){
-//                Log::Info("config possible : %s %dx%d @ %d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
-//            }
-        DeviceConfigSet::reverse_iterator best = confs.rbegin();
-        Log::Info("Auto select optimal config for '%s': %s %dx%d @ %d fps", device_.c_str(), (*best).format.c_str(), (*best).width, (*best).height, (*best).fps_numerator);
+        DeviceConfigSet confs = Device::manager().config(index);        
+#ifdef DEVICE_DEBUG
+        Log::Info("Device %s supported configs:", devicename.c_str());
+        for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); it++ ){
+            Log::Info(" - %s,\t%d x %d\t%d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
+        }
+#endif
+        DeviceConfig best = *confs.rbegin();
+        Log::Info("Device %s selected its optimal config: %s %dx%d@%dfps", device_.c_str(), best.format.c_str(), best.width, best.height, best.fps_numerator);
 
-        pipeline << " ! " << (*best).format;
-        pipeline << ",framerate=" << (*best).fps_numerator << "/" << (*best).fps_denominator;
-        pipeline << ",width=" << (*best).width;
-        pipeline << ",height=" << (*best).height;
+        pipeline << " ! " << best.format;
+        pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+        pipeline << ",width=" << best.width;
+        pipeline << ",height=" << best.height;
 
-        if ( (*best).format.find("jpeg") != std::string::npos )
+        if ( best.format.find("jpeg") != std::string::npos )
             pipeline << " ! jpegdec";
+
+        if ( device_.find("Screen") != std::string::npos )
+            pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue";
 
         pipeline << " ! videoconvert";
 
-        stream_->open( pipeline.str(), (*best).width, (*best).height);
+        stream_->open( pipeline.str(), best.width, best.height);
         stream_->play(true);
     }
     else
@@ -293,7 +354,13 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                 // loop over all caps offered by the pad
                 int C = gst_caps_get_size(device_caps);
                 for (int c = 0; c < C; ++c) {
+                    // get GST cap
                     GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
+//                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
+//                    Log::Info("DeviceSource found cap struct %s", capstext);
+//                    g_free(capstext);
+
+                    // fill our config
                     DeviceConfig config;
 
                     // NAME : typically video/x-raw or image/jpeg
@@ -339,9 +406,6 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                     if ( gst_structure_has_field (decice_cap_struct, "height"))
                         gst_structure_get_int (decice_cap_struct, "height", &config.height);
 
-//                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
-//                    Log::Info("DeviceSource found cap struct %s", capstext);
-//                    g_free(capstext);
 
                     // add this config
                     configs.insert(config);

@@ -23,9 +23,6 @@ std::list<std::string> all_plugin_features(std::string pluginname);
 
 bool enable_feature (std::string name, bool enable);
 
-
-GstDeviceMonitor *setup_raw_video_source_device_monitor();
-
 }
 
 #endif // __GSTGUI_TOOLKIT_H_
