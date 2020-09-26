@@ -36,12 +36,11 @@
 //    spokes (22) – Spokes
 //    gradient (23) – Gradient
 //    colors (24) – Colors
-const char* pattern_internal_[25] = { "videotestsrc pattern=black",
+const char* pattern_internal_[23] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=white",
-                                      "frei0r-src-test-pat-l",
                                       "videotestsrc pattern=gradient",
                                       "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
-                                      "frei0r-src-test-pat-g",
+                                      "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert",
                                       "videotestsrc pattern=circular",
                                       "videotestsrc pattern=pinwheel",
                                       "videotestsrc pattern=spokes",
@@ -49,7 +48,6 @@ const char* pattern_internal_[25] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=green",
                                       "videotestsrc pattern=blue",
                                       "videotestsrc pattern=smpte100",
-                                      "frei0r-src-test-pat-c",
                                       "videotestsrc pattern=colors",
                                       "videotestsrc pattern=smpte",
                                       "videotestsrc pattern=snow",
@@ -65,10 +63,9 @@ const char* pattern_internal_[25] = { "videotestsrc pattern=black",
 
 std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "100% White",
-                                         "Gray bars",
                                          "Gradient",
                                          "Checkers 1x1 px",
-                                         "Checkerboard",
+                                         "Checkers 8x8 px",
                                          "Circles",
                                          "Pinwheel",
                                          "Spokes",
@@ -76,7 +73,6 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "100% Green",
                                          "100% Blue",
                                          "Color bars",
-                                         "Color Gradient",
                                          "Color grid",
                                          "SMPTE test pattern",
                                          "Television snow",
@@ -103,14 +99,14 @@ glm::ivec2 Pattern::resolution()
 
 void Pattern::open( uint pattern, glm::ivec2 res )
 {
-    type_ = CLAMP(pattern, 0, 25);
+    type_ = CLAMP(pattern, 0, 22);
     std::string gstreamer_pattern = pattern_internal_[type_];
 
     // there is always a special case...
     switch(type_)
     {
-    case 18:
-    case 19:
+    case 16:
+    case 17:
     {
         std::ostringstream oss;
         oss << " kx2=" << (int)(aspectRatio() * 10.f) << " ky2=10 kt=4";
@@ -122,7 +118,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     }
 
     // all patterns before index are single frames (not animated)
-    single_frame_ = type_ < 15;
+    single_frame_ = type_ < 13;
 
     // (private) open stream
     Stream::open(gstreamer_pattern, res.x, res.y);

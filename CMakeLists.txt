@@ -459,15 +459,14 @@ IF(APPLE)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # install locally recompiled gst-plugins-bad
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/x265/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.16.2/build/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-
-
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/ext/x265/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/gst/frei0r/libgstfrei0r.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 
     # package runtime fixup bundle
     install(CODE "
