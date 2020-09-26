@@ -502,9 +502,6 @@ GLFWmonitor *RenderingWindow::monitor()
     // pick at the coordinates given or at pos of window
     int x, y;
     glfwGetWindowPos(window_, &x, &y);
-
-    Log::Info("testing window monitor at %d %d", x, y );
-
     return monitorAt(x, y);
 }
 
@@ -594,13 +591,9 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
         Log::Error("Failed to create GLFW Window %d", id_);
         return false;
     }
-    Log::Info("Window size %d %d", winset.w, winset.h);
-
 
     // set position
     glfwSetWindowPos(window_, winset.x, winset.y);
-
-    Log::Info("Window position %d %d", winset.x, winset.y);
 
     /// CALLBACKS
     // store global ref to pointers (used by callbacks)
@@ -630,8 +623,6 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
     // DPI scaling (retina)
     dpi_scale_ = float(window_attributes_.viewport.y) / float(winset.h);
-
-    Log::Info("Window Frame Buffer sixe %d %d", window_attributes_.viewport.x, window_attributes_.viewport.y);
 
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);

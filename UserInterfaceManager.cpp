@@ -1834,8 +1834,9 @@ void SourcePreview::Render(float width, bool controlbutton)
             source_->render();
 
             // draw preview
-            ImVec2 preview_size(width, width / source_->frame()->aspectRatio());
-            ImGui::Image((void*)(uintptr_t) source_->frame()->texture(), preview_size);
+            FrameBuffer *frame = source_->frame();
+            ImVec2 preview_size(width, width / frame->aspectRatio());
+            ImGui::Image((void*)(uintptr_t) frame->texture(), preview_size);
 
             if (controlbutton && source_->ready()) {
                 ImVec2 pos = ImGui::GetCursorPos();
@@ -1845,6 +1846,7 @@ void SourcePreview::Render(float width, bool controlbutton)
                 ImGui::SetCursorPos(pos);
             }
             ImGui::Text("%s ", label_.c_str());
+            ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
         }
     }
 }
