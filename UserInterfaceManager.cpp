@@ -1979,7 +1979,7 @@ void Navigator::RenderNewPannel()
                 ImGui::EndCombo();
             }
         }
-        // Software Source creator
+        // Internal Source creator
         else if (Settings::application.source.new_type == 1){
 
             ImGui::SetCursorPosY(2.f * width_);
@@ -2008,7 +2008,7 @@ void Navigator::RenderNewPannel()
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.");
         }
-        // Software Source creator
+        // Generated Source creator
         else if (Settings::application.source.new_type == 2){
 
             ImGui::SetCursorPosY(2.f * width_);
@@ -2031,7 +2031,7 @@ void Navigator::RenderNewPannel()
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source generated algorithmically.");
 
-            // resolution (if pattern selected
+            // resolution (if pattern selected)
             if (pattern_type > 0) {
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 if (ImGui::Combo("Ratio", &Settings::application.source.ratio,

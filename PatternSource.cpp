@@ -36,7 +36,7 @@
 //    spokes (22) – Spokes
 //    gradient (23) – Gradient
 //    colors (24) – Colors
-const char* pattern_internal_[23] = { "videotestsrc pattern=black",
+const char* pattern_internal_[24] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=white",
                                       "videotestsrc pattern=gradient",
                                       "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
@@ -57,6 +57,7 @@ const char* pattern_internal_[23] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=bar horizontal-speed=5",
                                       "videotestsrc pattern=ball",
                                       "frei0r-src-ising0r",
+                                      "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
                                       "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ",
                                       "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
                                     };
@@ -82,6 +83,7 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "Moving bar",
                                          "Moving ball",
                                          "Blob",
+                                         "Lissajous",
                                          "Timer",
                                          "Clock"
                                        };
@@ -99,7 +101,7 @@ glm::ivec2 Pattern::resolution()
 
 void Pattern::open( uint pattern, glm::ivec2 res )
 {
-    type_ = CLAMP(pattern, 0, 22);
+    type_ = CLAMP(pattern, 0, 23);
     std::string gstreamer_pattern = pattern_internal_[type_];
 
     // there is always a special case...
