@@ -24,6 +24,8 @@ public:
     virtual void draw ();
 
     virtual void zoom (float) {}
+    virtual void resize (int) {}
+    virtual int  size () { return 0; }
     virtual void recenter();
     virtual void centerSource(Source *) {}
 
@@ -91,6 +93,8 @@ public:
     void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
+    void resize (int) override;
+    int  size () override;
     void centerSource(Source *) override;
     void selectAll() override;
 
@@ -140,6 +144,8 @@ public:
     void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
+    void resize (int) override;
+    int  size () override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
@@ -166,6 +172,8 @@ public:
 
     void update (float dt) override;
     void zoom (float factor) override;
+    void resize (int) override;
+    int  size () override;
 
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;

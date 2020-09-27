@@ -301,6 +301,21 @@ void MixingView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
+void MixingView::resize ( int scale )
+{
+    float z = 0.01f * (float) scale;
+    z *= MIXING_MAX_SCALE - MIXING_MIN_SCALE;
+    z += MIXING_MIN_SCALE;
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+int  MixingView::size ()
+{
+    float z = (scene.root()->scale_.x - MIXING_MIN_SCALE) / (MIXING_MAX_SCALE - MIXING_MIN_SCALE);
+    return (int) (z * 100.f);
+}
+
 void MixingView::centerSource(Source *s)
 {
     // setup view so that the center of the source ends at screen coordinates (650, 150)
@@ -728,6 +743,20 @@ void GeometryView::zoom( float factor )
     scene.root()->scale_.y = z;
 }
 
+void GeometryView::resize ( int scale )
+{
+    float z = 0.01f * (float) scale;
+    z *= GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE;
+    z += GEOMETRY_MIN_SCALE;
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+int  GeometryView::size ()
+{
+    float z = (scene.root()->scale_.x - GEOMETRY_MIN_SCALE) / (GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE);
+    return (int) (z * 100.f);
+}
 
 void GeometryView::draw()
 {
@@ -1202,6 +1231,20 @@ void LayerView::zoom (float factor)
     scene.root()->scale_.y = z;
 }
 
+void LayerView::resize ( int scale )
+{
+    float z = 0.01f * (float) scale;
+    z *= LAYER_MAX_SCALE - LAYER_MIN_SCALE;
+    z += LAYER_MIN_SCALE;
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+int  LayerView::size ()
+{
+    float z = (scene.root()->scale_.x - LAYER_MIN_SCALE) / (LAYER_MAX_SCALE - LAYER_MIN_SCALE);
+    return (int) (z * 100.f);
+}
 
 float LayerView::setDepth(Source *s, float d)
 {

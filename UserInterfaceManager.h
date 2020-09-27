@@ -41,6 +41,7 @@ class Navigator
 
     // behavior pannel
     bool pannel_visible_;
+    bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
     void clearButtonSelection();
@@ -51,7 +52,7 @@ class Navigator
     void RenderMainPannel();
     void RenderTransitionPannel();
     void RenderNewPannel();
-    char file_browser_path_[2048];
+    void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
 
     SourcePreview new_source_preview_;
 

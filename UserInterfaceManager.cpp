@@ -1553,6 +1553,8 @@ Navigator::Navigator()
     padding_width_ = 100;
 
     // clean start
+    pannel_visible_ = false;
+    view_pannel_visible = false;
     clearButtonSelection();
 }
 
@@ -1574,7 +1576,6 @@ void Navigator::clearButtonSelection()
         selected_button[i] = false;
 
     // clear new source pannel
-    sprintf(file_browser_path_, " ");
     new_source_preview_.setSource();
     pattern_type = -1;
 }
@@ -1606,6 +1607,7 @@ void Navigator::hidePannel()
 {
     clearButtonSelection();
     pannel_visible_ = false;
+    view_pannel_visible = false;
 }
 
 void Navigator::Render()
@@ -1699,21 +1701,28 @@ void Navigator::Render()
     {
         bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
+        int previous_view = Settings::application.current_view;
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
         {
             Mixer::manager().setView(View::MIXING);
+            view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             Mixer::manager().setView(View::GEOMETRY);
+            view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
+            view_pannel_visible = previous_view == Settings::application.current_view;
         }
 
     }
     ImGui::End();
+
+    if ( view_pannel_visible && !pannel_visible_ )
+        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_, height_ - sourcelist_height_) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
@@ -1739,9 +1748,46 @@ void Navigator::Render()
         {
             RenderSourcePannel(Mixer::manager().currentSource());
         }
+        view_pannel_visible = false;
     }
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
+
+}
+
+
+void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
+{
+    ImGui::SetNextWindowPos( draw_pos, ImGuiCond_Always );
+    ImGui::SetNextWindowSize( draw_size, ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
+    if (ImGui::Begin("##ViewPannel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        bool dumm = true;
+        ImGui::SetCursorPosX(10.f);
+        ImGui::SetCursorPosY(10.f);
+        if (ImGuiToolkit::IconToggle(4,7,5,7, &dumm)) {
+            // reset zoom
+            Mixer::manager().view((View::Mode)Settings::application.current_view)->recenter();
+        }
+
+        draw_size.x *= 0.5;
+        ImGui::SetCursorPosX( 10.f);
+        draw_size.y -= ImGui::GetCursorPosY() + 10.f;
+        int percent_zoom = Mixer::manager().view((View::Mode)Settings::application.current_view)->size();
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14, 0.14, 0.14, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.1, 0.1, 0.1, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.1, 0.1, 0.1, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.9, 0.9, 0.9, 0.95));
+        if (ImGui::VSliderInt("##z", draw_size, &percent_zoom, 0, 100, "") )
+        {
+            Mixer::manager().view((View::Mode)Settings::application.current_view)->resize(percent_zoom);
+        }
+        ImGui::PopStyleColor(4);
+        if (ImGui::IsItemActive() || ImGui::IsItemHovered())
+            ImGui::SetTooltip("Zoom %d %%", percent_zoom);
+        ImGui::End();
+    }
 
 }
 
