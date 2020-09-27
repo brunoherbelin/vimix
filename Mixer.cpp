@@ -779,7 +779,7 @@ void Mixer::clear()
 void Mixer::set(Session *s)
 {
     if ( s == nullptr ) {
-        Log::Warning("Failed to load Session.");
+        Log::Warning("Session loading cancelled.");
         return;
     }
 
