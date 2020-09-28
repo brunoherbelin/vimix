@@ -115,16 +115,6 @@ class UserInterface
     bool show_opengl_about;
     unsigned int screenshot_step;
 
-
-//    typedef enum {
-//        FILE_DIALOG_INACTIVE = 0,
-//        FILE_DIALOG_ACTIVE,
-//        FILE_DIALOG_FINISHED
-//    } FileDialogStatus;
-//    FileDialogStatus filestatus_;
-//    std::string filename_;
-//    void startOpenFileDialog();
-
     // Private Constructor
     UserInterface();
     UserInterface(UserInterface const& copy);            // Not Implemented

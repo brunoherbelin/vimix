@@ -1775,9 +1775,9 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
         ImGui::SetCursorPosX( 10.f);
         draw_size.y -= ImGui::GetCursorPosY() + 10.f;
         int percent_zoom = Mixer::manager().view((View::Mode)Settings::application.current_view)->size();
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14, 0.14, 0.14, 0.95));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.1, 0.1, 0.1, 0.95));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.1, 0.1, 0.1, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1, 0.1, 0.1, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14, 0.14, 0.14, 0.95));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.14, 0.14, 0.14, 0.95));
         ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.9, 0.9, 0.9, 0.95));
         if (ImGui::VSliderInt("##z", draw_size, &percent_zoom, 0, 100, "") )
         {

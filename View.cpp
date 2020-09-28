@@ -220,7 +220,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
         // no settings found: store application default
         Settings::application.views[mode_].name = "Mixing";
         scene.root()->scale_ = glm::vec3(MIXING_DEFAULT_SCALE, MIXING_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.0f, 0.0f, 0.0f);
+        scene.root()->translation_ = glm::vec3(0.0f, 0.0f, 0.0f);
         saveSettings();
     }
     else
@@ -280,6 +280,13 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     slider_->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
     slider_->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
     slider_root_->attach(slider_);
+
+
+//    stashCircle_ = new Disk();
+//    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
+//    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
+//    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
+//    scene.bg()->attach(stashCircle_);
 }
 
 
@@ -303,7 +310,8 @@ void MixingView::zoom( float factor )
 
 void MixingView::resize ( int scale )
 {
-    float z = 0.01f * (float) scale;
+    float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
+    z *= z;
     z *= MIXING_MAX_SCALE - MIXING_MIN_SCALE;
     z += MIXING_MIN_SCALE;
     scene.root()->scale_.x = z;
@@ -313,7 +321,7 @@ void MixingView::resize ( int scale )
 int  MixingView::size ()
 {
     float z = (scene.root()->scale_.x - MIXING_MIN_SCALE) / (MIXING_MAX_SCALE - MIXING_MIN_SCALE);
-    return (int) (z * 100.f);
+    return (int) ( sqrt(z) * 100.f);
 }
 
 void MixingView::centerSource(Source *s)
@@ -745,7 +753,8 @@ void GeometryView::zoom( float factor )
 
 void GeometryView::resize ( int scale )
 {
-    float z = 0.01f * (float) scale;
+    float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
+    z *= z;
     z *= GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE;
     z += GEOMETRY_MIN_SCALE;
     scene.root()->scale_.x = z;
@@ -755,7 +764,7 @@ void GeometryView::resize ( int scale )
 int  GeometryView::size ()
 {
     float z = (scene.root()->scale_.x - GEOMETRY_MIN_SCALE) / (GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE);
-    return (int) (z * 100.f);
+    return (int) ( sqrt(z) * 100.f);
 }
 
 void GeometryView::draw()
@@ -1233,7 +1242,8 @@ void LayerView::zoom (float factor)
 
 void LayerView::resize ( int scale )
 {
-    float z = 0.01f * (float) scale;
+    float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
+    z *= z;
     z *= LAYER_MAX_SCALE - LAYER_MIN_SCALE;
     z += LAYER_MIN_SCALE;
     scene.root()->scale_.x = z;
@@ -1243,7 +1253,7 @@ void LayerView::resize ( int scale )
 int  LayerView::size ()
 {
     float z = (scene.root()->scale_.x - LAYER_MIN_SCALE) / (LAYER_MAX_SCALE - LAYER_MIN_SCALE);
-    return (int) (z * 100.f);
+    return (int) ( sqrt(z) * 100.f);
 }
 
 float LayerView::setDepth(Source *s, float d)

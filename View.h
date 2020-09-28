@@ -5,6 +5,7 @@
 
 #include "Scene.h"
 #include "FrameBuffer.h"
+
 class Source;
 class SessionSource;
 class Surface;
@@ -113,7 +114,11 @@ private:
     class Disk *slider_;
     class Disk *button_white_;
     class Disk *button_black_;
+    class Disk *stashCircle_;
     class Mesh *mixingCircle_;
+
+
+//    SourceList shash_;
 };
 
 class RenderView : public View
