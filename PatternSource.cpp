@@ -42,6 +42,7 @@ const char* pattern_internal_[24] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
                                       "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert",
                                       "videotestsrc pattern=circular",
+                                      "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
                                       "videotestsrc pattern=pinwheel",
                                       "videotestsrc pattern=spokes",
                                       "videotestsrc pattern=red",
@@ -57,7 +58,6 @@ const char* pattern_internal_[24] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=bar horizontal-speed=5",
                                       "videotestsrc pattern=ball",
                                       "frei0r-src-ising0r",
-                                      "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
                                       "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ",
                                       "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
                                     };
@@ -68,6 +68,7 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "Checkers 1x1 px",
                                          "Checkers 8x8 px",
                                          "Circles",
+                                         "Lissajous",
                                          "Pinwheel",
                                          "Spokes",
                                          "100% Red",
@@ -83,7 +84,6 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "Moving bar",
                                          "Moving ball",
                                          "Blob",
-                                         "Lissajous",
                                          "Timer",
                                          "Clock"
                                        };
@@ -120,7 +120,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     }
 
     // all patterns before index are single frames (not animated)
-    single_frame_ = type_ < 13;
+    single_frame_ = type_ < 14;
 
     // (private) open stream
     Stream::open(gstreamer_pattern, res.x, res.y);
