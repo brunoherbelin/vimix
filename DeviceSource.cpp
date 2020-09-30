@@ -297,9 +297,9 @@ DeviceSource::DeviceSource() : StreamSource()
     // create stream
     stream_ = new Stream;
 
-    // set icons TODO
-    overlays_[View::MIXING]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::LAYER]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    // set icons
+    overlays_[View::MIXING]->attach( new Symbol(Symbol::CAMERA, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    overlays_[View::LAYER]->attach( new Symbol(Symbol::CAMERA, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
 void DeviceSource::setDevice(const std::string &devicename)
