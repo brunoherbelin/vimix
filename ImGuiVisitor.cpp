@@ -17,6 +17,7 @@
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
+#include "DeviceSource.h"
 #include "Settings.h"
 #include "Mixer.h"
 
@@ -355,12 +356,12 @@ void ImGuiVisitor::visit (CloneSource& s)
 
 void ImGuiVisitor::visit (PatternSource& s)
 {
-    ImGuiToolkit::Icon(13,5);
+    ImGuiToolkit::Icon(12,5);
     ImGui::SameLine(0, 10);
     ImGui::Text("Pattern");
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##Pattern", Pattern::pattern_types[s.pattern()->type()].c_str()) )
+    if (ImGui::BeginCombo("##Patterns", Pattern::pattern_types[s.pattern()->type()].c_str()) )
     {
         for (int p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
@@ -368,6 +369,31 @@ void ImGuiVisitor::visit (PatternSource& s)
             }
         }
         ImGui::EndCombo();
+    }
+}
+
+void ImGuiVisitor::visit (DeviceSource& s)
+{
+    ImGuiToolkit::Icon(2,14);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Device");
+
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##Hardware", s.device().c_str()))
+    {
+        for (int d = 0; d < Device::manager().numDevices(); ++d){
+            std::string namedev = Device::manager().name(d);
+            if (ImGui::Selectable( namedev.c_str() )) {
+                s.setDevice(namedev);
+            }
+        }
+        ImGui::EndCombo();
+    }
+    DeviceConfigSet confs = Device::manager().config( Device::manager().index(s.device().c_str()));
+    if ( !confs.empty()) {
+        DeviceConfig best = *confs.rbegin();
+        float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
+        ImGui::Text("%s %s %dx%d@%.1ffps", best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
     }
 }
 
