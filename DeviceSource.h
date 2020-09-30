@@ -12,6 +12,7 @@ struct DeviceConfig {
     gint height;
     gint fps_numerator;
     gint fps_denominator;
+    std::string stream;
     std::string format;
 
     DeviceConfig() {
@@ -19,6 +20,7 @@ struct DeviceConfig {
         height = 0;
         fps_numerator = 1;
         fps_denominator = 1;
+        stream = "";
         format = "";
     }
 
@@ -29,6 +31,7 @@ struct DeviceConfig {
             this->height = b.height;
             this->fps_numerator = b.fps_numerator;
             this->fps_denominator = b.fps_denominator;
+            this->stream = b.stream;
             this->format = b.format;
         }
         return *this;
@@ -36,7 +39,11 @@ struct DeviceConfig {
 
     inline bool operator < (const DeviceConfig b) const
     {
-        return ( this->fps_numerator * this->height < b.fps_numerator * b.height );
+        int formatscore = this->format.find("R") != std::string::npos ? 2 : 1; // best score for RGBx
+        int b_formatscore = b.format.find("R") != std::string::npos ? 2 : 1;
+        float fps = static_cast<float>(this->fps_numerator) / static_cast<float>(this->fps_denominator);
+        float b_fps = static_cast<float>(b.fps_numerator) / static_cast<float>(b.fps_denominator);
+        return ( fps * static_cast<float>(this->height * formatscore) < b_fps * static_cast<float>(b.height * b_formatscore));
     }
 };
 

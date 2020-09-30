@@ -21,6 +21,16 @@
 #define DEVICE_DEBUG
 #endif
 
+
+
+#if defined(APPLE)
+std::string gst_plugin_device = "avfvideosrc";
+std::string gst_plugin_vidcap = "avfvideosrc capture-screen=true";
+#else
+std::string gst_plugin_device = "v4l2src";
+std::string gst_plugin_vidcap = "ximagesrc";
+#endif
+
 ////EXAMPLE :
 ///
 //v4l2deviceprovider, udev-probed=(boolean)true,
@@ -65,8 +75,29 @@
 //v4l2.device.device_caps=(uint)69206017; // decimal of hexadecimal v4l code Device Caps      : 0x04200001
 //Device added: UVC Camera (046d:080f) - v4l2src device=/dev/video2
 
+std::string pipelineForDevice(GstDevice *device, uint index)
+{
+    std::ostringstream pipe;
+    const gchar *str = gst_structure_get_string(gst_device_get_properties(device), "device.api");
+
+    if (str && gst_plugin_device.find(str) != std::string::npos)
+    {
+        pipe << gst_plugin_device;
+
+#if defined(APPLE)
+        pipe << " device-index=" << index;
+#else
+        str = gst_structure_get_string(gst_device_get_properties(device), "device.path");
+        if (str)
+            pipe << " device=" << str;
+#endif
+    }
+
+    return pipe.str();
+}
+
 gboolean
-Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer user_data)
+Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
 {
    GstDevice *device;
    gchar *name;
@@ -75,21 +106,23 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
      case GST_MESSAGE_DEVICE_ADDED: {
        gst_message_parse_device_added (message, &device);
        name = gst_device_get_display_name (device);
+
+       // ignore if already in the list
+       if ( std::find(manager().src_name_.begin(), manager().src_name_.end(), name) != manager().src_name_.end())
+        break;
+
        manager().src_name_.push_back(name);
 #ifdef DEVICE_DEBUG
        gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
-       g_print("Device %s plugged : %s", name, stru);
+       g_print("\nDevice %s plugged : %s\n", name, stru);
        g_free (stru);
 #endif
        g_free (name);
 
-       std::ostringstream pipe;
-       pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
-       pipe << "src name=devsrc device=";
-       pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
-       manager().src_description_.push_back(pipe.str());
+       std::string p = pipelineForDevice(device, manager().src_description_.size());
+       manager().src_description_.push_back(p);
 
-       DeviceConfigSet confs = getDeviceConfigs(pipe.str());
+       DeviceConfigSet confs = getDeviceConfigs(p);
        manager().src_config_.push_back(confs);
 
        manager().list_uptodate_ = false;
@@ -102,7 +135,7 @@ Device::callback_device_monitor (GstBus * bus, GstMessage * message, gpointer us
        name = gst_device_get_display_name (device);
        manager().remove(name);
 #ifdef DEVICE_DEBUG
-       g_print("Device %s unplugged", name);
+       g_print("\nDevice %s unplugged\n", name);
 #endif
        g_free (name);
 
@@ -139,6 +172,7 @@ void Device::remove(const char *device)
     }
 }
 
+
 Device::Device()
 {
     GstBus *bus;
@@ -170,28 +204,34 @@ Device::Device()
         src_name_.push_back(name);
         g_free (name);
 
-        std::ostringstream pipe;
-        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.api");
-        pipe << "src name=devsrc device=";
-        pipe << gst_structure_get_string(gst_device_get_properties(device), "device.path");
-        src_description_.push_back(pipe.str());
+#ifdef DEVICE_DEBUG
+       gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
+       g_print("\nDevice %s already plugged : %s", name, stru);
+       g_free (stru);
+#endif
 
-        DeviceConfigSet confs = getDeviceConfigs(pipe.str());
+        std::string p = pipelineForDevice(device, src_description_.size());
+        src_description_.push_back(p);
+
+        DeviceConfigSet confs = getDeviceConfigs(p);
         src_config_.push_back(confs);
     }
     g_list_free(devices);
 
     // Add config for plugged screen
     src_name_.push_back("Screen");
-    src_description_.push_back("ximagesrc ");
+    src_description_.push_back(gst_plugin_vidcap);
+
     // Try to auto find resolution
-    DeviceConfigSet confs = getDeviceConfigs("ximagesrc name=devsrc");
-    // fix the framerate (otherwise at 1 FPS
-    DeviceConfig best = *confs.rbegin();
-    DeviceConfigSet confscreen;
-    best.fps_numerator = 15;
-    confscreen.insert(best);
-    src_config_.push_back(confscreen);
+    DeviceConfigSet confs = getDeviceConfigs(gst_plugin_vidcap);
+    if (!confs.empty()) {
+        // fix the framerate (otherwise at 1 FPS
+        DeviceConfig best = *confs.rbegin();
+        DeviceConfigSet confscreen;
+        best.fps_numerator = 15;
+        confscreen.insert(best);
+        src_config_.push_back(confscreen);
+    }
 
     // TODO Use lib glfw to get monitors
     // TODO Detect auto removal of monitors
@@ -220,7 +260,7 @@ bool Device::unplugged(const std::string &device) const
 
 std::string Device::name(int index) const
 {
-    if (index > -1 && index < src_name_.size())
+    if (index > -1 && index < (int) src_name_.size())
         return src_name_[index];
     else
         return "";
@@ -228,7 +268,7 @@ std::string Device::name(int index) const
 
 std::string Device::description(int index) const
 {
-    if (index > -1 && index < src_description_.size())
+    if (index > -1 && index < (int) src_description_.size())
         return src_description_[index];
     else
         return "";
@@ -236,7 +276,7 @@ std::string Device::description(int index) const
 
 DeviceConfigSet Device::config(int index) const
 {
-    if (index > -1 && index < src_config_.size())
+    if (index > -1 && index < (int) src_config_.size())
         return src_config_[index];
     else
         return DeviceConfigSet();
@@ -279,18 +319,21 @@ void DeviceSource::setDevice(const std::string &devicename)
 #ifdef DEVICE_DEBUG
         Log::Info("Device %s supported configs:", devicename.c_str());
         for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); it++ ){
-            Log::Info(" - %s,\t%d x %d\t%d fps", (*it).format.c_str(), (*it).width, (*it).height, (*it).fps_numerator);
+            float fps = static_cast<float>((*it).fps_numerator) / static_cast<float>((*it).fps_denominator);
+            Log::Info(" - %s %s %d x %d  %.1f fps", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
         }
 #endif
         DeviceConfig best = *confs.rbegin();
-        Log::Info("Device %s selected its optimal config: %s %dx%d@%dfps", device_.c_str(), best.format.c_str(), best.width, best.height, best.fps_numerator);
+        float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
+        Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
-        pipeline << " ! " << best.format;
+        pipeline << " ! " << best.stream;
+        pipeline << ",format=" << best.format;
         pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
         pipeline << ",width=" << best.width;
         pipeline << ",height=" << best.height;
 
-        if ( best.format.find("jpeg") != std::string::npos )
+        if ( best.stream.find("jpeg") != std::string::npos )
             pipeline << " ! jpegdec";
 
         if ( device_.find("Screen") != std::string::npos )
@@ -323,7 +366,7 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
 
     // create dummy pipeline to be tested
     std::string description = src_description;
-    description += " ! fakesink name=sink";
+    description += " name=devsrc ! fakesink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -356,15 +399,54 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                 for (int c = 0; c < C; ++c) {
                     // get GST cap
                     GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
-//                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
-//                    Log::Info("DeviceSource found cap struct %s", capstext);
-//                    g_free(capstext);
+#ifdef DEVICE_DEBUG
+                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
+                    g_print("\nDevice caps: %s", capstext);
+                    g_free(capstext);
+#endif
 
                     // fill our config
                     DeviceConfig config;
 
+                    // not managing opengl texture-target types
+                    // TODO: support input devices texture-target video/x-raw(memory:GLMemory) for improved pipeline
+                    if ( gst_structure_has_field (decice_cap_struct, "texture-target"))
+                        continue;
+
                     // NAME : typically video/x-raw or image/jpeg
-                    config.format = gst_structure_get_name (decice_cap_struct);
+                    config.stream = gst_structure_get_name (decice_cap_struct);
+
+                    // FORMAT : typically BGRA or YUVY
+                    if ( gst_structure_has_field (decice_cap_struct, "format")) {
+                        // get generic value
+                        const GValue *val = gst_structure_get_value(decice_cap_struct, "format");
+
+                        // if its a list of format string
+                        if ( GST_VALUE_HOLDS_LIST(val)) {
+                            int N = gst_value_list_get_size(val);
+                            for (int n = 0; n < N; n++ ){
+                                std::string f = gst_value_serialize( gst_value_list_get_value(val, n) );
+
+                                // preference order : 1) RGBx, 2) JPEG, 3) ALL OTHER
+                                // select f if it contains R (e.g. for RGBx) and not already RGB in config
+                                if ( (f.find("R") != std::string::npos) && (config.format.find("R") == std::string::npos ) ) {
+                                    config.format = f;
+                                    break;
+                                }
+                                // else keep f if it contains J (for JPEG) and not already JPG in config
+                                else if ( (f.find("J") != std::string::npos) && (config.format.find("J") == std::string::npos ) )
+                                    config.format = f;
+                                // default, take at least one if nothing yet in config
+                                else if ( config.format.empty() )
+                                    config.format = f;
+                            }
+
+                        }
+                        // single format
+                        else {
+                            config.format = gst_value_serialize(val);
+                        }
+                    }
 
                     // FRAMERATE : can be a fraction of a list of fractions
                     if ( gst_structure_has_field (decice_cap_struct, "framerate")) {
@@ -376,8 +458,13 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                             config.fps_numerator = gst_value_get_fraction_numerator(val);
                             config.fps_denominator= gst_value_get_fraction_denominator(val);
                         }
-                        // deal otherwise with a list of fractions
-                        else {
+                        // if its a range of fraction; take the max
+                        else if ( GST_VALUE_HOLDS_FRACTION_RANGE(val)) {
+                            config.fps_numerator = gst_value_get_fraction_numerator(gst_value_get_fraction_range_max(val));
+                            config.fps_denominator= gst_value_get_fraction_denominator(gst_value_get_fraction_range_max(val));
+                        }
+                        // deal otherwise with a list of fractions; find the max
+                        else if ( GST_VALUE_HOLDS_LIST(val)) {
                             gdouble fps_max = 1.0;
                             // loop over all fractions
                             int N = gst_value_list_get_size(val);
