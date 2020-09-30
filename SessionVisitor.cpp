@@ -2,8 +2,7 @@
 
 #include "Log.h"
 #include "Scene.h"
-#include "Primitives.h"
-#include "Mesh.h"
+#include "Decorations.h"
 #include "Source.h"
 #include "MediaSource.h"
 #include "SessionSource.h"

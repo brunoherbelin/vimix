@@ -1,7 +1,6 @@
 #include "PickingVisitor.h"
 
 #include "Log.h"
-#include "Primitives.h"
 #include "Decorations.h"
 
 #include "GlmToolkit.h"

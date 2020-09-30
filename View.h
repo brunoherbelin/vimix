@@ -7,6 +7,8 @@
 #include "FrameBuffer.h"
 
 class Source;
+typedef std::list<Source *> SourceList;
+
 class SessionSource;
 class Surface;
 
@@ -117,8 +119,6 @@ private:
     class Disk *stashCircle_;
     class Mesh *mixingCircle_;
 
-
-//    SourceList shash_;
 };
 
 class RenderView : public View

@@ -6,9 +6,7 @@
 
 #include "defines.h"
 #include "FrameBuffer.h"
-#include "Primitives.h"
 #include "Decorations.h"
-#include "Mesh.h"
 #include "Resource.h"
 #include "Session.h"
 #include "SearchVisitor.h"
@@ -335,9 +333,7 @@ void Source::update(float dt)
         // CHANGE update status based on limbo
         bool a = glm::length(dist) < 1.3f;
         setActive( a );
-        groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f) - ( a ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
-        // TODO : find a use for a dynamic scaling of mixing source?
-        //        groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f) - glm::vec3(0.03 * blendingshader_->color.a, 0.03 * blendingshader_->color.a, 0.f);
+        groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( a ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
 
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;

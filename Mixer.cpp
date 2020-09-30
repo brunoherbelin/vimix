@@ -382,10 +382,7 @@ void Mixer::deleteSource(Source *s)
         std::string name = s->name();
 
         // remove source Nodes from all views
-        mixing_.scene.ws()->detatch( s->group(View::MIXING) );
-        geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
-        layer_.scene.ws()->detatch( s->group(View::LAYER) );
-        transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
+        detach(s);
 
         // delete source
         session_->deleteSource(s);
@@ -403,6 +400,62 @@ void Mixer::deleteSource(Source *s)
     }
 }
 
+
+void Mixer::attach(Source *s)
+{
+    mixing_.scene.ws()->attach( s->group(View::MIXING) );
+    geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+    layer_.scene.ws()->attach( s->group(View::LAYER) );
+}
+
+void Mixer::detach(Source *s)
+{
+    mixing_.scene.ws()->detatch( s->group(View::MIXING) );
+    geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
+    layer_.scene.ws()->detatch( s->group(View::LAYER) );
+    transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
+}
+
+
+
+bool Mixer::concealed(Source *s)
+{
+    SourceList::iterator it = std::find(stash_.begin(), stash_.end(), s);
+    return it != stash_.end();
+}
+
+void Mixer::conceal(Source *s)
+{
+    if ( !concealed(s) ) {
+        // in case it was the current source...
+        unsetCurrentSource();
+
+        // in case it was selected..
+        selection().remove(s);
+
+        // store to stash
+        stash_.push_front(s);
+
+        // remove from session
+        session_->removeSource(s);
+
+        // detach from scene workspace, and put only in mixing background
+        detach(s);
+        mixing_.scene.bg()->attach( s->group(View::MIXING) );
+    }
+}
+
+void Mixer::uncover(Source *s)
+{
+    SourceList::iterator it = std::find(stash_.begin(), stash_.end(), s);
+    if ( it != stash_.end() ) {
+        stash_.erase(it);
+
+        mixing_.scene.bg()->detatch( s->group(View::MIXING) );
+        attach(s);
+        session_->addSource(s);
+    }
+}
 
 void Mixer::deleteSelection()
 {
@@ -444,10 +497,10 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     if ( current_source_ == it )
         return;
 
-    // clear current (even if it is invalid)
+    // clear current (even if 'it' is invalid)
     unsetCurrentSource();
 
-    // change current if it is valid
+    // change current if 'it' is valid
     if ( it != session_->end() ) {
         current_source_ = it;
         current_source_index_ = session_->index(current_source_);
@@ -690,12 +743,7 @@ void Mixer::swap()
         selection().clear();
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-        {
-            mixing_.scene.ws()->detatch( (*source_iter)->group(View::MIXING) );
-            geometry_.scene.ws()->detatch( (*source_iter)->group(View::GEOMETRY) );
-            layer_.scene.ws()->detatch( (*source_iter)->group(View::LAYER) );
-            transition_.scene.ws()->detatch( (*source_iter)->group(View::TRANSITION) );
-        }
+            detach(*source_iter);
     }
 
     // swap back and front
@@ -708,11 +756,7 @@ void Mixer::swap()
 
     // attach new session's nodes to views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-    {
-        mixing_.scene.ws()->attach( (*source_iter)->group(View::MIXING) );
-        geometry_.scene.ws()->attach( (*source_iter)->group(View::GEOMETRY) );
-        layer_.scene.ws()->attach( (*source_iter)->group(View::LAYER) );
-    }
+        attach(*source_iter);
 
     // optional copy of views config
     mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );

@@ -562,7 +562,6 @@ int RenderingWindow::pixelsforRealHeight(float milimeters)
     glfwGetMonitorPhysicalSize(mo, &mm_w, &mm_h);
 
     float pixels = milimeters * static_cast<float>(glfwGetVideoMode(mo)->height) / static_cast<float>(mm_h);
-    pixels *= dpi_scale_;
 
     return static_cast<int>( pixels );
 }

@@ -7,19 +7,16 @@
 #include <list>
 
 #include "View.h"
-#include "Decorations.h"
 
 class ImageShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
-class Surface;
 class Session;
 class Frame;
-class Source;
+class Handles;
 class CloneSource;
 
-typedef std::list<Source *> SourceList;
 typedef std::list<CloneSource *> CloneList;
 
 class Source

@@ -6,7 +6,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Resource.h"
-#include "Primitives.h"
+#include "Decorations.h"
 #include "MediaPlayer.h"
 #include "Visitor.h"
 #include "Log.h"

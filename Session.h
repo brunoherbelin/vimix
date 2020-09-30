@@ -20,6 +20,10 @@ public:
     // delete the source s from the session
     SourceList::iterator deleteSource (Source *s);
 
+    // remove this source from the session
+    // Does not delete the source
+    void removeSource(Source *s);
+
     // get ptr to front most source and remove it from the session
     // Does not delete the source
     Source *popSource();

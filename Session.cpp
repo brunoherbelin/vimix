@@ -113,10 +113,17 @@ SourceList::iterator Session::addSource(Source *s)
     // lock before change
     access_.lock();
 
-    // insert the source in the rendering
-    render_.scene.ws()->attach(s->group(View::RENDERING));
-    // insert the source to the beginning of the list
-    sources_.push_front(s);
+    // find the source
+    SourceList::iterator its = find(s);
+    // ok, its NOT in the list !
+    if (its == sources_.end()) {
+
+        // insert the source in the rendering
+        render_.scene.ws()->attach(s->group(View::RENDERING));
+
+        // insert the source to the beginning of the list
+        sources_.push_front(s);
+    }
 
     // unlock access
     access_.unlock();
@@ -151,6 +158,29 @@ SourceList::iterator Session::deleteSource(Source *s)
     // return end of next element
     return its;
 }
+
+
+void Session::removeSource(Source *s)
+{
+    // lock before change
+    access_.lock();
+
+    // find the source
+    SourceList::iterator its = find(s);
+    // ok, its in the list !
+    if (its != sources_.end()) {
+
+        // remove Node from the rendering scene
+        render_.scene.ws()->detatch( s->group(View::RENDERING) );
+
+        // erase the source from the update list & get next element
+        sources_.erase(its);
+    }
+
+    // unlock access
+    access_.unlock();
+}
+
 
 Source *Session::popSource()
 {

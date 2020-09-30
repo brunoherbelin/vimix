@@ -15,6 +15,7 @@
 #include <iomanip>
 
 #include "View.h"
+#include "Mixer.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Session.h"
@@ -23,7 +24,7 @@
 #include "PickingVisitor.h"
 #include "BoundingBoxVisitor.h"
 #include "DrawVisitor.h"
-#include "Mesh.h"
+#include "Decorations.h"
 #include "Mixer.h"
 #include "UserInterfaceManager.h"
 #include "UpdateCallback.h"
@@ -282,10 +283,10 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     slider_root_->attach(slider_);
 
 
-//    stashCircle_ = new Disk();
-//    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-//    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
-//    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
+    stashCircle_ = new Disk();
+    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
+    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
+    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
 //    scene.bg()->attach(stashCircle_);
 }
 
@@ -461,12 +462,30 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 //        s->group(mode_)->translation_.y = s->group(mode_)->translation_.x * s->stored_status_->translation_.y / s->stored_status_->translation_.x;
 //    }
 
+//    // trying to enter stash
+//    if ( glm::distance( glm::vec2(s->group(mode_)->translation_), glm::vec2(stashCircle_->translation_)) < stashCircle_->scale_.x) {
+
+//        // refuse to put an active source in stash
+//        if (s->active())
+//            s->group(mode_)->translation_ = s->stored_status_->translation_;
+//        else {
+//            Mixer::manager().conceal(s);
+//            s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE) - glm::vec3(0.1f, 0.1f, 0.f);
+//        }
+//    }
+//    else if ( Mixer::manager().concealed(s) ) {
+//        Mixer::manager().uncover(s);
+//        s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE);
+//    }
+
     // request update
     s->touch();
 
     std::ostringstream info;
     if (s->active())
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
+    else if ( Mixer::manager().concealed(s) )
+        info << "Stashed";
     else
         info << "Inactive";
 

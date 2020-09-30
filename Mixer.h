@@ -67,6 +67,10 @@ public:
     View *view   (View::Mode m = View::INVALID);
     void setView (View::Mode m);
 
+    void conceal(Source *s);
+    void uncover(Source *s);
+    bool concealed(Source *s);
+
     // manipulate, load and save sessions
     inline Session *session () const { return session_; }
     void clear  ();
@@ -90,7 +94,10 @@ protected:
     void swap();
 
     SourceList candidate_sources_;
+    SourceList stash_;
     void insertSource(Source *s, View::Mode m = View::INVALID);
+    void attach(Source *s);
+    void detach(Source *s);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
