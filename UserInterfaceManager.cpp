@@ -1919,10 +1919,10 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 
-        static const char* origin_names[4] = { ICON_FA_FILE "    File",
-                                               ICON_FA_SITEMAP "  Internal",
+        static const char* origin_names[4] = { ICON_FA_PHOTO_VIDEO "  File",
+                                               ICON_FA_SYNC "   Internal",
                                                ICON_FA_COG "   Generated",
-                                               ICON_FA_CUBES "  External"
+                                               ICON_FA_PLUG "    External"
                                              };
         // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
         if (ImGui::Combo("Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
@@ -1934,7 +1934,7 @@ void Navigator::RenderNewPannel()
             ImGui::SetCursorPosY(2.f * width_);
 
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FILE_IMPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // launch async call to file dialog and get its future.
                 if (fileImportFileDialogs.empty()) {
                     fileImportFileDialogs.emplace_back(  std::async(std::launch::async, ImportFileDialog, Settings::application.recentImport.path) );
@@ -2029,7 +2029,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source generated algorithmically.");
+            ImGuiToolkit::HelpMarker("Create a source with graphics generated algorithmically.");
 
             // resolution (if pattern selected)
             if (pattern_type > 0) {
@@ -2077,7 +2077,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source images\nfrom external devices or network.");
+            ImGuiToolkit::HelpMarker("Create a source with images from external devices or network.");
 
         }
 

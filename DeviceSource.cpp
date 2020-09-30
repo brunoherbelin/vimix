@@ -328,7 +328,8 @@ void DeviceSource::setDevice(const std::string &devicename)
         Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
         pipeline << " ! " << best.stream;
-        pipeline << ",format=" << best.format;
+        if (!best.format.empty())
+            pipeline << ",format=" << best.format;
         pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
         pipeline << ",width=" << best.width;
         pipeline << ",height=" << best.height;
@@ -433,9 +434,6 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                                     config.format = f;
                                     break;
                                 }
-                                // else keep f if it contains J (for JPEG) and not already JPG in config
-                                else if ( (f.find("J") != std::string::npos) && (config.format.find("J") == std::string::npos ) )
-                                    config.format = f;
                                 // default, take at least one if nothing yet in config
                                 else if ( config.format.empty() )
                                     config.format = f;

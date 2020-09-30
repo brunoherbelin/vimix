@@ -317,7 +317,7 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
-    ImGuiToolkit::Icon(4,9);
+    ImGuiToolkit::Icon(3,16);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
 
