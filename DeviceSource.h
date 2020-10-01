@@ -7,6 +7,30 @@
 #include "GstToolkit.h"
 #include "StreamSource.h"
 
+class DeviceSource : public StreamSource
+{
+public:
+    DeviceSource();
+    ~DeviceSource();
+
+    // Source interface
+    bool failed() const override;
+    void accept (Visitor& v) override;
+
+    // StreamSource interface
+    Stream *stream() const override { return stream_; }
+
+    // specific interface
+    void setDevice(const std::string &devicename);
+    inline std::string device() const { return device_; }
+
+    glm::ivec2 icon() const override;
+
+private:
+    std::string device_;
+
+};
+
 struct DeviceConfig {
     gint width;
     gint height;
@@ -60,6 +84,8 @@ typedef std::set<DeviceConfig, better_device_comparator> DeviceConfigSet;
 
 class Device
 {
+    friend class DeviceSource;
+
     Device();
     Device(Rendering const& copy);            // Not Implemented
     Device& operator=(Rendering const& copy); // Not Implemented
@@ -78,9 +104,11 @@ public:
     std::string description (int index) const;
     DeviceConfigSet config (int index) const;
 
+    int  index   (const std::string &device) const;
     bool exists (const std::string &device) const;
     bool unplugged (const std::string &device) const;
-    int  index  (const std::string &device) const;
+
+    Source *createSource(const std::string &device) const;
 
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
     static DeviceConfigSet getDeviceConfigs(const std::string &src_description);
@@ -88,38 +116,15 @@ public:
 private:
 
     void remove(const char *device);
+
     std::vector< std::string > src_name_;
     std::vector< std::string > src_description_;
-
     std::vector< DeviceConfigSet > src_config_;
-
     bool list_uptodate_;
     GstDeviceMonitor *monitor_;
+
+    std::list< DeviceSource * > device_sources_;
 };
 
-
-class DeviceSource : public StreamSource
-{
-public:
-    DeviceSource();
-
-    // Source interface
-    bool failed() const override;
-    void accept (Visitor& v) override;
-
-    // StreamSource interface
-    Stream *stream() const override { return stream_; }
-
-    // specific interface
-    void setDevice(const std::string &devicename);
-    inline std::string device() const { return device_; }
-
-    glm::ivec2 icon() const override;
-
-private:
-    std::string device_;
-
-
-};
 
 #endif // DEVICESOURCE_H

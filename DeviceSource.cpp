@@ -251,6 +251,38 @@ bool Device::exists(const std::string &device) const
     return d != src_name_.end();
 }
 
+struct hasDevice: public std::unary_function<DeviceSource*, bool>
+{
+    inline bool operator()(const DeviceSource* elem) const {
+       return (elem && elem->device() == _d);
+    }
+    hasDevice(std::string d) : _d(d) { }
+private:
+    std::string _d;
+};
+
+Source *Device::createSource(const std::string &device) const
+{
+    Source *s = nullptr;
+
+    // find if a DeviceSource with this device is already registered
+    std::list< DeviceSource *>::const_iterator d = std::find_if(device_sources_.begin(), device_sources_.end(), hasDevice(device));
+
+    // if already registered, clone the device source
+    if ( d != device_sources_.end())  {
+        CloneSource *cs = (*d)->clone();
+        s = cs;
+    }
+    // otherwise, we are free to create a new device source
+    else {
+        DeviceSource *ds = new DeviceSource();
+        ds->setDevice(device);
+        s = ds;
+    }
+
+    return s;
+}
+
 bool Device::unplugged(const std::string &device) const
 {
     if (list_uptodate_)
@@ -302,6 +334,12 @@ DeviceSource::DeviceSource() : StreamSource()
     overlays_[View::LAYER]->attach( new Symbol(Symbol::CAMERA, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
+DeviceSource::~DeviceSource()
+{
+    // unregister this device source
+    Device::manager().device_sources_.remove(this);
+}
+
 void DeviceSource::setDevice(const std::string &devicename)
 {   
     device_ = devicename;
@@ -309,6 +347,9 @@ void DeviceSource::setDevice(const std::string &devicename)
 
     int index = Device::manager().index(device_);
     if (index > -1) {
+
+        // register this device source
+        Device::manager().device_sources_.push_back(this);
 
         // start filling in the gstreamer pipeline
         std::ostringstream pipeline;
@@ -359,7 +400,6 @@ bool DeviceSource::failed() const
 {
     return stream_->failed() || Device::manager().unplugged(device_);
 }
-
 
 DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
 {
