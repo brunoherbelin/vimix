@@ -114,6 +114,8 @@ public:
     void setDevice(const std::string &devicename);
     inline std::string device() const { return device_; }
 
+    glm::ivec2 icon() const override;
+
 private:
     std::string device_;
 

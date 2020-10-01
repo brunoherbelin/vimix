@@ -50,6 +50,14 @@ MediaPlayer *MediaSource::mediaplayer() const
     return mediaplayer_;
 }
 
+glm::ivec2 MediaSource::icon() const
+{
+    if (mediaplayer_->isImage())
+        return glm::ivec2(2, 9);
+    else
+        return glm::ivec2(18, 13);
+}
+
 bool MediaSource::failed() const
 {
     return mediaplayer_->failed();

@@ -1891,6 +1891,8 @@ void SourcePreview::Render(float width, bool controlbutton)
                     source_->setActive(active);
                 ImGui::SetCursorPos(pos);
             }
+            ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
+            ImGui::SameLine(0, 10);
             ImGui::Text("%s ", label_.c_str());
             ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
         }
@@ -2047,13 +2049,9 @@ void Navigator::RenderNewPannel()
             // create preview
             if (update_new_source)
             {
-                std::ostringstream oss;
-                oss << Pattern::pattern_types[pattern_type];
-
-                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);                
-                oss << " (" << res.x << " x " << res.y << " px)";
-
-                new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res), oss.str());
+                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res),
+                                               Pattern::pattern_types[pattern_type]);
             }
         }
         // Hardware

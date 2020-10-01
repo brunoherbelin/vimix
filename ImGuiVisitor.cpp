@@ -317,7 +317,7 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
-    ImGuiToolkit::Icon(3,16);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
 
@@ -338,7 +338,7 @@ void ImGuiVisitor::visit (SessionSource& s)
 
 void ImGuiVisitor::visit (RenderSource& s)
 {
-    ImGuiToolkit::Icon(19,1);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Rendering Output");
     if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
@@ -347,7 +347,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 
 void ImGuiVisitor::visit (CloneSource& s)
 {
-    ImGuiToolkit::Icon(9,2);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Clone");
     if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
@@ -356,7 +356,7 @@ void ImGuiVisitor::visit (CloneSource& s)
 
 void ImGuiVisitor::visit (PatternSource& s)
 {
-    ImGuiToolkit::Icon(12,5);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Pattern");
 
@@ -374,7 +374,7 @@ void ImGuiVisitor::visit (PatternSource& s)
 
 void ImGuiVisitor::visit (DeviceSource& s)
 {
-    ImGuiToolkit::Icon(2,14);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Device");
 

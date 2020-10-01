@@ -26,6 +26,8 @@ public:
     inline std::string path() const { return path_; }
     inline Session *session() const { return session_; }
 
+    glm::ivec2 icon() const override { return glm::ivec2(3, 16); }
+
 protected:
 
     void init() override;
@@ -53,6 +55,8 @@ public:
     bool failed() const override;
     uint texture() const override;
     void accept (Visitor& v) override;
+
+    glm::ivec2 icon() const override { return glm::ivec2(0, 2); }
 
 protected:
 

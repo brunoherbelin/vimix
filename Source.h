@@ -119,6 +119,7 @@ public:
         std::string _n;
     };
 
+    virtual glm::ivec2 icon() const { return glm::ivec2(12, 11); }
 
 protected:
     // name
@@ -189,6 +190,8 @@ public:
     CloneSource *clone() override;
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
+
+    glm::ivec2 icon() const override { return glm::ivec2(9, 2); }
 
 protected:
     // only Source class can create new CloneSource via clone();

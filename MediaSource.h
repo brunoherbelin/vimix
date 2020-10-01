@@ -24,6 +24,8 @@ public:
     std::string path() const;
     MediaPlayer *mediaplayer() const;
 
+    glm::ivec2 icon() const override;
+
 protected:
 
     void init() override;
