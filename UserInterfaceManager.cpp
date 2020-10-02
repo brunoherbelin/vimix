@@ -1830,9 +1830,15 @@ void Navigator::RenderSourcePannel(Source *s)
         // Action on source
         if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
-        if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
-            Mixer::manager().deleteSource(s);
-        }
+        if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+//            ImGui::OpenPopup("confirm_delete_popup");
+//        if (ImGui::BeginPopup("confirm_delete_popup"))
+//        {
+//            ImGui::Text("Delete '%s'", s->name().c_str());
+//            if (ImGui::Button( ICON_FA_BACKSPACE " Yes, delete"))
+                Mixer::manager().deleteSource(s);
+//            ImGui::EndPopup();
+//        }
     }
     ImGui::End();    
 }
