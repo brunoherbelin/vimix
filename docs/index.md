@@ -5,9 +5,11 @@ Its intuitive and hands-on user interface gives direct control on image opacity 
 shape for producing live graphics during concerts and VJ-ing sessions.
 
 The ouput image is typically projected full-screen on an external
-monitor or a projector, but can be recorded live (no audio).
+monitor or a projector, but can be streamed or recorded live (no audio).
 
 ![screenshot](vimix_0.2_beta.jpg)
+
+Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) for more details.
 
 ## Install vimix
 
@@ -31,14 +33,14 @@ Download package from [Github Release](https://github.com/brunoherbelin/vimix/re
 
 ## About
 
-vimix is free and open source.
+vimix is free and open source (GPL3).
 
 vimix is the successor of [GLMixer](https://sourceforge.net/projects/glmixer/), benefiting
 from these 10 years of refinement of User-Experience design since its [first draft](https://sourceforge.net/p/glmixer/wiki/GLMixer%20History/).
 
-vimix is in its early infancy, open to [feature requests and bug reports](https://github.com/brunoherbelin/vimix/issues).
+vimix is in its early infancy, open to [features requests and bugs reports](https://github.com/brunoherbelin/vimix/issues).
 
-vimix welcomes contributors and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info
+vimix welcomes contributions and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info
 
 
 
