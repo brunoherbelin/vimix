@@ -227,31 +227,20 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
 
-    if (ImGuiToolkit::ButtonIcon(3, 1)) n.lumakey = 0.f;
+    if (ImGuiToolkit::ButtonIcon(18, 1)) n.nbColors = 0;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
+    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
 
     if (ImGuiToolkit::ButtonIcon(8, 1)) n.threshold = 0.f;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
 
-    if (ImGuiToolkit::ButtonIcon(18, 1)) n.nbColors = 0;
+    if (ImGuiToolkit::ButtonIcon(3, 1)) n.lumakey = 0.f;
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
-
-    if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
-    ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
-
-    if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
-    ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
-
+    ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
     if (ImGuiToolkit::ButtonIcon(13, 4)) {
         n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
         n.chromadelta = 0.f;
@@ -261,6 +250,16 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
+
+    if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
+
+    if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
 
     ImGui::PopID();
 
