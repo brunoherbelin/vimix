@@ -122,6 +122,16 @@ public:
         std::string _n;
     };
 
+    struct hasId: public std::unary_function<Source*, bool>
+    {
+        inline bool operator()(const Source* elem) const {
+           return (elem && elem->id() == _id);
+        }
+        hasId(int id) : _id(id) { }
+    private:
+        int _id;
+    };
+
     virtual glm::ivec2 icon() const { return glm::ivec2(12, 11); }
 
 protected:

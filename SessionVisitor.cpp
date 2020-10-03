@@ -194,6 +194,7 @@ void SessionVisitor::visit(ImageShader &n)
 {
     // Shader of a textured type
     xmlCurrent_->SetAttribute("type", "ImageShader");
+    xmlCurrent_->SetAttribute("id", n.id());
 
     XMLElement *uniforms = xmlDoc_->NewElement("uniforms");
     uniforms->SetAttribute("stipple", n.stipple);
@@ -206,6 +207,7 @@ void SessionVisitor::visit(ImageProcessingShader &n)
 {
     // Shader of a textured type
     xmlCurrent_->SetAttribute("type", "ImageProcessingShader");
+    xmlCurrent_->SetAttribute("id", n.id());
 
     XMLElement *filter = xmlDoc_->NewElement("uniforms");
     filter->SetAttribute("brightness", n.brightness);

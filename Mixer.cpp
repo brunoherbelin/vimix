@@ -474,15 +474,12 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         if ( newname.empty() )
             tentativename = "source";
 
-        // trivial case : same name as current
-        if ( tentativename == s->name() )
-            return;
-
         // search for a source of the name 'tentativename'
         std::string basename = tentativename;
         int count = 1;
-        while ( std::find_if(session_->begin(), session_->end(), Source::hasName(tentativename)) != session_->end() ) {
-            tentativename = basename + std::to_string(++count);
+        for( auto it = session_->begin(); it != session_->end(); it++){
+            if ( s->id() != (*it)->id() && (*it)->name() == tentativename )
+                tentativename = basename + std::to_string( ++count );
         }
 
         // ok to rename
@@ -533,6 +530,11 @@ Source * Mixer::findSource (std::string namesource)
     return nullptr;
 }
 
+void Mixer::setCurrentSource(int id)
+{
+    setCurrentSource( session_->find(id) );
+}
+
 void Mixer::setCurrentSource(Node *node)
 {
     setCurrentSource( session_->find(node) );
@@ -548,9 +550,9 @@ void Mixer::setCurrentSource(Source *s)
     setCurrentSource( session_->find(s) );
 }
 
-void Mixer::setCurrentSource(int index)
+void Mixer::setCurrentIndex(int index)
 {
-    setCurrentSource( session_->find(index) );
+    setCurrentSource( session_->at(index) );
 }
 
 void Mixer::setCurrentNext()
@@ -728,8 +730,10 @@ void Mixer::merge(Session *session)
     }
 
     // import every sources
-    for ( Source *s = session->popSource(); s != nullptr; s = session->popSource())
+    for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+        renameSource(s, s->name());
         insertSource(s);
+    }
 }
 
 void Mixer::swap()

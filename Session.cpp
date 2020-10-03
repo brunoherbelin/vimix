@@ -225,23 +225,14 @@ SourceList::iterator Session::end()
     return sources_.end();
 }
 
-SourceList::iterator Session::find(int index)
-{
-    if (index<0)
-        return sources_.end();
-
-    int i = 0;
-    SourceList::iterator it = sources_.begin();
-    while ( i < index && it != sources_.end() ){
-        i++;
-        it++;
-    }
-    return it;
-}
-
 SourceList::iterator Session::find(Source *s)
 {
     return std::find(sources_.begin(), sources_.end(), s);
+}
+
+SourceList::iterator Session::find(int id)
+{
+    return std::find_if(sources_.begin(), sources_.end(), Source::hasId(id));
 }
 
 SourceList::iterator Session::find(std::string namesource)
@@ -262,6 +253,20 @@ uint Session::numSource() const
 bool Session::empty() const
 {
     return sources_.empty();
+}
+
+SourceList::iterator Session::at(int index)
+{
+    if (index<0)
+        return sources_.end();
+
+    int i = 0;
+    SourceList::iterator it = sources_.begin();
+    while ( i < index && it != sources_.end() ){
+        i++;
+        it++;
+    }
+    return it;
 }
 
 int Session::index(SourceList::iterator it) const

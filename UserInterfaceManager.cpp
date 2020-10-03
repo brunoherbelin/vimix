@@ -1669,7 +1669,7 @@ void Navigator::Render()
                     {
                         applyButtonSelection(index);
                         if (selected_button[index])
-                            Mixer::manager().setCurrentSource(index);
+                            Mixer::manager().setCurrentIndex(index);
                     }
                     ImGui::PopID();
                 }

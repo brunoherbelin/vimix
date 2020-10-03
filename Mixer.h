@@ -50,14 +50,16 @@ public:
     void deleteSelection();
 
     // current source
+    Source * currentSource ();
     void setCurrentSource (Source *s);
     void setCurrentSource (std::string namesource);
     void setCurrentSource (Node *node);
-    void setCurrentSource (int index);
+    void setCurrentSource (int id);
     void setCurrentNext ();
     void unsetCurrentSource ();
+
+    void setCurrentIndex (int index);
     int  indexCurrentSource ();
-    Source * currentSource ();
 
     // browsing into sources
     Source * findSource (Node *node);

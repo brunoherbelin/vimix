@@ -95,36 +95,43 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
             xmlCurrent_ = sourceNode;
             counter++;
 
-            const char *pType = xmlCurrent_->Attribute("type");
-            if (!pType)
-                continue;
-            if ( std::string(pType) == "MediaSource") {
-                MediaSource *new_media_source = new MediaSource;
-                new_media_source->accept(*this);
-                session_->addSource(new_media_source);
-            }
-            else if ( std::string(pType) == "SessionSource") {
-                SessionSource *new_session_source = new SessionSource;
-                new_session_source->accept(*this);
-                session_->addSource(new_session_source);
-            }
-            else if ( std::string(pType) == "RenderSource") {
-                RenderSource *new_render_source = new RenderSource(session_);
-                new_render_source->accept(*this);
-                session_->addSource(new_render_source);
-            }
-            else if ( std::string(pType) == "PatternSource") {
-                PatternSource *new_pattern_source = new PatternSource;
-                new_pattern_source->accept(*this);
-                session_->addSource(new_pattern_source);
-            }
-            else if ( std::string(pType) == "DeviceSource") {
-                DeviceSource *new_pattern_source = new DeviceSource;
-                new_pattern_source->accept(*this);
-                session_->addSource(new_pattern_source);
-            }
-            // TODO : create other types of source
+            // source to load
+            Source *load_source = nullptr;
 
+            // check if a source with same id exists
+            int id__ = -1;
+            xmlCurrent_->QueryIntAttribute("id", &id__);
+            SourceList::iterator sit = session_->find(id__);
+
+            // no source with this id exists
+            if ( sit == session_->end() ) {
+                // create a new source depending on type
+                const char *pType = xmlCurrent_->Attribute("type");
+                if (!pType)
+                    continue;
+                if ( std::string(pType) == "MediaSource") {
+                    load_source = new MediaSource;
+                }
+                else if ( std::string(pType) == "SessionSource") {
+                    load_source = new SessionSource;
+                }
+                else if ( std::string(pType) == "RenderSource") {
+                    load_source = new RenderSource(session_);
+                }
+                else if ( std::string(pType) == "PatternSource") {
+                    load_source = new PatternSource;
+                }
+                else if ( std::string(pType) == "DeviceSource") {
+                    load_source = new DeviceSource;
+                }
+                // add source to session
+                session_->addSource(load_source);
+            }
+            else
+                load_source = *sit;
+
+            // apply config to source
+            load_source->accept(*this);
         }
 
         // create clones after all sources to potentially clone have been created

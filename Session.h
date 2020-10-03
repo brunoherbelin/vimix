@@ -33,10 +33,12 @@ public:
     uint numSource() const;
     SourceList::iterator begin ();
     SourceList::iterator end ();
-    SourceList::iterator find (int index);
     SourceList::iterator find (Source *s);
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
+    SourceList::iterator find (int id);
+
+    SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;
 
     // update all sources and mark sources which failed
