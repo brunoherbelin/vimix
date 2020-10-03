@@ -42,25 +42,21 @@ std::string SessionCreator::info(const std::string& filename)
     return ret;
 }
 
-SessionCreator::SessionCreator(Session *session): Visitor(), session_(session)
+SessionCreator::SessionCreator(): SessionLoader(nullptr)
 {
 
 }
 
-SessionCreator::~SessionCreator()
-{
-}
-
-bool SessionCreator::load(const std::string& filename)
+void SessionCreator::load(const std::string& filename)
 {
     XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
     if ( XMLResultError(eResult))
-        return false;
+        return;
 
     XMLElement *header = xmlDoc_.FirstChildElement(APP_NAME);
     if (header == nullptr) {
         Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
-        return false;
+        return;
     }
 
     int version_major = -1, version_minor = -1;
@@ -68,25 +64,41 @@ bool SessionCreator::load(const std::string& filename)
     header->QueryIntAttribute("minor", &version_minor);
     if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
         Log::Warning("%s is in a different versions of session file. Loading might fail.", filename.c_str());
-        return false;
+        return;
     }
+
+    session_ = new Session;
 
     // ok, ready to read sources
-    loadSession( xmlDoc_.FirstChildElement("Session") );
-    // excellent, session was created: load optionnal config
-    if (session_){
-        loadConfig( xmlDoc_.FirstChildElement("Views") );
-    }
+    SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
 
-    return true;
+    //  load optionnal config
+    loadConfig( xmlDoc_.FirstChildElement("Views") );
+
+    session_->setFilename(filename);
 }
 
-void SessionCreator::loadSession(XMLElement *sessionNode)
+
+void SessionCreator::loadConfig(XMLElement *viewsNode)
 {
-    if (sessionNode != nullptr) {
-        // create a session if not provided
-        if (!session_)
-            session_ = new Session;
+    if (viewsNode != nullptr) {
+        // ok, ready to read views
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
+    }
+}
+
+SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
+{
+
+}
+
+
+void SessionLoader::load(XMLElement *sessionNode)
+{
+    if (sessionNode != nullptr && session_ != nullptr) {
 
         int counter = 0;
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
@@ -124,6 +136,11 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
                 else if ( std::string(pType) == "DeviceSource") {
                     load_source = new DeviceSource;
                 }
+
+                // avoid non recognized types
+                if (!load_source)
+                    continue;
+
                 // add source to session
                 session_->addSource(load_source);
             }
@@ -164,18 +181,8 @@ void SessionCreator::loadSession(XMLElement *sessionNode)
         Log::Warning("Session seems empty.");
 }
 
-void SessionCreator::loadConfig(XMLElement *viewsNode)
-{
-    if (viewsNode != nullptr) {
-        // ok, ready to read views
-        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
-        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
-        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
-        SessionCreator::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
-    }
-}
 
-void SessionCreator::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
+void SessionLoader::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
 {
     if (xml != nullptr){
         XMLElement *node = xml->FirstChildElement("Node");
@@ -194,12 +201,12 @@ void SessionCreator::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
     }
 }
 
-void SessionCreator::visit(Node &n)
+void SessionLoader::visit(Node &n)
 {
     XMLToNode(xmlCurrent_, n);
 }
 
-void SessionCreator::visit(MediaPlayer &n)
+void SessionLoader::visit(MediaPlayer &n)
 {
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
     if (mediaplayerNode) {
@@ -239,7 +246,7 @@ void SessionCreator::visit(MediaPlayer &n)
     }
 }
 
-void SessionCreator::visit(Shader &n)
+void SessionLoader::visit(Shader &n)
 {
     XMLElement* color = xmlCurrent_->FirstChildElement("color");
     if ( color ) {
@@ -253,7 +260,7 @@ void SessionCreator::visit(Shader &n)
     }
 }
 
-void SessionCreator::visit(ImageShader &n)
+void SessionLoader::visit(ImageShader &n)
 {
     const char *pType = xmlCurrent_->Attribute("type");
     if ( std::string(pType) != "ImageShader" )
@@ -266,7 +273,7 @@ void SessionCreator::visit(ImageShader &n)
     }
 }
 
-void SessionCreator::visit(ImageProcessingShader &n)
+void SessionLoader::visit(ImageProcessingShader &n)
 {
     const char *pType = xmlCurrent_->Attribute("type");
     if ( std::string(pType) != "ImageProcessingShader" )
@@ -297,7 +304,7 @@ void SessionCreator::visit(ImageProcessingShader &n)
         tinyxml2::XMLElementToGLM( chromakey->FirstChildElement("vec4"), n.chromakey);
 }
 
-void SessionCreator::visit (Source& s)
+void SessionLoader::visit (Source& s)
 {
     XMLElement* sourceNode = xmlCurrent_;
     const char *pName = sourceNode->Attribute("name");
@@ -324,7 +331,7 @@ void SessionCreator::visit (Source& s)
     xmlCurrent_ = sourceNode;
 }
 
-void SessionCreator::visit (MediaSource& s)
+void SessionLoader::visit (MediaSource& s)
 {
     // set uri
     XMLElement* uriNode = xmlCurrent_->FirstChildElement("uri");
@@ -337,7 +344,7 @@ void SessionCreator::visit (MediaSource& s)
     s.mediaplayer()->accept(*this);
 }
 
-void SessionCreator::visit (SessionSource& s)
+void SessionLoader::visit (SessionSource& s)
 {
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
@@ -348,7 +355,7 @@ void SessionCreator::visit (SessionSource& s)
 
 }
 
-void SessionCreator::visit (PatternSource& s)
+void SessionLoader::visit (PatternSource& s)
 {
     uint p = xmlCurrent_->UnsignedAttribute("pattern");
 
@@ -360,7 +367,7 @@ void SessionCreator::visit (PatternSource& s)
     s.setPattern(p, resolution);
 }
 
-void SessionCreator::visit (DeviceSource& s)
+void SessionLoader::visit (DeviceSource& s)
 {
     const char *devname = xmlCurrent_->Attribute("device");
     s.setDevice(devname);

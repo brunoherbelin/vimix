@@ -6,22 +6,14 @@
 
 class Session;
 
-class SessionCreator : public Visitor {
 
-    tinyxml2::XMLDocument xmlDoc_;
-    tinyxml2::XMLElement *xmlCurrent_;
-    Session *session_;
-
-    void loadSession(tinyxml2::XMLElement *sessionNode);
-    void loadConfig(tinyxml2::XMLElement *viewsNode);
-
+class SessionLoader : public Visitor {
 
 public:
-    SessionCreator(Session *session = nullptr);
-    ~SessionCreator();
-
-    bool load(const std::string& filename);
+    SessionLoader(Session *session);
     inline Session *session() const { return session_; }
+
+    void load(tinyxml2::XMLElement *sessionNode);
 
     // Elements of Scene
     void visit(Node& n) override;
@@ -51,9 +43,26 @@ public:
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
 
-    static std::string info(const std::string& filename);
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
+
+protected:
+    tinyxml2::XMLElement *xmlCurrent_;
+    Session *session_;
+
 };
 
+class SessionCreator : public SessionLoader {
+
+    tinyxml2::XMLDocument xmlDoc_;
+
+    void loadConfig(tinyxml2::XMLElement *viewsNode);
+
+public:
+    SessionCreator();
+
+    void load(const std::string& filename);
+
+    static std::string info(const std::string& filename);
+};
 
 #endif // SESSIONCREATOR_H

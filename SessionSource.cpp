@@ -77,7 +77,7 @@ void SessionSource::load(const std::string &p)
         session_ = new Session;
     else
         // launch a thread to load the session file
-        sessionLoader_ = std::async(std::launch::async, loadSession_, path_);
+        sessionLoader_ = std::async(std::launch::async, Session::load, path_);
 
     Log::Notify("Opening %s", p.c_str());
 }

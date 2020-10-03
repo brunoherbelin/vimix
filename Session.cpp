@@ -340,25 +340,11 @@ void Session::unlock()
 }
 
 
-Session *loadSession_(const std::string& filename)
+Session *Session::load(const std::string& filename)
 {
-    Session *s = new Session;
+    SessionCreator creator;
+    creator.load(filename);
 
-    if (s) {
-        // actual loading of xml file
-        SessionCreator creator( s );
-
-        if (creator.load(filename)) {
-            // loaded ok
-            s->setFilename(filename);
-        }
-        else {
-            // error loading
-            delete s;
-            s = nullptr;
-        }
-    }
-
-    return s;
+    return creator.session();
 }
 

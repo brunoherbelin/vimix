@@ -14,6 +14,8 @@ public:
     Session();
     ~Session();
 
+    static Session *load(const std::string& filename);
+
     // add given source into the session
     SourceList::iterator addSource (Source *s);
 
@@ -91,7 +93,5 @@ protected:
     std::mutex access_;
 };
 
-
-Session *loadSession_(const std::string& filename);
 
 #endif // SESSION_H
