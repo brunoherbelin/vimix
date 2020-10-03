@@ -44,6 +44,8 @@ void ImGuiVisitor::visit(Group &n)
 //    {
         // MODEL VIEW
 
+    ImGui::PushID(n.id());
+
     if (ImGuiToolkit::ButtonIcon(1, 16)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
@@ -85,6 +87,8 @@ void ImGuiVisitor::visit(Group &n)
         n.scale_.x = CLAMP_SCALE(scale[0]);
         n.scale_.y = CLAMP_SCALE(scale[1]);
     }
+
+    ImGui::PopID();
 
 //        // loop over members of a group
 //        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
@@ -269,6 +273,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
 void ImGuiVisitor::visit (Source& s)
 {
+    ImGui::PushID(s.id());
     // blending
     s.blendingShader()->accept(*this);
 
@@ -294,6 +299,7 @@ void ImGuiVisitor::visit (Source& s)
     // geometry direct control
     s.groupNode(View::GEOMETRY)->accept(*this);
 
+    ImGui::PopID();
 }
 
 void ImGuiVisitor::visit (MediaSource& s)

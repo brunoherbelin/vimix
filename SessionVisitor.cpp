@@ -32,6 +32,7 @@ tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *
 {
     XMLElement *newelement = doc->NewElement("Node");
     newelement->SetAttribute("visible", n.visible_);
+    newelement->SetAttribute("id", n.id());
 
     XMLElement *scale = doc->NewElement("scale");
     scale->InsertEndChild( XMLElementFromGLM(doc, n.scale_) );
@@ -144,6 +145,7 @@ void SessionVisitor::visit(MediaSurface &n)
 void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
+    newelement->SetAttribute("id", n.id());
     newelement->SetAttribute("play", n.isPlaying());
     newelement->SetAttribute("loop", (int) n.loop());
     newelement->SetAttribute("speed", n.playSpeed());
@@ -176,6 +178,7 @@ void SessionVisitor::visit(Shader &n)
 {
     // Shader of a simple type
     xmlCurrent_->SetAttribute("type", "Shader");
+    xmlCurrent_->SetAttribute("id", n.id());
 
     XMLElement *color = xmlDoc_->NewElement("color");
     color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.color) );
@@ -315,6 +318,7 @@ void SessionVisitor::visit(Scene &n)
 void SessionVisitor::visit (Source& s)
 {
     XMLElement *sourceNode = xmlDoc_->NewElement( "Source" );
+    sourceNode->SetAttribute("id", s.id());
     sourceNode->SetAttribute("name", s.name().c_str() );
 
     // insert into hierarchy

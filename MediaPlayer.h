@@ -79,6 +79,10 @@ public:
      * Destructor.
      */
     ~MediaPlayer();
+    /**
+     * Get unique id
+     */
+    inline int id() const { return id_; }
     /** 
      * Open a media using gstreamer URI 
      * */

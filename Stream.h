@@ -27,6 +27,10 @@ public:
      */
     ~Stream();
     /**
+     * Get unique id
+     */
+    inline int id() const { return id_; }
+    /**
      * Open a media using gstreamer pipeline keyword
      * */
     void open(const std::string &gstreamer_description, int w = 1024, int h = 576);
@@ -107,8 +111,6 @@ public:
      * Used for saving session file
      * */
     void accept(Visitor& v);
-
-    int id() const;
 
 protected:
 

@@ -17,6 +17,9 @@
 
 Source::Source() : initialized_(false), active_(true), need_update_(true)
 {
+    // create unique id
+    id_ = GlmToolkit::uniqueId();
+
     sprintf(initials_, "__");
     name_ = "Source";
     mode_ = Source::UNINITIALIZED;

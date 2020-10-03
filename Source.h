@@ -34,6 +34,9 @@ public:
     Source();
     virtual ~Source();
 
+    // Get unique id
+    inline int id() const { return id_; }
+
     // manipulate name of source
     void setName (const std::string &name);
     inline std::string name () const { return name_; }
@@ -125,6 +128,7 @@ protected:
     // name
     std::string name_;
     char initials_[3];
+    int id_;
 
     // every Source shall be initialized on first draw
     bool initialized_;

@@ -12,6 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
+#include "GlmToolkit.h"
 
 #include "MediaPlayer.h"
 
@@ -26,8 +27,7 @@ std::list<MediaPlayer*> MediaPlayer::registered_;
 MediaPlayer::MediaPlayer()
 {
     // create unique id
-    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
+    id_ = GlmToolkit::uniqueId();
 
     uri_ = "undefined";
     pipeline_ = nullptr;

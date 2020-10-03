@@ -8,8 +8,11 @@
 namespace GlmToolkit
 {
 
-glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
+// get integer with unique id
+int uniqueId();
 
+// get Matrix for these transformation components
+glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 
 class AxisAlignedBoundingBox
 {

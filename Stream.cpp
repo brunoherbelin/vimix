@@ -12,6 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
+#include "GlmToolkit.h"
 
 #include "Stream.h"
 
@@ -25,8 +26,7 @@ using namespace std;
 Stream::Stream()
 {
     // create unique id
-    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    id_ = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
+    id_ = GlmToolkit::uniqueId();
 
     description_ = "undefined";
     pipeline_ = nullptr;
@@ -90,11 +90,6 @@ void Stream::open(const std::string &gstreamer_description, int w, int h)
 std::string Stream::description() const
 {
     return description_;
-}
-
-int Stream::id() const
-{
-    return id_;
 }
 
 void Stream::execute_open()

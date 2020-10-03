@@ -6,6 +6,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 
+#include <chrono>
+#include <ctime>
+int GlmToolkit::uniqueId()
+{
+    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
+}
+
 glm::mat4 GlmToolkit::transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
     glm::mat4 View = glm::translate(glm::identity<glm::mat4>(), translation);
