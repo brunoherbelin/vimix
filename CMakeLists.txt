@@ -254,6 +254,7 @@ set(VMIX_SRCS
     GlmToolkit.cpp
     SystemToolkit.cpp
     tinyxml2Toolkit.cpp
+    ActionManager.cpp
 )
 
 set(VMIX_RSC_FILES
