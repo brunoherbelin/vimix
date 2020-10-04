@@ -20,6 +20,7 @@
 #include "DeviceSource.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "ActionManager.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -39,11 +40,7 @@ void ImGuiVisitor::visit(Node &n)
 
 void ImGuiVisitor::visit(Group &n)
 {
-//    std::string id = std::to_string(n.id());
-//    if (ImGui::TreeNode(id.c_str(), "Group %d", n.id()))
-//    {
-        // MODEL VIEW
-
+    // MODEL VIEW
     ImGui::PushID(n.id());
 
     if (ImGuiToolkit::ButtonIcon(1, 16)) {
@@ -52,6 +49,7 @@ void ImGuiVisitor::visit(Group &n)
         n.rotation_.z = 0.f;
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
+        Action::manager().store("Geometry", n.id());
     }
     ImGui::SameLine(0, 10);
     ImGui::Text("Geometry");
@@ -59,6 +57,7 @@ void ImGuiVisitor::visit(Group &n)
     if (ImGuiToolkit::ButtonIcon(6, 15)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
+        Action::manager().store("Position", n.id());
     }
     ImGui::SameLine(0, 10);
     float translation[2] = { n.translation_.x, n.translation_.y};
@@ -68,16 +67,23 @@ void ImGuiVisitor::visit(Group &n)
         n.translation_.x = translation[0];
         n.translation_.y = translation[1];
     }
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Position", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(18, 9))
+    if (ImGuiToolkit::ButtonIcon(18, 9)){
         n.rotation_.z = 0.f;
+        Action::manager().store("Angle", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Angle", n.id());
 
     if (ImGuiToolkit::ButtonIcon(3, 15))  {
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
+        Action::manager().store("Scale", n.id());
     }
     ImGui::SameLine(0, 10);
     float scale[2] = { n.scale_.x, n.scale_.y} ;
@@ -87,16 +93,10 @@ void ImGuiVisitor::visit(Group &n)
         n.scale_.x = CLAMP_SCALE(scale[0]);
         n.scale_.y = CLAMP_SCALE(scale[1]);
     }
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Scale", n.id());
 
     ImGui::PopID();
-
-//        // loop over members of a group
-//        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-//            (*node)->accept(*this);
-//        }
-
-//        ImGui::TreePop();
-//    }
 
     // spacing
     ImGui::Spacing();
@@ -160,6 +160,8 @@ void ImGuiVisitor::visit(Shader &n)
     int mode = n.blending;
     if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Inverse\0Addition\0Subtract\0") )
         n.blending = Shader::BlendMode(mode);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Blending", n.id());
 
     ImGui::PopID();
 }
@@ -183,6 +185,8 @@ void ImGuiVisitor::visit(ImageShader &n)
             // TODO ask for custom mask
         }
     }
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Mask", n.id());
 
     ImGui::PopID();
 }
@@ -194,16 +198,25 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::ButtonIcon(6, 2)) {
         ImageProcessingShader defaultvalues;
         n = defaultvalues;
+        Action::manager().store("Reset Filters", n.id());
     }
     ImGui::SameLine(0, 10);
     ImGui::Text("Filters");
 
-    if (ImGuiToolkit::ButtonIcon(6, 4)) n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    if (ImGuiToolkit::ButtonIcon(6, 4)) {
+        n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
+        Action::manager().store("Gamma & Color", n.id());
+    }
     ImGui::SameLine(0, 10);
-    ImGui::ColorEdit3("GammaColor", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
+    ImGui::ColorEdit3("Gamma Color", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Gamma Color", n.id());
+
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Gamma", &n.gamma.w, 0.5f, 10.f, "%.2f", 2.f);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Gamma", n.id());
 
 //    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 //    ImGui::SliderFloat4("Levels", glm::value_ptr(n.levels), 0.0, 1.0);
@@ -211,6 +224,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::ButtonIcon(4, 1)) {
         n.brightness = 0.f;
         n.contrast = 0.f;
+        Action::manager().store("B & C", n.id());
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -220,50 +234,93 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.brightness = bc[0];
         n.contrast = bc[1];
     }
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("B & C", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(2, 1)) n.saturation = 0.f;
+    if (ImGuiToolkit::ButtonIcon(2, 1)) {
+        n.saturation = 0.f;
+        Action::manager().store("Saturation", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Saturation", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(12, 4)) n.hueshift = 0.f;
+    if (ImGuiToolkit::ButtonIcon(12, 4)) {
+        n.hueshift = 0.f;
+        Action::manager().store("Hue shift", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Hue shift", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(18, 1)) n.nbColors = 0;
+    if (ImGuiToolkit::ButtonIcon(18, 1)) {
+        n.nbColors = 0;
+        Action::manager().store("Posterize", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Posterize", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(8, 1)) n.threshold = 0.f;
+    if (ImGuiToolkit::ButtonIcon(8, 1)) {
+        n.threshold = 0.f;
+        Action::manager().store("Threshold", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Threshold", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(3, 1)) n.lumakey = 0.f;
+    if (ImGuiToolkit::ButtonIcon(3, 1)) {
+        n.lumakey = 0.f;
+        Action::manager().store("Lumakey", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Lumakey", n.id());
+
     if (ImGuiToolkit::ButtonIcon(13, 4)) {
         n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
         n.chromadelta = 0.f;
+        Action::manager().store("Chromakey & Color", n.id());
     }
     ImGui::SameLine(0, 10);
-    ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;
+    ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;    
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Chroma color", n.id());
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Chromakey", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(7, 1)) n.invert = 0;
+    if (ImGuiToolkit::ButtonIcon(7, 1)) {
+        n.invert = 0;
+        Action::manager().store("Invert", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Invert", n.id());
 
-    if (ImGuiToolkit::ButtonIcon(1, 7)) n.filterid = 0;
+    if (ImGuiToolkit::ButtonIcon(1, 7)) {
+        n.filterid = 0;
+        Action::manager().store("Filter", n.id());
+    }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Filter", n.id());
 
     ImGui::PopID();
 
@@ -287,7 +344,8 @@ void ImGuiVisitor::visit (Source& s)
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );
-    ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on);
+    if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) )
+         Action::manager().store( on ? "Enable Filter" : "Disable Filter", s.id());
     s.setImageProcessingEnabled(on);
 
     ImGui::SetCursorPos(pos); // ...come back
@@ -332,6 +390,8 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
         s.session()->setFading(f);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        Action::manager().store("Fading", s.id());
 
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
@@ -371,6 +431,7 @@ void ImGuiVisitor::visit (PatternSource& s)
         for (int p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
                 s.setPattern(p, s.pattern()->resolution());
+                Action::manager().store("Pattern "+Pattern::pattern_types[p], s.id());
             }
         }
         ImGui::EndCombo();
@@ -390,6 +451,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
             std::string namedev = Device::manager().name(d);
             if (ImGui::Selectable( namedev.c_str() )) {
                 s.setDevice(namedev);
+                Action::manager().store("Device "+namedev, s.id());
             }
         }
         ImGui::EndCombo();

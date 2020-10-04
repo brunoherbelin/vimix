@@ -37,7 +37,7 @@ void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
 }
 
 
-void ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
+bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
 {
     ImVec4* colors = ImGui::GetStyle().Colors;
     const auto active = *toggle;
@@ -46,8 +46,10 @@ void ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
         ImGui::PushStyleColor( ImGuiCol_ButtonHovered, colors[ImGuiCol_TabHovered] );
         ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
     }
-    if( ImGui::Button( label ) ) *toggle = !*toggle;
+    bool action = ImGui::Button( label );
+    if( action ) *toggle = !*toggle;
     if( active ) ImGui::PopStyleColor( 3 );
+    return action;
 }
 
 
