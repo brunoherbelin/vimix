@@ -47,6 +47,8 @@ public:
     void addSource    (Source *s);
     void deleteSource (Source *s);
     void renameSource (Source *s, const std::string &newname);
+    void attach       (Source *s);
+    void detach       (Source *s);
     void deleteSelection();
 
     // current source
@@ -64,6 +66,7 @@ public:
     // browsing into sources
     Source * findSource (Node *node);
     Source * findSource (std::string name);
+    Source * findSource (int id);
 
     // management of view
     View *view   (View::Mode m = View::INVALID);
@@ -98,8 +101,6 @@ protected:
     SourceList candidate_sources_;
     SourceList stash_;
     void insertSource(Source *s, View::Mode m = View::INVALID);
-    void attach(Source *s);
-    void detach(Source *s);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

@@ -250,6 +250,16 @@ uint Session::numSource() const
     return sources_.size();
 }
 
+std::list<int> Session::getIdList() const
+{
+    std::list<int> idlist;
+
+    for( auto sit = sources_.begin(); sit != sources_.end(); sit++)
+        idlist.push_back( (*sit)->id() );
+
+    return idlist;
+}
+
 bool Session::empty() const
 {
     return sources_.empty();

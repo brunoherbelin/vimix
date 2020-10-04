@@ -1,6 +1,8 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
+#include <list>
+
 #include "Visitor.h"
 #include <tinyxml2.h>
 
@@ -14,6 +16,7 @@ public:
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
+    inline std::list<int> getIdList() const { return sources_id_; }
 
     // Elements of Scene
     void visit(Node& n) override;
@@ -37,18 +40,19 @@ public:
     void visit(ImageShader& n) override;
     void visit(ImageProcessingShader& n) override;
 
+    // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
 
-    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
-
 protected:
     tinyxml2::XMLElement *xmlCurrent_;
     Session *session_;
+    std::list<int> sources_id_;
 
+    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };
 
 class SessionCreator : public SessionLoader {

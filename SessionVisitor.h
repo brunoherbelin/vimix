@@ -16,6 +16,7 @@ public:
                    bool recursive = false);
 
     inline tinyxml2::XMLDocument *doc() const { return xmlDoc_; }
+    inline void setRoot(tinyxml2::XMLElement *root) { xmlCurrent_ = root; }
 
     // Elements of Scene
     void visit(Scene& n) override;
@@ -39,6 +40,7 @@ public:
     void visit(ImageShader& n) override;
     void visit(ImageProcessingShader& n) override;
 
+    // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;

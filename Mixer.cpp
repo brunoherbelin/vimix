@@ -25,6 +25,7 @@ using namespace tinyxml2;
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "StreamSource.h"
+#include "ActionManager.h"
 
 #include "Mixer.h"
 
@@ -53,13 +54,10 @@ static void saveSession(const std::string& filename, Session *session)
     // 1. list of sources
     XMLElement *sessionNode = xmlDoc.NewElement("Session");
     xmlDoc.InsertEndChild(sessionNode);
-    SourceList::iterator iter;
-    for (iter = session->begin(); iter != session->end(); iter++)
-    {
-        SessionVisitor sv(&xmlDoc, sessionNode);
+    SessionVisitor sv(&xmlDoc, sessionNode);
+    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
         // source visitor
         (*iter)->accept(sv);
-    }
 
     // 2. config of views
     XMLElement *views = xmlDoc.NewElement("Views");
@@ -338,7 +336,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
     {
-        // Add source to Session
+        // Add source to Session (ignored if source already in)
         SourceList::iterator sit = session_->addSource(s);
 
         // set a default depth to the new source
@@ -348,9 +346,10 @@ void Mixer::insertSource(Source *s, View::Mode m)
         mixing_.setAlpha(s);
 
         // add sources Nodes to all views
-        mixing_.scene.ws()->attach(s->group(View::MIXING));
-        geometry_.scene.ws()->attach(s->group(View::GEOMETRY));
-        layer_.scene.ws()->attach(s->group(View::LAYER));
+        attach(s);
+
+        // new state in history manager
+        Action::manager().store(std::string("Insert ")+s->name());
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -371,12 +370,6 @@ void Mixer::deleteSource(Source *s)
 {
     if ( s != nullptr )
     {
-        // in case it was the current source...
-        unsetCurrentSource();
-
-        // in case it was selected..
-        selection().remove(s);
-
         // keep name for log
         std::string name = s->name();
 
@@ -385,6 +378,9 @@ void Mixer::deleteSource(Source *s)
 
         // delete source
         session_->deleteSource(s);
+
+        // new state in history manager
+        Action::manager().store(std::string("Delete ")+name);
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
@@ -402,17 +398,31 @@ void Mixer::deleteSource(Source *s)
 
 void Mixer::attach(Source *s)
 {
-    mixing_.scene.ws()->attach( s->group(View::MIXING) );
-    geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
-    layer_.scene.ws()->attach( s->group(View::LAYER) );
+    if ( s != nullptr )
+    {
+        // force update
+        s->touch();
+        // attach to views
+        mixing_.scene.ws()->attach( s->group(View::MIXING) );
+        geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->attach( s->group(View::LAYER) );
+    }
 }
 
 void Mixer::detach(Source *s)
 {
-    mixing_.scene.ws()->detatch( s->group(View::MIXING) );
-    geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
-    layer_.scene.ws()->detatch( s->group(View::LAYER) );
-    transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
+    if ( s != nullptr )
+    {
+        // in case it was the current source...
+        unsetCurrentSource();
+        // in case it was selected..
+        selection().remove(s);
+        // detach from views
+        mixing_.scene.ws()->detatch( s->group(View::MIXING) );
+        geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->detatch( s->group(View::LAYER) );
+        transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
+    }
 }
 
 
@@ -522,6 +532,7 @@ Source * Mixer::findSource (Node *node)
     return nullptr;
 }
 
+
 Source * Mixer::findSource (std::string namesource)
 {
     SourceList::iterator it = session_->find(namesource);
@@ -529,6 +540,15 @@ Source * Mixer::findSource (std::string namesource)
         return *it;
     return nullptr;
 }
+
+Source * Mixer::findSource (int id)
+{
+    SourceList::iterator it = session_->find(id);
+    if (it != session_->end())
+        return *it;
+    return nullptr;
+}
+
 
 void Mixer::setCurrentSource(int id)
 {
@@ -557,15 +577,17 @@ void Mixer::setCurrentIndex(int index)
 
 void Mixer::setCurrentNext()
 {
-    SourceList::iterator it = current_source_;
+    if (session_->numSource() > 0) {
 
-    it++;
+        SourceList::iterator it = current_source_;
+        it++;
 
-    if (it == session_->end())  {
-        it = session_->begin();
+        if (it == session_->end())  {
+            it = session_->begin();
+        }
+
+        setCurrentSource( it );
     }
-
-    setCurrentSource( it );
 }
 
 void Mixer::unsetCurrentSource()
@@ -785,6 +807,9 @@ void Mixer::swap()
     // delete back (former front session)
     garbage_.push_back(back_session_);
     back_session_ = nullptr;
+
+    // reset History manager
+    Action::manager().clear();
 
     // notification
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());

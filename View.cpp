@@ -28,6 +28,7 @@
 #include "Mixer.h"
 #include "UserInterfaceManager.h"
 #include "UpdateCallback.h"
+#include "ActionManager.h"
 #include "Log.h"
 
 
@@ -66,6 +67,7 @@ void View::update(float dt)
         scene.ws()->sort();
     }
 }
+
 
 View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
 {
@@ -110,11 +112,20 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 
 void View::initiate()
 {
+    current_action_ = "";
+    current_id_ = -1;
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
 
         (*sit)->stored_status_->copyTransform((*sit)->group(mode_));
     }
+}
+
+void View::terminate()
+{
+    Action::manager().store(current_action_, current_id_);
+    current_action_ = "";
+    current_id_ = -1;
 }
 
 void View::recenter()
@@ -462,6 +473,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 //        s->group(mode_)->translation_.y = s->group(mode_)->translation_.x * s->stored_status_->translation_.y / s->stored_status_->translation_.x;
 //    }
 
+
 //    // trying to enter stash
 //    if ( glm::distance( glm::vec2(s->group(mode_)->translation_), glm::vec2(stashCircle_->translation_)) < stashCircle_->scale_.x) {
 
@@ -484,10 +496,14 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     std::ostringstream info;
     if (s->active())
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
-    else if ( Mixer::manager().concealed(s) )
-        info << "Stashed";
+//    else if ( Mixer::manager().concealed(s) )
+//        info << "Stashed";
     else
         info << "Inactive";
+
+    // store action in history
+    current_action_ = s->name() + " " + info.str();
+    current_id_ = s->id();
 
     return Cursor(Cursor_ResizeAll, info.str() );
 }
@@ -959,6 +975,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
+
         }
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handle_[Handles::RESIZE_H] ) {
@@ -1156,6 +1173,11 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     // request update
     s->touch();
 
+    // store action in history
+    current_action_ = s->name() + " " + info.str();
+    current_id_ = s->id();
+
+    // update cursor
     ret.info = info.str();
     return ret;
 }
@@ -1163,6 +1185,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
 void GeometryView::terminate()
 {
+    View::terminate();
+
     // hide all overlays
     overlay_position_->visible_       = false;
     overlay_position_cross_->visible_ = false;
@@ -1329,6 +1353,11 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
     std::ostringstream info;
     info << "Depth " << std::fixed << std::setprecision(2) << d;
+
+    // store action in history
+    current_action_ = s->name() + " " + info.str();
+    current_id_ = s->id();
+
     return Cursor(Cursor_ResizeNESW, info.str() );
 }
 

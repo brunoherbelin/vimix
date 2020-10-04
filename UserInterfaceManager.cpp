@@ -33,11 +33,13 @@ using namespace std;
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#include "UserInterfaceManager.h"
+
 #include "defines.h"
 #include "Log.h"
 #include "SystemToolkit.h"
-#include "UserInterfaceManager.h"
 #include "RenderingManager.h"
+#include "ActionManager.h"
 #include "Resource.h"
 #include "FileDialog.h"
 #include "Settings.h"
@@ -288,6 +290,12 @@ void UserInterface::handleKeyboard()
                 rec->stop();
             else
                 Mixer::manager().session()->addRecorder(new VideoRecorder);
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
+            if (shift_modifier_active)
+                Action::manager().redo();
+            else
+                Action::manager().undo();
         }
 
     }

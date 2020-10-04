@@ -38,7 +38,9 @@ public:
     SourceList::iterator find (Source *s);
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
+
     SourceList::iterator find (int id);
+    std::list<int> getIdList() const;
 
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;

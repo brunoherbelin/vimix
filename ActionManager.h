@@ -2,6 +2,10 @@
 #define ACTIONMANAGER_H
 
 
+#include <atomic>
+
+#include <tinyxml2.h>
+
 class Action
 {
     // Private Constructor
@@ -18,14 +22,21 @@ public:
         return _instance;
     }
 
-    void clear();
-    void capture();
+    void store(const std::string &label, int id = -1);
 
+    void clear();
     void undo();
     void redo();
+    void stepTo(uint target);
 
 private:
 
+    void restore(uint target, int id);
+
+    tinyxml2::XMLDocument xmlDoc_;
+    uint step_;
+    uint max_step_;
+    std::atomic<bool> locked_;
 };
 
 #endif // ACTIONMANAGER_H

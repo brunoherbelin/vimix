@@ -67,14 +67,16 @@ void SessionCreator::load(const std::string& filename)
         return;
     }
 
+    // session file seems legit, create a session
     session_ = new Session;
 
-    // ok, ready to read sources
+    // ready to read sources
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
 
-    //  load optionnal config
+    // load optionnal config
     loadConfig( xmlDoc_.FirstChildElement("Views") );
 
+    // all good
     session_->setFilename(filename);
 }
 
@@ -100,17 +102,15 @@ void SessionLoader::load(XMLElement *sessionNode)
 {
     if (sessionNode != nullptr && session_ != nullptr) {
 
-        int counter = 0;
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
         for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
         {
             xmlCurrent_ = sourceNode;
-            counter++;
 
             // source to load
             Source *load_source = nullptr;
 
-            // check if a source with same id exists
+            // check if a source with the given id exists in the session
             int id__ = -1;
             xmlCurrent_->QueryIntAttribute("id", &id__);
             SourceList::iterator sit = session_->find(id__);
@@ -137,48 +137,75 @@ void SessionLoader::load(XMLElement *sessionNode)
                     load_source = new DeviceSource;
                 }
 
-                // avoid non recognized types
+                // skip failed (including clones)
                 if (!load_source)
                     continue;
 
                 // add source to session
                 session_->addSource(load_source);
+                id__ = load_source->id();
             }
+            // get reference to the existing source
             else
                 load_source = *sit;
 
             // apply config to source
             load_source->accept(*this);
+            // remember
+            sources_id_.push_back( id__ );
         }
 
-        // create clones after all sources to potentially clone have been created
+        // create clones after all sources, to be able to clone a source created above
         sourceNode = sessionNode->FirstChildElement("Source");
         for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
         {
             xmlCurrent_ = sourceNode;
-            counter++;
 
+            // verify type of node
             const char *pType = xmlCurrent_->Attribute("type");
             if (!pType)
                 continue;
-
             if ( std::string(pType) == "CloneSource") {
-                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
-                if (originNode) {
-                    std::string sourcename = std::string ( originNode->GetText() );
-                    SourceList::iterator origin = session_->find(sourcename);
-                    if (origin != session_->end()) {
-                        CloneSource *new_clone_source = (*origin)->clone();
-                        new_clone_source->accept(*this);
-                        session_->addSource(new_clone_source);
+
+                // clone to load
+                Source *clone_source = nullptr;
+
+                // check if a source with same id exists
+                int id__ = -1;
+                xmlCurrent_->QueryIntAttribute("id", &id__);
+                SourceList::iterator sit = session_->find(id__);
+
+                // no source clone with this id exists
+                if ( sit == session_->end() ) {
+
+                    XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                    if (originNode) {
+                        std::string sourcename = std::string ( originNode->GetText() );
+                        SourceList::iterator origin = session_->find(sourcename);
+                        if (origin != session_->end()) {
+                            // create a new source of type Clone
+                            clone_source = (*origin)->clone();
+                        }
                     }
+                    // skip failed
+                    if (!clone_source)
+                        continue;
+
+                    // add source to session
+                    session_->addSource(clone_source);
+                    id__ = clone_source->id();
                 }
+                else
+                    clone_source = *sit;
+
+                // apply config to source
+                clone_source->accept(*this);
+                // remember
+                sources_id_.push_back( id__ );
             }
         }
-
     }
-    else
-        Log::Warning("Session seems empty.");
+
 }
 
 
@@ -209,11 +236,14 @@ void SessionLoader::visit(Node &n)
 void SessionLoader::visit(MediaPlayer &n)
 {
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
+    int id__ = -1;
+    mediaplayerNode->QueryIntAttribute("id", &id__);
+
     if (mediaplayerNode) {
         // timeline
         XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
         if (timelineelement) {
-            Timeline tl;
+            Timeline tl = *(n.timeline());
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
             if (gapselement) {
                 XMLElement* gap = gapselement->FirstChildElement("Interval");
@@ -233,16 +263,22 @@ void SessionLoader::visit(MediaPlayer &n)
             }
             n.setTimeline(tl);
         }
-        // playing properties
-        double speed = 1.0;
-        mediaplayerNode->QueryDoubleAttribute("speed", &speed);
-        n.setPlaySpeed(speed);
-        int loop = 1;
-        mediaplayerNode->QueryIntAttribute("loop", &loop);
-        n.setLoop( (MediaPlayer::LoopMode) loop);
-        bool play = true;
-        mediaplayerNode->QueryBoolAttribute("play", &play);
-        n.play(play);
+
+        // change play status only if different id (e.g. new media player)
+        if ( n.id() != id__ ) {
+
+            double speed = 1.0;
+            mediaplayerNode->QueryDoubleAttribute("speed", &speed);
+            n.setPlaySpeed(speed);
+
+            int loop = 1;
+            mediaplayerNode->QueryIntAttribute("loop", &loop);
+            n.setLoop( (MediaPlayer::LoopMode) loop);
+
+            bool play = true;
+            mediaplayerNode->QueryBoolAttribute("play", &play);
+            n.play(play);
+        }
     }
 }
 
@@ -337,7 +373,9 @@ void SessionLoader::visit (MediaSource& s)
     XMLElement* uriNode = xmlCurrent_->FirstChildElement("uri");
     if (uriNode) {
         std::string uri = std::string ( uriNode->GetText() );
-        s.setPath(uri);
+        // load only new files
+        if ( uri != s.path() )
+            s.setPath(uri);
     }
 
     // set config media player
@@ -350,27 +388,34 @@ void SessionLoader::visit (SessionSource& s)
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
         std::string path = std::string ( pathNode->GetText() );
-        s.load(path);
+        // load only new files
+        if ( path != s.path() )
+            s.load(path);
     }
 
 }
 
 void SessionLoader::visit (PatternSource& s)
 {
-    uint p = xmlCurrent_->UnsignedAttribute("pattern");
+    uint t = xmlCurrent_->UnsignedAttribute("pattern");
 
     glm::ivec2 resolution(800, 600);
     XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
     if (res)
         tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
 
-    s.setPattern(p, resolution);
+    // change only if different pattern
+    if ( t != s.pattern()->type() )
+        s.setPattern(t, resolution);
 }
 
 void SessionLoader::visit (DeviceSource& s)
 {
-    const char *devname = xmlCurrent_->Attribute("device");
-    s.setDevice(devname);
+    std::string devname = std::string ( xmlCurrent_->Attribute("device") );
+
+    // change only if different device
+    if ( devname != s.device() )
+        s.setDevice(devname);
 }
 
 
