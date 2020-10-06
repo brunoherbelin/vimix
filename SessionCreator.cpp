@@ -111,8 +111,8 @@ void SessionLoader::load(XMLElement *sessionNode)
             Source *load_source = nullptr;
 
             // check if a source with the given id exists in the session
-            int id__ = -1;
-            xmlCurrent_->QueryIntAttribute("id", &id__);
+            uint64_t id__ = 0;
+            xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
             SourceList::iterator sit = session_->find(id__);
 
             // no source with this id exists
@@ -171,8 +171,8 @@ void SessionLoader::load(XMLElement *sessionNode)
                 Source *clone_source = nullptr;
 
                 // check if a source with same id exists
-                int id__ = -1;
-                xmlCurrent_->QueryIntAttribute("id", &id__);
+                uint64_t id__ = -1;
+                xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
                 SourceList::iterator sit = session_->find(id__);
 
                 // no source clone with this id exists
@@ -236,8 +236,8 @@ void SessionLoader::visit(Node &n)
 void SessionLoader::visit(MediaPlayer &n)
 {
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
-    int id__ = -1;
-    mediaplayerNode->QueryIntAttribute("id", &id__);
+    uint64_t id__ = -1;
+    mediaplayerNode->QueryUnsigned64Attribute("id", &id__);
 
     if (mediaplayerNode) {
         // timeline

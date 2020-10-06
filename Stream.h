@@ -29,7 +29,7 @@ public:
     /**
      * Get unique id
      */
-    inline int id() const { return id_; }
+    inline uint64_t id() const { return id_; }
     /**
      * Open a media using gstreamer pipeline keyword
      * */
@@ -115,7 +115,7 @@ public:
 protected:
 
     // video player description
-    int id_;
+    uint64_t id_;
     std::string description_;
     guint textureindex_;
 

@@ -41,7 +41,7 @@ void ImGuiVisitor::visit(Node &n)
 void ImGuiVisitor::visit(Group &n)
 {
     // MODEL VIEW
-    ImGui::PushID(n.id());
+    ImGui::PushID(std::to_string(n.id()).c_str());
 
     if (ImGuiToolkit::ButtonIcon(1, 16)) {
         n.translation_.x = 0.f;
@@ -119,7 +119,7 @@ void ImGuiVisitor::visit(Scene &n)
 
 void ImGuiVisitor::visit(Primitive &n)
 {
-    ImGui::PushID(n.id());
+    ImGui::PushID(std::to_string(n.id()).c_str());
     ImGui::Text("Primitive %d", n.id());
 
     n.shader()->accept(*this);
@@ -147,7 +147,7 @@ void ImGuiVisitor::visit(MediaPlayer &n)
 
 void ImGuiVisitor::visit(Shader &n)
 {
-    ImGui::PushID(n.id());
+    ImGui::PushID(std::to_string(n.id()).c_str());
 
 //    if (ImGuiToolkit::ButtonIcon(10, 2)) {
 //        n.blending = Shader::BLEND_OPACITY;
@@ -168,7 +168,7 @@ void ImGuiVisitor::visit(Shader &n)
 
 void ImGuiVisitor::visit(ImageShader &n)
 {
-    ImGui::PushID(n.id());
+    ImGui::PushID(std::to_string(n.id()).c_str());
 
     // get index of the mask used in this ImageShader
     int item_current = n.mask;
@@ -193,7 +193,7 @@ void ImGuiVisitor::visit(ImageShader &n)
 
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
-    ImGui::PushID(n.id());
+    ImGui::PushID(std::to_string(n.id()).c_str());
 
     if (ImGuiToolkit::ButtonIcon(6, 2)) {
         ImageProcessingShader defaultvalues;
@@ -328,7 +328,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
 void ImGuiVisitor::visit (Source& s)
 {
-    ImGui::PushID(s.id());
+    ImGui::PushID(std::to_string(s.id()).c_str());
     // blending
     s.blendingShader()->accept(*this);
 

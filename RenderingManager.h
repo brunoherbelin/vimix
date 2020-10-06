@@ -26,7 +26,7 @@ class RenderingWindow
 {
     GLFWwindow *window_, *master_;
     RenderingAttrib window_attributes_;
-    int id_;
+    int index_;
     float dpi_scale_;
 
     // objects to render
@@ -39,11 +39,11 @@ public:
     RenderingWindow();
     ~RenderingWindow();
 
-    inline int id() const { return id_; }
+    inline int index() const { return index_; }
     inline RenderingAttrib& attribs() { return window_attributes_; }
     inline GLFWwindow *window() const { return window_; }
 
-    bool init(int id, GLFWwindow *share = NULL);
+    bool init(int index, GLFWwindow *share = NULL);
     void setIcon(const std::string &resource);
     void setTitle(const std::string &title = "");
 

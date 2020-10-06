@@ -311,10 +311,10 @@ void MediaPlayer::execute_open()
 
 
     // all good
-    Log::Info("MediaPlayer %d Opened '%s' (%s %d x %d)", id_,
+    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
-    Log::Info("MediaPlayer %d Timeline [%ld %ld] %ld frames, %d gaps", id_,
+    Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
               media_.timeline.begin(), media_.timeline.end(), media_.timeline.numFrames(), media_.timeline.numGaps());
 
     ready_ = true;

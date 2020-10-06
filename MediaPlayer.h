@@ -82,7 +82,7 @@ public:
     /**
      * Get unique id
      */
-    inline int id() const { return id_; }
+    inline uint64_t id() const { return id_; }
     /** 
      * Open a media using gstreamer URI 
      * */
@@ -251,7 +251,7 @@ public:
 private:
 
     // video player description
-    int id_;
+    uint64_t id_;
     std::string filename_;
     std::string uri_;
     guint textureindex_;

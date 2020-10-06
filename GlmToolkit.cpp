@@ -8,10 +8,10 @@
 
 #include <chrono>
 #include <ctime>
-int GlmToolkit::uniqueId()
+uint64_t GlmToolkit::uniqueId()
 {
-    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000;
+    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch(); // 18446744073709551615
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()   % 1000000000000000000LL;
 }
 
 glm::mat4 GlmToolkit::transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)

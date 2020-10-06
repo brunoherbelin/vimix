@@ -37,14 +37,14 @@ private:
 
 class Shader
 {
-    int       id_;
+    uint64_t  id_;
 
 public:
     Shader();
     virtual ~Shader() {}
 
     // unique identifyer generated at instanciation
-    inline int id () const { return id_; }
+    inline uint64_t id () const { return id_; }
 
     virtual void use();
     virtual void reset();

@@ -16,7 +16,7 @@ public:
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
-    inline std::list<int> getIdList() const { return sources_id_; }
+    inline std::list<uint64_t> getIdList() const { return sources_id_; }
 
     // Elements of Scene
     void visit(Node& n) override;
@@ -50,7 +50,7 @@ public:
 protected:
     tinyxml2::XMLElement *xmlCurrent_;
     Session *session_;
-    std::list<int> sources_id_;
+    std::list<uint64_t> sources_id_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };

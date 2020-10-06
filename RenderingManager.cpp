@@ -68,7 +68,7 @@ static void WindowRefreshCallback( GLFWwindow * )
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
-    int id = GLFW_window_[w]->id();
+    int id = GLFW_window_[w]->index();
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].w = width;
         Settings::application.windows[id].h = height;
@@ -77,7 +77,7 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
 {
-    int id = GLFW_window_[w]->id();
+    int id = GLFW_window_[w]->index();
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].x = x;
         Settings::application.windows[id].y = y;
@@ -398,7 +398,7 @@ WindowSurface::WindowSurface(Shader *s) : Primitive(s)
 
 
 RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr),
-    id_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr)
+    index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr)
 {
 }
 
@@ -412,7 +412,7 @@ RenderingWindow::~RenderingWindow()
 
 void RenderingWindow::setTitle(const std::string &title)
 {
-    std::string fulltitle = Settings::application.windows[id_].name;
+    std::string fulltitle = Settings::application.windows[index_].name;
     if ( !title.empty() )
         fulltitle += " -- " + title;
 
@@ -434,7 +434,7 @@ void RenderingWindow::setIcon(const std::string &resource)
 bool RenderingWindow::isFullscreen ()
 {
     return (glfwGetWindowMonitor(window_) != nullptr);
-//    return Settings::application.windows[id_].fullscreen;
+//    return Settings::application.windows[index_].fullscreen;
 }
 
 GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
@@ -511,17 +511,17 @@ void RenderingWindow::setFullscreen(GLFWmonitor *mo)
     if (mo == nullptr) {
         // set to window mode
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        glfwSetWindowMonitor( window_, nullptr, Settings::application.windows[id_].x,
-                                                Settings::application.windows[id_].y,
-                                                Settings::application.windows[id_].w,
-                                                Settings::application.windows[id_].h, 0 );
-        Settings::application.windows[id_].fullscreen = false;
+        glfwSetWindowMonitor( window_, nullptr, Settings::application.windows[index_].x,
+                                                Settings::application.windows[index_].y,
+                                                Settings::application.windows[index_].w,
+                                                Settings::application.windows[index_].h, 0 );
+        Settings::application.windows[index_].fullscreen = false;
     }
     // not in fullscreen mode
     else {
         // set to fullscreen mode
-        Settings::application.windows[id_].fullscreen = true;
-        Settings::application.windows[id_].monitor = glfwGetMonitorName(mo);
+        Settings::application.windows[index_].fullscreen = true;
+        Settings::application.windows[index_].monitor = glfwGetMonitorName(mo);
 
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
@@ -571,13 +571,13 @@ float RenderingWindow::aspectRatio()
     return static_cast<float>(window_attributes_.viewport.x) / static_cast<float>(window_attributes_.viewport.y);
 }
 
-bool RenderingWindow::init(int id, GLFWwindow *share)
+bool RenderingWindow::init(int index, GLFWwindow *share)
 {
-    id_ = id;
+    index_ = index;
     master_ = share;
 
     // access Settings
-    Settings::WindowConfig winset = Settings::application.windows[id_];
+    Settings::WindowConfig winset = Settings::application.windows[index_];
 
     // do not show at creation
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
@@ -587,7 +587,7 @@ bool RenderingWindow::init(int id, GLFWwindow *share)
     // create the window normal
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
-        Log::Error("Failed to create GLFW Window %d", id_);
+        Log::Error("Failed to create GLFW Window %d", index_);
         return false;
     }
 
@@ -659,8 +659,8 @@ void RenderingWindow::show()
 {
     glfwShowWindow(window_);
 
-    if ( Settings::application.windows[id_].fullscreen ) {
-        GLFWmonitor *mo = monitorNamed(Settings::application.windows[id_].monitor);
+    if ( Settings::application.windows[index_].fullscreen ) {
+        GLFWmonitor *mo = monitorNamed(Settings::application.windows[index_].monitor);
         setFullscreen(mo);
     }
 

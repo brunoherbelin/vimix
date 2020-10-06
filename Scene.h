@@ -41,7 +41,7 @@ class Group;
  */
 class Node {
 
-    int       id_;
+    uint64_t  id_;
     bool      initialized_;
 
 public:
@@ -49,7 +49,7 @@ public:
     virtual ~Node ();
 
     // unique identifyer generated at instanciation
-    inline int id () const { return id_; }
+    inline uint64_t id () const { return id_; }
 
     // must initialize the node before draw
     virtual void init () { initialized_ = true; }
@@ -140,9 +140,9 @@ struct hasId: public std::unary_function<Node*, bool>
     {
        return (e && e->id() == _id);
     }
-    hasId(int id) : _id(id) { }
+    hasId(uint64_t id) : _id(id) { }
 private:
-    int _id;
+    uint64_t _id;
 };
 
 

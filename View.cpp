@@ -113,7 +113,7 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 void View::initiate()
 {
     current_action_ = "";
-    current_id_ = -1;
+    current_id_ = 0;
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
 
@@ -125,7 +125,7 @@ void View::terminate()
 {
     Action::manager().store(current_action_, current_id_);
     current_action_ = "";
-    current_id_ = -1;
+    current_id_ = 0;
 }
 
 void View::recenter()

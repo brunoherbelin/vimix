@@ -230,7 +230,7 @@ SourceList::iterator Session::find(Source *s)
     return std::find(sources_.begin(), sources_.end(), s);
 }
 
-SourceList::iterator Session::find(int id)
+SourceList::iterator Session::find(uint64_t id)
 {
     return std::find_if(sources_.begin(), sources_.end(), Source::hasId(id));
 }
@@ -250,9 +250,9 @@ uint Session::numSource() const
     return sources_.size();
 }
 
-std::list<int> Session::getIdList() const
+std::list<uint64_t> Session::getIdList() const
 {
-    std::list<int> idlist;
+    std::list<uint64_t> idlist;
 
     for( auto sit = sources_.begin(); sit != sources_.end(); sit++)
         idlist.push_back( (*sit)->id() );

@@ -541,7 +541,7 @@ Source * Mixer::findSource (std::string namesource)
     return nullptr;
 }
 
-Source * Mixer::findSource (int id)
+Source * Mixer::findSource (uint64_t id)
 {
     SourceList::iterator it = session_->find(id);
     if (it != session_->end())
@@ -550,7 +550,7 @@ Source * Mixer::findSource (int id)
 }
 
 
-void Mixer::setCurrentSource(int id)
+void Mixer::setCurrentSource(uint64_t id)
 {
     setCurrentSource( session_->find(id) );
 }

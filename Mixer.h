@@ -56,7 +56,7 @@ public:
     void setCurrentSource (Source *s);
     void setCurrentSource (std::string namesource);
     void setCurrentSource (Node *node);
-    void setCurrentSource (int id);
+    void setCurrentSource (uint64_t id);
     void setCurrentNext ();
     void unsetCurrentSource ();
 
@@ -66,7 +66,7 @@ public:
     // browsing into sources
     Source * findSource (Node *node);
     Source * findSource (std::string name);
-    Source * findSource (int id);
+    Source * findSource (uint64_t id);
 
     // management of view
     View *view   (View::Mode m = View::INVALID);

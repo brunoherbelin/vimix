@@ -35,7 +35,7 @@ public:
     virtual ~Source();
 
     // Get unique id
-    inline int id() const { return id_; }
+    inline uint64_t id() const { return id_; }
 
     // manipulate name of source
     void setName (const std::string &name);
@@ -127,9 +127,9 @@ public:
         inline bool operator()(const Source* elem) const {
            return (elem && elem->id() == _id);
         }
-        hasId(int id) : _id(id) { }
+        hasId(uint64_t id) : _id(id) { }
     private:
-        int _id;
+        uint64_t _id;
     };
 
     virtual glm::ivec2 icon() const { return glm::ivec2(12, 11); }
@@ -138,7 +138,7 @@ protected:
     // name
     std::string name_;
     char initials_[3];
-    int id_;
+    uint64_t id_;
 
     // every Source shall be initialized on first draw
     bool initialized_;

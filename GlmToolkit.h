@@ -9,7 +9,7 @@ namespace GlmToolkit
 {
 
 // get integer with unique id
-int uniqueId();
+uint64_t uniqueId();
 
 // get Matrix for these transformation components
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
