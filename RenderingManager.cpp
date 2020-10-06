@@ -563,7 +563,7 @@ int RenderingWindow::pixelsforRealHeight(float milimeters)
 
     float pixels = milimeters * static_cast<float>(glfwGetVideoMode(mo)->height) / static_cast<float>(mm_h);
 
-    return static_cast<int>( pixels );
+    return static_cast<int>( round(pixels) );
 }
 
 float RenderingWindow::aspectRatio()
