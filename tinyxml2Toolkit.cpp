@@ -109,11 +109,11 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
     newelement->SetAttribute("len", arraysize);
 
     // prepare an array for compressing data
-    uLong compressed_size = compressBound(arraysize);
+    uLong  compressed_size = compressBound(arraysize);
     gchar *compressed_array = g_new(gchar, compressed_size);
 
     // encoded string will hold the base64 encoding of the array
-    const gchar *encoded_string = nullptr;
+    const gchar *encoded_array = nullptr;
 
     // zlib  compress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
     if ( Z_OK == compress((Bytef *)compressed_array, &compressed_size,
@@ -123,16 +123,16 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
         newelement->SetAttribute("zbytes", (unsigned long) compressed_size);
 
         // encode the compressed array
-        encoded_string = g_base64_encode( (guchar *) compressed_array, compressed_size);
+        encoded_array = g_base64_encode( (guchar *) compressed_array, compressed_size);
     }
     // failed compression
     else {
         // encode the raw array
-        encoded_string = g_base64_encode( (guchar *) array, arraysize);
+        encoded_array = g_base64_encode( (guchar *) array, (uLong) arraysize);
     }
 
     // save the encoded string as text
-    XMLText *text = doc->NewText( encoded_string );
+    XMLText *text = doc->NewText( encoded_array );
     newelement->InsertEndChild( text );
 
     // free temporary array
@@ -143,60 +143,63 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
 
 bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int arraysize)
 {
+    bool ret = false;
+
     // make sure we have the good type of XML node
     if ( !elem || std::string(elem->Name()).compare("array") != 0 )
-        return false;
+        return ret;
 
-    // make sure the stored array is of the same array size as requested
+    // make sure the stored array is of the requested array size
     unsigned int len = 0;
     elem->QueryUnsignedAttribute("len", &len);
     if ( arraysize != len )
-        return false;
+        return ret;
 
     // read and decode the text field in <array>
-    gsize declen = 0;
-    guchar *decoded_array = g_base64_decode(elem->GetText(), &declen);
+    uLong   decoded_size = 0;
+    guchar *decoded_array = g_base64_decode(elem->GetText(), &decoded_size);
 
-    // if data is z-compressed, zbytes size is indicated
-    unsigned long zbytes = 0;
+    // if data is z-compressed (zbytes size is indicated)
+    uLong zbytes = 0;
     elem->QueryUnsigned64Attribute("zbytes", &zbytes);
     if ( zbytes > 0) {
-
         // sanity check 1: decoded data size must match the buffer size
-        if ( !decoded_array || zbytes != declen )
-            return false;
+        if ( decoded_array && zbytes == decoded_size ) {
 
-        // allocate a temporary array for decompressing data
-        uLong uncompressed_size = arraysize;
-        gchar *uncompressed_array = g_new(gchar, uncompressed_size);
+            // allocate a temporary array for decompressing data
+            uLong  uncompressed_size = arraysize;
+            gchar *uncompressed_array = g_new(gchar, uncompressed_size);
 
-        // zlib uncompress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
-        uncompress((Bytef *)uncompressed_array, &uncompressed_size,
-                   (Bytef *)decoded_array, zbytes) ;
+            // zlib uncompress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
+            uncompress((Bytef *)uncompressed_array, &uncompressed_size,
+                       (Bytef *)decoded_array, zbytes) ;
 
-        // sanity check 2: decompressed data size must match array size
-        if ( !uncompressed_array || arraysize != uncompressed_size )
-            return false;
+            // sanity check 2: decompressed data size must match array size
+            if ( uncompressed_array && arraysize == uncompressed_size ){
 
-        // copy to target array
-        memcpy(array, uncompressed_array, len);
+                // copy to target array
+                memcpy(array, uncompressed_array, arraysize);
+                // success
+                ret = true;
+            }
 
-        // free temp decompression buffer
-        g_free(uncompressed_array);
+            // free temp decompression buffer
+            g_free(uncompressed_array);
+        }
     }
-    // data is not z-compressed, just copy the decoded data
+    // data is not z-compressed
     else {
-
-        if ( !decoded_array || arraysize != declen )
-            return false;
-
-        memcpy(array, decoded_array, len);
+        // copy the decoded data
+        if ( decoded_array && arraysize == decoded_size )
+            memcpy(array, decoded_array, arraysize);
+        // success
+        ret = true;
     }
 
     // free temporary array
     g_free(decoded_array);
 
-    return true;
+    return ret;
 }
 
 bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
