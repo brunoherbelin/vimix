@@ -159,6 +159,7 @@ protected:
     void selectOpenFilename();
 
     void RenderPreview();
+    void RenderHistory();
     void RenderShaderEditor();
     void handleKeyboard();
     void handleMouse();

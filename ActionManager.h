@@ -29,6 +29,11 @@ public:
     void redo();
     void stepTo(uint target);
 
+    inline uint current() const { return step_; }
+    inline uint max() const { return max_step_; }
+
+    std::string label(uint s) const;
+
 private:
 
     void restore(uint target, int id);

@@ -308,8 +308,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0");
-    if (ImGui::IsItemDeactivatedAfterEdit())
+    if (ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0"))
         Action::manager().store("Invert", n.id());
 
     if (ImGuiToolkit::ButtonIcon(1, 7)) {
@@ -318,8 +317,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) );
-    if (ImGui::IsItemDeactivatedAfterEdit())
+    if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
         Action::manager().store("Filter", n.id());
 
     ImGui::PopID();

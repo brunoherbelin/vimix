@@ -17,6 +17,7 @@ struct WidgetsConfig
     int  stats_corner;
     bool logs;
     bool preview;
+    bool history;
     bool media_player;
     bool media_player_view;
     bool shader_editor;
@@ -27,6 +28,7 @@ struct WidgetsConfig
         stats_corner = 1;
         logs = false;
         preview = false;
+        history = false;
         media_player = false;
         media_player_view = true;
         shader_editor = false;

@@ -106,6 +106,20 @@ void Action::redo()
 void Action::stepTo(uint target)
 {
     // going to target step
+    restore(target, -1);
+}
+
+
+std::string Action::label(uint s) const
+{
+    std::string l = "";
+
+    if (s > 0 && s <= max_step_) {
+        std::string nodename = "H" + std::to_string(s);
+        const XMLElement *sessionNode = xmlDoc_.FirstChildElement( nodename.c_str() );
+        l = sessionNode->Attribute("label");
+    }
+    return l;
 }
 
 void Action::restore(uint target, int id)
@@ -114,7 +128,7 @@ void Action::restore(uint target, int id)
     locked_ = true;
 
     // get history node of target step
-    step_ = target;
+    step_ = CLAMP(target, 1, max_step_);
     std::string nodename = "H" + std::to_string(step_);
     XMLElement *sessionNode = xmlDoc_.FirstChildElement( nodename.c_str() );
 

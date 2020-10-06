@@ -611,9 +611,10 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
     return array_changed;
 }
 
-bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size)
+bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
+                                      int values_count, float values_min, float values_max, bool *released, const ImVec2 size)
 {
-    static bool  active = false;
+    static bool active = false;
     static uint previous_index = UINT32_MAX;
     bool array_changed = false;
 
@@ -635,6 +636,8 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     ImGui::ItemSize(size);
     if (!ImGui::ItemAdd(bbox, id))
         return false;
+
+    *released = false;
 
     // read user input and activate widget
     const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -703,6 +706,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             active = false;
             ImGui::ClearActiveID();
             previous_index = UINT32_MAX;
+            *released = true;
         }
 
     }

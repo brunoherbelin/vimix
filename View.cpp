@@ -1165,8 +1165,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_position_->translation_.y = sourceNode->translation_.y;
             overlay_position_->update(0);
             // Show move cursor
-            info << "Position (" << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-            info << ", "  << sourceNode->translation_.y << ")";
+            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+            info << ", "  << sourceNode->translation_.y ;
         }
     }
 

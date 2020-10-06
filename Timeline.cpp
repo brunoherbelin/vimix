@@ -72,6 +72,13 @@ void Timeline::setStep(GstClockTime dt)
     step_ = dt;
 }
 
+void Timeline::setTiming(TimeInterval interval, GstClockTime step)
+{
+    timing_ = interval;
+    if (step != GST_CLOCK_TIME_NONE)
+        step_ = step;
+}
+
 GstClockTime Timeline::next(GstClockTime time) const
 {
     GstClockTime next_time = time;

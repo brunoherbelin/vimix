@@ -297,6 +297,9 @@ void UserInterface::handleKeyboard()
             else
                 Action::manager().undo();
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
+            Settings::application.widget.history = !Settings::application.widget.history;
+        }
 
     }
     // No CTRL modifier
@@ -709,6 +712,8 @@ void UserInterface::Render()
             toolbox.Render();
         if (Settings::application.widget.preview)
             RenderPreview();
+        if (Settings::application.widget.history)
+            RenderHistory();
         if (Settings::application.widget.media_player)
             mediacontrol.Render();
         if (Settings::application.widget.shader_editor)
@@ -958,6 +963,67 @@ void ToolBox::Render()
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
 
+}
+
+void UserInterface::RenderHistory()
+{
+    float history_height = 5.f * ImGui::GetFrameHeightWithSpacing();
+    ImVec2 MinWindowSize = ImVec2(250.f, history_height);
+
+    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(250, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
+    if ( !ImGui::Begin(IMGUI_TITLE_HISTORY, &Settings::application.widget.history, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+    {
+        ImGui::End();
+        return;
+    }
+
+    // menu (no title bar)
+    bool tmp = false;
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu(IMGUI_TITLE_HISTORY))
+        {
+            if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
+                Action::manager().undo();
+            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "+Shift Z") )
+                Action::manager().redo();
+
+            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+                Settings::application.widget.history = false;
+
+            ImGui::EndMenu();
+        }
+        if ( ImGui::Selectable(ICON_FA_UNDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0))) {
+
+            Action::manager().undo();
+        }
+        if ( ImGui::Selectable(ICON_FA_REDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0))) {
+
+            Action::manager().redo();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail());
+    for (int i = 1; i <= Action::manager().max(); i++) {
+
+        std::string step_label_ = Action::manager().label(i);
+
+        bool enable = i == Action::manager().current();
+        if (ImGui::Selectable( step_label_.c_str(), enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+
+                Action::manager().stepTo(i);
+            }
+        }
+    }
+    ImGui::ListBoxFooter();
+
+    ImGui::End();
 }
 
 void UserInterface::RenderPreview()
@@ -1338,32 +1404,39 @@ void MediaController::Render()
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
+//            if (ImGui::IsItemDeactivatedAfterEdit())
+//                Action::manager().store("Play Speed", mp_->id());
+            // TODO: avoid seek every time speed is set
 
             // Timeline popup menu
             ImGui::SameLine(0, spacing);
             if (ImGuiToolkit::ButtonIcon(5, 8))
-                ImGui::OpenPopup("MenuTimeline");
-            if (ImGui::BeginPopup("MenuTimeline")) {
+                ImGui::OpenPopup( "MenuTimeline" );
+            if (ImGui::BeginPopup( "MenuTimeline" )) {
                 if (ImGui::Selectable( "Reset Speed" )){
                     speed = 1.f;
                     mp_->setPlaySpeed( static_cast<double>(speed) );
+//                    Action::manager().store("Reset Speed", mp_->id());
                 }
                 if (ImGui::Selectable( "Reset Timeline" )){
                     timeline_zoom = 1.f;
                     mp_->timeline()->clearFading();
                     mp_->timeline()->clearGaps();
+                    Action::manager().store("Reset Timeline", mp_->id());
                 }
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(150);
                 int smoothcurve = 0;
                 if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
                     mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
+                    Action::manager().store("Smooth curve Timeline", mp_->id());
                 }
                 ImGui::SetNextItemWidth(150);
                 int autofade = 0;
                 if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
                     mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );
                     mp_->timeline()->smoothFading( 10 * autofade );
+                    Action::manager().store("Auto fading Timeline", mp_->id());
                 }
                 ImGui::EndPopup();
             }
@@ -1384,10 +1457,15 @@ void MediaController::Render()
                 ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), segments_height -1);
                 size.x *= timeline_zoom;
 
-                if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", mp_->timeline()->gapsArray(),
-                                                 mp_->timeline()->fadingArray(), MAX_TIMELINE_ARRAY, 0.f, 1.f, size) )
-                {
+                bool released = false;
+                if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray",
+                                                      mp_->timeline()->gapsArray(),
+                                                      mp_->timeline()->fadingArray(),
+                                                      MAX_TIMELINE_ARRAY, 0.f, 1.f, &released, size) ) {
                     mp_->timeline()->update();
+                }
+                else if (released) {
+                    Action::manager().store("Timeline", mp_->id());
                 }
 
                 // custom timeline slider
@@ -2378,6 +2456,7 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
         ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
+        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         // Settings application appearance
@@ -2584,8 +2663,8 @@ void ShowSandbox(bool* p_open)
 
 ////        size.y = 20;
 ////        ImGui::PlotHistogram("Hisfd", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
-
-        ImGuiToolkit::EditPlotHistoLines("Alpha", arr_histo, arr_lines, array_size, 0.f, 1.f, size);
+        bool r = false;
+        ImGuiToolkit::EditPlotHistoLines("Alpha", arr_histo, arr_lines, array_size, 0.f, 1.f, &r, size);
 
         bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, 0, duration, step, size.x);
 

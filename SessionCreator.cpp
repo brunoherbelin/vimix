@@ -243,7 +243,8 @@ void SessionLoader::visit(MediaPlayer &n)
         // timeline
         XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
         if (timelineelement) {
-            Timeline tl = *(n.timeline());
+            Timeline tl;
+            tl.setTiming( n.timeline()->interval(), n.timeline()->step());
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
             if (gapselement) {
                 XMLElement* gap = gapselement->FirstChildElement("Interval");
