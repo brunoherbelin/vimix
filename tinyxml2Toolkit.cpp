@@ -120,7 +120,7 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
                           (Bytef *)array, arraysize) ) {
 
         // compression suceeded : add a zbytes field to indicate how much data was compressed
-        newelement->SetAttribute("zbytes", (unsigned long) compressed_size);
+        newelement->SetAttribute("zbytes", (uint) compressed_size);
 
         // encode the compressed array
         encoded_array = g_base64_encode( (guchar *) compressed_array, compressed_size);
@@ -160,8 +160,8 @@ bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int
     guchar *decoded_array = g_base64_decode(elem->GetText(), &decoded_size);
 
     // if data is z-compressed (zbytes size is indicated)
-    uLong zbytes = 0;
-    elem->QueryUnsigned64Attribute("zbytes", &zbytes);
+    uint zbytes = 0;
+    elem->QueryUnsignedAttribute("zbytes", &zbytes);
     if ( zbytes > 0) {
         // sanity check 1: decoded data size must match the buffer size
         if ( decoded_array && zbytes == decoded_size ) {
@@ -172,7 +172,7 @@ bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int
 
             // zlib uncompress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
             uncompress((Bytef *)uncompressed_array, &uncompressed_size,
-                       (Bytef *)decoded_array, zbytes) ;
+                       (Bytef *)decoded_array, (uLong) zbytes) ;
 
             // sanity check 2: decompressed data size must match array size
             if ( uncompressed_array && arraysize == uncompressed_size ){
