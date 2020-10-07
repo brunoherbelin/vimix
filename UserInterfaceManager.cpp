@@ -181,6 +181,7 @@ bool UserInterface::Init()
 
     //  Estalish the base size from the resolution of the monitor
     float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
+    base_font_size = CLAMP( base_font_size, 8.f, 50.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
