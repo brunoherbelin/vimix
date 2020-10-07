@@ -221,7 +221,7 @@ bool tinyxml2::XMLResultError(int result)
     XMLError xmlresult = (XMLError) result;
     if ( xmlresult != XML_SUCCESS)
     {
-        Log::Warning("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
+        Log::Info("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
         return true;
     }
     return false;

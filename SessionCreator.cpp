@@ -27,8 +27,10 @@ std::string SessionCreator::info(const std::string& filename)
 
     XMLDocument doc;
     XMLError eResult = doc.LoadFile(filename.c_str());
-    if ( XMLResultError(eResult))
+    if ( XMLResultError(eResult)) {
+        Log::Warning("%s could not be openned.", filename.c_str());
         return ret;
+    }
 
     XMLElement *header = doc.FirstChildElement(APP_NAME);
     if (header != nullptr && header->Attribute("date") != 0) {
@@ -50,8 +52,10 @@ SessionCreator::SessionCreator(): SessionLoader(nullptr)
 void SessionCreator::load(const std::string& filename)
 {
     XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
-    if ( XMLResultError(eResult))
+    if ( XMLResultError(eResult)){
+        Log::Warning("%s could not be openned.", filename.c_str());
         return;
+    }
 
     XMLElement *header = xmlDoc_.FirstChildElement(APP_NAME);
     if (header == nullptr) {

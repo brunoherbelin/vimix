@@ -2406,7 +2406,15 @@ void Navigator::RenderMainPannel()
                 }
                 else  {
                     file_info = SessionCreator::info(sessionfilename);
-                    file_selected = it;
+                    if (file_info.empty()) {
+                        // failed : remove from recent
+                        if ( selection_session_mode == 0) {
+                            Settings::application.recentSessions.filenames.remove(sessionfilename);
+                            selection_session_mode_changed = true;
+                        }
+                    }
+                    else
+                        file_selected = it;
                 }
             }
             if (ImGui::IsItemHovered()) {
