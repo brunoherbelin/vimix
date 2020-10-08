@@ -13,9 +13,9 @@
 #endif
 #include "imgui_internal.h"
 
-#define MILISECOND 1000000L
-#define SECOND 1000000000L
-#define MINUTE 60000000000L
+#define MILISECOND 1000000UL
+#define SECOND 1000000000UL
+#define MINUTE 60000000000UL
 
 #include "Resource.h"
 #include "FileDialog.h"

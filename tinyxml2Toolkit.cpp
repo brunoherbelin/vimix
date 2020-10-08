@@ -123,12 +123,12 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
         newelement->SetAttribute("zbytes", (uint) compressed_size);
 
         // encode the compressed array
-        encoded_array = g_base64_encode( (guchar *) compressed_array, compressed_size);
+        encoded_array = g_base64_encode( (guchar *) compressed_array, (gsize) compressed_size);
     }
     // failed compression
     else {
         // encode the raw array
-        encoded_array = g_base64_encode( (guchar *) array, (uLong) arraysize);
+        encoded_array = g_base64_encode( (guchar *) array, (gsize) arraysize);
     }
 
     // save the encoded string as text
@@ -156,7 +156,7 @@ bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int
         return ret;
 
     // read and decode the text field in <array>
-    uLong   decoded_size = 0;
+    gsize   decoded_size = 0;
     guchar *decoded_array = g_base64_decode(elem->GetText(), &decoded_size);
 
     // if data is z-compressed (zbytes size is indicated)
@@ -164,7 +164,7 @@ bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int
     elem->QueryUnsignedAttribute("zbytes", &zbytes);
     if ( zbytes > 0) {
         // sanity check 1: decoded data size must match the buffer size
-        if ( decoded_array && zbytes == decoded_size ) {
+        if ( decoded_array && zbytes == (uint) decoded_size ) {
 
             // allocate a temporary array for decompressing data
             uLong  uncompressed_size = arraysize;
