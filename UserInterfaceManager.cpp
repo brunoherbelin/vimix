@@ -1014,7 +1014,7 @@ void UserInterface::RenderHistory()
         std::string step_label_ = Action::manager().label(i);
 
         bool enable = i == Action::manager().current();
-        if (ImGui::Selectable( step_label_.c_str(), enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+        if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
 
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 
@@ -1417,27 +1417,26 @@ void MediaController::Render()
                 if (ImGui::Selectable( "Reset Speed" )){
                     speed = 1.f;
                     mp_->setPlaySpeed( static_cast<double>(speed) );
-//                    Action::manager().store("Reset Speed", mp_->id());
                 }
                 if (ImGui::Selectable( "Reset Timeline" )){
                     timeline_zoom = 1.f;
                     mp_->timeline()->clearFading();
                     mp_->timeline()->clearGaps();
-                    Action::manager().store("Reset Timeline", mp_->id());
+                    Action::manager().store("Timeline Reset", mp_->id());
                 }
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(150);
                 int smoothcurve = 0;
                 if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
                     mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
-                    Action::manager().store("Smooth curve Timeline", mp_->id());
+                    Action::manager().store("Timeline Smooth curve", mp_->id());
                 }
                 ImGui::SetNextItemWidth(150);
                 int autofade = 0;
                 if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
                     mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );
                     mp_->timeline()->smoothFading( 10 * autofade );
-                    Action::manager().store("Auto fading Timeline", mp_->id());
+                    Action::manager().store("Timeline Auto fading", mp_->id());
                 }
                 ImGui::EndPopup();
             }
@@ -1466,7 +1465,7 @@ void MediaController::Render()
                     mp_->timeline()->update();
                 }
                 else if (released) {
-                    Action::manager().store("Timeline", mp_->id());
+                    Action::manager().store("Timeline change", mp_->id());
                 }
 
                 // custom timeline slider
