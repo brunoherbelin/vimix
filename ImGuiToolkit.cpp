@@ -17,6 +17,8 @@
 #define SECOND 1000000000UL
 #define MINUTE 60000000000UL
 
+#include <glad/glad.h>
+
 #include "Resource.h"
 #include "FileDialog.h"
 #include "ImGuiToolkit.h"
@@ -738,15 +740,19 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
 {
     // Font Atlas ImGui Management
     ImGuiIO& io = ImGui::GetIO();    
+    GLint max = 0;
+    glGetInternalformativ(GL_TEXTURE_2D, GL_RGBA8, GL_MAX_WIDTH, 1, &max);
+    io.Fonts->TexDesiredWidth = max / 2;  // optimize use of texture depending on OpenGL drivers
+
+    // Setup font config
     const ImWchar* glyph_ranges = io.Fonts->GetGlyphRangesDefault();
     std::string filename = "fonts/" + ttf_font_name +  ".ttf";
     std::string fontname = ttf_font_name + ", " + std::to_string(pointsize) + "px";
     ImFontConfig font_config;
     fontname.copy(font_config.Name, 40);    
     font_config.FontDataOwnedByAtlas = false; // data will be copied in font atlas
-    // TODO : calculate oversampling as function of the maximum texture size
-    font_config.OversampleH = CLAMP( oversample * 2 + 1, 1, 7 );
-    font_config.OversampleV = CLAMP( oversample, 0, 5 );
+    font_config.OversampleH = CLAMP( oversample, 1, 5 );
+    font_config.OversampleV = CLAMP( oversample, 1, 5 );
 
     // read font in Resource manager
     size_t data_size = 0;
