@@ -741,7 +741,7 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
     // Font Atlas ImGui Management
     ImGuiIO& io = ImGui::GetIO();    
     GLint max = 0;
-    glGetInternalformativ(GL_TEXTURE_2D, GL_RGBA8, GL_MAX_WIDTH, 1, &max);
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max);
     io.Fonts->TexDesiredWidth = max / 2;  // optimize use of texture depending on OpenGL drivers
 
     // Setup font config
