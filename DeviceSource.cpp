@@ -393,7 +393,8 @@ void DeviceSource::setDevice(const std::string &devicename)
 void DeviceSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }
 
 bool DeviceSource::failed() const

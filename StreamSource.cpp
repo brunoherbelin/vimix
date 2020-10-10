@@ -33,7 +33,8 @@ void GenericStreamSource::setDescription(const std::string &desc)
 void GenericStreamSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }
 
 StreamSource::StreamSource() : Source()

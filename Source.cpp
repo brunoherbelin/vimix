@@ -508,6 +508,7 @@ void CloneSource::render()
 void CloneSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }
 

@@ -104,6 +104,8 @@ SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
 
 void SessionLoader::load(XMLElement *sessionNode)
 {
+    sources_id_.clear();
+
     if (sessionNode != nullptr && session_ != nullptr) {
 
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
@@ -147,7 +149,6 @@ void SessionLoader::load(XMLElement *sessionNode)
 
                 // add source to session
                 session_->addSource(load_source);
-                id__ = load_source->id();
             }
             // get reference to the existing source
             else
@@ -156,7 +157,7 @@ void SessionLoader::load(XMLElement *sessionNode)
             // apply config to source
             load_source->accept(*this);
             // remember
-            sources_id_.push_back( id__ );
+            sources_id_.push_back( load_source->id() );
         }
 
         // create clones after all sources, to be able to clone a source created above
@@ -167,47 +168,38 @@ void SessionLoader::load(XMLElement *sessionNode)
 
             // verify type of node
             const char *pType = xmlCurrent_->Attribute("type");
-            if (!pType)
-                continue;
-            if ( std::string(pType) == "CloneSource") {
-
-                // clone to load
-                Source *clone_source = nullptr;
+            if ( pType && std::string(pType) == "CloneSource") {
 
                 // check if a source with same id exists
-                uint64_t id__ = -1;
+                uint64_t id__ = 0;
                 xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
                 SourceList::iterator sit = session_->find(id__);
 
                 // no source clone with this id exists
                 if ( sit == session_->end() ) {
 
+                    // clone from given origin
                     XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
                     if (originNode) {
                         std::string sourcename = std::string ( originNode->GetText() );
                         SourceList::iterator origin = session_->find(sourcename);
+                        // found the orign source
                         if (origin != session_->end()) {
                             // create a new source of type Clone
-                            clone_source = (*origin)->clone();
+                            Source *clone_source = (*origin)->clone();
+                            // add source to session
+                            session_->addSource(clone_source);
+                            // apply config to source
+                            clone_source->accept(*this);
+                            // remember
+                            sources_id_.push_back( clone_source->id() );
                         }
                     }
-                    // skip failed
-                    if (!clone_source)
-                        continue;
-
-                    // add source to session
-                    session_->addSource(clone_source);
-                    id__ = clone_source->id();
                 }
-                else
-                    clone_source = *sit;
-
-                // apply config to source
-                clone_source->accept(*this);
-                // remember
-                sources_id_.push_back( id__ );
             }
         }
+        // make sure no duplicate
+        sources_id_.unique();
     }
 
 }

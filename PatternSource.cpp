@@ -147,7 +147,8 @@ void PatternSource::setPattern(int type, glm::ivec2 resolution)
 void PatternSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }
 
 Pattern *PatternSource::pattern() const

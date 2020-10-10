@@ -237,7 +237,8 @@ void SessionSource::render()
 void SessionSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }
 
 
@@ -317,5 +318,6 @@ void RenderSource::render()
 void RenderSource::accept(Visitor& v)
 {
     Source::accept(v);
-    v.visit(*this);
+    if (!failed())
+        v.visit(*this);
 }

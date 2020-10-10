@@ -257,6 +257,9 @@ std::list<uint64_t> Session::getIdList() const
     for( auto sit = sources_.begin(); sit != sources_.end(); sit++)
         idlist.push_back( (*sit)->id() );
 
+    // make sure no duplicate
+    idlist.unique();
+
     return idlist;
 }
 
