@@ -751,6 +751,8 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
     ImFontConfig font_config;
     fontname.copy(font_config.Name, 40);    
     font_config.FontDataOwnedByAtlas = false; // data will be copied in font atlas
+    if ( max * max < 16777216 )  // hack: try to avoid font textures too larges by disabling oversamplig
+        oversample = 1;
     font_config.OversampleH = CLAMP( oversample, 1, 5 );
     font_config.OversampleV = CLAMP( oversample, 1, 5 );
 
