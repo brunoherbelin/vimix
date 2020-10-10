@@ -468,8 +468,21 @@ void Mixer::uncover(Source *s)
 
 void Mixer::deleteSelection()
 {
+    // get clones first : this way we store the history of deletion in the right order
+    SourceList selection_clones_;
+    for ( auto sit = selection().begin(); sit != selection().end(); sit++ ) {
+        CloneSource *clone = dynamic_cast<CloneSource *>(*sit);
+        if (clone)
+            selection_clones_.push_back(clone);
+    }
+    // delete all clones
+    while ( !selection_clones_.empty() ) {
+        deleteSource( selection_clones_.front());
+        selection_clones_.pop_front();
+    }
+    // empty the selection
     while ( !selection().empty() )
-        deleteSource( selection().front());
+        deleteSource( selection().front()); // this also remove element from selection()
 
 }
 
