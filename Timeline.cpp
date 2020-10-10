@@ -34,6 +34,7 @@ Timeline& Timeline::operator = (const Timeline& b)
         this->timing_ = b.timing_;
         this->step_ = b.step_;
         this->gaps_ = b.gaps_;
+        this->gaps_array_need_update_ = b.gaps_array_need_update_;
         memcpy( this->gapsArray_, b.gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
         memcpy( this->fadingArray_, b.fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
     }

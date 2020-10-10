@@ -45,7 +45,7 @@ public:
 
     // operations on sources
     void addSource    (Source *s);
-    void deleteSource (Source *s);
+    void deleteSource (Source *s, bool withundo=true);
     void renameSource (Source *s, const std::string &newname);
     void attach       (Source *s);
     void detach       (Source *s);

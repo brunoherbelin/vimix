@@ -193,7 +193,7 @@ void Mixer::update()
         if (failedFile != nullptr) {
             Settings::application.recentImport.remove( failedFile->path() );
         }
-        deleteSource(failure);
+        deleteSource(failure, false);
     }
 
     // update views
@@ -349,7 +349,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(std::string("Insert ")+s->name());
+        Action::manager().store(s->name() + std::string(" inserted"), s->id());
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -366,12 +366,13 @@ void Mixer::insertSource(Source *s, View::Mode m)
     }
 }
 
-void Mixer::deleteSource(Source *s)
+void Mixer::deleteSource(Source *s, bool withundo)
 {
     if ( s != nullptr )
     {
         // keep name for log
         std::string name = s->name();
+        uint64_t id = s->id();
 
         // remove source Nodes from all views
         detach(s);
@@ -379,8 +380,9 @@ void Mixer::deleteSource(Source *s)
         // delete source
         session_->deleteSource(s);
 
-        // new state in history manager
-        Action::manager().store(std::string("Delete ")+name);
+        // store new state in history manager
+        if (withundo)
+            Action::manager().store(name + std::string(" deleted"), id);
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
