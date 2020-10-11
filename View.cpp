@@ -528,7 +528,7 @@ void MixingView::setAlpha(Source *s)
 
     // move the layer node of the source
     Group *sourceNode = s->group(mode_);
-    glm::vec2 mix_pos = glm::vec2(sourceNode->translation_);
+    glm::vec2 mix_pos = glm::vec2(DEFAULT_MIXING_TRANSLATION);
 
     for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
 
@@ -1307,9 +1307,12 @@ float LayerView::setDepth(Source *s, float d)
     if (!s)
         return -1.f;
 
-    float depth = d;
+    // move the layer node of the source
+    Group *sourceNode = s->group(mode_);
 
-    // negative depth given; find the front most depth
+    float depth = d < 0.f ? sourceNode->translation_.z : d;
+
+    // negative or no  depth given; find the front most depth
     if ( depth < 0.f ) {
         Node *front = scene.ws()->front();
         if (front)
@@ -1318,8 +1321,6 @@ float LayerView::setDepth(Source *s, float d)
             depth = 0.5f;
     }
 
-    // move the layer node of the source
-    Group *sourceNode = s->group(mode_);
     // move on x
     sourceNode->translation_.x = CLAMP( -depth, -(SCENE_DEPTH - 2.f), 0.f);
     // discretized translation with ALT

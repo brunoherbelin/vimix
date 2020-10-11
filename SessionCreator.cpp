@@ -101,6 +101,51 @@ SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
 
 }
 
+//Source *SessionLoader::createSource(XMLElement *sourceNode)
+//{
+//    // source to load
+//    Source *load_source = nullptr;
+
+//    // check if a source with the given id exists in the session
+//    uint64_t id__ = 0;
+//    sourceNode->QueryUnsigned64Attribute("id", &id__);
+//    SourceList::iterator sit = session_->find(id__);
+
+//    // no source with this id exists
+//    if ( sit == session_->end() ) {
+//        // create a new source depending on type
+//        const char *pType = sourceNode->Attribute("type");
+//        if (!pType)
+//            continue;
+//        if ( std::string(pType) == "MediaSource") {
+//            load_source = new MediaSource;
+//        }
+//        else if ( std::string(pType) == "SessionSource") {
+//            load_source = new SessionSource;
+//        }
+//        else if ( std::string(pType) == "RenderSource") {
+//            load_source = new RenderSource(session_);
+//        }
+//        else if ( std::string(pType) == "PatternSource") {
+//            load_source = new PatternSource;
+//        }
+//        else if ( std::string(pType) == "DeviceSource") {
+//            load_source = new DeviceSource;
+//        }
+
+//        // skip failed (including clones)
+//        if (!load_source)
+//            continue;
+
+//        // add source to session
+//        session_->addSource(load_source);
+//    }
+//    // get reference to the existing source
+//    else
+//        load_source = *sit;
+
+//    return load_source;
+//}
 
 void SessionLoader::load(XMLElement *sessionNode)
 {
@@ -203,6 +248,71 @@ void SessionLoader::load(XMLElement *sessionNode)
         sources_id_.unique();
     }
 
+}
+
+Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
+{
+    xmlCurrent_ = sourceNode;
+
+    // source to load
+    Source *load_source = nullptr;
+    bool is_clone = false;
+
+    // check if a source with the given id exists in the session
+    uint64_t id__ = 0;
+    xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
+    SourceList::iterator sit = session_->find(id__);
+
+    // no source with this id exists
+    if ( sit == session_->end() ) {
+        // create a new source depending on type
+        const char *pType = xmlCurrent_->Attribute("type");
+        if (pType) {
+            if ( std::string(pType) == "MediaSource") {
+                load_source = new MediaSource;
+            }
+            else if ( std::string(pType) == "SessionSource") {
+                load_source = new SessionSource;
+            }
+            else if ( std::string(pType) == "RenderSource") {
+                load_source = new RenderSource(session_);
+            }
+            else if ( std::string(pType) == "PatternSource") {
+                load_source = new PatternSource;
+            }
+            else if ( std::string(pType) == "DeviceSource") {
+                load_source = new DeviceSource;
+            }
+            else if ( std::string(pType) == "CloneSource") {
+                // clone from given origin
+                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                if (originNode) {
+                    std::string sourcename = std::string ( originNode->GetText() );
+                    SourceList::iterator origin = session_->find(sourcename);
+                    // found the orign source
+                    if (origin != session_->end())
+                        load_source = (*origin)->clone();
+                }
+            }
+        }
+    }
+    // clone existing source
+    else {
+        load_source = (*sit)->clone();
+        is_clone = true;
+    }
+
+    // apply config to source
+    if (load_source) {
+        load_source->accept(*this);
+        // reset mixing (force to place in mixing scene)
+        load_source->group(View::MIXING)->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
+        // increment depth for clones (avoid supperposition)
+        if (is_clone)
+            load_source->group(View::LAYER)->translation_.z += 0.2f;
+    }
+
+    return load_source;
 }
 
 

@@ -282,8 +282,15 @@ void UserInterface::handleKeyboard()
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
-            // select all
-            Mixer::manager().view()->selectAll();
+            if (shift_modifier_active)
+            {
+                // clear selection
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+            }
+            else
+                // select all
+                Mixer::manager().view()->selectAll();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
@@ -298,6 +305,23 @@ void UserInterface::handleKeyboard()
                 Action::manager().redo();
             else
                 Action::manager().undo();
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_C )) {
+            std::string clipboard = Mixer::selection().xml();
+            if (!clipboard.empty())
+                ImGui::SetClipboardText(clipboard.c_str());
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_X )) {
+            std::string clipboard = Mixer::selection().xml();
+            if (!clipboard.empty()) {
+                ImGui::SetClipboardText(clipboard.c_str());
+                Mixer::manager().deleteSelection();
+            }
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_V )) {
+            auto clipboard = ImGui::GetClipboardText();
+            if (clipboard != nullptr && strlen(clipboard) > 0)
+                Mixer::manager().paste(clipboard);
         }
     }
     // No CTRL modifier
@@ -348,9 +372,9 @@ void UserInterface::handleKeyboard()
     // confirmation for leaving vimix: prevent un-wanted Ctrl+Q, but make it easy to confirm
     if (ImGui::BeginPopup("confirm_quit_popup"))
     {
-        ImGui::Text(" Leave vimix? ");
+        ImGui::Text(" Leave vimix? [Q to confirm]");
         // Clic Quit or press Q to confirm exit
-        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ") ||
+        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ", ImVec2(250,0)) ||
             ( !confirm_quit_popup && ImGui::IsKeyPressed( GLFW_KEY_Q )) )
             Rendering::manager().close();
         ImGui::EndPopup();

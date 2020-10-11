@@ -12,33 +12,36 @@ class Session;
 class SessionLoader : public Visitor {
 
 public:
+
     SessionLoader(Session *session);
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
     inline std::list<uint64_t> getIdList() const { return sources_id_; }
 
-    // Elements of Scene
-    void visit(Node& n) override;
+    Source *cloneOrCreateSource(tinyxml2::XMLElement *sourceNode);
 
-    void visit(Scene& n) override {}
-    void visit(Group& n) override {}
-    void visit(Switch& n) override {}
-    void visit(Primitive& n) override {}
-    void visit(Surface& n) override {}
-    void visit(ImageSurface& n) override {}
-    void visit(MediaSurface& n) override {}
-    void visit(FrameBufferSurface& n) override {}
-    void visit(LineStrip& n) override {}
-    void visit(LineSquare&) override {}
-    void visit(LineCircle& n) override {}
-    void visit(Mesh& n) override {}
+    // Elements of Scene
+    void visit (Node& n) override;
+
+    void visit (Scene&) override {}
+    void visit (Group&) override {}
+    void visit (Switch&) override {}
+    void visit (Primitive&) override {}
+    void visit (Surface&) override {}
+    void visit (ImageSurface&) override {}
+    void visit (MediaSurface&) override {}
+    void visit (FrameBufferSurface&) override {}
+    void visit (LineStrip&) override {}
+    void visit (LineSquare&) override {}
+    void visit (LineCircle&) override {}
+    void visit (Mesh&) override {}
 
     // Elements with attributes
-    void visit(MediaPlayer& n) override;
-    void visit(Shader& n) override;
-    void visit(ImageShader& n) override;
-    void visit(ImageProcessingShader& n) override;
+    void visit (MediaPlayer& n) override;
+    void visit (Shader& n) override;
+    void visit (ImageShader& n) override;
+    void visit (ImageProcessingShader& n) override;
 
     // Sources
     void visit (Source& s) override;

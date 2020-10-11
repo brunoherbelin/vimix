@@ -1,5 +1,9 @@
 #include <algorithm>
 
+#include "defines.h"
+#include "SessionVisitor.h"
+#include <tinyxml2.h>
+
 #include "Selection.h"
 
 Selection::Selection()
@@ -136,4 +140,29 @@ SourceList::iterator Selection::end()
     return selection_.end();
 }
 
+std::string Selection::xml()
+{
+    std::string x = "";
+
+    if (!selection_.empty()) {
+
+        // create xml doc and root node
+        tinyxml2::XMLDocument xmlDoc;
+        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
+        selectionNode->SetAttribute("size", selection_.size());
+        xmlDoc.InsertEndChild(selectionNode);
+
+        // fill doc
+        SessionVisitor sv(&xmlDoc, selectionNode);
+        for (auto iter = selection_.begin(); iter != selection_.end(); iter++, sv.setRoot(selectionNode) )
+            (*iter)->accept(sv);
+
+        // get compact string
+        tinyxml2::XMLPrinter xmlPrint(0, true);
+        xmlDoc.Print( &xmlPrint );
+        x = xmlPrint.CStr();
+    }
+
+    return x;
+}
 

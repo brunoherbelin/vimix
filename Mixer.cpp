@@ -18,7 +18,7 @@ using namespace tinyxml2;
 #include "Log.h"
 #include "View.h"
 #include "SystemToolkit.h"
-//#include "GarbageVisitor.h"
+#include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "SessionSource.h"
 #include "MediaSource.h"
@@ -243,7 +243,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         Settings::application.recentImport.path = SystemToolkit::path_filename(path);
 
         // propose a new name based on uri
-        renameSource(s, SystemToolkit::base_filename(path));
+        s->setName(SystemToolkit::base_filename(path));
 
     }
     else {
@@ -260,7 +260,7 @@ Source * Mixer::createSourceRender()
     RenderSource *s = new RenderSource(session_);
 
     // propose a new name based on session name
-    renameSource(s, SystemToolkit::base_filename(session_->filename()));
+    s->setName(SystemToolkit::base_filename(session_->filename()));
 
     return s;
 }
@@ -273,7 +273,7 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
 
     // propose a new name based on pattern name
     std::string name = gstreamerpipeline.substr(0, gstreamerpipeline.find(" "));
-    renameSource(s, name);
+    s->setName(name);
 
     return s;
 }
@@ -287,7 +287,7 @@ Source * Mixer::createSourcePattern(uint pattern, glm::ivec2 res)
     // propose a new name based on pattern name
     std::string name = Pattern::pattern_types[pattern];
     name = name.substr(0, name.find(" "));
-    renameSource(s, name);
+    s->setName(name);
 
     return s;
 }
@@ -299,7 +299,7 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
 
     // propose a new name based on pattern name
     std::string name = namedevice.substr(0, namedevice.find(" "));
-    renameSource(s, name);
+    s->setName(name);
 
     return s;
 }
@@ -332,14 +332,18 @@ Source * Mixer::createSourceClone(const std::string &namesource)
 
 void Mixer::addSource(Source *s)
 {
-    if (s != nullptr)
+    if (s != nullptr) {
         candidate_sources_.push_back(s);
+    }
 }
 
 void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
     {
+        // avoid duplicate name
+        renameSource(s, s->name());
+
         // Add source to Session (ignored if source already in)
         SourceList::iterator sit = session_->addSource(s);
 
@@ -883,4 +887,28 @@ void Mixer::set(Session *s)
 
     // swap current with given session
     sessionSwapRequested_ = true;
+}
+
+void Mixer::paste(const std::string& clipboard)
+{
+    if (clipboard.empty())
+        return;
+
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+    if ( XMLResultError(eResult))
+        return;
+
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return;
+
+    SessionLoader loader( session_ );
+
+    XMLElement* sourceNode = root->FirstChildElement("Source");
+    for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+    {
+        addSource(loader.cloneOrCreateSource(sourceNode));
+    }
+
 }

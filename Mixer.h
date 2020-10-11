@@ -90,6 +90,9 @@ public:
     void close  ();
     void open   (const std::string& filename);
 
+    // create sources if clipboard contains well-formed xml text
+    void paste  (const std::string& clipboard);
+
 protected:
 
     Session *session_;

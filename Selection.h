@@ -26,6 +26,8 @@ public:
     bool empty();
     uint size ();
 
+    std::string xml();
+
 protected:
     SourceList::iterator find (Source *s);
     SourceList selection_;

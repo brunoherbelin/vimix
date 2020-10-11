@@ -8,6 +8,8 @@
 
 #include "View.h"
 
+#define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
+
 class ImageShader;
 class ImageProcessingShader;
 class FrameBuffer;
