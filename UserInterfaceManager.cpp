@@ -991,6 +991,8 @@ void UserInterface::RenderHistory()
             if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "+Shift Z") )
                 Action::manager().redo();
 
+            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
+
             if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
                 Settings::application.widget.history = false;
 

@@ -171,6 +171,7 @@ struct Application
     bool pannel_stick;
     bool smooth_transition;
     bool smooth_cursor;
+    bool action_history_follow_view;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -205,6 +206,7 @@ struct Application
         pannel_stick = false;
         smooth_transition = true;
         smooth_cursor = false;
+        action_history_follow_view = false;
         current_view = 1;
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;

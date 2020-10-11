@@ -7,6 +7,7 @@
 #include "tinyxml2Toolkit.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
+#include "Settings.h"
 
 #include "ActionManager.h"
 
@@ -57,6 +58,8 @@ void Action::store(const std::string &label, uint64_t id)
     sessionNode->SetAttribute("label", label.c_str());
     // id indicates which object was modified
     sessionNode->SetAttribute("id", id);
+    // view indicates the view when this action occured
+    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
 
     // get session to operate on
     Session *se = Mixer::manager().session();
@@ -149,6 +152,12 @@ void Action::restore(uint target, uint64_t id)
     step_ = CLAMP(target, 1, max_step_);
     std::string nodename = "H" + std::to_string(step_);
     XMLElement *sessionNode = xmlDoc_.FirstChildElement( nodename.c_str() );
+
+    // ask view to refresh, and switch to action view if user prefers
+    int view = Settings::application.current_view ;
+    if (Settings::application.action_history_follow_view)
+        sessionNode->QueryIntAttribute("view", &view);
+    Mixer::manager().setView( (View::Mode) view);
 
 #ifdef ACTION_DEBUG
     Log::Info("Restore %s '%s' ", nodename.c_str(), sessionNode->Attribute("label"));

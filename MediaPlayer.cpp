@@ -375,6 +375,10 @@ void MediaPlayer::close()
         glDeleteBuffers(2, pbo_);
     pbo_size_ = 0;
 
+#ifdef MEDIA_PLAYER_DEBUG
+    Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
+#endif
+
     // unregister media player
     MediaPlayer::registered_.remove(this);
 }
@@ -871,7 +875,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
     else {
         seeking_ = true;
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Seek %ld %f", std::to_string(id_).c_str(), seek_pos, rate_);
+        Log::Info("MediaPlayer %s Seek %ld %.1f", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
 
