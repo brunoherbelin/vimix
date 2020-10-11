@@ -489,7 +489,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##Patterns", Pattern::pattern_types[s.pattern()->type()].c_str()) )
     {
-        for (int p = 0; p < Pattern::pattern_types.size(); ++p){
+        for (uint p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 std::ostringstream oss;

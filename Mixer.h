@@ -40,7 +40,7 @@ public:
     Source * createSourceClone  (const std::string &namesource = "");
     Source * createSourceRender ();
     Source * createSourceStream (const std::string &gstreamerpipeline);
-    Source * createSourcePattern(int pattern, glm::ivec2 res);
+    Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
 
     // operations on sources

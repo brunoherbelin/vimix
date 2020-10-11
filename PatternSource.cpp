@@ -11,6 +11,8 @@
 #include "Visitor.h"
 #include "Log.h"
 
+#define MAX_PATTERN 23
+
 //    smpte (0) – SMPTE 100%% color bars
 //    snow (1) – Random (television snow)
 //    black (2) – 100%% Black
@@ -88,7 +90,7 @@ std::vector<std::string> Pattern::pattern_types = { "Black",
                                          "Clock"
                                        };
 
-Pattern::Pattern() : Stream()
+Pattern::Pattern() : Stream(), type_(MAX_PATTERN+1) // invalid pattern
 {
 
 }
@@ -101,13 +103,13 @@ glm::ivec2 Pattern::resolution()
 
 void Pattern::open( uint pattern, glm::ivec2 res )
 {
-    type_ = CLAMP(pattern, 0, 23);
+    type_ = MIN(pattern, MAX_PATTERN);
     std::string gstreamer_pattern = pattern_internal_[type_];
 
     // there is always a special case...
     switch(type_)
     {
-    case 18:
+    case 18: // zone plates
     case 17:
     {
         std::ostringstream oss;
@@ -119,7 +121,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
         break;
     }
 
-    // all patterns before index are single frames (not animated)
+    // all patterns before 'SMPTE test pattern' are single frames (not animated)
     single_frame_ = type_ < 14;
 
     // (private) open stream
@@ -136,7 +138,7 @@ PatternSource::PatternSource() : StreamSource()
     overlays_[View::LAYER]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
-void PatternSource::setPattern(int type, glm::ivec2 resolution)
+void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 {
     Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[type].c_str());
 

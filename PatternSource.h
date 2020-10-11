@@ -33,7 +33,7 @@ public:
 
     // specific interface
     Pattern *pattern() const;
-    void setPattern(int type, glm::ivec2 resolution);
+    void setPattern(uint type, glm::ivec2 resolution);
 
     glm::ivec2 icon() const override { return glm::ivec2(12, 5); }
 

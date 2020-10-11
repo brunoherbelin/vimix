@@ -278,7 +278,7 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
     return s;
 }
 
-Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
+Source * Mixer::createSourcePattern(uint pattern, glm::ivec2 res)
 {
     // ready to create a source
     PatternSource *s = new PatternSource;
