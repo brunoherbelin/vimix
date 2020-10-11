@@ -156,6 +156,7 @@ void SessionLoader::load(XMLElement *sessionNode)
 
             // apply config to source
             load_source->accept(*this);
+            load_source->touch();
             // remember
             sources_id_.push_back( load_source->id() );
         }
