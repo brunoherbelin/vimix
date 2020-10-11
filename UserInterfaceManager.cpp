@@ -230,6 +230,7 @@ void UserInterface::handleKeyboard()
     alt_modifier_active = io.KeyAlt;
     shift_modifier_active = io.KeyShift;
     bool ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
+    bool confirm_quit_popup = false;
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl ) {
@@ -237,8 +238,9 @@ void UserInterface::handleKeyboard()
         ctrl_modifier_active = true;
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
-            // Quit
-            Rendering::manager().close();
+            // offer to Quit
+            ImGui::OpenPopup("confirm_quit_popup");
+            confirm_quit_popup = true;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // SHIFT + CTRL + O : reopen current session
@@ -247,7 +249,6 @@ void UserInterface::handleKeyboard()
             // CTRL + O : Open session
             else
                 selectOpenFilename();
-
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
@@ -298,10 +299,6 @@ void UserInterface::handleKeyboard()
             else
                 Action::manager().undo();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
-            Settings::application.widget.history = !Settings::application.widget.history;
-        }
-
     }
     // No CTRL modifier
     else {
@@ -327,8 +324,12 @@ void UserInterface::handleKeyboard()
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
                 if (Rendering::manager().mainWindow().isFullscreen())
                     Rendering::manager().mainWindow().setFullscreen(nullptr);
-                else if (!Mixer::selection().empty())
+                else if (navigator.pannelVisible())
+                    navigator.hidePannel();
+                else if (!Mixer::selection().empty()) {
+                    Mixer::manager().unsetCurrentSource();
                     Mixer::selection().clear();
+                }
                 else
                     Mixer::manager().setView(View::MIXING);
             }
@@ -342,6 +343,17 @@ void UserInterface::handleKeyboard()
             else if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
                 Mixer::manager().setCurrentNext();
         }
+    }
+
+    // confirmation for leaving vimix: prevent un-wanted Ctrl+Q, but make it easy to confirm
+    if (ImGui::BeginPopup("confirm_quit_popup"))
+    {
+        ImGui::Text(" Leave vimix? ");
+        // Clic Quit or press Q to confirm exit
+        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ") ||
+            ( !confirm_quit_popup && ImGui::IsKeyPressed( GLFW_KEY_Q )) )
+            Rendering::manager().close();
+        ImGui::EndPopup();
     }
 
 }
