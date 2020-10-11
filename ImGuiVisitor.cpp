@@ -399,8 +399,11 @@ void ImGuiVisitor::visit (Source& s)
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );
-    if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) )
-         Action::manager().store( on ? "Enable Filter" : "Disable Filter", s.id());
+    if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) ){
+        std::ostringstream oss;
+        oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
+        Action::manager().store(oss.str(), s.id());
+    }
     s.setImageProcessingEnabled(on);
 
     ImGui::SetCursorPos(pos); // ...come back
@@ -445,8 +448,11 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
         s.session()->setFading(f);
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store("Fading", s.id());
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        std::ostringstream oss;
+        oss << s.name() << ": Fading " << std::setprecision(2) << f;
+        Action::manager().store(oss.str(), s.id());
+    }
 
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
@@ -486,7 +492,9 @@ void ImGuiVisitor::visit (PatternSource& s)
         for (int p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
                 s.setPattern(p, s.pattern()->resolution());
-                Action::manager().store("Pattern "+Pattern::pattern_types[p], s.id());
+                std::ostringstream oss;
+                oss << s.name() << ": Pattern " << Pattern::pattern_types[p];
+                Action::manager().store(oss.str(), s.id());
             }
         }
         ImGui::EndCombo();
@@ -506,7 +514,9 @@ void ImGuiVisitor::visit (DeviceSource& s)
             std::string namedev = Device::manager().name(d);
             if (ImGui::Selectable( namedev.c_str() )) {
                 s.setDevice(namedev);
-                Action::manager().store("Device "+namedev, s.id());
+                std::ostringstream oss;
+                oss << s.name() << " Device " << namedev;
+                Action::manager().store(oss.str(), s.id());
             }
         }
         ImGui::EndCombo();

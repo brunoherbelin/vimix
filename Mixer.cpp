@@ -272,7 +272,8 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
     s->setDescription(gstreamerpipeline);
 
     // propose a new name based on pattern name
-    renameSource(s, gstreamerpipeline.substr(0,10));
+    std::string name = gstreamerpipeline.substr(0, gstreamerpipeline.find(" "));
+    renameSource(s, name);
 
     return s;
 }
@@ -284,7 +285,9 @@ Source * Mixer::createSourcePattern(int pattern, glm::ivec2 res)
     s->setPattern(pattern, res);
 
     // propose a new name based on pattern name
-    renameSource(s, Pattern::pattern_types[pattern]);
+    std::string name = Pattern::pattern_types[pattern];
+    name = name.substr(0, name.find(" "));
+    renameSource(s, name);
 
     return s;
 }
@@ -295,7 +298,8 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
     Source *s = Device::manager().createSource(namedevice);
 
     // propose a new name based on pattern name
-    renameSource(s, namedevice);
+    std::string name = namedevice.substr(0, namedevice.find(" "));
+    renameSource(s, name);
 
     return s;
 }
@@ -319,7 +323,7 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         // create a source
         s = (*origin)->clone();
 
-        // get new name
+        // propose new name (this automatically increments name)
         renameSource(s, (*origin)->name());
     }
 

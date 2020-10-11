@@ -12,6 +12,7 @@
 // memmove
 #include <string.h>
 #include <sstream>
+#include <regex>
 #include <iomanip>
 
 #include "View.h"
@@ -123,6 +124,8 @@ void View::initiate()
 
 void View::terminate()
 {
+    std::regex r("\\n");
+    current_action_ = std::regex_replace(current_action_, r, " ");
     Action::manager().store(current_action_, current_id_);
     current_action_ = "";
     current_id_ = 0;
@@ -502,7 +505,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
         info << "Inactive";
 
     // store action in history
-    current_action_ = s->name() + " " + info.str();
+    current_action_ = s->name() + ": " + info.str();
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeAll, info.str() );
@@ -1174,7 +1177,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     s->touch();
 
     // store action in history
-    current_action_ = s->name() + " " + info.str();
+    current_action_ = s->name() + ": " + info.str();
     current_id_ = s->id();
 
     // update cursor
@@ -1355,7 +1358,7 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     info << "Depth " << std::fixed << std::setprecision(2) << d;
 
     // store action in history
-    current_action_ = s->name() + " " + info.str();
+    current_action_ = s->name() + ": " + info.str();
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeNESW, info.str() );

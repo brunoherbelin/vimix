@@ -88,7 +88,7 @@ void StreamSource::init()
 
             // done init
             initialized_ = true;
-            Log::Info("Source '%s' linked to Stream %d.", name().c_str(), stream_->id());
+            Log::Info("Source '%s' linked to Stream %s", name().c_str(), std::to_string(stream_->id()).c_str());
 
             // force update of activation mode
             active_ = true;

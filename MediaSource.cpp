@@ -105,7 +105,7 @@ void MediaSource::init()
 
             // done init
             initialized_ = true;
-            Log::Info("Source '%s' linked to Media %s.", name().c_str(), mediaplayer()->uri().c_str());
+            Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
 
             // force update of activation mode
             active_ = true;

@@ -62,8 +62,8 @@ const char* pattern_internal_[24] = { "videotestsrc pattern=black",
                                       "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
                                     };
 
-std::vector<std::string> Pattern::pattern_types = { "100% Black",
-                                         "100% White",
+std::vector<std::string> Pattern::pattern_types = { "Black",
+                                         "White",
                                          "Gradient",
                                          "Checkers 1x1 px",
                                          "Checkers 8x8 px",
@@ -71,18 +71,18 @@ std::vector<std::string> Pattern::pattern_types = { "100% Black",
                                          "Lissajous",
                                          "Pinwheel",
                                          "Spokes",
-                                         "100% Red",
-                                         "100% Green",
-                                         "100% Blue",
+                                         "Red",
+                                         "Green",
+                                         "Blue",
                                          "Color bars",
-                                         "Color grid",
+                                         "RGB grid",
                                          "SMPTE test pattern",
                                          "Television snow",
                                          "Blink",
                                          "Fresnel zone plate",
                                          "Chroma zone plate",
-                                         "Moving bar",
-                                         "Moving ball",
+                                         "Bar moving",
+                                         "Ball bouncing",
                                          "Blob",
                                          "Timer",
                                          "Clock"
@@ -107,7 +107,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     // there is always a special case...
     switch(type_)
     {
-    case 16:
+    case 18:
     case 17:
     {
         std::ostringstream oss;
