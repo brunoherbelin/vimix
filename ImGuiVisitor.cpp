@@ -190,6 +190,9 @@ void ImGuiVisitor::visit(Shader &n)
         case Shader::BLEND_LAYER_SUBSTRACT:
             oss<<"Subtract";
             break;
+        case Shader::BLEND_CUSTOM:
+            oss<<"Custom";
+            break;
         }
         Action::manager().store(oss.str(), n.id());
     }

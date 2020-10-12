@@ -149,7 +149,7 @@ std::string Selection::xml()
         // create xml doc and root node
         tinyxml2::XMLDocument xmlDoc;
         tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
-        selectionNode->SetAttribute("size", selection_.size());
+        selectionNode->SetAttribute("size", (int) selection_.size());
         xmlDoc.InsertEndChild(selectionNode);
 
         // fill doc
