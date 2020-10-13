@@ -182,6 +182,7 @@ void Settings::Save()
 
     XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
     XMLResultError(eResult);
+
 }
 
 void Settings::Load()
@@ -346,7 +347,7 @@ void Settings::Load()
                 pSession->QueryBoolAttribute("autosave", &application.recentSessions.save_on_exit);
                 pSession->QueryBoolAttribute("valid", &application.recentSessions.front_is_valid);
             }
-            // recent session filenames
+            // recent session folders
             XMLElement * pFolder = pElement->FirstChildElement("Folder");
             if (pFolder)
             {
@@ -380,7 +381,41 @@ void Settings::Load()
         }
     }
 
+}
 
+void Settings::Lock()
+{
+    application.first_instance = false;
+
+    std::string lockfile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "lock");
+
+    FILE *file = fopen(lockfile.c_str(), "r");
+    int l = 0;
+    if (file) {
+        fscanf(file, "%d", &l);
+        fclose(file);
+    }
+
+    // not locked or file not existing
+    if ( l < 1 ) {
+        file = fopen(lockfile.c_str(), "w");
+        if (file) {
+            fprintf(file, "1");
+            fclose(file);
+            application.first_instance = true;
+        }
+    }
+
+}
+
+void Settings::Unlock()
+{
+    std::string lockfile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "lock");
+    FILE *file = fopen(lockfile.c_str(), "w");
+    if (file) {
+        fprintf(file, "0");
+        fclose(file);
+    }
 }
 
 

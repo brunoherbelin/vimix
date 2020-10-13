@@ -37,13 +37,20 @@ void drawScene()
 
 
 
-int main(int, char *argv[])
+int main(int argc, char *argv[])
 {
+    // clean start if requested
+    if (argc > 1 && std::string(argv[1]) == "-clean")
+        Settings::Save();
+
     ///
     /// Settings
     ///
     Settings::Load();
     Settings::application.executable = std::string(argv[0]);
+
+    /// lock to inform an instance is running
+    Settings::Lock();
 
     ///
     /// RENDERING INIT
@@ -101,6 +108,9 @@ int main(int, char *argv[])
     /// Settings
     ///
     Settings::Save();
+
+    /// unlock on clean exit
+    Settings::Unlock();
 
     /// ok
     return 0;

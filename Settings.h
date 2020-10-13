@@ -161,6 +161,9 @@ struct SourceConfig
 
 struct Application
 {
+    // instance check
+    bool first_instance;
+
     // Verification
     std::string name;
     std::string executable;
@@ -200,7 +203,7 @@ struct Application
     History recentFolders;
     History recentImport;
 
-    Application() : name(APP_NAME){
+    Application() : first_instance(false), name(APP_NAME){
         scale = 1.f;
         accent_color = 0;
         pannel_stick = false;
@@ -225,6 +228,8 @@ extern Application application;
 // Save and Load store settings in XML file
 void Save();
 void Load();
+void Lock();
+void Unlock();
 void Check();
 
 }
