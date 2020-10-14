@@ -20,12 +20,6 @@
 
 #include "Recorder.h"
 
-// use glReadPixel or glGetTextImage
-// read pixels & pbo should be the fastest
-// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
-#define USE_GLREADPIXEL
-
-
 PNGRecorder::PNGRecorder() : FrameGrabber()
 {
     std::string path = SystemToolkit::path_directory(Settings::application.record.path);
@@ -102,7 +96,8 @@ void PNGRecorder::addFrame(FrameBuffer *frame_buffer, float)
         glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 
         // ok done
-        glDeleteBuffers(2, pbo_);
+        if (pbo_[0] > 0)
+            glDeleteBuffers(2, pbo_);
 
         // recorded one frame
         finished_ = true;
@@ -207,7 +202,8 @@ VideoRecorder::~VideoRecorder()
         gst_object_unref (pipeline_);
     }
 
-    glDeleteBuffers(2, pbo_);
+    if (pbo_[0] > 0)
+        glDeleteBuffers(2, pbo_);
 }
 
 void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)

@@ -71,5 +71,9 @@
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f
 #define COLOR_STASH_CIRCLE 0.06f, 0.06f, 0.06f
 
+// use glReadPixel or glGetTextImage
+// read pixels & pbo should be the fastest
+// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
+#define USE_GLREADPIXEL
 
 #endif // VMIX_DEFINES_H

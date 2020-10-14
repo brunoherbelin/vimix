@@ -24,8 +24,10 @@ Screenshot::Screenshot()
 
 Screenshot::~Screenshot()
 {
-    glDeleteBuffers(1, &Pbo);
-    if (Data)  free(Data);
+    if (Pbo > 0)
+        glDeleteBuffers(1, &Pbo);
+    if (Data)
+        free(Data);
 }
 
 bool Screenshot::isFull()

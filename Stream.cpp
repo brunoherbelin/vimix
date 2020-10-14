@@ -392,7 +392,7 @@ void Stream::init_texture(guint index)
         }
         else {
             // did not work, disable PBO
-            glDeleteBuffers(4, pbo_);
+            glDeleteBuffers(2, pbo_);
             pbo_[0] = pbo_[1] = 0;
             pbo_size_ = 0;
             break;
