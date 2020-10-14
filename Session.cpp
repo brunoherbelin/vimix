@@ -5,7 +5,7 @@
 #include "FrameBuffer.h"
 #include "Session.h"
 #include "GarbageVisitor.h"
-#include "Recorder.h"
+#include "FrameGrabber.h"
 #include "SessionCreator.h"
 
 #include "Log.h"
@@ -34,7 +34,7 @@ Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
 Session::~Session()
 {
     // delete all recorders
-    clearRecorders();
+    clearAllFrameGrabbers();
 
     // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
@@ -90,15 +90,15 @@ void Session::update(float dt)
     render_.draw();
 
     // send frame to recorders
-    std::list<Recorder *>::iterator iter;
-    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    std::list<FrameGrabber *>::iterator iter;
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); )
     {
-        Recorder *rec = *iter;
+        FrameGrabber *rec = *iter;
 
         rec->addFrame(render_.frame(), dt);
 
         if (rec->finished()) {
-            iter = recorders_.erase(iter);
+            iter = grabbers_.erase(iter);
             delete rec;
         }
         else {
@@ -295,49 +295,49 @@ int Session::index(SourceList::iterator it) const
     return index;
 }
 
-void Session::addRecorder(Recorder *rec)
+void Session::addFrameGrabber(FrameGrabber *rec)
 {
-    recorders_.push_back(rec);
+    grabbers_.push_back(rec);
 }
 
 
-Recorder *Session::frontRecorder()
+FrameGrabber *Session::frontFrameGrabber()
 {
-    if (recorders_.empty())
+    if (grabbers_.empty())
         return nullptr;
     else
-        return recorders_.front();
+        return grabbers_.front();
 }
 
-void Session::stopRecorders()
+void Session::stopAllFrameGrabbers()
 {
-    std::list<Recorder *>::iterator iter;
-    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    std::list<FrameGrabber *>::iterator iter;
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); )
         (*iter)->stop();
 }
 
-void Session::clearRecorders()
+void Session::clearAllFrameGrabbers()
 {
-    std::list<Recorder *>::iterator iter;
-    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    std::list<FrameGrabber *>::iterator iter;
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); )
     {
-        Recorder *rec = *iter;
+        FrameGrabber *rec = *iter;
         rec->stop();
-        iter = recorders_.erase(iter);
+        iter = grabbers_.erase(iter);
         delete rec;
     }
 }
 
-void Session::transferRecorders(Session *dest)
+void Session::transferFrameGrabber(Session *dest)
 {
     if (dest == nullptr)
         return;
 
-    std::list<Recorder *>::iterator iter;
-    for (iter=recorders_.begin(); iter != recorders_.end(); )
+    std::list<FrameGrabber *>::iterator iter;
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); )
     {
-        dest->recorders_.push_back(*iter);
-        iter = recorders_.erase(iter);
+        dest->grabbers_.push_back(*iter);
+        iter = grabbers_.erase(iter);
     }
 }
 

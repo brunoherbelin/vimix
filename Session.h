@@ -6,7 +6,7 @@
 #include "View.h"
 #include "Source.h"
 
-class Recorder;
+class FrameGrabber;
 
 class Session
 {
@@ -59,11 +59,11 @@ public:
     inline FrameBuffer *frame () const { return render_.frame(); }
 
     // Recorders
-    void addRecorder(Recorder *rec);
-    Recorder *frontRecorder();
-    void stopRecorders();
-    void clearRecorders();
-    void transferRecorders(Session *dest);
+    void addFrameGrabber(FrameGrabber *rec);
+    FrameGrabber *frontFrameGrabber();
+    void stopAllFrameGrabbers();
+    void clearAllFrameGrabbers();
+    void transferFrameGrabber(Session *dest);
 
     // configure rendering resolution
     void setResolution(glm::vec3 resolution);
@@ -90,7 +90,7 @@ protected:
     SourceList sources_;
     std::map<View::Mode, Group*> config_;
     bool active_;
-    std::list<Recorder *> recorders_;
+    std::list<FrameGrabber *> grabbers_;
     float fading_target_;
     std::mutex access_;
 };

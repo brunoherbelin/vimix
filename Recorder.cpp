@@ -25,14 +25,8 @@
 // https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
 #define USE_GLREADPIXEL
 
-using namespace std;
 
-Recorder::Recorder() : finished_(false), pbo_index_(0), pbo_next_index_(0), size_(0)
-{
-    pbo_[0] = pbo_[1] = 0;
-}
-
-PNGRecorder::PNGRecorder() : Recorder()
+PNGRecorder::PNGRecorder() : FrameGrabber()
 {
     std::string path = SystemToolkit::path_directory(Settings::application.record.path);
     if (path.empty())
@@ -195,7 +189,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
 //               "qtmux ! filesink name=sink";
 
 
-VideoRecorder::VideoRecorder() : Recorder(), frame_buffer_(nullptr), width_(0), height_(0),
+VideoRecorder::VideoRecorder() : FrameGrabber(), frame_buffer_(nullptr), width_(0), height_(0),
     recording_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0)
 {
 
@@ -243,7 +237,7 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
 
        // create a gstreamer pipeline
-       string description = "appsrc name=src ! videoconvert ! ";
+       std::string description = "appsrc name=src ! videoconvert ! ";
        if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
            Settings::application.record.profile = H264_STANDARD;
        description += profile_description[Settings::application.record.profile];

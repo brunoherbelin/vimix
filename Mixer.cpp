@@ -801,7 +801,7 @@ void Mixer::swap()
     back_session_ = tmp;
 
     // swap recorders
-    back_session_->transferRecorders(session_);
+    back_session_->transferFrameGrabber(session_);
 
     // attach new session's nodes to views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)

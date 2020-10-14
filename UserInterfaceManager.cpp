@@ -294,11 +294,11 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            Recorder *rec = Mixer::manager().session()->frontRecorder();
+            FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
             if (rec)
                 rec->stop();
             else
-                Mixer::manager().session()->addRecorder(new VideoRecorder);
+                Mixer::manager().session()->addFrameGrabber(new VideoRecorder);
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
@@ -774,7 +774,7 @@ void UserInterface::Render()
         ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
 
     // TODO: better management of main_video_recorder
-    Recorder *rec = Mixer::manager().session()->frontRecorder();
+    FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
     if (rec && rec->duration() > Settings::application.record.timeout ){
         rec->stop();
     }
@@ -1089,7 +1089,7 @@ void UserInterface::RenderPreview()
 
         }
 
-        Recorder *rec = Mixer::manager().session()->frontRecorder();
+        FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
 
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
@@ -1122,7 +1122,7 @@ void UserInterface::RenderPreview()
             if (ImGui::BeginMenu("Record"))
             {
                 if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
-                    Mixer::manager().session()->addRecorder(new PNGRecorder);
+                    Mixer::manager().session()->addFrameGrabber(new PNGRecorder);
 
                 // Stop recording menu if main recorder already exists
                 if (rec) {
@@ -1133,7 +1133,7 @@ void UserInterface::RenderPreview()
                 // start recording
                 else {
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        Mixer::manager().session()->addRecorder(new VideoRecorder);
+                        Mixer::manager().session()->addFrameGrabber(new VideoRecorder);
                     }
                     // select profile
                     ImGui::SetNextItemWidth(300);
