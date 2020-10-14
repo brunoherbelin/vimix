@@ -115,6 +115,10 @@ class UserInterface
     bool show_opengl_about;
     unsigned int screenshot_step;
 
+    // frame grabbers
+    uint64_t video_recorder_;
+    uint64_t video_streamer_;
+
     // Private Constructor
     UserInterface();
     UserInterface(UserInterface const& copy);            // Not Implemented

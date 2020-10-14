@@ -61,6 +61,7 @@ public:
     // Recorders
     void addFrameGrabber(FrameGrabber *rec);
     FrameGrabber *frontFrameGrabber();
+    FrameGrabber *getFrameGrabber(uint64_t id);
     void stopAllFrameGrabbers();
     void clearAllFrameGrabbers();
     void transferFrameGrabber(Session *dest);

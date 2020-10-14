@@ -297,7 +297,8 @@ int Session::index(SourceList::iterator it) const
 
 void Session::addFrameGrabber(FrameGrabber *rec)
 {
-    grabbers_.push_back(rec);
+    if (rec != nullptr)
+        grabbers_.push_back(rec);
 }
 
 
@@ -307,6 +308,18 @@ FrameGrabber *Session::frontFrameGrabber()
         return nullptr;
     else
         return grabbers_.front();
+}
+
+FrameGrabber *Session::getFrameGrabber(uint64_t id)
+{
+    if (!grabbers_.empty())
+    {
+        std::list<FrameGrabber *>::iterator iter = std::find_if(grabbers_.begin(), grabbers_.end(), FrameGrabber::hasId(id));
+        if (iter != grabbers_.end())
+            return (*iter);
+    }
+
+    return nullptr;
 }
 
 void Session::stopAllFrameGrabbers()

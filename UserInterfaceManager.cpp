@@ -151,12 +151,18 @@ static std::string FolderDialog(const std::string &path)
 
 UserInterface::UserInterface()
 {
+    ctrl_modifier_active = false;
+    alt_modifier_active = false;
+    shift_modifier_active = false;
     show_vimix_config = false;
     show_imgui_about = false;
     show_gst_about = false;
     show_opengl_about = false;
     currentTextEdit = "";
     screenshot_step = 0;
+
+    video_recorder_ = 0;
+    video_streamer_ = 0;
 }
 
 bool UserInterface::Init()
@@ -294,11 +300,16 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
-            if (rec)
+            FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
+            if (rec) {
                 rec->stop();
-            else
-                Mixer::manager().session()->addFrameGrabber(new VideoRecorder);
+                video_recorder_ = 0;
+            }
+            else {
+                FrameGrabber *fg = new VideoRecorder;
+                video_recorder_ = fg->id();
+                Mixer::manager().session()->addFrameGrabber(fg);
+            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
@@ -773,10 +784,11 @@ void UserInterface::Render()
     if (Settings::application.widget.stats)
         ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
 
-    // TODO: better management of main_video_recorder
-    FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
+    // management of video_recorder
+    FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
     if (rec && rec->duration() > Settings::application.record.timeout ){
         rec->stop();
+        video_recorder_ = 0;
     }
 
     // all IMGUI Rendering
@@ -1089,7 +1101,7 @@ void UserInterface::RenderPreview()
 
         }
 
-        FrameGrabber *rec = Mixer::manager().session()->frontFrameGrabber();
+        FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
 
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
@@ -1128,12 +1140,15 @@ void UserInterface::RenderPreview()
                 if (rec) {
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         rec->stop();
+                        video_recorder_ = 0;
                     }
                 }
                 // start recording
                 else {
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        Mixer::manager().session()->addFrameGrabber(new VideoRecorder);
+                        FrameGrabber *fg = new VideoRecorder;
+                        video_recorder_ = fg->id();
+                        Mixer::manager().session()->addFrameGrabber(fg);
                     }
                     // select profile
                     ImGui::SetNextItemWidth(300);
