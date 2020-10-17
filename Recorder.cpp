@@ -323,7 +323,7 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // all good
-       Log::Info("VideoRecorder start recording (%s %d x %d)", profile_name[Settings::application.record.profile], width_, height_);
+       Log::Info("VideoRecorder start (%s %d x %d)", profile_name[Settings::application.record.profile], width_, height_);
 
        // start recording !!
        recording_ = true;

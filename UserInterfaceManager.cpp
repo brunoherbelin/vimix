@@ -50,6 +50,7 @@ using namespace std;
 #include "GstToolkit.h"
 #include "Mixer.h"
 #include "Recorder.h"
+#include "Streamer.h"
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
@@ -1102,6 +1103,7 @@ void UserInterface::RenderPreview()
         }
 
         FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
+        FrameGrabber *str = Mixer::manager().session()->getFrameGrabber(video_streamer_);
 
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
@@ -1145,6 +1147,9 @@ void UserInterface::RenderPreview()
                 }
                 // start recording
                 else {
+                    // detecting the absence of video recorder but the variable is still not 0: fix this!
+                    if (video_recorder_ > 0)
+                        video_recorder_ = 0;
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         FrameGrabber *fg = new VideoRecorder;
                         video_recorder_ = fg->id();
@@ -1188,6 +1193,45 @@ void UserInterface::RenderPreview()
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::SliderFloat("Timeout", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
                                        Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "None", 3.f);
+                }
+
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Stream"))
+            {
+                // Stop recording menu if main recorder already exists
+                if (str) {
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Streaming") ) {
+                        str->stop();
+                        video_streamer_ = 0;
+                    }
+                }
+                // start recording
+                else {
+                    // detecting the absence of video streamer but the variable is still not 0: fix this!
+                    if (video_streamer_ > 0)
+                        video_streamer_ = 0;
+                    if ( ImGui::MenuItem( ICON_FA_SATELLITE_DISH "  Stream") ) {
+                        FrameGrabber *fg = new VideoStreamer;
+                        video_streamer_ = fg->id();
+                        Mixer::manager().session()->addFrameGrabber(fg);
+                    }
+                    // select profile
+                    ImGui::SetNextItemWidth(300);
+                    ImGui::Combo("##StreamProfile", &Settings::application.stream.profile, VideoStreamer::profile_name, IM_ARRAYSIZE(VideoStreamer::profile_name) );
+
+                    // Options menu
+                    ImGui::Separator();
+                    ImGui::MenuItem("Options", nullptr, false, false);
+                    {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        ImGui::InputInt("Port", &Settings::application.stream.port, 100, 1000);
+                        Settings::application.stream.port = CLAMP(Settings::application.stream.port, 1000, 9000);
+                    }
+                    //                if ( ImGui::MenuItem( "Test") ) {
+                    //                    std::thread (SystemToolkit::execute,
+                    //                                 "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
+                    //                }
                 }
 
                 ImGui::EndMenu();

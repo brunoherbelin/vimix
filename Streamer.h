@@ -16,7 +16,7 @@ class VideoStreamer : public FrameGrabber
     uint height_;
 
     // operation
-    std::atomic<bool> recording_;
+    std::atomic<bool> streaming_;
     std::atomic<bool> accept_buffer_;
 
     // gstreamer pipeline
@@ -32,10 +32,13 @@ class VideoStreamer : public FrameGrabber
 public:
     typedef enum {
         UDP_MJPEG = 0,
+        UDP_MPEG4,
+        UDP_h264,
         DEFAULT
     } Profile;
     static const char* profile_name[DEFAULT];
     static const std::vector<std::string> profile_description;
+    static const std::vector<std::string> receiver_example;
 
     VideoStreamer();
     ~VideoStreamer();

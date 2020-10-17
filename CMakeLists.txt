@@ -230,6 +230,7 @@ set(VMIX_SRCS
     SessionCreator.cpp
     Mixer.cpp
     Recorder.cpp
+    Streamer.cpp
     Settings.cpp
     Screenshot.cpp
     Resource.cpp

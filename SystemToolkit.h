@@ -59,6 +59,8 @@ namespace SystemToolkit
 
     // try to open the file with system
     void open(const std::string& path);
+    // try to execute a command
+    void execute(const std::string& command);
 
     // return memory resident set size used (in bytes)
     long memory_usage();

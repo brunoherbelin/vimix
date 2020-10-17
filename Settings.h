@@ -75,6 +75,18 @@ struct RecordConfig
 
 };
 
+struct StreamingConfig
+{
+    std::string ip;
+    int port;
+    int profile;
+
+    StreamingConfig() : ip("") {
+        profile = 0;
+        port = 5000;
+    }
+
+};
 struct History
 {
     std::string path;
@@ -186,8 +198,9 @@ struct Application
     // settings render
     RenderConfig render;
 
-    // settings render
+    // settings exporters
     RecordConfig record;
+    StreamingConfig stream;
 
     // settings new source
     SourceConfig source;

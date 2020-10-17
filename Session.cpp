@@ -312,7 +312,7 @@ FrameGrabber *Session::frontFrameGrabber()
 
 FrameGrabber *Session::getFrameGrabber(uint64_t id)
 {
-    if (!grabbers_.empty())
+    if (id > 0 && grabbers_.size() > 0 )
     {
         std::list<FrameGrabber *>::iterator iter = std::find_if(grabbers_.begin(), grabbers_.end(), FrameGrabber::hasId(id));
         if (iter != grabbers_.end())

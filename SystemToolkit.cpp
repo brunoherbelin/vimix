@@ -314,5 +314,16 @@ void SystemToolkit::open(const string& url)
 #endif
 }
 
+void SystemToolkit::execute(const string& command)
+{
+#ifdef WIN32
+        ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
+#elif defined APPLE
+    int r = system( command.c_str() );
+#else
+    int r = system( command.c_str() );
+#endif
+}
+
 
 
