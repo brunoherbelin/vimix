@@ -54,8 +54,11 @@ namespace SystemToolkit
     // true of file exists
     bool file_exists(const std::string& path);
 
+    // create directory and return true on success
     bool create_directory(const std::string& path);
 
+    // remove file and return true if the file does not exist after this call
+    bool remove_file(const std::string& path);
 
     // try to open the file with system
     void open(const std::string& path);

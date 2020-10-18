@@ -242,6 +242,7 @@ set(VMIX_SRCS
     StreamSource.cpp
     PatternSource.cpp
     DeviceSource.cpp
+    NetworkSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
@@ -255,6 +256,7 @@ set(VMIX_SRCS
     GlmToolkit.cpp
     SystemToolkit.cpp
     tinyxml2Toolkit.cpp
+    NetworkToolkit.cpp
     ActionManager.cpp
 )
 

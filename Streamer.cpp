@@ -18,29 +18,10 @@
 #include "FrameBuffer.h"
 #include "Log.h"
 
+#include "NetworkToolkit.h"
 #include "Streamer.h"
 
 
-const char* VideoStreamer::profile_name[VideoStreamer::DEFAULT] = {
-    "MJPEG RTP (UDP)",
-    "MPEG4 RTP (UDP)",
-    "H264  RTP (UDP)"
-};
-
-const std::vector<std::string> VideoStreamer::profile_description {
-
-    "video/x-raw, format=I420 ! jpegenc ! rtpjpegpay ! udpsink name=sink",
-    "video/x-raw, format=I420 ! avenc_mpeg4 ! rtpmp4vpay config-interval=3 ! udpsink name=sink",
-    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! rtph264pay ! udpsink name=sink"
-};
-
-
-const std::vector<std::string> VideoStreamer::receiver_example {
-
-    "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink",
-    "video/x-raw, format=I420 ! avenc_mpeg4 ! rtpmp4vpay config-interval=3 ! udpsink name=sink",
-    "gst-launch-1.0 -v udpsrc port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! decodebin ! videoconvert ! autovideosink"
-};
 
 VideoStreamer::VideoStreamer(): FrameGrabber(), frame_buffer_(nullptr), width_(0), height_(0),
         streaming_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0)
@@ -53,6 +34,8 @@ VideoStreamer::VideoStreamer(): FrameGrabber(), frame_buffer_(nullptr), width_(0
 
 VideoStreamer::~VideoStreamer()
 {
+    stop();
+
     if (src_ != nullptr)
         gst_object_unref (src_);
     if (pipeline_ != nullptr) {
@@ -93,12 +76,9 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        // create a gstreamer pipeline
        std::string description = "appsrc name=src ! videoconvert ! ";
 
-       if (Settings::application.stream.profile < 0 || Settings::application.stream.profile >= DEFAULT)
-           Settings::application.stream.profile = UDP_MJPEG;
-       description += profile_description[Settings::application.stream.profile];
-
-       Settings::application.stream.ip = "127.0.0.1";
-//       Settings::application.stream.port = 1000;
+       if (Settings::application.stream.profile < 0 || Settings::application.stream.profile >= NetworkToolkit::DEFAULT)
+           Settings::application.stream.profile = NetworkToolkit::TCP_JPEG;
+       description += NetworkToolkit::protocol_broadcast_pipeline[Settings::application.stream.profile];
 
        // parse pipeline descriptor
        GError *error = NULL;
@@ -111,10 +91,17 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // setup streaming sink
-       g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                     "host", "127.0.0.1",
-                     "port", Settings::application.stream.port,
-                     NULL);
+       if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
+           g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                         "host", Settings::application.stream.ip.c_str(),
+                         "port", Settings::application.stream.port,  NULL);
+       }
+       else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
+           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
+           SystemToolkit::remove_file(path);
+           g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                         "socket-path", path.c_str(),  NULL);
+       }
 
        // setup custom app source
        src_ = GST_APP_SRC( gst_bin_get_by_name (GST_BIN (pipeline_), "src") );
@@ -163,7 +150,9 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // all good
-       Log::Info("VideoStreamer start (%s %d x %d)", profile_name[Settings::application.record.profile], width_, height_);
+       Log::Info("VideoStreamer start (%s %d x %d)", NetworkToolkit::protocol_name[Settings::application.stream.profile], width_, height_);
+
+Log::Info("%s", description.c_str());
 
        // start streaming !!
        streaming_ = true;
@@ -282,8 +271,14 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
 void VideoStreamer::stop ()
 {
     // send end of stream
-    gst_app_src_end_of_stream (src_);
-//    Log::Info("VideoRecorder push EOS");
+    if (src_)
+        gst_app_src_end_of_stream (src_);
+
+    // make sure the shared memory socket is deleted
+    if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
+        std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
+        SystemToolkit::remove_file(path);
+    }
 
     // stop recording
     streaming_ = false;
@@ -291,10 +286,20 @@ void VideoStreamer::stop ()
 
 std::string VideoStreamer::info()
 {
-    if (streaming_)
-        return GstToolkit::time_to_string(timestamp_);
-    else
-        return "Closing stream...";
+    std::string ret = "Streaming terminated.";
+    if (streaming_) {
+
+        if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
+
+
+
+        }
+        else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
+            ret = "Shared Memory";
+        }
+
+    }
+    return ret;
 }
 
 

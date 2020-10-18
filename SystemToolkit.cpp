@@ -214,6 +214,17 @@ bool SystemToolkit::create_directory(const string& path)
     // TODO : verify WIN32 implementation
 }
 
+bool SystemToolkit::remove_file(const string& path)
+{
+    bool ret = true;
+    if (file_exists(path)) {
+        ret = (remove(path.c_str()) == 0);
+    }
+
+    return ret;
+    // TODO : verify WIN32 implementation
+}
+
 string SystemToolkit::settings_path()
 {
     // start from home folder
@@ -324,6 +335,9 @@ void SystemToolkit::execute(const string& command)
     int r = system( command.c_str() );
 #endif
 }
+// example :
+//      std::thread (SystemToolkit::execute,
+//                   "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
 
 
 

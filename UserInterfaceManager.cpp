@@ -1205,33 +1205,58 @@ void UserInterface::RenderPreview()
                         str->stop();
                         video_streamer_ = 0;
                     }
+                    else {
+                        if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
+                            // Options menu
+                            ImGui::Separator();
+                            ImGui::MenuItem("Connection parameters", nullptr, false, false);
+                            static char dummy_str[512];
+                            sprintf(dummy_str, "%s", Settings::application.stream.ip.c_str());
+                            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                            ImGui::InputText("Host", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                            sprintf(dummy_str, "%d", Settings::application.stream.port);
+                            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                            ImGui::InputText("Port", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                        }
+                        else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG)
+                        {
+                            ImGui::Separator();
+                            ImGui::MenuItem("Shared Memory active", nullptr, false, false);
+                        }
+                    }
                 }
                 // start recording
                 else {
                     // detecting the absence of video streamer but the variable is still not 0: fix this!
                     if (video_streamer_ > 0)
                         video_streamer_ = 0;
-                    if ( ImGui::MenuItem( ICON_FA_SATELLITE_DISH "  Stream") ) {
+                    if ( ImGui::MenuItem( ICON_FA_PODCAST "  Stream") ) {
                         FrameGrabber *fg = new VideoStreamer;
                         video_streamer_ = fg->id();
                         Mixer::manager().session()->addFrameGrabber(fg);
                     }
                     // select profile
                     ImGui::SetNextItemWidth(300);
-                    ImGui::Combo("##StreamProfile", &Settings::application.stream.profile, VideoStreamer::profile_name, IM_ARRAYSIZE(VideoStreamer::profile_name) );
+                    ImGui::Combo("##StreamProfile", &Settings::application.stream.profile, NetworkToolkit::protocol_name, IM_ARRAYSIZE(NetworkToolkit::protocol_name) );
 
-                    // Options menu
-                    ImGui::Separator();
-                    ImGui::MenuItem("Options", nullptr, false, false);
-                    {
+                    if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
+                        // Options menu
+                        ImGui::Separator();
+                        ImGui::MenuItem("TCP Options", nullptr, false, false);
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        if (ImGui::BeginCombo("Host", Settings::application.stream.ip.c_str()))
+                        {
+                            static std::vector<std::string> ips = NetworkToolkit::host_ips();
+                            for (int i=0; i < ips.size(); i++) {
+                                if (ImGui::Selectable( ips[i].c_str() ))
+                                    Settings::application.stream.ip = ips[i];
+                            }
+                            ImGui::EndCombo();
+                        }
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                         ImGui::InputInt("Port", &Settings::application.stream.port, 100, 1000);
                         Settings::application.stream.port = CLAMP(Settings::application.stream.port, 1000, 9000);
                     }
-                    //                if ( ImGui::MenuItem( "Test") ) {
-                    //                    std::thread (SystemToolkit::execute,
-                    //                                 "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
-                    //                }
                 }
 
                 ImGui::EndMenu();

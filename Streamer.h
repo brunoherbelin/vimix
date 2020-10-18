@@ -1,11 +1,10 @@
 #ifndef STREAMER_H
 #define STREAMER_H
 
-#include <vector>
-
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsrc.h>
 
+#include "NetworkToolkit.h"
 #include "FrameGrabber.h"
 
 class VideoStreamer : public FrameGrabber
@@ -30,15 +29,6 @@ class VideoStreamer : public FrameGrabber
     static void callback_enough_data (GstAppSrc *, gpointer user_data);
 
 public:
-    typedef enum {
-        UDP_MJPEG = 0,
-        UDP_MPEG4,
-        UDP_h264,
-        DEFAULT
-    } Profile;
-    static const char* profile_name[DEFAULT];
-    static const std::vector<std::string> profile_description;
-    static const std::vector<std::string> receiver_example;
 
     VideoStreamer();
     ~VideoStreamer();

@@ -88,6 +88,13 @@ void Settings::Save()
     RecordNode->SetAttribute("timeout", application.record.timeout);
     pRoot->InsertEndChild(RecordNode);
 
+    // Record
+    XMLElement *StreamNode = xmlDoc.NewElement( "Stream" );
+    StreamNode->SetAttribute("profile", application.stream.profile);
+    StreamNode->SetAttribute("ip", application.stream.ip.c_str());
+    StreamNode->SetAttribute("port", application.stream.port);
+    pRoot->InsertEndChild(StreamNode);
+
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
     TransitionNode->SetAttribute("auto_open", application.transition.auto_open);
@@ -249,6 +256,19 @@ void Settings::Load()
             application.record.path = std::string(path_);
         else
             application.record.path = SystemToolkit::home_path();
+    }
+
+    // Stream
+    XMLElement * streamnode = pRoot->FirstChildElement("Stream");
+    if (streamnode != nullptr) {
+        streamnode->QueryIntAttribute("profile", &application.stream.profile);
+        streamnode->QueryIntAttribute("port", &application.stream.port);
+
+        const char *ip_ = recordnode->Attribute("ip");
+        if (ip_)
+            application.stream.ip = std::string(ip_);
+        else
+            application.stream.ip = "localhost";
     }
 
     // Source

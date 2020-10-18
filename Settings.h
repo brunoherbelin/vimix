@@ -81,9 +81,9 @@ struct StreamingConfig
     int port;
     int profile;
 
-    StreamingConfig() : ip("") {
+    StreamingConfig() : ip("localhost") {
         profile = 0;
-        port = 5000;
+        port = 5400;
     }
 
 };
