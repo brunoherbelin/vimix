@@ -97,7 +97,7 @@ void Stream::execute_open()
     // reset
     ready_ = false;
 
-    // Create the gstreamer pipeline possible :
+    // Add custom app sink to the gstreamer pipeline
     string description = description_;
     description += " ! appsink name=sink";
 
@@ -259,7 +259,7 @@ float Stream::aspectRatio() const
 
 void Stream::enable(bool on)
 {
-    if ( !ready_ )
+    if ( !ready_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -333,10 +333,8 @@ void Stream::play(bool on)
 #endif
 
     // activate live-source
-    if (live_) {
-        GstState state;
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-    }
+    if (live_)
+        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
 
     // reset time counter
     timecount_.reset();
@@ -526,6 +524,10 @@ void Stream::update()
     // unkock frame after reading it
     frame_[read_index].access.unlock();
 
+    if (need_loop) {
+        // stop on end of stream
+        play(false);
+    }
 }
 
 double Stream::updateFrameRate() const

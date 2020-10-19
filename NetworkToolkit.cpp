@@ -1,19 +1,10 @@
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <linux/netdevice.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
 
 #include "NetworkToolkit.h"
 
@@ -26,17 +17,17 @@ const char* NetworkToolkit::protocol_name[NetworkToolkit::DEFAULT] = {
 
 const std::vector<std::string> NetworkToolkit::protocol_broadcast_pipeline {
 
-    "video/x-raw, format=I420 ! jpegenc ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
-    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
-    "video/x-raw, format=I420 ! jpegenc ! shmsink name=sink"
+    "video/x-raw, format=I420 ! queue max-size-buffers=3 ! jpegenc ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
+    "video/x-raw, format=I420 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
+    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=3 ! shmsink buffer-time=100000 name=sink"
 };
 
 
 const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 
-    "application/x-rtp-stream,media=video,encoding-name=JPEG,payload=26 ! rtpstreamdepay ! rtpjitterbuffer ! rtpjpegdepay ! jpegdec",
-    "application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtpjitterbuffer ! rtph264depay ! avdec_h264",
-    "jpegdec"
+    " ! application/x-rtp-stream,media=video,encoding-name=JPEG,payload=26 ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
+    " ! application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtph264depay ! avdec_h264",
+    " ! video/x-raw, format=RGB, framerate=30/1"
 };
 
 
@@ -73,6 +64,13 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
  * RCV
  * gst-launch-1.0 udpsrc port=5000 caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)RAW, sampling=(string)RGBA, depth=(string)8, width=(string)1920, height=(string)1080, colorimetry=(string)SMPTE240M, payload=(int)96, ssrc=(uint)2272750581, timestamp-offset=(uint)1699493959, seqnum-offset=(uint)14107, a-framerate=(string)30" ! rtpvrawdepay ! videoconvert ! autovideosink
  *
+ *
+ *       SHM RAW RGB
+ * SND
+ * gst-launch-1.0 videotestsrc is-live=true ! video/x-raw, format=RGB, framerate=30/1 ! shmsink socket-path=/tmp/blah
+ * RCV
+ * gst-launch-1.0 shmsrc is-live=true socket-path=/tmp/blah ! video/x-raw, format=RGB, framerate=30/1, width=320, height=240 ! videoconvert ! autovideosink
+ *
  * */
 
 
@@ -107,25 +105,5 @@ std::vector<std::string> NetworkToolkit::host_ips()
             close(s);
         }
     }
-
-// localhost127.0.0.1, 192.168.0.30, 10.164.239.1,
-
-
-
-//    char hostbuffer[256];
-//    // retrieve hostname
-//    if ( gethostname(hostbuffer, sizeof(hostbuffer)) != -1 )
-//    {
-//        // retrieve host information
-//        struct hostent *host_entry;
-//        host_entry = gethostbyname(hostbuffer);
-//        if ( host_entry != NULL ) {
-//            // convert an Internet network
-//            // address into ASCII string
-//            char *IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
-//            ipstring = IPbuffer;
-//        }
-//    }
-
     return ipstrings;
 }

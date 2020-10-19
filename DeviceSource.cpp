@@ -379,7 +379,7 @@ void DeviceSource::setDevice(const std::string &devicename)
             pipeline << " ! jpegdec";
 
         if ( device_.find("Screen") != std::string::npos )
-            pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue";
+            pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue max-size-buffers=3";
 
         pipeline << " ! videoconvert";
 

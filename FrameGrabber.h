@@ -42,6 +42,7 @@ public:
     virtual void stop() { }
     virtual std::string info() { return ""; }
     virtual double duration() { return 0.0; }
+    virtual bool busy() { return false; }
 
     inline bool finished() const { return finished_; }
 

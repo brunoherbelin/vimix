@@ -264,7 +264,7 @@ void Settings::Load()
         streamnode->QueryIntAttribute("profile", &application.stream.profile);
         streamnode->QueryIntAttribute("port", &application.stream.port);
 
-        const char *ip_ = recordnode->Attribute("ip");
+        const char *ip_ = streamnode->Attribute("ip");
         if (ip_)
             application.stream.ip = std::string(ip_);
         else

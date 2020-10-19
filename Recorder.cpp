@@ -400,6 +400,8 @@ void VideoRecorder::addFrame (FrameBuffer *frame_buffer, float dt)
                gst_app_src_push_buffer (src_, buffer);
                // NB: buffer will be unrefed by the appsrc
 
+               accept_buffer_ = false;
+
                // next timestamp
                timestamp_ += frame_duration_;
            }
@@ -459,6 +461,11 @@ std::string VideoRecorder::info()
 double VideoRecorder::duration()
 {
     return gst_guint64_to_gdouble( GST_TIME_AS_MSECONDS(timestamp_) ) / 1000.0;
+}
+
+bool VideoRecorder::busy()
+{
+    return accept_buffer_ ? true : false;
 }
 
 // appsrc needs data and we should start sending

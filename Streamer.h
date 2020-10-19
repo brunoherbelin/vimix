@@ -36,8 +36,8 @@ public:
     void addFrame(FrameBuffer *frame_buffer, float dt) override;
     void stop() override;
     std::string info() override;
-
     double duration() override;
+    bool busy() override;
 };
 
 #endif // STREAMER_H

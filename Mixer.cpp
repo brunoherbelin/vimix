@@ -25,6 +25,7 @@ using namespace tinyxml2;
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "StreamSource.h"
+#include "NetworkSource.h"
 #include "ActionManager.h"
 
 #include "Mixer.h"
@@ -305,6 +306,18 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
     return s;
 }
 
+
+Source * Mixer::createSourceNetwork(uint protocol, const std::string &address)
+{
+    // ready to create a source
+    NetworkSource *s = new NetworkSource;
+    s->connect((NetworkToolkit::Protocol) protocol, address);
+
+    // propose a new name based on address
+    s->setName(address);
+
+    return s;
+}
 
 Source * Mixer::createSourceClone(const std::string &namesource)
 {

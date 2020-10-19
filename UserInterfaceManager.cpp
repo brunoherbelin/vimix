@@ -1135,30 +1135,34 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
-                    Mixer::manager().session()->addFrameGrabber(new PNGRecorder);
-
                 // Stop recording menu if main recorder already exists
                 if (rec) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         rec->stop();
                         video_recorder_ = 0;
                     }
+                    ImGui::PopStyleColor(1);
                 }
                 // start recording
                 else {
                     // detecting the absence of video recorder but the variable is still not 0: fix this!
                     if (video_recorder_ > 0)
                         video_recorder_ = 0;
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         FrameGrabber *fg = new VideoRecorder;
                         video_recorder_ = fg->id();
                         Mixer::manager().session()->addFrameGrabber(fg);
                     }
+                    ImGui::PopStyleColor(1);
                     // select profile
                     ImGui::SetNextItemWidth(300);
                     ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
+
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
+                    Mixer::manager().session()->addFrameGrabber(new PNGRecorder);
 
                 // Options menu
                 ImGui::Separator();
@@ -1201,11 +1205,13 @@ void UserInterface::RenderPreview()
             {
                 // Stop recording menu if main recorder already exists
                 if (str) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Streaming") ) {
                         str->stop();
                         video_streamer_ = 0;
                     }
-                    else {
+                    ImGui::PopStyleColor(1);
+                    if (video_streamer_ > 0) {
                         if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
                             // Options menu
                             ImGui::Separator();
@@ -1218,11 +1224,11 @@ void UserInterface::RenderPreview()
                             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                             ImGui::InputText("Port", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                         }
-                        else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG)
-                        {
-                            ImGui::Separator();
-                            ImGui::MenuItem("Shared Memory active", nullptr, false, false);
-                        }
+//                        else if (Settings::application.stream.profile == NetworkToolkit::SHM_RAW)
+//                        {
+//                            ImGui::Separator();
+//                            ImGui::MenuItem("Shared Memory active", nullptr, false, false);
+//                        }
                     }
                 }
                 // start recording
@@ -1230,11 +1236,13 @@ void UserInterface::RenderPreview()
                     // detecting the absence of video streamer but the variable is still not 0: fix this!
                     if (video_streamer_ > 0)
                         video_streamer_ = 0;
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_PODCAST "  Stream") ) {
                         FrameGrabber *fg = new VideoStreamer;
                         video_streamer_ = fg->id();
                         Mixer::manager().session()->addFrameGrabber(fg);
                     }
+                    ImGui::PopStyleColor(1);
                     // select profile
                     ImGui::SetNextItemWidth(300);
                     ImGui::Combo("##StreamProfile", &Settings::application.stream.profile, NetworkToolkit::protocol_name, IM_ARRAYSIZE(NetworkToolkit::protocol_name) );
@@ -1272,6 +1280,14 @@ void UserInterface::RenderPreview()
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        // tooltip overlay
+        if (ImGui::IsItemHovered())
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(draw_pos);
+            ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
+        }
         // recording indicator overlay
         if (rec)
         {
@@ -1283,13 +1299,19 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
-        // tooltip overlay
-        if (ImGui::IsItemHovered())
+        // streaming indicator overlay
+        if (str)
         {
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
-            ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if (str->busy())
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
+            else
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.2f));
+            ImGui::Text(ICON_FA_PODCAST);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
         }
 
         ImGui::End();
@@ -2268,14 +2290,13 @@ void Navigator::RenderNewPannel()
                                                Pattern::pattern_types[pattern_type]);
             }
         }
-        // Hardware
+        // External source creator
         else if (Settings::application.source.new_type == 3){
 
             ImGui::SetCursorPosY(2.f * width_);
 
-
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Hardware", "Select device"))
+            if (ImGui::BeginCombo("##External", "Select source"))
             {
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
@@ -2284,6 +2305,13 @@ void Navigator::RenderNewPannel()
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
+
+                for (uint n = 0; n < NetworkToolkit::DEFAULT; ++n){
+                    if (ImGui::Selectable( NetworkToolkit::protocol_name[n] )) {
+                        new_source_preview_.setSource( Mixer::manager().createSourceNetwork(n, "192.168.0.30:5400") );
+                    }
+                }
+
                 ImGui::EndCombo();
             }
 

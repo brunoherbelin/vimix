@@ -96,7 +96,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
                          "host", Settings::application.stream.ip.c_str(),
                          "port", Settings::application.stream.port,  NULL);
        }
-       else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
+       else if (Settings::application.stream.profile == NetworkToolkit::SHM_RAW) {
            std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
            SystemToolkit::remove_file(path);
            g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
@@ -226,9 +226,11 @@ Log::Info("%s", description.c_str());
                gst_buffer_unmap (buffer, &map);
 
                // push
-    //           Log::Info("VideoRecorder push data %ld", buffer->pts);
+//               Log::Info("VideoRecorder push data %ld", buffer->pts);
                gst_app_src_push_buffer (src_, buffer);
                // NB: buffer will be unrefed by the appsrc
+
+               accept_buffer_ = false;
 
                // next timestamp
                timestamp_ += frame_duration_;
@@ -263,6 +265,12 @@ Log::Info("%s", description.c_str());
 
            finished_ = true;
        }
+
+       // make sure the shared memory socket is deleted
+       if (Settings::application.stream.profile == NetworkToolkit::SHM_RAW) {
+           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
+           SystemToolkit::remove_file(path);
+       }
    }
 
 
@@ -273,12 +281,6 @@ void VideoStreamer::stop ()
     // send end of stream
     if (src_)
         gst_app_src_end_of_stream (src_);
-
-    // make sure the shared memory socket is deleted
-    if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
-        std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
-        SystemToolkit::remove_file(path);
-    }
 
     // stop recording
     streaming_ = false;
@@ -292,9 +294,10 @@ std::string VideoStreamer::info()
         if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
 
 
+            ret = "TCP";
 
         }
-        else if (Settings::application.stream.profile == NetworkToolkit::SHM_JPEG) {
+        else if (Settings::application.stream.profile == NetworkToolkit::SHM_RAW) {
             ret = "Shared Memory";
         }
 
@@ -308,20 +311,25 @@ double VideoStreamer::duration()
     return gst_guint64_to_gdouble( GST_TIME_AS_MSECONDS(timestamp_) ) / 1000.0;
 }
 
+bool VideoStreamer::busy()
+{
+    return accept_buffer_ ? true : false;
+}
+
 // appsrc needs data and we should start sending
 void VideoStreamer::callback_need_data (GstAppSrc *, guint , gpointer p)
 {
-//    Log::Info("H264Recording callback_need_data");
     VideoStreamer *rec = (VideoStreamer *)p;
     if (rec) {
-        rec->accept_buffer_ = rec->streaming_ ? true : false;
+        rec->accept_buffer_ =  true;
+//        Log::Info("VideoStreamer need_data");
     }
 }
 
 // appsrc has enough data and we can stop sending
 void VideoStreamer::callback_enough_data (GstAppSrc *, gpointer p)
 {
-//    Log::Info("H264Recording callback_enough_data");
+//    Log::Info("VideoStreamer enough_data");
     VideoStreamer *rec = (VideoStreamer *)p;
     if (rec) {
         rec->accept_buffer_ = false;
