@@ -150,6 +150,20 @@ add_library(TINYXML2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2/tinyxml2.cpp")
 message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIR}.")
 
 #
+# OSCPack
+#
+set(OSCPACK_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscTypes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscReceivedElements.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscPrintReceivedElements.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscOutboundPacketStream.cpp
+)
+set(OSCPACK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack)
+add_library(OSCPACK "${OSCPACK_SRCS}")
+message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}.")
+
+
+#
 # STB
 #
 set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
@@ -395,6 +409,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     TINYXML2
     TINYFD
     IMGUI
+    OSCPACK
     vmix::rc
 )
 
