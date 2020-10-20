@@ -152,11 +152,19 @@ message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml
 #
 # OSCPack
 #
+if(UNIX)
+    set(OSCPACK_PLATFORM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/ip/posix/)
+elseif(WIN32)
+    set(OSCPACK_PLATFORM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/ip/win32/)
+endif()
 set(OSCPACK_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscTypes.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscReceivedElements.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscPrintReceivedElements.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/OscOutboundPacketStream.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/osc/OscTypes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/osc/OscReceivedElements.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/osc/OscPrintReceivedElements.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/osc/OscOutboundPacketStream.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack/ip/IpEndpointName.cpp
+    ${OSCPACK_PLATFORM_DIR}/NetworkingUtils.cpp
+    ${OSCPACK_PLATFORM_DIR}/UdpSocket.cpp
 )
 set(OSCPACK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack)
 add_library(OSCPACK "${OSCPACK_SRCS}")
@@ -218,7 +226,7 @@ include_directories(
     ${TINYFD_INCLUDE_DIR}
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
-    ${OBJLOADER_INCLUDE_DIR}
+    ${OSCPACK_INCLUDE_DIR}
 )
 
 
