@@ -87,8 +87,8 @@ class Device
     friend class DeviceSource;
 
     Device();
-    Device(Rendering const& copy);            // Not Implemented
-    Device& operator=(Rendering const& copy); // Not Implemented
+    Device(Device const& copy);            // Not Implemented
+    Device& operator=(Device const& copy); // Not Implemented
 
 public:
 
@@ -104,7 +104,7 @@ public:
     std::string description (int index) const;
     DeviceConfigSet config (int index) const;
 
-    int  index   (const std::string &device) const;
+    int  index  (const std::string &device) const;
     bool exists (const std::string &device) const;
     bool unplugged (const std::string &device) const;
 

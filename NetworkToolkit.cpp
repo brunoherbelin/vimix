@@ -1,10 +1,15 @@
 
 #include <stdio.h>
+#include <cstring>
 #include <unistd.h>
+#include <algorithm>    // std::count
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <linux/netdevice.h>
 #include <arpa/inet.h>
+//#include <netdb.h>
+
+#include "ip/NetworkingUtils.h"
 
 #include "NetworkToolkit.h"
 
@@ -15,7 +20,7 @@ const char* NetworkToolkit::protocol_name[NetworkToolkit::DEFAULT] = {
     "Shared Memory"
 };
 
-const std::vector<std::string> NetworkToolkit::protocol_broadcast_pipeline {
+const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 
     "video/x-raw, format=I420 ! queue max-size-buffers=3 ! jpegenc ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
     "video/x-raw, format=I420 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
@@ -74,36 +79,80 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
  * */
 
 
+std::vector<std::string> ipstrings;
+std::vector<unsigned long> iplongs;
 
 std::vector<std::string> NetworkToolkit::host_ips()
 {
-    std::vector<std::string> ipstrings;
+    // fill the list of IPs only once
+    if (ipstrings.empty()) {
 
-    int s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s > -1) {
-        struct ifconf ifconf;
-        struct ifreq ifr[50];
-        int ifs;
-        int i;
+        int s = socket(AF_INET, SOCK_STREAM, 0);
+        if (s > -1) {
+            struct ifconf ifconf;
+            struct ifreq ifr[50];
+            int ifs;
+            int i;
 
-        ifconf.ifc_buf = (char *) ifr;
-        ifconf.ifc_len = sizeof ifr;
+            ifconf.ifc_buf = (char *) ifr;
+            ifconf.ifc_len = sizeof ifr;
 
-        if (ioctl(s, SIOCGIFCONF, &ifconf) > -1) {
-            ifs = ifconf.ifc_len / sizeof(ifr[0]);
-            for (i = 0; i < ifs; i++) {
-                char ip[INET_ADDRSTRLEN];
-                struct sockaddr_in *s_in = (struct sockaddr_in *) &ifr[i].ifr_addr;
+            if (ioctl(s, SIOCGIFCONF, &ifconf) > -1) {
+                ifs = ifconf.ifc_len / sizeof(ifr[0]);
+                for (i = 0; i < ifs; i++) {
+                    char ip[INET_ADDRSTRLEN];
+                    struct sockaddr_in *s_in = (struct sockaddr_in *) &ifr[i].ifr_addr;
 
-                if (inet_ntop(AF_INET, &s_in->sin_addr, ip, sizeof(ip))) {
-                    if ( std::string(ip).compare("127.0.0.1") == 0 )
-                        ipstrings.push_back( "localhost" );
-                    else
+                    if (inet_ntop(AF_INET, &s_in->sin_addr, ip, sizeof(ip))) {
                         ipstrings.push_back( std::string(ip) );
+                        iplongs.push_back( GetHostByName(ip) );
+                    }
                 }
+                close(s);
             }
-            close(s);
         }
     }
+
     return ipstrings;
+}
+
+bool NetworkToolkit::is_host_ip(const std::string &ip)
+{
+    if ( ip.compare("localhost") == 0)
+        return true;
+
+    if (ipstrings.empty())
+        host_ips();
+
+    return std::find(ipstrings.begin(), ipstrings.end(), ip) != ipstrings.end();
+}
+
+std::string NetworkToolkit::closest_host_ip(const std::string &ip)
+{
+    std::string address = "localhost";
+
+    if (iplongs.empty())
+        host_ips();
+
+    // discard trivial case
+    if ( ip.compare("localhost") != 0)
+    {
+        int index_mini = -1;
+        unsigned long host = GetHostByName( ip.c_str() );
+        unsigned long mini = host;
+
+        for (int i=0; i < iplongs.size(); i++){
+            unsigned long diff = host > iplongs[i] ? host-iplongs[i] : iplongs[i]-host;
+            if (diff < mini) {
+                mini = diff;
+                index_mini = i;
+            }
+        }
+
+        if (index_mini>0)
+            address = ipstrings[index_mini];
+
+    }
+
+    return address;
 }

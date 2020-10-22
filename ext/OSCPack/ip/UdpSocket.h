@@ -91,7 +91,7 @@ public:
 
 	// Enable broadcast addresses (e.g. x.x.x.255)
 	// Sets SO_BROADCAST socket option.
-	void SetEnableBroadcast( bool enableBroadcast );
+    void SetEnableBroadcast( bool enableBroadcast );
 
 	// Enable multiple listeners for a single port on same 
 	// network interface*

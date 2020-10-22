@@ -27,6 +27,7 @@ using namespace tinyxml2;
 #include "StreamSource.h"
 #include "NetworkSource.h"
 #include "ActionManager.h"
+#include "Streamer.h"
 
 #include "Mixer.h"
 
@@ -307,11 +308,11 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
 }
 
 
-Source * Mixer::createSourceNetwork(uint protocol, const std::string &address)
+Source * Mixer::createSourceNetwork(const std::string &address)
 {
     // ready to create a source
     NetworkSource *s = new NetworkSource;
-    s->connect((NetworkToolkit::Protocol) protocol, address);
+    s->setAddress(address);
 
     // propose a new name based on address
     s->setName(address);
@@ -847,6 +848,9 @@ void Mixer::swap()
 
     // reset History manager
     Action::manager().clear();
+
+    // inform streaming manager
+    Streaming::manager().setSession(session_);
 
     // notification
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());

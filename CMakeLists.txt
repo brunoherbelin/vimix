@@ -279,6 +279,7 @@ set(VMIX_SRCS
     SystemToolkit.cpp
     tinyxml2Toolkit.cpp
     NetworkToolkit.cpp
+    Connection.cpp
     ActionManager.cpp
 )
 

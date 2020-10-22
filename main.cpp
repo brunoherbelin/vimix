@@ -28,6 +28,7 @@
 #include "Mixer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
+#include "Connection.h"
 
 
 void drawScene()
@@ -64,6 +65,10 @@ int main(int argc, char *argv[])
     if ( !UserInterface::manager().Init() )
         return 1;
 
+
+    if ( !Connection::manager().init() )
+        return 1;
+
     ///
     /// GStreamer
     ///
@@ -93,6 +98,8 @@ int main(int argc, char *argv[])
 
         Rendering::manager().draw();
     }
+
+    Connection::manager().terminate();
 
     ///
     /// UI TERMINATE

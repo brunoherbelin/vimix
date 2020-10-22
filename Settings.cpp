@@ -58,6 +58,8 @@ void Settings::Save()
     applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
     applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
+    applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
+    applicationNode->SetAttribute("accept_connections", application.accept_connections);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -88,12 +90,12 @@ void Settings::Save()
     RecordNode->SetAttribute("timeout", application.record.timeout);
     pRoot->InsertEndChild(RecordNode);
 
-    // Record
-    XMLElement *StreamNode = xmlDoc.NewElement( "Stream" );
-    StreamNode->SetAttribute("profile", application.stream.profile);
-    StreamNode->SetAttribute("ip", application.stream.ip.c_str());
-    StreamNode->SetAttribute("port", application.stream.port);
-    pRoot->InsertEndChild(StreamNode);
+//    // Record
+//    XMLElement *StreamNode = xmlDoc.NewElement( "Stream" );
+//    StreamNode->SetAttribute("profile", application.stream.profile);
+//    StreamNode->SetAttribute("ip", application.stream.ip.c_str());
+//    StreamNode->SetAttribute("port", application.stream.port);
+//    pRoot->InsertEndChild(StreamNode);
 
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
@@ -220,6 +222,8 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
         applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
+        applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
+        applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
     }
 
     // Widgets
@@ -258,18 +262,18 @@ void Settings::Load()
             application.record.path = SystemToolkit::home_path();
     }
 
-    // Stream
-    XMLElement * streamnode = pRoot->FirstChildElement("Stream");
-    if (streamnode != nullptr) {
-        streamnode->QueryIntAttribute("profile", &application.stream.profile);
-        streamnode->QueryIntAttribute("port", &application.stream.port);
+//    // Stream
+//    XMLElement * streamnode = pRoot->FirstChildElement("Stream");
+//    if (streamnode != nullptr) {
+//        streamnode->QueryIntAttribute("profile", &application.stream.profile);
+//        streamnode->QueryIntAttribute("port", &application.stream.port);
 
-        const char *ip_ = streamnode->Attribute("ip");
-        if (ip_)
-            application.stream.ip = std::string(ip_);
-        else
-            application.stream.ip = "localhost";
-    }
+//        const char *ip_ = streamnode->Attribute("ip");
+//        if (ip_)
+//            application.stream.ip = std::string(ip_);
+//        else
+//            application.stream.ip = "localhost";
+//    }
 
     // Source
     XMLElement * sourceconfnode = pRoot->FirstChildElement("Source");

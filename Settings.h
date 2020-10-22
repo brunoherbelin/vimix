@@ -75,18 +75,19 @@ struct RecordConfig
 
 };
 
-struct StreamingConfig
-{
-    std::string ip;
-    int port;
-    int profile;
+//struct StreamingConfig
+//{
+//    std::string ip;
+//    int port;
+//    int profile;
 
-    StreamingConfig() : ip("localhost") {
-        profile = 0;
-        port = 5400;
-    }
+//    StreamingConfig() : ip("localhost") {
+//        profile = 0;
+//        port = 5400;
+//    }
 
-};
+//};
+
 struct History
 {
     std::string path;
@@ -187,6 +188,7 @@ struct Application
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
+    bool accept_connections;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -200,7 +202,7 @@ struct Application
 
     // settings exporters
     RecordConfig record;
-    StreamingConfig stream;
+//    StreamingConfig stream;
 
     // settings new source
     SourceConfig source;
