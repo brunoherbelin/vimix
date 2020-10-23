@@ -10,11 +10,16 @@
 #include "Connection.h"
 #include "Log.h"
 
+
+#ifndef NDEBUG
+#define CONNECTION_DEBUG
+#endif
+
+
 Connection::Connection()
 {
     receiver_ = nullptr;
 }
-
 
 bool Connection::init()
 {
@@ -34,11 +39,10 @@ bool Connection::init()
             // through exception runtime if fails
             receiver_ = new UdpListeningReceiveSocket( IpEndpointName( IpEndpointName::ANY_ADDRESS,
                                                                        connections_[0].port_handshake ), &listener_ );
-
             // all good
             trial = MAX_HANDSHAKE;
         }
-        catch(const std::runtime_error& e) {
+        catch (const std::runtime_error& e) {
             // arg, the receiver could not be initialized
             // because the port was not available
             receiver_ = nullptr;
@@ -49,13 +53,10 @@ bool Connection::init()
 
     // perfect, we could initialize the receiver
     if (receiver_!=nullptr) {
-
         // listen for answers
         std::thread(listen).detach();
-
         // regularly check for available streaming hosts
         std::thread(ask).detach();
-
     }
 
     return receiver_ != nullptr;
@@ -106,14 +107,14 @@ int Connection::index(ConnectionInfo i) const
 
 void Connection::listen()
 {
-//    Log::Info("Accepting handshake on %d", Connection::manager().connections_[0].port_handshake);
+#ifdef CONNECTION_DEBUG
+    Log::Info("Accepting handshake on port %d", Connection::manager().connections_[0].port_handshake);
+#endif
     Connection::manager().receiver_->Run();
 }
 
 void Connection::ask()
 {
-//    Log::Info("Broadcasting handshakes with info %d", Connection::manager().connections_[0].port_handshake);
-
     // prepare OSC PING message
     char buffer[IP_MTU_SIZE];
     osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
@@ -132,12 +133,6 @@ void Connection::ask()
     // loop infinitely
     while(true)
     {
-
-        // set status to pending : after pong status will be confirmed
-        for(auto it=Connection::manager().connections_.begin(); it!=Connection::manager().connections_.end(); it++) {
-            (*it).status--;
-        }
-
         // broadcast the PING message on every possible ports
         for(auto it=handshake_ports.begin(); it!=handshake_ports.end(); it++) {
             IpEndpointName host( "255.255.255.255", (*it) );
@@ -149,14 +144,22 @@ void Connection::ask()
         // wait a bit
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        // check if status decreased
+        // check the list of connections for non responding (disconnected)
         for(auto it=Connection::manager().connections_.begin(); it!=Connection::manager().connections_.end(); ) {
-            if ( it!=Connection::manager().connections_.begin() && (*it).status < 1 )
+            // decrease life score
+            (*it).alive--;
+            // erase connection if its life score is negative (not responding too many times)
+            if ( it!=Connection::manager().connections_.begin() && (*it).alive < 0 ) {
                 it = Connection::manager().connections_.erase(it);
+#ifdef CONNECTION_DEBUG
+                Log::Info("A connection was lost");
+                Connection::manager().print();
+#endif
+            }
+            // loop
             else
                 it++;
         }
-//        Connection::manager().print();
     }
 
 }
@@ -179,8 +182,6 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int remote_port = (arg++)->AsInt32();
 
-//            Log::Info("Receive PING from %s:%d", remote_ip.c_str(), remote_port);
-
             // build message
             char buffer[IP_MTU_SIZE];
             osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
@@ -196,7 +197,6 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             UdpTransmitSocket socket( host );
             socket.Send( p.Data(), p.Size() );
 
-//            Log::Info("reply PONG to %s:%d", remote_ip.c_str(), remote_port);
         }
         // pong response: add info
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PONG) == 0 ){
@@ -211,17 +211,19 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             info.port_stream_send = (arg++)->AsInt32();
             info.port_stream_receive = (arg++)->AsInt32();
 
+            // do we know this connection ?
             int i = Connection::manager().index(info);
             if ( i < 0) {
-                // add to list
-                info.status = 3;
+                // a new connection! Add to list
                 Connection::manager().connections_.push_back(info);
-//                Log::Info("Received PONG from %s:%d : added", info.address_.c_str(), info.port_handshake);
-//                Connection::manager().print();
+#ifdef CONNECTION_DEBUG
+                Log::Info("New connection added");
+                Connection::manager().print();
+#endif
             }
             else {
-                // set high (== ALIVE)
-                Connection::manager().connections_[i].status = 3;
+                // we know this connection: keep its status to ALIVE
+                Connection::manager().connections_[i].alive = ALIVE;
             }
 
         }

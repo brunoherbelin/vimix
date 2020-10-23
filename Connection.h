@@ -7,6 +7,8 @@
 
 #include "NetworkToolkit.h"
 
+#define ALIVE 3
+
 class ConnectionRequestListener : public osc::OscPacketListener {
 
 protected:
@@ -20,14 +22,14 @@ struct ConnectionInfo {
     int port_handshake;
     int port_stream_send;
     int port_stream_receive;
-    int status;
+    int alive;
 
     ConnectionInfo () {
         address_ = "localhost";
         port_handshake = HANDSHAKE_PORT;
         port_stream_send = STREAM_REQUEST_PORT;
         port_stream_receive = STREAM_RESPONSE_PORT;
-        status = 0;
+        alive = ALIVE;
     }
 
     inline ConnectionInfo& operator = (const ConnectionInfo& o)
