@@ -18,34 +18,37 @@ protected:
 
 struct ConnectionInfo {
 
-    std::string address_;
+    std::string address;
     int port_handshake;
     int port_stream_send;
     int port_stream_receive;
+    std::string name;
     int alive;
 
     ConnectionInfo () {
-        address_ = "localhost";
+        address = "127.0.0.1";
         port_handshake = HANDSHAKE_PORT;
         port_stream_send = STREAM_REQUEST_PORT;
         port_stream_receive = STREAM_RESPONSE_PORT;
+        name = "user@localhost";
         alive = ALIVE;
     }
 
     inline ConnectionInfo& operator = (const ConnectionInfo& o)
     {
         if (this != &o) {
-            this->address_ = o.address_;
+            this->address = o.address;
             this->port_handshake = o.port_handshake;
             this->port_stream_send = o.port_stream_send;
             this->port_stream_receive = o.port_stream_receive;
+            this->name = o.name;
         }
         return *this;
     }
 
     inline bool operator == (const ConnectionInfo& o) const
     {
-        return this->address_.compare(o.address_) == 0
+        return this->address.compare(o.address) == 0
                 && this->port_handshake == o.port_handshake;
     }
 
@@ -73,6 +76,7 @@ public:
 
     int numHosts () const;
     int index(ConnectionInfo i) const;
+    int index(const std::string &name) const;
     ConnectionInfo info(int index = 0);  // index 0 for self
 
 private:

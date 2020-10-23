@@ -156,3 +156,12 @@ std::string NetworkToolkit::closest_host_ip(const std::string &ip)
 
     return address;
 }
+
+std::string NetworkToolkit::hostname()
+{
+    char hostname[1024];
+    hostname[1023] = '\0';
+    gethostname(hostname, 1023);
+
+    return std::string(hostname);
+}

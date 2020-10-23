@@ -10,7 +10,6 @@
 #include "Connection.h"
 #include "Log.h"
 
-
 #ifndef NDEBUG
 #define CONNECTION_DEBUG
 #endif
@@ -39,6 +38,9 @@ bool Connection::init()
             // through exception runtime if fails
             receiver_ = new UdpListeningReceiveSocket( IpEndpointName( IpEndpointName::ANY_ADDRESS,
                                                                        connections_[0].port_handshake ), &listener_ );
+            // validate hostname
+            connections_[0].name = APP_NAME "@" + NetworkToolkit::hostname() +
+                    "." + std::to_string(connections_[0].port_handshake-HANDSHAKE_PORT);
             // all good
             trial = MAX_HANDSHAKE;
         }
@@ -87,11 +89,26 @@ ConnectionInfo Connection::info(int index)
 }
 
 
-void Connection::print()
+struct hasName: public std::unary_function<ConnectionInfo, bool>
 {
-    for(int i = 0; i<connections_.size(); i++) {
-        Log::Info(" - %s:%d", connections_[i].address_.c_str(), connections_[i].port_handshake);
+    inline bool operator()(const ConnectionInfo elem) const {
+       return (elem.name.compare(_a) == 0);
     }
+    hasName(std::string a) : _a(a) { }
+private:
+    std::string _a;
+};
+
+
+int Connection::index(const std::string &name) const
+{
+    int id = -1;
+
+    std::vector<ConnectionInfo>::const_iterator p = std::find_if(connections_.begin(), connections_.end(), hasName(name));
+    if (p != connections_.end())
+        id = std::distance(connections_.begin(), p);
+
+    return id;
 }
 
 int Connection::index(ConnectionInfo i) const
@@ -103,6 +120,13 @@ int Connection::index(ConnectionInfo i) const
         id = std::distance(connections_.begin(), p);
 
     return id;
+}
+
+void Connection::print()
+{
+    for(int i = 0; i<connections_.size(); i++) {
+        Log::Info(" - %s %s:%d", connections_[i].name.c_str(), connections_[i].address.c_str(), connections_[i].port_handshake);
+    }
 }
 
 void Connection::listen()
@@ -187,6 +211,7 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
             p.Clear();
             p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
+            p << Connection::manager().connections_[0].name.c_str();
             p << Connection::manager().connections_[0].port_handshake;
             p << Connection::manager().connections_[0].port_stream_send;
             p << Connection::manager().connections_[0].port_stream_receive;
@@ -203,10 +228,11 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
             // create info struct
             ConnectionInfo info;
-            info.address_ = remote_ip;
+            info.address = remote_ip;
 
             // add all ports info
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            info.name = std::string( (arg++)->AsString() );
             info.port_handshake = (arg++)->AsInt32();
             info.port_stream_send = (arg++)->AsInt32();
             info.port_stream_receive = (arg++)->AsInt32();

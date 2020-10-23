@@ -38,6 +38,8 @@ std::vector<std::string> host_ips();
 bool is_host_ip(const std::string &ip);
 std::string closest_host_ip(const std::string &ip);
 
+std::string hostname();
+
 }
 
 #endif // NETWORKTOOLKIT_H

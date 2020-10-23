@@ -39,6 +39,7 @@ using namespace std;
 #include "Log.h"
 #include "SystemToolkit.h"
 #include "RenderingManager.h"
+#include "Connection.h"
 #include "ActionManager.h"
 #include "Resource.h"
 #include "FileDialog.h"
@@ -2311,21 +2312,12 @@ void Navigator::RenderNewPannel()
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
-
-//                for (uint n = 0; n < NetworkToolkit::DEFAULT; ++n){
-//                    if (ImGui::Selectable( NetworkToolkit::protocol_name[n] )) {
-//                        new_source_preview_.setSource( Mixer::manager().createSourceNetwork("192.168.0.30") );
-//                    }
-//                }
-
-                for (int d = 0; d < NetworkHosts::manager().numHosts(); ++d){
-                    std::string namehost = NetworkHosts::manager().name(d);
+                for (int d = 1; d < Connection::manager().numHosts(); ++d){
+                    std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
-
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
                 }
-
                 ImGui::EndCombo();
             }
 
