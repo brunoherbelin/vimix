@@ -181,8 +181,9 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     }
     //  any other IP : offer UDP streaming
     else {
-        conf.protocol = NetworkToolkit::TCP_JPEG;
+        conf.protocol = NetworkToolkit::UDP_JPEG;
     }
+//    conf.protocol = NetworkToolkit::UDP_JPEG;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -272,7 +273,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        std::string description = "appsrc name=src ! videoconvert ! ";
 
        if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
-           config_.protocol = NetworkToolkit::TCP_JPEG;
+           config_.protocol = NetworkToolkit::UDP_JPEG;
        description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
 
        // parse pipeline descriptor
@@ -286,7 +287,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // setup streaming sink
-       if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
+       if (config_.protocol == NetworkToolkit::UDP_JPEG || config_.protocol == NetworkToolkit::UDP_H264) {
            g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                          "host", config_.client_address.c_str(),
                          "port", config_.port,  NULL);
@@ -345,7 +346,8 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // all good
-       Log::Info("VideoStreamer start (%s %d x %d)", config_.client_address.c_str(), width_, height_);
+       Log::Info("Streaming video to %s:%d (%d x %d)",
+                 config_.client_address.c_str(), config_.port, width_, height_);
 
        // start streaming !!
        streaming_ = true;

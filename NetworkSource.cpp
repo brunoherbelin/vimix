@@ -104,7 +104,7 @@ void NetworkStream::open(const std::string &nameconnection)
         }
     }
     if (receiver_ == nullptr) {
-        Log::Notify("Cannot open %s.", nameconnection);
+        Log::Notify("Cannot open %s. Please try again.", nameconnection);
         failed_ = true;
         return;
     }
@@ -176,15 +176,19 @@ void NetworkStream::update()
 #endif
         // build the pipeline depending on stream info
         std::ostringstream pipeline;
-        if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
+        if (config_.protocol == NetworkToolkit::UDP_JPEG || config_.protocol == NetworkToolkit::UDP_H264) {
 
-            pipeline << "tcpclientsrc name=src timeout=1 port=" << config_.port;
+            pipeline << "udpsrc port=" << config_.port;
+        }
+        else if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
+
+            pipeline << "tcpclientsrc timeout=1 port=" << config_.port;
         }
         else if (config_.protocol == NetworkToolkit::SHM_RAW) {
 
             std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
             path += std::to_string(config_.port);
-            pipeline << "shmsrc name=src is-live=true socket-path=" << path;
+            pipeline << "shmsrc is-live=true socket-path=" << path;
             // TODO rename SHM socket "shm_PORT"
         }
 
