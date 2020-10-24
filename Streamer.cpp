@@ -22,11 +22,16 @@
 #include "FrameBuffer.h"
 #include "Log.h"
 
+#include "Connection.h"
 #include "NetworkToolkit.h"
 #include "Streamer.h"
 
 #include <iostream>
 #include <cstring>
+
+#ifndef NDEBUG
+#define STREAMER_DEBUG
+#endif
 
 // this is called when a U
 void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
@@ -39,19 +44,23 @@ void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_REQUEST) == 0 ){
 
-            Log::Info("%s wants to know if i can stream", sender);
-            Streaming::manager().makeOffer(sender);
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            int reply_to_port = (arg++)->AsInt32();
+            Streaming::manager().addStream(sender, reply_to_port);
 
-        }
-        else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_CONNECT) == 0 ){
-
-            Log::Info("%s wants me stream", sender);
-
+#ifdef STREAMER_DEBUG
+            Log::Info("%s wants a stream.", sender);
+#endif
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_DISCONNECT) == 0 ){
 
-            Log::Info("%s ended reception", sender);
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            int port = (arg++)->AsInt32();
+            Streaming::manager().removeStream(sender, port);
 
+#ifdef STREAMER_DEBUG
+            Log::Info("%s does not need streaming anymore.", sender);
+#endif
         }
     }
     catch( osc::Exception& e ){
@@ -64,32 +73,31 @@ void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
 Streaming::Streaming() : session_(nullptr), width_(0), height_(0)
 {
-//    receiver_ = new UdpListeningReceiveSocket(IpEndpointName( IpEndpointName::ANY_ADDRESS, STREAM_REQUEST_PORT ), &listener_ );
-////    receiver_ = new UdpListeningReceiveSocket(IpEndpointName( IpEndpointName::ANY_ADDRESS, STREAM_REQUEST_PORT ), &listener_ );
-
-
+    int port = Connection::manager().info().port_stream_request;
+    receiver_ = new UdpListeningReceiveSocket(IpEndpointName( IpEndpointName::ANY_ADDRESS, port ), &listener_ );
 
 }
 
-void Streaming::listen()
+void wait_for_request_(UdpListeningReceiveSocket *receiver)
 {
-    Log::Info("Accepting Streaming requests on port %d", STREAM_REQUEST_PORT);
-    Streaming::manager().receiver_->Run();
-    Log::Info("Refusing Streaming requests");
+    receiver->Run();
 }
 
 void Streaming::enable(bool on)
 {
-//    if (on){
-//        std::thread(listen).detach();
-//    }
-//    else {
-//        // end streaming requests
-//        receiver_->AsynchronousBreak();
-//        // end all streaming TODO
-//    }
+    if (on) {
+        std::thread(wait_for_request_, receiver_).detach();
+        Log::Info("Accepting stream requests to %s.", Connection::manager().info().name.c_str());
+    }
+    else {
+        // end streaming requests
+        receiver_->AsynchronousBreak();
+        // end all streaming
+        for (auto sit = streamers_.begin(); sit != streamers_.end(); sit=streamers_.erase(sit))
+            (*sit)->stop();
+        Log::Info("Refusing stream requests to %s. No streaming ongoing.", Connection::manager().info().name.c_str());
+    }
 }
-
 
 void Streaming::setSession(Session *se)
 {
@@ -106,73 +114,110 @@ void Streaming::setSession(Session *se)
     }
 }
 
-void Streaming::makeOffer(const std::string &client)
+void Streaming::removeStream(const std::string &sender, int port)
 {
-    // do not reply if no session can be streamed (should not happen)
-    if (session_ == nullptr)
-        return;
+    // get ip of sender
+    std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
 
+    // parse the list for a streamers matching IP and port
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    for (; sit != streamers_.end(); sit++){
+        NetworkToolkit::StreamConfig config = (*sit)->config_;
+        if (config.client_address.compare(sender_ip) == 0 && config.port == port ) {
+#ifdef STREAMER_DEBUG
+            Log::Info("Ending streaming to %s:%d", config.client_address.c_str(), config.port);
+#endif
+            // match: stop this streamer
+            (*sit)->stop();
+            // remove from list
+            streamers_.erase(sit);
+            break;
+        }
+    }
+
+}
+
+void Streaming::removeStreams(const std::string &ip)
+{
+    // remove all streamers matching given IP
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    while ( sit != streamers_.end() ){
+        NetworkToolkit::StreamConfig config = (*sit)->config_;
+        if (config.client_address.compare(ip) == 0) {
+#ifdef STREAMER_DEBUG
+            Log::Info("Ending streaming to %s:%d", config.client_address.c_str(), config.port);
+#endif
+            // match: stop this streamer
+            (*sit)->stop();
+            // remove from list
+            sit = streamers_.erase(sit);
+        }
+        else
+            sit++;
+    }
+}
+
+
+void Streaming::addStream(const std::string &sender, int reply_to)
+{
     // get ip of client
-    std::string clientip = client.substr(0, client.find_last_of(":"));
-
-    // get port used to request
-    std::string clientport_s = client.substr(client.find_last_of(":") + 1);
+    std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
+    // get port used to send the request
+    std::string sender_port = sender.substr(sender.find_last_of(":") + 1);
 
     // prepare to reply to client
-    IpEndpointName host( clientip.c_str(), STREAM_RESPONSE_PORT );
+    IpEndpointName host( sender_ip.c_str(), reply_to );
     UdpTransmitSocket socket( host );
 
     // prepare an offer
-    offer o;
-    o.client = clientip;
-    o.width = width_;
-    o.height = height_;
+    NetworkToolkit::StreamConfig conf;
+    conf.client_address = sender_ip;
+    conf.port = std::stoi(sender_port); // this port seems free, so re-use it!
+    conf.width = width_;
+    conf.height = height_;
     // offer SHM if same IP that our host IP (i.e. on the same machine)
-    if( NetworkToolkit::is_host_ip(clientip) ){
-        // this port seems free, so re-use it!
-        o.address = "localhost:" + clientport_s;
-        o.protocol = NetworkToolkit::SHM_RAW;
+    if( NetworkToolkit::is_host_ip(conf.client_address) ) {
+        conf.protocol = NetworkToolkit::SHM_RAW;
     }
     //  any other IP : offer UDP streaming
     else {
-        o.address = NetworkToolkit::closest_host_ip(clientip) + ":" + clientport_s;
-        o.protocol = NetworkToolkit::TCP_JPEG;
+        conf.protocol = NetworkToolkit::TCP_JPEG;
     }
 
-    // build message
+    // build OSC message
     char buffer[IP_MTU_SIZE];
     osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
     p.Clear();
     p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_OFFER );
-    p << o.address.c_str();
-    p << (int) o.protocol;
-    p << o.width << o.height;
+    p << conf.port;
+    p << (int) conf.protocol;
+    p << conf.width << conf.height;
     p << osc::EndMessage;
 
-    // send OSC message
+    // send OSC message to client
     socket.Send( p.Data(), p.Size() );
+
+#ifdef STREAMER_DEBUG
+    Log::Info("Accepting stream request from %s:%d", sender_ip.c_str(), reply_to);
+#endif
+
+    // create streamer & remember it
+    VideoStreamer *streamer = new VideoStreamer(conf);
+    streamers_.push_back(streamer);
+
+    // start streamer
+    session_->addFrameGrabber(streamer);
 }
 
-void Streaming::addStream(const std::string &address)
-{
-}
 
-void Streaming::removeStream(const std::string &address)
-{
-
-}
-
-VideoStreamer::VideoStreamer(Streaming::offer config): FrameGrabber(), frame_buffer_(nullptr), width_(0), height_(0),
+VideoStreamer::VideoStreamer(NetworkToolkit::StreamConfig conf): FrameGrabber(), frame_buffer_(nullptr), width_(0), height_(0),
         streaming_(false), accept_buffer_(false), pipeline_(nullptr), src_(nullptr), timestamp_(0)
 {
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
     timeframe_ = 2 * frame_duration_;
 
-    protocol_ = config.protocol;
-    address_ = config.address;
-    width_ = config.width;
-    height_ = config.height;
+    config_ = conf;
 }
 
 VideoStreamer::~VideoStreamer()
@@ -203,10 +248,18 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        // set frame buffer as input
        frame_buffer_ = frame_buffer;
 
-       // define stream properties
+       // define frames properties
        width_ = frame_buffer_->width();
        height_ = frame_buffer_->height();
        size_ = width_ * height_ * (frame_buffer_->use_alpha() ? 4 : 3);
+
+       // if an incompatilble frame buffer given: cancel streaming
+       if ( config_.width != width_ || config_.height != height_) {
+           Log::Warning("Streaming cannot start: given frames (%d x %d) incompatible with stream (%d x %d)",
+                        width_, height_, config_.width, config_.height);
+           finished_ = true;
+           return;
+       }
 
        // create PBOs
        glGenBuffers(2, pbo_);
@@ -218,9 +271,9 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        // create a gstreamer pipeline
        std::string description = "appsrc name=src ! videoconvert ! ";
 
-       if (protocol_ < 0 || protocol_ >= NetworkToolkit::DEFAULT)
-           protocol_ = NetworkToolkit::TCP_JPEG;
-       description += NetworkToolkit::protocol_send_pipeline[protocol_];
+       if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
+           config_.protocol = NetworkToolkit::TCP_JPEG;
+       description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
 
        // parse pipeline descriptor
        GError *error = NULL;
@@ -233,18 +286,15 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // setup streaming sink
-       if (protocol_ == NetworkToolkit::TCP_JPEG || protocol_ == NetworkToolkit::TCP_H264) {
-           // extract host and port from "host:port"
-           std::string ip = address_.substr(0, address_.find_last_of(":"));
-           std::string port_s = address_.substr(address_.find_last_of(":") + 1);
-           uint port = std::stoi(port_s);
+       if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
            g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                         "host", ip.c_str(),
-                         "port", port,  NULL);
+                         "host", config_.client_address.c_str(),
+                         "port", config_.port,  NULL);
        }
-       else if (protocol_ == NetworkToolkit::SHM_RAW) {
-           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
-           SystemToolkit::remove_file(path);
+       else if (config_.protocol == NetworkToolkit::SHM_RAW) {
+           // TODO rename SHM socket "shm_PORT"
+           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
+           path += std::to_string(config_.port);
            g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                          "socket-path", path.c_str(),  NULL);
        }
@@ -257,7 +307,6 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
                          "stream-type", GST_APP_STREAM_TYPE_STREAM,
                          "is-live", TRUE,
                          "format", GST_FORMAT_TIME,
-                         //                     "do-timestamp", TRUE,
                          NULL);
 
            // Direct encoding (no buffering)
@@ -296,9 +345,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // all good
-       Log::Info("VideoStreamer start (%s %d x %d)", NetworkToolkit::protocol_name[protocol_], width_, height_);
-
-Log::Info("%s", description.c_str());
+       Log::Info("VideoStreamer start (%s %d x %d)", config_.client_address.c_str(), width_, height_);
 
        // start streaming !!
        streaming_ = true;
@@ -393,15 +440,14 @@ Log::Info("%s", description.c_str());
        }
 
    }
-   // did the recording terminate with sink receiving end-of-stream ?
+   // did the streaming terminate with sink receiving end-of-stream ?
    else
    {
        // Wait for EOS message
        GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
-       GstMessage *msg = gst_bus_poll(bus, GST_MESSAGE_EOS, GST_TIME_AS_USECONDS(1));
+       GstMessage *msg = gst_bus_poll(bus, GST_MESSAGE_EOS, GST_TIME_AS_USECONDS(4));
 
        if (msg) {
-//           Log::Info("received EOS");
            // stop the pipeline
            GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
            if (ret == GST_STATE_CHANGE_FAILURE)
@@ -413,8 +459,10 @@ Log::Info("%s", description.c_str());
        }
 
        // make sure the shared memory socket is deleted
-       if (protocol_ == NetworkToolkit::SHM_RAW) {
-           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
+       if (config_.protocol == NetworkToolkit::SHM_RAW) {
+           // TODO rename SHM socket "shm_PORT"
+           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
+           path += std::to_string(config_.port);
            SystemToolkit::remove_file(path);
        }
    }
@@ -424,12 +472,13 @@ Log::Info("%s", description.c_str());
 
 void VideoStreamer::stop ()
 {
+    // stop recording
+    streaming_ = false;
+
     // send end of stream
     if (src_)
         gst_app_src_end_of_stream (src_);
 
-    // stop recording
-    streaming_ = false;
 }
 
 std::string VideoStreamer::info()
@@ -437,13 +486,13 @@ std::string VideoStreamer::info()
     std::string ret = "Streaming terminated.";
     if (streaming_) {
 
-        if (protocol_ == NetworkToolkit::TCP_JPEG || protocol_ == NetworkToolkit::TCP_H264) {
+        if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
 
 
             ret = "TCP";
 
         }
-        else if (protocol_ == NetworkToolkit::SHM_RAW) {
+        else if (config_.protocol == NetworkToolkit::SHM_RAW) {
             ret = "Shared Memory";
         }
 

@@ -60,8 +60,8 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
  * SND
  * gst-launch-1.0 videotestsrc is-live=true ! jpegenc ! rtpjpegpay ! multiudpsink clients="127.0.0.1:5000,127.0.0.1:5001"
  * RCV
- * gst-launch-1.0 -v udpsrc address=127.0.0.1 port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
- * gst-launch-1.0 -v udpsrc address=127.0.0.1 port=5001 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+ * gst-launch-1.0 -v udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+ * gst-launch-1.0 -v udpsrc port=5001 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
  *
  *        RAW UDP (caps has to match exactly, and depends on resolution)
  * SND

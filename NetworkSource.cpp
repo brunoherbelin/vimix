@@ -2,6 +2,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+#include <future>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -14,12 +15,189 @@
 #include "Decorations.h"
 #include "Visitor.h"
 #include "Log.h"
+#include "Connection.h"
 
 #include "NetworkSource.h"
 
 #ifndef NDEBUG
 #define NETWORK_DEBUG
 #endif
+
+
+
+// this is called when receiving an answer for streaming request
+void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
+                                               const IpEndpointName& remoteEndpoint )
+{
+    char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
+    remoteEndpoint.AddressAndPortAsString(sender);
+
+    try{
+        if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_OFFER ) == 0 ){
+
+            NetworkToolkit::StreamConfig conf;
+
+            // someone is offering a stream
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            conf.port     = (arg++)->AsInt32();
+            conf.protocol = (NetworkToolkit::Protocol) (arg++)->AsInt32();
+            conf.width    = (arg++)->AsInt32();
+            conf.height   = (arg++)->AsInt32();
+
+            // we got the offer from Streaming::manager()
+            parent_->setConfig(conf);
+#ifdef NETWORK_DEBUG
+            Log::Info("Received stream info from %s", sender);
+#endif
+        }
+    }
+    catch( osc::Exception& e ){
+        // any parsing errors such as unexpected argument types, or
+        // missing arguments get thrown as exceptions.
+        Log::Info("error while parsing message '%s' from %s : %s", m.AddressPattern(), sender, e.what());
+    }
+}
+
+
+NetworkStream::NetworkStream(): Stream(), receiver_(nullptr)
+{
+//    listener_port_ = 5400; // TODO Find a free port, unique each time
+    confirmed_ = false;
+}
+
+glm::ivec2 NetworkStream::resolution() const
+{
+    return glm::ivec2(config_.width, config_.height);
+}
+
+void wait_for_stream_(UdpListeningReceiveSocket *receiver)
+{
+    receiver->Run();
+}
+
+void NetworkStream::open(const std::string &nameconnection)
+{
+    // does this Connection exists?
+    int streamer_index = Connection::manager().index(nameconnection);
+
+    // Nope, cannot connect to unknown connection
+    if (streamer_index < 0) {
+        Log::Notify("Cannot connect to %s: please make sure the program is active.", nameconnection);
+        failed_ = true;
+        return;
+    }
+
+    // prepare listener to receive stream config from remote streaming manager
+    listener_.setParent(this);
+
+    // find an available port to receive response from remote streaming manager
+    int listener_port_ = -1;
+    for (int trial = 0; receiver_ == nullptr && trial < 10 ; trial++) {
+        try {
+            // invent a port which would be available
+            listener_port_ = 72000 + rand()%1000;
+            // try to create receiver (through exception on fail)
+            receiver_ = new UdpListeningReceiveSocket(IpEndpointName(Connection::manager().info().address.c_str(), listener_port_), &listener_);
+        }
+        catch (const std::runtime_error&) {
+            receiver_ = nullptr;
+        }
+    }
+    if (receiver_ == nullptr) {
+        Log::Notify("Cannot open %s.", nameconnection);
+        failed_ = true;
+        return;
+    }
+
+    // ok, we can ask to this connected streamer to send us a stream
+    ConnectionInfo streamer = Connection::manager().info(streamer_index);
+    IpEndpointName a( streamer.address.c_str(), streamer.port_stream_request );
+    streamer_address_ = a.address;
+    streamer_address_ = a.port;
+
+    // build OSC message
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+    p.Clear();
+    p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_REQUEST );
+    // send my listening port to indicate to Connection::manager where to reply
+    p << listener_port_;
+    p << osc::EndMessage;
+
+    // send OSC message to streamer
+    UdpTransmitSocket socket( streamer_address_ );
+    socket.Send( p.Data(), p.Size() );
+
+    // Now we wait for the offer from the streamer
+    std::thread(wait_for_stream_, receiver_).detach();
+
+#ifdef NETWORK_DEBUG
+    Log::Info("Asking %s:%d for a stream", streamer.address.c_str(), streamer.port_stream_request);
+    Log::Info("Waiting for response at %s:%d", Connection::manager().info().address.c_str(), listener_port_);
+#endif
+}
+
+void NetworkStream::close()
+{
+    if (receiver_)
+        delete receiver_;
+
+    // build OSC message to inform disconnection
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+    p.Clear();
+    p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_DISCONNECT );
+    p << config_.port; // send my stream port to identify myself to the streamer Connection::manager
+    p << osc::EndMessage;
+
+    // send OSC message to streamer
+    UdpTransmitSocket socket( streamer_address_ );
+    socket.Send( p.Data(), p.Size() );
+}
+
+
+void NetworkStream::setConfig(NetworkToolkit::StreamConfig  conf)
+{
+    config_ = conf;
+    confirmed_ = true;
+}
+
+void NetworkStream::update()
+{
+    Stream::update();
+
+    if ( !ready_ && !failed_ && confirmed_)
+    {
+        // stop receiving streamer info
+        receiver_->AsynchronousBreak();
+
+#ifdef NETWORK_DEBUG
+        Log::Info("Creating Network Stream %d %d x %d", config_.port, config_.width, config_.height);
+#endif
+        // build the pipeline depending on stream info
+        std::ostringstream pipeline;
+        if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
+
+            pipeline << "tcpclientsrc name=src timeout=1 port=" << config_.port;
+        }
+        else if (config_.protocol == NetworkToolkit::SHM_RAW) {
+
+            std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
+            path += std::to_string(config_.port);
+            pipeline << "shmsrc name=src is-live=true socket-path=" << path;
+            // TODO rename SHM socket "shm_PORT"
+        }
+
+        pipeline << NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+        pipeline << " ! videoconvert";
+
+        // open the pipeline with generic stream class
+        Stream::open(pipeline.str(), config_.width, config_.height);
+
+    }
+
+}
+
 
 NetworkSource::NetworkSource() : StreamSource()
 {
@@ -31,29 +209,31 @@ NetworkSource::NetworkSource() : StreamSource()
     overlays_[View::LAYER]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
 }
 
-void NetworkSource::setAddress(const std::string &address)
+
+NetworkSource::~NetworkSource()
 {
-    address_ = address;
-    Log::Notify("Creating Network Source '%s'", address_.c_str());
+    networkStream()->close();
+}
 
-//    // extract host and port from "host:port"
-//    std::string host = address.substr(0, address.find_last_of(":"));
-//    std::string port_s = address.substr(address.find_last_of(":") + 1);
-//    uint port = std::stoi(port_s);
+NetworkStream *NetworkSource::networkStream() const
+{
+    return dynamic_cast<NetworkStream *>(stream_);
+}
 
-//    // validate protocol
-//    if (protocol < NetworkToolkit::TCP_JPEG || protocol >= NetworkToolkit::DEFAULT)
-//        protocol = NetworkToolkit::TCP_JPEG;
+void NetworkSource::setConnection(const std::string &nameconnection)
+{
+    connection_name_ = nameconnection;
+    Log::Notify("Creating Network Source '%s'", connection_name_.c_str());
 
-//    // open network stream
-//    networkstream()->open( protocol, host, port );
-//    stream_->play(true);
+    // open network stream
+    networkStream()->open( connection_name_ );
+    stream_->play(true);
 }
 
 
-std::string NetworkSource::address() const
+std::string NetworkSource::connection() const
 {
-    return address_;
+    return connection_name_;
 }
 
 
@@ -65,259 +245,4 @@ void NetworkSource::accept(Visitor& v)
 }
 
 
-void NetworkHosts::listen()
-{
-    Log::Info("Accepting Streaming responses on port %d", STREAM_RESPONSE_PORT);
-    NetworkHosts::manager().receiver_->Run();
-    Log::Info("Refusing Streaming responses");
-}
 
-void NetworkHosts::ask()
-{
-    Log::Info("Broadcasting Streaming requests on port %d", STREAM_REQUEST_PORT);
-
-    IpEndpointName host( "255.255.255.255", STREAM_REQUEST_PORT );
-    UdpTransmitSocket socket( host );
-    socket.SetEnableBroadcast(true);
-
-    char buffer[IP_MTU_SIZE];
-    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-    p.Clear();
-    p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_REQUEST ) << osc::EndMessage;
-
-    while(true)
-    {
-        socket.Send( p.Data(), p.Size() );
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-
-}
-
-// this is called when receiving an answer for streaming request
-void HostsResponsesListener::ProcessMessage( const osc::ReceivedMessage& m,
-                                             const IpEndpointName& remoteEndpoint )
-{
-    char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
-    remoteEndpoint.AddressAndPortAsString(sender);
-
-    std::string se(sender);
-    std::string senderip = se.substr(0, se.find_last_of(":"));
-
-    try{
-        if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_OFFER ) == 0 ){
-
-            // someone is offering a stream
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            const char *address = (arg++)->AsString();
-            int p = (arg++)->AsInt32();
-            int w = (arg++)->AsInt32();
-            int h = (arg++)->AsInt32();
-
-            Log::Info("Able to receive %s %d x %d stream from %s ", address, w, h, senderip.c_str());
-            NetworkHosts::manager().addHost(address, p, w, h);
-
-        }
-        else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_RETRACT ) == 0 ){
-            // someone is retracting a stream
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            const char *address = (arg++)->AsString();
-            NetworkHosts::manager().removeHost(address);
-        }
-    }
-    catch( osc::Exception& e ){
-        // any parsing errors such as unexpected argument types, or
-        // missing arguments get thrown as exceptions.
-        Log::Info("error while parsing message '%s' from %s : %s", m.AddressPattern(), sender, e.what());
-    }
-}
-
-
-
-NetworkHosts::NetworkHosts()
-{
-//    // listen for answers
-//    receiver_ = new UdpListeningReceiveSocket(IpEndpointName( IpEndpointName::ANY_ADDRESS, STREAM_RESPONSE_PORT ), &listener_ );
-//    std::thread(listen).detach();
-
-//    // regularly check for available streaming hosts
-//    std::thread(ask).detach();
-}
-
-
-void NetworkHosts::addHost(const std::string &address, int protocol, int width, int height)
-{
-    // add only new
-    if (disconnected(address)) {
-        src_address_.push_back(address);
-
-        // TODO : fill description
-        src_description_.push_back(address);
-
-        list_uptodate_ = false;
-    }
-
-}
-void NetworkHosts::removeHost(const std::string &address)
-{
-    // remove existing only
-    if (connected(address)) {
-        std::vector< std::string >::iterator addrit   = src_address_.begin();
-        std::vector< std::string >::iterator descit   = src_description_.begin();
-        while (addrit != src_address_.end()){
-
-            if ( (*addrit).compare(address) == 0 )
-            {
-                src_address_.erase(addrit);
-                src_description_.erase(descit);
-                break;
-            }
-
-            addrit++;
-            descit++;
-        }
-        list_uptodate_ = false;
-    }
-}
-
-int NetworkHosts::numHosts() const
-{
-    return src_address_.size();
-}
-
-std::string NetworkHosts::name(int index) const
-{
-    if (index > -1 && index < (int) src_address_.size())
-        return src_address_[index];
-    else
-        return "";
-}
-
-std::string NetworkHosts::description(int index) const
-{
-    if (index > -1 && index < (int) src_description_.size())
-        return src_description_[index];
-    else
-        return "";
-}
-
-int  NetworkHosts::index(const std::string &address) const
-{
-    int i = -1;
-    std::vector< std::string >::const_iterator p = std::find(src_address_.begin(), src_address_.end(), address);
-    if (p != src_address_.end())
-        i = std::distance(src_address_.begin(), p);
-
-    return i;
-}
-
-bool NetworkHosts::connected(const std::string &address) const
-{
-    std::vector< std::string >::const_iterator d = std::find(src_address_.begin(), src_address_.end(), address);
-    return d != src_address_.end();
-}
-
-bool NetworkHosts::disconnected(const std::string &address) const
-{
-    if (list_uptodate_)
-        return false;
-    return !connected(address);
-}
-
-struct hasAddress: public std::unary_function<NetworkSource*, bool>
-{
-    inline bool operator()(const NetworkSource* elem) const {
-       return (elem && elem->address() == _a);
-    }
-    hasAddress(std::string a) : _a(a) { }
-private:
-    std::string _a;
-};
-
-Source *NetworkHosts::createSource(const std::string &address) const
-{
-    Source *s = nullptr;
-
-    // find if a DeviceSource with this device is already registered
-    std::list< NetworkSource *>::const_iterator d = std::find_if(network_sources_.begin(), network_sources_.end(), hasAddress(address));
-
-    // if already registered, clone the device source
-    if ( d != network_sources_.end())  {
-        CloneSource *cs = (*d)->clone();
-        s = cs;
-    }
-    // otherwise, we are free to create a new Network source
-    else {
-        NetworkSource *ns = new NetworkSource();
-        ns->setAddress(address);
-        s = ns;
-    }
-
-    return s;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-NetworkStream::NetworkStream(): Stream(), protocol_(NetworkToolkit::DEFAULT), host_("127.0.0.1"), port_(5000)
-{
-
-}
-
-glm::ivec2 NetworkStream::resolution()
-{
-    return glm::ivec2( width_, height_);
-}
-
-
-void NetworkStream::open(NetworkToolkit::Protocol protocol, const std::string &host, uint port )
-{
-    protocol_ = protocol;
-    host_ = host;
-    port_ = port;
-
-    int w = 1920;
-    int h = 1080;
-
-    std::ostringstream pipeline;
-    if (protocol_ == NetworkToolkit::TCP_JPEG || protocol_ == NetworkToolkit::TCP_H264) {
-
-        pipeline << "tcpclientsrc name=src timeout=1 host=" << host_ << " port=" << port_;
-    }
-    else if (protocol_ == NetworkToolkit::SHM_RAW) {
-
-        std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm_socket");
-        pipeline << "shmsrc name=src is-live=true socket-path=" << path;
-        // TODO SUPPORT multiple sockets shared memory
-    }
-
-    pipeline << NetworkToolkit::protocol_receive_pipeline[protocol_];
-    pipeline << " ! videoconvert";
-
-//    if ( ping(&w, &h) )
-        // (private) open stream
-        Stream::open(pipeline.str(), w, h);
-//    else {
-//        Log::Notify("Failed to connect to %s:%d", host.c_str(), port);
-//        failed_ = true;
-//    }
-
-
-
-
-}

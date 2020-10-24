@@ -75,7 +75,7 @@ guint MediaPlayer::texture() const
 static MediaInfo UriDiscoverer_(std::string uri)
 {
 #ifdef MEDIA_PLAYER_DEBUG
-    Log::Info("Checking '%s'", uri.c_str());
+    Log::Info("Checking file '%s'", uri.c_str());
 #endif
 
     MediaInfo video_stream_info;

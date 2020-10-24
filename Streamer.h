@@ -12,6 +12,7 @@
 #include "FrameGrabber.h"
 
 class Session;
+class VideoStreamer;
 
 class StreamingRequestListener : public osc::OscPacketListener {
 
@@ -22,6 +23,8 @@ protected:
 
 class Streaming
 {
+    friend class StreamingRequestListener;
+
     // Private Constructor
     Streaming();
     Streaming(Streaming const& copy);            // Not Implemented
@@ -38,44 +41,36 @@ public:
 
     void enable(bool on);
     void setSession(Session *se);
+    void removeStreams(const std::string &ip);
 
-    typedef struct {
-        std::string client;
-        std::string address;
-        NetworkToolkit::Protocol protocol;
-        int width;
-        int height;
-    } offer;
-
-    void makeOffer(const std::string &client);
-    void retractOffer(offer o);
-
-    void addStream(const std::string &address);
-    void removeStream(const std::string &address);
+protected:
+    void addStream(const std::string &sender, int reply_to);
+    void removeStream(const std::string &sender, int port);
 
 private:
 
-    std::string hostname_;
-    static void listen();
     StreamingRequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
 
     Session *session_;
     int width_;
-    int height_;
-    std::vector<offer> offers_;
+    int height_;    
+
+    // TODO Mutex to protect access to list of streamers
+    std::vector<VideoStreamer *> streamers_;
 };
 
 class VideoStreamer : public FrameGrabber
 {
+    friend class Streaming;
+
     // Frame buffer information
     FrameBuffer  *frame_buffer_;
     uint width_;
     uint height_;
 
-    //
-    NetworkToolkit::Protocol protocol_;
-    std::string address_;
+    // connection information
+    NetworkToolkit::StreamConfig config_;
 
     // operation
     std::atomic<bool> streaming_;
@@ -93,7 +88,7 @@ class VideoStreamer : public FrameGrabber
 
 public:
 
-    VideoStreamer(Streaming::offer config);
+    VideoStreamer(NetworkToolkit::StreamConfig conf);
     ~VideoStreamer();
 
     void addFrame(FrameBuffer *frame_buffer, float dt) override;

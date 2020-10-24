@@ -308,14 +308,14 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
 }
 
 
-Source * Mixer::createSourceNetwork(const std::string &address)
+Source * Mixer::createSourceNetwork(const std::string &nameconnection)
 {
     // ready to create a source
     NetworkSource *s = new NetworkSource;
-    s->setAddress(address);
+    s->setConnection(nameconnection);
 
     // propose a new name based on address
-    s->setName(address);
+    s->setName(nameconnection);
 
     return s;
 }

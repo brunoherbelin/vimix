@@ -20,17 +20,17 @@ struct ConnectionInfo {
 
     std::string address;
     int port_handshake;
-    int port_stream_send;
-    int port_stream_receive;
+    int port_stream_request;
+    int port_osc;
     std::string name;
     int alive;
 
     ConnectionInfo () {
         address = "127.0.0.1";
         port_handshake = HANDSHAKE_PORT;
-        port_stream_send = STREAM_REQUEST_PORT;
-        port_stream_receive = STREAM_RESPONSE_PORT;
-        name = "user@localhost";
+        port_stream_request = STREAM_REQUEST_PORT;
+        port_osc = OSC_DIALOG_PORT;
+        name = "";
         alive = ALIVE;
     }
 
@@ -39,8 +39,8 @@ struct ConnectionInfo {
         if (this != &o) {
             this->address = o.address;
             this->port_handshake = o.port_handshake;
-            this->port_stream_send = o.port_stream_send;
-            this->port_stream_receive = o.port_stream_receive;
+            this->port_stream_request = o.port_stream_request;
+            this->port_osc = o.port_osc;
             this->name = o.name;
         }
         return *this;

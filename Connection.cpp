@@ -8,6 +8,8 @@
 
 #include "defines.h"
 #include "Connection.h"
+#include "Settings.h"
+#include "Streamer.h"
 #include "Log.h"
 
 #ifndef NDEBUG
@@ -31,8 +33,8 @@ bool Connection::init()
         try {
             // increment the port to have unique ports
             connections_[0].port_handshake = HANDSHAKE_PORT + trial;
-            connections_[0].port_stream_send = STREAM_REQUEST_PORT + trial;
-            connections_[0].port_stream_receive = STREAM_RESPONSE_PORT + trial;
+            connections_[0].port_stream_request = STREAM_REQUEST_PORT + trial;
+            connections_[0].port_osc = OSC_DIALOG_PORT + trial;
 
             // try to create listenning socket
             // through exception runtime if fails
@@ -44,7 +46,7 @@ bool Connection::init()
             // all good
             trial = MAX_HANDSHAKE;
         }
-        catch (const std::runtime_error& e) {
+        catch (const std::runtime_error&) {
             // arg, the receiver could not be initialized
             // because the port was not available
             receiver_ = nullptr;
@@ -59,6 +61,9 @@ bool Connection::init()
         std::thread(listen).detach();
         // regularly check for available streaming hosts
         std::thread(ask).detach();
+        // restore state of Streamer
+        Streaming::manager().enable( Settings::application.accept_connections );
+
     }
 
     return receiver_ != nullptr;
@@ -68,6 +73,9 @@ void Connection::terminate()
 {
     if (receiver_!=nullptr)
         receiver_->AsynchronousBreak();
+
+    // restore state of Streamer
+    Streaming::manager().enable( false );
 }
 
 
@@ -174,6 +182,9 @@ void Connection::ask()
             (*it).alive--;
             // erase connection if its life score is negative (not responding too many times)
             if ( it!=Connection::manager().connections_.begin() && (*it).alive < 0 ) {
+                // inform streamer to cancel streaming to this client
+                Streaming::manager().removeStreams( (*it).address );
+                // remove from list
                 it = Connection::manager().connections_.erase(it);
 #ifdef CONNECTION_DEBUG
                 Log::Info("A connection was lost");
@@ -213,8 +224,8 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
             p << Connection::manager().connections_[0].name.c_str();
             p << Connection::manager().connections_[0].port_handshake;
-            p << Connection::manager().connections_[0].port_stream_send;
-            p << Connection::manager().connections_[0].port_stream_receive;
+            p << Connection::manager().connections_[0].port_stream_request;
+            p << Connection::manager().connections_[0].port_osc;
             p << osc::EndMessage;
 
             // send OSC message to port indicated by remote
@@ -234,8 +245,8 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             info.name = std::string( (arg++)->AsString() );
             info.port_handshake = (arg++)->AsInt32();
-            info.port_stream_send = (arg++)->AsInt32();
-            info.port_stream_receive = (arg++)->AsInt32();
+            info.port_stream_request = (arg++)->AsInt32();
+            info.port_osc = (arg++)->AsInt32();
 
             // do we know this connection ?
             int i = Connection::manager().index(info);

@@ -9,81 +9,16 @@
 #include "NetworkToolkit.h"
 #include "StreamSource.h"
 
-class NetworkSource : public StreamSource
+class NetworkStream;
+
+class StreamerResponseListener : public osc::OscPacketListener
 {
-    std::string address_;
-
-public:
-    NetworkSource();
-
-    // Source interface
-    void accept (Visitor& v) override;
-
-    // StreamSource interface
-    Stream *stream() const override { return stream_; }
-
-    // specific interface
-    void setAddress(const std::string &address);
-    std::string address() const;
-
-    glm::ivec2 icon() const override { return glm::ivec2(11, 8); }
-
-};
-
-
-class HostsResponsesListener : public osc::OscPacketListener {
-
 protected:
-
+    class NetworkStream *parent_;
     virtual void ProcessMessage( const osc::ReceivedMessage& m,
                                  const IpEndpointName& remoteEndpoint );
-};
-
-
-class NetworkHosts
-{
-    friend class NetworkSource;
-    friend class HostsResponsesListener;
-
-    NetworkHosts();
-    NetworkHosts(NetworkHosts const& copy);            // Not Implemented
-    NetworkHosts& operator=(NetworkHosts const& copy); // Not Implemented
-
-
 public:
-
-    static NetworkHosts& manager()
-    {
-        // The only instance
-        static NetworkHosts _instance;
-        return _instance;
-    }
-
-    int numHosts () const;
-    std::string name (int index) const;
-    std::string description (int index) const;
-
-    int  index  (const std::string &address) const;
-    bool connected (const std::string &address) const;
-    bool disconnected (const std::string &address) const;
-
-    Source *createSource(const std::string &address) const;
-
-private:
-
-    std::vector< std::string > src_address_;
-    std::vector< std::string > src_description_;
-    bool list_uptodate_;
-
-    std::list< NetworkSource * > network_sources_;
-
-    static void ask();
-    static void listen();
-    HostsResponsesListener listener_;
-    UdpListeningReceiveSocket *receiver_;
-    void addHost(const std::string &address, int protocol, int width, int height);
-    void removeHost(const std::string &address);
-
+    inline void setParent(NetworkStream *s) { parent_ = s; }
 };
 
 
@@ -92,20 +27,52 @@ class NetworkStream : public Stream
 public:
 
     NetworkStream();
-    void open(NetworkToolkit::Protocol protocol, const std::string &host, uint port );
+    void open(const std::string &nameconnection);
+    void close();
 
-    glm::ivec2 resolution();
+    void setConfig(NetworkToolkit::StreamConfig  conf);
+    void update() override;
 
-    inline NetworkToolkit::Protocol protocol() const { return protocol_; }
-    inline std::string host() const { return host_; }
-    inline uint port() const { return port_; }
+    glm::ivec2 resolution() const;
+    inline NetworkToolkit::Protocol protocol() const { return config_.protocol; }
+    inline std::string IP() const { return config_.client_address; }
+    inline uint port() const { return config_.port; }
 
 private:
-    NetworkToolkit::Protocol protocol_;
-    std::string host_;
-    uint port_;
+    // connection information
+    IpEndpointName streamer_address_;
+//    int listener_port_;
+    StreamerResponseListener listener_;
+    UdpListeningReceiveSocket *receiver_;
+    std::atomic<bool> confirmed_;
+
+    NetworkToolkit::StreamConfig config_;
+};
+
+
+class NetworkSource : public StreamSource
+{
+    std::string connection_name_;
+
+public:
+    NetworkSource();
+    ~NetworkSource();
+
+    // Source interface
+    void accept (Visitor& v) override;
+
+    // StreamSource interface
+    Stream *stream() const override { return stream_; }
+    NetworkStream *networkStream() const;
+
+    // specific interface
+    void setConnection(const std::string &nameconnection);
+    std::string connection() const;
+
+    glm::ivec2 icon() const override { return glm::ivec2(11, 8); }
 
 };
+
 
 
 #endif // NETWORKSOURCE_H

@@ -42,7 +42,7 @@ public:
     Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
-    Source * createSourceNetwork(const std::string &address);
+    Source * createSourceNetwork(const std::string &nameconnection);
 
     // operations on sources
     void addSource    (Source *s);
