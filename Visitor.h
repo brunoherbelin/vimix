@@ -33,6 +33,7 @@ class GenericStreamSource;
 class SessionSource;
 class RenderSource;
 class CloneSource;
+class NetworkSource;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -66,6 +67,7 @@ public:
     // utility
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
+    virtual void visit (NetworkSource&) {}
     virtual void visit (GenericStreamSource&) {}
     virtual void visit (DeviceSource&) {}
     virtual void visit (PatternSource&) {}

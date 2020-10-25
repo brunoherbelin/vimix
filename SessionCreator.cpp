@@ -11,6 +11,7 @@
 #include "StreamSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "NetworkSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -524,6 +525,16 @@ void SessionLoader::visit (DeviceSource& s)
     // change only if different device
     if ( devname != s.device() )
         s.setDevice(devname);
+}
+
+
+void SessionLoader::visit (NetworkSource& s)
+{
+    std::string connect = std::string ( xmlCurrent_->Attribute("connection") );
+
+    // change only if different device
+    if ( connect != s.connection() )
+        s.setConnection(connect);
 }
 
 

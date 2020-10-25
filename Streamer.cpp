@@ -183,7 +183,7 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     else {
         conf.protocol = NetworkToolkit::UDP_JPEG;
     }
-//    conf.protocol = NetworkToolkit::UDP_JPEG;
+    conf.protocol = NetworkToolkit::UDP_JPEG;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -269,11 +269,12 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[0]);
        glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
 
-       // create a gstreamer pipeline
-       std::string description = "appsrc name=src ! videoconvert ! ";
-
+       // prevent eroneous protocol values
        if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
            config_.protocol = NetworkToolkit::UDP_JPEG;
+
+       // create a gstreamer pipeline
+       std::string description = "appsrc name=src ! videoconvert ! ";
        description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
 
        // parse pipeline descriptor

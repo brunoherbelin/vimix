@@ -49,6 +49,7 @@ public:
     void visit (SessionSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
+    void visit (NetworkSource& s) override;
 
 protected:
     tinyxml2::XMLElement *xmlCurrent_;

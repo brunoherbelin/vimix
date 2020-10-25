@@ -29,6 +29,7 @@ public:
     void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
+    void visit (NetworkSource& s) override;
 };
 
 #endif // IMGUIVISITOR_H

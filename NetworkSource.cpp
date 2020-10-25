@@ -172,32 +172,32 @@ void NetworkStream::update()
         receiver_->AsynchronousBreak();
 
 #ifdef NETWORK_DEBUG
-        Log::Info("Creating Network Stream %d %d x %d", config_.port, config_.width, config_.height);
+        Log::Info("Creating Network Stream %d (%d x %d)", config_.port, config_.width, config_.height);
 #endif
         // build the pipeline depending on stream info
         std::ostringstream pipeline;
-        if (config_.protocol == NetworkToolkit::UDP_JPEG || config_.protocol == NetworkToolkit::UDP_H264) {
 
-            pipeline << "udpsrc port=" << config_.port;
-        }
-        else if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
-
-            pipeline << "tcpclientsrc timeout=1 port=" << config_.port;
-        }
-        else if (config_.protocol == NetworkToolkit::SHM_RAW) {
-
+        // get generic pipeline string
+        std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+        // find placeholder for PORT
+        int xxxx = pipelinestring.find("XXXX");
+        // keep beginning of pipeline
+        pipeline << pipelinestring.substr(0, xxxx);
+        // Replace 'XXXX'
+        if (config_.protocol == NetworkToolkit::SHM_RAW) {
             std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
             path += std::to_string(config_.port);
-            pipeline << "shmsrc is-live=true socket-path=" << path;
-            // TODO rename SHM socket "shm_PORT"
+            pipeline << path;
         }
-
-        pipeline << NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+        else
+            pipeline << config_.port;
+        // keep ending of pipeline
+        pipeline << pipelinestring.substr(xxxx + 4);
+        // add a videoconverter
         pipeline << " ! videoconvert";
 
         // open the pipeline with generic stream class
         Stream::open(pipeline.str(), config_.width, config_.height);
-
     }
 
 }

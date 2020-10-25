@@ -8,6 +8,7 @@
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "NetworkSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
@@ -401,4 +402,10 @@ void SessionVisitor::visit (DeviceSource& s)
 {
     xmlCurrent_->SetAttribute("type", "DeviceSource");
     xmlCurrent_->SetAttribute("device", s.device().c_str() );
+}
+
+void SessionVisitor::visit (NetworkSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "NetworkSource");
+    xmlCurrent_->SetAttribute("connection", s.connection().c_str() );
 }

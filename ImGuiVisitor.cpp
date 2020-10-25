@@ -20,6 +20,7 @@
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "NetworkSource.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "ActionManager.h"
@@ -530,5 +531,15 @@ void ImGuiVisitor::visit (DeviceSource& s)
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
         ImGui::Text("%s %s %dx%d@%.1ffps", best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
     }
+}
+
+void ImGuiVisitor::visit (NetworkSource& s)
+{
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Network connection");
+
+    ImGui::Text("Connected to %s", s.connection().c_str());
+
 }
 
