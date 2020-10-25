@@ -114,7 +114,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     if ( Settings::application.recentSessions.load_at_start &&
          Settings::application.recentSessions.front_is_valid &&
          Settings::application.recentSessions.filenames.size() > 0 &&
-         Settings::application.first_instance)
+         Settings::application.fresh_start)
         load( Settings::application.recentSessions.filenames.front() );
     else
         // initializes with a new empty session

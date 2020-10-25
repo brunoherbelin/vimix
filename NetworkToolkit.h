@@ -9,6 +9,7 @@
 #define OSC_PONG "/pong"
 #define OSC_STREAM_REQUEST "/request"
 #define OSC_STREAM_OFFER "/offer"
+#define OSC_STREAM_REJECT "/reject"
 #define OSC_STREAM_DISCONNECT "/disconnect"
 
 

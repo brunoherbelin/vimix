@@ -544,11 +544,12 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImGui::Text(" - %s (%dx%d)\n - Network host %s:%d", NetworkToolkit::protocol_name[ns->protocol()],
             ns->resolution().x, ns->resolution().y, ns->IP().c_str(), ns->port());
 
-    if ( !ns->isPlaying()) {
+    if ( !ns->connected()) {
 
         if ( ImGui::Button("Interrupted - Reload", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         {
             // TODO : reload ?
+            s.setConnection(s.connection());
         }
     }
 

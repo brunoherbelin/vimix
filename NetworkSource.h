@@ -24,13 +24,15 @@ public:
 
 class NetworkStream : public Stream
 {
+    friend class StreamerResponseListener;
+
 public:
 
     NetworkStream();
-    void open(const std::string &nameconnection);
-    void close();
+    void connect(const std::string &nameconnection);
+    bool connected() const;
+    void disconnect();
 
-    void setConfig(NetworkToolkit::StreamConfig  conf);
     void update() override;
 
     glm::ivec2 resolution() const;
@@ -43,7 +45,8 @@ private:
     IpEndpointName streamer_address_;
     StreamerResponseListener listener_;
     UdpListeningReceiveSocket *receiver_;
-    std::atomic<bool> confirmed_;
+    std::atomic<bool> received_config_;
+    std::atomic<bool> connected_;
 
     NetworkToolkit::StreamConfig config_;
 };

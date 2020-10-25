@@ -45,9 +45,20 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
             conf.height   = (arg++)->AsInt32();
 
             // we got the offer from Streaming::manager()
-            parent_->setConfig(conf);
+            parent_->config_ = conf;
+            parent_->connected_ = true;
+            parent_->received_config_ = true;
+
 #ifdef NETWORK_DEBUG
             Log::Info("Received stream info from %s", sender);
+#endif
+        }
+        else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_REJECT ) == 0 ){
+
+            parent_->connected_ = false;
+            parent_->received_config_ = true;
+#ifdef NETWORK_DEBUG
+            Log::Info("Received rejection from %s", sender);
 #endif
         }
     }
@@ -61,7 +72,8 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
 
 NetworkStream::NetworkStream(): Stream(), receiver_(nullptr)
 {
-    confirmed_ = false;
+    received_config_ = false;
+    connected_ = false;
 }
 
 glm::ivec2 NetworkStream::resolution() const
@@ -74,14 +86,29 @@ void wait_for_stream_(UdpListeningReceiveSocket *receiver)
     receiver->Run();
 }
 
-void NetworkStream::open(const std::string &nameconnection)
+void NetworkStream::connect(const std::string &nameconnection)
 {
+    // start fresh
+    received_config_ = false;
+    connected_ = false;
+    if (receiver_) {
+        delete receiver_;
+        receiver_ = nullptr;
+        close();
+    }
+
+    if (nameconnection.compare(Connection::manager().info().name) == 0) {
+        Log::Warning("Cannot create self-referencing Network Source '%s'", nameconnection.c_str());
+        failed_ = true;
+        return;
+    }
+
     // does this Connection exists?
     int streamer_index = Connection::manager().index(nameconnection);
 
     // Nope, cannot connect to unknown connection
     if (streamer_index < 0) {
-        Log::Notify("Cannot connect to %s: please make sure the program is active.", nameconnection);
+        Log::Warning("Cannot connect to %s: please make sure the program is active.", nameconnection.c_str());
         failed_ = true;
         return;
     }
@@ -103,7 +130,7 @@ void NetworkStream::open(const std::string &nameconnection)
         }
     }
     if (receiver_ == nullptr) {
-        Log::Notify("Cannot open %s. Please try again.", nameconnection);
+        Log::Notify("Cannot establish connection with %s. Please check your network.", nameconnection.c_str());
         failed_ = true;
         return;
     }
@@ -137,84 +164,98 @@ void NetworkStream::open(const std::string &nameconnection)
 #endif
 }
 
-void NetworkStream::close()
+void NetworkStream::disconnect()
 {
-    if (receiver_)
+    if (receiver_) {
         delete receiver_;
+        receiver_ = nullptr;
+    }
 
-    // build OSC message to inform disconnection
-    char buffer[IP_MTU_SIZE];
-    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-    p.Clear();
-    p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_DISCONNECT );
-    p << config_.port; // send my stream port to identify myself to the streamer Connection::manager
-    p << osc::EndMessage;
+    if (connected_) {
+        // build OSC message to inform disconnection
+        char buffer[IP_MTU_SIZE];
+        osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+        p.Clear();
+        p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_DISCONNECT );
+        p << config_.port; // send my stream port to identify myself to the streamer Connection::manager
+        p << osc::EndMessage;
 
-    // send OSC message to streamer
-    UdpTransmitSocket socket( streamer_address_ );
-    socket.Send( p.Data(), p.Size() );
+        // send OSC message to streamer
+        UdpTransmitSocket socket( streamer_address_ );
+        socket.Send( p.Data(), p.Size() );
+    }
 }
 
 
-void NetworkStream::setConfig(NetworkToolkit::StreamConfig  conf)
+bool NetworkStream::connected() const
 {
-    config_ = conf;
-    confirmed_ = true;
+    return connected_ && Stream::isPlaying();
 }
 
 void NetworkStream::update()
 {
     Stream::update();
 
-    if ( !ready_ && !failed_ && confirmed_)
+    if ( !ready_ && !failed_ && received_config_)
     {
+        // only once
+        received_config_ = false;
+
         // stop receiving streamer info
-        receiver_->AsynchronousBreak();
+        if (receiver_)
+            receiver_->AsynchronousBreak();
+
+        if (connected_) {
 
 #ifdef NETWORK_DEBUG
-        Log::Info("Creating Network Stream %d (%d x %d)", config_.port, config_.width, config_.height);
+            Log::Info("Creating Network Stream %d (%d x %d)", config_.port, config_.width, config_.height);
 #endif
-        // prepare pipeline parameter with port given in config_
-        std::string parameter = std::to_string(config_.port);
+            // prepare pipeline parameter with port given in config_
+            std::string parameter = std::to_string(config_.port);
 
-        // make sure the shared memory socket exists
-        if (config_.protocol == NetworkToolkit::SHM_RAW) {
-            // for shared memory, the parameter is a file location in settings
-            parameter = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm") + parameter;
-            // try few times to see if file exists and wait 20ms each time
-            for(int trial = 0; trial < 5; trial ++){
-                if ( SystemToolkit::file_exists(parameter))
-                    break;
-                std::this_thread::sleep_for (std::chrono::milliseconds(20));
+            // make sure the shared memory socket exists
+            if (config_.protocol == NetworkToolkit::SHM_RAW) {
+                // for shared memory, the parameter is a file location in settings
+                parameter = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm") + parameter;
+                // try few times to see if file exists and wait 20ms each time
+                for(int trial = 0; trial < 5; trial ++){
+                    if ( SystemToolkit::file_exists(parameter))
+                        break;
+                    std::this_thread::sleep_for (std::chrono::milliseconds(20));
+                }
+                // failed to find the shm socket file: cannot connect
+                if (!SystemToolkit::file_exists(parameter)) {
+                    Log::Warning("Cannot connect to shared memory.");
+                    failed_ = true;
+                }
             }
-            // failed to find the shm socket file: cannot connect
-            if (!SystemToolkit::file_exists(parameter)) {
-                Log::Warning("Cannot connect to shared memory.");
-                failed_ = true;
+
+            // general case : create pipeline and open
+            if (!failed_) {
+                // build the pipeline depending on stream info
+                std::ostringstream pipeline;
+                // get generic pipeline string
+                std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+                // find placeholder for PORT
+                int xxxx = pipelinestring.find("XXXX");
+                // keep beginning of pipeline
+                pipeline << pipelinestring.substr(0, xxxx);
+                // Replace 'XXXX' by info on port config
+                pipeline << parameter;
+                // keep ending of pipeline
+                pipeline << pipelinestring.substr(xxxx + 4);
+                // add a videoconverter
+                pipeline << " ! videoconvert";
+
+                // open the pipeline with generic stream class
+                Stream::open(pipeline.str(), config_.width, config_.height);
             }
         }
-
-        if (!failed_) {
-            // build the pipeline depending on stream info
-            std::ostringstream pipeline;
-            // get generic pipeline string
-            std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
-            // find placeholder for PORT
-            int xxxx = pipelinestring.find("XXXX");
-            // keep beginning of pipeline
-            pipeline << pipelinestring.substr(0, xxxx);
-            // Replace 'XXXX' by info on port config
-            pipeline << parameter;
-            // keep ending of pipeline
-            pipeline << pipelinestring.substr(xxxx + 4);
-            // add a videoconverter
-            pipeline << " ! videoconvert";
-
-            // open the pipeline with generic stream class
-            Stream::open(pipeline.str(), config_.width, config_.height);
+        else {
+            Log::Info("Connection rejected.");
+//            failed_ = true;
         }
     }
-
 }
 
 
@@ -231,7 +272,7 @@ NetworkSource::NetworkSource() : StreamSource()
 
 NetworkSource::~NetworkSource()
 {
-    networkStream()->close();
+    networkStream()->disconnect();
 }
 
 NetworkStream *NetworkSource::networkStream() const
@@ -245,7 +286,7 @@ void NetworkSource::setConnection(const std::string &nameconnection)
     Log::Notify("Creating Network Source '%s'", connection_name_.c_str());
 
     // open network stream
-    networkStream()->open( connection_name_ );
+    networkStream()->connect( connection_name_ );
     stream_->play(true);
 }
 
@@ -254,7 +295,6 @@ std::string NetworkSource::connection() const
 {
     return connection_name_;
 }
-
 
 void NetworkSource::accept(Visitor& v)
 {

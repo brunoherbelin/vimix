@@ -40,6 +40,7 @@ public:
     }
 
     void enable(bool on);
+    inline bool enabled() const { return enabled_; }
     void setSession(Session *se);
     void removeStreams(const std::string &clientname);
 
@@ -48,10 +49,12 @@ public:
 
 protected:
     void addStream(const std::string &sender, int reply_to, const std::string &clientname);
+    void refuseStream(const std::string &sender, int reply_to);
     void removeStream(const std::string &sender, int port);
 
 private:
 
+    bool enabled_;
     StreamingRequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
 
