@@ -312,6 +312,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[RENDER]  = new Mesh("mesh/icon_render.ply");
         icons[PATTERN] = new Mesh("mesh/icon_gear.ply");
         icons[CAMERA]  = new Mesh("mesh/icon_camera.ply");
+        icons[SHARE]   = new Mesh("mesh/icon_share.ply");
         icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
         icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");

@@ -1205,7 +1205,7 @@ void UserInterface::RenderPreview()
             if (ImGui::BeginMenu("Stream"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
-                if ( ImGui::MenuItem( ICON_FA_PODCAST "  Accept connections", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
@@ -1266,7 +1266,7 @@ void UserInterface::RenderPreview()
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.2f));
-            ImGui::Text(ICON_FA_PODCAST);
+            ImGui::Text(ICON_FA_SHARE_ALT_SQUARE);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }

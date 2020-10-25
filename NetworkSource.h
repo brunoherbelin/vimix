@@ -71,7 +71,7 @@ public:
     void setConnection(const std::string &nameconnection);
     std::string connection() const;
 
-    glm::ivec2 icon() const override { return glm::ivec2(11, 8); }
+    glm::ivec2 icon() const override { return glm::ivec2(18, 11); }
 
 };
 
