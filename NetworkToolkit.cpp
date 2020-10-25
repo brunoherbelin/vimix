@@ -77,8 +77,8 @@ const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 
     "shmsrc socket-path=XXXX ! video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=3",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG,payload=26 ! queue max-size-buffers=3 ! rtpjpegdepay ! jpegdec",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! queue max-size-buffers=3 ! rtph264depay ! avdec_h264",
+    "udpsrc buffer-size=200000 timeout=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG,payload=26 ! queue max-size-buffers=3 ! rtpjitterbuffer ! rtpjpegdepay ! jpegdec",
+    "udpsrc buffer-size=200000 timeout=200000 port=XXXX ! application/x-rtp,encoding-name=H264,payload=96,clock-rate=90000 ! queue max-size-buffers=3 ! rtph264depay ! avdec_h264",
     "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=3 ! application/x-rtp-stream,media=video,encoding-name=JPEG,payload=26 ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
     "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=3 ! application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtph264depay ! avdec_h264"
 };

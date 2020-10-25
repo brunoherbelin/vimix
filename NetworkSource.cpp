@@ -253,7 +253,6 @@ void NetworkStream::update()
         }
         else {
             Log::Info("Connection rejected.");
-//            failed_ = true;
         }
     }
 }

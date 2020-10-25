@@ -107,6 +107,21 @@ void Settings::Save()
     SourceConfNode->SetAttribute("res", application.source.res);
     pRoot->InsertEndChild(SourceConfNode);
 
+    // bloc connections
+    {
+        XMLElement *connectionsNode = xmlDoc.NewElement( "Connections" );
+
+        map<int, std::string>::iterator iter;
+        for (iter=application.instance_names.begin(); iter != application.instance_names.end(); iter++)
+        {
+            XMLElement *connection = xmlDoc.NewElement( "Instance" );
+            connection->SetAttribute("name", iter->second.c_str());
+            connection->SetAttribute("id", iter->first);
+            connectionsNode->InsertEndChild(connection);
+        }
+        pRoot->InsertEndChild(connectionsNode);
+    }
+
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
@@ -321,6 +336,22 @@ void Settings::Load()
                 tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
                                            application.views[id].default_translation);
 
+            }
+        }
+
+    }
+
+    // bloc Connections
+    {
+        XMLElement * pElement = pRoot->FirstChildElement("Connections");
+        if (pElement)
+        {
+            XMLElement* connectionNode = pElement->FirstChildElement("Instance");
+            for( ; connectionNode ; connectionNode=connectionNode->NextSiblingElement())
+            {
+                int id = 0;
+                connectionNode->QueryIntAttribute("id", &id);
+                application.instance_names[id] = connectionNode->Attribute("name");
             }
         }
 

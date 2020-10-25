@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
     Settings::Lock();
 
     ///
+    /// CONNECTION INIT
+    ///
+    if ( !Connection::manager().init() )
+        return 1;
+
+    ///
     /// RENDERING INIT
     ///
     if ( !Rendering::manager().init() )
@@ -63,10 +69,6 @@ int main(int argc, char *argv[])
     /// UI INIT
     ///
     if ( !UserInterface::manager().Init() )
-        return 1;
-
-
-    if ( !Connection::manager().init() )
         return 1;
 
     ///
@@ -99,8 +101,6 @@ int main(int argc, char *argv[])
         Rendering::manager().draw();
     }
 
-    Connection::manager().terminate();
-
     ///
     /// UI TERMINATE
     ///
@@ -112,12 +112,17 @@ int main(int argc, char *argv[])
     Rendering::manager().terminate();
 
     ///
-    /// Settings
+    /// CONNECTION TERMINATE
     ///
-    Settings::Save();
+    Connection::manager().terminate();
 
     /// unlock on clean exit
     Settings::Unlock();
+
+    ///
+    /// Settings
+    ///
+    Settings::Save();
 
     /// ok
     return 0;

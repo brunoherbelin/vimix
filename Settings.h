@@ -163,6 +163,7 @@ struct Application
 {
     // instance check
     bool fresh_start;
+    int instance_id;
 
     // Verification
     std::string name;
@@ -175,7 +176,10 @@ struct Application
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
+
+    // connection settings
     bool accept_connections;
+    std::map<int, std::string> instance_names;
 
     // Settings of widgets
     WidgetsConfig widget;

@@ -1213,13 +1213,15 @@ void UserInterface::RenderPreview()
                 {
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::InputText("Name", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
 
-                    ImGui::Separator();
                     std::vector<std::string> ls = Streaming::manager().listStreams();
-                    for (auto it = ls.begin(); it != ls.end(); it++)
-                        ImGui::Text("%s", (*it).c_str() );
+                    if (ls.size()>0) {
+                        ImGui::Separator();
+                        for (auto it = ls.begin(); it != ls.end(); it++)
+                            ImGui::Text(" %s", (*it).c_str() );
+                    }
 
                 }
                 ImGui::EndMenu();
