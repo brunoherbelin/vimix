@@ -33,16 +33,18 @@ typedef enum {
 
 struct StreamConfig {
 
+    Protocol protocol;
+    std::string client_name;
     std::string client_address;
     int port;
-    Protocol protocol;
     int width;
     int height;
 
     StreamConfig () {
+        protocol = DEFAULT;
+        client_name = "";
         client_address = "127.0.0.1";
         port = 0;
-        protocol = DEFAULT;
         width = 0;
         height = 0;
     }
@@ -50,6 +52,7 @@ struct StreamConfig {
     inline StreamConfig& operator = (const StreamConfig& o)
     {
         if (this != &o) {
+            this->client_name = o.client_name;
             this->client_address = o.client_address;
             this->port = o.port;
             this->protocol = o.protocol;

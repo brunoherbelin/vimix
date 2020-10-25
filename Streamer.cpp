@@ -1,4 +1,5 @@
 #include <thread>
+#include <sstream>
 
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -46,7 +47,8 @@ void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int reply_to_port = (arg++)->AsInt32();
-            Streaming::manager().addStream(sender, reply_to_port);
+            const char *client_name = (arg++)->AsString();
+            Streaming::manager().addStream(sender, reply_to_port, client_name);
 
 #ifdef STREAMER_DEBUG
             Log::Info("%s wants a stream.", sender);
@@ -78,6 +80,30 @@ Streaming::Streaming() : session_(nullptr), width_(0), height_(0)
 
 }
 
+
+bool Streaming::busy() const
+{
+    bool b = false;
+
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    for (; sit != streamers_.end() && !b; sit++)
+        b = (*sit)->busy() ;
+
+    return b;
+}
+
+
+std::vector<std::string> Streaming::listStreams() const
+{
+    std::vector<std::string>  ls;
+
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    for (; sit != streamers_.end(); sit++)
+        ls.push_back( (*sit)->info() );
+
+    return ls;
+}
+
 void wait_for_request_(UdpListeningReceiveSocket *receiver)
 {
     receiver->Run();
@@ -92,7 +118,7 @@ void Streaming::enable(bool on)
     else {
         // end streaming requests
         receiver_->AsynchronousBreak();
-        // end all streaming
+        // ending and removing all streaming
         for (auto sit = streamers_.begin(); sit != streamers_.end(); sit=streamers_.erase(sit))
             (*sit)->stop();
         Log::Info("Refusing stream requests to %s. No streaming ongoing.", Connection::manager().info().name.c_str());
@@ -137,13 +163,13 @@ void Streaming::removeStream(const std::string &sender, int port)
 
 }
 
-void Streaming::removeStreams(const std::string &ip)
+void Streaming::removeStreams(const std::string &clientname)
 {
     // remove all streamers matching given IP
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
     while ( sit != streamers_.end() ){
         NetworkToolkit::StreamConfig config = (*sit)->config_;
-        if (config.client_address.compare(ip) == 0) {
+        if (config.client_name.compare(clientname) == 0) {
 #ifdef STREAMER_DEBUG
             Log::Info("Ending streaming to %s:%d", config.client_address.c_str(), config.port);
 #endif
@@ -158,7 +184,7 @@ void Streaming::removeStreams(const std::string &ip)
 }
 
 
-void Streaming::addStream(const std::string &sender, int reply_to)
+void Streaming::addStream(const std::string &sender, int reply_to, const std::string &clientname)
 {
     // get ip of client
     std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
@@ -172,6 +198,7 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     // prepare an offer
     NetworkToolkit::StreamConfig conf;
     conf.client_address = sender_ip;
+    conf.client_name = clientname;
     conf.port = std::stoi(sender_port); // this port seems free, so re-use it!
     conf.width = width_;
     conf.height = height_;
@@ -183,7 +210,7 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     else {
         conf.protocol = NetworkToolkit::UDP_JPEG;
     }
-//    conf.protocol = NetworkToolkit::UDP_JPEG;
+//    conf.protocol = NetworkToolkit::UDP_JPEG; // force udp for testing
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -347,8 +374,8 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
        // all good
-       Log::Info("Streaming video to %s:%d (%d x %d)",
-                 config_.client_address.c_str(), config_.port, width_, height_);
+       Log::Info("Streaming video to %s (%d x %d)",
+                 config_.client_name.c_str(), width_, height_);
 
        // start streaming !!
        streaming_ = true;
@@ -463,6 +490,9 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
    // finished !
    else {
 
+       // send EOS
+       gst_app_src_end_of_stream (src_);
+
        // make sure the shared memory socket is deleted
        if (config_.protocol == NetworkToolkit::SHM_RAW) {
            std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
@@ -470,7 +500,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
            SystemToolkit::remove_file(path);
        }
 
-       Log::Notify("Streaming to %s:%d finished after %s s.", config_.client_address.c_str(), config_.port,
+       Log::Notify("Streaming to %s finished after %s s.", config_.client_name.c_str(),
                    GstToolkit::time_to_string(timestamp_).c_str());
 
    }
@@ -488,12 +518,15 @@ void VideoStreamer::stop ()
 
 std::string VideoStreamer::info()
 {
-    std::string ret = "Streaming terminated.";
+    std::ostringstream ret;
     if (streaming_) {
-        ret = "Streaming ";
-        ret += NetworkToolkit::protocol_name[config_.protocol];
+        ret << NetworkToolkit::protocol_name[config_.protocol];
+        ret << " to ";
+        ret << config_.client_name;
     }
-    return ret;
+    else
+        ret <<  "Streaming terminated.";
+    return ret.str();
 }
 
 

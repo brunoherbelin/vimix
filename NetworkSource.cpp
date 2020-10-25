@@ -121,6 +121,7 @@ void NetworkStream::open(const std::string &nameconnection)
     p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_REQUEST );
     // send my listening port to indicate to Connection::manager where to reply
     p << listener_port_;
+    p << Connection::manager().info().name.c_str();
     p << osc::EndMessage;
 
     // send OSC message to streamer

@@ -1105,7 +1105,6 @@ void UserInterface::RenderPreview()
         }
 
         FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
-//        FrameGrabber *str = Mixer::manager().session()->getFrameGrabber(video_streamer_);
 
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
@@ -1210,72 +1209,21 @@ void UserInterface::RenderPreview()
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
+                if (Settings::application.accept_connections)
+                {
+                    static char dummy_str[512];
+                    sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::InputText("Name", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+
+                    ImGui::Separator();
+                    std::vector<std::string> ls = Streaming::manager().listStreams();
+                    for (auto it = ls.begin(); it != ls.end(); it++)
+                        ImGui::Text("%s", (*it).c_str() );
+
+                }
                 ImGui::EndMenu();
             }
-//            if (ImGui::BeginMenu("Stream"))
-//            {
-//                // Stop recording menu if main recorder already exists
-//                if (str) {
-//                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
-//                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Streaming") ) {
-//                        str->stop();
-//                        video_streamer_ = 0;
-//                    }
-//                    ImGui::PopStyleColor(1);
-//                    if (video_streamer_ > 0) {
-//                        if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
-//                            // Options menu
-//                            ImGui::Separator();
-//                            ImGui::MenuItem("Connection parameters", nullptr, false, false);
-//                            static char dummy_str[512];
-//                            sprintf(dummy_str, "%s", Settings::application.stream.ip.c_str());
-//                            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                            ImGui::InputText("Host", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-//                            sprintf(dummy_str, "%d", Settings::application.stream.port);
-//                            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                            ImGui::InputText("Port", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-//                        }
-
-//                    }
-//                }
-//                // start recording
-//                else {
-//                    // detecting the absence of video streamer but the variable is still not 0: fix this!
-//                    if (video_streamer_ > 0)
-//                        video_streamer_ = 0;
-//                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
-//                    if ( ImGui::MenuItem( ICON_FA_PODCAST "  Stream") ) {
-//                        FrameGrabber *fg = new VideoStreamer;
-//                        video_streamer_ = fg->id();
-//                        Mixer::manager().session()->addFrameGrabber(fg);
-//                        Streaming::manager().enable(true);
-//                    }
-//                    ImGui::PopStyleColor(1);
-//                    // select profile
-//                    ImGui::SetNextItemWidth(300);
-//                    ImGui::Combo("##StreamProfile", &Settings::application.stream.profile, NetworkToolkit::protocol_name, IM_ARRAYSIZE(NetworkToolkit::protocol_name) );
-
-//                    if (Settings::application.stream.profile == NetworkToolkit::TCP_JPEG || Settings::application.stream.profile == NetworkToolkit::TCP_H264) {
-//                        // Options menu
-//                        ImGui::Separator();
-//                        ImGui::MenuItem("TCP Options", nullptr, false, false);
-//                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                        if (ImGui::BeginCombo("Host", Settings::application.stream.ip.c_str()))
-//                        {
-//                            static std::vector<std::string> ips = NetworkToolkit::host_ips();
-//                            for (int i=0; i < ips.size(); i++) {
-//                                if (ImGui::Selectable( ips[i].c_str() ))
-//                                    Settings::application.stream.ip = ips[i];
-//                            }
-//                            ImGui::EndCombo();
-//                        }
-//                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                        ImGui::InputInt("Port", &Settings::application.stream.port, 100, 1000);
-//                        Settings::application.stream.port = CLAMP(Settings::application.stream.port, 1000, 9000);
-//                    }
-//                }
-//                ImGui::EndMenu();
-//            }
             ImGui::EndMenuBar();
         }
 
@@ -1307,19 +1255,19 @@ void UserInterface::RenderPreview()
             ImGui::PopFont();
         }
         // streaming indicator overlay
-//        if (str)
-//        {
-//            float r = ImGui::GetTextLineHeightWithSpacing();
-//            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
-//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//            if (str->busy())
-//                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
-//            else
-//                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.2f));
-//            ImGui::Text(ICON_FA_PODCAST);
-//            ImGui::PopStyleColor(1);
-//            ImGui::PopFont();
-//        }
+        if (Settings::application.accept_connections)
+        {
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if ( Streaming::manager().busy())
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
+            else
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.2f));
+            ImGui::Text(ICON_FA_PODCAST);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
 
         ImGui::End();
     }

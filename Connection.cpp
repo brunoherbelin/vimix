@@ -183,11 +183,11 @@ void Connection::ask()
             // erase connection if its life score is negative (not responding too many times)
             if ( it!=Connection::manager().connections_.begin() && (*it).alive < 0 ) {
                 // inform streamer to cancel streaming to this client
-                Streaming::manager().removeStreams( (*it).address );
+                Streaming::manager().removeStreams( (*it).name );
                 // remove from list
                 it = Connection::manager().connections_.erase(it);
 #ifdef CONNECTION_DEBUG
-                Log::Info("A connection was lost");
+                Log::Info("List of connection updated:");
                 Connection::manager().print();
 #endif
             }
@@ -254,7 +254,7 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 // a new connection! Add to list
                 Connection::manager().connections_.push_back(info);
 #ifdef CONNECTION_DEBUG
-                Log::Info("New connection added");
+                Log::Info("List of connection updated:");
                 Connection::manager().print();
 #endif
             }

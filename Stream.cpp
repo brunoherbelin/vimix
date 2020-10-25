@@ -658,7 +658,8 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 {
     GstFlowReturn ret = GST_FLOW_OK;
 
-//    Log::Info("callback_new_sample");
+//    if (gst_app_sink_is_eos (sink))
+//        Log::Info("callback_new_sample got EOS");
 
     // non-blocking read new sample
     GstSample *sample = gst_app_sink_pull_sample(sink);

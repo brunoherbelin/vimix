@@ -41,10 +41,13 @@ public:
 
     void enable(bool on);
     void setSession(Session *se);
-    void removeStreams(const std::string &ip);
+    void removeStreams(const std::string &clientname);
+
+    bool busy() const;
+    std::vector<std::string> listStreams() const;
 
 protected:
-    void addStream(const std::string &sender, int reply_to);
+    void addStream(const std::string &sender, int reply_to, const std::string &clientname);
     void removeStream(const std::string &sender, int port);
 
 private:
