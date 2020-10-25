@@ -61,7 +61,6 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
 
 NetworkStream::NetworkStream(): Stream(), receiver_(nullptr)
 {
-//    listener_port_ = 5400; // TODO Find a free port, unique each time
     confirmed_ = false;
 }
 
@@ -174,30 +173,45 @@ void NetworkStream::update()
 #ifdef NETWORK_DEBUG
         Log::Info("Creating Network Stream %d (%d x %d)", config_.port, config_.width, config_.height);
 #endif
-        // build the pipeline depending on stream info
-        std::ostringstream pipeline;
+        // prepare pipeline parameter with port given in config_
+        std::string parameter = std::to_string(config_.port);
 
-        // get generic pipeline string
-        std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
-        // find placeholder for PORT
-        int xxxx = pipelinestring.find("XXXX");
-        // keep beginning of pipeline
-        pipeline << pipelinestring.substr(0, xxxx);
-        // Replace 'XXXX'
+        // make sure the shared memory socket exists
         if (config_.protocol == NetworkToolkit::SHM_RAW) {
-            std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
-            path += std::to_string(config_.port);
-            pipeline << path;
+            // for shared memory, the parameter is a file location in settings
+            parameter = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm") + parameter;
+            // try few times to see if file exists and wait 20ms each time
+            for(int trial = 0; trial < 5; trial ++){
+                if ( SystemToolkit::file_exists(parameter))
+                    break;
+                std::this_thread::sleep_for (std::chrono::milliseconds(20));
+            }
+            // failed to find the shm socket file: cannot connect
+            if (!SystemToolkit::file_exists(parameter)) {
+                Log::Warning("Cannot connect to shared memory.");
+                failed_ = true;
+            }
         }
-        else
-            pipeline << config_.port;
-        // keep ending of pipeline
-        pipeline << pipelinestring.substr(xxxx + 4);
-        // add a videoconverter
-        pipeline << " ! videoconvert";
 
-        // open the pipeline with generic stream class
-        Stream::open(pipeline.str(), config_.width, config_.height);
+        if (!failed_) {
+            // build the pipeline depending on stream info
+            std::ostringstream pipeline;
+            // get generic pipeline string
+            std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+            // find placeholder for PORT
+            int xxxx = pipelinestring.find("XXXX");
+            // keep beginning of pipeline
+            pipeline << pipelinestring.substr(0, xxxx);
+            // Replace 'XXXX' by info on port config
+            pipeline << parameter;
+            // keep ending of pipeline
+            pipeline << pipelinestring.substr(xxxx + 4);
+            // add a videoconverter
+            pipeline << " ! videoconvert";
+
+            // open the pipeline with generic stream class
+            Stream::open(pipeline.str(), config_.width, config_.height);
+        }
     }
 
 }

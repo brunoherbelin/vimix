@@ -188,6 +188,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "DeviceSource") {
                     load_source = new DeviceSource;
                 }
+                else if ( std::string(pType) == "NetworkSource") {
+                    load_source = new NetworkSource;
+                }
 
                 // skip failed (including clones)
                 if (!load_source)

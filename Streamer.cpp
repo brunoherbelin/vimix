@@ -183,7 +183,7 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     else {
         conf.protocol = NetworkToolkit::UDP_JPEG;
     }
-    conf.protocol = NetworkToolkit::UDP_JPEG;
+//    conf.protocol = NetworkToolkit::UDP_JPEG;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -199,7 +199,7 @@ void Streaming::addStream(const std::string &sender, int reply_to)
     socket.Send( p.Data(), p.Size() );
 
 #ifdef STREAMER_DEBUG
-    Log::Info("Accepting stream request from %s:%d", sender_ip.c_str(), reply_to);
+    Log::Info("Starting streaming to %s:%d", sender_ip.c_str(), conf.port);
 #endif
 
     // create streamer & remember it
@@ -244,7 +244,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
         return;
 
     // first frame for initialization
-   if (frame_buffer_ == nullptr) {
+    if (frame_buffer_ == nullptr) {
 
        // set frame buffer as input
        frame_buffer_ = frame_buffer;
@@ -354,7 +354,6 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        streaming_ = true;
 
    }
-
    // frame buffer changed ?
    else if (frame_buffer_ != frame_buffer) {
 
@@ -422,7 +421,6 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
                gst_buffer_unmap (buffer, &map);
 
                // push
-//               Log::Info("VideoRecorder push data %ld", buffer->pts);
                gst_app_src_push_buffer (src_, buffer);
                // NB: buffer will be unrefed by the appsrc
 
@@ -443,8 +441,8 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
 
    }
-   // did the streaming terminate with sink receiving end-of-stream ?
-   else
+   // did the streaming receive end-of-stream ?
+   else if (!finished_)
    {
        // Wait for EOS message
        GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
@@ -453,21 +451,28 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        if (msg) {
            // stop the pipeline
            GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
+#ifdef STREAMER_DEBUG
            if (ret == GST_STATE_CHANGE_FAILURE)
-               Log::Warning("VideoStreamer Could not stop");
+               Log::Info("Streaming to %s:%d could not stop properly.", config_.client_address.c_str(), config_.port);
            else
-               Log::Notify("Stream finished after %s s.", GstToolkit::time_to_string(timestamp_).c_str());
-
+               Log::Info("Streaming to %s:%d ending...", config_.client_address.c_str(), config_.port);
+#endif
            finished_ = true;
        }
+   }
+   // finished !
+   else {
 
        // make sure the shared memory socket is deleted
        if (config_.protocol == NetworkToolkit::SHM_RAW) {
-           // TODO rename SHM socket "shm_PORT"
            std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
            path += std::to_string(config_.port);
            SystemToolkit::remove_file(path);
        }
+
+       Log::Notify("Streaming to %s:%d finished after %s s.", config_.client_address.c_str(), config_.port,
+                   GstToolkit::time_to_string(timestamp_).c_str());
+
    }
 
 
@@ -477,10 +482,7 @@ void VideoStreamer::stop ()
 {
     // stop recording
     streaming_ = false;
-
-    // send end of stream
-    if (src_)
-        gst_app_src_end_of_stream (src_);
+    finished_ = true;
 
 }
 
@@ -488,17 +490,8 @@ std::string VideoStreamer::info()
 {
     std::string ret = "Streaming terminated.";
     if (streaming_) {
-
-        if (config_.protocol == NetworkToolkit::TCP_JPEG || config_.protocol == NetworkToolkit::TCP_H264) {
-
-
-            ret = "TCP";
-
-        }
-        else if (config_.protocol == NetworkToolkit::SHM_RAW) {
-            ret = "Shared Memory";
-        }
-
+        ret = "Streaming ";
+        ret += NetworkToolkit::protocol_name[config_.protocol];
     }
     return ret;
 }

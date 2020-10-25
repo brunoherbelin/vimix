@@ -19,6 +19,7 @@
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG
+//#define GST_DEVICE_DEBUG
 #endif
 
 
@@ -112,7 +113,7 @@ Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
         break;
 
        manager().src_name_.push_back(name);
-#ifdef DEVICE_DEBUG
+#ifdef GST_DEVICE_DEBUG
        gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
        g_print("\nDevice %s plugged : %s\n", name, stru);
        g_free (stru);
@@ -134,7 +135,7 @@ Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
        gst_message_parse_device_removed (message, &device);
        name = gst_device_get_display_name (device);
        manager().remove(name);
-#ifdef DEVICE_DEBUG
+#ifdef GST_DEVICE_DEBUG
        g_print("\nDevice %s unplugged\n", name);
 #endif
        g_free (name);
@@ -204,7 +205,7 @@ Device::Device()
         src_name_.push_back(name);
         g_free (name);
 
-#ifdef DEVICE_DEBUG
+#ifdef GST_DEVICE_DEBUG
        gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
        g_print("\nDevice %s already plugged : %s", name, stru);
        g_free (stru);
@@ -441,7 +442,7 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                 for (int c = 0; c < C; ++c) {
                     // get GST cap
                     GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
-#ifdef DEVICE_DEBUG
+#ifdef GST_DEVICE_DEBUG
                     gchar *capstext = gst_structure_to_string (decice_cap_struct);
                     g_print("\nDevice caps: %s", capstext);
                     g_free(capstext);

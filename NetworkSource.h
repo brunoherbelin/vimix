@@ -41,7 +41,6 @@ public:
 private:
     // connection information
     IpEndpointName streamer_address_;
-//    int listener_port_;
     StreamerResponseListener listener_;
     UdpListeningReceiveSocket *receiver_;
     std::atomic<bool> confirmed_;
