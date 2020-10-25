@@ -12,6 +12,7 @@ using namespace tinyxml2;
 
 
 Settings::Application Settings::application;
+
 static string settingsFilename = "";
 
 void Settings::Save()
@@ -387,11 +388,12 @@ void Settings::Load()
 
 }
 
+
 void Settings::Lock()
 {
-    application.first_instance = false;
 
     std::string lockfile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "lock");
+    application.fresh_start = false;
 
     FILE *file = fopen(lockfile.c_str(), "r");
     int l = 0;
@@ -406,8 +408,8 @@ void Settings::Lock()
         if (file) {
             fprintf(file, "1");
             fclose(file);
-            application.first_instance = true;
         }
+        application.fresh_start = true;
     }
 
 }
@@ -434,3 +436,4 @@ void Settings::Check()
 
 	xmlDoc.Print();
 }
+

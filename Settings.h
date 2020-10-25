@@ -162,7 +162,7 @@ struct SourceConfig
 struct Application
 {
     // instance check
-    bool first_instance;
+    bool fresh_start;
 
     // Verification
     std::string name;
@@ -204,7 +204,7 @@ struct Application
     History recentFolders;
     History recentImport;
 
-    Application() : first_instance(false), name(APP_NAME){
+    Application() : fresh_start(false), name(APP_NAME){
         scale = 1.f;
         accent_color = 0;
         pannel_stick = false;
