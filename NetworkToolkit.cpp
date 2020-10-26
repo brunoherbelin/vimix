@@ -1,6 +1,7 @@
 
 #include <algorithm>
 
+#include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
