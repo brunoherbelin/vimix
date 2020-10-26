@@ -1,6 +1,8 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
+#include <vector>
+
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPacketListener.h"
 #include "ip/UdpSocket.h"

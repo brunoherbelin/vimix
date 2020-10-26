@@ -228,6 +228,7 @@ void NetworkStream::update()
                     Log::Warning("Cannot connect to shared memory.");
                     failed_ = true;
                 }
+                parameter = "\"" + parameter + "\"";
             }
 
             // general case : create pipeline and open

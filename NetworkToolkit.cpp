@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netdb.h>
 
 #ifdef linux
 #include <linux/netdevice.h>
@@ -86,47 +87,67 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
     "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=3 ! application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtph264depay ! avdec_h264"
 };
 
-
 std::vector<std::string> ipstrings;
 std::vector<unsigned long> iplongs;
 
 
-std::vector<std::string> NetworkToolkit::host_ips()
+void add_interface(int fd, const char *name) {
+    struct ifreq ifreq;
+    char host[128];
+    memset(&ifreq, 0, sizeof ifreq);
+    strncpy(ifreq.ifr_name, name, IFNAMSIZ);
+    if(ioctl(fd, SIOCGIFADDR, &ifreq)==0) {
+        int family;
+        switch(family=ifreq.ifr_addr.sa_family) {
+            case AF_INET:
+            case AF_INET6:
+                getnameinfo(&ifreq.ifr_addr, sizeof ifreq.ifr_addr, host, sizeof host, 0, 0, NI_NUMERICHOST);
+                break;
+            default:
+            case AF_UNSPEC:
+                return; /* ignore */
+        }
+        // add only if not already listed
+        if ( std::find(ipstrings.begin(), ipstrings.end(), std::string(host)) == ipstrings.end() )
+        {
+            ipstrings.push_back( std::string(host) );
+            iplongs.push_back( GetHostByName(host) );
+//            printf("%-24s%s %lu\n", name, host, GetHostByName(host));
+        }
+    }
+}
+
+void list_interfaces()
 {
-    // fill the list of IPs only once
-    if (ipstrings.empty()) {
-
-//        fprintf(stderr, "List of ips: \n" );
-
-        int s = socket(AF_INET, SOCK_STREAM, 0);
-        if (s > -1) {
-            struct ifconf ifconf;
-            struct ifreq ifr[50];
-            int ifs;
-            int i;
-
-            ifconf.ifc_buf = (char *) ifr;
+    struct ifreq *ifreq;
+    struct ifconf ifconf;
+    char buf[16384];
+    int fd=socket(PF_INET, SOCK_DGRAM, 0);
+    if(fd > -1) {
+        ifconf.ifc_len=sizeof buf;
+        ifconf.ifc_buf=buf;
+        if(ioctl(fd, SIOCGIFCONF, &ifconf)==0) {
+            ifreq=ifconf.ifc_req;
+            for(int i=0;i<ifconf.ifc_len;) {
+                size_t len;
 #ifndef linux
-            ifconf.ifc_len = IFNAMSIZ + ifr->ifr_addr.sa_len;
+                len=IFNAMSIZ + ifreq->ifr_addr.sa_len;
 #else
-            ifconf.ifc_len = sizeof ifr;
+                len=sizeof *ifreq;
 #endif
-            if (ioctl(s, SIOCGIFCONF, &ifconf) > -1) {
-                ifs = ifconf.ifc_len / sizeof(ifr[0]);
-                for (i = 0; i < ifs; i++) {
-                    char ip[INET_ADDRSTRLEN];
-                    struct sockaddr_in *s_in = (struct sockaddr_in *) &ifr[i].ifr_addr;
-
-                    if (inet_ntop(AF_INET, &s_in->sin_addr, ip, sizeof(ip))) {
-                        ipstrings.push_back( std::string(ip) );
-                        iplongs.push_back( GetHostByName(ip) );
-//                        fprintf(stderr, "%s %lu", ip, GetHostByName(ip) );
-                    }
-                }
-                close(s);
+                add_interface(fd, ifreq->ifr_name);
+                ifreq=(struct ifreq*)((char*)ifreq+len);
+                i+=len;
             }
         }
     }
+    close(fd);
+}
+
+std::vector<std::string> NetworkToolkit::host_ips()
+{
+    if (ipstrings.empty())
+        list_interfaces();
 
     return ipstrings;
 }
@@ -137,7 +158,7 @@ bool NetworkToolkit::is_host_ip(const std::string &ip)
         return true;
 
     if (ipstrings.empty())
-        host_ips();
+        list_interfaces();
 
     return std::find(ipstrings.begin(), ipstrings.end(), ip) != ipstrings.end();
 }
@@ -147,7 +168,7 @@ std::string NetworkToolkit::closest_host_ip(const std::string &ip)
     std::string address = "localhost";
 
     if (iplongs.empty())
-        host_ips();
+        list_interfaces();
 
     // discard trivial case
     if ( ip.compare("localhost") != 0)

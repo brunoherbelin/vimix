@@ -231,7 +231,7 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     else {
         conf.protocol = NetworkToolkit::UDP_JPEG;
     }
-    conf.protocol = NetworkToolkit::UDP_JPEG; // force udp for testing
+//    conf.protocol = NetworkToolkit::UDP_JPEG; // force udp for testing
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
