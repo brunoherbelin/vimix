@@ -4,10 +4,13 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 
-// TODO OSX implementation
+#ifdef linux
 #include <linux/netdevice.h>
+#endif
 
 // OSC IP gethostbyname
 #include "ip/NetworkingUtils.h"
@@ -87,10 +90,13 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 std::vector<std::string> ipstrings;
 std::vector<unsigned long> iplongs;
 
+
 std::vector<std::string> NetworkToolkit::host_ips()
 {
     // fill the list of IPs only once
     if (ipstrings.empty()) {
+
+//        fprintf(stderr, "List of ips: \n" );
 
         int s = socket(AF_INET, SOCK_STREAM, 0);
         if (s > -1) {
@@ -100,8 +106,11 @@ std::vector<std::string> NetworkToolkit::host_ips()
             int i;
 
             ifconf.ifc_buf = (char *) ifr;
+#ifndef linux
+            ifconf.ifc_len = IFNAMSIZ + ifr->ifr_addr.sa_len;
+#else
             ifconf.ifc_len = sizeof ifr;
-
+#endif
             if (ioctl(s, SIOCGIFCONF, &ifconf) > -1) {
                 ifs = ifconf.ifc_len / sizeof(ifr[0]);
                 for (i = 0; i < ifs; i++) {
@@ -111,6 +120,7 @@ std::vector<std::string> NetworkToolkit::host_ips()
                     if (inet_ntop(AF_INET, &s_in->sin_addr, ip, sizeof(ip))) {
                         ipstrings.push_back( std::string(ip) );
                         iplongs.push_back( GetHostByName(ip) );
+//                        fprintf(stderr, "%s %lu", ip, GetHostByName(ip) );
                     }
                 }
                 close(s);
@@ -146,11 +156,11 @@ std::string NetworkToolkit::closest_host_ip(const std::string &ip)
         unsigned long host = GetHostByName( ip.c_str() );
         unsigned long mini = host;
 
-        for (int i=0; i < iplongs.size(); i++){
+        for (size_t i=0; i < iplongs.size(); i++){
             unsigned long diff = host > iplongs[i] ? host-iplongs[i] : iplongs[i]-host;
             if (diff < mini) {
                 mini = diff;
-                index_mini = i;
+                index_mini = (int) i;
             }
         }
 
