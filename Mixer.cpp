@@ -46,12 +46,13 @@ static void saveSession(const std::string& filename, Session *session)
     // creation of XML doc
     XMLDocument xmlDoc;
 
-    XMLElement *version = xmlDoc.NewElement(APP_NAME);
-    version->SetAttribute("major", XML_VERSION_MAJOR);
-    version->SetAttribute("minor", XML_VERSION_MINOR);
-    version->SetAttribute("size", session->numSource());
-    version->SetAttribute("date", SystemToolkit::date_time_string().c_str());
-    xmlDoc.InsertEndChild(version);
+    XMLElement *rootnode = xmlDoc.NewElement(APP_NAME);
+    rootnode->SetAttribute("major", XML_VERSION_MAJOR);
+    rootnode->SetAttribute("minor", XML_VERSION_MINOR);
+    rootnode->SetAttribute("size", session->numSource());
+    rootnode->SetAttribute("date", SystemToolkit::date_time_string().c_str());
+    rootnode->SetAttribute("resolution", session->frame()->info().c_str());
+    xmlDoc.InsertEndChild(rootnode);
 
     // 1. list of sources
     XMLElement *sessionNode = xmlDoc.NewElement("Session");

@@ -2362,18 +2362,18 @@ void Navigator::RenderMainPannel()
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
-        // TODO fixe fullscreen for OSX :(
-#ifndef APPLE
+        // TODO fix fullscreen for OSX :(
         // Icon to switch fullscreen
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
         const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
         if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
+#ifndef APPLE
             ImGui::End();
+#endif
             return;
         }
-#endif
         // Session menu
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Session");

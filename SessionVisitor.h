@@ -24,13 +24,13 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
-    void visit(Surface& n) override;
+    void visit(Surface&) override;
     void visit(ImageSurface& n) override;
     void visit(MediaSurface& n) override;
-    void visit(FrameBufferSurface& n) override;
+    void visit(FrameBufferSurface&) override;
     void visit(LineStrip& n) override;
     void visit(LineSquare&) override;
-    void visit(LineCircle& n) override;
+    void visit(LineCircle&) override;
     void visit(Mesh& n) override;
     void visit(Frame& n) override;
 
@@ -44,7 +44,7 @@ public:
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
-    void visit (RenderSource& s) override;
+    void visit (RenderSource&) override;
     void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
