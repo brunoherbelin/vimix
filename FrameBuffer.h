@@ -40,6 +40,7 @@ public:
     inline uint height() const { return attrib_.viewport.y; }
     glm::vec3 resolution() const;
     float aspectRatio() const;
+    std::string info() const;
 
     // internal pixel format
     inline bool use_alpha() const { return use_alpha_; }

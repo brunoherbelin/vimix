@@ -37,9 +37,16 @@ std::string SessionCreator::info(const std::string& filename)
     if (header != nullptr && header->Attribute("date") != 0) {
         int s = header->IntAttribute("size");
         ret = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
-        std::string date( header->Attribute("date") );
-        ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " ";
-        ret += date.substr(8,2) + ":" + date.substr(10,2) + "\n";
+        const char *att_string = header->Attribute("resolution");
+        if (att_string)
+            ret += std::string( att_string ) + "\n";
+        att_string = header->Attribute("date");
+        if (att_string) {
+            std::string date( att_string );
+            ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
+            ret += date.substr(8,2) + ":" + date.substr(10,2);
+        }
+
     }
 
     return ret;
