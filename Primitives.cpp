@@ -137,13 +137,12 @@ void MediaSurface::init()
 
 void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    if ( !initialized() )
+    if ( !initialized() ) {
         init();
-
-    // set the texture to the media player once openned
-    // TODO: avoid to repeat with a static flag?
-    if ( mediaplayer_->isOpen() )
-        textureindex_ = mediaplayer_->texture();
+        // set the texture to the media player once openned
+        if ( mediaplayer_->isOpen() )
+            textureindex_ = mediaplayer_->texture();
+    }
 
     Surface::draw(modelview, projection);
 }

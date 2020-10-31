@@ -113,7 +113,7 @@ void SessionVisitor::visit(Primitive &n)
 }
 
 
-void SessionVisitor::visit(Surface &n)
+void SessionVisitor::visit(Surface &)
 {
 
 }
@@ -129,7 +129,7 @@ void SessionVisitor::visit(ImageSurface &n)
     xmlCurrent_->InsertEndChild(image);
 }
 
-void SessionVisitor::visit(FrameBufferSurface &n)
+void SessionVisitor::visit(FrameBufferSurface &)
 {
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "FrameBufferSurface");
@@ -270,7 +270,7 @@ void SessionVisitor::visit(LineSquare &)
 
 }
 
-void SessionVisitor::visit(LineCircle &n)
+void SessionVisitor::visit(LineCircle &)
 {
     // Node of a different type
     xmlCurrent_->SetAttribute("type", "LineCircle");
@@ -373,7 +373,7 @@ void SessionVisitor::visit (SessionSource& s)
     path->InsertEndChild( text );
 }
 
-void SessionVisitor::visit (RenderSource& s)
+void SessionVisitor::visit (RenderSource&)
 {
     xmlCurrent_->SetAttribute("type", "RenderSource");
 }
