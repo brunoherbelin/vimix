@@ -134,7 +134,7 @@ void Stream::execute_open()
     gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-    gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
+    gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 30);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
 #ifdef USE_GST_APPSINK_CALLBACKS_
@@ -480,7 +480,6 @@ void Stream::update()
     index_lock_.lock();
     // get the last frame filled from fill_frame()
     read_index = last_index_;
-
     // Do NOT miss and jump directly to a pre-roll
     for (guint i = 0; i < N_FRAME; ++i) {
         if (frame_[i].status == PREROLL) {
@@ -494,10 +493,8 @@ void Stream::update()
     // lock frame while reading it
     frame_[read_index].access.lock();
 
-
     // do not fill a frame twice
     if (frame_[read_index].status != INVALID ) {
-
 
         // is this an End-of-Stream frame ?
         if (frame_[read_index].status == EOS )
@@ -518,7 +515,6 @@ void Stream::update()
 
         // avoid reading it again
         frame_[read_index].status = INVALID;
-
     }
 
     // unkock frame after reading it
@@ -632,13 +628,12 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
 
     // if got a valid sample
     if (sample != NULL) {
-
-        // get buffer from sample
-        GstBuffer *buf = gst_sample_get_buffer (sample);
-
         // send frames to media player only if ready
         Stream *m = (Stream *)p;
         if (m && m->ready_) {
+
+            // get buffer from sample
+            GstBuffer *buf = gst_sample_get_buffer (sample);
 
             // fill frame from buffer
             if ( !m->fill_frame(buf, Stream::PREROLL) )
@@ -667,12 +662,13 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
-        // get buffer from sample (valid until sample is released)
-        GstBuffer *buf = gst_sample_get_buffer (sample) ;
-
         // send frames to media player only if ready
         Stream *m = (Stream *)p;
         if (m && m->ready_) {
+
+            // get buffer from sample (valid until sample is released)
+            GstBuffer *buf = gst_sample_get_buffer (sample) ;
+
             // fill frame with buffer
             if ( !m->fill_frame(buf, Stream::SAMPLE) )
                 ret = GST_FLOW_ERROR;
