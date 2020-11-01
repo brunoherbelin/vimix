@@ -128,7 +128,7 @@ std::string FrameBuffer::info() const
         }
     }
 
-    s += std::to_string(height()) + " px";
+    s += std::to_string(width()) + "x" + std::to_string(height()) + " px";
     return s;
 }
 

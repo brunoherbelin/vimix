@@ -361,7 +361,7 @@ void UserInterface::handleKeyboard()
             // button esc to toggle fullscreen
             else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
                 if (Rendering::manager().mainWindow().isFullscreen())
-                    Rendering::manager().mainWindow().setFullscreen(nullptr);
+                    Rendering::manager().mainWindow().exitFullscreen();
                 else if (navigator.pannelVisible())
                     navigator.hidePannel();
                 else if (!Mixer::selection().empty()) {
@@ -2362,17 +2362,12 @@ void Navigator::RenderMainPannel()
         ImGui::Text(APP_NAME);
         ImGui::PopFont();
 
-        // TODO fix fullscreen for OSX :(
         // Icon to switch fullscreen
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
         const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
         if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
-#ifndef APPLE
-            ImGui::End();
-#endif
-            return;
         }
         // Session menu
         ImGui::SetCursorPosY(width_);

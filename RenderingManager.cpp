@@ -89,7 +89,7 @@ static void WindowEscapeFullscreen( GLFWwindow *w, int key, int scancode, int ac
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
     {
         // escape fullscreen
-        GLFW_window_[w]->setFullscreen(nullptr);
+        GLFW_window_[w]->exitFullscreen();
     }
 }
 
@@ -505,7 +505,7 @@ GLFWmonitor *RenderingWindow::monitor()
     return monitorAt(x, y);
 }
 
-void RenderingWindow::setFullscreen(GLFWmonitor *mo)
+void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 {
     // if in fullscreen mode
     if (mo == nullptr) {
@@ -529,18 +529,34 @@ void RenderingWindow::setFullscreen(GLFWmonitor *mo)
     }
 }
 
-void RenderingWindow::toggleFullscreen()
+void RenderingWindow::exitFullscreen()
 {
-    // if in fullscreen mode
     if (isFullscreen()) {
         // exit fullscreen
-        setFullscreen(nullptr);
+        request_toggle_fullscreen_ = true;
     }
-    // not in fullscreen mode
-    else {
-        // enter fullscreen in monitor where the window is
-        setFullscreen(monitor());
+}
+
+void RenderingWindow::toggleFullscreen()
+{
+    request_toggle_fullscreen_ = true;
+}
+
+void RenderingWindow::toggleFullscreen_()
+{
+    if (request_toggle_fullscreen_) {
+        // if in fullscreen mode
+        if (isFullscreen()) {
+            // exit fullscreen
+            setFullscreen_(nullptr);
+        }
+        // not in fullscreen mode
+        else {
+            // enter fullscreen in monitor where the window is
+            setFullscreen_(monitor());
+        }
     }
+    request_toggle_fullscreen_ = false;
 }
 
 int RenderingWindow::width()
@@ -665,7 +681,7 @@ void RenderingWindow::show()
 
     if ( Settings::application.windows[index_].fullscreen ) {
         GLFWmonitor *mo = monitorNamed(Settings::application.windows[index_].monitor);
-        setFullscreen(mo);
+        setFullscreen_(mo);
     }
 
 }
@@ -673,6 +689,8 @@ void RenderingWindow::show()
 
 void RenderingWindow::makeCurrent()
 {
+    toggleFullscreen_();
+
     // handle window resize
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
 
@@ -692,6 +710,8 @@ void RenderingWindow::draw(FrameBuffer *fb)
 {
     if (!window_ || !fb)
         return;
+
+    toggleFullscreen_();
 
     // only draw if window is not iconified
     if( !glfwGetWindowAttrib(window_, GLFW_ICONIFIED ) ) {

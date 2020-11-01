@@ -34,6 +34,9 @@ class RenderingWindow
     uint fbo_;
     class WindowSurface *surface_;
 
+    bool request_toggle_fullscreen_;
+    void toggleFullscreen_ ();
+    void setFullscreen_(GLFWmonitor *mo);
 
 public:
     RenderingWindow();
@@ -58,7 +61,7 @@ public:
 
     // fullscreen
     bool isFullscreen ();
-    void setFullscreen(GLFWmonitor *mo);
+    void exitFullscreen();
     void toggleFullscreen ();
 
     // get width of rendering area
@@ -122,7 +125,7 @@ public:
     void popAttrib();
     RenderingAttrib currentAttrib();
 
-    // get hold on the main window
+    // get hold on the windows
     inline RenderingWindow& mainWindow() { return main_; }
     inline RenderingWindow& outputWindow() { return output_; }
 
