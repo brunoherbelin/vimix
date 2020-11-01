@@ -24,7 +24,6 @@
 #endif
 
 
-
 // this is called when receiving an answer for streaming request
 void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
@@ -34,7 +33,6 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
 
     try{
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_OFFER ) == 0 ){
-
 #ifdef NETWORK_DEBUG
             Log::Info("Received stream info from %s", sender);
 #endif
@@ -54,7 +52,6 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
 
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_REJECT ) == 0 ){
-
 #ifdef NETWORK_DEBUG
             Log::Info("Received rejection from %s", sender);
 #endif
@@ -108,7 +105,7 @@ void NetworkStream::connect(const std::string &nameconnection)
 
     // Nope, cannot connect to unknown connection
     if (streamer_index < 0) {
-        Log::Warning("Cannot connect to %s: please make sure the program is active.", nameconnection.c_str());
+        Log::Warning("Cannot connect to %s: please make sure %s is active on this machine.", nameconnection.c_str(), APP_NAME);
         failed_ = true;
         return;
     }
@@ -134,7 +131,7 @@ void NetworkStream::connect(const std::string &nameconnection)
         }
     }
     if (receiver_ == nullptr) {
-        Log::Notify("Cannot establish connection with %s. Please check your network.", nameconnection.c_str());
+        Log::Notify("Cannot establish connection with %s. Please check your network.", streamer_.name.c_str());
         failed_ = true;
         return;
     }
@@ -164,6 +161,7 @@ void NetworkStream::connect(const std::string &nameconnection)
 
 void NetworkStream::disconnect()
 {
+    // receiver should not be active anyway, make sure it is deleted
     if (receiver_) {
         delete receiver_;
         receiver_ = nullptr;
@@ -251,7 +249,8 @@ void NetworkStream::update()
             }
         }
         else {
-            Log::Info("Connection rejected.");
+            Log::Warning("Connection was rejected by %s.\nMake sure it accepts connection and try again.", streamer_.name.c_str());
+            failed_=true;
         }
     }
 }

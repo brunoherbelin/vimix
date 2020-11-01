@@ -72,6 +72,7 @@ public:
         static Connection _instance;
         return _instance;
     }
+    ~Connection();
 
     bool init();
     void terminate();

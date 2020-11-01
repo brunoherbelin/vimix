@@ -1151,7 +1151,7 @@ void UserInterface::RenderPreview()
                     // detecting the absence of video recorder but the variable is still not 0: fix this!
                     if (video_recorder_ > 0)
                         video_recorder_ = 0;
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.9f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         FrameGrabber *fg = new VideoRecorder;
                         video_recorder_ = fg->id();
@@ -1205,7 +1205,7 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Stream"))
             {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.9f));
                 if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
@@ -1214,8 +1214,7 @@ void UserInterface::RenderPreview()
                 {
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
-//                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::InputText("Name", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputText("My network name", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
@@ -1264,9 +1263,9 @@ void UserInterface::RenderPreview()
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( Streaming::manager().busy())
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.8f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.8f));
             else
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 1.0, 0.05, 0.2f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.2f));
             ImGui::Text(ICON_FA_SHARE_ALT_SQUARE);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();

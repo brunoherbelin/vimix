@@ -38,6 +38,7 @@ public:
         static Streaming _instance;
         return _instance;
     }
+    ~Streaming();
 
     void enable(bool on);
     inline bool enabled() const { return enabled_; }

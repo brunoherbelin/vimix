@@ -86,6 +86,11 @@ Streaming::Streaming() : enabled_(false), session_(nullptr), width_(0), height_(
     std::thread(wait_for_request_, receiver_).detach();
 }
 
+Streaming::~Streaming()
+{
+    if (receiver_!=nullptr)
+        delete receiver_;
+}
 
 bool Streaming::busy() const
 {

@@ -30,6 +30,7 @@ class NetworkStream : public Stream
 public:
 
     NetworkStream();
+
     void connect(const std::string &nameconnection);
     bool connected() const;
     void disconnect();

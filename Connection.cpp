@@ -22,6 +22,13 @@ Connection::Connection()
     receiver_ = nullptr;
 }
 
+
+Connection::~Connection()
+{
+    if (receiver_!=nullptr)
+        delete receiver_;
+}
+
 bool Connection::init()
 {
     // add default info for myself
@@ -160,7 +167,6 @@ void Connection::ask()
     p << osc::BeginMessage( OSC_PREFIX OSC_PING );
     p << Connection::manager().connections_[0].port_handshake;
     p << osc::EndMessage;
-
 
     // loop infinitely
     while(true)
