@@ -24,6 +24,8 @@ struct RenderingAttrib
 
 class RenderingWindow
 {
+    friend class Rendering;
+
     GLFWwindow *window_, *master_;
     RenderingAttrib window_attributes_;
     int index_;

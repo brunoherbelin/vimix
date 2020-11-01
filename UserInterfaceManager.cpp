@@ -337,6 +337,9 @@ void UserInterface::handleKeyboard()
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F ) && shift_modifier_active) {
+            Rendering::manager().mainWindow().toggleFullscreen();
+        }
     }
     // No CTRL modifier
     else {
@@ -349,8 +352,6 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F11 ))
-            Rendering::manager().mainWindow().toggleFullscreen();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -2364,7 +2365,7 @@ void Navigator::RenderMainPannel()
 
         // Icon to switch fullscreen
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
-        const char *tooltip[2] = {"Enter Fullscreen", "Exit Fullscreen"};
+        const char *tooltip[2] = {"Enter Fullscreen (" CTRL_MOD "Shift+F)", "Exit Fullscreen (" CTRL_MOD "Shift+F)"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
         if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();

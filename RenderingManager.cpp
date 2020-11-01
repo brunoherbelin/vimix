@@ -84,7 +84,7 @@ static void WindowMoveCallback( GLFWwindow *w, int x, int y)
     }
 }
 
-static void WindowEscapeFullscreen( GLFWwindow *w, int key, int scancode, int action, int)
+static void WindowEscapeFullscreen( GLFWwindow *w, int key, int, int action, int)
 {
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
     {
@@ -223,7 +223,6 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
-
     // operate on main window context
     main_.makeCurrent();
 
@@ -254,6 +253,7 @@ void Rendering::draw()
     glfwSwapBuffers(main_.window());
     glfwSwapBuffers(output_.window());
 
+
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -261,8 +261,13 @@ void Rendering::draw()
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
 
+    // change windows
+    main_.toggleFullscreen_();
+    output_.toggleFullscreen_();
+
     // no g_main_loop_run(loop) : update global GMainContext
     g_main_context_iteration(NULL, FALSE);
+
 }
 
 
@@ -398,7 +403,7 @@ WindowSurface::WindowSurface(Shader *s) : Primitive(s)
 
 
 RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr),
-    index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr)
+    index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_toggle_fullscreen_(false)
 {
 }
 
@@ -433,8 +438,8 @@ void RenderingWindow::setIcon(const std::string &resource)
 
 bool RenderingWindow::isFullscreen ()
 {
-    return (glfwGetWindowMonitor(window_) != nullptr);
-//    return Settings::application.windows[index_].fullscreen;
+//    return (glfwGetWindowMonitor(window_) != nullptr);
+    return Settings::application.windows[index_].fullscreen;
 }
 
 GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
@@ -507,25 +512,31 @@ GLFWmonitor *RenderingWindow::monitor()
 
 void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 {
+    // done request
+    request_toggle_fullscreen_ = false;
+
     // if in fullscreen mode
     if (mo == nullptr) {
+        // store fullscreen mode
+        Settings::application.windows[index_].fullscreen = false;
+
         // set to window mode
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         glfwSetWindowMonitor( window_, nullptr, Settings::application.windows[index_].x,
                                                 Settings::application.windows[index_].y,
                                                 Settings::application.windows[index_].w,
                                                 Settings::application.windows[index_].h, 0 );
-        Settings::application.windows[index_].fullscreen = false;
     }
     // not in fullscreen mode
     else {
-        // set to fullscreen mode
+        // store fullscreen mode
         Settings::application.windows[index_].fullscreen = true;
         Settings::application.windows[index_].monitor = glfwGetMonitorName(mo);
 
+        // set to fullscreen mode
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
-        glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
     }
 }
 
@@ -545,8 +556,9 @@ void RenderingWindow::toggleFullscreen()
 void RenderingWindow::toggleFullscreen_()
 {
     if (request_toggle_fullscreen_) {
+
         // if in fullscreen mode
-        if (isFullscreen()) {
+        if (glfwGetWindowMonitor(window_) != nullptr) {
             // exit fullscreen
             setFullscreen_(nullptr);
         }
@@ -556,7 +568,6 @@ void RenderingWindow::toggleFullscreen_()
             setFullscreen_(monitor());
         }
     }
-    request_toggle_fullscreen_ = false;
 }
 
 int RenderingWindow::width()
@@ -689,8 +700,6 @@ void RenderingWindow::show()
 
 void RenderingWindow::makeCurrent()
 {
-    toggleFullscreen_();
-
     // handle window resize
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
 
@@ -710,8 +719,6 @@ void RenderingWindow::draw(FrameBuffer *fb)
 {
     if (!window_ || !fb)
         return;
-
-    toggleFullscreen_();
 
     // only draw if window is not iconified
     if( !glfwGetWindowAttrib(window_, GLFW_ICONIFIED ) ) {
