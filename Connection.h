@@ -83,8 +83,6 @@ public:
 
 private:
 
-    std::string hostname_;
-
     static void ask();
     static void listen();
     ConnectionRequestListener listener_;

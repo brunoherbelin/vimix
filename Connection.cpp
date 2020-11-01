@@ -161,22 +161,15 @@ void Connection::ask()
     p << Connection::manager().connections_[0].port_handshake;
     p << osc::EndMessage;
 
-    // broadcast on several ports, except myself
-    std::vector<int> handshake_ports;
-    for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++) {
-        if (i != Connection::manager().connections_[0].port_handshake)
-            handshake_ports.push_back(i);
-    }
 
     // loop infinitely
     while(true)
     {
-        // broadcast the PING message on every possible ports
-        for(auto it=handshake_ports.begin(); it!=handshake_ports.end(); it++) {
-            IpEndpointName host( "255.255.255.255", (*it) );
-            UdpTransmitSocket socket( host );
+        // broadcast on several ports
+        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++) {
+            UdpSocket socket;
             socket.SetEnableBroadcast(true);
-            socket.Send( p.Data(), p.Size() );
+            socket.SendTo( IpEndpointName( "255.255.255.255", i ), p.Data(), p.Size() );
         }
 
         // wait a bit
@@ -223,22 +216,27 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int remote_port = (arg++)->AsInt32();
 
-            // build message
-            char buffer[IP_MTU_SIZE];
-            osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-            p.Clear();
-            p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
-            p << Connection::manager().connections_[0].name.c_str();
-            p << Connection::manager().connections_[0].port_handshake;
-            p << Connection::manager().connections_[0].port_stream_request;
-            p << Connection::manager().connections_[0].port_osc;
-            p << osc::EndMessage;
+            // ignore requests from myself
+            if ( !NetworkToolkit::is_host_ip(remote_ip)
+                 || Connection::manager().connections_[0].port_handshake != remote_port) {
 
-            // send OSC message to port indicated by remote
-            IpEndpointName host( remote_ip.c_str(), remote_port );
-            UdpTransmitSocket socket( host );
-            socket.Send( p.Data(), p.Size() );
+                // build message
+                char buffer[IP_MTU_SIZE];
+                osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+                p.Clear();
+                p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
+                p << Connection::manager().connections_[0].name.c_str();
+                p << Connection::manager().connections_[0].port_handshake;
+                p << Connection::manager().connections_[0].port_stream_request;
+                p << Connection::manager().connections_[0].port_osc;
+                p << osc::EndMessage;
 
+                // send OSC message to port indicated by remote
+                IpEndpointName host( remote_ip.c_str(), remote_port );
+                UdpTransmitSocket socket( host );
+                socket.Send( p.Data(), p.Size() );
+
+            }
         }
         // pong response: add info
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PONG) == 0 ){
