@@ -88,8 +88,10 @@ Streaming::Streaming() : enabled_(false), session_(nullptr), width_(0), height_(
 
 Streaming::~Streaming()
 {
-    if (receiver_!=nullptr)
+    if (receiver_!=nullptr) {
+        receiver_->Break();
         delete receiver_;
+    }
 }
 
 bool Streaming::busy() const

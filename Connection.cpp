@@ -25,8 +25,10 @@ Connection::Connection()
 
 Connection::~Connection()
 {
-    if (receiver_!=nullptr)
+    if (receiver_!=nullptr) {
+        receiver_->Break();
         delete receiver_;
+    }
 }
 
 bool Connection::init()
@@ -104,7 +106,7 @@ ConnectionInfo Connection::info(int index)
         connections_.push_back(ConnectionInfo());
     }
 
-    index = CLAMP(index, 0, connections_.size());
+    index = CLAMP(index, 0, (int) connections_.size());
 
     return connections_[index];
 }
