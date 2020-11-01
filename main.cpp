@@ -40,9 +40,17 @@ void drawScene()
 
 int main(int argc, char *argv[])
 {
-    // clean start if requested
-    if (argc > 1 && std::string(argv[1]) == "-clean")
-        Settings::Save();
+    // one extra argument is given
+    if (argc == 2) {
+        std::string argument(argv[1]);
+        if (argument == "--clean" || argument == "-c")
+            // clean start if requested : Save empty settings before loading
+            Settings::Save();
+        else {
+            // try to open the file
+            Settings::application.argument_file = argument;
+        }
+    }
 
     ///
     /// Settings

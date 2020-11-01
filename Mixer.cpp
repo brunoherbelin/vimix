@@ -112,7 +112,9 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullpt
     current_source_index_ = -1;
 
     // auto load if Settings ask to
-    if ( Settings::application.recentSessions.load_at_start &&
+    if ( !Settings::application.argument_file.empty())
+        load( Settings::application.argument_file );
+    else if ( Settings::application.recentSessions.load_at_start &&
          Settings::application.recentSessions.front_is_valid &&
          Settings::application.recentSessions.filenames.size() > 0 &&
          Settings::application.fresh_start)
