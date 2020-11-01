@@ -179,7 +179,7 @@ struct Application
 
     // connection settings
     bool accept_connections;
-    std::map<int, std::string> instance_names;
+//    std::map<int, std::string> instance_names;
 
     // Settings of widgets
     WidgetsConfig widget;

@@ -35,6 +35,9 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
     try{
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_OFFER ) == 0 ){
 
+#ifdef NETWORK_DEBUG
+            Log::Info("Received stream info from %s", sender);
+#endif
             NetworkToolkit::StreamConfig conf;
 
             // someone is offering a stream
@@ -49,17 +52,14 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
             parent_->connected_ = true;
             parent_->received_config_ = true;
 
-#ifdef NETWORK_DEBUG
-            Log::Info("Received stream info from %s", sender);
-#endif
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_REJECT ) == 0 ){
 
-            parent_->connected_ = false;
-            parent_->received_config_ = true;
 #ifdef NETWORK_DEBUG
             Log::Info("Received rejection from %s", sender);
 #endif
+            parent_->connected_ = false;
+            parent_->received_config_ = true;
         }
     }
     catch( osc::Exception& e ){
@@ -113,6 +113,10 @@ void NetworkStream::connect(const std::string &nameconnection)
         return;
     }
 
+    // ok, we want to ask to this connected streamer to send us a stream
+    streamer_ = Connection::manager().info(streamer_index);
+    std::string listener_address = NetworkToolkit::closest_host_ip(streamer_.address);
+
     // prepare listener to receive stream config from remote streaming manager
     listener_.setParent(this);
 
@@ -123,7 +127,7 @@ void NetworkStream::connect(const std::string &nameconnection)
             // invent a port which would be available
             listener_port_ = 72000 + rand()%1000;
             // try to create receiver (through exception on fail)
-            receiver_ = new UdpListeningReceiveSocket(IpEndpointName(Connection::manager().info().address.c_str(), listener_port_), &listener_);
+            receiver_ = new UdpListeningReceiveSocket(IpEndpointName(listener_address.c_str(), listener_port_), &listener_);
         }
         catch (const std::runtime_error&) {
             receiver_ = nullptr;
@@ -134,12 +138,6 @@ void NetworkStream::connect(const std::string &nameconnection)
         failed_ = true;
         return;
     }
-
-    // ok, we can ask to this connected streamer to send us a stream
-    ConnectionInfo streamer = Connection::manager().info(streamer_index);
-    IpEndpointName a( streamer.address.c_str(), streamer.port_stream_request );
-    streamer_address_ = a.address;
-    streamer_address_ = a.port;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -152,14 +150,14 @@ void NetworkStream::connect(const std::string &nameconnection)
     p << osc::EndMessage;
 
     // send OSC message to streamer
-    UdpTransmitSocket socket( streamer_address_ );
+    UdpTransmitSocket socket( IpEndpointName(streamer_.address.c_str(), streamer_.port_stream_request) );
     socket.Send( p.Data(), p.Size() );
 
     // Now we wait for the offer from the streamer
     std::thread(wait_for_stream_, receiver_).detach();
 
 #ifdef NETWORK_DEBUG
-    Log::Info("Asking %s:%d for a stream", streamer.address.c_str(), streamer.port_stream_request);
+    Log::Info("Asking %s:%d for a stream", streamer_.address.c_str(), streamer_.port_stream_request);
     Log::Info("Waiting for response at %s:%d", Connection::manager().info().address.c_str(), listener_port_);
 #endif
 }
@@ -181,7 +179,7 @@ void NetworkStream::disconnect()
         p << osc::EndMessage;
 
         // send OSC message to streamer
-        UdpTransmitSocket socket( streamer_address_ );
+        UdpTransmitSocket socket( IpEndpointName(streamer_.address.c_str(), streamer_.port_stream_request) );
         socket.Send( p.Data(), p.Size() );
     }
 }

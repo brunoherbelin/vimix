@@ -7,6 +7,7 @@
 #include "ip/UdpSocket.h"
 
 #include "NetworkToolkit.h"
+#include "Connection.h"
 #include "StreamSource.h"
 
 class NetworkStream;
@@ -42,7 +43,7 @@ public:
 
 private:
     // connection information
-    IpEndpointName streamer_address_;
+    ConnectionInfo streamer_;
     StreamerResponseListener listener_;
     UdpListeningReceiveSocket *receiver_;
     std::atomic<bool> received_config_;

@@ -111,14 +111,14 @@ void Settings::Save()
     {
         XMLElement *connectionsNode = xmlDoc.NewElement( "Connections" );
 
-        map<int, std::string>::iterator iter;
-        for (iter=application.instance_names.begin(); iter != application.instance_names.end(); iter++)
-        {
-            XMLElement *connection = xmlDoc.NewElement( "Instance" );
-            connection->SetAttribute("name", iter->second.c_str());
-            connection->SetAttribute("id", iter->first);
-            connectionsNode->InsertEndChild(connection);
-        }
+//        map<int, std::string>::iterator iter;
+//        for (iter=application.instance_names.begin(); iter != application.instance_names.end(); iter++)
+//        {
+//            XMLElement *connection = xmlDoc.NewElement( "Instance" );
+//            connection->SetAttribute("name", iter->second.c_str());
+//            connection->SetAttribute("id", iter->first);
+//            connectionsNode->InsertEndChild(connection);
+//        }
         pRoot->InsertEndChild(connectionsNode);
     }
 
@@ -346,13 +346,13 @@ void Settings::Load()
         XMLElement * pElement = pRoot->FirstChildElement("Connections");
         if (pElement)
         {
-            XMLElement* connectionNode = pElement->FirstChildElement("Instance");
-            for( ; connectionNode ; connectionNode=connectionNode->NextSiblingElement())
-            {
-                int id = 0;
-                connectionNode->QueryIntAttribute("id", &id);
-                application.instance_names[id] = connectionNode->Attribute("name");
-            }
+//            XMLElement* connectionNode = pElement->FirstChildElement("Instance");
+//            for( ; connectionNode ; connectionNode=connectionNode->NextSiblingElement())
+//            {
+//                int id = 0;
+//                connectionNode->QueryIntAttribute("id", &id);
+//                application.instance_names[id] = connectionNode->Attribute("name");
+//            }
         }
 
     }

@@ -65,10 +65,10 @@ bool Connection::init()
         // inform the application settings of our id
         Settings::application.instance_id = connections_[0].port_handshake - HANDSHAKE_PORT;
         // use or replace instance name from settings
-        if (Settings::application.instance_names.count(Settings::application.instance_id))
-            connections_[0].name = Settings::application.instance_names[Settings::application.instance_id];
-        else
-            Settings::application.instance_names[Settings::application.instance_id] = connections_[0].name;
+//        if (Settings::application.instance_names.count(Settings::application.instance_id))
+//            connections_[0].name = Settings::application.instance_names[Settings::application.instance_id];
+//        else
+//            Settings::application.instance_names[Settings::application.instance_id] = connections_[0].name;
         // restore state of Streamer
         Streaming::manager().enable( Settings::application.accept_connections );
 
@@ -176,11 +176,12 @@ void Connection::ask()
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // check the list of connections for non responding (disconnected)
-        for(auto it=Connection::manager().connections_.begin(); it!=Connection::manager().connections_.end(); ) {
+        std::vector< ConnectionInfo >::iterator it = Connection::manager().connections_.begin();
+        for(it++; it!=Connection::manager().connections_.end(); ) {
             // decrease life score
             (*it).alive--;
             // erase connection if its life score is negative (not responding too many times)
-            if ( it!=Connection::manager().connections_.begin() && (*it).alive < 0 ) {
+            if ( (*it).alive < 0 ) {
                 // inform streamer to cancel streaming to this client
                 Streaming::manager().removeStreams( (*it).name );
                 // remove from list
@@ -258,8 +259,8 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 // a new connection! Add to list
                 Connection::manager().connections_.push_back(info);
                 // replace instance name in settings
-                int id = info.port_handshake - HANDSHAKE_PORT;
-                Settings::application.instance_names[id] = info.name;
+//                int id = info.port_handshake - HANDSHAKE_PORT;
+//                Settings::application.instance_names[id] = info.name;
 
 #ifdef CONNECTION_DEBUG
                 Log::Info("List of connection updated:");

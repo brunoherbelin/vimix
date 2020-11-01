@@ -44,6 +44,9 @@ void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_REQUEST) == 0 ){
 
+#ifdef STREAMER_DEBUG
+            Log::Info("%s wants a stream.", sender);
+#endif
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int reply_to_port = (arg++)->AsInt32();
             const char *client_name = (arg++)->AsString();
@@ -51,19 +54,16 @@ void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 Streaming::manager().addStream(sender, reply_to_port, client_name);
             else
                 Streaming::manager().refuseStream(sender, reply_to_port);
-#ifdef STREAMER_DEBUG
-            Log::Info("%s wants a stream.", sender);
-#endif
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_DISCONNECT) == 0 ){
-
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int port = (arg++)->AsInt32();
-            Streaming::manager().removeStream(sender, port);
 
 #ifdef STREAMER_DEBUG
             Log::Info("%s does not need streaming anymore.", sender);
 #endif
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            int port = (arg++)->AsInt32();
+            Streaming::manager().removeStream(sender, port);
+
         }
     }
     catch( osc::Exception& e ){
@@ -247,6 +247,7 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     socket.Send( p.Data(), p.Size() );
 
 #ifdef STREAMER_DEBUG
+    Log::Info("Replying to %s:%d", sender_ip.c_str(), reply_to);
     Log::Info("Starting streaming to %s:%d", sender_ip.c_str(), conf.port);
 #endif
 
