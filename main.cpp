@@ -31,12 +31,19 @@
 #include "Connection.h"
 
 
+#if defined(APPLE)
+extern "C"{
+    void forward_load_message(const char * filename){
+        Settings::application.argument_file = std::string(filename);
+    }
+}
+#endif
+
+
 void drawScene()
 {
     Mixer::manager().draw();
 }
-
-
 
 int main(int argc, char *argv[])
 {

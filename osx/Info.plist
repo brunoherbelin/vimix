@@ -9,22 +9,18 @@
 	<key>CFBundleDocumentTypes</key>
         <array>
                 <dict>
-                        <key>CFBundleTypeExtensions</key>
-                        <array>
-                                <string>mix</string>
-                        </array>
-                        <key>CFBundleTypeIconFile</key>
-                        <string>vimix.icns</string>
                         <key>CFBundleTypeName</key>
-                        <string>GLMixer Session</string>
-                        <key>CFBundleTypeOSTypes</key>
-                        <array>
-                                <string>MIX </string>
-                        </array>
+                        <string>vimix session</string>
                         <key>CFBundleTypeRole</key>
                         <string>Editor</string>
-                	<key>LSIsAppleDefaultForType</key>
-        		<true/>
+                        <key>LSIsAppleDefaultForType</key>
+                        <true/>
+                        <key>LSHandlerRank</key>
+                        <string>Owner</string>
+                        <key>LSItemContentTypes</key>
+                        <array>
+                            <string>com.bhbn.mix</string>
+                        </array>
                 </dict>
         </array>
 	<key>CFBundleExecutable</key>

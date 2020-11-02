@@ -13,10 +13,10 @@ if(UNIX)
 
         # the RPATH to be used when installing
         set(CMAKE_SKIP_RPATH TRUE)
-
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
         set(CMAKE_OSX_ARCHITECTURES x86_64)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+#        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X version to target for deployment")
 
     else()
         add_definitions(-DLINUX)
@@ -283,6 +283,7 @@ set(VMIX_SRCS
     ActionManager.cpp
 )
 
+
 set(VMIX_RSC_FILES
     ./rsc/shaders/simple.fs
     ./rsc/shaders/simple.vs
@@ -370,6 +371,7 @@ IF(APPLE)
     # create the application
     add_executable(${VMIX_BINARY} MACOSX_BUNDLE
         ${VMIX_SRCS}
+        ./osx/CustomDelegate.m
         ${IMGUITEXTEDIT_SRC}
         ${MACOSX_BUNDLE_ICON_FILE}
     )
@@ -378,11 +380,19 @@ IF(APPLE)
     set(MACOSX_BUNDLE_PLIST_FILE ${CMAKE_SOURCE_DIR}/osx/Info.plist)
     set_target_properties(${VMIX_BINARY} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE})
 
+    set(PLATFORM_LIBS
+        "-framework CoreFoundation"
+        "-framework Appkit"
+    )
+
 ELSE(APPLE)
 
     add_executable(${VMIX_BINARY}
         ${VMIX_SRCS}
         ${IMGUITEXTEDIT_SRC}
+    )
+
+    set(PLATFORM_LIBS  ""
     )
 
 ENDIF(APPLE)
@@ -421,6 +431,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     IMGUI
     OSCPACK
     vmix::rc
+    ${PLATFORM_LIBS}
 )
 
 macro_display_feature_log()
@@ -434,7 +445,7 @@ SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
 SET(CPACK_PACKAGE_CONTACT "bruno.herbelin@gmail.com")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
 SET(CPACK_PACKAGE_VERSION_MAJOR "0")
-SET(CPACK_PACKAGE_VERSION_MINOR "3")
+SET(CPACK_PACKAGE_VERSION_MINOR "4")
 SET(CPACK_PACKAGE_VENDOR "Bruno Herbelin")
 SET(CPACK_SOURCE_IGNORE_FILES
     "/\\\\.git/"
@@ -471,7 +482,7 @@ IF(APPLE)
     ### TODO configure auto to find installation dir of gst
 
     # intall the gst-plugin-scanner program (used by plugins at load time)
-    install(FILES "/usr/local/Cellar/gstreamer/1.18.0/libexec/gstreamer-1.0/gst-plugin-scanner"
+    install(FILES "/usr/local/Cellar/gstreamer/1.18.1/libexec/gstreamer-1.0/gst-plugin-scanner"
         DESTINATION "${plugin_dest_dir}"
         PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         COMPONENT Runtime
@@ -482,11 +493,11 @@ IF(APPLE)
 
     # Install the gst-plugins (all those installed with brew )
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-#    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.0/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+#    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # install locally recompiled gst-plugins-bad
     install(FILES "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
