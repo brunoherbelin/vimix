@@ -1219,6 +1219,7 @@ void UserInterface::RenderPreview()
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
                         ImGui::Separator();
+                        ImGui::MenuItem("Active connections", nullptr, false, false);
                         for (auto it = ls.begin(); it != ls.end(); it++)
                             ImGui::Text(" %s", (*it).c_str() );
                     }

@@ -217,9 +217,8 @@ void Streaming::refuseStream(const std::string &sender, int reply_to)
     p << osc::EndMessage;
     // send OSC message to client
     socket.Send( p.Data(), p.Size() );
-#ifdef STREAMER_DEBUG
-    Log::Info("Refusing streaming to %s", sender_ip.c_str());
-#endif
+    // inform user
+    Log::Warning("A connection request for streaming came and was rejected.\nYou can Accept connections from the Output window.");
 }
 
 void Streaming::addStream(const std::string &sender, int reply_to, const std::string &clientname)
@@ -241,14 +240,11 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     conf.width = width_;
     conf.height = height_;
     // offer SHM if same IP that our host IP (i.e. on the same machine)
-    if( NetworkToolkit::is_host_ip(conf.client_address) ) {
+    if( NetworkToolkit::is_host_ip(conf.client_address) )
         conf.protocol = NetworkToolkit::SHM_RAW;
-    }
-    //  any other IP : offer UDP streaming
-    else {
+    //  any other IP : offer network streaming
+    else
         conf.protocol = NetworkToolkit::UDP_JPEG;
-    }
-//    conf.protocol = NetworkToolkit::UDP_JPEG; // force udp for testing
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
