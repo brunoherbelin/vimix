@@ -39,8 +39,8 @@ public:
 
     glm::ivec2 resolution() const;
     inline NetworkToolkit::Protocol protocol() const { return config_.protocol; }
-    inline std::string IP() const { return config_.client_address; }
-    inline uint port() const { return config_.port; }
+    std::string clientAddress() const;
+    std::string serverAddress() const;
 
 private:
     // connection information

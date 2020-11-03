@@ -220,7 +220,7 @@ Device::Device()
     g_list_free(devices);
 
     // Add config for plugged screen
-    src_name_.push_back("Screen");
+    src_name_.push_back("Screen capture");
     src_description_.push_back(gst_plugin_vidcap);
 
     // Try to auto find resolution

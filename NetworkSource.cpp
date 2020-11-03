@@ -78,6 +78,17 @@ glm::ivec2 NetworkStream::resolution() const
     return glm::ivec2(config_.width, config_.height);
 }
 
+
+std::string NetworkStream::clientAddress() const
+{
+    return config_.client_address + ":" + std::to_string(config_.port);
+}
+
+std::string NetworkStream::serverAddress() const
+{
+    return streamer_.address;
+}
+
 void wait_for_stream_(UdpListeningReceiveSocket *receiver)
 {
     receiver->Run();

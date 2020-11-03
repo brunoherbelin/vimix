@@ -1139,7 +1139,7 @@ void UserInterface::RenderPreview()
             {
                 // Stop recording menu if main recorder already exists
                 if (rec) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         rec->stop();
                         video_recorder_ = 0;
@@ -1151,7 +1151,7 @@ void UserInterface::RenderPreview()
                     // detecting the absence of video recorder but the variable is still not 0: fix this!
                     if (video_recorder_ > 0)
                         video_recorder_ = 0;
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.9f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         FrameGrabber *fg = new VideoRecorder;
                         video_recorder_ = fg->id();
@@ -1205,7 +1205,7 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Stream"))
             {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.9f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
                 if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
@@ -1214,12 +1214,12 @@ void UserInterface::RenderPreview()
                 {
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
-                    ImGui::InputText("My network name", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputText("My network ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
                         ImGui::Separator();
-                        ImGui::MenuItem("Active connections", nullptr, false, false);
+                        ImGui::MenuItem("Active streams", nullptr, false, false);
                         for (auto it = ls.begin(); it != ls.end(); it++)
                             ImGui::Text(" %s", (*it).c_str() );
                     }
@@ -1252,7 +1252,7 @@ void UserInterface::RenderPreview()
             float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.05, 0.05, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
             ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
@@ -1264,9 +1264,9 @@ void UserInterface::RenderPreview()
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( Streaming::manager().busy())
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.8f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.8f));
             else
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05, 0.8, 1.0, 0.2f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.2f));
             ImGui::Text(ICON_FA_SHARE_ALT_SQUARE);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
@@ -2118,10 +2118,10 @@ void Navigator::RenderNewPannel()
         static const char* origin_names[4] = { ICON_FA_PHOTO_VIDEO "  File",
                                                ICON_FA_SYNC "   Internal",
                                                ICON_FA_COG "   Generated",
-                                               ICON_FA_PLUG "    External"
+                                               ICON_FA_PLUG "    Connected"
                                              };
         // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
-        if (ImGui::Combo("Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
+        if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
 
         // File Source creation
@@ -2140,7 +2140,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n- Video (*.mpg, *mov, *.avi, etc.)\n- Image (*.jpg, *.png, etc.)\n- Vector graphics (*.svg)\n- vimix session (*.mix)\n\nEquivalent to dropping the file in the workspace.");
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n- video (*.mpg, *mov, *.avi, etc.)\n- image (*.jpg, *.png, etc.)\n- vector graphics (*.svg)\n- vimix session (*.mix)\n\n(Equivalent to dropping the file in the workspace)");
 
             // if a file dialog future was registered
             if ( !fileImportFileDialogs.empty() ) {
@@ -2254,7 +2254,7 @@ void Navigator::RenderNewPannel()
             ImGui::SetCursorPosY(2.f * width_);
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##External", "Select source"))
+            if (ImGui::BeginCombo("##External", "Select device"))
             {
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
@@ -2274,7 +2274,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source with images from external devices or network.");
+            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n- webcams or frame grabbers\n- screen capture\n- vimix stream from connected machines");
 
         }
 

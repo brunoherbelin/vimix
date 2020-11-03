@@ -433,10 +433,9 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGuiToolkit::Icon(18,13);
         ImGui::SameLine(0, 10);
         ImGui::Text("Video File");
-        if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
-            UserInterface::manager().showMediaPlayer( s.mediaplayer());
-        }
     }
+    if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        UserInterface::manager().showMediaPlayer( s.mediaplayer());
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
 
@@ -445,6 +444,7 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
+    ImGui::Text("%s", SystemToolkit::base_filename(s.path()).c_str());
 
     if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFading(0.f);
     float f = s.session()->fading();
@@ -537,14 +537,16 @@ void ImGuiVisitor::visit (NetworkSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
-    ImGui::Text("Network connection");
+    ImGui::Text("Network stream");
 
-    ImGui::Text("Connection to %s", s.connection().c_str());
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
+    ImGui::Text("%s", s.connection().c_str());
+    ImGui::PopStyleColor(1);
     NetworkStream *ns = s.networkStream();
-    ImGui::Text(" - %s (%dx%d)\n - Network host %s:%d", NetworkToolkit::protocol_name[ns->protocol()],
-            ns->resolution().x, ns->resolution().y, ns->IP().c_str(), ns->port());
+    ImGui::Text(" - %s (%dx%d)\n - Server address %s", NetworkToolkit::protocol_name[ns->protocol()],
+            ns->resolution().x, ns->resolution().y, ns->serverAddress().c_str());
 
-    if ( ImGui::Button("Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
     {
         // TODO : reload ?
         s.setConnection(s.connection());
