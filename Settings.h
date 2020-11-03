@@ -168,7 +168,6 @@ struct Application
     // Verification
     std::string name;
     std::string executable;
-    std::string argument_file;
 
     // Global settings Application interface
     float scale;
@@ -209,7 +208,7 @@ struct Application
     History recentFolders;
     History recentImport;
 
-    Application() : fresh_start(false), name(APP_NAME), executable(""), argument_file("") {
+    Application() : fresh_start(false), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
         accent_color = 0;
         pannel_stick = false;

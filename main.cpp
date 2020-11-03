@@ -34,7 +34,7 @@
 #if defined(APPLE)
 extern "C"{
     void forward_load_message(const char * filename){
-        Settings::application.argument_file = std::string(filename);
+        Mixer::manager().load(filename);
     }
 }
 #endif
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
             Settings::Save();
         else {
             // try to open the file
-            Settings::application.argument_file = argument;
+            Mixer::manager().load(argument);
         }
     }
 
