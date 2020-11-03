@@ -215,6 +215,7 @@ struct Application
         smooth_transition = true;
         smooth_cursor = false;
         action_history_follow_view = false;
+        accept_connections = false;
         current_view = 1;
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
