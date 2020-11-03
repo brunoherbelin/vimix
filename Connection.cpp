@@ -170,15 +170,15 @@ void Connection::ask()
     p << Connection::manager().connections_[0].port_handshake;
     p << osc::EndMessage;
 
+    UdpSocket socket;
+    socket.SetEnableBroadcast(true);
+
     // loop infinitely
     while(true)
     {
         // broadcast on several ports
-        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++) {
-            UdpSocket socket;
-            socket.SetEnableBroadcast(true);
-            socket.SendTo( IpEndpointName( "255.255.255.255", i ), p.Data(), p.Size() );
-        }
+        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++)
+            socket.SendTo( IpEndpointName( i ), p.Data(), p.Size() );
 
         // wait a bit
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -216,6 +216,7 @@ void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     // get ip of connection (without port)
     std::string remote_ip(sender);
     remote_ip = remote_ip.substr(0, remote_ip.find_last_of(":"));
+
 
     try{
         // ping request : reply with pong

@@ -94,25 +94,29 @@ Streaming::~Streaming()
     }
 }
 
-bool Streaming::busy() const
+bool Streaming::busy()
 {
     bool b = false;
 
+    streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
     for (; sit != streamers_.end() && !b; sit++)
         b = (*sit)->busy() ;
+    streamers_lock_.unlock();
 
     return b;
 }
 
 
-std::vector<std::string> Streaming::listStreams() const
+std::vector<std::string> Streaming::listStreams()
 {
     std::vector<std::string>  ls;
 
+    streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
     for (; sit != streamers_.end(); sit++)
         ls.push_back( (*sit)->info() );
+    streamers_lock_.unlock();
 
     return ls;
 }
@@ -128,8 +132,10 @@ void Streaming::enable(bool on)
         // refuse streaming requests
         enabled_ = false;
         // ending and removing all streaming
+        streamers_lock_.lock();
         for (auto sit = streamers_.begin(); sit != streamers_.end(); sit=streamers_.erase(sit))
             (*sit)->stop();
+        streamers_lock_.unlock();
         Log::Info("Refusing stream requests to %s. No streaming ongoing.", Connection::manager().info().name.c_str());
     }
 }
@@ -155,6 +161,7 @@ void Streaming::removeStream(const std::string &sender, int port)
     std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
 
     // parse the list for a streamers matching IP and port
+    streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
     for (; sit != streamers_.end(); sit++){
         NetworkToolkit::StreamConfig config = (*sit)->config_;
@@ -169,12 +176,14 @@ void Streaming::removeStream(const std::string &sender, int port)
             break;
         }
     }
+    streamers_lock_.unlock();
 
 }
 
 void Streaming::removeStreams(const std::string &clientname)
 {
     // remove all streamers matching given IP
+    streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
     while ( sit != streamers_.end() ){
         NetworkToolkit::StreamConfig config = (*sit)->config_;
@@ -190,6 +199,7 @@ void Streaming::removeStreams(const std::string &clientname)
         else
             sit++;
     }
+    streamers_lock_.unlock();
 }
 
 void Streaming::refuseStream(const std::string &sender, int reply_to)

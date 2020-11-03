@@ -1,6 +1,8 @@
 #ifndef STREAMER_H
 #define STREAMER_H
 
+#include <mutex>
+
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsrc.h>
 
@@ -45,8 +47,8 @@ public:
     void setSession(Session *se);
     void removeStreams(const std::string &clientname);
 
-    bool busy() const;
-    std::vector<std::string> listStreams() const;
+    bool busy();
+    std::vector<std::string> listStreams();
 
 protected:
     void addStream(const std::string &sender, int reply_to, const std::string &clientname);
@@ -63,8 +65,8 @@ private:
     int width_;
     int height_;    
 
-    // TODO Mutex to protect access to list of streamers
-    std::vector<VideoStreamer *> streamers_;
+    std::vector<VideoStreamer *> streamers_;    
+    std::mutex streamers_lock_;
 };
 
 class VideoStreamer : public FrameGrabber

@@ -82,14 +82,15 @@ const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 
     "shmsrc socket-path=XXXX ! video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG,payload=26 ! queue max-size-buffers=10 ! rtpjitterbuffer ! rtpjpegdepay ! jpegdec",
+    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG,payload=26,clock-rate=90000 ! queue max-size-buffers=10 ! rtpjpegdepay ! jpegdec",
     "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=H264,payload=96,clock-rate=90000 ! queue ! rtph264depay ! avdec_h264",
     "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=JPEG,payload=26 ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
     "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtph264depay ! avdec_h264"
 };
 
-std::vector<std::string> ipstrings;
-std::vector<unsigned long> iplongs;
+bool initialized_ = false;
+std::vector<std::string> ipstrings_;
+std::vector<unsigned long> iplongs_;
 
 
 void add_interface(int fd, const char *name) {
@@ -109,11 +110,12 @@ void add_interface(int fd, const char *name) {
                 return; /* ignore */
         }
         // add only if not already listed
-        if ( std::find(ipstrings.begin(), ipstrings.end(), std::string(host)) == ipstrings.end() )
+        std::string hostip(host);
+        if ( std::find(ipstrings_.begin(), ipstrings_.end(), hostip) == ipstrings_.end() )
         {
-            ipstrings.push_back( std::string(host) );
-            iplongs.push_back( GetHostByName(host) );
-//            printf("%-24s%s %lu\n", name, host, GetHostByName(host));
+            ipstrings_.push_back( hostip );
+            iplongs_.push_back( GetHostByName(host) );
+//            printf("%s %s %lu\n", name, host, GetHostByName(host));
         }
     }
 }
@@ -143,32 +145,34 @@ void list_interfaces()
         }
     }
     close(fd);
+    initialized_ = true;
 }
 
 std::vector<std::string> NetworkToolkit::host_ips()
 {
-    if (ipstrings.empty())
+    if (!initialized_)
         list_interfaces();
 
-    return ipstrings;
+    return ipstrings_;
 }
+
 
 bool NetworkToolkit::is_host_ip(const std::string &ip)
 {
     if ( ip.compare("localhost") == 0)
         return true;
 
-    if (ipstrings.empty())
+    if (!initialized_)
         list_interfaces();
 
-    return std::find(ipstrings.begin(), ipstrings.end(), ip) != ipstrings.end();
+    return std::find(ipstrings_.begin(), ipstrings_.end(), ip) != ipstrings_.end();
 }
 
 std::string NetworkToolkit::closest_host_ip(const std::string &ip)
 {
     std::string address = "localhost";
 
-    if (iplongs.empty())
+    if (!initialized_)
         list_interfaces();
 
     // discard trivial case
@@ -178,8 +182,8 @@ std::string NetworkToolkit::closest_host_ip(const std::string &ip)
         unsigned long host = GetHostByName( ip.c_str() );
         unsigned long mini = host;
 
-        for (size_t i=0; i < iplongs.size(); i++){
-            unsigned long diff = host > iplongs[i] ? host-iplongs[i] : iplongs[i]-host;
+        for (size_t i=0; i < iplongs_.size(); i++){
+            unsigned long diff = host > iplongs_[i] ? host-iplongs_[i] : iplongs_[i]-host;
             if (diff < mini) {
                 mini = diff;
                 index_mini = (int) i;
@@ -187,7 +191,7 @@ std::string NetworkToolkit::closest_host_ip(const std::string &ip)
         }
 
         if (index_mini>0)
-            address = ipstrings[index_mini];
+            address = ipstrings_[index_mini];
 
     }
 
