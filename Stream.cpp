@@ -547,7 +547,8 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 
     // always empty frame before filling it again
     if ( frame_[write_index_].full ) {
-        gst_video_frame_unmap(&frame_[write_index_].vframe);
+        if ( GST_MINI_OBJECT_REFCOUNT_VALUE( &frame_[write_index_].vframe.buffer->mini_object ) > 0)
+            gst_video_frame_unmap(&frame_[write_index_].vframe);
         frame_[write_index_].full = false;
     }
 
