@@ -46,6 +46,7 @@ public:
     inline bool enabled() const { return enabled_; }
     void setSession(Session *se);
     void removeStreams(const std::string &clientname);
+    void removeStream(const std::string &sender, int port);
 
     bool busy();
     std::vector<std::string> listStreams();
@@ -53,7 +54,6 @@ public:
 protected:
     void addStream(const std::string &sender, int reply_to, const std::string &clientname);
     void refuseStream(const std::string &sender, int reply_to);
-    void removeStream(const std::string &sender, int port);
 
 private:
 
@@ -72,6 +72,8 @@ private:
 class VideoStreamer : public FrameGrabber
 {
     friend class Streaming;
+
+    void stop() override;
 
     // Frame buffer information
     FrameBuffer  *frame_buffer_;
@@ -101,7 +103,6 @@ public:
     ~VideoStreamer();
 
     void addFrame(FrameBuffer *frame_buffer, float dt) override;
-    void stop() override;
     std::string info() override;
     double duration() override;
     bool busy() override;

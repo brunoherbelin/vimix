@@ -155,6 +155,7 @@ void Streaming::setSession(Session *se)
     }
 }
 
+
 void Streaming::removeStream(const std::string &sender, int port)
 {
     // get ip of sender
@@ -266,7 +267,9 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
 
     // create streamer & remember it
     VideoStreamer *streamer = new VideoStreamer(conf);
+    streamers_lock_.lock();
     streamers_.push_back(streamer);
+    streamers_lock_.unlock();
 
     // start streamer
     session_->addFrameGrabber(streamer);
@@ -285,8 +288,6 @@ VideoStreamer::VideoStreamer(NetworkToolkit::StreamConfig conf): FrameGrabber(),
 
 VideoStreamer::~VideoStreamer()
 {
-    stop();
-
     if (src_ != nullptr)
         gst_object_unref (src_);
     if (pipeline_ != nullptr) {
@@ -424,7 +425,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
             frame_buffer->height() != height_ ||
             frame_buffer->use_alpha() != frame_buffer_->use_alpha()) {
 
-           stop();
+           Streaming::manager().removeStream(config_.client_address, config_.port);
            Log::Warning("Streaming interrupted: new session (%d x %d) incompatible with recording (%d x %d)", frame_buffer->width(), frame_buffer->height(), width_, height_);
        }
        else {
@@ -572,7 +573,10 @@ double VideoStreamer::duration()
 
 bool VideoStreamer::busy()
 {
-    return accept_buffer_ ? true : false;
+    if (streaming_)
+        return accept_buffer_ ? true : false;
+    else
+        return false;
 }
 
 // appsrc needs data and we should start sending
