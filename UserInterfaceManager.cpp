@@ -786,7 +786,9 @@ void UserInterface::Render()
 
     // stats in the corner
     if (Settings::application.widget.stats)
-        ImGuiToolkit::ShowStats(&Settings::application.widget.stats, &Settings::application.widget.stats_corner);
+        ImGuiToolkit::ShowStats(&Settings::application.widget.stats,
+                                &Settings::application.widget.stats_corner,
+                                &Settings::application.widget.stats_timer);
 
     // management of video_recorder
     FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);

@@ -798,8 +798,11 @@ void ImGuiToolkit::PushFont(ImGuiToolkit::font_style style)
 }
 
 
-void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
+void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
 {
+    static guint64 start_time_1_ = gst_util_get_timestamp ();
+    static guint64 start_time_2_ = gst_util_get_timestamp ();
+
     if (!p_corner || !p_open)
         return;
 
@@ -817,18 +820,42 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner)
 
     if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
+        int mode = (*p_timer) ? 1 : 0;
+        ImGui::SetNextItemWidth(250);
+        if (ImGui::Combo("##mode", &mode, ICON_FA_TACHOMETER_ALT "  Performance\0" ICON_FA_HOURGLASS_HALF "  Timers\0") ) {
+            (*p_timer) = mode > 0;
+        }
 
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        bool dumm = true;
+        if (*p_timer) {
+            guint64 time_ = gst_util_get_timestamp ();
 
-        ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-//        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
-        ImGui::Text("Refresh %.1f FPS", io.Framerate);
-        ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
-        ImGui::PopFont();
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
+                start_time_1_ = time_; // reset timer 1
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10); dumm = true;
+            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
+                start_time_1_ = time_; // reset timer 2
+
+        }
+        else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
+            //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
+            ImGui::Text("Refresh %.1f FPS", io.Framerate);
+            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
+            ImGui::PopFont();
+        }
 
         if (ImGui::BeginPopupContextWindow())
         {
-            if (ImGui::MenuItem("Custom", NULL, corner == -1)) *p_corner = -1;
+            if (ImGui::MenuItem("Free position", NULL, corner == -1)) *p_corner = -1;
             if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;
             if (ImGui::MenuItem("Bottom", NULL, corner == 3)) *p_corner = 3;
             if (p_open && ImGui::MenuItem("Close")) *p_open = false;

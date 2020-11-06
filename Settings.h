@@ -15,6 +15,7 @@ struct WidgetsConfig
 {
     bool stats;
     int  stats_corner;
+    bool stats_timer;
     bool logs;
     bool preview;
     bool history;
@@ -25,6 +26,7 @@ struct WidgetsConfig
 
     WidgetsConfig() {
         stats = false;
+        stats_timer = false;
         stats_corner = 1;
         logs = false;
         preview = false;
@@ -208,7 +210,7 @@ struct Application
     History recentFolders;
     History recentImport;
 
-    Application() : fresh_start(false), name(APP_NAME), executable(APP_NAME) {
+    Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
         accent_color = 0;
         pannel_stick = false;

@@ -56,7 +56,7 @@ namespace ImGuiToolkit
     void SetAccentColor (accent_color color);
     struct ImVec4 GetHighlightColor ();
 
-    void ShowStats (bool* p_open, int* p_corner);
+    void ShowStats (bool* p_open, int* p_corner, bool* p_timer);
 
 }
 

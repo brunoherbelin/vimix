@@ -70,6 +70,7 @@ void Settings::Save()
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
+    widgetsNode->SetAttribute("stats_timer", application.widget.stats_timer);
     widgetsNode->SetAttribute("stats_corner", application.widget.stats_corner);
     widgetsNode->SetAttribute("logs", application.widget.logs);
     widgetsNode->SetAttribute("toolbox", application.widget.toolbox);
@@ -243,6 +244,7 @@ void Settings::Load()
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
+        widgetsNode->QueryBoolAttribute("stats_timer", &application.widget.stats_timer);
         widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
         widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
         widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
