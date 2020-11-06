@@ -458,6 +458,8 @@ SET(CPACK_SOURCE_IGNORE_FILES
 
 IF(APPLE)
 
+#    include( InstallRequiredSystemLibraries )
+
     # Bundle target
     set(CPACK_GENERATOR "DragNDrop")
 
@@ -495,26 +497,15 @@ IF(APPLE)
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-#    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.18.1_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
-    # install locally recompiled gst-plugins-bad
-
+    # install locally recompiled gst-plugins (because not included in brew package)
     set(LOCAL_BUILD_BAD "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build")
+    install(FILES "${LOCAL_BUILD_BAD}/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "${LOCAL_BUILD_BAD}/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
     install(FILES "${LOCAL_BUILD_BAD}/ext/x265/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/sys/shm/libgstshm.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/sys/nvcodec/libgstnvcodec.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/sys/decklink/libgstdecklink.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/ext/aom/libgstaom.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst/videoparsers/libgstvideoparsersbad.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst-libs/gst/codecparsers/libgstcodecparsers-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst-libs/gst/codecs/libgstcodecs-1.0.0.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst/jpegformat/libgstjpegformat.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst/frei0r/libgstfrei0r.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/gst/mpegdemux/libgstmpegpsdemux.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 
     # package runtime fixup bundle
     install(CODE "
