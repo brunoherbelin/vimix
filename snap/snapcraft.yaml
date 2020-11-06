@@ -1,6 +1,6 @@
 name: vimix
 base: core18
-version: '0.3'
+version: '0.4'
 summary: Live video mixing
 title: vimix
 description: |
