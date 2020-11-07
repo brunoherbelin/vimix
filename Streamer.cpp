@@ -358,7 +358,7 @@ void VideoStreamer::addFrame (FrameBuffer *frame_buffer, float dt)
        }
        else if (config_.protocol == NetworkToolkit::SHM_RAW) {
            // TODO rename SHM socket "shm_PORT"
-           std::string path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm");
+           std::string path = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
            path += std::to_string(config_.port);
            g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                          "socket-path", path.c_str(),  NULL);

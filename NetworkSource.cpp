@@ -223,7 +223,7 @@ void NetworkStream::update()
             // make sure the shared memory socket exists
             if (config_.protocol == NetworkToolkit::SHM_RAW) {
                 // for shared memory, the parameter is a file location in settings
-                parameter = SystemToolkit::full_filename(SystemToolkit::settings_path(), "shm") + parameter;
+                parameter = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm") + parameter;
                 // try few times to see if file exists and wait 20ms each time
                 for(int trial = 0; trial < 5; trial ++){
                     if ( SystemToolkit::file_exists(parameter))
@@ -232,7 +232,7 @@ void NetworkStream::update()
                 }
                 // failed to find the shm socket file: cannot connect
                 if (!SystemToolkit::file_exists(parameter)) {
-                    Log::Warning("Cannot connect to shared memory.");
+                    Log::Warning("Cannot connect to shared memory %s.", parameter.c_str());
                     failed_ = true;
                 }
                 parameter = "\"" + parameter + "\"";

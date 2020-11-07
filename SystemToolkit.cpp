@@ -254,6 +254,20 @@ string SystemToolkit::settings_path()
     }
 }
 
+string SystemToolkit::temp_path()
+{
+    string temp;
+
+    const char *tmpdir = getenv("TMPDIR");
+    if (tmpdir)
+        temp = std::string(tmpdir);
+    else
+        temp = std::string( P_tmpdir );
+
+    temp += PATH_SEP;
+    return temp;
+}
+
 string SystemToolkit::full_filename(const std::string& path, const string &filename)
 {
     string fullfilename = path;

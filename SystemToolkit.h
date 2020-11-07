@@ -27,6 +27,9 @@ namespace SystemToolkit
     // get the OS dependent path where to store settings
     std::string settings_path();
 
+    // get the OS dependent path where to store temporary files
+    std::string temp_path();
+
     // builds the OS dependent complete file name
     std::string full_filename(const std::string& path, const std::string& filename);
 
