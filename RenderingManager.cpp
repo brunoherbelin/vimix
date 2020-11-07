@@ -253,7 +253,6 @@ void Rendering::draw()
     glfwSwapBuffers(main_.window());
     glfwSwapBuffers(output_.window());
 
-
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -537,7 +536,13 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        // Enable vsync on output window only (i.e. not 0 if has a master)
+        // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
+        glfwSwapInterval( nullptr == master_ ? 0 : Settings::application.render.vsync);
     }
+
+
 }
 
 void RenderingWindow::exitFullscreen()
@@ -672,7 +677,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
         glfwMakeContextCurrent(master_);
     }
     else {
-        // Disable vsync on main window
+        //  Disable vsync on main window
         glfwSwapInterval(0);
         // Enable Antialiasing multisampling
         if (Settings::application.render.multisampling > 0) {
