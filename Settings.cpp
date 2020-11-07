@@ -431,7 +431,8 @@ void Settings::Lock()
     FILE *file = fopen(lockfile.c_str(), "r");
     int l = 0;
     if (file) {
-        fscanf(file, "%d", &l);
+        if ( fscanf(file, "%d", &l) < 1)
+            l = 0;
         fclose(file);
     }
 
