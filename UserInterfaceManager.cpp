@@ -52,6 +52,7 @@ using namespace std;
 #include "Mixer.h"
 #include "Recorder.h"
 #include "Streamer.h"
+#include "Loopback.h"
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
@@ -164,8 +165,9 @@ UserInterface::UserInterface()
     currentTextEdit = "";
     screenshot_step = 0;
 
+    // keep hold on frame grabbers
     video_recorder_ = 0;
-//    video_streamer_ = 0;
+    webcam_emulator_ = 0;
 }
 
 bool UserInterface::Init()
@@ -303,7 +305,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
             // toggle recording
-            FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
+            FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
             if (rec) {
                 rec->stop();
                 video_recorder_ = 0;
@@ -311,7 +313,7 @@ void UserInterface::handleKeyboard()
             else {
                 FrameGrabber *fg = new VideoRecorder;
                 video_recorder_ = fg->id();
-                Mixer::manager().session()->addFrameGrabber(fg);
+                FrameGrabbing::manager().add(fg);
             }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
@@ -791,7 +793,7 @@ void UserInterface::Render()
                                 &Settings::application.widget.stats_timer);
 
     // management of video_recorder
-    FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
+    FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
     if (rec && rec->duration() > Settings::application.record.timeout ){
         rec->stop();
         video_recorder_ = 0;
@@ -1085,6 +1087,7 @@ void UserInterface::RenderHistory()
 
 void UserInterface::RenderPreview()
 {
+    bool openInitializeSystemLoopback = false;
     struct CustomConstraints // Helper functions for aspect-ratio constraints
     {
         static void AspectRatio(ImGuiSizeCallbackData* data) {
@@ -1107,7 +1110,8 @@ void UserInterface::RenderPreview()
 
         }
 
-        FrameGrabber *rec = Mixer::manager().session()->getFrameGrabber(video_recorder_);
+        FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
+        FrameGrabber *cam = FrameGrabbing::manager().get(webcam_emulator_);
 
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
@@ -1139,6 +1143,9 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
+                    FrameGrabbing::manager().add(new PNGRecorder);
+
                 // Stop recording menu if main recorder already exists
                 if (rec) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
@@ -1157,16 +1164,14 @@ void UserInterface::RenderPreview()
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
                         FrameGrabber *fg = new VideoRecorder;
                         video_recorder_ = fg->id();
-                        Mixer::manager().session()->addFrameGrabber(fg);
+                        FrameGrabbing::manager().add(fg);
                     }
                     ImGui::PopStyleColor(1);
                     // select profile
                     ImGui::SetNextItemWidth(300);
-                    ImGui::Combo("##RecProfile", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+                    ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
 
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
-                    Mixer::manager().session()->addFrameGrabber(new PNGRecorder);
 
                 // Options menu
                 ImGui::Separator();
@@ -1205,8 +1210,28 @@ void UserInterface::RenderPreview()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Stream"))
+            if (ImGui::BeginMenu("Share stream"))
             {
+#if defined(LINUX)
+                bool on = cam != nullptr;
+                if ( ImGui::MenuItem( ICON_FA_CAMERA "  Emulate video camera", NULL, &on) ) {
+                    if (on && cam == nullptr) {
+                        if (webcam_emulator_ > 0)
+                            webcam_emulator_ = 0;
+                        if (Loopback::systemLoopbackInitialized()) {
+                            FrameGrabber *fg = new Loopback;
+                            webcam_emulator_ = fg->id();
+                            FrameGrabbing::manager().add(fg);
+                        }
+                        else
+                            openInitializeSystemLoopback = true;
+                    }
+                    if (!on && cam != nullptr) {
+                        cam->stop();
+                        webcam_emulator_ = 0;
+                    }
+                }
+#endif
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
                 if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
@@ -1216,7 +1241,7 @@ void UserInterface::RenderPreview()
                 {
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
-                    ImGui::InputText("My network ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputText("My ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
@@ -1231,7 +1256,6 @@ void UserInterface::RenderPreview()
             }
             ImGui::EndMenuBar();
         }
-
 
         float width = ImGui::GetContentRegionAvail().x;
 
@@ -1274,8 +1298,44 @@ void UserInterface::RenderPreview()
             ImGui::PopFont();
         }
 
+
         ImGui::End();
     }
+
+#if defined(LINUX)
+    if (openInitializeSystemLoopback && !ImGui::IsPopupOpen("Initialize System Loopback"))
+        ImGui::OpenPopup("Initialize System Loopback");
+    if (ImGui::BeginPopupModal("Initialize System Loopback", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        int w = 600;
+        ImGui::Text("In order to enable the video4linux camera loopback,\n"
+                    "'v4l2loopack' has to be installed and initialized on your machine\n\n"
+                    "To do so, the following commands should be executed (admin rights):\n");
+
+        static char dummy_str[512];
+        sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
+        ImGui::SetNextItemWidth(w + 20);
+        ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\"");
+        ImGui::SetNextItemWidth(w + 20);
+        ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+
+        ImGui::Separator();
+        if (ImGui::Button("Cancel, I'll do it.\n(try again later)", ImVec2(w/2, 0))) { ImGui::CloseCurrentPopup(); }
+        ImGui::SameLine();
+        ImGui::SetItemDefaultFocus();
+        if (ImGui::Button("Ok, let vimix try.\n(sudo password required)", ImVec2(w/2, 0)) ) {
+            if (Loopback::initializeSystemLoopback()) {
+                FrameGrabber *fg = new Loopback;
+                webcam_emulator_ = fg->id();
+                FrameGrabbing::manager().add(fg);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+#endif
 }
 
 void UserInterface::showMediaPlayer(MediaPlayer *mp)

@@ -815,9 +815,6 @@ void Mixer::swap()
     session_ = back_session_;
     back_session_ = tmp;
 
-    // swap recorders
-    back_session_->transferFrameGrabber(session_);
-
     // attach new session's nodes to views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         attach(*source_iter);
@@ -849,9 +846,6 @@ void Mixer::swap()
 
     // reset History manager
     Action::manager().clear();
-
-    // inform streaming manager
-    Streaming::manager().setSession(session_);
 
     // notification
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());

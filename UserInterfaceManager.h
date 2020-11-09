@@ -117,7 +117,7 @@ class UserInterface
 
     // frame grabbers
     uint64_t video_recorder_;
-//    uint64_t video_streamer_;
+    uint64_t webcam_emulator_;
 
     // Private Constructor
     UserInterface();

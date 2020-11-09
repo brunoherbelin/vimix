@@ -266,6 +266,7 @@ string SystemToolkit::temp_path()
 
     temp += PATH_SEP;
     return temp;
+    // TODO : verify WIN32 implementation
 }
 
 string SystemToolkit::full_filename(const std::string& path, const string &filename)

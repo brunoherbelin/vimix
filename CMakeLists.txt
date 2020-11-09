@@ -251,8 +251,10 @@ set(VMIX_SRCS
     GarbageVisitor.cpp
     SessionCreator.cpp
     Mixer.cpp
+    FrameGrabber.cpp
     Recorder.cpp
     Streamer.cpp
+    Loopback.cpp
     Settings.cpp
     Screenshot.cpp
     Resource.cpp

@@ -97,14 +97,11 @@ void wait_for_stream_(UdpListeningReceiveSocket *receiver)
 void NetworkStream::connect(const std::string &nameconnection)
 {
     // start fresh
+    if (connected())
+        disconnect();
     received_config_ = false;
-    connected_ = false;
-    if (receiver_) {
-        delete receiver_;
-        receiver_ = nullptr;
-        close();
-    }
 
+    // refuse self referencing
     if (nameconnection.compare(Connection::manager().info().name) == 0) {
         Log::Warning("Cannot create self-referencing Network Source '%s'", nameconnection.c_str());
         failed_ = true;
@@ -190,7 +187,11 @@ void NetworkStream::disconnect()
         // send OSC message to streamer
         UdpTransmitSocket socket( IpEndpointName(streamer_.address.c_str(), streamer_.port_stream_request) );
         socket.Send( p.Data(), p.Size() );
+
+        connected_ = false;
     }
+
+    close();
 }
 
 
@@ -291,7 +292,7 @@ NetworkStream *NetworkSource::networkStream() const
 void NetworkSource::setConnection(const std::string &nameconnection)
 {
     connection_name_ = nameconnection;
-    Log::Notify("Creating Network Source '%s'", connection_name_.c_str());
+    Log::Notify("Network Source connecting to '%s'", connection_name_.c_str());
 
     // open network stream
     networkStream()->connect( connection_name_ );

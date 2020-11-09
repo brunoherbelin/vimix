@@ -44,7 +44,6 @@ public:
 
     void enable(bool on);
     inline bool enabled() const { return enabled_; }
-    void setSession(Session *se);
     void removeStreams(const std::string &clientname);
     void removeStream(const std::string &sender, int port);
 
@@ -61,10 +60,6 @@ private:
     StreamingRequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
 
-    Session *session_;
-    int width_;
-    int height_;    
-
     std::vector<VideoStreamer *> streamers_;    
     std::mutex streamers_lock_;
 };
@@ -73,39 +68,18 @@ class VideoStreamer : public FrameGrabber
 {
     friend class Streaming;
 
+    void init(GstCaps *caps) override;
+    void terminate() override;
     void stop() override;
-
-    // Frame buffer information
-    FrameBuffer  *frame_buffer_;
-    uint width_;
-    uint height_;
 
     // connection information
     NetworkToolkit::StreamConfig config_;
 
-    // operation
-    std::atomic<bool> streaming_;
-    std::atomic<bool> accept_buffer_;
-
-    // gstreamer pipeline
-    GstElement   *pipeline_;
-    GstAppSrc    *src_;
-    GstClockTime timeframe_;
-    GstClockTime timestamp_;
-    GstClockTime frame_duration_;
-
-    static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
-    static void callback_enough_data (GstAppSrc *, gpointer user_data);
-
 public:
 
     VideoStreamer(NetworkToolkit::StreamConfig conf);
-    ~VideoStreamer();
+    std::string info() const override;
 
-    void addFrame(FrameBuffer *frame_buffer, float dt) override;
-    std::string info() override;
-    double duration() override;
-    bool busy() override;
 };
 
 #endif // STREAMER_H

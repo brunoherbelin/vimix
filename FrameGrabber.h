@@ -2,59 +2,123 @@
 #define FRAMEGRABBER_H
 
 #include <atomic>
+#include <list>
 #include <string>
 
 #include <gst/gst.h>
+#include <gst/app/gstappsrc.h>
 
 #include "GlmToolkit.h"
 
 class FrameBuffer;
+
+
+
 /**
  * @brief The FrameGrabber class defines the base class for all recorders
  * used to save images or videos from a frame buffer.
  *
- * The Mixer class calls addFrame() at each newly rendered frame for all of its recorder.
+ * Every subclass shall at least implement init() and terminate()
+ *
+ * The FrameGrabbing manager calls addFrame() for all its grabbers.
  */
 class FrameGrabber
 {
+    friend class FrameGrabbing;
+
     uint64_t id_;
 
 public:
-    FrameGrabber(): finished_(false), pbo_index_(0), pbo_next_index_(0), size_(0)
-    {
-        id_ = GlmToolkit::uniqueId();
-        pbo_[0] = pbo_[1] = 0;
-    }
-    virtual ~FrameGrabber() {}
+    FrameGrabber();
+    virtual ~FrameGrabber();
 
     inline uint64_t id() const { return id_; }
-    struct hasId: public std::unary_function<FrameGrabber*, bool>
-    {
-        inline bool operator()(const FrameGrabber* elem) const {
-           return (elem && elem->id() == _id);
-        }
-        hasId(uint64_t id) : _id(id) { }
-    private:
-        uint64_t _id;
-    };
 
-    virtual void addFrame(FrameBuffer *frame_buffer, float dt) = 0;
-    virtual void stop() { }
-    virtual std::string info() { return ""; }
-    virtual double duration() { return 0.0; }
-    virtual bool busy() { return false; }
-
-    inline bool finished() const { return finished_; }
+    virtual void stop();
+    virtual std::string info() const;
+    virtual double duration() const;
+    virtual bool finished() const;
+    virtual bool busy() const;
 
 protected:
 
+    // only FrameGrabbing manager can add frame
+    virtual void addFrame(GstBuffer *buffer, GstCaps *caps, float dt);
+
+    // only addFrame method shall call those
+    virtual void init(GstCaps *caps) = 0;
+    virtual void terminate() = 0;
+
     // thread-safe testing termination
     std::atomic<bool> finished_;
+    std::atomic<bool> active_;
+    std::atomic<bool> accept_buffer_;
 
-    // PBO
-    guint pbo_[2];
-    guint pbo_index_, pbo_next_index_;
-    guint size_;
+    // gstreamer pipeline
+    GstElement   *pipeline_;
+    GstAppSrc    *src_;
+    GstCaps      *caps_;
+    GstClockTime timeframe_;
+    GstClockTime timestamp_;
+    GstClockTime frame_duration_;
+
+    // gstreamer callbacks
+    static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
+    static void callback_enough_data (GstAppSrc *, gpointer user_data);
+
 };
+
+/**
+ * @brief The FrameGrabbing class manages all frame grabbers
+ *
+ * Session calls grabFrame after each render
+ *
+ */
+class FrameGrabbing
+{
+    friend class Session;
+
+    // Private Constructor
+    FrameGrabbing();
+    FrameGrabbing(FrameGrabbing const& copy);            // Not Implemented
+    FrameGrabbing& operator=(FrameGrabbing const& copy); // Not Implemented
+
+public:
+
+    static FrameGrabbing& manager()
+    {
+        // The only instance
+        static FrameGrabbing _instance;
+        return _instance;
+    }
+    ~FrameGrabbing();
+
+    inline uint width() const { return width_; }
+    inline uint height() const { return height_; }
+
+    void add(FrameGrabber *rec);
+    FrameGrabber *front();
+    FrameGrabber *get(uint64_t id);
+    void stopAll();
+    void clearAll();
+
+protected:
+
+    // only for friend Session
+    void grabFrame(FrameBuffer *frame_buffer, float dt);
+
+private:
+    std::list<FrameGrabber *> grabbers_;
+    guint pbo_[2];
+    guint pbo_index_;
+    guint pbo_next_index_;
+    guint size_;
+    guint width_;
+    guint height_;
+    bool  use_alpha_;
+    GstCaps *caps_;
+};
+
+
 
 #endif // FRAMEGRABBER_H

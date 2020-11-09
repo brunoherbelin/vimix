@@ -15,7 +15,12 @@ class PNGRecorder : public FrameGrabber
 public:
 
     PNGRecorder();
-    void addFrame(FrameBuffer *frame_buffer, float) override;
+
+protected:
+
+    void init(GstCaps *caps) override;
+    void terminate() override;
+    void addFrame(GstBuffer *buffer, GstCaps *caps, float dt) override;
 
 };
 
@@ -24,24 +29,8 @@ class VideoRecorder : public FrameGrabber
 {
     std::string  filename_;
 
-    // Frame buffer information
-    FrameBuffer  *frame_buffer_;
-    uint width_;
-    uint height_;
-
-    // operation
-    std::atomic<bool> recording_;
-    std::atomic<bool> accept_buffer_;
-
-    // gstreamer pipeline
-    GstElement   *pipeline_;
-    GstAppSrc    *src_;
-    GstClockTime timeframe_;
-    GstClockTime timestamp_;
-    GstClockTime frame_duration_;
-
-    static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
-    static void callback_enough_data (GstAppSrc *, gpointer user_data);
+    void init(GstCaps *caps) override;
+    void terminate() override;
 
 public:
 
@@ -60,13 +49,8 @@ public:
     static const std::vector<std::string> profile_description;
 
     VideoRecorder();
-    ~VideoRecorder();
+    std::string info() const override;
 
-    void addFrame(FrameBuffer *frame_buffer, float dt) override;
-    void stop() override;
-    std::string info() override;
-    double duration() override;
-    bool busy() override;
 };
 
 

@@ -58,13 +58,13 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
-    // Recorders
-    void addFrameGrabber(FrameGrabber *rec);
-    FrameGrabber *frontFrameGrabber();
-    FrameGrabber *getFrameGrabber(uint64_t id);
-    void stopAllFrameGrabbers();
-    void clearAllFrameGrabbers();
-    void transferFrameGrabber(Session *dest);
+//    // Recorders
+//    void addFrameGrabber(FrameGrabber *rec);
+//    FrameGrabber *frontFrameGrabber();
+//    FrameGrabber *getFrameGrabber(uint64_t id);
+//    void stopAllFrameGrabbers();
+//    void clearAllFrameGrabbers();
+//    void transferFrameGrabber(Session *dest);
 
     // configure rendering resolution
     void setResolution(glm::vec3 resolution);
