@@ -64,7 +64,7 @@ bool Loopback::system_loopback_initialized = false;
 #include <unistd.h>
 
 std::string Loopback::system_loopback_name = "/dev/video10";
-std::string Loopback::system_loopback_pipeline = "appsrc name=src ! videoconvert ! queue ! v4l2sink sync=false name=sink";
+std::string Loopback::system_loopback_pipeline = "appsrc name=src ! videoconvert ! videorate ! video/x-raw,framerate=30/1 ! v4l2sink sync=false name=sink";
 
 bool Loopback::initializeSystemLoopback()
 {
@@ -151,6 +151,7 @@ bool Loopback::systemLoopbackInitialized()
 
 Loopback::Loopback() : FrameGrabber()
 {
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 60);
 
 }
 
