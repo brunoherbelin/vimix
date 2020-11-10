@@ -124,7 +124,7 @@ void ImGuiToolkit::Icon(int i, int j)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1);
 }
 
-bool ImGuiToolkit::ButtonIcon(int i, int j)
+bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
 {
     // icons.dds is a 20 x 20 grid of icons 
     if (textureicons == 0)
@@ -136,6 +136,13 @@ bool ImGuiToolkit::ButtonIcon(int i, int j)
     ImGui::PushID( i*20 + j);
     bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
     ImGui::PopID();
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
 
     return ret;
 }

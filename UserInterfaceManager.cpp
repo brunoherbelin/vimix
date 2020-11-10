@@ -1314,22 +1314,26 @@ void UserInterface::RenderPreview()
 
         static char dummy_str[512];
         sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
-        ImGui::SetNextItemWidth(w + 20);
+        ImGui::Text("Install v4l2loopack:");
         ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::SameLine();
+        ImGui::PushID(358794);
+        if ( ImGuiToolkit::ButtonIcon(3,6, "Copy to clipboard") )
+            ImGui::SetClipboardText(dummy_str);
+        ImGui::PopID();
+
         sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\"");
-        ImGui::SetNextItemWidth(w + 20);
+        ImGui::Text("Initialize v4l2loopack:");
         ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::SameLine();
+        ImGui::PushID(899872);
+        if ( ImGuiToolkit::ButtonIcon(3,6, "Copy to clipboard") )
+            ImGui::SetClipboardText(dummy_str);
+        ImGui::PopID();
 
         ImGui::Separator();
-        if (ImGui::Button("Cancel, I'll do it.\n(try again later)", ImVec2(w/2, 0))) { ImGui::CloseCurrentPopup(); }
-        ImGui::SameLine();
         ImGui::SetItemDefaultFocus();
-        if (ImGui::Button("Ok, let vimix try.\n(sudo password required)", ImVec2(w/2, 0)) ) {
-            if (Loopback::initializeSystemLoopback()) {
-                FrameGrabber *fg = new Loopback;
-                webcam_emulator_ = fg->id();
-                FrameGrabbing::manager().add(fg);
-            }
+        if (ImGui::Button("Ok, I'll do it and try again later.", ImVec2(w, 0)) ) {
             ImGui::CloseCurrentPopup();
         }
 

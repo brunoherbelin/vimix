@@ -55,7 +55,7 @@ bool Loopback::system_loopback_initialized = false;
  * Useful command lines for debug
  * $ v4l2-ctl --all -d 10
  * $ gst-launch-1.0 v4l2src device=/dev/video10 ! videoconvert ! autovideosink
- * $ gst-launch-1.0 videotestsrc ! v4l2sink device=/dev/video1
+ * $ gst-launch-1.0 videotestsrc ! v4l2sink device=/dev/video10
  */
 
 #include <stdio.h>
@@ -64,7 +64,7 @@ bool Loopback::system_loopback_initialized = false;
 #include <unistd.h>
 
 std::string Loopback::system_loopback_name = "/dev/video10";
-std::string Loopback::system_loopback_pipeline = "appsrc name=src ! videoconvert ! v4l2sink sync=false name=sink";
+std::string Loopback::system_loopback_pipeline = "appsrc name=src ! videoconvert ! queue ! v4l2sink sync=false name=sink";
 
 bool Loopback::initializeSystemLoopback()
 {
@@ -87,6 +87,7 @@ bool Loopback::initializeSystemLoopback()
             // create command line for installing v4l2loopback
             std::string cmdline = "export SUDO_ASKPASS=\"" + sudoscript + "\"\n";
             cmdline += "sudo -A apt install v4l2loopback-dkms 2>&1\n";
+            cmdline += "sudo -A modprobe -r v4l2loopback 2>&1\n";
             cmdline += "sudo -A modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\" 2>&1\n";
 
             // execute v4l2 command line

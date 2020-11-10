@@ -305,7 +305,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
     if (active_)
     {
         // calculate dt in ns
-        timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f);
+        timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f );
 
         // if time is passed one frame duration (with 10% margin)
         // and if the encoder accepts data
