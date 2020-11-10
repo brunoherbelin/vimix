@@ -1315,6 +1315,7 @@ void UserInterface::RenderPreview()
         static char dummy_str[512];
         sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
         ImGui::Text("Install v4l2loopack:");
+        ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(358794);
@@ -1324,6 +1325,7 @@ void UserInterface::RenderPreview()
 
         sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\"");
         ImGui::Text("Initialize v4l2loopack:");
+        ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(899872);
@@ -1333,7 +1335,7 @@ void UserInterface::RenderPreview()
 
         ImGui::Separator();
         ImGui::SetItemDefaultFocus();
-        if (ImGui::Button("Ok, I'll do it and try again later.", ImVec2(w, 0)) ) {
+        if (ImGui::Button("Thank you, I'll do this and try again later.", ImVec2(w, 0)) ) {
             ImGui::CloseCurrentPopup();
         }
 
