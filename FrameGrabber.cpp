@@ -73,7 +73,7 @@ FrameGrabber *FrameGrabbing::get(uint64_t id)
 void FrameGrabbing::stopAll()
 {
     std::list<FrameGrabber *>::iterator iter;
-    for (iter=grabbers_.begin(); iter != grabbers_.end(); )
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); iter++ )
         (*iter)->stop();
 }
 
@@ -182,7 +182,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
         if (buffer != nullptr) {
 
             // give the frame to all recorders
-            std::list<FrameGrabber *>::iterator iter = iter=grabbers_.begin();
+            std::list<FrameGrabber *>::iterator iter = grabbers_.begin();
             while (iter != grabbers_.end())
             {
                 FrameGrabber *rec = *iter;
