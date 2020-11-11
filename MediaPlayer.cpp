@@ -138,14 +138,13 @@ static MediaInfo UriDiscoverer_(std::string uri)
                     if ( !video_stream_info.isimage ) {
                         video_stream_info.timeline.setEnd( gst_discoverer_info_get_duration (info) );
                         video_stream_info.seekable = gst_discoverer_info_get_seekable (info);
-                        guint frn = gst_discoverer_video_info_get_framerate_num(vinfo);
-                        guint frd = gst_discoverer_video_info_get_framerate_denom(vinfo);
-                        if (frn == 0 || frd == 0) {
-                            frn = 25;
-                            frd = 1;
+                        video_stream_info.framerate_n = gst_discoverer_video_info_get_framerate_num(vinfo);
+                        video_stream_info.framerate_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
+                        if (video_stream_info.framerate_n == 0 || video_stream_info.framerate_d == 0) {
+                            video_stream_info.framerate_n = 25;
+                            video_stream_info.framerate_d = 1;
                         }
-                        video_stream_info.framerate = static_cast<double>(frn) / static_cast<double>(frd);
-                        video_stream_info.timeline.setStep( (GST_SECOND * static_cast<guint64>(frd)) / (static_cast<guint64>(frn)) );
+                        video_stream_info.timeline.setStep( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
                     }
                     // try to fill-in the codec information
                     GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
@@ -223,7 +222,17 @@ void MediaPlayer::execute_open()
     string description = "uridecodebin uri=" + uri_ + " ! ";
     if (media_.interlaced)
         description += "deinterlace method=2 ! ";
-    description += "videoconvert chroma-resampler=2 n-threads=2 ! appsink name=sink";
+    description += "videoconvert chroma-resampler=2 n-threads=2 ! ";
+
+    // hack to compensate for lack of PTS in gif animations
+    if (media_.codec_name.compare("image/gst-libav-gif") == 0){
+        description += "videorate ! video/x-raw,framerate=";
+        description += std::to_string(media_.framerate_n) + "/";
+        description += std::to_string(media_.framerate_d) + " ! ";
+    }
+
+    // set app sink
+    description += "appsink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -938,7 +947,7 @@ std::string MediaPlayer::filename() const
 
 double MediaPlayer::frameRate() const
 {
-    return media_.framerate;
+    return static_cast<double>(media_.framerate_n) / static_cast<double>(media_.framerate_d);;
 }
 
 double MediaPlayer::updateFrameRate() const

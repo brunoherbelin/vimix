@@ -707,23 +707,6 @@ void UserInterface::NewFrame()
             fileDialogPending_ = false;
         }
     }
-//    if (sessionFileDialogLoadFinished_) {
-//        sessionFileDialogLoadFinished_ = false;
-//        if (!sessionFileDialogFilename_.empty()) {
-//            if (sessionFileDialogImport_)
-//                Mixer::manager().import(sessionFileDialogFilename_);
-//            else
-//                Mixer::manager().open(sessionFileDialogFilename_);
-//            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
-//        }
-//    }
-//    if (sessionFileDialogSaveFinished_) {
-//        sessionFileDialogSaveFinished_ = false;
-//        if (!sessionFileDialogFilename_.empty()) {
-//            Mixer::manager().saveas(sessionFileDialogFilename_);
-//            Settings::application.recentSessions.path = SystemToolkit::path_filename(sessionFileDialogFilename_);
-//        }
-//    }
 
     // overlay to ensure file dialog is modal
     if (fileDialogPending_){
@@ -741,20 +724,6 @@ void UserInterface::NewFrame()
 
 void UserInterface::Render()
 {
-//    ImVec2 geometry(static_cast<float>(Rendering::manager().Width()), static_cast<float>(Rendering::manager().Height()));
-//    // file modal dialog
-//    geometry.x *= 0.4f;
-//    geometry.y *= 0.4f;
-//    if ( !currentFileDialog.empty() && FileDialog::Instance()->Render(currentFileDialog.c_str(), geometry)) {
-//        if (FileDialog::Instance()->IsOk == true) {
-//            std::string filePathNameText = FileDialog::Instance()->GetFilepathName();
-//            // done
-//            currentFileDialog = "";
-//        }
-//        FileDialog::Instance()->CloseDialog(currentFileDialog.c_str());
-//    }
-//    FileDialog::RenderCurrent();
-
     // warning modal dialog
     Log::Render();
 

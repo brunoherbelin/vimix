@@ -27,7 +27,8 @@ struct MediaInfo {
     guint par_width;  // width to match pixel aspect ratio
     guint height;
     guint bitrate;
-    gdouble framerate;
+    guint framerate_n;
+    guint framerate_d;
     std::string codec_name;
     bool isimage;
     bool interlaced;
@@ -38,7 +39,8 @@ struct MediaInfo {
         width = par_width = 640;
         height = 480;
         bitrate = 0;
-        framerate = 0.0;
+        framerate_n = 1;
+        framerate_d = 25;
         codec_name = "unknown";
         isimage = false;
         interlaced = false;
@@ -56,7 +58,8 @@ struct MediaInfo {
             this->par_width = b.par_width;
             this->height = b.height;
             this->bitrate = b.bitrate;
-            this->framerate = b.framerate;
+            this->framerate_n = b.framerate_n;
+            this->framerate_d = b.framerate_d;
             this->codec_name = b.codec_name;
             this->valid = b.valid;
             this->isimage = b.isimage;
