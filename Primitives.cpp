@@ -95,6 +95,17 @@ void Surface::draw(glm::mat4 modelview, glm::mat4 projection)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Surface::setTextureUV(glm::vec4 uv)
+{
+    dynamic_cast<ImageShader*>(shader_)->uv = uv;
+}
+
+glm::vec4 Surface::textureUV() const
+{
+    return dynamic_cast<ImageShader*>(shader_)->uv;
+}
+
+
 ImageSurface::ImageSurface(const std::string& path, Shader *s) : Surface(s), resource_(path)
 {
 

@@ -11,11 +11,15 @@ uniform vec3      iResolution;           // viewport resolution (in pixels)
 
 uniform vec4 color;
 uniform float stipple;
+uniform vec4 uv;
 
 void main()
 {
+    // adjust UV
+    vec2 texcoord = vec2(uv.x, uv.y) + vertexUV * vec2(uv.z - uv.x, uv.w - uv.y);
+
     // color is a mix of texture (manipulated with brightness & contrast), vertex and uniform colors
-    vec4 textureColor = texture(iChannel0, vertexUV);
+    vec4 textureColor = texture(iChannel0, texcoord);
     vec3 RGB = textureColor.rgb * vertexColor.rgb * color.rgb;
 
     // alpha is a mix of texture alpha, vertex alpha, and uniform alpha affected by stippling
