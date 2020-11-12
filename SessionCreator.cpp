@@ -426,6 +426,10 @@ void SessionLoader::visit(ImageShader &n)
         uniforms->QueryFloatAttribute("stipple", &n.stipple);
         uniforms->QueryUnsignedAttribute("mask", &n.mask);
     }
+
+    XMLElement* uvtex = xmlCurrent_->FirstChildElement("uv");
+    if (uvtex)
+        tinyxml2::XMLElementToGLM( uvtex->FirstChildElement("vec4"), n.uv);
 }
 
 void SessionLoader::visit(ImageProcessingShader &n)
