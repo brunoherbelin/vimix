@@ -422,7 +422,7 @@ CloneSource *Source::clone()
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
     // create surface:
-    clonesurface_ = new Surface(renderingshader_);
+    surface_ = new Surface(renderingshader_);
 }
 
 CloneSource::~CloneSource()
@@ -431,7 +431,7 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 
     // delete surface
-    delete clonesurface_;
+    delete surface_;
 }
 
 CloneSource *CloneSource::clone()
@@ -445,7 +445,7 @@ CloneSource *CloneSource::clone()
 
 void CloneSource::replaceRenderingShader()
 {
-    clonesurface_->replaceShader(renderingshader_);
+    surface_->replaceShader(renderingshader_);
 }
 
 void CloneSource::init()
@@ -453,7 +453,7 @@ void CloneSource::init()
     if (origin_ && origin_->ready()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
-        clonesurface_->setTextureIndex( origin_->texture() );
+        surface_->setTextureIndex( origin_->texture() );
 
         // create Frame buffer matching size of session
         FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), true);
@@ -501,7 +501,7 @@ void CloneSource::render()
         // render the view into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        clonesurface_->draw(glm::identity<glm::mat4>(), projection);
+        surface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }

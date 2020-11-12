@@ -20,14 +20,14 @@ MediaSource::MediaSource() : Source(), path_("")
     // - textured with original texture from media player
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
-    mediasurface_ = new Surface(renderingshader_);
+    surface_ = new Surface(renderingshader_);
 
 }
 
 MediaSource::~MediaSource()
 {
     // delete media surface & player
-    delete mediasurface_;
+    delete surface_;
     delete mediaplayer_;
 }
 
@@ -70,7 +70,7 @@ uint MediaSource::texture() const
 
 void MediaSource::replaceRenderingShader()
 {
-    mediasurface_->replaceShader(renderingshader_);
+    surface_->replaceShader(renderingshader_);
 }
 
 void MediaSource::init()
@@ -84,7 +84,7 @@ void MediaSource::init()
         if (mediaplayer_->texture() != Resource::getTextureBlack()) {
 
             // get the texture index from media player, apply it to the media surface
-            mediasurface_->setTextureIndex( mediaplayer_->texture() );
+            surface_->setTextureIndex( mediaplayer_->texture() );
 
             // create Frame buffer matching size of media player
             float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
@@ -143,8 +143,8 @@ void MediaSource::render()
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        mediasurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
-        mediasurface_->draw(glm::identity<glm::mat4>(), projection);
+        surface_->shader()->color.a = mediaplayer_->currentTimelineFading();
+        surface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }

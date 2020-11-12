@@ -169,6 +169,9 @@ protected:
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
+    // surface to draw on
+    Surface *surface_;
+
     // mode for display
     Mode mode_;
 
@@ -215,7 +218,6 @@ protected:
 
     void init() override;
     void replaceRenderingShader() override;
-    Surface *clonesurface_;
     Source *origin_;
 };
 

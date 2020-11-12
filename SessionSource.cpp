@@ -55,13 +55,13 @@ SessionSource::SessionSource() : Source(), path_("")
     // - textured with original texture from session
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
-    sessionsurface_ = new Surface(processingshader_);
+    surface_ = new Surface(renderingshader_);
 }
 
 SessionSource::~SessionSource()
 {
     // delete surface
-    delete sessionsurface_;
+    delete surface_;
 
     // delete session
     if (session_)
@@ -111,7 +111,7 @@ uint SessionSource::texture() const
 
 void SessionSource::replaceRenderingShader()
 {
-    sessionsurface_->replaceShader(renderingshader_);
+    surface_->replaceShader(renderingshader_);
 }
 
 void SessionSource::init()
@@ -161,7 +161,7 @@ void SessionSource::init()
             session_->update(dt_);
 
             // get the texture index from framebuffer of session, apply it to the surface
-            sessionsurface_->setTextureIndex( session_->frame()->texture() );
+            surface_->setTextureIndex( session_->frame()->texture() );
 
             // create Frame buffer matching size of session
             FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution());
@@ -229,7 +229,7 @@ void SessionSource::render()
         // render the sesion into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
+        surface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }
@@ -245,13 +245,13 @@ void SessionSource::accept(Visitor& v)
 RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
     // create  surface:
-    sessionsurface_ = new Surface(processingshader_);
+    surface_ = new Surface(processingshader_);
 }
 
 RenderSource::~RenderSource()
 {
     // delete surface
-    delete sessionsurface_;
+    delete surface_;
 }
 
 bool RenderSource::failed() const
@@ -269,7 +269,7 @@ uint RenderSource::texture() const
 
 void RenderSource::replaceRenderingShader()
 {
-    sessionsurface_->replaceShader(renderingshader_);
+    surface_->replaceShader(renderingshader_);
 }
 
 void RenderSource::init()
@@ -282,7 +282,7 @@ void RenderSource::init()
         FrameBuffer *fb = session_->frame();
 
         // get the texture index from framebuffer of view, apply it to the surface
-        sessionsurface_->setTextureIndex( fb->texture() );
+        surface_->setTextureIndex( fb->texture() );
 
         // create Frame buffer matching size of output session
         FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution());
@@ -309,7 +309,7 @@ void RenderSource::render()
         // render the view into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        sessionsurface_->draw(glm::identity<glm::mat4>(), projection);
+        surface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }

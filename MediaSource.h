@@ -31,7 +31,6 @@ protected:
     void init() override;
     void replaceRenderingShader() override;
 
-    Surface *mediasurface_;
     std::string path_;
     MediaPlayer *mediaplayer_;
 };

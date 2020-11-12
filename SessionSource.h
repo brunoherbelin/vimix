@@ -34,7 +34,6 @@ protected:
     void replaceRenderingShader() override;
     static void loadSession(const std::string& filename, SessionSource *source);
 
-    Surface *sessionsurface_;
     std::string path_;
     Session *session_;
 
@@ -62,7 +61,6 @@ protected:
 
     void init() override;
     void replaceRenderingShader() override;
-    Surface *sessionsurface_;
     Session *session_;
 };
 

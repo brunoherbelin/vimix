@@ -41,7 +41,6 @@ protected:
     void init() override;
     void replaceRenderingShader() override;
 
-    Surface *surface_;
     Stream *stream_;
 };
 
