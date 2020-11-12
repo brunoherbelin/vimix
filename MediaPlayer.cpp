@@ -145,7 +145,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
                             video_stream_info.framerate_d = 1;
                         }
                         video_stream_info.timeline.setStep( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
-                        // confirm (or infirm) that its a single frame
+                        // confirm (or infirm) that its not a single frame
                         if ( video_stream_info.timeline.numFrames() < 2)
                             video_stream_info.isimage = true;
                     }
@@ -747,13 +747,13 @@ void MediaPlayer::update()
     index_lock_.lock();
     // get the last frame filled from fill_frame()
     read_index = last_index_;
-    // Do NOT miss and jump directly (after seek) to a pre-roll
-    for (guint i = 0; i < N_VFRAME; ++i) {
-        if (frame_[i].status == PREROLL) {
-            read_index = i;
-            break;
-        }
-    }
+//    // Do NOT miss and jump directly (after seek) to a pre-roll
+//    for (guint i = 0; i < N_VFRAME; ++i) {
+//        if (frame_[i].status == PREROLL) {
+//            read_index = i;
+//            break;
+//        }
+//    }
     // unlock access to index change
     index_lock_.unlock();
 
@@ -823,12 +823,12 @@ void MediaPlayer::update()
             }
 
         }
-        // manage loop mode
-        if (need_loop) {
-            execute_loop_command();
-        }
     }
 
+    // manage loop mode
+    if (need_loop) {
+        execute_loop_command();
+    }
 }
 
 void MediaPlayer::execute_loop_command()
