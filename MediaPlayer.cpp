@@ -134,7 +134,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
                     video_stream_info.interlaced = gst_discoverer_video_info_is_interlaced(vinfo);
                     video_stream_info.bitrate = gst_discoverer_video_info_get_bitrate(vinfo);
                     video_stream_info.isimage = gst_discoverer_video_info_is_image(vinfo);
-                    // if its a video, it duration, framerate, etc.
+                    // if its a video, set duration, framerate, etc.
                     if ( !video_stream_info.isimage ) {
                         video_stream_info.timeline.setEnd( gst_discoverer_info_get_duration (info) );
                         video_stream_info.seekable = gst_discoverer_info_get_seekable (info);
@@ -145,6 +145,9 @@ static MediaInfo UriDiscoverer_(std::string uri)
                             video_stream_info.framerate_d = 1;
                         }
                         video_stream_info.timeline.setStep( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
+                        // confirm (or infirm) that its a single frame
+                        if ( video_stream_info.timeline.numFrames() < 2)
+                            video_stream_info.isimage = true;
                     }
                     // try to fill-in the codec information
                     GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
@@ -202,11 +205,11 @@ void MediaPlayer::open(string path)
 
 void MediaPlayer::execute_open() 
 {   
-    // Create the simplest gstreamer pipeline possible :
+    // Create gstreamer pipeline :
     //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
+    string description = "uridecodebin uri=" + uri_ + " ! ";
 
-    // Build string describing pipeline
     // video deinterlacing method
     //      tomsmocomp (0) – Motion Adaptive: Motion Search
     //      greedyh (1) – Motion Adaptive: Advanced Detection
@@ -214,14 +217,14 @@ void MediaPlayer::execute_open()
     //      vfir (3) – Blur Vertical
     //      linear (4) – Linear
     //      scalerbob (6) – Double lines
+    if (media_.interlaced)
+        description += "deinterlace method=2 ! ";
+
     // video convertion chroma-resampler
     //      Duplicates the samples when upsampling and drops when downsampling 0
     //      Uses linear interpolation 1 (default)
     //      Uses cubic interpolation 2
     //      Uses sinc interpolation 3
-    string description = "uridecodebin uri=" + uri_ + " ! ";
-    if (media_.interlaced)
-        description += "deinterlace method=2 ! ";
     description += "videoconvert chroma-resampler=2 n-threads=2 ! ";
 
     // hack to compensate for lack of PTS in gif animations
@@ -317,7 +320,6 @@ void MediaPlayer::execute_open()
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
             media_.timeline.setEnd(d);
     }
-
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
