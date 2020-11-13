@@ -31,6 +31,8 @@ apps:
       - home
       - network
       - camera
+      - raw-usb
+      - removable-media
     environment:
        GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
        GST_PLUGIN_SCANNER: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
