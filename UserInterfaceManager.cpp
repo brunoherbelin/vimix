@@ -354,6 +354,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
+            Mixer::manager().setView(View::APPEARANCE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -915,10 +917,8 @@ void ToolBox::Render()
     ImGui::InputText("gstreamer pipeline", buf1, 128);
     if (ImGui::Button("Create Generic Stream Source") )
     {
-//        GenericStreamSource *s =
         Mixer::manager().addSource( Mixer::manager().createSourceStream(buf1) );
     }
-
 
 
     //

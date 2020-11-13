@@ -1692,3 +1692,91 @@ View::Cursor TransitionView::drag (glm::vec2 from, glm::vec2 to)
 }
 
 
+AppearanceView::AppearanceView() : View(APPEARANCE)
+{
+    // read default settings
+    if ( Settings::application.views[mode_].name.empty() ) {
+        // no settings found: store application default
+        Settings::application.views[mode_].name = "Source";
+        scene.root()->scale_ = glm::vec3(SOURCE_DEFAULT_SCALE, SOURCE_DEFAULT_SCALE, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.3f, 1.f, 0.0f);
+        saveSettings();
+    }
+    else
+        restoreSettings();
+
+    // Scene background
+
+}
+
+void AppearanceView::update(float dt)
+{
+    View::update(dt);
+
+    // a more complete update is requested
+    if (View::need_deep_update_) {
+
+        // update rendering of render frame
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = output->aspectRatio();
+            }
+        }
+    }
+}
+
+void AppearanceView::zoom (float factor)
+{
+    float z = scene.root()->scale_.x;
+    z = CLAMP( z + 0.1f * factor, SOURCE_MIN_SCALE, SOURCE_MAX_SCALE);
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+void AppearanceView::resize ( int scale )
+{
+    float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
+    z *= z;
+    z *= SOURCE_MAX_SCALE - SOURCE_MIN_SCALE;
+    z += SOURCE_MIN_SCALE;
+    scene.root()->scale_.x = z;
+    scene.root()->scale_.y = z;
+}
+
+int  AppearanceView::size ()
+{
+    float z = (scene.root()->scale_.x - SOURCE_MIN_SCALE) / (SOURCE_MAX_SCALE - SOURCE_MIN_SCALE);
+    return (int) ( sqrt(z) * 100.f);
+}
+
+
+View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
+{
+    if (!s)
+        return Cursor();
+
+    // unproject
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+
+
+    std::ostringstream info;
+    info << "Source " ;
+
+
+
+    return Cursor(Cursor_ResizeNESW, info.str() );
+}
+
+
+View::Cursor AppearanceView::drag (glm::vec2 from, glm::vec2 to)
+{
+    Cursor ret = View::drag(from, to);
+
+    // Clamp translation to acceptable area
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -1.5f, 0.f), glm::vec3(3.f, 1.5f, 0.f));
+
+    return ret;
+}
+

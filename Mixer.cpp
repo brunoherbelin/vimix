@@ -78,6 +78,10 @@ static void saveSession(const std::string& filename, Session *session)
         layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), &xmlDoc));
         views->InsertEndChild(layer);
 
+        XMLElement *appearance = xmlDoc.NewElement( "Appearance" );
+        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::APPEARANCE), &xmlDoc));
+        views->InsertEndChild(appearance);
+
         XMLElement *render = xmlDoc.NewElement( "Rendering" );
         render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
         views->InsertEndChild(render);
@@ -432,6 +436,7 @@ void Mixer::attach(Source *s)
         mixing_.scene.ws()->attach( s->group(View::MIXING) );
         geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->attach( s->group(View::LAYER) );
+        appearance_.scene.ws()->attach( s->group(View::APPEARANCE) );
     }
 }
 
@@ -447,6 +452,7 @@ void Mixer::detach(Source *s)
         mixing_.scene.ws()->detatch( s->group(View::MIXING) );
         geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
         layer_.scene.ws()->detatch( s->group(View::LAYER) );
+        appearance_.scene.ws()->detatch( s->group(View::APPEARANCE) );
         transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
     }
 }
@@ -685,6 +691,9 @@ void Mixer::setView(View::Mode m)
     case View::LAYER:
         current_view_ = &layer_;
         break;
+    case View::APPEARANCE:
+        current_view_ = &appearance_;
+        break;
     case View::MIXING:
     default:
         current_view_ = &mixing_;
@@ -706,6 +715,8 @@ View *Mixer::view(View::Mode m)
         return &geometry_;
     case View::LAYER:
         return &layer_;
+    case View::APPEARANCE:
+        return &appearance_;
     case View::MIXING:
         return &mixing_;
     default:
@@ -725,6 +736,7 @@ void Mixer::saveas(const std::string& filename)
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
     session_->config(View::LAYER)->copyTransform( layer_.scene.root() );
+    session_->config(View::APPEARANCE)->copyTransform( appearance_.scene.root() );
 
     // launch a thread to save the session
     std::thread (saveSession, filename, session_).detach();
@@ -823,6 +835,7 @@ void Mixer::swap()
     mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );
     geometry_.scene.root()->copyTransform( session_->config(View::GEOMETRY) );
     layer_.scene.root()->copyTransform( session_->config(View::LAYER) );
+    appearance_.scene.root()->copyTransform( session_->config(View::APPEARANCE) );
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );

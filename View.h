@@ -16,7 +16,7 @@ class View
 {
 public:
 
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3,  TRANSITION=4, INVALID=5 } Mode;
+    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, APPEARANCE=4, TRANSITION=5, INVALID=6 } Mode;
 
     View(Mode m);
     virtual ~View() {}
@@ -216,6 +216,22 @@ private:
     SessionSource *transition_source_;
 };
 
+class AppearanceView : public View
+{
+public:
+    AppearanceView();
+
+    void update (float dt) override;
+    void zoom (float factor) override;
+    void resize (int) override;
+    int  size () override;
+
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
+
+private:
+
+};
 
 
 #endif // VIEW_H

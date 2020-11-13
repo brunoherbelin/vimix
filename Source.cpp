@@ -120,6 +120,10 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     overlays_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
+    // default appearance node
+    groups_[View::APPEARANCE] = new Group;
+    groups_[View::APPEARANCE]->visible_ = false;
+
     // empty transition node
     groups_[View::TRANSITION] = new Group;
 
@@ -156,6 +160,7 @@ Source::~Source()
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
     delete groups_[View::LAYER];
+    delete groups_[View::APPEARANCE];
     delete groups_[View::TRANSITION];
 
     groups_.clear();
@@ -253,6 +258,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::RENDERING]->attach(rendersurface_);
     groups_[View::GEOMETRY]->attach(rendersurface_);
     groups_[View::MIXING]->attach(rendersurface_);
+    groups_[View::APPEARANCE]->attach(rendersurface_);
 //    groups_[View::LAYER]->attach(rendersurface_);
 
     // for mixing and layer views, add another surface to overlay
@@ -275,6 +281,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     }
     for (node = groups_[View::LAYER]->begin();
          node != groups_[View::LAYER]->end(); node++) {
+        (*node)->scale_.x = renderbuffer_->aspectRatio();
+    }
+    for (node = groups_[View::APPEARANCE]->begin();
+         node != groups_[View::APPEARANCE]->end(); node++) {
         (*node)->scale_.x = renderbuffer_->aspectRatio();
     }
 
