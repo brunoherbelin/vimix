@@ -31,7 +31,6 @@ public:
 protected:
 
     void init() override;
-    void replaceRenderingShader() override;
     static void loadSession(const std::string& filename, SessionSource *source);
 
     std::string path_;
@@ -47,7 +46,6 @@ class RenderSource : public Source
 {
 public:
     RenderSource(Session *session);
-    ~RenderSource();
 
     // implementation of source API
     void render() override;
@@ -60,7 +58,6 @@ public:
 protected:
 
     void init() override;
-    void replaceRenderingShader() override;
     Session *session_;
 };
 

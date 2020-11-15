@@ -276,6 +276,7 @@ NetworkSource::NetworkSource() : StreamSource()
     // set icons
     overlays_[View::MIXING]->attach( new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f)) );
     overlays_[View::LAYER]->attach( new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    overlays_[View::APPEARANCE]->attach( new Symbol(Symbol::SHARE, glm::vec3(1.1f, 0.9f, 0.01f)) );
 }
 
 

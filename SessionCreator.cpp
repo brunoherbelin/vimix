@@ -72,11 +72,11 @@ void SessionCreator::load(const std::string& filename)
     }
 
     int version_major = -1, version_minor = -1;
-    header->QueryIntAttribute("major", &version_major); // TODO incompatible if major is different?
+    header->QueryIntAttribute("major", &version_major);
     header->QueryIntAttribute("minor", &version_minor);
     if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
         Log::Warning("%s is in a different versions of session file. Loading might fail.", filename.c_str());
-        return;
+//        return;
     }
 
     // session file seems legit, create a session

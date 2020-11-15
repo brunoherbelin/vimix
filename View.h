@@ -221,6 +221,8 @@ class AppearanceView : public View
 public:
     AppearanceView();
 
+    void draw () override;
+
     void update (float dt) override;
     void zoom (float factor) override;
     void resize (int) override;
@@ -231,6 +233,7 @@ public:
 
 private:
 
+    int index_source_;
 };
 
 

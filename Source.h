@@ -163,14 +163,12 @@ protected:
     // pointer to the currently attached shader
     // (will be processingshader_ if image processing is enabled)
     Shader *renderingshader_;
-    // every sub class will attach the shader to a different node / hierarchy
-    virtual void replaceRenderingShader() = 0;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
     // surface to draw on
-    Surface *surface_;
+    Surface *texturesurface_;
 
     // mode for display
     Mode mode_;
@@ -217,7 +215,6 @@ protected:
     CloneSource(Source *origin);
 
     void init() override;
-    void replaceRenderingShader() override;
     Source *origin_;
 };
 

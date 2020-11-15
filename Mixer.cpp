@@ -208,6 +208,7 @@ void Mixer::update()
     mixing_.update(dt_);
     geometry_.update(dt_);
     layer_.update(dt_);
+    appearance_.update(dt_);
     transition_.update(dt_);
 
     // deep updates shall be performed only 1 frame
@@ -565,6 +566,7 @@ void Mixer::setCurrentSource(SourceList::iterator it)
 
         (*current_source_)->group(View::MIXING)->update_callbacks_.push_back(new BounceScaleCallback);
         (*current_source_)->group(View::LAYER)->update_callbacks_.push_back(new BounceScaleCallback);
+
     }
 
 }

@@ -124,6 +124,11 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     groups_[View::APPEARANCE] = new Group;
     groups_[View::APPEARANCE]->visible_ = false;
 
+    overlays_[View::APPEARANCE] = new Group;
+    overlays_[View::APPEARANCE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->visible_ = false;
+    groups_[View::APPEARANCE]->attach(overlays_[View::APPEARANCE]);
+
     // empty transition node
     groups_[View::TRANSITION] = new Group;
 
@@ -136,6 +141,13 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     // default to image processing enabled
     renderingshader_ = (Shader *) processingshader_;
 
+    // create media surface:
+    // - textured with original texture from media player
+    // - crop & repeat UV can be managed here
+    // - additional custom shader can be associated
+    texturesurface_ = new Surface(renderingshader_);
+
+    // will be created at init
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
 
@@ -171,6 +183,8 @@ Source::~Source()
     // could be created but not used
     if ( renderingshader_ != processingshader_ )
         delete processingshader_;
+
+    delete texturesurface_;
 }
 
 void Source::setName (const std::string &name)
@@ -209,6 +223,9 @@ void Source::setMode(Source::Mode m)
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current;
 
+    // show in appearance view if current
+    groups_[View::APPEARANCE]->visible_ = current;
+
     mode_ = m;
 }
 
@@ -241,7 +258,7 @@ void Source::setImageProcessingEnabled (bool on)
     // apply to nodes in subclasses
     // this calls replaceShader() on the Primitive and
     // will delete the previously attached shader
-    replaceRenderingShader();
+    texturesurface_->replaceShader(renderingshader_);
 }
 
 bool Source::imageProcessingEnabled()
@@ -258,7 +275,6 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::RENDERING]->attach(rendersurface_);
     groups_[View::GEOMETRY]->attach(rendersurface_);
     groups_[View::MIXING]->attach(rendersurface_);
-    groups_[View::APPEARANCE]->attach(rendersurface_);
 //    groups_[View::LAYER]->attach(rendersurface_);
 
     // for mixing and layer views, add another surface to overlay
@@ -268,6 +284,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     if (is)  is->stipple = 1.0;
     groups_[View::MIXING]->attach(surfacemix);
     groups_[View::LAYER]->attach(surfacemix);
+
+    // for appearance view, a dedicated surface without blending
+    Surface *surfacepreview = new FrameBufferSurface(renderbuffer_);
+    groups_[View::APPEARANCE]->attach(surfacepreview);
 
     // scale all icon nodes to match aspect ratio of the media
     NodeSet::iterator node;
@@ -431,17 +451,12 @@ CloneSource *Source::clone()
 
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
-    // create surface:
-    surface_ = new Surface(renderingshader_);
 }
 
 CloneSource::~CloneSource()
 {
     if (origin_)
         origin_->clones_.remove(this);
-
-    // delete surface
-    delete surface_;
 }
 
 CloneSource *CloneSource::clone()
@@ -453,17 +468,12 @@ CloneSource *CloneSource::clone()
         return nullptr;
 }
 
-void CloneSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
-}
-
 void CloneSource::init()
 {
     if (origin_ && origin_->ready()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
-        surface_->setTextureIndex( origin_->texture() );
+        texturesurface_->setTextureIndex( origin_->texture() );
 
         // create Frame buffer matching size of session
         FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), true);
@@ -474,6 +484,7 @@ void CloneSource::init()
         // icon in mixing view
         overlays_[View::MIXING]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
         overlays_[View::LAYER]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+        overlays_[View::APPEARANCE]->attach( new Symbol(Symbol::CLONE, glm::vec3(1.1f, 0.9f, 0.01f)) );
 
         // done init
         initialized_ = true;
@@ -511,7 +522,7 @@ void CloneSource::render()
         // render the view into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
+        texturesurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
 }

@@ -39,7 +39,6 @@ public:
 
 protected:
     void init() override;
-    void replaceRenderingShader() override;
 
     Stream *stream_;
 };

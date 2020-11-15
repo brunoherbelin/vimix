@@ -22,10 +22,11 @@ void Settings::Save()
     xmlDoc.InsertFirstChild(pDec);
 
     XMLElement *pRoot = xmlDoc.NewElement(application.name.c_str());
+    pRoot->SetAttribute("major", APP_VERSION_MAJOR);
+    pRoot->SetAttribute("minor", APP_VERSION_MINOR);
     xmlDoc.InsertEndChild(pRoot);
 
     string comment = "Settings for " + application.name;
-    comment += "Version " + std::to_string(APP_VERSION_MAJOR) + "." + std::to_string(APP_VERSION_MINOR);
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
@@ -221,8 +222,15 @@ void Settings::Load()
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
     if (pRoot == nullptr) return;
 
-    if (application.name.compare( string( pRoot->Value() ) ) != 0 ) 
-        // different root name
+    // cancel on different root name
+    if (application.name.compare( string( pRoot->Value() ) ) != 0 )
+        return;
+
+    // cancel on different version
+    int version_major = -1, version_minor = -1;
+    pRoot->QueryIntAttribute("major", &version_major);
+    pRoot->QueryIntAttribute("minor", &version_minor);
+    if (version_major != APP_VERSION_MAJOR || version_minor != APP_VERSION_MINOR)
         return;
 
     XMLElement * applicationNode = pRoot->FirstChildElement("Application");

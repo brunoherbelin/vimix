@@ -354,7 +354,7 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 ))
             Mixer::manager().setView(View::APPEARANCE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
@@ -730,7 +730,7 @@ void UserInterface::Render()
     Log::Render();
 
     // clear view mode in Transition view
-    if ( !Settings::application.transition.hide_windows || Settings::application.current_view != 4) {
+    if ( !Settings::application.transition.hide_windows || Settings::application.current_view < View::TRANSITION) {
 
         // windows
         if (Settings::application.widget.toolbox)
@@ -1852,7 +1852,7 @@ void Navigator::Render()
     pannel_width_ = 5.f * width_;                                    // pannel is 5x the bar
     padding_width_ = 2.f * style.WindowPadding.x;                   // panning for alighment
     height_ = io.DisplaySize.y;                                     // cover vertically
-    sourcelist_height_ = height_ - 6.f * ImGui::GetTextLineHeight(); // space for 3 icons of view
+    sourcelist_height_ = height_ - 8.f * ImGui::GetTextLineHeight(); // space for 4 icons of view
     float icon_width = width_ - 2.f * style.WindowPadding.x;        // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
 
@@ -1862,7 +1862,7 @@ void Navigator::Render()
         ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
         if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
         {
-            if (Settings::application.current_view < 4) {
+            if (Settings::application.current_view < View::TRANSITION) {
 
                 // the "=" icon for menu
                 if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
@@ -1908,7 +1908,7 @@ void Navigator::Render()
 
             }
             else {
-                // the "=" icon for menu
+                // the ">" icon for transition menu
                 if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
                 {
                     //            Mixer::manager().unsetCurrentSource();
@@ -1937,17 +1937,22 @@ void Navigator::Render()
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
-        if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::Selectable( ICON_FA_IMAGE, &selected_view[4], 0, iconsize))
+        {
+            Mixer::manager().setView(View::APPEARANCE);
+            view_pannel_visible = previous_view == Settings::application.current_view;
+        }
 
+        ImGui::End();
     }
-    ImGui::End();
 
     if ( view_pannel_visible && !pannel_visible_ )
-        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_, height_ - sourcelist_height_) );
+        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
@@ -2019,7 +2024,7 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
-    if (s == nullptr || Settings::application.current_view >3)
+    if (s == nullptr || Settings::application.current_view >= View::TRANSITION)
         return;
 
     // Next window is a side pannel
@@ -2336,7 +2341,7 @@ void Navigator::RenderNewPannel()
 
 void Navigator::RenderTransitionPannel()
 {
-    if (Settings::application.current_view < 4) {
+    if (Settings::application.current_view < View::TRANSITION) {
         hidePannel();
         return;
     }

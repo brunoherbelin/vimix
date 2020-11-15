@@ -309,8 +309,9 @@ void MixingView::draw()
 {
     // temporarily force shaders to use opacity blending for rendering icons
     Shader::force_blending_opacity = true;
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+    // draw scene of this view    
+    View::draw();
+//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
     // restore state
     Shader::force_blending_opacity = false;
 }
@@ -817,8 +818,9 @@ void GeometryView::draw()
         }
     }
 
-    // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+    // draw scene of this view    
+    View::draw();
+//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
     // re-draw frames of all sources on top
     for (auto source_iter = Mixer::manager().session()->begin(); source_iter != Mixer::manager().session()->end(); source_iter++)
@@ -1386,8 +1388,8 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Transition";
-        scene.root()->scale_ = glm::vec3(5.f, 5.f, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.8f, 0.f, 0.0f);
+        scene.root()->scale_ = glm::vec3(TRANSITION_DEFAULT_SCALE, TRANSITION_DEFAULT_SCALE, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.f, 0.f, 0.0f);
         saveSettings();
     }
     else
@@ -1692,20 +1694,27 @@ View::Cursor TransitionView::drag (glm::vec2 from, glm::vec2 to)
 }
 
 
-AppearanceView::AppearanceView() : View(APPEARANCE)
+AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
 {
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
-        Settings::application.views[mode_].name = "Source";
-        scene.root()->scale_ = glm::vec3(SOURCE_DEFAULT_SCALE, SOURCE_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.3f, 1.f, 0.0f);
+        Settings::application.views[mode_].name = "Appearance";
+        scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
+        scene.root()->translation_ = glm::vec3(1.8f, 0.f, 0.0f);
         saveSettings();
     }
     else
         restoreSettings();
 
     // Scene background
+    Surface *rect = new Surface;
+    scene.bg()->attach(rect);
+
+    // Geometry Scene foreground
+    Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+    scene.fg()->attach(border);
 
 }
 
@@ -1713,23 +1722,21 @@ void AppearanceView::update(float dt)
 {
     View::update(dt);
 
-    // a more complete update is requested
-    if (View::need_deep_update_) {
 
-        // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output){
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = output->aspectRatio();
-            }
-        }
-    }
+//    // a more complete update is requested (e.g. after switching to view)
+//    // AND no source selected
+//    if  (View::need_deep_update_ && Mixer::manager().indexCurrentSource() < 0) {
+
+//        index_source_ = -1;
+//    }
+
+
 }
 
 void AppearanceView::zoom (float factor)
 {
     float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, SOURCE_MIN_SCALE, SOURCE_MAX_SCALE);
+    z = CLAMP( z + 0.1f * factor, APPEARANCE_MIN_SCALE, APPEARANCE_MAX_SCALE);
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }
@@ -1738,35 +1745,71 @@ void AppearanceView::resize ( int scale )
 {
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
     z *= z;
-    z *= SOURCE_MAX_SCALE - SOURCE_MIN_SCALE;
-    z += SOURCE_MIN_SCALE;
+    z *= APPEARANCE_MAX_SCALE - APPEARANCE_MIN_SCALE;
+    z += APPEARANCE_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }
 
-int  AppearanceView::size ()
+int AppearanceView::size ()
 {
-    float z = (scene.root()->scale_.x - SOURCE_MIN_SCALE) / (SOURCE_MAX_SCALE - SOURCE_MIN_SCALE);
+    float z = (scene.root()->scale_.x - APPEARANCE_MIN_SCALE) / (APPEARANCE_MAX_SCALE - APPEARANCE_MIN_SCALE);
     return (int) ( sqrt(z) * 100.f);
 }
 
 
+void AppearanceView::draw()
+{
+    // did the current source change?
+    if (index_source_ != Mixer::manager().indexCurrentSource()) {
+
+        // another source is current
+        index_source_ = Mixer::manager().indexCurrentSource();
+
+        float scale = 1.f;
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            // update rendering frame to match current source AR
+            scale = s->frame()->aspectRatio();
+        }
+
+        // update aspect ratio
+        for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+            (*node)->scale_.x = scale;
+        }
+        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+            (*node)->scale_.x = scale;
+        }
+    }
+
+    Shader::force_blending_opacity = true;
+    View::draw();
+    Shader::force_blending_opacity = false;
+
+}
+
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
-    if (!s)
+//    if (!s)
         return Cursor();
 
-    // unproject
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+    // grab coordinates in scene-View reference frame
+    glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
+    glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+    glm::vec3 scene_translation = scene_to - scene_from;
 
 
     std::ostringstream info;
-    info << "Source " ;
+    info << "UV " ;
+
+    ImageShader *shader = s->blendingShader ();
+    shader->uv.x += scene_translation.x;
+    shader->uv.y += scene_translation.y;
+    shader->uv.z += scene_translation.x;
+    shader->uv.w += scene_translation.y;
 
 
-
-    return Cursor(Cursor_ResizeNESW, info.str() );
+    return Cursor(Cursor_ResizeAll, info.str() );
 }
 
 
