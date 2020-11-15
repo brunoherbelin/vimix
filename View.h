@@ -223,17 +223,25 @@ public:
 
     void draw () override;
 
-    void update (float dt) override;
+//    void update (float dt) override;
     void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
 
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
+    void terminate() override;
 
 private:
 
     int index_source_;
+    Surface *surfacepreview;
+
+    Node *overlay_position_;
+    Node *overlay_position_cross_;
+    Node *overlay_scaling_;
+    Node *overlay_scaling_cross_;
+    Node *overlay_scaling_grid_;
 };
 
 

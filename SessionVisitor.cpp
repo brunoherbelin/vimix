@@ -343,6 +343,10 @@ void SessionVisitor::visit (Source& s)
     sourceNode->InsertEndChild(xmlCurrent_);
     s.groupNode(View::LAYER)->accept(*this);
 
+    xmlCurrent_ = xmlDoc_->NewElement( "Appearance" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.groupNode(View::APPEARANCE)->accept(*this);
+
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.blendingShader()->accept(*this);

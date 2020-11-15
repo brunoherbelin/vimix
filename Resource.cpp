@@ -59,6 +59,23 @@ uint Resource::getTextureWhite()
     return tex_index_white;
 }
 
+uint Resource::getTextureTransparent()
+{
+    static uint tex_index_transparent = 0;
+
+    // generate texture (once)
+    if (tex_index_transparent == 0) {
+        glGenTextures(1, &tex_index_transparent);
+        glBindTexture( GL_TEXTURE_2D, tex_index_transparent);
+        unsigned char clearColor[4] = {0, 0, 0, 0};
+        // texture with one black pixel
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+    }
+
+    return tex_index_transparent;
+}
+
 const char *Resource::getData(const std::string& path, size_t* out_file_size){
 
     auto  fs = cmrc::vmix::get_filesystem();

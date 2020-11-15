@@ -173,7 +173,7 @@ public:
     // container
     void clear();
     void attach  (Node *child);
-    void detatch (Node *child);
+    void detach (Node *child);
     inline uint numChildren ()  const { return children_.size(); }
 
     // Group specific access to its Nodes

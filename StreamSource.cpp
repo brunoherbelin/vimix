@@ -17,10 +17,8 @@ GenericStreamSource::GenericStreamSource() : StreamSource()
     // create stream
     stream_ = new Stream;
 
-    // icon in mixing view
-    overlays_[View::MIXING]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::LAYER]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::APPEARANCE]->attach( new Symbol(Symbol::EMPTY, glm::vec3(1.1f, 0.9f, 0.01f)) );
+    // set symbol
+    symbol_ = new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
 void GenericStreamSource::setDescription(const std::string &desc)
@@ -114,17 +112,4 @@ void StreamSource::update(float dt)
     // update stream
     if (stream_)
         stream_->update();
-}
-
-void StreamSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the media player into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
-    }
 }

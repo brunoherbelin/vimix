@@ -17,6 +17,7 @@ class FrameBufferSurface;
 class Session;
 class Frame;
 class Handles;
+class Symbol;
 class CloneSource;
 
 typedef std::list<CloneSource *> CloneList;
@@ -28,6 +29,7 @@ class Source
     friend class MixingView;
     friend class GeometryView;
     friend class LayerView;
+    friend class AppearanceView;
     friend class TransitionView;
 
 public:
@@ -101,7 +103,7 @@ public:
     virtual uint texture() const = 0;
 
     // a Source shall define how to render into the frame buffer
-    virtual void render() = 0;
+    virtual void render();
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
@@ -176,7 +178,8 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    Handles *handle_[5];
+    std::map<View::Mode, Handles*[5]> handles_;
+    Symbol *symbol_;
 
     // update
     bool  active_;
@@ -199,7 +202,6 @@ public:
 
     // implementation of source API
     void setActive (bool on) override;
-    void render() override;
     uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;

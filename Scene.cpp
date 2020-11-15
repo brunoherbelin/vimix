@@ -228,8 +228,10 @@ void Group::clear()
 
 void Group::attach(Node *child)
 {
-    children_.insert(child);
-    child->refcount_++;
+    if (child != nullptr) {
+        children_.insert(child);
+        child->refcount_++;
+    }
 }
 
 
@@ -242,17 +244,18 @@ void Group::sort()
     children_.swap(ordered_children);
 }
 
-void Group::detatch(Node *child)
+void Group::detach(Node *child)
 {
-    // find the node with this id, and erase it out of the list of children
-    // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
-    NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
-    if ( it != children_.end())  {
-        // detatch child from group parent
-        children_.erase(it);
-        child->refcount_--;
+    if (child != nullptr) {
+        // find the node with this id, and erase it out of the list of children
+        // NB: do NOT delete with remove : this takes all nodes with same depth (i.e. equal depth in set)
+        NodeSet::iterator it = std::find_if(children_.begin(), children_.end(), hasId(child->id()));
+        if ( it != children_.end())  {
+            // detatch child from group parent
+            children_.erase(it);
+            child->refcount_--;
+        }
     }
-
 }
 
 void Group::update( float dt )

@@ -248,6 +248,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                             session_->addSource(clone_source);
                             // apply config to source
                             clone_source->accept(*this);
+                            clone_source->touch();
                             // remember
                             sources_id_.push_back( clone_source->id() );
                         }
@@ -293,6 +294,9 @@ Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
             }
             else if ( std::string(pType) == "DeviceSource") {
                 load_source = new DeviceSource;
+            }
+            else if ( std::string(pType) == "NetworkSource") {
+                load_source = new NetworkSource;
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -477,6 +481,9 @@ void SessionLoader::visit (Source& s)
 
     xmlCurrent_ = sourceNode->FirstChildElement("Layer");
     s.groupNode(View::LAYER)->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Appearance");
+    s.groupNode(View::APPEARANCE)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);

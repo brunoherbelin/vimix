@@ -132,7 +132,7 @@ SourceList::iterator Session::deleteSource(Source *s)
     if (its != sources_.end()) {
 
         // remove Node from the rendering scene
-        render_.scene.ws()->detatch( s->group(View::RENDERING) );
+        render_.scene.ws()->detach( s->group(View::RENDERING) );
 
         // erase the source from the update list & get next element
         its = sources_.erase(its);
@@ -160,7 +160,7 @@ void Session::removeSource(Source *s)
     if (its != sources_.end()) {
 
         // remove Node from the rendering scene
-        render_.scene.ws()->detatch( s->group(View::RENDERING) );
+        render_.scene.ws()->detach( s->group(View::RENDERING) );
 
         // erase the source from the update list & get next element
         sources_.erase(its);
@@ -181,7 +181,7 @@ Source *Session::popSource()
         s = *its;
 
         // remove Node from the rendering scene
-        render_.scene.ws()->detatch( s->group(View::RENDERING) );
+        render_.scene.ws()->detach( s->group(View::RENDERING) );
 
         // erase the source from the update list & get next element
         sources_.erase(its);

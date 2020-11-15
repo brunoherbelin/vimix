@@ -450,11 +450,11 @@ void Mixer::detach(Source *s)
         // in case it was selected..
         selection().remove(s);
         // detach from views
-        mixing_.scene.ws()->detatch( s->group(View::MIXING) );
-        geometry_.scene.ws()->detatch( s->group(View::GEOMETRY) );
-        layer_.scene.ws()->detatch( s->group(View::LAYER) );
-        appearance_.scene.ws()->detatch( s->group(View::APPEARANCE) );
-        transition_.scene.ws()->detatch( s->group(View::TRANSITION) );
+        mixing_.scene.ws()->detach( s->group(View::MIXING) );
+        geometry_.scene.ws()->detach( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->detach( s->group(View::LAYER) );
+        appearance_.scene.ws()->detach( s->group(View::APPEARANCE) );
+        transition_.scene.ws()->detach( s->group(View::TRANSITION) );
     }
 }
 
@@ -493,7 +493,7 @@ void Mixer::uncover(Source *s)
     if ( it != stash_.end() ) {
         stash_.erase(it);
 
-        mixing_.scene.bg()->detatch( s->group(View::MIXING) );
+        mixing_.scene.bg()->detach( s->group(View::MIXING) );
         attach(s);
         session_->addSource(s);
     }

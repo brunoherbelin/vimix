@@ -47,6 +47,9 @@ SessionSource::SessionSource() : Source(), path_("")
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
+    // set symbol
+    symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f));
+
     failed_ = false;
     wait_for_sources_ = false;
     session_ = nullptr;
@@ -155,11 +158,6 @@ void SessionSource::init()
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
-            // icon in mixing view
-            overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-            overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-            overlays_[View::APPEARANCE]->attach( new Symbol(Symbol::SESSION, glm::vec3(1.1f, 0.9f, 0.01f)) );
-
             // wait for all sources to init
             if (session_->numSource() > 0)
                 wait_for_sources_ = true;
@@ -173,7 +171,7 @@ void SessionSource::init()
     if (initialized_){
         // remove the loading icon
         Node *loader = overlays_[View::TRANSITION]->back();
-        overlays_[View::TRANSITION]->detatch(loader);
+        overlays_[View::TRANSITION]->detach(loader);
         delete loader;
     }
 }
@@ -208,18 +206,6 @@ void SessionSource::update(float dt)
     Source::update(dt);
 }
 
-void SessionSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the sesion into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
-    }
-}
 
 void SessionSource::accept(Visitor& v)
 {
@@ -231,6 +217,8 @@ void SessionSource::accept(Visitor& v)
 
 RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
+    // set symbol
+    symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
 
@@ -262,28 +250,10 @@ void RenderSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // icon in mixing view
-        overlays_[View::MIXING]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::APPEARANCE]->attach( new Symbol(Symbol::RENDER, glm::vec3(1.1f, 0.9f, 0.01f)) );
-
         // done init
         initialized_ = true;
 
         Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
-    }
-}
-
-void RenderSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
     }
 }
 

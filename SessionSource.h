@@ -14,7 +14,6 @@ public:
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
-    void render() override;
     bool failed() const override;
     uint texture() const override;
     void accept (Visitor& v) override;
@@ -48,7 +47,6 @@ public:
     RenderSource(Session *session);
 
     // implementation of source API
-    void render() override;
     bool failed() const override;
     uint texture() const override;
     void accept (Visitor& v) override;
