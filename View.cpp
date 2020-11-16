@@ -604,6 +604,8 @@ uint MixingView::textureMixingQuadratic()
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CIRCLE_PIXELS, CIRCLE_PIXELS, GL_BGRA, GL_UNSIGNED_BYTE, matrix);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     }
     return texid;
@@ -1836,41 +1838,6 @@ void AppearanceView::draw()
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
-//    View::Cursor ret = Cursor();
-//    std::ostringstream info;
-
-//    // work on the given source
-//    if (!s)
-//        return ret;
-
-//    Group *sourceNode = s->group(mode_); // groups_[View::APPEARANCE]
-
-//    // grab coordinates in scene-View reference frame
-//    glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
-//    glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
-//    glm::vec3 scene_translation = scene_to - scene_from;
-
-//    // make sure matrix transform of stored status is updated
-//    s->stored_status_->update(0);
-
-//    ret.type = Cursor_ResizeAll;
-//    info << "UV " ;
-
-//    sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
-
-////    ImageShader *shader = s->blendingShader ();
-////    shader->uv.x += scene_translation.x;
-////    shader->uv.y += scene_translation.y;
-////    shader->uv.z += scene_translation.x;
-////    shader->uv.w += scene_translation.y;
-
-
-//    // request update
-//    s->touch();
-
-//    // update cursor
-//    ret.info = info.str();
-//    return ret;
     View::Cursor ret = Cursor();
 
     // work on the given source

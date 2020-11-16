@@ -26,7 +26,6 @@ public:
     uint mask;
     uint custom_textureindex;
     float stipple;
-    glm::vec4 uv;
 
     static const char* mask_names[11];
     static std::vector< uint > mask_presets;

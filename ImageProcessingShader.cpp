@@ -9,13 +9,13 @@ const char* ImageProcessingShader::filter_names[12] = { "None", "Blur", "Sharpen
                                                         "Erosion 3x3", "Erosion 5x5", "Erosion 7x7", "Dilation 3x3", "Dilation 5x5", "Dilation 7x7" };
 
 
-ImageProcessingShader::ImageProcessingShader()
+ImageProcessingShader::ImageProcessingShader(): Shader()
 {
     program_ = &imageProcessingShadingProgram;
     reset();
 }
 
-ImageProcessingShader::ImageProcessingShader(const ImageProcessingShader &S)
+ImageProcessingShader::ImageProcessingShader(const ImageProcessingShader &S): Shader()
 {
     program_ = &imageProcessingShadingProgram;
     reset();
@@ -37,8 +37,6 @@ ImageProcessingShader::ImageProcessingShader(const ImageProcessingShader &S)
 void ImageProcessingShader::use()
 {
     Shader::use();
-
-//    program_->setUniform("iChannelResolution[0]", iChannelResolution[0].x, iChannelResolution[0].y, iChannelResolution[0].z);
 
     program_->setUniform("brightness", brightness);
     program_->setUniform("contrast", contrast);
@@ -62,9 +60,6 @@ void ImageProcessingShader::use()
 void ImageProcessingShader::reset()
 {
     Shader::reset();
-
-//    // no texture resolution yet
-//    iChannelResolution[0] = glm::vec3(1.f);
 
     // default values for image processing
     brightness = 0.f;

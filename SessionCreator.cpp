@@ -431,9 +431,9 @@ void SessionLoader::visit(ImageShader &n)
         uniforms->QueryUnsignedAttribute("mask", &n.mask);
     }
 
-    XMLElement* uvtex = xmlCurrent_->FirstChildElement("uv");
-    if (uvtex)
-        tinyxml2::XMLElementToGLM( uvtex->FirstChildElement("vec4"), n.uv);
+//    XMLElement* uvtex = xmlCurrent_->FirstChildElement("uv");
+//    if (uvtex)
+//        tinyxml2::XMLElementToGLM( uvtex->FirstChildElement("vec4"), n.uv);
 }
 
 void SessionLoader::visit(ImageProcessingShader &n)

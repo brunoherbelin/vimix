@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 
-#include "Shader.h"
+#include "ImageShader.h"
 
 
 class ImageProcessingShader : public Shader
@@ -18,9 +18,6 @@ public:
     void accept(Visitor& v) override;
 
     void operator = (const ImageProcessingShader &S);
-
-//    // textures resolution
-//    glm::vec3 iChannelResolution[1];
 
     // color effects
     float brightness; // [-1 1]

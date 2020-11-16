@@ -434,18 +434,19 @@ void Source::update(float dt)
         groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
 
         // MODIFY texture projection based on APPEARANCE node
-        texturesurface_->translation_.x = groups_[View::APPEARANCE]->translation_.x;
+        glm::vec3 center = groups_[View::APPEARANCE]->translation_;
         if (renderbuffer_)
-            texturesurface_->translation_.x /= renderbuffer_->aspectRatio();
-        texturesurface_->translation_.y = groups_[View::APPEARANCE]->translation_.y;
-        texturesurface_->rotation_.z = groups_[View::APPEARANCE]->rotation_.z;
-        // avoid any null scale
-        s = groups_[View::APPEARANCE]->scale_;
-        s.x = CLAMP_SCALE(s.x);
-        s.y = CLAMP_SCALE(s.y);
-        s.z = 1.f;
-        texturesurface_->scale_ = s;
-        texturesurface_->update(dt);
+            center.x /= renderbuffer_->aspectRatio();
+        glm::vec3 UL = glm::vec3(-1.f, 1.f, 0.f) - center;
+        glm::vec3 BR = glm::vec3(1.f, -1.f, 0.f) - center;
+        UL /= groups_[View::APPEARANCE]->scale_;
+        BR /= groups_[View::APPEARANCE]->scale_;
+        glm::vec4 uv;
+        uv.x = UL.x * 0.5f + 0.5f;
+        uv.y = UL.y * -0.5f + 0.5f;
+        uv.z = BR.x * 0.5f + 0.5f;
+        uv.w = BR.y * -0.5f + 0.5f;
+        texturesurface_->setTextureUV(uv);
 
         need_update_ = false;
     }

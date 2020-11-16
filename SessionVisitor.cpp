@@ -202,9 +202,9 @@ void SessionVisitor::visit(ImageShader &n)
     uniforms->SetAttribute("mask", n.mask);
     xmlCurrent_->InsertEndChild(uniforms);
 
-    XMLElement *uvtex = xmlDoc_->NewElement("uv");
-    uvtex->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.uv) );
-    xmlCurrent_->InsertEndChild(uvtex);
+//    XMLElement *uvtex = xmlDoc_->NewElement("uv");
+//    uvtex->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.uv) );
+//    xmlCurrent_->InsertEndChild(uvtex);
 
 }
 

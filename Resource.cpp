@@ -33,6 +33,10 @@ uint Resource::getTextureBlack()
     if (tex_index_black == 0) {
         glGenTextures(1, &tex_index_black);
         glBindTexture( GL_TEXTURE_2D, tex_index_black);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         unsigned char clearColor[4] = {0, 0, 0, 255};
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
@@ -50,6 +54,10 @@ uint Resource::getTextureWhite()
     if (tex_index_white == 0) {
         glGenTextures(1, &tex_index_white);
         glBindTexture( GL_TEXTURE_2D, tex_index_white);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         unsigned char clearColor[4] = {255, 255, 255, 255};
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
@@ -67,6 +75,10 @@ uint Resource::getTextureTransparent()
     if (tex_index_transparent == 0) {
         glGenTextures(1, &tex_index_transparent);
         glBindTexture( GL_TEXTURE_2D, tex_index_transparent);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         unsigned char clearColor[4] = {0, 0, 0, 0};
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
@@ -265,6 +277,8 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // free memory
 	stbi_image_free(img);
