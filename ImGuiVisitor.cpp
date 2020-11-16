@@ -75,20 +75,6 @@ void ImGuiVisitor::visit(Group &n)
         oss << "Position " << std::setprecision(3) << n.translation_.x << ", " << n.translation_.y;
         Action::manager().store(oss.str(), n.id());
     }
-
-    if (ImGuiToolkit::ButtonIcon(18, 9)){
-        n.rotation_.z = 0.f;
-        Action::manager().store("Angle 0.0", n.id());
-    }
-    ImGui::SameLine(0, 10);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
-    if (ImGui::IsItemDeactivatedAfterEdit()) {
-        std::ostringstream oss;
-        oss << "Angle " << std::setprecision(3) << n.rotation_.z * 180.f / M_PI;
-        Action::manager().store(oss.str(), n.id());
-    }
-
     if (ImGuiToolkit::ButtonIcon(3, 15))  {
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
@@ -107,6 +93,20 @@ void ImGuiVisitor::visit(Group &n)
         oss << "Scale " << std::setprecision(3) << n.scale_.x << " x " << n.scale_.y;
         Action::manager().store(oss.str(), n.id());
     }
+
+    if (ImGuiToolkit::ButtonIcon(18, 9)){
+        n.rotation_.z = 0.f;
+        Action::manager().store("Angle 0.0", n.id());
+    }
+    ImGui::SameLine(0, 10);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        std::ostringstream oss;
+        oss << "Angle " << std::setprecision(3) << n.rotation_.z * 180.f / M_PI;
+        Action::manager().store(oss.str(), n.id());
+    }
+
 
     ImGui::PopID();
 
@@ -417,7 +417,8 @@ void ImGuiVisitor::visit (Source& s)
         s.processingShader()->accept(*this);
 
     // geometry direct control
-    s.groupNode(View::GEOMETRY)->accept(*this);
+//    s.groupNode(View::GEOMETRY)->accept(*this);
+//    s.groupNode((View::Mode) Settings::application.current_view)->accept(*this);
 
     ImGui::PopID();
 }

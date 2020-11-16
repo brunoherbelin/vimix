@@ -316,6 +316,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.dds
     ./rsc/images/glow.dds
+    ./rsc/images/checker.dds
     ./rsc/images/shadow_perspective.dds
     ./rsc/mesh/disk.ply
     ./rsc/mesh/circle.ply

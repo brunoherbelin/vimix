@@ -1710,8 +1710,9 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
         restoreSettings();
 
     // Scene background
-    Surface *rect = new Surface;  // black : TODO transparency grid
-    scene.bg()->attach(rect);
+    backgroundpreview = new ImageSurface("images/checker.dds");  // black : TODO transparency grid
+    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f, 64.f));
+    scene.bg()->attach(backgroundpreview);
     surfacepreview = new Surface; // to attach source preview
     surfacepreview->translation_.z = 0.01f;
     scene.bg()->attach(surfacepreview);
@@ -1725,11 +1726,13 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
     //
     // point to show POSITION
     overlay_position_ = new Symbol(Symbol::SQUARE_POINT);
+    overlay_position_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     overlay_position_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
     scene.fg()->attach(overlay_position_);
     overlay_position_->visible_ = false;
     // cross to show the axis for POSITION
     overlay_position_cross_ = new Symbol(Symbol::CROSS);
+    overlay_position_cross_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     overlay_position_cross_->rotation_ = glm::vec3(0.f, 0.f, M_PI_4);
     overlay_position_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_position_cross_);
@@ -1738,6 +1741,7 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
     // with dark background
     Group *g = new Group;
     Symbol *s = new Symbol(Symbol::GRID);
+    s->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     g->attach(s);
     s = new Symbol(Symbol::SQUARE_POINT);
     s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
@@ -1750,11 +1754,13 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
     overlay_scaling_grid_->visible_ = false;
     // cross in the square for proportional SCALING
     overlay_scaling_cross_ = new Symbol(Symbol::CROSS);
+    overlay_scaling_cross_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     overlay_scaling_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_cross_);
     overlay_scaling_cross_->visible_ = false;
     // square to show the center of SCALING
     overlay_scaling_ = new Symbol(Symbol::SQUARE);
+    overlay_scaling_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
@@ -1801,34 +1807,96 @@ int AppearanceView::size ()
 }
 
 
+//void AppearanceView::selectAll()
+//{
+////    Mixer::selection().clear();
+
+////    Mixer::manager().setCurrentIndex(index_source_);
+
+////    if ( Mixer::manager().currentSource() == nullptr )
+////        Mixer::manager().setCurrentNext();
+
+//}
+
+//void AppearanceView::select(glm::vec2 A, glm::vec2 B)
+//{
+//}
+
+
+//std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
+//{
+//    // get picking from generic View
+//    std::pair<Node *, glm::vec2> pick = View::pick(P);
+
+////    // picking visitor found nothing?
+////    if ( pick.first == nullptr) {
+
+
+////        Source *s = Mixer::manager().currentSource();
+////        if (s != nullptr) {
+
+////            pick = std::pair(s->rendersurface_, glm::vec2(0.f));
+////        }
+
+
+////    }
+
+//    return pick;
+//}
+
 void AppearanceView::draw()
 {
+    int newindex = Mixer::manager().indexCurrentSource();
+
     // did the current source change?
-    if (index_source_ != Mixer::manager().indexCurrentSource()) {
+    if (index_source_ != newindex) {
 
-        // another source is current
-        index_source_ = Mixer::manager().indexCurrentSource();
-
-        float scale = 1.f;
-        Source *s = Mixer::manager().currentSource();
-        if (s != nullptr) {
-            // update rendering frame to match current source AR
-            scale = s->frame()->aspectRatio();
-
-            surfacepreview->setTextureIndex( s->frame()->texture() );
+        // if no source selected
+        if (newindex < 0) {
+            // is it because there is no source at all?
+            if (Mixer::manager().session()->numSource() < 1)
+                // ok, nothing to display
+                newindex = -1;
+            else {
+                // if we have a valid index, do not change anything
+                // but make sure it is in the range of valid indices
+                newindex = CLAMP(index_source_, 0,  Mixer::manager().session()->numSource());
+            }
         }
-        else {
+
+        // another index is selected
+        if (index_source_ != newindex) {
+            index_source_ = newindex;
+
+            // reset
+            float scale = 1.f;
             surfacepreview->setTextureIndex(0);
-        }
 
-        // update aspect ratio
-        for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-            (*node)->scale_.x = scale;
-        }
-        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-            (*node)->scale_.x = scale;
+            // if its a valid index
+            if (index_source_ > -1) {
+
+                Mixer::manager().setCurrentIndex(index_source_);
+                Source *s = Mixer::manager().currentSource();
+                if (s != nullptr) {
+                    // update rendering frame to match current source AR
+                    scale = s->frame()->aspectRatio();
+                    surfacepreview->setTextureIndex( s->frame()->texture() );
+                }
+
+            }
+
+            // update aspect ratio
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+                (*node)->scale_.x = scale;
+            }
+            backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
+            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+                (*node)->scale_.x = scale;
+            }
         }
     }
+
+
 
     Shader::force_blending_opacity = true;
     View::draw();
@@ -1925,7 +1993,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             T = glm::scale(T, s->stored_status_->scale_);
             corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
 
         }
@@ -1961,7 +2029,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the BORDER RESIZING handles top or bottom
@@ -1996,7 +2064,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the CENTRER SCALING handle
@@ -2029,7 +2097,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on diagonal
             corner = glm::sign(sourceNode->scale_);
             ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking anywhere but on a handle: user wants to move the source
@@ -2064,7 +2132,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             overlay_position_->translation_.y = sourceNode->translation_.y;
             overlay_position_->update(0);
             // Show move cursor
-            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+            info << "UV shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
             info << ", "  << sourceNode->translation_.y ;
         }
     }
@@ -2114,4 +2182,3 @@ View::Cursor AppearanceView::drag (glm::vec2 from, glm::vec2 to)
 
     return ret;
 }
-

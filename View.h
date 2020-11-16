@@ -11,6 +11,7 @@ typedef std::list<Source *> SourceList;
 
 class SessionSource;
 class Surface;
+class Symbol;
 
 class View
 {
@@ -216,10 +217,15 @@ private:
     SessionSource *transition_source_;
 };
 
+
 class AppearanceView : public View
 {
 public:
     AppearanceView();
+
+    // select sources provided a start and end selection points in screen coordinates
+//    void select(glm::vec2, glm::vec2) override;
+//    void selectAll() override;
 
     void draw () override;
 
@@ -228,6 +234,7 @@ public:
     void resize (int) override;
     int  size () override;
 
+//    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
     void terminate() override;
@@ -235,12 +242,13 @@ public:
 private:
 
     int index_source_;
+    Surface *backgroundpreview;
     Surface *surfacepreview;
 
-    Node *overlay_position_;
-    Node *overlay_position_cross_;
-    Node *overlay_scaling_;
-    Node *overlay_scaling_cross_;
+    Symbol *overlay_position_;
+    Symbol *overlay_position_cross_;
+    Symbol *overlay_scaling_;
+    Symbol *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
 };
 
