@@ -178,7 +178,7 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    std::map<View::Mode, Handles*[5]> handles_;
+    std::map<View::Mode, Handles*[6]> handles_;
     Symbol *symbol_;
 
     // update

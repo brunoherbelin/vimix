@@ -171,6 +171,7 @@ private:
     Node *overlay_scaling_;
     Node *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
+    bool show_context_menu_;
 };
 
 class LayerView : public View
@@ -223,7 +224,6 @@ class AppearanceView : public View
 public:
     AppearanceView();
 
-    // select sources provided a start and end selection points in screen coordinates
 //    void select(glm::vec2, glm::vec2) override;
 //    void selectAll() override;
 
@@ -234,7 +234,7 @@ public:
     void resize (int) override;
     int  size () override;
 
-//    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
+    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
     void terminate() override;
@@ -250,6 +250,7 @@ private:
     Symbol *overlay_scaling_;
     Symbol *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
+    bool show_context_menu_;
 };
 
 

@@ -332,6 +332,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
+    ./rsc/mesh/border_handles_menu.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
@@ -357,6 +358,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_clock.ply
     ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
+    ./rsc/mesh/icon_rightarrow.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

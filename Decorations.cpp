@@ -158,6 +158,7 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_rotation = new Mesh("mesh/border_handles_rotation.ply");
     static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
+    static Mesh *handle_restore  = new Mesh("mesh/border_handles_menu.ply");
 
     color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == Handles::ROTATE ) {
@@ -165,6 +166,9 @@ Handles::Handles(Type type) : Node(), type_(type)
     }
     else if ( type_ == Handles::SCALE ) {
         handle_ = handle_scale;
+    }
+    else if ( type_ == Handles::MENU ) {
+        handle_ = handle_restore;
     }
     else {
         handle_ = handle_corner;
@@ -285,6 +289,17 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // 2. ..from the bottom right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
+            // 3. draw
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::MENU ){
+            // one icon in top left corner
+            // 1. Fixed displacement by (-0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
+            // 2. ..from the top right corner (1,1)
+            vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             // 3. draw
             handle_->draw( ctm, projection );
         }

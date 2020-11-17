@@ -219,6 +219,7 @@ bool UserInterface::Init()
     style.WindowRounding = base_font_size / 2.5f;
     style.ChildRounding = style.WindowRounding / 2.f;
     style.FrameRounding = style.WindowRounding / 2.f;
+    style.PopupRounding = style.WindowRounding / 2.f;
     style.GrabRounding = style.FrameRounding / 2.f;
     style.GrabMinSize = base_font_size / 1.5f;
     style.Alpha = 0.92f;

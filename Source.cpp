@@ -91,7 +91,11 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     handles_[View::GEOMETRY][Handles::SCALE] = new Handles(Handles::SCALE);
     handles_[View::GEOMETRY][Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);    
+    handles_[View::GEOMETRY][Handles::MENU] = new Handles(Handles::MENU);
+    handles_[View::GEOMETRY][Handles::MENU]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::MENU]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::MENU]);
 
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -154,6 +158,10 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     handles_[View::APPEARANCE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     handles_[View::APPEARANCE][Handles::SCALE]->translation_.z = 0.1;
     overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::SCALE]);
+    handles_[View::APPEARANCE][Handles::MENU] = new Handles(Handles::MENU);
+    handles_[View::APPEARANCE][Handles::MENU]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::MENU]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::MENU]);
     groups_[View::APPEARANCE]->attach(overlays_[View::APPEARANCE]);
 
     // empty transition node

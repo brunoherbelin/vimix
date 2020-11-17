@@ -762,6 +762,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
 
+    show_context_menu_ = false;
 }
 
 void GeometryView::update(float dt)
@@ -839,6 +840,33 @@ void GeometryView::draw()
         scene.accept(dv);
     }
 
+    // display popup menu
+    if (show_context_menu_)
+        ImGui::OpenPopup( "GeometryContextMenu" );
+    if (ImGui::BeginPopup( "GeometryContextMenu" )) {
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            if (ImGui::Selectable( "Recenter" )){
+                s->group(mode_)->translation_ = glm::vec3(0,0,0);
+            }
+            else if (ImGui::Selectable( "Reset Geometry " )){
+                s->group(mode_)->scale_ = glm::vec3(1,1,1);
+                s->group(mode_)->rotation_.z = 0;
+            }
+            else if (ImGui::Selectable( "Restore original aspect ratio" )){
+                s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
+            }
+            // TODO other actions
+//            else if (ImGui::Selectable( "Bring to front" )){
+
+//            }
+//            else if (ImGui::Selectable( "Send to back" )){
+
+//            }
+        }
+        show_context_menu_ = false;
+        ImGui::EndPopup();
+    }
 
 }
 
@@ -874,6 +902,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             // not found: the current source was not clicked
             if (itp == pv.rend())
                 s = nullptr;
+            // picking on the menu handle
+            else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
+                // show context menu
+                show_context_menu_ = true;
+            }
         }
         // the clicked source changed (not the current source)
         if (s == nullptr) {
@@ -1823,26 +1856,22 @@ int AppearanceView::size ()
 //}
 
 
-//std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
-//{
-//    // get picking from generic View
-//    std::pair<Node *, glm::vec2> pick = View::pick(P);
-
-////    // picking visitor found nothing?
-////    if ( pick.first == nullptr) {
+std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
+{
+    // get picking from generic View
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
 
 
-////        Source *s = Mixer::manager().currentSource();
-////        if (s != nullptr) {
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+        if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
+            // show context menu
+            show_context_menu_ = true;
+        }
+    }
 
-////            pick = std::pair(s->rendersurface_, glm::vec2(0.f));
-////        }
-
-
-////    }
-
-//    return pick;
-//}
+    return pick;
+}
 
 void AppearanceView::draw()
 {
@@ -1896,11 +1925,31 @@ void AppearanceView::draw()
         }
     }
 
-
-
     Shader::force_blending_opacity = true;
     View::draw();
     Shader::force_blending_opacity = false;
+
+
+    // display popup menu
+    if (show_context_menu_)
+        ImGui::OpenPopup( "AppearanceContextMenu" );
+    if (ImGui::BeginPopup( "AppearanceContextMenu" )) {
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            if (ImGui::Selectable( "Recenter" )){
+                s->group(mode_)->translation_ = glm::vec3(0,0,0);
+            }
+            else if (ImGui::Selectable( "Reset UV " )){
+                s->group(mode_)->scale_ = glm::vec3(1,1,1);
+                s->group(mode_)->rotation_.z = 0;
+            }
+            else if (ImGui::Selectable( "Restore original aspect ratio" )){
+                s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
+            }
+        }
+        show_context_menu_ = false;
+        ImGui::EndPopup();
+    }
 
 }
 
