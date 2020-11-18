@@ -123,10 +123,16 @@ void MediaSource::render()
     if (!initialized_)
         init();
     else {
+//        blendingshader_->color.r = mediaplayer_->currentTimelineFading();
+//        blendingshader_->color.g = mediaplayer_->currentTimelineFading();
+//        blendingshader_->color.b = mediaplayer_->currentTimelineFading();
         // render the media player into frame buffer
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        texturesurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
+//        texturesurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.r = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.g = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.b = mediaplayer_->currentTimelineFading();
         texturesurface_->draw(glm::identity<glm::mat4>(), projection);
         renderbuffer_->end();
     }
