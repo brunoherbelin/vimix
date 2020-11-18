@@ -311,7 +311,6 @@ void MixingView::draw()
     Shader::force_blending_opacity = true;
     // draw scene of this view    
     View::draw();
-//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
     // restore state
     Shader::force_blending_opacity = false;
 }
@@ -775,11 +774,12 @@ void GeometryView::update(float dt)
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
+            float aspect_ratio = output->aspectRatio();
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = output->aspectRatio();
+                (*node)->scale_.x = aspect_ratio;
             }
             for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-                (*node)->scale_.x = output->aspectRatio();
+                (*node)->scale_.x = aspect_ratio;
             }
         }
     }
@@ -807,6 +807,26 @@ int  GeometryView::size ()
 {
     float z = (scene.root()->scale_.x - GEOMETRY_MIN_SCALE) / (GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE);
     return (int) ( sqrt(z) * 100.f);
+}
+
+void showContextMenu(View::Mode m, const char* label)
+{
+    if (ImGui::BeginPopup(label)) {
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
+                s->group(m)->translation_ = glm::vec3(0,0,0);
+            }
+            else if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Restore" )){
+                s->group(m)->scale_ = glm::vec3(1,1,1);
+                s->group(m)->rotation_.z = 0;
+            }
+            else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
+                s->group(m)->scale_.x = s->group(m)->scale_.y;
+            }
+        }
+        ImGui::EndPopup();
+    }
 }
 
 void GeometryView::draw()
@@ -840,33 +860,13 @@ void GeometryView::draw()
         scene.accept(dv);
     }
 
+
     // display popup menu
-    if (show_context_menu_)
+    if (show_context_menu_) {
         ImGui::OpenPopup( "GeometryContextMenu" );
-    if (ImGui::BeginPopup( "GeometryContextMenu" )) {
-        Source *s = Mixer::manager().currentSource();
-        if (s != nullptr) {
-            if (ImGui::Selectable( "Recenter" )){
-                s->group(mode_)->translation_ = glm::vec3(0,0,0);
-            }
-            else if (ImGui::Selectable( "Reset Geometry " )){
-                s->group(mode_)->scale_ = glm::vec3(1,1,1);
-                s->group(mode_)->rotation_.z = 0;
-            }
-            else if (ImGui::Selectable( "Restore original aspect ratio" )){
-                s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
-            }
-            // TODO other actions
-//            else if (ImGui::Selectable( "Bring to front" )){
-
-//            }
-//            else if (ImGui::Selectable( "Send to back" )){
-
-//            }
-        }
         show_context_menu_ = false;
-        ImGui::EndPopup();
     }
+    showContextMenu(mode_,"GeometryContextMenu");
 
 }
 
@@ -1308,8 +1308,8 @@ void LayerView::update(float dt)
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
                 (*node)->scale_.x = aspect_ratio;
             }
-            for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); node++) {
-                (*node)->translation_.y = (*node)->translation_.x / aspect_ratio;
+            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+                (*node)->scale_.x = aspect_ratio;
             }
         }
     }
@@ -1743,11 +1743,16 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
         restoreSettings();
 
     // Scene background
+    Surface *tmp = new Surface( new Shader);
+    tmp->scale_ = glm::vec3(20.f, 20.f, 1.f);
+    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.6f );
+    scene.bg()->attach(tmp);
     backgroundpreview = new ImageSurface("images/checker.dds");  // black : TODO transparency grid
     backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f, 64.f));
+    backgroundpreview->translation_.z = 0.001f;
     scene.bg()->attach(backgroundpreview);
     surfacepreview = new Surface; // to attach source preview
-    surfacepreview->translation_.z = 0.01f;
+    surfacepreview->translation_.z = 0.002f;
     scene.bg()->attach(surfacepreview);
 
     // Geometry Scene foreground
@@ -1873,6 +1878,7 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
     return pick;
 }
 
+
 void AppearanceView::draw()
 {
     int newindex = Mixer::manager().indexCurrentSource();
@@ -1915,9 +1921,8 @@ void AppearanceView::draw()
             }
 
             // update aspect ratio
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = scale;
-            }
+            surfacepreview->scale_.x = scale;
+            backgroundpreview->scale_.x = scale;
             backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
             for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
                 (*node)->scale_.x = scale;
@@ -1929,27 +1934,12 @@ void AppearanceView::draw()
     View::draw();
     Shader::force_blending_opacity = false;
 
-
     // display popup menu
-    if (show_context_menu_)
+    if (show_context_menu_) {
         ImGui::OpenPopup( "AppearanceContextMenu" );
-    if (ImGui::BeginPopup( "AppearanceContextMenu" )) {
-        Source *s = Mixer::manager().currentSource();
-        if (s != nullptr) {
-            if (ImGui::Selectable( "Recenter" )){
-                s->group(mode_)->translation_ = glm::vec3(0,0,0);
-            }
-            else if (ImGui::Selectable( "Reset UV " )){
-                s->group(mode_)->scale_ = glm::vec3(1,1,1);
-                s->group(mode_)->rotation_.z = 0;
-            }
-            else if (ImGui::Selectable( "Restore original aspect ratio" )){
-                s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
-            }
-        }
         show_context_menu_ = false;
-        ImGui::EndPopup();
     }
+    showContextMenu(mode_,"AppearanceContextMenu");
 
 }
 

@@ -375,8 +375,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     }
 
     // make the source visible
-    if ( mode_ == UNINITIALIZED )
+    if ( mode_ == UNINITIALIZED ) {
         setMode(VISIBLE);
+        need_update_ = true;
+    }
 }
 
 void Source::setActive (bool on)
