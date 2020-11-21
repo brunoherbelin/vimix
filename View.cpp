@@ -1836,7 +1836,7 @@ void AppearanceView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested (e.g. after switching to view)
-    if  (View::need_deep_update_)
+    if  (View::need_deep_update_ || edit_source_ != Mixer::manager().currentSource())
         need_edit_update_ = true;
 
 }
@@ -1901,10 +1901,9 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
     }
 
     if (picked == nullptr){
-        // make sure a source to edit is always picked
-        picked = EditCurrent();
-        if (picked)
-            pick.first = picked->frames_[mode_];
+        // make sure the source to edit is always picked
+        if (edit_source_)
+            pick.first = edit_source_->frames_[mode_];
     }
 
 
@@ -2014,7 +2013,7 @@ void AppearanceView::draw()
 //    }
 
     // a more complete update is requested (e.g. after switching to view)
-    if  ( need_edit_update_ || edit_source_ != Mixer::manager().currentSource()) {
+    if  ( need_edit_update_ ) {
         need_edit_update_ = false;
 
         // now, follow the change of current source

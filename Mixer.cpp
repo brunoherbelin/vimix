@@ -564,8 +564,10 @@ void Mixer::setCurrentSource(SourceList::iterator it)
         // show status as current
         (*current_source_)->setMode(Source::CURRENT);
 
-        (*current_source_)->group(View::MIXING)->update_callbacks_.push_back(new BounceScaleCallback);
-        (*current_source_)->group(View::LAYER)->update_callbacks_.push_back(new BounceScaleCallback);
+        if (current_view_ == &mixing_)
+            (*current_source_)->group(View::MIXING)->update_callbacks_.push_back(new BounceScaleCallback);
+        else if (current_view_ == &layer_)
+            (*current_source_)->group(View::LAYER)->update_callbacks_.push_back(new BounceScaleCallback);
 
     }
 
