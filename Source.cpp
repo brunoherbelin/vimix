@@ -259,7 +259,7 @@ void Source::setMode(Source::Mode m)
         (*o).second->visible_ = current;
 
     // show in appearance view if current
-    groups_[View::APPEARANCE]->visible_ = current;
+    groups_[View::APPEARANCE]->visible_ = m > Source::VISIBLE;
 
     mode_ = m;
 }

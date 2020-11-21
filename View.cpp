@@ -603,8 +603,8 @@ uint MixingView::textureMixingQuadratic()
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CIRCLE_PIXELS, CIRCLE_PIXELS, GL_BGRA, GL_UNSIGNED_BYTE, matrix);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     }
     return texid;
@@ -846,6 +846,7 @@ void GeometryView::draw()
 //    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
     // re-draw frames of all sources on top
+    // (otherwise hidden in stack of sources)
     for (auto source_iter = Mixer::manager().session()->begin(); source_iter != Mixer::manager().session()->end(); source_iter++)
     {
         DrawVisitor dv((*source_iter)->frames_[mode_], Rendering::manager().Projection());
@@ -860,6 +861,8 @@ void GeometryView::draw()
         scene.accept(dv);
     }
 
+    DrawVisitor dv(scene.fg(), Rendering::manager().Projection());
+    scene.accept(dv);
 
     // display popup menu
     if (show_context_menu_) {
@@ -1729,7 +1732,7 @@ View::Cursor TransitionView::drag (glm::vec2 from, glm::vec2 to)
 }
 
 
-AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
+AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need_edit_update_(true)
 {
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
@@ -1805,20 +1808,38 @@ AppearanceView::AppearanceView() : View(APPEARANCE), index_source_(-1)
 
 }
 
-//void AppearanceView::update(float dt)
-//{
-//    View::update(dt);
+Source *AppearanceView::EditCurrent()
+{
+    Source *current_source = Mixer::manager().currentSource();
 
+    // no current source
+    if (current_source == nullptr) {
+        // if something can be selected
+        if ( !Mixer::manager().session()->empty() ) {
+            // if the edit source exists
+            if (Mixer::manager().session()->find(edit_source_)!=Mixer::manager().session()->end())
+                // restore edited source as current
+                current_source = edit_source_;
+            else
+                // pick the first source of the session
+                current_source = *Mixer::manager().session()->begin();
+            // apply current source change
+            Mixer::manager().setCurrentSource(current_source);
+        }
+    }
 
-////    // a more complete update is requested (e.g. after switching to view)
-////    // AND no source selected
-////    if  (View::need_deep_update_ && Mixer::manager().indexCurrentSource() < 0) {
+    return current_source;
+}
 
-////        index_source_ = -1;
-////    }
+void AppearanceView::update(float dt)
+{
+    View::update(dt);
 
+    // a more complete update is requested (e.g. after switching to view)
+    if  (View::need_deep_update_)
+        need_edit_update_ = true;
 
-//}
+}
 
 void AppearanceView::zoom (float factor)
 {
@@ -1845,20 +1866,15 @@ int AppearanceView::size ()
 }
 
 
-//void AppearanceView::selectAll()
-//{
-////    Mixer::selection().clear();
+void AppearanceView::selectAll()
+{
+    need_edit_update_ = true;
+}
 
-////    Mixer::manager().setCurrentIndex(index_source_);
-
-////    if ( Mixer::manager().currentSource() == nullptr )
-////        Mixer::manager().setCurrentNext();
-
-//}
-
-//void AppearanceView::select(glm::vec2 A, glm::vec2 B)
-//{
-//}
+void AppearanceView::select(glm::vec2 A, glm::vec2 B)
+{
+    need_edit_update_ = true;
+}
 
 
 std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
@@ -1866,14 +1882,82 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
     // get picking from generic View
     std::pair<Node *, glm::vec2> pick = View::pick(P);
 
+    Source *picked = nullptr;
 
-    Source *s = Mixer::manager().currentSource();
-    if (s != nullptr) {
-        if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
-            // show context menu
-            show_context_menu_ = true;
+    if (pick.first != nullptr) {
+
+        picked = Mixer::manager().findSource(pick.first);
+
+        if (picked != nullptr) {
+            if (picked == edit_source_) {
+                if (pick.first == edit_source_->handles_[mode_][Handles::MENU] )
+                    // show context menu
+                    show_context_menu_ = true;
+            }
+            else {
+                picked = nullptr;
+            }
         }
     }
+
+    if (picked == nullptr){
+        // make sure a source to edit is always picked
+        picked = EditCurrent();
+        if (picked)
+            pick.first = picked->frames_[mode_];
+    }
+
+
+//    // prepare empty return value
+//    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
+
+//    // unproject mouse coordinate into scene coordinates
+//    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
+
+//    // picking visitor traverses the scene
+//    PickingVisitor pv(scene_point_);
+//    scene.accept(pv);
+
+//    // picking visitor found nodes?
+//    if ( !pv.empty() ) {
+
+//        // keep edit source active if it is clicked
+//        Source *s = edit_source_;
+//        if (s != nullptr) {
+//            // find if the current source was picked
+//            auto itp = pv.rbegin();
+//            for (; itp != pv.rend(); itp++){
+//                // test if source contains this node
+//                Source::hasNode is_in_source((*itp).first );
+//                if ( is_in_source( s ) ){
+//                    // a node in the current source was clicked !
+//                    pick = *itp;
+//                    break;
+//                }
+//            }
+//            // not found: the edit source was not clicked
+//            if (itp == pv.rend())
+//            {
+//                //s = nullptr;
+////                Mixer::selection().set(s);
+//                pick.first = s->frames_[mode_];
+//            }
+//            // picking on the edit source
+//            else  {
+
+////                Mixer::selection().clear();
+//               if ( pick.first == s->handles_[mode_][Handles::MENU] ) // show context menu
+//                   show_context_menu_ = true;
+//            }
+//        }
+//        // no edit source or the clicked source changed
+//        if (s == nullptr) {
+//            edit_source_ = EditCurrent();
+//            if (edit_source_)
+//                pick.first = edit_source_->frames_[mode_];
+//        }
+//    }
+//    need_edit_update_ = true;
 
     return pick;
 }
@@ -1881,53 +1965,81 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
 
 void AppearanceView::draw()
 {
-    int newindex = Mixer::manager().indexCurrentSource();
+//    Source *current_source = Mixer::manager().currentSource();
+//    if ( current_source != edit_source_ )
+//    {
+//        // current source is not the edited source
+//        if (current_source != nullptr) {
+//            // there is a valid current source, just edit it
+//            edit_source_ = current_source;
+//        }
+//        // no current source, but we have a pointer to source to edit
+//        else {
+//            // if the edit source exists?
+//            if (Mixer::manager().session()->find(edit_source_)!=Mixer::manager().session()->end()) {
+//                // restore current as current
+//                Mixer::manager().setCurrentSource(edit_source_);
+//            }
+//            else {
+//                if (Mixer::manager().session()->empty())
+//                    // nothing in the session, nothing to edit
+//                    edit_source_ = nullptr;
+//                else {
+//                    // pick the first source of the session
+//                    edit_source_ = *Mixer::manager().session()->begin();
+//                    Mixer::manager().setCurrentSource(edit_source_);
+//                }
+//            }
 
-    // did the current source change?
-    if (index_source_ != newindex) {
+//        }
 
-        // if no source selected
-        if (newindex < 0) {
-            // is it because there is no source at all?
-            if (Mixer::manager().session()->numSource() < 1)
-                // ok, nothing to display
-                newindex = -1;
-            else {
-                // if we have a valid index, do not change anything
-                // but make sure it is in the range of valid indices
-                newindex = CLAMP(index_source_, 0,  Mixer::manager().session()->numSource());
-            }
+//        // Update display
+//        float scale = 1.f;
+//        surfacepreview->setTextureIndex(0);
+
+//        // if its a valid index
+//        if (edit_source_ != nullptr) {
+//            // update rendering frame to match edit source AR
+//            scale = edit_source_->frame()->aspectRatio();
+//            surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
+//        }
+
+//        // update aspect ratio
+//        surfacepreview->scale_.x = scale;
+//        backgroundpreview->scale_.x = scale;
+//        backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
+//        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+//            (*node)->scale_.x = scale;
+//        }
+//    }
+
+    // a more complete update is requested (e.g. after switching to view)
+    if  ( need_edit_update_ || edit_source_ != Mixer::manager().currentSource()) {
+        need_edit_update_ = false;
+
+        // now, follow the change of current source
+        // & remember source to edit
+        edit_source_ = EditCurrent();
+
+        // by default consider edit source is null
+        float scale = 1.f;
+        surfacepreview->setTextureIndex(0);
+
+        // if its a valid index
+        if (edit_source_ != nullptr) {
+            // update rendering frame to match edit source AR
+            scale = edit_source_->frame()->aspectRatio();
+            surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
         }
 
-        // another index is selected
-        if (index_source_ != newindex) {
-            index_source_ = newindex;
-
-            // reset
-            float scale = 1.f;
-            surfacepreview->setTextureIndex(0);
-
-            // if its a valid index
-            if (index_source_ > -1) {
-
-                Mixer::manager().setCurrentIndex(index_source_);
-                Source *s = Mixer::manager().currentSource();
-                if (s != nullptr) {
-                    // update rendering frame to match current source AR
-                    scale = s->frame()->aspectRatio();
-                    surfacepreview->setTextureIndex( s->frame()->texture() );
-                }
-
-            }
-
-            // update aspect ratio
-            surfacepreview->scale_.x = scale;
-            backgroundpreview->scale_.x = scale;
-            backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
-            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-                (*node)->scale_.x = scale;
-            }
+        // update aspect ratio
+        surfacepreview->scale_.x = scale;
+        backgroundpreview->scale_.x = scale;
+        backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
+        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+            (*node)->scale_.x = scale;
         }
+
     }
 
     Shader::force_blending_opacity = true;

@@ -535,17 +535,17 @@ void UserInterface::handleMouse()
                 }
             }
         }
-        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
-        {
-            view_drag = nullptr;
-            mousedown = false;
-            picked = { nullptr, glm::vec2(0.f) };
-            Mixer::manager().view()->terminate();
+//        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+//        {
+//            view_drag = nullptr;
+//            mousedown = false;
+//            picked = { nullptr, glm::vec2(0.f) };
+//            Mixer::manager().view()->terminate();
 
-            // special case of one single source in selection : make current after release
-            if (Mixer::selection().size() == 1)
-                Mixer::manager().setCurrentSource( Mixer::selection().front() );
-        }
+//            // special case of one single source in selection : make current after release
+//            if (Mixer::selection().size() == 1)
+//                Mixer::manager().setCurrentSource( Mixer::selection().front() );
+//        }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
@@ -629,6 +629,19 @@ void UserInterface::handleMouse()
         view_drag = nullptr;
         mousedown = false;
         Mixer::manager().view()->terminate();
+    }
+
+
+    if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+    {
+        view_drag = nullptr;
+        mousedown = false;
+        picked = { nullptr, glm::vec2(0.f) };
+        Mixer::manager().view()->terminate();
+
+        // special case of one single source in selection : make current after release
+        if (Mixer::selection().size() == 1)
+            Mixer::manager().setCurrentSource( Mixer::selection().front() );
     }
 }
 

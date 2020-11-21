@@ -26,7 +26,7 @@ void DrawVisitor::loop(int num, glm::mat4 transform)
 void DrawVisitor::visit(Node &n)
 {
     // draw the target
-    if ( n.id() == target_->id()) {
+    if ( target_ && n.id() == target_->id()) {
 
         for (int i = 0; i < num_duplicat_; ++i) {
             // draw multiple copies if requested

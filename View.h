@@ -224,12 +224,12 @@ class AppearanceView : public View
 public:
     AppearanceView();
 
-//    void select(glm::vec2, glm::vec2) override;
-//    void selectAll() override;
+    void select(glm::vec2, glm::vec2) override;
+    void selectAll() override;
 
     void draw () override;
 
-//    void update (float dt) override;
+    void update (float dt) override;
     void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
@@ -241,7 +241,10 @@ public:
 
 private:
 
-    int index_source_;
+    Source *edit_source_;
+    bool need_edit_update_;
+    Source *EditCurrent();
+
     Surface *backgroundpreview;
     Surface *surfacepreview;
 
