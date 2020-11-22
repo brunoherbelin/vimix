@@ -816,13 +816,16 @@ void showContextMenu(View::Mode m, const char* label)
         if (s != nullptr) {
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
                 s->group(m)->translation_ = glm::vec3(0,0,0);
+                s->touch();
             }
             else if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Restore" )){
                 s->group(m)->scale_ = glm::vec3(1,1,1);
                 s->group(m)->rotation_.z = 0;
+                s->touch();
             }
             else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
                 s->group(m)->scale_.x = s->group(m)->scale_.y;
+                s->touch();
             }
         }
         ImGui::EndPopup();
@@ -1575,7 +1578,7 @@ void TransitionView::draw()
     {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::SetNextItemWidth(100.f);
-        ImGui::DragFloat("##nolabel", &Settings::application.transition.duration,
+        ImGui::DragFloat("##transitionduration", &Settings::application.transition.duration,
                          0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         ImGui::SameLine();
         if ( ImGui::Button(ICON_FA_STEP_FORWARD) )
@@ -2052,6 +2055,21 @@ void AppearanceView::draw()
     }
     showContextMenu(mode_,"AppearanceContextMenu");
 
+//    // display interface duration
+//    glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
+//    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+//    if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+//                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+//                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+//    {
+//        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+//        ImGui::SetNextItemWidth(100.f);
+//        float width = 1.f;
+//        ImGui::DragFloat("##apppearancewidth", &width,  0.1f, 0.3f, 2.f, "%.1f ");
+
+//        ImGui::PopFont();
+//        ImGui::End();
+//    }
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
