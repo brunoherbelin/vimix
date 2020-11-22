@@ -318,6 +318,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/glow.dds
     ./rsc/images/checker.dds
     ./rsc/images/shadow_perspective.dds
+    ./rsc/images/soft_shadow.dds
     ./rsc/mesh/disk.ply
     ./rsc/mesh/circle.ply
     ./rsc/mesh/shadow.ply
@@ -333,6 +334,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_handles_menu.ply
+    ./rsc/mesh/border_handles_shadow.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply

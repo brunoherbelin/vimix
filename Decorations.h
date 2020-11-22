@@ -52,6 +52,7 @@ public:
 
 protected:
     Primitive *handle_;
+    Primitive *shadow_;
     glm::vec2 corner_;
     Type type_;
 

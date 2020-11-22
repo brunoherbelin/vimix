@@ -8,6 +8,7 @@
 #include "BoundingBoxVisitor.h"
 #include "ImageShader.h"
 #include "GlmToolkit.h"
+#include "Resource.h"
 #include "Log.h"
 
 
@@ -159,6 +160,7 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
     static Mesh *handle_restore  = new Mesh("mesh/border_handles_menu.ply");
+    static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
     color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == Handles::ROTATE ) {
@@ -175,6 +177,8 @@ Handles::Handles(Type type) : Node(), type_(type)
     }
 
     corner_ = glm::vec2(0.f, 0.f);
+
+    shadow_ = handle_shadow;
 }
 
 Handles::~Handles()
@@ -194,6 +198,8 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() ) {
         if(handle_ && !handle_->initialized())
             handle_->init();
+        if(shadow_ && !shadow_->initialized())
+            shadow_->init();
         init();
     }
 
@@ -279,6 +285,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::SCALE ){
@@ -290,6 +297,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
             // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::MENU ){
@@ -301,6 +309,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
     }
