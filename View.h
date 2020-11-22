@@ -247,6 +247,7 @@ private:
 
     void adjustBackground();
 
+    class Frame *backgroundframe;
     Surface *backgroundpreview;
     Surface *surfacepreview;
 

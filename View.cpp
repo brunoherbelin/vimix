@@ -1753,6 +1753,9 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     tmp->scale_ = glm::vec3(20.f, 20.f, 1.f);
     tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.6f );
     scene.bg()->attach(tmp);
+    backgroundframe = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    backgroundframe->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.3f );
+    scene.bg()->attach(backgroundframe);
     backgroundpreview = new ImageSurface("images/checker.dds");  // black : TODO transparency grid
     backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f, 64.f));
     backgroundpreview->translation_.z = 0.001f;
@@ -1967,23 +1970,25 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
 void AppearanceView::adjustBackground()
 {
     // by default consider edit source is null
-    float width_scale = 1.f;
+    float image_original_width = 1.f;
+    float image_projection_width = 1.f;
     surfacepreview->setTextureIndex(0);
 
     // if its a valid index
     if (edit_source_ != nullptr) {
         // update rendering frame to match edit source AR
-        width_scale = edit_source_->frame()->aspectRatio();
-        width_scale *= edit_source_->frame()->projectionAspectRatio();;
+        image_original_width = edit_source_->frame()->aspectRatio();
+        image_projection_width = image_original_width * edit_source_->frame()->projectionAspectRatio();;
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
     }
 
     // update aspect ratio
-    surfacepreview->scale_.x = width_scale;
-    backgroundpreview->scale_.x = width_scale;
-    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * width_scale, 64.f));
+    backgroundframe->scale_.x = image_original_width;
+    surfacepreview->scale_.x = image_projection_width;
+    backgroundpreview->scale_.x = image_projection_width;
+    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * image_projection_width, 64.f));
     for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-        (*node)->scale_.x = width_scale;
+        (*node)->scale_.x = image_projection_width;
     }
 }
 
