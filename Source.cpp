@@ -307,12 +307,13 @@ void Source::render()
         init();
     else {
         // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
+//        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), projection);
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
     }
 }
+
 
 void Source::attach(FrameBuffer *renderbuffer)
 {
@@ -339,37 +340,22 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::MIXING]->attach(surfacemix);
     groups_[View::LAYER]->attach(surfacemix);
 
-//    // for appearance view, a dedicated surface without blending
-    //    Surface *surfacepreview = new FrameBufferSurface(renderbuffer_);
+    // for appearance view, a dedicated surface without blending
     Surface *surfacetmp = new Surface();
     surfacetmp->setTextureIndex(Resource::getTextureTransparent());
     groups_[View::APPEARANCE]->attach(surfacetmp);
-
-    // scale all icon nodes to match aspect ratio of the media
-    NodeSet::iterator node;
-    for (node = groups_[View::MIXING]->begin();
-         node != groups_[View::MIXING]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
-    for (node = groups_[View::GEOMETRY]->begin();
-         node != groups_[View::GEOMETRY]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
-    for (node = groups_[View::LAYER]->begin();
-         node != groups_[View::LAYER]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
-    for (node = groups_[View::APPEARANCE]->begin();
-         node != groups_[View::APPEARANCE]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
 
     // Transition group node is optionnal
     if ( groups_[View::TRANSITION]->numChildren() > 0 ) {
         groups_[View::TRANSITION]->attach(rendersurface_);
         groups_[View::TRANSITION]->attach(surfacemix);
-        for (NodeSet::iterator node = groups_[View::TRANSITION]->begin();
-             node != groups_[View::TRANSITION]->end(); node++) {
+    }
+
+    // scale all icon nodes to match aspect ratio
+    for (int v = View::MIXING; v < View::INVALID; v++) {
+        NodeSet::iterator node;
+        for (node = groups_[(View::Mode) v]->begin();
+             node != groups_[(View::Mode) v]->end(); node++) {
             (*node)->scale_.x = renderbuffer_->aspectRatio();
         }
     }
@@ -380,6 +366,7 @@ void Source::attach(FrameBuffer *renderbuffer)
         need_update_ = true;
     }
 }
+
 
 void Source::setActive (bool on)
 {
@@ -447,6 +434,7 @@ void Source::update(float dt)
         glm::vec3 center = groups_[View::APPEARANCE]->translation_;
         if (renderbuffer_)
             center.x /= renderbuffer_->aspectRatio();
+
         glm::vec3 UL = glm::vec3(-1.f, 1.f, 0.f) - center;
         glm::vec3 BR = glm::vec3(1.f, -1.f, 0.f) - center;
         UL /= groups_[View::APPEARANCE]->scale_;
@@ -457,6 +445,12 @@ void Source::update(float dt)
         uv.z = BR.x * 0.5f + 0.5f;
         uv.w = BR.y * -0.5f + 0.5f;
         texturesurface_->setTextureUV(uv);
+
+        // MODIFY CROP
+        if (renderbuffer_) {
+            groups_[View::MIXING]->scale_.x *= renderbuffer_->projectionAspectRatio();
+            groups_[View::LAYER]->scale_.x = renderbuffer_->projectionAspectRatio();
+        }
 
         need_update_ = false;
     }

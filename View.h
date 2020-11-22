@@ -245,6 +245,8 @@ private:
     bool need_edit_update_;
     Source *EditCurrent();
 
+    void adjustBackground();
+
     Surface *backgroundpreview;
     Surface *surfacepreview;
 

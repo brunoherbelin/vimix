@@ -1964,58 +1964,32 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
     return pick;
 }
 
+void AppearanceView::adjustBackground()
+{
+    // by default consider edit source is null
+    float width_scale = 1.f;
+    surfacepreview->setTextureIndex(0);
+
+    // if its a valid index
+    if (edit_source_ != nullptr) {
+        // update rendering frame to match edit source AR
+        width_scale = edit_source_->frame()->aspectRatio();
+        width_scale *= edit_source_->frame()->projectionAspectRatio();;
+        surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
+    }
+
+    // update aspect ratio
+    surfacepreview->scale_.x = width_scale;
+    backgroundpreview->scale_.x = width_scale;
+    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * width_scale, 64.f));
+    for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+        (*node)->scale_.x = width_scale;
+    }
+}
 
 void AppearanceView::draw()
 {
-//    Source *current_source = Mixer::manager().currentSource();
-//    if ( current_source != edit_source_ )
-//    {
-//        // current source is not the edited source
-//        if (current_source != nullptr) {
-//            // there is a valid current source, just edit it
-//            edit_source_ = current_source;
-//        }
-//        // no current source, but we have a pointer to source to edit
-//        else {
-//            // if the edit source exists?
-//            if (Mixer::manager().session()->find(edit_source_)!=Mixer::manager().session()->end()) {
-//                // restore current as current
-//                Mixer::manager().setCurrentSource(edit_source_);
-//            }
-//            else {
-//                if (Mixer::manager().session()->empty())
-//                    // nothing in the session, nothing to edit
-//                    edit_source_ = nullptr;
-//                else {
-//                    // pick the first source of the session
-//                    edit_source_ = *Mixer::manager().session()->begin();
-//                    Mixer::manager().setCurrentSource(edit_source_);
-//                }
-//            }
-
-//        }
-
-//        // Update display
-//        float scale = 1.f;
-//        surfacepreview->setTextureIndex(0);
-
-//        // if its a valid index
-//        if (edit_source_ != nullptr) {
-//            // update rendering frame to match edit source AR
-//            scale = edit_source_->frame()->aspectRatio();
-//            surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
-//        }
-
-//        // update aspect ratio
-//        surfacepreview->scale_.x = scale;
-//        backgroundpreview->scale_.x = scale;
-//        backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
-//        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-//            (*node)->scale_.x = scale;
-//        }
-//    }
-
-    // a more complete update is requested (e.g. after switching to view)
+    // edit view needs to be updated (source changed)
     if  ( need_edit_update_ ) {
         need_edit_update_ = false;
 
@@ -2023,30 +1997,9 @@ void AppearanceView::draw()
         // & remember source to edit
         edit_source_ = EditCurrent();
 
-        // by default consider edit source is null
-        float scale = 1.f;
-        surfacepreview->setTextureIndex(0);
-
-        // if its a valid index
-        if (edit_source_ != nullptr) {
-            // update rendering frame to match edit source AR
-            scale = edit_source_->frame()->aspectRatio();
-            surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
-        }
-
-        // update aspect ratio
-        surfacepreview->scale_.x = scale;
-        backgroundpreview->scale_.x = scale;
-        backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * scale, 64.f));
-        for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-            (*node)->scale_.x = scale;
-        }
-
+        // update background and frame to match editsource
+        adjustBackground();
     }
-
-    Shader::force_blending_opacity = true;
-    View::draw();
-    Shader::force_blending_opacity = false;
 
     // display popup menu
     if (show_context_menu_) {
@@ -2055,21 +2008,38 @@ void AppearanceView::draw()
     }
     showContextMenu(mode_,"AppearanceContextMenu");
 
-//    // display interface duration
-//    glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
-//    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
-//    if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-//                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-//                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-//    {
-//        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//        ImGui::SetNextItemWidth(100.f);
-//        float width = 1.f;
-//        ImGui::DragFloat("##apppearancewidth", &width,  0.1f, 0.3f, 2.f, "%.1f ");
+    // display interface duration
+    if ( edit_source_ != nullptr ) {
 
-//        ImGui::PopFont();
-//        ImGui::End();
-//    }
+        glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+        if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetNextItemWidth(100.f);
+            float crop_width =  edit_source_->frame()->projectionAspectRatio();
+            if ( ImGui::DragFloat("##apppearancewidth", &crop_width,  0.05f, 0.2f, 1.f, "%.1f ") )
+            {
+                // crop horizontally
+                edit_source_->frame()->crop(glm::vec2(crop_width, 1.f));
+                // TODO scale GEOMETRY and RENDER groups
+                edit_source_->touch();
+                // update background and frame
+                adjustBackground();
+            }
+
+            ImGui::PopFont();
+            ImGui::End();
+        }
+
+    }
+
+    Shader::force_blending_opacity = true;
+    View::draw();
+    Shader::force_blending_opacity = false;
+
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
