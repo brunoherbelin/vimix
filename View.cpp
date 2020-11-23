@@ -846,7 +846,6 @@ void GeometryView::draw()
 
     // draw scene of this view    
     View::draw();
-//    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
 
     // re-draw frames of all sources on top
     // (otherwise hidden in stack of sources)
@@ -1814,29 +1813,6 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
 
 }
 
-Source *AppearanceView::EditCurrent()
-{
-    Source *current_source = Mixer::manager().currentSource();
-
-    // no current source
-    if (current_source == nullptr) {
-        // if something can be selected
-        if ( !Mixer::manager().session()->empty() ) {
-            // if the edit source exists
-            if (Mixer::manager().session()->find(edit_source_)!=Mixer::manager().session()->end())
-                // restore edited source as current
-                current_source = edit_source_;
-            else
-                // pick the first source of the session
-                current_source = *Mixer::manager().session()->begin();
-            // apply current source change
-            Mixer::manager().setCurrentSource(current_source);
-        }
-    }
-
-    return current_source;
-}
-
 void AppearanceView::update(float dt)
 {
     View::update(dt);
@@ -1874,95 +1850,78 @@ int AppearanceView::size ()
 
 void AppearanceView::selectAll()
 {
-    need_edit_update_ = true;
+    Mixer::manager().setCurrentSource( getEditOrCurrentSource() );
 }
 
 void AppearanceView::select(glm::vec2 A, glm::vec2 B)
 {
-    need_edit_update_ = true;
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_A = Rendering::manager().unProject(A);
+    glm::vec3 scene_point_B = Rendering::manager().unProject(B);
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_A, scene_point_B, true);
+    scene.accept(pv);
+
+    // picking visitor found nodes in the area?
+    if ( !pv.empty()) {
+        // loop over sources matching the list of picked nodes
+        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+            Source *s = Mixer::manager().findSource( p->first );
+            // set the edit source as current if selected
+            if (s != nullptr && s == edit_source_)
+                Mixer::manager().setCurrentSource( s );
+        }
+    }
 }
 
 
 std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
 {
-    // get picking from generic View
-    std::pair<Node *, glm::vec2> pick = View::pick(P);
+    // prepare empty return value
+    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
 
-    Source *picked = nullptr;
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
 
-    if (pick.first != nullptr) {
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_, true);
+    scene.accept(pv);
 
-        picked = Mixer::manager().findSource(pick.first);
+    // picking visitor found nodes?
+    if ( !pv.empty()) {
+        // keep edit source active if it is clicked
+        Source *s = edit_source_;
+        if (s != nullptr) {
 
-        if (picked != nullptr) {
-            if (picked == edit_source_) {
-                if (pick.first == edit_source_->handles_[mode_][Handles::MENU] )
-                    // show context menu
-                    show_context_menu_ = true;
+            // find if the edit source was picked
+            auto itp = pv.rbegin();
+            for (; itp != pv.rend(); itp++){
+                // test if source contains this node
+                Source::hasNode is_in_source((*itp).first );
+                if ( is_in_source( s ) ){
+                    // a node in the current source was clicked !
+                    pick = *itp;
+                    break;
+                }
             }
-            else {
-                picked = nullptr;
+            // not found: the edit source was not clicked
+            if (itp == pv.rend())
+                s = nullptr;
+            // picking on the menu handle
+            else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
+                // show context menu
+                show_context_menu_ = true;
             }
         }
+
+        // not the edit source (or no edit source)
+        if (s == nullptr) {
+            // cancel pick
+            pick = { nullptr, glm::vec2(0.f) };
+        }
+
     }
-
-    if (picked == nullptr){
-        // make sure the source to edit is always picked
-        if (edit_source_)
-            pick.first = edit_source_->frames_[mode_];
-    }
-
-
-//    // prepare empty return value
-//    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
-
-//    // unproject mouse coordinate into scene coordinates
-//    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
-
-//    // picking visitor traverses the scene
-//    PickingVisitor pv(scene_point_);
-//    scene.accept(pv);
-
-//    // picking visitor found nodes?
-//    if ( !pv.empty() ) {
-
-//        // keep edit source active if it is clicked
-//        Source *s = edit_source_;
-//        if (s != nullptr) {
-//            // find if the current source was picked
-//            auto itp = pv.rbegin();
-//            for (; itp != pv.rend(); itp++){
-//                // test if source contains this node
-//                Source::hasNode is_in_source((*itp).first );
-//                if ( is_in_source( s ) ){
-//                    // a node in the current source was clicked !
-//                    pick = *itp;
-//                    break;
-//                }
-//            }
-//            // not found: the edit source was not clicked
-//            if (itp == pv.rend())
-//            {
-//                //s = nullptr;
-////                Mixer::selection().set(s);
-//                pick.first = s->frames_[mode_];
-//            }
-//            // picking on the edit source
-//            else  {
-
-////                Mixer::selection().clear();
-//               if ( pick.first == s->handles_[mode_][Handles::MENU] ) // show context menu
-//                   show_context_menu_ = true;
-//            }
-//        }
-//        // no edit source or the clicked source changed
-//        if (s == nullptr) {
-//            edit_source_ = EditCurrent();
-//            if (edit_source_)
-//                pick.first = edit_source_->frames_[mode_];
-//        }
-//    }
-//    need_edit_update_ = true;
 
     return pick;
 }
@@ -1992,15 +1951,34 @@ void AppearanceView::adjustBackground()
     }
 }
 
+Source *AppearanceView::getEditOrCurrentSource()
+{
+    // get current source
+    Source *_source = Mixer::manager().currentSource();
+
+    // no current source?
+    if (_source == nullptr) {
+        // if something can be selected
+        if ( !Mixer::manager().session()->empty()) {
+            // return the edit source, if exists
+            if (edit_source_ != nullptr)
+                _source = Mixer::manager().findSource(edit_source_->id());
+        }
+    }
+
+    return _source;
+}
+
 void AppearanceView::draw()
 {
     // edit view needs to be updated (source changed)
-    if  ( need_edit_update_ ) {
+    if  ( need_edit_update_ )
+    {
         need_edit_update_ = false;
 
         // now, follow the change of current source
         // & remember source to edit
-        edit_source_ = EditCurrent();
+        edit_source_ = getEditOrCurrentSource();
 
         // update background and frame to match editsource
         adjustBackground();
@@ -2013,38 +1991,43 @@ void AppearanceView::draw()
     }
     showContextMenu(mode_,"AppearanceContextMenu");
 
-    // display interface duration
-    if ( edit_source_ != nullptr ) {
 
-        glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
-        ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
-        if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-        {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::SetNextItemWidth(100.f);
-            float crop_width =  edit_source_->frame()->projectionAspectRatio();
-            if ( ImGui::DragFloat("##apppearancewidth", &crop_width,  0.05f, 0.2f, 1.f, "%.1f ") )
-            {
-                // crop horizontally
-                edit_source_->frame()->crop(glm::vec2(crop_width, 1.f));
-                // TODO scale GEOMETRY and RENDER groups
-                edit_source_->touch();
-                // update background and frame
-                adjustBackground();
-            }
+//    if ( edit_source_ != nullptr ) {
 
-            ImGui::PopFont();
-            ImGui::End();
-        }
+//        glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
+//        ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+//        if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+//                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+//                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+//        {
+//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+//            ImGui::SetNextItemWidth(100.f);
+//            float crop_width =  edit_source_->frame()->projectionAspectRatio();
+//            if ( ImGui::DragFloat("##apppearancewidth", &crop_width,  0.05f, 0.2f, 1.f, "%.1f ") )
+//            {
+//                // crop horizontally
+//                edit_source_->frame()->crop(glm::vec2(crop_width, 1.f));
+//                // TODO scale GEOMETRY and RENDER groups
+//                edit_source_->touch();
+//                // update background and frame
+//                adjustBackground();
+//            }
 
-    }
+//            ImGui::PopFont();
+//            ImGui::End();
+//        }
+
+//    }
 
     Shader::force_blending_opacity = true;
     View::draw();
     Shader::force_blending_opacity = false;
 
+    if (edit_source_ != nullptr){
+        // force to redraw the frame of the edit source (even if source is not visible)
+        DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
+        scene.accept(dv);
+    }
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)

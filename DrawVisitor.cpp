@@ -6,7 +6,7 @@
 #include "Scene.h"
 
 
-DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection)
+DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force): force_(force)
 {
     target_ = nodetodraw;
     modelview_ = glm::identity<glm::mat4>();
@@ -52,7 +52,7 @@ void DrawVisitor::visit(Group &n)
     // traverse children
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); !done_ && node != n.end(); node++) {
-        if ( (*node)->visible_ )
+        if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;
     }

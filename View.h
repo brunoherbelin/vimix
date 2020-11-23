@@ -243,7 +243,7 @@ private:
 
     Source *edit_source_;
     bool need_edit_update_;
-    Source *EditCurrent();
+    Source *getEditOrCurrentSource();
 
     void adjustBackground();
 

@@ -606,7 +606,8 @@ void Mixer::setCurrentSource(uint64_t id)
 
 void Mixer::setCurrentSource(Node *node)
 {
-    setCurrentSource( session_->find(node) );
+    if (node!=nullptr)
+        setCurrentSource( session_->find(node) );
 }
 
 void Mixer::setCurrentSource(std::string namesource)
@@ -616,7 +617,8 @@ void Mixer::setCurrentSource(std::string namesource)
 
 void Mixer::setCurrentSource(Source *s)
 {
-    setCurrentSource( session_->find(s) );
+    if (s!=nullptr)
+        setCurrentSource( session_->find(s) );
 }
 
 void Mixer::setCurrentIndex(int index)

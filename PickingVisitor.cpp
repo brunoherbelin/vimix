@@ -11,13 +11,13 @@
 #include <glm/gtx/vector_angle.hpp>
 
 
-PickingVisitor::PickingVisitor(glm::vec3 coordinates) : Visitor()
+PickingVisitor::PickingVisitor(glm::vec3 coordinates, bool force) : Visitor(), force_(force)
 {
     modelview_ = glm::mat4(1.f);
     points_.push_back( coordinates );
 }
 
-PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end) : Visitor()
+PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force) : Visitor(), force_(force)
 {
     modelview_ = glm::mat4(1.f);
     points_.push_back( selectionstart );
@@ -32,12 +32,12 @@ void PickingVisitor::visit(Node &n)
 
 void PickingVisitor::visit(Group &n)
 {
-    if (!n.visible_)
+    if (!n.visible_ && !force_)
         return;
 
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-        if ( (*node)->visible_ )
+        if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;
     }
@@ -45,7 +45,7 @@ void PickingVisitor::visit(Group &n)
 
 void PickingVisitor::visit(Switch &n)
 {
-    if (!n.visible_ || n.numChildren()<1)
+    if ((!n.visible_ && !force_) || n.numChildren()<1)
         return;
 
     glm::mat4 mv = modelview_;
@@ -60,7 +60,7 @@ void PickingVisitor::visit(Primitive &)
 
 void PickingVisitor::visit(Surface &n)
 {
-    if (!n.visible_)
+    if (!n.visible_ && !force_)
         return;
 
     // if more than one point given for testing: test overlap
@@ -100,7 +100,7 @@ void PickingVisitor::visit(Surface &n)
 void PickingVisitor::visit(Disk &n)
 {
     // discard if not visible or if not exactly one point given for picking
-    if (!n.visible_ || points_.size() != 1)
+    if ((!n.visible_ && !force_) || points_.size() != 1)
         return;
 
     // apply inverse transform to the point of interest
@@ -116,7 +116,7 @@ void PickingVisitor::visit(Disk &n)
 void PickingVisitor::visit(Handles &n)
 {
     // discard if not visible or if not exactly one point given for picking
-    if (!n.visible_ || points_.size() != 1)
+    if ((!n.visible_ && !force_) || points_.size() != 1)
         return;
 
     // apply inverse transform to the point of interest

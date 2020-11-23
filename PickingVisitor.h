@@ -21,11 +21,12 @@ class PickingVisitor: public Visitor
     std::vector<glm::vec3> points_;
     glm::mat4 modelview_;
     std::vector< std::pair<Node *, glm::vec2> > nodes_;
+    bool force_;
 
 public:
 
-    PickingVisitor(glm::vec3 coordinates);
-    PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end);
+    PickingVisitor(glm::vec3 coordinates, bool force = false);
+    PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force = false);
 
     bool empty() const {return nodes_.empty(); }
     std::pair<Node *, glm::vec2> back() const { return nodes_.back(); }
