@@ -350,7 +350,10 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 
+    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
+
     symbol_ = icons[type_];
+    shadow_ = shadow;
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
@@ -365,6 +368,8 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() ) {
         if(symbol_ && !symbol_->initialized())
             symbol_->init();
+        if(shadow_ && !shadow_->initialized())
+            shadow_->init();
         init();
     }
 
@@ -391,6 +396,7 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // generate matrix
         ctm = GlmToolkit::transform(tran, rot, sca);
 
+        shadow_->draw( ctm, projection );
         symbol_->draw( ctm, projection);
     }
 }

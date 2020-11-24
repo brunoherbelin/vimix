@@ -51,8 +51,8 @@ public:
     glm::vec4 color;
 
 protected:
-    Primitive *handle_;
-    Primitive *shadow_;
+    Mesh *handle_;
+    Mesh *shadow_;
     glm::vec2 corner_;
     Type type_;
 
@@ -74,6 +74,7 @@ public:
 
 protected:
     Mesh *symbol_;
+    Mesh *shadow_;
     Type type_;
 };
 
