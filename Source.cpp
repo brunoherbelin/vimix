@@ -448,8 +448,9 @@ void Source::update(float dt)
 
         // MODIFY CROP
         if (renderbuffer_) {
-            groups_[View::MIXING]->scale_.x *= renderbuffer_->projectionAspectRatio();
-            groups_[View::LAYER]->scale_.x = renderbuffer_->projectionAspectRatio();
+            glm::vec2 crop = renderbuffer_->projectionArea();
+            groups_[View::MIXING]->scale_.x *= crop.x / crop.y;
+            groups_[View::LAYER]->scale_.x = crop.x / crop.y;
         }
 
         need_update_ = false;

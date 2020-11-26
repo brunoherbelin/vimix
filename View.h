@@ -12,6 +12,8 @@ typedef std::list<Source *> SourceList;
 class SessionSource;
 class Surface;
 class Symbol;
+class Mesh;
+class Frame;
 
 class View
 {
@@ -212,8 +214,8 @@ public:
     void play(bool open);
 
 private:
-    class Surface *output_surface_;
-    class Mesh *mark_100ms_, *mark_1s_;
+    Surface *output_surface_;
+    Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionSource *transition_source_;
 };
@@ -247,9 +249,15 @@ private:
 
     void adjustBackground();
 
-    class Frame *backgroundframe;
     Surface *backgroundpreview;
-    Surface *surfacepreview;
+    Surface *surfacepreview;    
+
+    Surface *backgroundframe_;
+    Frame *foregroundframe_;
+    Mesh *horizontal_line_;
+    Group *vertical_line_;
+    Symbol *crop_horizontal_;
+    Symbol *crop_vertical_;
 
     Symbol *overlay_position_;
     Symbol *overlay_position_cross_;

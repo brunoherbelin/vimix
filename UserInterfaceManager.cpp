@@ -1956,7 +1956,7 @@ void Navigator::Render()
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
-        if (ImGui::Selectable( ICON_FA_IMAGE, &selected_view[4], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_SIGN, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::APPEARANCE);
             view_pannel_visible = previous_view == Settings::application.current_view;

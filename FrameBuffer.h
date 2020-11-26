@@ -44,7 +44,7 @@ public:
 
     // projection and crop
     glm::mat4 projection() const;
-    float projectionAspectRatio() const;
+    glm::vec2 projectionArea() const;
     void crop(glm::vec2 c);
 
     // internal pixel format
@@ -60,6 +60,7 @@ private:
 
     RenderingAttrib attrib_;
     glm::mat4 projection_;
+    glm::vec2 projection_crop_;
     uint textureid_, intermediate_textureid_;
     uint framebufferid_, intermediate_framebufferid_;
     bool use_alpha_, use_multi_sampling_;

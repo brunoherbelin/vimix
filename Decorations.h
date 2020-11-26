@@ -55,19 +55,20 @@ protected:
     Mesh *shadow_;
     glm::vec2 corner_;
     Type type_;
-
 };
 
 class Symbol : public Node
 {
 public:
     typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, PATTERN, CAMERA, SHARE,
-                   DOTS, BUSY, LOCK, UNLOCK, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
+                   DOTS, BUSY, LOCK, UNLOCK, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
     Symbol(Type t = CIRCLE_POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
+
+    GlmToolkit::AxisAlignedBoundingBox bbox() const { return symbol_->bbox(); }
 
     Type type() const { return type_; }
     glm::vec4 color;

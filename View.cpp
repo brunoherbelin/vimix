@@ -818,9 +818,18 @@ void showContextMenu(View::Mode m, const char* label)
                 s->group(m)->translation_ = glm::vec3(0,0,0);
                 s->touch();
             }
-            else if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Restore" )){
+            else if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(m)->scale_ = glm::vec3(1,1,1);
                 s->group(m)->rotation_.z = 0;
+                s->touch();
+            }
+            else if (ImGui::Selectable( ICON_FA_EXPAND "  Fit" )){
+                FrameBuffer *output = Mixer::manager().session()->frame();
+                float w = 1.f;
+                if (output) w = output->aspectRatio() / s->frame()->aspectRatio();
+                s->group(m)->scale_ = glm::vec3(w,1,1);
+                s->group(m)->rotation_.z = 0;
+                s->group(m)->translation_ = glm::vec3(0,0,0);
                 s->touch();
             }
             else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
@@ -1741,33 +1750,76 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
         // no settings found: store application default
         Settings::application.views[mode_].name = "Appearance";
         scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.8f, 0.f, 0.0f);
+        scene.root()->translation_ = glm::vec3(0.8f, 0.f, 0.0f);
         saveSettings();
     }
     else
         restoreSettings();
 
     // Scene background
+    //
+    // global dark
     Surface *tmp = new Surface( new Shader);
     tmp->scale_ = glm::vec3(20.f, 20.f, 1.f);
     tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.6f );
     scene.bg()->attach(tmp);
-    backgroundframe = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-    backgroundframe->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.3f );
-    scene.bg()->attach(backgroundframe);
+    // frame showing the source original shape
+    backgroundframe_ = new Surface( new Shader);
+    backgroundframe_->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.8f );
+    scene.bg()->attach(backgroundframe_);
+    // Horizontal axis
+    horizontal_line_ = new Mesh("mesh/h_line.ply");
+    horizontal_line_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    horizontal_line_->translation_ = glm::vec3(0.f, 1.1f, 0.0f);
+    horizontal_line_->scale_.x = 1.0f;
+    horizontal_line_->scale_.y = 3.0f;
+    scene.bg()->attach(horizontal_line_);
+    Mesh *mark = new Mesh("mesh/h_mark.ply");
+    mark->translation_ = glm::vec3(0.f, 1.1f, 0.0f);
+    mark->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    mark->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.bg()->attach(mark);
+    // vertical axis
+    vertical_line_ = new Group;
+    Mesh *line  = new Mesh("mesh/h_line.ply");
+    line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    line->translation_ = glm::vec3(-0.1f, 0.0f, 0.0f);
+    line->scale_.x = 1.0f;
+    line->scale_.y = 3.0f;
+    line->rotation_.z = M_PI_2;
+    vertical_line_->attach(line);
+    mark  = new Mesh("mesh/h_mark.ply");
+    mark->translation_ = glm::vec3(-0.1f, 0.0f, 0.0f);
+    mark->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    mark->rotation_.z = M_PI_2;
+    mark->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    vertical_line_->attach(mark);
+    scene.bg()->attach(vertical_line_);
+
+    // surface showing the source transparency background
     backgroundpreview = new ImageSurface("images/checker.dds");  // black : TODO transparency grid
     backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f, 64.f));
     backgroundpreview->translation_.z = 0.001f;
     scene.bg()->attach(backgroundpreview);
+    // surface to show the texture of the source
     surfacepreview = new Surface; // to attach source preview
     surfacepreview->translation_.z = 0.002f;
     scene.bg()->attach(surfacepreview);
 
     // Geometry Scene foreground
-    Frame *border = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
-    border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
-    scene.fg()->attach(border);
-
+    //
+    // frame showing the edited source shape
+    foregroundframe_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
+    foregroundframe_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+    scene.fg()->attach(foregroundframe_);
+    // crop icons
+    crop_horizontal_ = new Symbol(Symbol::CROP);
+    crop_horizontal_->translation_ = glm::vec3(1.0f, 1.1f, 0.f);
+    scene.fg()->attach(crop_horizontal_);
+    crop_vertical_ = new Symbol(Symbol::CROP);
+    crop_vertical_->rotation_.z = M_PI_2;
+    crop_vertical_->translation_ = glm::vec3(-1.1f, -1.0f, 0.f);
+    scene.fg()->attach(crop_vertical_);
     // User interface foreground
     //
     // point to show POSITION
@@ -1898,15 +1950,19 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
             auto itp = pv.rbegin();
             for (; itp != pv.rend(); itp++){
                 // test if source contains this node
-                Source::hasNode is_in_source((*itp).first );
+                Source::hasNode is_in_source( (*itp).first );
                 if ( is_in_source( s ) ){
                     // a node in the current source was clicked !
                     pick = *itp;
                     break;
                 }
+                else if ( (*itp).first == crop_horizontal_ || (*itp).first == crop_vertical_ ) {
+                    pick = *itp;
+                    break;
+                }
             }
             // not found: the edit source was not clicked
-            if (itp == pv.rend())
+            if ( itp == pv.rend() )
                 s = nullptr;
             // picking on the menu handle
             else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
@@ -1930,25 +1986,34 @@ void AppearanceView::adjustBackground()
 {
     // by default consider edit source is null
     float image_original_width = 1.f;
-    float image_projection_width = 1.f;
+    glm::vec2 image_crop_area = glm::vec2(1.f, 1.f);
     surfacepreview->setTextureIndex(0);
 
     // if its a valid index
     if (edit_source_ != nullptr) {
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
-        image_projection_width = image_original_width * edit_source_->frame()->projectionAspectRatio();;
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
+        image_crop_area = edit_source_->frame()->projectionArea();
+        image_crop_area.x *= image_original_width;
     }
 
     // update aspect ratio
-    backgroundframe->scale_.x = image_original_width;
-    surfacepreview->scale_.x = image_projection_width;
-    backgroundpreview->scale_.x = image_projection_width;
-    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * image_projection_width, 64.f));
-    for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-        (*node)->scale_.x = image_projection_width;
-    }
+
+    // background
+    horizontal_line_->scale_.x = image_original_width;
+    vertical_line_->translation_.x = -image_original_width;
+    backgroundframe_->scale_.x = image_original_width;
+
+    surfacepreview->scale_ = glm::vec3(image_crop_area, 1.f);
+    backgroundpreview->scale_ = glm::vec3(image_crop_area, 1.f);
+    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * image_crop_area.x, 64.f * image_crop_area.y));
+
+    // foreground
+    crop_horizontal_->translation_.x = image_crop_area.x;
+    crop_vertical_->translation_.y = -image_crop_area.y;
+    crop_vertical_->translation_.x = -image_original_width - 0.1f;
+    foregroundframe_->scale_ = glm::vec3(image_crop_area, 1.f);
 }
 
 Source *AppearanceView::getEditOrCurrentSource()
@@ -1991,42 +2056,20 @@ void AppearanceView::draw()
     }
     showContextMenu(mode_,"AppearanceContextMenu");
 
-
-//    if ( edit_source_ != nullptr ) {
-
-//        glm::vec2 P = Rendering::manager().project(glm::vec3(1.1f, 1.14f, 0.f), scene.root()->transform_, false);
-//        ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
-//        if (ImGui::Begin("##WIDTH", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-//                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-//                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-//        {
-//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//            ImGui::SetNextItemWidth(100.f);
-//            float crop_width =  edit_source_->frame()->projectionAspectRatio();
-//            if ( ImGui::DragFloat("##apppearancewidth", &crop_width,  0.05f, 0.2f, 1.f, "%.1f ") )
-//            {
-//                // crop horizontally
-//                edit_source_->frame()->crop(glm::vec2(crop_width, 1.f));
-//                // TODO scale GEOMETRY and RENDER groups
-//                edit_source_->touch();
-//                // update background and frame
-//                adjustBackground();
-//            }
-
-//            ImGui::PopFont();
-//            ImGui::End();
-//        }
-
-//    }
-
+    // draw general view
     Shader::force_blending_opacity = true;
     View::draw();
     Shader::force_blending_opacity = false;
 
     if (edit_source_ != nullptr){
+
         // force to redraw the frame of the edit source (even if source is not visible)
         DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
         scene.accept(dv);
+
+//        float edit_width =  edit_source_->frame()->aspectRatio();
+//        glm::vec2 cropped = edit_source_->frame()->projectionArea();
+//        crop_horizontal_->translation_.x = cropped.x * edit_width;
     }
 }
 
@@ -2034,15 +2077,52 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 {
     View::Cursor ret = Cursor();
 
-    // work on the given source
-    if (!s)
-        return ret;
-    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
-
     // grab coordinates in scene-View reference frame
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
+
+    // work on the given source
+    if (!s) {
+
+        if ( edit_source_ != nullptr ) {
+
+            // make sure matrix transform of stored status is updated
+            edit_source_->stored_status_->update(0);
+
+            // picking on the resizing handles in the corners
+            if ( pick.first == crop_horizontal_ ) {
+
+                // crop horizontally
+                glm::vec2 cropped = edit_source_->frame()->projectionArea();
+                float max_width =  edit_source_->frame()->aspectRatio();
+                cropped.x = CLAMP(scene_to.x, 0.2f, max_width) / max_width;
+                edit_source_->frame()->crop(cropped);
+                // TODO scale GEOMETRY and RENDER groups
+                edit_source_->touch();
+                // update background and frame
+                adjustBackground();
+                // cursor indication
+                ret.type = Cursor_ResizeEW;
+            }
+            if ( pick.first == crop_vertical_ ) {
+                // crop vertically
+                glm::vec2 cropped = edit_source_->frame()->projectionArea();
+                cropped.y = -1.f * CLAMP(scene_to.y, -1.f, -0.2f);
+                edit_source_->frame()->crop(cropped);
+                // TODO scale GEOMETRY and RENDER groups
+                edit_source_->touch();
+                // update background and frame
+                adjustBackground();
+                // cursor indication
+                ret.type = Cursor_ResizeNS;
+            }
+        }
+
+        return ret;        
+    }
+
+    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // make sure matrix transform of stored status is updated
     s->stored_status_->update(0);
@@ -2074,6 +2154,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 
         // convert source position in corner reference frame
         glm::vec4 center = scene_to_corner_transform * glm::vec4( s->stored_status_->translation_, 1.f);
+
 
         // picking on the resizing handles in the corners
         if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {

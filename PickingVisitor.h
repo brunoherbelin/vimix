@@ -54,6 +54,11 @@ public:
      * @brief visit Disk : picking grabber for mixing view
      * @param n
      */
+    void visit(Symbol& n) override;
+    /**
+     * @brief visit Disk : picking grabber for mixing view
+     * @param n
+     */
     void visit(Disk& n) override;
 
 };

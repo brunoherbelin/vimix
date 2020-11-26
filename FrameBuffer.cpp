@@ -28,7 +28,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling
 {
     attrib_.viewport = glm::ivec2(resolution);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
-    projection_ = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
+    crop(glm::vec2(1.f, 1.f));
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling):
@@ -37,7 +37,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampl
 {
     attrib_.viewport = glm::ivec2(width, height);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
-    projection_ = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
+    crop(glm::vec2(1.f, 1.f));
 }
 
 void FrameBuffer::init()
@@ -252,14 +252,16 @@ glm::mat4 FrameBuffer::projection() const
     return projection_;
 }
 
-float FrameBuffer::projectionAspectRatio() const
+
+glm::vec2 FrameBuffer::projectionArea() const
 {
-    return ( 1.f / projection_[0][0] );  // TODO height
+    return projection_crop_;
 }
 
 void FrameBuffer::crop(glm::vec2 c)
 {
-    glm::vec2 scale = glm::clamp(c, glm::vec2(0.2f, 0.2f), glm::vec2(1.f, 1.f));
-    projection_ = glm::ortho(-scale.x, scale.x, scale.y, -scale.y, -1.f, 1.f);
+    projection_crop_.x = CLAMP(c.x, 0.1f, 1.f);
+    projection_crop_.y = CLAMP(c.y, 0.1f, 1.f);
+    projection_ = glm::ortho(-projection_crop_.x, projection_crop_.x, projection_crop_.y, -projection_crop_.y, -1.f, 1.f);
 }
 

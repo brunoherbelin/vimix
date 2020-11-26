@@ -341,6 +341,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
         icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
+        icons[CROP]    = new Mesh("mesh/icon_rightarrow.ply");
         icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
         icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
         icons[CLOCK_H] = new Mesh("mesh/icon_clock_hand.ply");
