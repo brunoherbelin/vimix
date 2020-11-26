@@ -154,6 +154,10 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     handles_[View::APPEARANCE][Handles::RESIZE_V]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     handles_[View::APPEARANCE][Handles::RESIZE_V]->translation_.z = 0.1;
     overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_V]);
+//    handles_[View::APPEARANCE][Handles::ROTATE] = new Handles(Handles::ROTATE);
+//    handles_[View::APPEARANCE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+//    handles_[View::APPEARANCE][Handles::ROTATE]->translation_.z = 0.1;
+//    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::ROTATE]);
     handles_[View::APPEARANCE][Handles::SCALE] = new Handles(Handles::SCALE);
     handles_[View::APPEARANCE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     handles_[View::APPEARANCE][Handles::SCALE]->translation_.z = 0.1;
@@ -307,7 +311,6 @@ void Source::render()
         init();
     else {
         // render the view into frame buffer
-//        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
@@ -434,16 +437,17 @@ void Source::update(float dt)
         glm::vec3 center = groups_[View::APPEARANCE]->translation_;
         if (renderbuffer_)
             center.x /= renderbuffer_->aspectRatio();
-
+        // convert upper left (UL [-1, 1]) and bottom right (BR [1, -1]) corners to UV [0 0 1 1]
         glm::vec3 UL = glm::vec3(-1.f, 1.f, 0.f) - center;
         glm::vec3 BR = glm::vec3(1.f, -1.f, 0.f) - center;
         UL /= groups_[View::APPEARANCE]->scale_;
         BR /= groups_[View::APPEARANCE]->scale_;
         glm::vec4 uv;
-        uv.x = UL.x * 0.5f + 0.5f;
+        uv.x = UL.x * 0.5f + 0.5f; // recenter
         uv.y = UL.y * -0.5f + 0.5f;
         uv.z = BR.x * 0.5f + 0.5f;
         uv.w = BR.y * -0.5f + 0.5f;
+        // apply UV
         texturesurface_->setTextureUV(uv);
 
         // MODIFY CROP

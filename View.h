@@ -264,6 +264,10 @@ private:
     Symbol *overlay_scaling_;
     Symbol *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
+//    Node *overlay_rotation_;
+//    Node *overlay_rotation_fix_;
+//    Node *overlay_rotation_clock_;
+//    Node *overlay_rotation_clock_hand_;
     bool show_context_menu_;
 };
 
