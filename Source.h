@@ -138,6 +138,8 @@ public:
 
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
+    // surface to draw on
+    Surface *texturesurface_;
 protected:
     // name
     std::string name_;
@@ -169,9 +171,6 @@ protected:
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
-    // surface to draw on
-    Surface *texturesurface_;
-    glm::vec2 crop_;
 
     // mode for display
     Mode mode_;

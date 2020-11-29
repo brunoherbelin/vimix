@@ -431,9 +431,6 @@ void SessionLoader::visit(ImageShader &n)
         uniforms->QueryUnsignedAttribute("mask", &n.mask);
     }
 
-//    XMLElement* uvtex = xmlCurrent_->FirstChildElement("uv");
-//    if (uvtex)
-//        tinyxml2::XMLElementToGLM( uvtex->FirstChildElement("vec4"), n.uv);
 }
 
 void SessionLoader::visit(ImageProcessingShader &n)
@@ -484,6 +481,9 @@ void SessionLoader::visit (Source& s)
 
     xmlCurrent_ = sourceNode->FirstChildElement("Appearance");
     s.groupNode(View::APPEARANCE)->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Crop");
+    s.texturesurface_->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);

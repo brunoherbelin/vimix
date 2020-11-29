@@ -202,10 +202,6 @@ void SessionVisitor::visit(ImageShader &n)
     uniforms->SetAttribute("mask", n.mask);
     xmlCurrent_->InsertEndChild(uniforms);
 
-//    XMLElement *uvtex = xmlDoc_->NewElement("uv");
-//    uvtex->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.uv) );
-//    xmlCurrent_->InsertEndChild(uvtex);
-
 }
 
 void SessionVisitor::visit(ImageProcessingShader &n)
@@ -346,6 +342,10 @@ void SessionVisitor::visit (Source& s)
     xmlCurrent_ = xmlDoc_->NewElement( "Appearance" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.groupNode(View::APPEARANCE)->accept(*this);
+
+    xmlCurrent_ = xmlDoc_->NewElement("Crop");
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.texturesurface_->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);

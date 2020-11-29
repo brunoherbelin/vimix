@@ -186,7 +186,6 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     // - crop & repeat UV can be managed here
     // - additional custom shader can be associated
     texturesurface_ = new Surface(renderingshader_);
-    crop_ = glm::vec2(1.f, 1.f);
 
     // will be created at init
     renderbuffer_   = nullptr;
@@ -441,19 +440,19 @@ void Source::update(float dt)
         static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
                                             glm::vec3(0.f, 0.f, 0.f),
                                             glm::vec3(-2.f, 2.f, 1.f));
-
+        // make sure to update rendering texture surface node
+        texturesurface_->update(dt);
         // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
         glm::mat4 Ar = glm::identity<glm::mat4>();
         if (renderbuffer_)
-            Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio() * crop_.x, crop_.y, 1.f) );
+            Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio() * texturesurface_->scale_.x, texturesurface_->scale_.y, 1.f) );
         // Translation : same as Appearance Frame (modified by Ar)
         glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->translation_);
         // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( crop_.x / groups_[View::APPEARANCE]->scale_.x,
-                                   crop_.y / groups_[View::APPEARANCE]->scale_.y, 1.f));
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( texturesurface_->scale_.x / groups_[View::APPEARANCE]->scale_.x,
+                                   texturesurface_->scale_.y / groups_[View::APPEARANCE]->scale_.y, 1.f));
         // Rotation : same angle than Appearance Frame, inverted axis
         glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
-
         // Combine transformations (non transitive) in this order:
         // 1. switch to Scene coordinate system
         // 2. Apply the aspect ratio correction
@@ -464,13 +463,7 @@ void Source::update(float dt)
         // 7. switch back to UV coordinate system
         texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * Sca * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
-//        // MODIFY CROP
-//        if (renderbuffer_) {
-//            glm::vec2 crop = renderbuffer_->projectionArea();
-//            groups_[View::MIXING]->scale_.x *= crop.x / crop.y;
-//            groups_[View::LAYER]->scale_.x = crop.x / crop.y;
-//        }
-
+        // do not update next frame
         need_update_ = false;
     }
 }
