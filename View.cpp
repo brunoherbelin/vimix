@@ -714,7 +714,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     Symbol *s = new Symbol(Symbol::CLOCK);
     g->attach(s);
     s = new Symbol(Symbol::CIRCLE_POINT);
-    s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
+    s->color = glm::vec4(0.f, 0.f, 0.f, 0.1f);
     s->scale_ = glm::vec3(28.f, 28.f, 1.f);
     s->translation_.z = -0.1;
     g->attach(s);
@@ -742,7 +742,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     s = new Symbol(Symbol::GRID);
     g->attach(s);
     s = new Symbol(Symbol::SQUARE_POINT);
-    s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
+    s->color = glm::vec4(0.f, 0.f, 0.f, 0.1f);
     s->scale_ = glm::vec3(18.f, 18.f, 1.f);
     s->translation_.z = -0.1;
     g->attach(s);
@@ -1803,8 +1803,10 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     scene.bg()->attach(vertical_line_);
 
     // surface showing the source transparency background
-    backgroundpreview = new ImageSurface("images/checker.dds");  // black : TODO transparency grid
-    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f, 64.f));
+    backgroundpreview = new ImageSurface("images/checker.dds");
+    glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f));
+    glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 64.f, 64.f, 1.f));
+    backgroundpreview->shader()->iTransform = Tra * Sca;
     backgroundpreview->translation_.z = 0.001f;
     scene.bg()->attach(backgroundpreview);
     // surface to show the texture of the source
@@ -1848,7 +1850,7 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     s->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     g->attach(s);
     s = new Symbol(Symbol::SQUARE_POINT);
-    s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
+    s->color = glm::vec4(0.f, 0.f, 0.f, 0.2f);
     s->scale_ = glm::vec3(18.f, 18.f, 1.f);
     s->translation_.z = -0.1;
     g->attach(s);
@@ -1868,34 +1870,37 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
-//    // 'clock' : tic marks every 10 degrees for ROTATION
-//    // with dark background
-//    g = new Group;
-//    s = new Symbol(Symbol::CLOCK);
-//    g->attach(s);
-//    s = new Symbol(Symbol::CIRCLE_POINT);
-//    s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
-//    s->scale_ = glm::vec3(28.f, 28.f, 1.f);
-//    s->translation_.z = -0.1;
-//    g->attach(s);
-//    overlay_rotation_clock_ = g;
-//    overlay_rotation_clock_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_clock_);
-//    overlay_rotation_clock_->visible_ = false;
-//    // circle to show fixed-size  ROTATION
-//    overlay_rotation_clock_hand_ = new Symbol(Symbol::CLOCK_H);
-//    overlay_rotation_clock_hand_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_clock_hand_);
-//    overlay_rotation_clock_hand_->visible_ = false;
-//    overlay_rotation_fix_ = new Symbol(Symbol::SQUARE);
-//    overlay_rotation_fix_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_fix_);
-//    overlay_rotation_fix_->visible_ = false;
-//    // circle to show the center of ROTATION
-//    overlay_rotation_ = new Symbol(Symbol::CIRCLE);
-//    overlay_rotation_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_);
-//    overlay_rotation_->visible_ = false;
+    // 'clock' : tic marks every 10 degrees for ROTATION
+    // with dark background
+    g = new Group;
+    s = new Symbol(Symbol::CLOCK);
+    g->attach(s);
+    s = new Symbol(Symbol::CIRCLE_POINT);
+    s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
+    s->scale_ = glm::vec3(28.f, 28.f, 1.f);
+    s->translation_.z = -0.1;
+    g->attach(s);
+    overlay_rotation_clock_ = g;
+    overlay_rotation_clock_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_clock_);
+    overlay_rotation_clock_->visible_ = false;
+    // circle to show fixed-size  ROTATION
+    overlay_rotation_clock_hand_ = new Symbol(Symbol::CLOCK_H);
+    overlay_rotation_clock_hand_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
+    overlay_rotation_clock_hand_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_clock_hand_);
+    overlay_rotation_clock_hand_->visible_ = false;
+    overlay_rotation_fix_ = new Symbol(Symbol::SQUARE);
+    overlay_rotation_fix_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
+    overlay_rotation_fix_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_fix_);
+    overlay_rotation_fix_->visible_ = false;
+    // circle to show the center of ROTATION
+    overlay_rotation_ = new Symbol(Symbol::CIRCLE);
+    overlay_rotation_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
+    overlay_rotation_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
+    scene.fg()->attach(overlay_rotation_);
+    overlay_rotation_->visible_ = false;
 
 }
 
@@ -2032,16 +2037,21 @@ void AppearanceView::adjustBackground()
         image_crop_area.x *= image_original_width;
     }
 
-    // update aspect ratio
+    // update objects in the scene to represent the image and crop area
 
-    // background
+    // background scene
     horizontal_line_->scale_.x = image_original_width;
     vertical_line_->translation_.x = -image_original_width;
     backgroundframe_->scale_.x = image_original_width;
 
+    // background of preview
     surfacepreview->scale_ = glm::vec3(image_crop_area, 1.f);
     backgroundpreview->scale_ = glm::vec3(image_crop_area, 1.f);
-    backgroundpreview->setTextureUV(glm::vec4(0.5f, 0.5f, 64.f * image_crop_area.x, 64.f * image_crop_area.y));
+    backgroundpreview->update(0);
+    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), glm::vec3(image_crop_area, 1.f) );
+    glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f));
+    glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 64.f, 64.f, 1.f));
+    backgroundpreview->shader()->iTransform =  Ar * Tra * Sca ;
 
     // foreground
     crop_horizontal_->translation_.x = image_crop_area.x;
@@ -2341,59 +2351,59 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
-//        // picking on the rotating handle
-//        else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
+        // picking on the rotating handle
+        else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
 
-//            // ROTATION on CENTER
-//            overlay_rotation_->visible_ = true;
-//            overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
-//            overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
-//            overlay_rotation_->update(0);
-//            overlay_rotation_fix_->visible_ = true;
-//            overlay_rotation_fix_->copyTransform(overlay_rotation_);
-//            overlay_rotation_clock_->visible_ = false;
+            // ROTATION on CENTER
+            overlay_rotation_->visible_ = true;
+            overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
+            overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
+            overlay_rotation_->update(0);
+            overlay_rotation_fix_->visible_ = true;
+            overlay_rotation_fix_->copyTransform(overlay_rotation_);
+            overlay_rotation_clock_->visible_ = false;
 
-//            // rotation center to center of source (disregarding scale)
-//            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-//            source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
-//            source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
-//            // compute rotation angle
-//            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
-//            // apply rotation on Z axis
-//            sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
+            // rotation center to center of source (disregarding scale)
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
+            source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
+            source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+            // compute rotation angle
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
+            // apply rotation on Z axis
+            sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
 
-//            // POST-CORRECTION ; discretized rotation with ALT
-//            int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
-//            if (UserInterface::manager().altModifier()) {
-//                degrees = (degrees / 10) * 10;
-//                sourceNode->rotation_.z = glm::radians( float(degrees) );
-//                overlay_rotation_clock_->visible_ = true;
-//                overlay_rotation_clock_->copyTransform(overlay_rotation_);
-//                info << "Angle " << degrees << "\u00b0"; // degree symbol
-//            }
-//            else
-//                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
+            // POST-CORRECTION ; discretized rotation with ALT
+            int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
+            if (UserInterface::manager().altModifier()) {
+                degrees = (degrees / 10) * 10;
+                sourceNode->rotation_.z = glm::radians( float(degrees) );
+                overlay_rotation_clock_->visible_ = true;
+                overlay_rotation_clock_->copyTransform(overlay_rotation_);
+                info << "Angle " << degrees << "\u00b0"; // degree symbol
+            }
+            else
+                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
 
-//            overlay_rotation_clock_hand_->visible_ = true;
-//            overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
-//            overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
-//            overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
-//            overlay_rotation_clock_hand_->update(0);
+            overlay_rotation_clock_hand_->visible_ = true;
+            overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
+            overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
+            overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
+            overlay_rotation_clock_hand_->update(0);
 
-//            // show cursor for rotation
-//            ret.type = Cursor_Hand;
-//            // + SHIFT = no scaling /  NORMAL = with scaling
-//            if (!UserInterface::manager().shiftModifier()) {
-//                // compute scaling to match cursor
-//                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
-//                source_scaling = glm::vec3(factor, factor, 1.f);
-//                // apply center scaling
-//                sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
-//                info << std::endl << "   UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-//                info << " x "  << sourceNode->scale_.y ;
-//                overlay_rotation_fix_->visible_ = false;
-//            }
-//        }
+            // show cursor for rotation
+            ret.type = Cursor_Hand;
+            // + SHIFT = no scaling /  NORMAL = with scaling
+            if (!UserInterface::manager().shiftModifier()) {
+                // compute scaling to match cursor
+                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
+                source_scaling = glm::vec3(factor, factor, 1.f);
+                // apply center scaling
+                sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
+                info << std::endl << "   UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+                info << " x "  << sourceNode->scale_.y ;
+                overlay_rotation_fix_->visible_ = false;
+            }
+        }
         // picking anywhere but on a handle: user wants to move the source
         else {
             ret.type = Cursor_ResizeAll;
@@ -2454,6 +2464,10 @@ void AppearanceView::terminate()
     overlay_scaling_grid_->visible_   = false;
     overlay_scaling_cross_->visible_  = false;
     overlay_scaling_->visible_        = false;
+    overlay_rotation_clock_->visible_ = false;
+    overlay_rotation_clock_hand_->visible_ = false;
+    overlay_rotation_fix_->visible_   = false;
+    overlay_rotation_->visible_       = false;
 
     // cancel of all handles overlays
     glm::vec2 c(0.f, 0.f);

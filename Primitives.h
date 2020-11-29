@@ -27,9 +27,6 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    void setTextureUV(glm::vec4 uv);
-    glm::vec4 textureUV() const;
-
     inline void setTextureIndex(uint t) { textureindex_ = t; }
     inline uint textureIndex() const { return textureindex_; }
 

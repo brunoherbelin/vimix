@@ -1,5 +1,6 @@
 
 #include <algorithm>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Source.h"
@@ -154,10 +155,10 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     handles_[View::APPEARANCE][Handles::RESIZE_V]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     handles_[View::APPEARANCE][Handles::RESIZE_V]->translation_.z = 0.1;
     overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_V]);
-//    handles_[View::APPEARANCE][Handles::ROTATE] = new Handles(Handles::ROTATE);
-//    handles_[View::APPEARANCE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-//    handles_[View::APPEARANCE][Handles::ROTATE]->translation_.z = 0.1;
-//    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::ROTATE]);
+    handles_[View::APPEARANCE][Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handles_[View::APPEARANCE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::ROTATE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::ROTATE]);
     handles_[View::APPEARANCE][Handles::SCALE] = new Handles(Handles::SCALE);
     handles_[View::APPEARANCE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     handles_[View::APPEARANCE][Handles::SCALE]->translation_.z = 0.1;
@@ -298,6 +299,7 @@ void Source::setImageProcessingEnabled (bool on)
     // this calls replaceShader() on the Primitive and
     // will delete the previously attached shader
     texturesurface_->replaceShader(renderingshader_);
+
 }
 
 bool Source::imageProcessingEnabled()
@@ -434,21 +436,31 @@ void Source::update(float dt)
         groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
 
         // MODIFY texture projection based on APPEARANCE node
-        glm::vec3 center = groups_[View::APPEARANCE]->translation_;
+        // UV to node coordinates
+        static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
+                                            glm::vec3(0.f, 0.f, 0.f),
+                                            glm::vec3(-2.f, 2.f, 1.f));
+
+        // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
+        glm::mat4 Ar = glm::identity<glm::mat4>();
         if (renderbuffer_)
-            center.x /= renderbuffer_->aspectRatio();
-        // convert upper left (UL [-1, 1]) and bottom right (BR [1, -1]) corners to UV [0 0 1 1]
-        glm::vec3 UL = glm::vec3(-1.f, 1.f, 0.f) - center;
-        glm::vec3 BR = glm::vec3(1.f, -1.f, 0.f) - center;
-        UL /= groups_[View::APPEARANCE]->scale_;
-        BR /= groups_[View::APPEARANCE]->scale_;
-        glm::vec4 uv;
-        uv.x = UL.x * 0.5f + 0.5f; // recenter
-        uv.y = UL.y * -0.5f + 0.5f;
-        uv.z = BR.x * 0.5f + 0.5f;
-        uv.w = BR.y * -0.5f + 0.5f;
-        // apply UV
-        texturesurface_->setTextureUV(uv);
+            Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
+        // Translation : same as Appearance Frame (modified by Ar)
+        glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->translation_);
+        // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 1.f / groups_[View::APPEARANCE]->scale_.x,
+                                   1.f / groups_[View::APPEARANCE]->scale_.y, 1.f));
+        // Rotation : same angle than Appearance Frame, inverted axis
+        glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
+        // Combine transformations (non transitive) in this order:
+        // 1. switch to Scene coordinate system
+        // 2. Apply the aspect ratio correction
+        // 3. Apply the translation
+        // 4. Apply the rotation (centered after translation)
+        // 5. Revert aspect ration correction
+        // 6. Apply the Scaling (independent of aspect ratio)
+        // 7. switch back to UV coordinate system
+        texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * Sca * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
         // MODIFY CROP
         if (renderbuffer_) {

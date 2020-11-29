@@ -258,16 +258,15 @@ private:
     Group *vertical_line_;
     Symbol *crop_horizontal_;
     Symbol *crop_vertical_;
-
     Symbol *overlay_position_;
     Symbol *overlay_position_cross_;
     Symbol *overlay_scaling_;
     Symbol *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
-//    Node *overlay_rotation_;
-//    Node *overlay_rotation_fix_;
-//    Node *overlay_rotation_clock_;
-//    Node *overlay_rotation_clock_hand_;
+    Symbol *overlay_rotation_;
+    Symbol *overlay_rotation_fix_;
+    Node *overlay_rotation_clock_;
+    Symbol *overlay_rotation_clock_hand_;
     bool show_context_menu_;
 };
 

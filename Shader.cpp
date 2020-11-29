@@ -186,7 +186,7 @@ void Shader::operator = (const Shader &S )
 {
     color = S.color;
     blending = S.blending;
-    uv = S.uv;
+    iTransform = S.iTransform;
 }
 
 void Shader::accept(Visitor& v) {
@@ -205,8 +205,8 @@ void Shader::use()
     // set uniforms
     program_->setUniform("projection", projection);
     program_->setUniform("modelview", modelview);
+    program_->setUniform("iTransform", iTransform);
     program_->setUniform("color", color);
-    program_->setUniform("uv", uv);
 
     iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
     program_->setUniform("iResolution", iResolution);
@@ -237,9 +237,9 @@ void Shader::reset()
 {
     projection = glm::identity<glm::mat4>();
     modelview  = glm::identity<glm::mat4>();
+    iTransform = glm::identity<glm::mat4>();
     iResolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-    uv = glm::vec4(0.0, 0.0, 1.0, 1.0);
 }
 
 

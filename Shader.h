@@ -54,8 +54,8 @@ public:
 
     glm::mat4 projection;
     glm::mat4 modelview;
+    glm::mat4 iTransform;
     glm::vec4 color;
-    glm::vec4 uv;
 
     typedef enum {
         BLEND_OPACITY = 0,
