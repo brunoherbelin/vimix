@@ -1243,6 +1243,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 }
 
 
+
 void GeometryView::terminate()
 {
     View::terminate();
@@ -1804,9 +1805,8 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
 
     // surface showing the source transparency background
     backgroundpreview = new ImageSurface("images/checker.dds");
-    glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f));
-    glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 64.f, 64.f, 1.f));
-    backgroundpreview->shader()->iTransform = Tra * Sca;
+    static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
+    backgroundpreview->shader()->iTransform = Tra;
     backgroundpreview->translation_.z = 0.001f;
     scene.bg()->attach(backgroundpreview);
     // surface to show the texture of the source
@@ -2033,7 +2033,12 @@ void AppearanceView::adjustBackground()
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
-        image_crop_area = edit_source_->frame()->projectionArea();
+
+//        image_crop_area = edit_source_->frame()->projectionArea();
+        image_crop_area = edit_source_->crop_;
+
+        surfacepreview->scale_.x = image_original_width;
+
         image_crop_area.x *= image_original_width;
     }
 
@@ -2045,19 +2050,19 @@ void AppearanceView::adjustBackground()
     backgroundframe_->scale_.x = image_original_width;
 
     // background of preview
-    surfacepreview->scale_ = glm::vec3(image_crop_area, 1.f);
+//    surfacepreview->scale_ = glm::vec3(image_crop_area, 1.f);
     backgroundpreview->scale_ = glm::vec3(image_crop_area, 1.f);
     backgroundpreview->update(0);
     glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), glm::vec3(image_crop_area, 1.f) );
-    glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f));
-    glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( 64.f, 64.f, 1.f));
-    backgroundpreview->shader()->iTransform =  Ar * Tra * Sca ;
+    static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
+    backgroundpreview->shader()->iTransform = Ar * Tra;
 
     // foreground
     crop_horizontal_->translation_.x = image_crop_area.x;
     crop_vertical_->translation_.y = -image_crop_area.y;
     crop_vertical_->translation_.x = -image_original_width - 0.1f;
     foregroundframe_->scale_ = glm::vec3(image_crop_area, 1.f);
+
 }
 
 Source *AppearanceView::getEditOrCurrentSource()
@@ -2126,36 +2131,54 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
 
-    // work on the given source
+    // Not grabbing a source
     if (!s) {
-
+        // work on the edited source
         if ( edit_source_ != nullptr ) {
 
             // make sure matrix transform of stored status is updated
-            edit_source_->stored_status_->update(0);
+//            Group *sourceNode = edit_source_->group(View::GEOMETRY); // groups_[View::GEOMETRY]
+//            edit_source_status_.update(0);
 
             // picking on the resizing handles in the corners
             if ( pick.first == crop_horizontal_ ) {
 
                 // crop horizontally
-                glm::vec2 cropped = edit_source_->frame()->projectionArea();
+//                glm::vec2 cropped = edit_source_->frame()->projectionArea();
+//                float max_width =  edit_source_->frame()->aspectRatio();
+//                cropped.x = CLAMP(scene_to.x, 0.2f, max_width) / max_width;
+//                edit_source_->frame()->setProjectionArea(cropped);
+
                 float max_width =  edit_source_->frame()->aspectRatio();
-                cropped.x = CLAMP(scene_to.x, 0.2f, max_width) / max_width;
-                edit_source_->frame()->crop(cropped);
+                edit_source_->crop_.x = CLAMP(scene_to.x, 0.2f, max_width) / max_width;
+
                 // TODO scale GEOMETRY and RENDER groups
+                edit_source_->texturesurface_->scale_.x = edit_source_->crop_.x;
+                edit_source_->texturesurface_->update(0);
+
+//                edit_source_->group(View::GEOMETRY)->scale_ = edit_source_status_.scale_ * glm::vec3(cropped, 1.f);
                 edit_source_->touch();
+
                 // update background and frame
                 adjustBackground();
                 // cursor indication
                 ret.type = Cursor_ResizeEW;
             }
             if ( pick.first == crop_vertical_ ) {
-                // crop vertically
-                glm::vec2 cropped = edit_source_->frame()->projectionArea();
-                cropped.y = -1.f * CLAMP(scene_to.y, -1.f, -0.2f);
-                edit_source_->frame()->crop(cropped);
+
+//                // crop vertically
+//                glm::vec2 cropped = edit_source_->frame()->projectionArea();
+//                cropped.y = -1.f * CLAMP(scene_to.y, -1.f, -0.2f);
+//                edit_source_->frame()->setProjectionArea(cropped);
+
+                edit_source_->crop_.y = -1.f * CLAMP(scene_to.y, -1.f, -0.2f);
+
                 // TODO scale GEOMETRY and RENDER groups
+                edit_source_->texturesurface_->scale_.y = edit_source_->crop_.y;
+                edit_source_->texturesurface_->update(0);
+
                 edit_source_->touch();
+
                 // update background and frame
                 adjustBackground();
                 // cursor indication
@@ -2166,7 +2189,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         return ret;        
     }
 
-    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
+    Group *sourceNode = s->group(mode_); // groups_[View::APPEARANCE]
 
     // make sure matrix transform of stored status is updated
     s->stored_status_->update(0);
@@ -2453,6 +2476,17 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     return ret;
 }
 
+
+//void AppearanceView::initiate()
+//{
+//    View::initiate();
+
+//Log::Info("AppearanceView::initiate")    ;
+//    if ( edit_source_ != nullptr ) {
+//        Log::Info("store edit_source_status_")    ;
+//        edit_source_status_.copyTransform(edit_source_->group(View::GEOMETRY));
+//    }
+//}
 
 void AppearanceView::terminate()
 {

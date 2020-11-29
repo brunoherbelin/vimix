@@ -28,7 +28,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling
 {
     attrib_.viewport = glm::ivec2(resolution);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
-    crop(glm::vec2(1.f, 1.f));
+    setProjectionArea(glm::vec2(1.f, 1.f));
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling):
@@ -37,7 +37,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampl
 {
     attrib_.viewport = glm::ivec2(width, height);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
-    crop(glm::vec2(1.f, 1.f));
+    setProjectionArea(glm::vec2(1.f, 1.f));
 }
 
 void FrameBuffer::init()
@@ -258,7 +258,7 @@ glm::vec2 FrameBuffer::projectionArea() const
     return projection_crop_;
 }
 
-void FrameBuffer::crop(glm::vec2 c)
+void FrameBuffer::setProjectionArea(glm::vec2 c)
 {
     projection_crop_.x = CLAMP(c.x, 0.1f, 1.f);
     projection_crop_.y = CLAMP(c.y, 0.1f, 1.f);

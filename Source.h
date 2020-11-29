@@ -171,6 +171,7 @@ protected:
 
     // surface to draw on
     Surface *texturesurface_;
+    glm::vec2 crop_;
 
     // mode for display
     Mode mode_;

@@ -239,11 +239,13 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
+//    void initiate() override;
     void terminate() override;
 
 private:
 
     Source *edit_source_;
+    Group edit_source_status_;
     bool need_edit_update_;
     Source *getEditOrCurrentSource();
 

@@ -45,7 +45,7 @@ public:
     // projection and crop
     glm::mat4 projection() const;
     glm::vec2 projectionArea() const;
-    void crop(glm::vec2 c);
+    void setProjectionArea(glm::vec2 c);
 
     // internal pixel format
     inline bool use_alpha() const { return use_alpha_; }
