@@ -69,6 +69,9 @@ public:
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader () const { return renderingshader_; }
 
+    // a Source has a surface used to draw images
+    inline Surface *renderingSurface () const { return texturesurface_; }
+
     // the rendering shader always have an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
@@ -138,8 +141,6 @@ public:
 
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
-    // surface to draw on
-    Surface *texturesurface_;
 protected:
     // name
     std::string name_;
@@ -171,6 +172,8 @@ protected:
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
+    // surface to draw on
+    Surface *texturesurface_;
 
     // mode for display
     Mode mode_;

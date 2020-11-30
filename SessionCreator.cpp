@@ -483,7 +483,7 @@ void SessionLoader::visit (Source& s)
     s.groupNode(View::APPEARANCE)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Crop");
-    s.texturesurface_->accept(*this);
+    s.renderingSurface()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);

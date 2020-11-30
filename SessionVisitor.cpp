@@ -345,7 +345,7 @@ void SessionVisitor::visit (Source& s)
 
     xmlCurrent_ = xmlDoc_->NewElement("Crop");
     sourceNode->InsertEndChild(xmlCurrent_);
-    s.texturesurface_->accept(*this);
+    s.renderingSurface()->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);

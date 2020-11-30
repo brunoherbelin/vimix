@@ -252,7 +252,11 @@ private:
     Surface *backgroundchecker_;
     Frame *backgroundframe_;
     Mesh *horizontal_line_;
+    Mesh *horizontal_mark_;
+    bool show_horizontal_scale_;
     Group *vertical_line_;
+    Mesh *vertical_mark_;
+    bool show_vertical_scale_;
     Symbol *crop_horizontal_;
     Symbol *crop_vertical_;
     Symbol *overlay_position_;

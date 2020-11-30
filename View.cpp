@@ -830,8 +830,7 @@ void showContextMenu(View::Mode m, const char* label)
                     if (output) scale.x = output->aspectRatio() / s->frame()->aspectRatio();
                 }
                 else if ( m == View::APPEARANCE ) {
-                    glm::vec2 crop = s->frame()->projectionArea();
-                    scale = glm::vec3( crop, 1.f);
+                    scale = s->renderingSurface()->scale_;
                 }
                 s->group(m)->scale_ = scale;
                 s->group(m)->rotation_.z = 0;
@@ -1781,30 +1780,31 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     // Horizontal axis
     horizontal_line_ = new Mesh("mesh/h_line.ply");
     horizontal_line_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    horizontal_line_->translation_ = glm::vec3(0.f, 1.1f, 0.0f);
+    horizontal_line_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
     horizontal_line_->scale_.x = 1.0f;
     horizontal_line_->scale_.y = 3.0f;
     scene.bg()->attach(horizontal_line_);
-    Mesh *mark = new Mesh("mesh/h_mark.ply");
-    mark->translation_ = glm::vec3(0.f, 1.1f, 0.0f);
-    mark->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
-    mark->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    scene.bg()->attach(mark);
+    show_horizontal_scale_ = false;
+    horizontal_mark_ = new Mesh("mesh/h_mark.ply");
+    horizontal_mark_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
+    horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.bg()->attach(horizontal_mark_);
     // vertical axis
     vertical_line_ = new Group;
     Mesh *line  = new Mesh("mesh/h_line.ply");
     line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    line->translation_ = glm::vec3(-0.1f, 0.0f, 0.0f);
+    line->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
     line->scale_.x = 1.0f;
     line->scale_.y = 3.0f;
     line->rotation_.z = M_PI_2;
     vertical_line_->attach(line);
-    mark  = new Mesh("mesh/h_mark.ply");
-    mark->translation_ = glm::vec3(-0.1f, 0.0f, 0.0f);
-    mark->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
-    mark->rotation_.z = M_PI_2;
-    mark->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    vertical_line_->attach(mark);
+    vertical_mark_  = new Mesh("mesh/h_mark.ply");
+    vertical_mark_->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
+    vertical_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    vertical_mark_->rotation_.z = M_PI_2;
+    vertical_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    vertical_line_->attach(vertical_mark_);
     scene.bg()->attach(vertical_line_);
 
     // surface to show the texture of the source
@@ -1816,11 +1816,11 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     //
     // crop icons
     crop_horizontal_ = new Symbol(Symbol::CROP);
-    crop_horizontal_->translation_ = glm::vec3(1.0f, 1.1f, 0.f);
+    crop_horizontal_->translation_ = glm::vec3(1.0f, 1.12f, 0.f);
     scene.fg()->attach(crop_horizontal_);
     crop_vertical_ = new Symbol(Symbol::CROP);
     crop_vertical_->rotation_.z = M_PI_2;
-    crop_vertical_->translation_ = glm::vec3(-1.1f, -1.0f, 0.f);
+    crop_vertical_->translation_ = glm::vec3(-1.12f, -1.0f, 0.f);
     scene.fg()->attach(crop_vertical_);
 
     // User interface foreground
@@ -2049,7 +2049,7 @@ void AppearanceView::adjustBackground()
     // foreground
     crop_horizontal_->translation_.x = image_crop_area.x;
     crop_vertical_->translation_.y = -image_crop_area.y;
-    crop_vertical_->translation_.x = -image_original_width - 0.1f;
+    crop_vertical_->translation_.x = -image_original_width - 0.12f;
 
 }
 
@@ -2099,21 +2099,40 @@ void AppearanceView::draw()
     Shader::force_blending_opacity = false;
 
     if (edit_source_ != nullptr){
-
         // force to redraw the frame of the edit source (even if source is not visible)
         DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
         scene.accept(dv);
+
+        if (show_horizontal_scale_) {
+            int n = static_cast<int>( edit_source_->frame()->aspectRatio() / 0.2f );
+            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.2f, 0.f, 0.f));
+            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
+            dv.loop(n + 1, T);
+            scene.accept(dv);
+        }
+
+        if (show_vertical_scale_) {
+            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.f, -0.2f, 0.f));
+            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
+            dv.loop(6, T);
+            scene.accept(dv);
+        }
     }
+
+    show_vertical_scale_ = false;
+    show_horizontal_scale_ = false;
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
+    std::ostringstream info;
     View::Cursor ret = Cursor();
 
     // grab coordinates in scene-View reference frame
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
+
 
     // Not grabbing a source
     if (!s) {
@@ -2122,27 +2141,50 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 
             // picking on the resizing handles in the corners
             if ( pick.first == crop_horizontal_ ) {
-                // crop horizontally
                 float max_width =  edit_source_->frame()->aspectRatio();
-                edit_source_->texturesurface_->scale_.x = CLAMP(scene_to.x, 0.2f, max_width) / max_width;
+                // discretized scaling with ALT
+                float val = scene_to.x;
+                if (UserInterface::manager().altModifier()) {
+                    val = ROUND(val, 5.f);
+                    show_horizontal_scale_ = true;
+                }
+                // crop horizontally
+                edit_source_->texturesurface_->scale_.x = CLAMP(val, 0.2f, max_width) / max_width;
                 edit_source_->touch();
                 // update background and frame
                 adjustBackground();
                 // cursor indication
+                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x;
+                info << " x "  << edit_source_->texturesurface_->scale_.y;
                 ret.type = Cursor_ResizeEW;
             }
             if ( pick.first == crop_vertical_ ) {
+                float max_width =  edit_source_->frame()->aspectRatio();
+                float val = -scene_to.y;
+                // discretized scaling with ALT
+                if (UserInterface::manager().altModifier()) {
+                    val = ROUND(val, 5.f);
+                    show_vertical_scale_ = true;
+                }
                 // crop vertically
-                edit_source_->texturesurface_->scale_.y = -1.f * CLAMP(scene_to.y, -1.f, -0.2f);
+                edit_source_->texturesurface_->scale_.y = CLAMP(val, 0.2f, 1.0f);
                 edit_source_->touch();
                 // update background and frame
                 adjustBackground();
                 // cursor indication
+                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x ;
+                info << " x "  << edit_source_->texturesurface_->scale_.y;
                 ret.type = Cursor_ResizeNS;
             }
-        }
 
-        return ret;        
+            // store action in history
+            current_action_ = edit_source_->name() + ": " + info.str();
+            current_id_ = edit_source_->id();
+
+            // update cursor
+            ret.info = info.str();
+        }
+        return ret;
     }
 
     Group *sourceNode = s->group(mode_); // groups_[View::APPEARANCE]
@@ -2156,7 +2198,6 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     glm::vec3 source_scaling     = glm::vec3(source_to) / glm::vec3(source_from);
 
     // which manipulation to perform?
-    std::ostringstream info;
     if (pick.first)  {
         // which corner was picked ?
         glm::vec2 corner = glm::round(pick.second);
@@ -2177,7 +2218,6 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 
         // convert source position in corner reference frame
         glm::vec4 center = scene_to_corner_transform * glm::vec4( s->stored_status_->translation_, 1.f);
-
 
         // picking on the resizing handles in the corners
         if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
