@@ -299,7 +299,6 @@ void Source::setImageProcessingEnabled (bool on)
     // this calls replaceShader() on the Primitive and
     // will delete the previously attached shader
     texturesurface_->replaceShader(renderingshader_);
-
 }
 
 bool Source::imageProcessingEnabled()

@@ -196,9 +196,16 @@ void Primitive::accept(Visitor& v)
 void Primitive::replaceShader( Shader *newshader )
 {
     if (newshader) {
-        if (shader_)
+        glm::mat4 iTransform = newshader->iTransform;
+        glm::vec4 color = newshader->color;
+        if (shader_) {
+            iTransform = shader_->iTransform;
+            color = shader_->color;
             delete shader_;
+        }
         shader_ = newshader;
+        shader_->iTransform = iTransform;
+        shader_->color = color;
     }
 }
 
