@@ -2060,9 +2060,12 @@ Source *AppearanceView::getEditOrCurrentSource()
 {
     // cancel multiple selection
     if (Mixer::selection().size() > 1) {
-        Source *_alternate = Mixer::selection().front();
+        Source *s = Mixer::manager().currentSource();
+        Mixer::manager().unsetCurrentSource();
+        if ( s == nullptr )
+            s = Mixer::selection().front();
         Mixer::selection().clear();
-        Mixer::manager().setCurrentSource(_alternate);
+        Mixer::manager().setCurrentSource(s);
     }
 
     // get current source
