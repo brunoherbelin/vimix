@@ -2086,23 +2086,8 @@ void AppearanceView::draw()
         adjustBackground();
     }
 
-    // display popup menu
-    if (show_context_menu_) {
-        ImGui::OpenPopup( "AppearanceContextMenu" );
-        show_context_menu_ = false;
-    }
-    showContextMenu(mode_,"AppearanceContextMenu");
-
-    // draw general view
-    Shader::force_blending_opacity = true;
-    View::draw();
-    Shader::force_blending_opacity = false;
-
+    // draw marks in axis
     if (edit_source_ != nullptr){
-        // force to redraw the frame of the edit source (even if source is not visible)
-        DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
-        scene.accept(dv);
-
         if (show_horizontal_scale_) {
             int n = static_cast<int>( edit_source_->frame()->aspectRatio() / 0.2f );
             static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.2f, 0.f, 0.f));
@@ -2110,7 +2095,6 @@ void AppearanceView::draw()
             dv.loop(n + 1, T);
             scene.accept(dv);
         }
-
         if (show_vertical_scale_) {
             static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.f, -0.2f, 0.f));
             DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
@@ -2119,8 +2103,27 @@ void AppearanceView::draw()
         }
     }
 
+    // draw general view
+    Shader::force_blending_opacity = true;
+    View::draw();
+    Shader::force_blending_opacity = false;
+
+    // force to redraw the frame of the edit source (even if source is not visible)
+    if (edit_source_ != nullptr){
+        DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
+        scene.accept(dv);
+    }
+
     show_vertical_scale_ = false;
     show_horizontal_scale_ = false;
+
+    // display popup menu
+    if (show_context_menu_) {
+        ImGui::OpenPopup( "AppearanceContextMenu" );
+        show_context_menu_ = false;
+    }
+    showContextMenu(mode_,"AppearanceContextMenu");
+
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
