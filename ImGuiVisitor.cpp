@@ -395,16 +395,21 @@ void ImGuiVisitor::visit (Source& s)
 
     // preview
     float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-    float width = preview_width;    
-    glm::vec2 size = s.frame()->projectionArea() * glm::vec2( s.frame()->aspectRatio(), 1.f);
-    float height = width * size.y / size.x;
-    if (height > 200) {
-        height = 200;
-        width = height * size.x / size.y;
+    float width = preview_width;
+    float height = width / s.frame()->aspectRatio();
+    if (height > 230) {
+        height = 230;
+        width = height * s.frame()->aspectRatio();
     }
     ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
 
     ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
+
+    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -height ) );
+    if (s.active())
+        ImGuiToolkit::Icon(10, 4);
+    else
+        ImGuiToolkit::Icon(11, 4);
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();

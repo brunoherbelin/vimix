@@ -55,12 +55,13 @@ public:
 class BounceScaleCallback : public UpdateCallback
 {
     float duration_;
+    float scale_;
     float progress_;
     bool  initialized_;
     glm::vec3 initial_scale_;
 
 public:
-    BounceScaleCallback(float duration = 100.f);
+    BounceScaleCallback(float scale = 0.05f);
     void update(Node *n, float dt);
 };
 

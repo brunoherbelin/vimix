@@ -419,6 +419,9 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
         else
             anim = new RotateToCallback(SIGN(slider_root_->rotation_.z) * M_PI, 500.f);
 
+        // animate clic
+        pick.first->update_callbacks_.push_back(new BounceScaleCallback(0.3f));
+
         // reset & start animation
         slider_root_->update_callbacks_.clear();
         slider_root_->update_callbacks_.push_back(anim);
@@ -502,7 +505,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 //    else if ( Mixer::manager().concealed(s) )
 //        info << "Stashed";
     else
-        info << "Inactive";
+        info << "Inactive " << ICON_FA_EYE_SLASH;
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
@@ -2055,6 +2058,13 @@ void AppearanceView::adjustBackground()
 
 Source *AppearanceView::getEditOrCurrentSource()
 {
+    // cancel multiple selection
+    if (Mixer::selection().size() > 1) {
+        Source *_alternate = Mixer::selection().front();
+        Mixer::selection().clear();
+        Mixer::manager().setCurrentSource(_alternate);
+    }
+
     // get current source
     Source *_source = Mixer::manager().currentSource();
 

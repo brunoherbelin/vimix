@@ -70,8 +70,8 @@ void RotateToCallback::update(Node *n, float dt)
     }
 }
 
-BounceScaleCallback::BounceScaleCallback(float duration) : UpdateCallback(),
-    duration_(duration), progress_(0.f), initialized_(false)
+BounceScaleCallback::BounceScaleCallback(float scale) : UpdateCallback(),
+    duration_(100.f), progress_(0.f), initialized_(false), scale_(scale)
 {
 
 }
@@ -87,8 +87,8 @@ void BounceScaleCallback::update(Node *n, float dt)
     // calculate amplitude of movement
     progress_ += dt / duration_;
 
-    n->scale_.x = initial_scale_.x + (initial_scale_.x * 0.05f) * sin(M_PI * progress_);
-    n->scale_.y = initial_scale_.y + (initial_scale_.y * 0.05f) * sin(M_PI * progress_);
+    n->scale_.x = initial_scale_.x + (initial_scale_.x * scale_) * sin(M_PI * progress_);
+    n->scale_.y = initial_scale_.y + (initial_scale_.y * scale_) * sin(M_PI * progress_);
 
     // end of movement
     if ( progress_ > 1.f) {

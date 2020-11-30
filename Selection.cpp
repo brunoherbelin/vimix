@@ -111,6 +111,9 @@ uint Selection::size()
 
 Source *Selection::front()
 {
+    if (selection_.empty())
+        return nullptr;
+
     return selection_.front();
 }
 
