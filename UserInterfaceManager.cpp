@@ -1049,21 +1049,23 @@ void UserInterface::RenderHistory()
         ImGui::EndMenuBar();
     }
 
-    ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail());
-    for (int i = 1; i <= Action::manager().max(); i++) {
+    if (ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail() ) )
+    {
+        for (int i = 1; i <= Action::manager().max(); i++) {
 
-        std::string step_label_ = Action::manager().label(i);
+            std::string step_label_ = Action::manager().label(i);
 
-        bool enable = i == Action::manager().current();
-        if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+            bool enable = i == Action::manager().current();
+            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
 
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 
-                Action::manager().stepTo(i);
+                    Action::manager().stepTo(i);
+                }
             }
         }
+        ImGui::ListBoxFooter();
     }
-    ImGui::ListBoxFooter();
 
     ImGui::End();
 }
@@ -1851,6 +1853,9 @@ void Navigator::hidePannel()
 
 void Navigator::Render()
 {
+    std::string about = "";
+    static uint count_about = 0;
+
     ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -1884,6 +1889,8 @@ void Navigator::Render()
                     //            Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_MENU);
                 }
+                if (ImGui::IsItemHovered())
+                    about = "Main menu [Home]";
 
                 // the list of INITIALS for sources
                 int index = 0;
@@ -1919,6 +1926,8 @@ void Navigator::Render()
                     Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_NEW);
                 }
+                if (ImGui::IsItemHovered())
+                    about = "New Source [Ins]";
 
             }
             else {
@@ -1946,24 +1955,47 @@ void Navigator::Render()
             Mixer::manager().setView(View::MIXING);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Mixing [F1]";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
+            if (ImGui::IsItemHovered())
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Geometry [F2]";
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Layers [F3]";
         if (ImGui::Selectable( ICON_FA_SIGN, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::APPEARANCE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Source apppearance [F4]";
+
 
         ImGui::End();
     }
+
+    if (!about.empty()) {
+        count_about++;
+        if (count_about > 100) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", about.c_str());
+            ImGui::EndTooltip();
+            ImGui::PopFont();
+        }
+    }
+    else
+        count_about = 0;
 
     if ( view_pannel_visible && !pannel_visible_ )
         RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );
