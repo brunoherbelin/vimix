@@ -30,7 +30,6 @@ public:
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
-    void render() override;
     bool failed() const override;
     uint texture() const override;
 
@@ -39,7 +38,6 @@ public:
 
 protected:
     void init() override;
-    void replaceRenderingShader() override;
 
     Stream *stream_;
 };

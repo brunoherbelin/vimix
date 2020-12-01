@@ -133,9 +133,8 @@ PatternSource::PatternSource() : StreamSource()
     // create stream
     stream_ = (Stream *) new Pattern;
 
-    // set icons
-    overlays_[View::MIXING]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::LAYER]->attach( new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    // set symbol
+    symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
 void PatternSource::setPattern(uint type, glm::ivec2 resolution)

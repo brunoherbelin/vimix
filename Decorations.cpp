@@ -8,6 +8,7 @@
 #include "BoundingBoxVisitor.h"
 #include "ImageShader.h"
 #include "GlmToolkit.h"
+#include "Resource.h"
 #include "Log.h"
 
 
@@ -158,6 +159,8 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_rotation = new Mesh("mesh/border_handles_rotation.ply");
     static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
+    static Mesh *handle_restore  = new Mesh("mesh/border_handles_menu.ply");
+    static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
     color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == Handles::ROTATE ) {
@@ -166,11 +169,16 @@ Handles::Handles(Type type) : Node(), type_(type)
     else if ( type_ == Handles::SCALE ) {
         handle_ = handle_scale;
     }
+    else if ( type_ == Handles::MENU ) {
+        handle_ = handle_restore;
+    }
     else {
         handle_ = handle_corner;
     }
 
     corner_ = glm::vec2(0.f, 0.f);
+
+    shadow_ = handle_shadow;
 }
 
 Handles::~Handles()
@@ -190,6 +198,8 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() ) {
         if(handle_ && !handle_->initialized())
             handle_->init();
+        if(shadow_ && !shadow_->initialized())
+            shadow_->init();
         init();
     }
 
@@ -275,6 +285,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = ( modelview * glm::vec4(1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::SCALE ){
@@ -286,6 +297,19 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
             // 3. draw
+            shadow_->draw( ctm, projection );
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::MENU ){
+            // one icon in top left corner
+            // 1. Fixed displacement by (-0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
+            // 2. ..from the top right corner (1,1)
+            vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
     }
@@ -317,6 +341,7 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
         icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
         icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
+        icons[CROP]    = new Mesh("mesh/icon_rightarrow.ply");
         icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
         icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
         icons[CLOCK_H] = new Mesh("mesh/icon_clock_hand.ply");
@@ -326,7 +351,10 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
     }
 
+    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
+
     symbol_ = icons[type_];
+    shadow_ = shadow;
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
@@ -341,6 +369,8 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() ) {
         if(symbol_ && !symbol_->initialized())
             symbol_->init();
+        if(shadow_ && !shadow_->initialized())
+            shadow_->init();
         init();
     }
 
@@ -367,6 +397,7 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // generate matrix
         ctm = GlmToolkit::transform(tran, rot, sca);
 
+        shadow_->draw( ctm, projection );
         symbol_->draw( ctm, projection);
     }
 }

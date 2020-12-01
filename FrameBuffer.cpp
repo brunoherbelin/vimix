@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include "Log.h"
 
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <glad/glad.h>
 
@@ -27,6 +28,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling
 {
     attrib_.viewport = glm::ivec2(resolution);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
+    setProjectionArea(glm::vec2(1.f, 1.f));
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling):
@@ -35,6 +37,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampl
 {
     attrib_.viewport = glm::ivec2(width, height);
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
+    setProjectionArea(glm::vec2(1.f, 1.f));
 }
 
 void FrameBuffer::init()
@@ -65,6 +68,8 @@ void FrameBuffer::init()
                                 use_alpha_ ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
         // attach the multisampled texture to FBO (framebufferid_  currently binded)
@@ -239,5 +244,24 @@ void FrameBuffer::checkFramebufferStatus()
 #endif
             break;
     }
+}
+
+
+glm::mat4 FrameBuffer::projection() const
+{
+    return projection_;
+}
+
+
+glm::vec2 FrameBuffer::projectionArea() const
+{
+    return projection_crop_;
+}
+
+void FrameBuffer::setProjectionArea(glm::vec2 c)
+{
+    projection_crop_.x = CLAMP(c.x, 0.1f, 1.f);
+    projection_crop_.y = CLAMP(c.y, 0.1f, 1.f);
+    projection_ = glm::ortho(-projection_crop_.x, projection_crop_.x, projection_crop_.y, -projection_crop_.y, -1.f, 1.f);
 }
 

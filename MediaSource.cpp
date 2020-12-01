@@ -15,19 +15,11 @@ MediaSource::MediaSource() : Source(), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
-
-    // create media surface:
-    // - textured with original texture from media player
-    // - crop & repeat UV can be managed here
-    // - additional custom shader can be associated
-    surface_ = new Surface(renderingshader_);
-
 }
 
 MediaSource::~MediaSource()
 {
-    // delete media surface & player
-    delete surface_;
+    // delete media player
     delete mediaplayer_;
 }
 
@@ -68,11 +60,6 @@ uint MediaSource::texture() const
     return mediaplayer_->texture();
 }
 
-void MediaSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
-}
-
 void MediaSource::init()
 {
     if ( mediaplayer_->isOpen() ) {
@@ -84,24 +71,20 @@ void MediaSource::init()
         if (mediaplayer_->texture() != Resource::getTextureBlack()) {
 
             // get the texture index from media player, apply it to the media surface
-            surface_->setTextureIndex( mediaplayer_->texture() );
+            texturesurface_->setTextureIndex( mediaplayer_->texture() );
 
             // create Frame buffer matching size of media player
             float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
             FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, true);
 
+            // icon in mixing view
+            if (mediaplayer_->isImage())
+                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f));
+            else
+                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f));
+
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
-
-            // icon in mixing view
-            if (mediaplayer_->isImage()) {
-                overlays_[View::MIXING]->attach( new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
-                overlays_[View::LAYER]->attach( new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f)) );
-            }
-            else {
-                overlays_[View::MIXING]->attach( new Symbol(Symbol::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f)) );
-                overlays_[View::LAYER]->attach( new Symbol(Symbol::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f)) );
-            }
 
             // done init
             initialized_ = true;
@@ -140,11 +123,17 @@ void MediaSource::render()
     if (!initialized_)
         init();
     else {
+//        blendingshader_->color.r = mediaplayer_->currentTimelineFading();
+//        blendingshader_->color.g = mediaplayer_->currentTimelineFading();
+//        blendingshader_->color.b = mediaplayer_->currentTimelineFading();
+
         // render the media player into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
         renderbuffer_->begin();
-        surface_->shader()->color.a = mediaplayer_->currentTimelineFading();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
+//        texturesurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.r = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.g = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color.b = mediaplayer_->currentTimelineFading();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
     }
 }

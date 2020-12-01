@@ -10,8 +10,12 @@
 
 #include "GlmToolkit.h"
 
-class FrameBuffer;
+// use glReadPixel or glGetTextImage
+// read pixels & pbo should be the fastest
+// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
+#define USE_GLREADPIXEL
 
+class FrameBuffer;
 
 
 /**

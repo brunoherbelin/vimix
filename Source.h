@@ -17,6 +17,7 @@ class FrameBufferSurface;
 class Session;
 class Frame;
 class Handles;
+class Symbol;
 class CloneSource;
 
 typedef std::list<CloneSource *> CloneList;
@@ -28,16 +29,17 @@ class Source
     friend class MixingView;
     friend class GeometryView;
     friend class LayerView;
+    friend class AppearanceView;
     friend class TransitionView;
 
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source();
-    virtual ~Source();
+    Source ();
+    virtual ~Source ();
 
     // Get unique id
-    inline uint64_t id() const { return id_; }
+    inline uint64_t id () const { return id_; }
 
     // manipulate name of source
     void setName (const std::string &name);
@@ -65,7 +67,10 @@ public:
     bool contains (Node *node) const;
 
     // a Source has a shader used to render in fbo
-    inline Shader *renderingShader() const { return renderingshader_; }
+    inline Shader *renderingShader () const { return renderingshader_; }
+
+    // a Source has a surface used to draw images
+    inline Surface *renderingSurface () const { return texturesurface_; }
 
     // the rendering shader always have an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
@@ -73,7 +78,7 @@ public:
     // the image processing shader can be enabled or disabled
     // (NB: when disabled, a simple ImageShader is applied)
     void setImageProcessingEnabled (bool on);
-    bool imageProcessingEnabled();
+    bool imageProcessingEnabled ();
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
@@ -85,7 +90,7 @@ public:
     inline void touch () { need_update_ = true; }
 
     // informs if its ready (i.e. initialized)
-    inline bool ready() const  { return initialized_; }
+    inline bool ready () const  { return initialized_; }
 
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
     virtual void update (float dt);
@@ -95,13 +100,13 @@ public:
     inline bool active () { return active_; }
 
     // a Source shall informs if the source failed (i.e. shall be deleted)
-    virtual bool failed() const = 0;
+    virtual bool failed () const = 0;
 
     // a Source shall define a way to get a texture
-    virtual uint texture() const = 0;
+    virtual uint texture () const = 0;
 
     // a Source shall define how to render into the frame buffer
-    virtual void render() = 0;
+    virtual void render ();
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
@@ -134,7 +139,7 @@ public:
         uint64_t _id;
     };
 
-    virtual glm::ivec2 icon() const { return glm::ivec2(12, 11); }
+    virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
 protected:
     // name
@@ -163,14 +168,12 @@ protected:
     // pointer to the currently attached shader
     // (will be processingshader_ if image processing is enabled)
     Shader *renderingshader_;
-    // every sub class will attach the shader to a different node / hierarchy
-    virtual void replaceRenderingShader() = 0;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
 
     // surface to draw on
-    Surface *surface_;
+    Surface *texturesurface_;
 
     // mode for display
     Mode mode_;
@@ -178,7 +181,8 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    Handles *handle_[5];
+    std::map<View::Mode, Handles*[6]> handles_;
+    Symbol *symbol_;
 
     // update
     bool  active_;
@@ -201,7 +205,6 @@ public:
 
     // implementation of source API
     void setActive (bool on) override;
-    void render() override;
     uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
@@ -217,7 +220,6 @@ protected:
     CloneSource(Source *origin);
 
     void init() override;
-    void replaceRenderingShader() override;
     Source *origin_;
 };
 

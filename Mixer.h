@@ -114,6 +114,7 @@ protected:
     MixingView mixing_;
     GeometryView geometry_;
     LayerView layer_;
+    AppearanceView appearance_;
     TransitionView transition_;
 
     guint64 update_time_;

@@ -11,13 +11,13 @@
 #include <glm/gtx/vector_angle.hpp>
 
 
-PickingVisitor::PickingVisitor(glm::vec3 coordinates) : Visitor()
+PickingVisitor::PickingVisitor(glm::vec3 coordinates, bool force) : Visitor(), force_(force)
 {
     modelview_ = glm::mat4(1.f);
     points_.push_back( coordinates );
 }
 
-PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end) : Visitor()
+PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force) : Visitor(), force_(force)
 {
     modelview_ = glm::mat4(1.f);
     points_.push_back( selectionstart );
@@ -32,12 +32,12 @@ void PickingVisitor::visit(Node &n)
 
 void PickingVisitor::visit(Group &n)
 {
-    if (!n.visible_)
+    if (!n.visible_ && !force_)
         return;
 
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-        if ( (*node)->visible_ )
+        if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;
     }
@@ -45,7 +45,7 @@ void PickingVisitor::visit(Group &n)
 
 void PickingVisitor::visit(Switch &n)
 {
-    if (!n.visible_ || n.numChildren()<1)
+    if ((!n.visible_ && !force_) || n.numChildren()<1)
         return;
 
     glm::mat4 mv = modelview_;
@@ -60,7 +60,7 @@ void PickingVisitor::visit(Primitive &)
 
 void PickingVisitor::visit(Surface &n)
 {
-    if (!n.visible_)
+    if (!n.visible_ && !force_)
         return;
 
     // if more than one point given for testing: test overlap
@@ -100,7 +100,7 @@ void PickingVisitor::visit(Surface &n)
 void PickingVisitor::visit(Disk &n)
 {
     // discard if not visible or if not exactly one point given for picking
-    if (!n.visible_ || points_.size() != 1)
+    if ((!n.visible_ && !force_) || points_.size() != 1)
         return;
 
     // apply inverse transform to the point of interest
@@ -116,7 +116,7 @@ void PickingVisitor::visit(Disk &n)
 void PickingVisitor::visit(Handles &n)
 {
     // discard if not visible or if not exactly one point given for picking
-    if (!n.visible_ || points_.size() != 1)
+    if ((!n.visible_ && !force_) || points_.size() != 1)
         return;
 
     // apply inverse transform to the point of interest
@@ -156,6 +156,12 @@ void PickingVisitor::visit(Handles &n)
         float l = glm::length( glm::vec2(vec) );
         picked  = glm::length( glm::vec2( 1.f + l, -1.f - l) - glm::vec2(P) ) < 1.5f * scale;
     }
+    else if ( n.type() == Handles::MENU ){
+        // the icon for restore is on the left top corner at (-0.12, 0.12) in scene coordinates
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
+        float l = glm::length( glm::vec2(vec) );
+        picked  = glm::length( glm::vec2( -1.f - l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
+    }
 
     if ( picked )
         // add this to the nodes picked
@@ -163,6 +169,23 @@ void PickingVisitor::visit(Handles &n)
 
 }
 
+
+void PickingVisitor::visit(Symbol& n)
+{
+    // discard if not visible or if not exactly one point given for picking
+    if ((!n.visible_ && !force_) || points_.size() != 1)
+        return;
+
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
+
+    // test bounding box for picking from a single point
+    if ( n.bbox().contains( glm::vec3(P)) ) {
+        // add this to the nodes picked
+        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+    }
+
+}
 
 void PickingVisitor::visit(Scene &n)
 {

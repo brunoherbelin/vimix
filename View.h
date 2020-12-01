@@ -11,12 +11,15 @@ typedef std::list<Source *> SourceList;
 
 class SessionSource;
 class Surface;
+class Symbol;
+class Mesh;
+class Frame;
 
 class View
 {
 public:
 
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3,  TRANSITION=4, INVALID=5 } Mode;
+    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, APPEARANCE=4, TRANSITION=5, INVALID=6 } Mode;
 
     View(Mode m);
     virtual ~View() {}
@@ -170,6 +173,7 @@ private:
     Node *overlay_scaling_;
     Node *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
+    bool show_context_menu_;
 };
 
 class LayerView : public View
@@ -210,12 +214,62 @@ public:
     void play(bool open);
 
 private:
-    class Surface *output_surface_;
-    class Mesh *mark_100ms_, *mark_1s_;
+    Surface *output_surface_;
+    Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionSource *transition_source_;
 };
 
+
+class AppearanceView : public View
+{
+public:
+    AppearanceView();
+
+    void select(glm::vec2, glm::vec2) override;
+    void selectAll() override;
+
+    void draw () override;
+
+    void update (float dt) override;
+    void zoom (float factor) override;
+    void resize (int) override;
+    int  size () override;
+
+    std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
+    Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
+    Cursor drag (glm::vec2, glm::vec2) override;
+    void terminate() override;
+
+private:
+
+    Source *edit_source_;
+    bool need_edit_update_;
+    Source *getEditOrCurrentSource();
+    void adjustBackground();
+
+    Surface *surfacepreview;    
+    Surface *backgroundchecker_;
+    Frame *backgroundframe_;
+    Mesh *horizontal_line_;
+    Mesh *horizontal_mark_;
+    bool show_horizontal_scale_;
+    Group *vertical_line_;
+    Mesh *vertical_mark_;
+    bool show_vertical_scale_;
+    Symbol *crop_horizontal_;
+    Symbol *crop_vertical_;
+    Symbol *overlay_position_;
+    Symbol *overlay_position_cross_;
+    Symbol *overlay_scaling_;
+    Symbol *overlay_scaling_cross_;
+    Node *overlay_scaling_grid_;
+    Symbol *overlay_rotation_;
+    Symbol *overlay_rotation_fix_;
+    Node *overlay_rotation_clock_;
+    Symbol *overlay_rotation_clock_hand_;
+    bool show_context_menu_;
+};
 
 
 #endif // VIEW_H

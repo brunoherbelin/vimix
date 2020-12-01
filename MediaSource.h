@@ -29,7 +29,6 @@ public:
 protected:
 
     void init() override;
-    void replaceRenderingShader() override;
 
     std::string path_;
     MediaPlayer *mediaplayer_;

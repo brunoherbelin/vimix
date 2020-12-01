@@ -273,9 +273,9 @@ NetworkSource::NetworkSource() : StreamSource()
     // create stream
     stream_ = (Stream *) new NetworkStream;
 
-    // set icons
-    overlays_[View::MIXING]->attach( new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::LAYER]->attach( new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    // set symbol
+    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f));
+
 }
 
 

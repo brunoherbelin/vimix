@@ -34,12 +34,15 @@
 #define MIXING_MAX_SCALE 7.0f
 #define MIXING_ICON_SCALE 0.15f, 0.15f, 1.f
 #define GEOMETRY_DEFAULT_SCALE 1.2f
-#define GEOMETRY_MIN_SCALE 0.2f
+#define GEOMETRY_MIN_SCALE 0.4f
 #define GEOMETRY_MAX_SCALE 10.0f
 #define LAYER_DEFAULT_SCALE 0.8f
 #define LAYER_MIN_SCALE 0.4f
 #define LAYER_MAX_SCALE 1.7f
-#define TRANSITION_DEFAULT_SCALE 3.0f
+#define APPEARANCE_DEFAULT_SCALE 2.f
+#define APPEARANCE_MIN_SCALE 0.4f
+#define APPEARANCE_MAX_SCALE 10.0f
+#define TRANSITION_DEFAULT_SCALE 5.0f
 #define TRANSITION_MIN_DURATION 0.2f
 #define TRANSITION_MAX_DURATION 10.f
 
@@ -68,14 +71,10 @@
 #define COLOR_HIGHLIGHT_SOURCE 1.f, 1.f, 1.f
 #define COLOR_TRANSITION_SOURCE 1.f, 0.5f, 1.f
 #define COLOR_TRANSITION_LINES 0.9f, 0.9f, 0.9f
+#define COLOR_APPEARANCE_SOURCE 0.9f, 0.9f, 0.1f
 #define COLOR_FRAME 0.8f, 0.f, 0.8f
 #define COLOR_LIMBO_CIRCLE 0.16f, 0.16f, 0.16f
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f
 #define COLOR_STASH_CIRCLE 0.06f, 0.06f, 0.06f
-
-// use glReadPixel or glGetTextImage
-// read pixels & pbo should be the fastest
-// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
-#define USE_GLREADPIXEL
 
 #endif // VMIX_DEFINES_H

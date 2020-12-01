@@ -22,11 +22,14 @@ namespace Resource
     // Returns the OpenGL generated Texture index
     uint getTextureImage(const std::string& path, float *aspect_ratio = nullptr);
 
-    // Returns the OpenGL generated Texture index for an empty 1x1 black transparent pixel texture
+    // Returns the OpenGL generated Texture index for an empty 1x1 black opaque pixel texture
     uint getTextureBlack();
 
     // Returns the OpenGL generated Texture index for an empty 1x1 white opaque pixel texture
     uint getTextureWhite();
+
+    // Returns the OpenGL generated Texture index for an empty 1x1 back transparent pixel texture
+    uint getTextureTransparent();
 
     // Generic access to pointer to data
     const char *getData(const std::string& path, size_t* out_file_size);

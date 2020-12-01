@@ -10,11 +10,12 @@ class DrawVisitor : public Visitor
     glm::mat4 projection_;
     Node *target_;
     bool done_;
+    bool force_;
     int num_duplicat_;
     glm::mat4 transform_duplicat_;
 
 public:
-    DrawVisitor(Node *nodetodraw, glm::mat4 projection);
+    DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force = false);
 
     void loop(int num, glm::mat4 transform);
 

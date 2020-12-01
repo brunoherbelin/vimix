@@ -219,6 +219,7 @@ bool UserInterface::Init()
     style.WindowRounding = base_font_size / 2.5f;
     style.ChildRounding = style.WindowRounding / 2.f;
     style.FrameRounding = style.WindowRounding / 2.f;
+    style.PopupRounding = style.WindowRounding / 2.f;
     style.GrabRounding = style.FrameRounding / 2.f;
     style.GrabMinSize = base_font_size / 1.5f;
     style.Alpha = 0.92f;
@@ -354,6 +355,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 ))
+            Mixer::manager().setView(View::APPEARANCE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -532,17 +535,17 @@ void UserInterface::handleMouse()
                 }
             }
         }
-        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
-        {
-            view_drag = nullptr;
-            mousedown = false;
-            picked = { nullptr, glm::vec2(0.f) };
-            Mixer::manager().view()->terminate();
+//        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+//        {
+//            view_drag = nullptr;
+//            mousedown = false;
+//            picked = { nullptr, glm::vec2(0.f) };
+//            Mixer::manager().view()->terminate();
 
-            // special case of one single source in selection : make current after release
-            if (Mixer::selection().size() == 1)
-                Mixer::manager().setCurrentSource( Mixer::selection().front() );
-        }
+//            // special case of one single source in selection : make current after release
+//            if (Mixer::selection().size() == 1)
+//                Mixer::manager().setCurrentSource( Mixer::selection().front() );
+//        }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
@@ -626,6 +629,19 @@ void UserInterface::handleMouse()
         view_drag = nullptr;
         mousedown = false;
         Mixer::manager().view()->terminate();
+    }
+
+
+    if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+    {
+        view_drag = nullptr;
+        mousedown = false;
+        picked = { nullptr, glm::vec2(0.f) };
+        Mixer::manager().view()->terminate();
+
+        // special case of one single source in selection : make current after release
+        if (Mixer::selection().size() == 1)
+            Mixer::manager().setCurrentSource( Mixer::selection().front() );
     }
 }
 
@@ -728,7 +744,7 @@ void UserInterface::Render()
     Log::Render();
 
     // clear view mode in Transition view
-    if ( !Settings::application.transition.hide_windows || Settings::application.current_view != 4) {
+    if ( !Settings::application.transition.hide_windows || Settings::application.current_view < View::TRANSITION) {
 
         // windows
         if (Settings::application.widget.toolbox)
@@ -915,10 +931,8 @@ void ToolBox::Render()
     ImGui::InputText("gstreamer pipeline", buf1, 128);
     if (ImGui::Button("Create Generic Stream Source") )
     {
-//        GenericStreamSource *s =
         Mixer::manager().addSource( Mixer::manager().createSourceStream(buf1) );
     }
-
 
 
     //
@@ -1035,21 +1049,23 @@ void UserInterface::RenderHistory()
         ImGui::EndMenuBar();
     }
 
-    ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail());
-    for (int i = 1; i <= Action::manager().max(); i++) {
+    if (ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail() ) )
+    {
+        for (int i = 1; i <= Action::manager().max(); i++) {
 
-        std::string step_label_ = Action::manager().label(i);
+            std::string step_label_ = Action::manager().label(i);
 
-        bool enable = i == Action::manager().current();
-        if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+            bool enable = i == Action::manager().current();
+            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
 
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 
-                Action::manager().stepTo(i);
+                    Action::manager().stepTo(i);
+                }
             }
         }
+        ImGui::ListBoxFooter();
     }
-    ImGui::ListBoxFooter();
 
     ImGui::End();
 }
@@ -1837,6 +1853,9 @@ void Navigator::hidePannel()
 
 void Navigator::Render()
 {
+    std::string about = "";
+    static uint count_about = 0;
+
     ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -1852,7 +1871,7 @@ void Navigator::Render()
     pannel_width_ = 5.f * width_;                                    // pannel is 5x the bar
     padding_width_ = 2.f * style.WindowPadding.x;                   // panning for alighment
     height_ = io.DisplaySize.y;                                     // cover vertically
-    sourcelist_height_ = height_ - 6.f * ImGui::GetTextLineHeight(); // space for 3 icons of view
+    sourcelist_height_ = height_ - 8.f * ImGui::GetTextLineHeight(); // space for 4 icons of view
     float icon_width = width_ - 2.f * style.WindowPadding.x;        // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
 
@@ -1862,7 +1881,7 @@ void Navigator::Render()
         ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
         if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
         {
-            if (Settings::application.current_view < 4) {
+            if (Settings::application.current_view < View::TRANSITION) {
 
                 // the "=" icon for menu
                 if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
@@ -1870,6 +1889,8 @@ void Navigator::Render()
                     //            Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_MENU);
                 }
+                if (ImGui::IsItemHovered())
+                    about = "Main menu [Home]";
 
                 // the list of INITIALS for sources
                 int index = 0;
@@ -1905,10 +1926,12 @@ void Navigator::Render()
                     Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_NEW);
                 }
+                if (ImGui::IsItemHovered())
+                    about = "New Source [Ins]";
 
             }
             else {
-                // the "=" icon for menu
+                // the ">" icon for transition menu
                 if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
                 {
                     //            Mixer::manager().unsetCurrentSource();
@@ -1932,22 +1955,50 @@ void Navigator::Render()
             Mixer::manager().setView(View::MIXING);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Mixing [F1]";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
+            if (ImGui::IsItemHovered())
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
-        if (ImGui::Selectable( ICON_FA_IMAGES, &selected_view[3], 0, iconsize))
+        if (ImGui::IsItemHovered())
+            about = "Geometry [F2]";
+        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
+        if (ImGui::IsItemHovered())
+            about = "Layers [F3]";
+        if (ImGui::Selectable( ICON_FA_SIGN, &selected_view[4], 0, iconsize))
+        {
+            Mixer::manager().setView(View::APPEARANCE);
+            view_pannel_visible = previous_view == Settings::application.current_view;
+        }
+        if (ImGui::IsItemHovered())
+            about = "Source apppearance [F4]";
 
+
+        ImGui::End();
     }
-    ImGui::End();
+
+    if (!about.empty()) {
+        count_about++;
+        if (count_about > 100) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", about.c_str());
+            ImGui::EndTooltip();
+            ImGui::PopFont();
+        }
+    }
+    else
+        count_about = 0;
 
     if ( view_pannel_visible && !pannel_visible_ )
-        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_, height_ - sourcelist_height_) );
+        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
@@ -2019,7 +2070,7 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
-    if (s == nullptr || Settings::application.current_view >3)
+    if (s == nullptr || Settings::application.current_view >= View::TRANSITION)
         return;
 
     // Next window is a side pannel
@@ -2336,7 +2387,7 @@ void Navigator::RenderNewPannel()
 
 void Navigator::RenderTransitionPannel()
 {
-    if (Settings::application.current_view < 4) {
+    if (Settings::application.current_view < View::TRANSITION) {
         hidePannel();
         return;
     }

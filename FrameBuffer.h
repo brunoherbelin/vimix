@@ -42,6 +42,11 @@ public:
     float aspectRatio() const;
     std::string info() const;
 
+    // projection and crop
+    glm::mat4 projection() const;
+    glm::vec2 projectionArea() const;
+    void setProjectionArea(glm::vec2 c);
+
     // internal pixel format
     inline bool use_alpha() const { return use_alpha_; }
     inline bool use_multisampling() const { return use_multi_sampling_; }
@@ -54,6 +59,8 @@ private:
     void checkFramebufferStatus();
 
     RenderingAttrib attrib_;
+    glm::mat4 projection_;
+    glm::vec2 projection_crop_;
     uint textureid_, intermediate_textureid_;
     uint framebufferid_, intermediate_framebufferid_;
     bool use_alpha_, use_multi_sampling_;

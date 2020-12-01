@@ -47,22 +47,16 @@ SessionSource::SessionSource() : Source(), path_("")
     overlays_[View::TRANSITION]->attach(center);
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
+    // set symbol
+    symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f));
+
     failed_ = false;
     wait_for_sources_ = false;
     session_ = nullptr;
-
-    // create surface:
-    // - textured with original texture from session
-    // - crop & repeat UV can be managed here
-    // - additional custom shader can be associated
-    surface_ = new Surface(renderingshader_);
 }
 
 SessionSource::~SessionSource()
 {
-    // delete surface
-    delete surface_;
-
     // delete session
     if (session_)
         delete session_;
@@ -107,11 +101,6 @@ uint SessionSource::texture() const
     if (session_ == nullptr)
         return Resource::getTextureBlack();
     return session_->frame()->texture();
-}
-
-void SessionSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
 }
 
 void SessionSource::init()
@@ -161,17 +150,13 @@ void SessionSource::init()
             session_->update(dt_);
 
             // get the texture index from framebuffer of session, apply it to the surface
-            surface_->setTextureIndex( session_->frame()->texture() );
+            texturesurface_->setTextureIndex( session_->frame()->texture() );
 
             // create Frame buffer matching size of session
             FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution());
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
-
-            // icon in mixing view
-            overlays_[View::MIXING]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
-            overlays_[View::LAYER]->attach( new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
             // wait for all sources to init
             if (session_->numSource() > 0)
@@ -186,7 +171,7 @@ void SessionSource::init()
     if (initialized_){
         // remove the loading icon
         Node *loader = overlays_[View::TRANSITION]->back();
-        overlays_[View::TRANSITION]->detatch(loader);
+        overlays_[View::TRANSITION]->detach(loader);
         delete loader;
     }
 }
@@ -221,18 +206,6 @@ void SessionSource::update(float dt)
     Source::update(dt);
 }
 
-void SessionSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the sesion into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
-    }
-}
 
 void SessionSource::accept(Visitor& v)
 {
@@ -244,15 +217,10 @@ void SessionSource::accept(Visitor& v)
 
 RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
-    // create  surface:
-    surface_ = new Surface(processingshader_);
+    // set symbol
+    symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
-RenderSource::~RenderSource()
-{
-    // delete surface
-    delete surface_;
-}
 
 bool RenderSource::failed() const
 {
@@ -267,22 +235,14 @@ uint RenderSource::texture() const
         return session_->frame()->texture();
 }
 
-void RenderSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
-}
-
 void RenderSource::init()
 {
-    if (session_ == nullptr)
-        return;
-
     if (session_ && session_->frame()->texture() != Resource::getTextureBlack()) {
 
         FrameBuffer *fb = session_->frame();
 
         // get the texture index from framebuffer of view, apply it to the surface
-        surface_->setTextureIndex( fb->texture() );
+        texturesurface_->setTextureIndex( fb->texture() );
 
         // create Frame buffer matching size of output session
         FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution());
@@ -290,27 +250,10 @@ void RenderSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // icon in mixing view
-        overlays_[View::MIXING]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f)) );
-
         // done init
         initialized_ = true;
 
         Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
-    }
-}
-
-void RenderSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
     }
 }
 

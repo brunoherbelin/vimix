@@ -1,5 +1,6 @@
 
 #include <algorithm>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Source.h"
@@ -15,7 +16,7 @@
 #include "Log.h"
 #include "Mixer.h"
 
-Source::Source() : initialized_(false), active_(true), need_update_(true)
+Source::Source() : initialized_(false), active_(true), need_update_(true), symbol_(nullptr)
 {
     // create unique id
     id_ = GlmToolkit::uniqueId();
@@ -72,26 +73,30 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     overlays_[View::GEOMETRY] = new Group;
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
-    handle_[Handles::RESIZE] = new Handles(Handles::RESIZE);
-    handle_[Handles::RESIZE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handle_[Handles::RESIZE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE]);
-    handle_[Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
-    handle_[Handles::RESIZE_H]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handle_[Handles::RESIZE_H]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE_H]);
-    handle_[Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
-    handle_[Handles::RESIZE_V]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handle_[Handles::RESIZE_V]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handle_[Handles::RESIZE_V]);
-    handle_[Handles::ROTATE] = new Handles(Handles::ROTATE);
-    handle_[Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handle_[Handles::ROTATE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handle_[Handles::ROTATE]);
-    handle_[Handles::SCALE] = new Handles(Handles::SCALE);
-    handle_[Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handle_[Handles::SCALE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handle_[Handles::SCALE]);
+    handles_[View::GEOMETRY][Handles::RESIZE] = new Handles(Handles::RESIZE);
+    handles_[View::GEOMETRY][Handles::RESIZE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE]);
+    handles_[View::GEOMETRY][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+    handles_[View::GEOMETRY][Handles::RESIZE_H]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE_H]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE_H]);
+    handles_[View::GEOMETRY][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+    handles_[View::GEOMETRY][Handles::RESIZE_V]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE_V]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE_V]);
+    handles_[View::GEOMETRY][Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handles_[View::GEOMETRY][Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::ROTATE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::ROTATE]);
+    handles_[View::GEOMETRY][Handles::SCALE] = new Handles(Handles::SCALE);
+    handles_[View::GEOMETRY][Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);    
+    handles_[View::GEOMETRY][Handles::MENU] = new Handles(Handles::MENU);
+    handles_[View::GEOMETRY][Handles::MENU]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::MENU]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::MENU]);
 
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -120,6 +125,50 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     overlays_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
+    // default appearance node
+    groups_[View::APPEARANCE] = new Group;
+    groups_[View::APPEARANCE]->visible_ = false;
+
+    frames_[View::APPEARANCE] = new Switch;
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.7f);
+    frames_[View::APPEARANCE]->attach(frame);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    frames_[View::APPEARANCE]->attach(frame);
+    groups_[View::APPEARANCE]->attach(frames_[View::APPEARANCE]);
+
+    overlays_[View::APPEARANCE] = new Group;
+    overlays_[View::APPEARANCE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->visible_ = false;
+    handles_[View::APPEARANCE][Handles::RESIZE] = new Handles(Handles::RESIZE);
+    handles_[View::APPEARANCE][Handles::RESIZE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::RESIZE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE]);
+    handles_[View::APPEARANCE][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+    handles_[View::APPEARANCE][Handles::RESIZE_H]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::RESIZE_H]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_H]);
+    handles_[View::APPEARANCE][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+    handles_[View::APPEARANCE][Handles::RESIZE_V]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::RESIZE_V]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_V]);
+    handles_[View::APPEARANCE][Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handles_[View::APPEARANCE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::ROTATE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::ROTATE]);
+    handles_[View::APPEARANCE][Handles::SCALE] = new Handles(Handles::SCALE);
+    handles_[View::APPEARANCE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::SCALE]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::SCALE]);
+    handles_[View::APPEARANCE][Handles::MENU] = new Handles(Handles::MENU);
+    handles_[View::APPEARANCE][Handles::MENU]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::APPEARANCE][Handles::MENU]->translation_.z = 0.1;
+    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::MENU]);
+    groups_[View::APPEARANCE]->attach(overlays_[View::APPEARANCE]);
+
     // empty transition node
     groups_[View::TRANSITION] = new Group;
 
@@ -132,6 +181,13 @@ Source::Source() : initialized_(false), active_(true), need_update_(true)
     // default to image processing enabled
     renderingshader_ = (Shader *) processingshader_;
 
+    // create media surface:
+    // - textured with original texture from media player
+    // - crop & repeat UV can be managed here
+    // - additional custom shader can be associated
+    texturesurface_ = new Surface(renderingshader_);
+
+    // will be created at init
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
 
@@ -156,6 +212,7 @@ Source::~Source()
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
     delete groups_[View::LAYER];
+    delete groups_[View::APPEARANCE];
     delete groups_[View::TRANSITION];
 
     groups_.clear();
@@ -166,6 +223,8 @@ Source::~Source()
     // could be created but not used
     if ( renderingshader_ != processingshader_ )
         delete processingshader_;
+
+    delete texturesurface_;
 }
 
 void Source::setName (const std::string &name)
@@ -204,6 +263,9 @@ void Source::setMode(Source::Mode m)
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current;
 
+    // show in appearance view if current
+    groups_[View::APPEARANCE]->visible_ = m > Source::VISIBLE;
+
     mode_ = m;
 }
 
@@ -236,7 +298,7 @@ void Source::setImageProcessingEnabled (bool on)
     // apply to nodes in subclasses
     // this calls replaceShader() on the Primitive and
     // will delete the previously attached shader
-    replaceRenderingShader();
+    texturesurface_->replaceShader(renderingshader_);
 }
 
 bool Source::imageProcessingEnabled()
@@ -244,9 +306,28 @@ bool Source::imageProcessingEnabled()
     return ( renderingshader_ == processingshader_ );
 }
 
+void Source::render()
+{
+    if (!initialized_)
+        init();
+    else {
+        // render the view into frame buffer
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
+    }
+}
+
+
 void Source::attach(FrameBuffer *renderbuffer)
 {
     renderbuffer_ = renderbuffer;
+
+    // if a symbol is available, add it to icons
+    if (symbol_) {
+        overlays_[View::MIXING]->attach( symbol_ );
+        overlays_[View::LAYER]->attach( symbol_ );
+    }
 
     // create the surfaces to draw the frame buffer in the views
     rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
@@ -263,35 +344,33 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::MIXING]->attach(surfacemix);
     groups_[View::LAYER]->attach(surfacemix);
 
-    // scale all icon nodes to match aspect ratio of the media
-    NodeSet::iterator node;
-    for (node = groups_[View::MIXING]->begin();
-         node != groups_[View::MIXING]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
-    for (node = groups_[View::GEOMETRY]->begin();
-         node != groups_[View::GEOMETRY]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
-    for (node = groups_[View::LAYER]->begin();
-         node != groups_[View::LAYER]->end(); node++) {
-        (*node)->scale_.x = renderbuffer_->aspectRatio();
-    }
+    // for appearance view, a dedicated surface without blending
+    Surface *surfacetmp = new Surface();
+    surfacetmp->setTextureIndex(Resource::getTextureTransparent());
+    groups_[View::APPEARANCE]->attach(surfacetmp);
 
     // Transition group node is optionnal
     if ( groups_[View::TRANSITION]->numChildren() > 0 ) {
         groups_[View::TRANSITION]->attach(rendersurface_);
         groups_[View::TRANSITION]->attach(surfacemix);
-        for (NodeSet::iterator node = groups_[View::TRANSITION]->begin();
-             node != groups_[View::TRANSITION]->end(); node++) {
+    }
+
+    // scale all icon nodes to match aspect ratio
+    for (int v = View::MIXING; v < View::INVALID; v++) {
+        NodeSet::iterator node;
+        for (node = groups_[(View::Mode) v]->begin();
+             node != groups_[(View::Mode) v]->end(); node++) {
             (*node)->scale_.x = renderbuffer_->aspectRatio();
         }
     }
 
     // make the source visible
-    if ( mode_ == UNINITIALIZED )
+    if ( mode_ == UNINITIALIZED ) {
         setMode(VISIBLE);
+        need_update_ = true;
+    }
 }
+
 
 void Source::setActive (bool on)
 {
@@ -355,7 +434,35 @@ void Source::update(float dt)
         groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
         groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
 
+        // MODIFY texture projection based on APPEARANCE node
+        // UV to node coordinates
+        static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
+                                            glm::vec3(0.f, 0.f, 0.f),
+                                            glm::vec3(-2.f, 2.f, 1.f));
+        // make sure to update rendering texture surface node
+        texturesurface_->update(dt);
+        // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
+        glm::mat4 Ar = glm::identity<glm::mat4>();
+        if (renderbuffer_)
+            Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio() * texturesurface_->scale_.x, texturesurface_->scale_.y, 1.f) );
+        // Translation : same as Appearance Frame (modified by Ar)
+        glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->translation_);
+        // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( texturesurface_->scale_.x / groups_[View::APPEARANCE]->scale_.x,
+                                   texturesurface_->scale_.y / groups_[View::APPEARANCE]->scale_.y, 1.f));
+        // Rotation : same angle than Appearance Frame, inverted axis
+        glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
+        // Combine transformations (non transitive) in this order:
+        // 1. switch to Scene coordinate system
+        // 2. Apply the aspect ratio correction
+        // 3. Apply the translation
+        // 4. Apply the rotation (centered after translation)
+        // 5. Revert aspect ration correction
+        // 6. Apply the Scaling (independent of aspect ratio)
+        // 7. switch back to UV coordinate system
+        texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * Sca * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
+        // do not update next frame
         need_update_ = false;
     }
 }
@@ -421,17 +528,14 @@ CloneSource *Source::clone()
 
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
-    // create surface:
-    surface_ = new Surface(renderingshader_);
+    // set symbol
+    symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
 CloneSource::~CloneSource()
 {
     if (origin_)
         origin_->clones_.remove(this);
-
-    // delete surface
-    delete surface_;
 }
 
 CloneSource *CloneSource::clone()
@@ -443,27 +547,18 @@ CloneSource *CloneSource::clone()
         return nullptr;
 }
 
-void CloneSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
-}
-
 void CloneSource::init()
 {
     if (origin_ && origin_->ready()) {
 
         // get the texture index from framebuffer of view, apply it to the surface
-        surface_->setTextureIndex( origin_->texture() );
+        texturesurface_->setTextureIndex( origin_->texture() );
 
         // create Frame buffer matching size of session
         FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), true);
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
-
-        // icon in mixing view
-        overlays_[View::MIXING]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
-        overlays_[View::LAYER]->attach( new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f)) );
 
         // done init
         initialized_ = true;
@@ -491,19 +586,6 @@ uint CloneSource::texture() const
         return origin_->texture();
     else
         return Resource::getTextureBlack();
-}
-
-void CloneSource::render()
-{
-    if (!initialized_)
-        init();
-    else if (origin_) {
-        // render the view into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
-    }
 }
 
 void CloneSource::accept(Visitor& v)

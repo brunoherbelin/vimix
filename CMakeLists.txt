@@ -316,7 +316,9 @@ set(VMIX_RSC_FILES
     ./rsc/images/transparencygrid.png
     ./rsc/images/shadow.dds
     ./rsc/images/glow.dds
+    ./rsc/images/checker.dds
     ./rsc/images/shadow_perspective.dds
+    ./rsc/images/soft_shadow.dds
     ./rsc/mesh/disk.ply
     ./rsc/mesh/circle.ply
     ./rsc/mesh/shadow.ply
@@ -331,6 +333,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay.ply
     ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
+    ./rsc/mesh/border_handles_menu.ply
+    ./rsc/mesh/border_handles_shadow.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
@@ -356,6 +360,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_clock.ply
     ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
+    ./rsc/mesh/icon_rightarrow.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

@@ -17,9 +17,8 @@ GenericStreamSource::GenericStreamSource() : StreamSource()
     // create stream
     stream_ = new Stream;
 
-    // icon in mixing view
-    overlays_[View::MIXING]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
-    overlays_[View::LAYER]->attach( new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f)) );
+    // set symbol
+    symbol_ = new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f));
 }
 
 void GenericStreamSource::setDescription(const std::string &desc)
@@ -37,38 +36,33 @@ void GenericStreamSource::accept(Visitor& v)
         v.visit(*this);
 }
 
-StreamSource::StreamSource() : Source()
+StreamSource::StreamSource() : Source(), stream_(nullptr)
 {
-    // create surface
-    surface_ = new Surface(renderingshader_);
 }
 
 StreamSource::~StreamSource()
 {
-    // delete media surface & stream
-    delete surface_;
-    delete stream_;
+    // delete stream
+    if (stream_)
+        delete stream_;
 }
 
 bool StreamSource::failed() const
 {
-    return stream_->failed();
+    return (stream_ != nullptr &&  stream_->failed() );
 }
 
 uint StreamSource::texture() const
 {
-    return stream_->texture();
+    if (stream_ == nullptr)
+        return Resource::getTextureBlack();
+    else
+        return stream_->texture();
 }
-
-void StreamSource::replaceRenderingShader()
-{
-    surface_->replaceShader(renderingshader_);
-}
-
 
 void StreamSource::init()
 {
-    if ( stream_->isOpen() ) {
+    if ( stream_ && stream_->isOpen() ) {
 
         // update video
         stream_->update();
@@ -77,7 +71,7 @@ void StreamSource::init()
         if (stream_->texture() != Resource::getTextureBlack()) {
 
             // get the texture index from media player, apply it to the media surface
-            surface_->setTextureIndex( stream_->texture() );
+            texturesurface_->setTextureIndex( stream_->texture() );
 
             // create Frame buffer matching size of media player
             float height = float(stream_->width()) / stream_->aspectRatio();
@@ -106,7 +100,8 @@ void StreamSource::setActive (bool on)
 
     // change status of media player (only if status changed)
     if ( active_ != was_active ) {
-        stream_->enable(active_);
+        if (stream_)
+            stream_->enable(active_);
     }
 }
 
@@ -115,18 +110,6 @@ void StreamSource::update(float dt)
     Source::update(dt);
 
     // update stream
-    stream_->update();
-}
-
-void StreamSource::render()
-{
-    if (!initialized_)
-        init();
-    else {
-        // render the media player into frame buffer
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -1.f, 1.f);
-        renderbuffer_->begin();
-        surface_->draw(glm::identity<glm::mat4>(), projection);
-        renderbuffer_->end();
-    }
+    if (stream_)
+        stream_->update();
 }
