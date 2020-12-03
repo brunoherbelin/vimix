@@ -186,9 +186,6 @@ bool Rendering::init()
     glfwSetKeyCallback( output_.window(), WindowEscapeFullscreen);
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
 
-
-//    GstDeviceMonitor *dm = GstToolkit::setup_raw_video_source_device_monitor();
-
     return true;
 }
 

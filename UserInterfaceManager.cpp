@@ -178,9 +178,8 @@ bool UserInterface::Init()
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.MouseDrawCursor = true;
     io.FontGlobalScale = Settings::application.scale;
 
     // Setup Platform/Renderer bindings
@@ -405,6 +404,10 @@ void UserInterface::handleKeyboard()
 
 void setMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor())
 {
+    // Hack if GLFW does not have all cursors, ask IMGUI to redraw cursor
+#if GLFW_HAS_NEW_CURSORS == 0
+    ImGui::GetIO().MouseDrawCursor = (c.type > 0); // only redraw non-arrow cursor
+#endif
     ImGui::SetMouseCursor(c.type);
 
     if ( !c.info.empty()) {
@@ -632,12 +635,13 @@ void UserInterface::handleMouse()
     }
 
 
-    if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
+    if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Right) )
     {
         view_drag = nullptr;
         mousedown = false;
         picked = { nullptr, glm::vec2(0.f) };
         Mixer::manager().view()->terminate();
+        setMouseCursor(io.MousePos);
 
         // special case of one single source in selection : make current after release
         if (Mixer::selection().size() == 1)

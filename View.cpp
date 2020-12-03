@@ -1447,7 +1447,7 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
         // no settings found: store application default
         Settings::application.views[mode_].name = "Transition";
         scene.root()->scale_ = glm::vec3(TRANSITION_DEFAULT_SCALE, TRANSITION_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.f, 0.f, 0.0f);
+        scene.root()->translation_ = glm::vec3(1.5f, 0.f, 0.0f);
         saveSettings();
     }
     else
