@@ -987,16 +987,14 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the resizing handles in the corners
         if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
-
-//            overlay_scaling_grid_->visible_ = false;
-//            glm::vec4 icon = corner_to_scene_transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
-//            overlay_scaling_grid_->translation_.x = icon.x;
-//            overlay_scaling_grid_->translation_.y = icon.y;
-//            overlay_scaling_grid_->rotation_.z = s->stored_status_->rotation_.z;
-//            overlay_scaling_grid_->update(0);
-
             // RESIZE CORNER
             // proportional SCALING with SHIFT
             if (UserInterface::manager().shiftModifier()) {
@@ -1042,9 +1040,14 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_H] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
-
             // SHIFT: HORIZONTAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
                 sourceNode->scale_.x = ABS(sourceNode->scale_.y) * SIGN(sourceNode->scale_.x);
@@ -1077,9 +1080,14 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the BORDER RESIZING handles top or bottom
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_V] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
-
             // SHIFT: VERTICAL SCALE to restore source aspect ratio
             if (UserInterface::manager().shiftModifier()) {
                 sourceNode->scale_.y = ABS(sourceNode->scale_.x) * SIGN(sourceNode->scale_.y);
@@ -1112,6 +1120,13 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // picking on the CENTRER SCALING handle
         else if ( pick.first == s->handles_[mode_][Handles::SCALE] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
+            // prepare overlay
             overlay_scaling_cross_->visible_ = false;
             overlay_scaling_grid_->visible_ = false;
             overlay_scaling_->visible_ = true;
@@ -1119,7 +1134,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_scaling_->translation_.y = s->stored_status_->translation_.y;
             overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_scaling_->update(0);
-
             // PROPORTIONAL ONLY
             if (UserInterface::manager().shiftModifier()) {
                 float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
@@ -1144,6 +1158,13 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         }
         // picking on the rotating handle
         else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
+
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
 
             // ROTATION on CENTER
             overlay_rotation_->visible_ = true;
@@ -1250,7 +1271,7 @@ void GeometryView::terminate()
 {
     View::terminate();
 
-    // hide all overlays
+    // hide all view overlays
     overlay_position_->visible_       = false;
     overlay_position_cross_->visible_ = false;
     overlay_rotation_clock_->visible_ = false;
@@ -1261,7 +1282,7 @@ void GeometryView::terminate()
     overlay_scaling_cross_->visible_  = false;
     overlay_scaling_->visible_        = false;
 
-    // cancel of all handles overlays
+    // restore of all handles overlays
     glm::vec2 c(0.f, 0.f);
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
@@ -1269,6 +1290,12 @@ void GeometryView::terminate()
         (*sit)->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(c);
         (*sit)->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(c);
         (*sit)->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(c);
+        (*sit)->handles_[mode_][Handles::RESIZE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::RESIZE_H]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::RESIZE_V]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::SCALE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::ROTATE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
 }
@@ -2149,7 +2176,6 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
 
-
     // Not grabbing a source
     if (!s) {
         // work on the edited source
@@ -2238,6 +2264,13 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         // picking on the resizing handles in the corners
         if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
+
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
 
@@ -2286,6 +2319,13 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_H] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
+
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
 
@@ -2320,6 +2360,13 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         }
         // picking on the BORDER RESIZING handles top or bottom
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_V] ) {
+
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
 
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
@@ -2356,6 +2403,14 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         // picking on the CENTRER SCALING handle
         else if ( pick.first == s->handles_[mode_][Handles::SCALE] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
+
+            // prepare overlay
             overlay_scaling_cross_->visible_ = false;
             overlay_scaling_grid_->visible_ = false;
             overlay_scaling_->visible_ = true;
@@ -2389,6 +2444,12 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         // picking on the rotating handle
         else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
 
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
             // ROTATION on CENTER
             overlay_rotation_->visible_ = true;
             overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
@@ -2512,6 +2573,12 @@ void AppearanceView::terminate()
         (*sit)->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(c);
         (*sit)->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(c);
         (*sit)->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(c);
+        (*sit)->handles_[mode_][Handles::RESIZE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::RESIZE_H]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::RESIZE_V]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::SCALE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::ROTATE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
 }

@@ -779,7 +779,7 @@ void MediaPlayer::update()
             fill_texture(read_index);
 
             // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
-            if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
+            if ( (frame_[read_index].status == PREROLL || seeking_ ) && pbo_size_ > 0)
                 fill_texture(read_index);
         }
 

@@ -253,13 +253,13 @@ void Source::setMode(Source::Mode m)
             (*g).second->visible_ = true;
     }
 
-    // choose frame if selected
+    // choose frame 0 if visible, 1 if selected
     uint index_frame = m == Source::VISIBLE ? 0 : 1;
     for (auto f = frames_.begin(); f != frames_.end(); f++)
         (*f).second->setActive(index_frame);
 
     // show overlay if current
-    bool current = m == Source::CURRENT;
+    bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current;
 

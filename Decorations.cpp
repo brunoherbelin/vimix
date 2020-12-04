@@ -162,7 +162,6 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_restore  = new Mesh("mesh/border_handles_menu.ply");
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
-    color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == Handles::ROTATE ) {
         handle_ = handle_rotation;
     }
@@ -176,8 +175,8 @@ Handles::Handles(Type type) : Node(), type_(type)
         handle_ = handle_corner;
     }
 
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     corner_ = glm::vec2(0.f, 0.f);
-
     shadow_ = handle_shadow;
 }
 
@@ -207,6 +206,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // set color
         handle_->shader()->color = color;
+        handle_active->shader()->color = color;
 
         // extract rotation from modelview
         glm::mat4 ctm;
