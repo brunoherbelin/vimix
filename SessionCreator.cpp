@@ -347,6 +347,9 @@ void SessionLoader::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
         XMLElement *rotationNode = node->FirstChildElement("rotation");
         if (rotationNode)
             tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
+        XMLElement *cropNode = node->FirstChildElement("crop");
+        if (cropNode)
+            tinyxml2::XMLElementToGLM( cropNode->FirstChildElement("vec3"), n.crop_);
     }
 }
 
@@ -481,9 +484,6 @@ void SessionLoader::visit (Source& s)
 
     xmlCurrent_ = sourceNode->FirstChildElement("Appearance");
     s.groupNode(View::APPEARANCE)->accept(*this);
-
-    xmlCurrent_ = sourceNode->FirstChildElement("Crop");
-    s.renderingSurface()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     s.blendingShader()->accept(*this);

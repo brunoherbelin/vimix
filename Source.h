@@ -162,6 +162,7 @@ protected:
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
+    FrameBufferSurface *mixingsurface_;
 
     // image processing shaders
     ImageProcessingShader *processingshader_;
@@ -171,6 +172,7 @@ protected:
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
+    ImageShader *mixingshader_;
 
     // surface to draw on
     Surface *texturesurface_;
@@ -181,7 +183,7 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    std::map<View::Mode, Handles*[6]> handles_;
+    std::map<View::Mode, Handles*[7]> handles_;
     Symbol *symbol_;
 
     // update

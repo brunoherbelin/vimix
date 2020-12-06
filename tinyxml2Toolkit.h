@@ -10,11 +10,13 @@ class XMLDocument;
 class XMLElement;
 
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector);
+XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec2 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec4 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::mat4 matrix);
 
 void XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector);
+void XMLElementToGLM(XMLElement *elem, glm::vec2 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec3 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec4 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix);

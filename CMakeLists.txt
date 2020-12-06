@@ -334,6 +334,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_handles_menu.ply
+    ./rsc/mesh/border_handles_crop.ply
     ./rsc/mesh/border_handles_shadow.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply

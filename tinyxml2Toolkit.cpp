@@ -22,6 +22,14 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector)
     return newelement;
 }
 
+XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec2 vector)
+{
+    XMLElement *newelement = doc->NewElement( "vec2" );
+    newelement->SetAttribute("x", vector.x);
+    newelement->SetAttribute("y", vector.y);
+    return newelement;
+}
+
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec3" );
@@ -60,6 +68,14 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector)
         return;
     elem->QueryIntAttribute("x", &vector.x); // If this fails, original value is left as-is
     elem->QueryIntAttribute("y", &vector.y);
+}
+
+void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec2 &vector)
+{
+    if ( !elem || std::string(elem->Name()).find("vec2") == std::string::npos )
+        return;
+    elem->QueryFloatAttribute("x", &vector.x); // If this fails, original value is left as-is
+    elem->QueryFloatAttribute("y", &vector.y);
 }
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)

@@ -36,7 +36,7 @@ protected:
 class Handles : public Node
 {
 public:
-    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, MENU } Type;
+    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, CROP, MENU } Type;
     Handles(Type type);
     ~Handles();
 
@@ -61,7 +61,7 @@ class Symbol : public Node
 {
 public:
     typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, PATTERN, CAMERA, SHARE,
-                   DOTS, BUSY, LOCK, UNLOCK, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
+                   DOTS, BUSY, LOCK, UNLOCK, ARROWS, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
     Symbol(Type t = CIRCLE_POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 

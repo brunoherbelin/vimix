@@ -24,7 +24,6 @@ public:
     void begin();
     // pop attrib and unbind to end draw
     void end();
-
     // blit copy to another, returns true on success
     bool blit(FrameBuffer *other);
     // bind the FrameBuffer in READ and perform glReadPixels
@@ -42,7 +41,7 @@ public:
     float aspectRatio() const;
     std::string info() const;
 
-    // projection and crop
+    // projection area (crop)
     glm::mat4 projection() const;
     glm::vec2 projectionArea() const;
     void setProjectionArea(glm::vec2 c);
@@ -60,7 +59,7 @@ private:
 
     RenderingAttrib attrib_;
     glm::mat4 projection_;
-    glm::vec2 projection_crop_;
+    glm::vec2 projection_area_;
     uint textureid_, intermediate_textureid_;
     uint framebufferid_, intermediate_framebufferid_;
     bool use_alpha_, use_multi_sampling_;

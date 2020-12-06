@@ -252,16 +252,15 @@ glm::mat4 FrameBuffer::projection() const
     return projection_;
 }
 
-
 glm::vec2 FrameBuffer::projectionArea() const
 {
-    return projection_crop_;
+    return projection_area_;
 }
 
 void FrameBuffer::setProjectionArea(glm::vec2 c)
 {
-    projection_crop_.x = CLAMP(c.x, 0.1f, 1.f);
-    projection_crop_.y = CLAMP(c.y, 0.1f, 1.f);
-    projection_ = glm::ortho(-projection_crop_.x, projection_crop_.x, projection_crop_.y, -projection_crop_.y, -1.f, 1.f);
+    projection_area_.x = CLAMP(c.x, 0.1f, 1.f);
+    projection_area_.y = CLAMP(c.y, 0.1f, 1.f);
+    projection_ = glm::ortho(-projection_area_.x, projection_area_.x, projection_area_.y, -projection_area_.y, -1.f, 1.f);
 }
 

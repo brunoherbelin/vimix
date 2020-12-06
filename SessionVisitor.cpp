@@ -47,6 +47,10 @@ tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *
     rotation->InsertEndChild( XMLElementFromGLM(doc, n.rotation_) );
     newelement->InsertEndChild(rotation);
 
+    XMLElement *crop = doc->NewElement("crop");
+    crop->InsertEndChild( XMLElementFromGLM(doc, n.crop_) );
+    newelement->InsertEndChild(crop);
+
     return newelement;
 }
 
@@ -342,10 +346,6 @@ void SessionVisitor::visit (Source& s)
     xmlCurrent_ = xmlDoc_->NewElement( "Appearance" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.groupNode(View::APPEARANCE)->accept(*this);
-
-    xmlCurrent_ = xmlDoc_->NewElement("Crop");
-    sourceNode->InsertEndChild(xmlCurrent_);
-    s.renderingSurface()->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);

@@ -27,6 +27,7 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
+    crop_ = glm::vec3(1.f);
 }
 
 Node::~Node ()
@@ -53,6 +54,7 @@ void Node::copyTransform(Node *other)
     scale_ = other->scale_;
     rotation_ = other->rotation_;
     translation_ = other->translation_;
+    crop_ = other->crop_;
 }
 
 void Node::update( float dt)

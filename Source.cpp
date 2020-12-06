@@ -92,11 +92,15 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     handles_[View::GEOMETRY][Handles::SCALE] = new Handles(Handles::SCALE);
     handles_[View::GEOMETRY][Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);    
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);
     handles_[View::GEOMETRY][Handles::MENU] = new Handles(Handles::MENU);
     handles_[View::GEOMETRY][Handles::MENU]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::MENU]->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::MENU]);
+    handles_[View::GEOMETRY][Handles::CROP] = new Handles(Handles::CROP);
+    handles_[View::GEOMETRY][Handles::CROP]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::CROP]->translation_.z = 0.1;
+    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::CROP]);
 
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -181,6 +185,9 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     // default to image processing enabled
     renderingshader_ = (Shader *) processingshader_;
 
+    mixingshader_ = new ImageShader;
+    mixingshader_->stipple = 1.0;
+
     // create media surface:
     // - textured with original texture from media player
     // - crop & repeat UV can be managed here
@@ -190,6 +197,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     // will be created at init
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
+    mixingsurface_  = nullptr;
 
 }
 
@@ -333,27 +341,23 @@ void Source::attach(FrameBuffer *renderbuffer)
     rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
     groups_[View::RENDERING]->attach(rendersurface_);
     groups_[View::GEOMETRY]->attach(rendersurface_);
-    groups_[View::MIXING]->attach(rendersurface_);
-//    groups_[View::LAYER]->attach(rendersurface_);
 
     // for mixing and layer views, add another surface to overlay
     // (stippled view on top with transparency)
-    Surface *surfacemix = new FrameBufferSurface(renderbuffer_);
-    ImageShader *is = static_cast<ImageShader *>(surfacemix->shader());
-    if (is)  is->stipple = 1.0;
-    groups_[View::MIXING]->attach(surfacemix);
-    groups_[View::LAYER]->attach(surfacemix);
+    mixingsurface_ = new FrameBufferSurface(renderbuffer_, mixingshader_);
+    groups_[View::MIXING]->attach(mixingsurface_);
+    groups_[View::LAYER]->attach(mixingsurface_);
 
-    // for appearance view, a dedicated surface without blending
+    // for views showing a scaled mixing surface, a dedicated transparent surface allows grabbing
     Surface *surfacetmp = new Surface();
     surfacetmp->setTextureIndex(Resource::getTextureTransparent());
     groups_[View::APPEARANCE]->attach(surfacetmp);
+    groups_[View::MIXING]->attach(surfacetmp);
+    groups_[View::LAYER]->attach(surfacetmp);
 
     // Transition group node is optionnal
-    if ( groups_[View::TRANSITION]->numChildren() > 0 ) {
-        groups_[View::TRANSITION]->attach(rendersurface_);
-        groups_[View::TRANSITION]->attach(surfacemix);
-    }
+    if (groups_[View::TRANSITION]->numChildren() > 0)
+        groups_[View::TRANSITION]->attach(mixingsurface_);
 
     // scale all icon nodes to match aspect ratio
     for (int v = View::MIXING; v < View::INVALID; v++) {
@@ -367,8 +371,9 @@ void Source::attach(FrameBuffer *renderbuffer)
     // make the source visible
     if ( mode_ == UNINITIALIZED ) {
         setMode(VISIBLE);
-        need_update_ = true;
     }
+
+    need_update_ = true;
 }
 
 
@@ -405,13 +410,16 @@ void Source::update(float dt)
     dt_ = dt;
 
     // update nodes if needed
-    if (need_update_)
+    if (renderbuffer_ && mixingsurface_ && need_update_)
     {
+//        Log::Info("UPDATE %s %f", initials_, dt);
+
         // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
         // use the prefered transfer function
         blendingshader_->color.a = sin_quad( dist.x, dist.y );
+        mixingshader_->color.a = blendingshader_->color.a;
 
         // CHANGE update status based on limbo
         bool a = glm::length(dist) < 1.3f;
@@ -421,13 +429,20 @@ void Source::update(float dt)
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
         groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
-        // avoid any null scale
         glm::vec3 s = groups_[View::GEOMETRY]->scale_;
+        // avoid any null scale
         s.x = CLAMP_SCALE(s.x);
         s.y = CLAMP_SCALE(s.y);
         s.z = 1.f;
         groups_[View::GEOMETRY]->scale_ = s;
         groups_[View::RENDERING]->scale_ = s;
+
+        // MODIFY CROP projection based on GEOMETRY crop
+        renderbuffer_->setProjectionArea( glm::vec2(groups_[View::GEOMETRY]->crop_) );
+        // Mixing and layer icons scaled based on GEOMETRY crop
+        mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
+        mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
+//        mixingsurface_->update(0.f);
 
         // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
@@ -437,19 +452,14 @@ void Source::update(float dt)
         // MODIFY texture projection based on APPEARANCE node
         // UV to node coordinates
         static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
-                                            glm::vec3(0.f, 0.f, 0.f),
-                                            glm::vec3(-2.f, 2.f, 1.f));
-        // make sure to update rendering texture surface node
-        texturesurface_->update(dt);
+                                                           glm::vec3(0.f, 0.f, 0.f),
+                                                           glm::vec3(-2.f, 2.f, 1.f));
         // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
-        glm::mat4 Ar = glm::identity<glm::mat4>();
-        if (renderbuffer_)
-            Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio() * texturesurface_->scale_.x, texturesurface_->scale_.y, 1.f) );
+        glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
         // Translation : same as Appearance Frame (modified by Ar)
         glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->translation_);
         // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3( texturesurface_->scale_.x / groups_[View::APPEARANCE]->scale_.x,
-                                   texturesurface_->scale_.y / groups_[View::APPEARANCE]->scale_.y, 1.f));
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(groups_[View::APPEARANCE]->scale_.x,groups_[View::APPEARANCE]->scale_.y, 1.f));
         // Rotation : same angle than Appearance Frame, inverted axis
         glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
         // Combine transformations (non transitive) in this order:
@@ -460,7 +470,7 @@ void Source::update(float dt)
         // 5. Revert aspect ration correction
         // 6. Apply the Scaling (independent of aspect ratio)
         // 7. switch back to UV coordinate system
-        texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * Sca * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
+        texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
         // do not update next frame
         need_update_ = false;

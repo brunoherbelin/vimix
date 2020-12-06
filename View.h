@@ -173,6 +173,7 @@ private:
     Node *overlay_scaling_;
     Node *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
+    Node *overlay_crop_;
     bool show_context_menu_;
 };
 

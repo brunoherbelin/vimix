@@ -764,6 +764,12 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
 
+    border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.2f );
+    overlay_crop_ = border;
+    scene.fg()->attach(overlay_crop_);
+    overlay_crop_->visible_ = false;
+
     show_context_menu_ = false;
 }
 
@@ -824,6 +830,7 @@ void showContextMenu(View::Mode m, const char* label)
             else if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(m)->scale_ = glm::vec3(1.f);
                 s->group(m)->rotation_.z = 0;
+                s->group(m)->crop_ = glm::vec3(1.f);
                 s->touch();
             }
             else if (ImGui::Selectable( ICON_FA_EXPAND "  Fit" )){
@@ -842,6 +849,7 @@ void showContextMenu(View::Mode m, const char* label)
             }
             else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
                 s->group(m)->scale_.x = s->group(m)->scale_.y;
+                s->group(m)->scale_ *= s->group(m)->crop_;
                 s->touch();
             }
         }
@@ -992,6 +1000,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
             s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
             s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
@@ -1045,6 +1054,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::SCALE]->visible_ = false;
             s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
             s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
@@ -1085,6 +1095,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::SCALE]->visible_ = false;
             s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
             s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
@@ -1125,6 +1136,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
             s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
             s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // prepare overlay
             overlay_scaling_cross_->visible_ = false;
@@ -1156,6 +1168,50 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
+        // picking on the CROP
+        else if ( pick.first == s->handles_[mode_][Handles::CROP] ) {
+
+            // hide all other grips
+            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
+            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
+            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
+            s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::MENU]->visible_ = false;
+
+            // prepare overlay
+            overlay_crop_->scale_ = s->stored_status_->scale_ / s->stored_status_->crop_;
+            overlay_crop_->scale_.x  *= s->frame()->aspectRatio();
+            overlay_crop_->translation_.x = s->stored_status_->translation_.x;
+            overlay_crop_->translation_.y = s->stored_status_->translation_.y;
+            overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
+            overlay_crop_->update(0);
+            overlay_crop_->visible_ = true;
+
+            // PROPORTIONAL ONLY
+            if (UserInterface::manager().shiftModifier()) {
+                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
+                source_scaling = glm::vec3(factor, factor, 1.f);
+            }
+            // calculate crop of framebuffer
+            sourceNode->crop_ = s->stored_status_->crop_ * source_scaling;
+            // POST-CORRECTION ; discretized crop with ALT
+            if (UserInterface::manager().altModifier()) {
+                sourceNode->crop_.x = ROUND(sourceNode->crop_.x, 10.f);
+                sourceNode->crop_.y = ROUND(sourceNode->crop_.y, 10.f);
+            }
+            // CLAMP crop values
+            sourceNode->crop_.x = CLAMP(sourceNode->crop_.x, 0.1f, 1.f);
+            sourceNode->crop_.y = CLAMP(sourceNode->crop_.y, 0.1f, 1.f);
+            // apply center scaling
+            s->frame()->setProjectionArea( glm::vec2(sourceNode->crop_) );
+            sourceNode->scale_ = s->stored_status_->scale_ * (sourceNode->crop_ / s->stored_status_->crop_);
+            // show cursor depending on diagonal
+            corner = glm::sign(sourceNode->scale_);
+            ret.type = (corner.x * corner.y) < 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
+            info << "Crop " << std::fixed << std::setprecision(3) << sourceNode->crop_.x;
+            info << " x "  << sourceNode->crop_.y;
+        }
         // picking on the rotating handle
         else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
 
@@ -1164,6 +1220,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
             s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
             s->handles_[mode_][Handles::SCALE]->visible_ = false;
+            s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
 
             // ROTATION on CENTER
@@ -1281,6 +1338,7 @@ void GeometryView::terminate()
     overlay_scaling_grid_->visible_   = false;
     overlay_scaling_cross_->visible_  = false;
     overlay_scaling_->visible_        = false;
+    overlay_crop_->visible_           = false;
 
     // restore of all handles overlays
     glm::vec2 c(0.f, 0.f);
@@ -1295,6 +1353,7 @@ void GeometryView::terminate()
         (*sit)->handles_[mode_][Handles::RESIZE_V]->visible_ = true;
         (*sit)->handles_[mode_][Handles::SCALE]->visible_ = true;
         (*sit)->handles_[mode_][Handles::ROTATE]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::CROP]->visible_ = true;
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
@@ -1845,10 +1904,10 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     // Scene foreground
     //
     // crop icons
-    crop_horizontal_ = new Symbol(Symbol::CROP);
+    crop_horizontal_ = new Symbol(Symbol::ARROWS);
     crop_horizontal_->translation_ = glm::vec3(1.0f, 1.12f, 0.f);
     scene.fg()->attach(crop_horizontal_);
-    crop_vertical_ = new Symbol(Symbol::CROP);
+    crop_vertical_ = new Symbol(Symbol::ARROWS);
     crop_vertical_->rotation_.z = M_PI_2;
     crop_vertical_->translation_ = glm::vec3(-1.12f, -1.0f, 0.f);
     scene.fg()->attach(crop_vertical_);
@@ -2050,7 +2109,7 @@ void AppearanceView::adjustBackground()
 {
     // by default consider edit source is null
     float image_original_width = 1.f;
-    glm::vec2 image_crop_area = glm::vec2(1.f, 1.f);
+//    glm::vec2 image_crop_area = glm::vec2(1.f, 1.f);
     surfacepreview->setTextureIndex( Resource::getTextureTransparent() );
 
     // if its a valid index
@@ -2058,11 +2117,10 @@ void AppearanceView::adjustBackground()
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
+        surfacepreview->scale_ = edit_source_->mixingsurface_->scale_;
 
-        image_crop_area = glm::vec2(edit_source_->texturesurface_->scale_);
-
-        surfacepreview->scale_.x = image_original_width;
-        image_crop_area.x *= image_original_width;
+//        surfacepreview->scale_.x = image_original_width;
+//        image_crop_area.x *= image_original_width;
     }
 
     // update objects in the scene to represent the image and crop area
@@ -2077,9 +2135,9 @@ void AppearanceView::adjustBackground()
     backgroundchecker_->shader()->iTransform = Ar * Tra;
 
     // foreground
-    crop_horizontal_->translation_.x = image_crop_area.x;
-    crop_vertical_->translation_.y = -image_crop_area.y;
-    crop_vertical_->translation_.x = -image_original_width - 0.12f;
+//    crop_horizontal_->translation_.x = image_crop_area.x;
+//    crop_vertical_->translation_.y = -image_crop_area.y;
+//    crop_vertical_->translation_.x = -image_original_width - 0.12f;
 
 }
 
@@ -2126,22 +2184,22 @@ void AppearanceView::draw()
         adjustBackground();
     }
 
-    // draw marks in axis
-    if (edit_source_ != nullptr){
-        if (show_horizontal_scale_) {
-            int n = static_cast<int>( edit_source_->frame()->aspectRatio() / 0.2f );
-            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.2f, 0.f, 0.f));
-            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
-            dv.loop(n + 1, T);
-            scene.accept(dv);
-        }
-        if (show_vertical_scale_) {
-            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.f, -0.2f, 0.f));
-            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
-            dv.loop(6, T);
-            scene.accept(dv);
-        }
-    }
+//    // draw marks in axis
+//    if (edit_source_ != nullptr){
+//        if (show_horizontal_scale_) {
+//            int n = static_cast<int>( edit_source_->frame()->aspectRatio() / 0.2f );
+//            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.2f, 0.f, 0.f));
+//            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
+//            dv.loop(n + 1, T);
+//            scene.accept(dv);
+//        }
+//        if (show_vertical_scale_) {
+//            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.f, -0.2f, 0.f));
+//            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
+//            dv.loop(6, T);
+//            scene.accept(dv);
+//        }
+//    }
 
     // draw general view
     Shader::force_blending_opacity = true;
@@ -2191,13 +2249,13 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
                     show_horizontal_scale_ = true;
                 }
                 // crop horizontally
-                edit_source_->texturesurface_->scale_.x = CLAMP(val, 0.2f, max_width) / max_width;
-                edit_source_->touch();
-                // update background and frame
-                adjustBackground();
-                // cursor indication
-                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x;
-                info << " x "  << edit_source_->texturesurface_->scale_.y;
+//                edit_source_->texturesurface_->scale_.x = CLAMP(val, 0.2f, max_width) / max_width;
+//                edit_source_->touch();
+//                // update background and frame
+//                adjustBackground();
+//                // cursor indication
+//                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x;
+//                info << " x "  << edit_source_->texturesurface_->scale_.y;
                 ret.type = Cursor_ResizeEW;
             }
             if ( pick.first == crop_vertical_ ) {
@@ -2209,13 +2267,13 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
                     show_vertical_scale_ = true;
                 }
                 // crop vertically
-                edit_source_->texturesurface_->scale_.y = CLAMP(val, 0.2f, 1.0f);
-                edit_source_->touch();
-                // update background and frame
-                adjustBackground();
-                // cursor indication
-                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x ;
-                info << " x "  << edit_source_->texturesurface_->scale_.y;
+//                edit_source_->texturesurface_->scale_.y = CLAMP(val, 0.2f, 1.0f);
+//                edit_source_->touch();
+//                // update background and frame
+//                adjustBackground();
+//                // cursor indication
+//                info << "Crop " << std::fixed << std::setprecision(3) << max_width * edit_source_->texturesurface_->scale_.x ;
+//                info << " x "  << edit_source_->texturesurface_->scale_.y;
                 ret.type = Cursor_ResizeNS;
             }
 

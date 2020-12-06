@@ -2103,8 +2103,8 @@ void Navigator::RenderSourcePannel(Source *s)
         // Source pannel
         static ImGuiVisitor v;
         s->accept(v);
-        // ensure change is applied
-        s->touch();
+        // ensure change is applied // TODO : touch() in visitor ? [avoid here as it forces useless update]
+//        s->touch();
         // delete button
         ImGui::Text(" ");
         // Action on source

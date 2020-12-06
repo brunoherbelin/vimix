@@ -396,10 +396,10 @@ void ImGuiVisitor::visit (Source& s)
     // preview
     float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     float width = preview_width;
-    float height = width / s.frame()->aspectRatio();
+    float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
     if (height > 230) {
         height = 230;
-        width = height * s.frame()->aspectRatio();
+        width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
     }
     ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
 
