@@ -116,6 +116,8 @@ void SessionSource::init()
     }
     else {
 
+        session_->update(dt_);
+
         if (wait_for_sources_) {
 
             // force update of of all sources
@@ -145,8 +147,7 @@ void SessionSource::init()
             // set resolution
             session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-            // deep update once to draw framebuffer
-            View::need_deep_update_ = true;
+            //  update to draw framebuffer
             session_->update(dt_);
 
             // get the texture index from framebuffer of session, apply it to the surface
@@ -165,6 +166,7 @@ void SessionSource::init()
                 initialized_ = true;
                 Log::Info("New Session created.");
             }
+
         }
     }
 
@@ -173,6 +175,10 @@ void SessionSource::init()
         Node *loader = overlays_[View::TRANSITION]->back();
         overlays_[View::TRANSITION]->detach(loader);
         delete loader;
+
+        // deep update to reorder
+        View::need_deep_update_++;
+        session_->update(dt_);
     }
 }
 

@@ -106,10 +106,10 @@ SourceList::iterator Session::addSource(Source *s)
     SourceList::iterator its = find(s);
     // ok, its NOT in the list !
     if (its == sources_.end()) {
-
         // insert the source in the rendering
         render_.scene.ws()->attach(s->group(View::RENDERING));
-
+        // reorder
+        View::need_deep_update_++;
         // insert the source to the beginning of the list
         sources_.push_front(s);
     }
@@ -130,13 +130,10 @@ SourceList::iterator Session::deleteSource(Source *s)
     SourceList::iterator its = find(s);
     // ok, its in the list !
     if (its != sources_.end()) {
-
         // remove Node from the rendering scene
         render_.scene.ws()->detach( s->group(View::RENDERING) );
-
         // erase the source from the update list & get next element
         its = sources_.erase(its);
-
         // delete the source : safe now
         delete s;
     }

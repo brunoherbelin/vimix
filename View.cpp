@@ -34,7 +34,7 @@
 #include "Log.h"
 
 
-bool View::need_deep_update_ = true;
+uint View::need_deep_update_ = 1;
 
 View::View(Mode m) : mode_(m)
 {
@@ -64,7 +64,7 @@ void View::update(float dt)
     scene.update( dt );
 
     // a more complete update is requested
-    if (View::need_deep_update_) {
+    if (View::need_deep_update_ > 0) {
         // reorder sources
         scene.ws()->sort();
     }
@@ -367,7 +367,7 @@ void MixingView::update(float dt)
 
     // a more complete update is requested
     // for mixing, this means restore position of the fading slider
-    if (View::need_deep_update_) {
+    if (View::need_deep_update_ > 0) {
 
         //
         // Set slider to match the actual fading of the session
@@ -778,7 +778,7 @@ void GeometryView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested
-    if (View::need_deep_update_) {
+    if (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();
@@ -1408,7 +1408,7 @@ void LayerView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested
-    if (View::need_deep_update_) {
+    if (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();
@@ -1479,7 +1479,7 @@ float LayerView::setDepth(Source *s, float d)
     sourceNode->translation_.z = -sourceNode->translation_.x;
 
     // request reordering of scene at next update
-    View::need_deep_update_ = true;
+    View::need_deep_update_++;
     // request update of source
     s->touch();
     return sourceNode->translation_.z;
@@ -1585,7 +1585,7 @@ void TransitionView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested
-    if  (View::need_deep_update_) {
+    if  (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();
@@ -1993,7 +1993,7 @@ void AppearanceView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested (e.g. after switching to view)
-    if  (View::need_deep_update_ || edit_source_ != Mixer::manager().currentSource())
+    if  (View::need_deep_update_ > 0 || edit_source_ != Mixer::manager().currentSource())
         need_edit_update_ = true;
 
 }

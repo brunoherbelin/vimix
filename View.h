@@ -80,7 +80,7 @@ public:
     Scene scene;
 
     // reordering scene when necessary
-    static bool need_deep_update_;
+    static uint need_deep_update_;
 
 protected:
 

@@ -211,8 +211,9 @@ void Mixer::update()
     appearance_.update(dt_);
     transition_.update(dt_);
 
-    // deep updates shall be performed only 1 frame
-    View::need_deep_update_ = false;
+    // deep update was performed
+    if  (View::need_deep_update_ > 0)
+        View::need_deep_update_--;
 }
 
 void Mixer::draw()
@@ -438,6 +439,8 @@ void Mixer::attach(Source *s)
         geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->attach( s->group(View::LAYER) );
         appearance_.scene.ws()->attach( s->group(View::APPEARANCE) );
+        // reorder
+        View::need_deep_update_++;
     }
 }
 
@@ -707,7 +710,7 @@ void Mixer::setView(View::Mode m)
     }
 
     // need to deeply update view to apply eventual changes
-    View::need_deep_update_ = true;
+    View::need_deep_update_++;
 
     Settings::application.current_view = (int) m;
 }
@@ -850,7 +853,7 @@ void Mixer::swap()
     session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
 
     // request complete update for views
-    View::need_deep_update_ = true;
+    View::need_deep_update_++;
 
     // no current source
     current_source_ = session_->end();
