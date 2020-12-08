@@ -86,13 +86,15 @@ void MediaSource::init()
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
+            // force update of activation mode
+            active_ = true;
+
+            // deep update to reorder
+            View::need_deep_update_++;
+
             // done init
             initialized_ = true;
             Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
-
-            // force update of activation mode
-            active_ = true;
-            touch();
         }
     }
 

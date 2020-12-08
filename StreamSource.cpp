@@ -80,13 +80,15 @@ void StreamSource::init()
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
-            // done init
-            initialized_ = true;
-            Log::Info("Source '%s' linked to Stream %s", name().c_str(), std::to_string(stream_->id()).c_str());
+            // deep update to reorder
+            View::need_deep_update_++;
 
             // force update of activation mode
             active_ = true;
-            touch();
+
+            // done init
+            initialized_ = true;
+            Log::Info("Source '%s' linked to Stream %s", name().c_str(), std::to_string(stream_->id()).c_str());
         }
     }
 

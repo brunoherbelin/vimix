@@ -182,7 +182,7 @@ void FrameBufferSurface::init()
     Surface::init();
 
     // set aspect ratio
-    scale_.x = frame_buffer_->aspectRatio();
+//    scale_.x = frame_buffer_->aspectRatio();
 
 }
 

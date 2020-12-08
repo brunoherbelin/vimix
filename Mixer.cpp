@@ -212,8 +212,11 @@ void Mixer::update()
     transition_.update(dt_);
 
     // deep update was performed
-    if  (View::need_deep_update_ > 0)
+    if  (View::need_deep_update_ > 0) {
+
+        Log::Info("View::need_deep_update_ %d", View::need_deep_update_);
         View::need_deep_update_--;
+    }
 }
 
 void Mixer::draw()
@@ -439,8 +442,6 @@ void Mixer::attach(Source *s)
         geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->attach( s->group(View::LAYER) );
         appearance_.scene.ws()->attach( s->group(View::APPEARANCE) );
-        // reorder
-        View::need_deep_update_++;
     }
 }
 
@@ -851,9 +852,6 @@ void Mixer::swap()
 
     // transfer fading
     session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
-
-    // request complete update for views
-    View::need_deep_update_++;
 
     // no current source
     current_source_ = session_->end();

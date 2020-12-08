@@ -166,7 +166,6 @@ void SessionSource::init()
                 initialized_ = true;
                 Log::Info("New Session created.");
             }
-
         }
     }
 
@@ -175,10 +174,8 @@ void SessionSource::init()
         Node *loader = overlays_[View::TRANSITION]->back();
         overlays_[View::TRANSITION]->detach(loader);
         delete loader;
-
         // deep update to reorder
         View::need_deep_update_++;
-        session_->update(dt_);
     }
 }
 
@@ -256,9 +253,11 @@ void RenderSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
+        // deep update to reorder
+        View::need_deep_update_++;
+
         // done init
         initialized_ = true;
-
         Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
     }
 }

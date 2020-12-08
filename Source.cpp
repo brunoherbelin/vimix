@@ -369,10 +369,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     }
 
     // make the source visible
-    if ( mode_ == UNINITIALIZED ) {
+    if ( mode_ == UNINITIALIZED )
         setMode(VISIBLE);
-    }
 
+    // request update
     need_update_ = true;
 }
 
@@ -442,7 +442,7 @@ void Source::update(float dt)
         // Mixing and layer icons scaled based on GEOMETRY crop
         mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
         mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
-//        mixingsurface_->update(0.f);
+        mixingsurface_->update(dt_);
 
         // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
@@ -570,9 +570,11 @@ void CloneSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
+        // deep update to reorder
+        View::need_deep_update_++;
+
         // done init
         initialized_ = true;
-
         Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
     }
 }

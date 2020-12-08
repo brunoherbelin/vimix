@@ -1480,6 +1480,7 @@ float LayerView::setDepth(Source *s, float d)
 
     // request reordering of scene at next update
     View::need_deep_update_++;
+
     // request update of source
     s->touch();
     return sourceNode->translation_.z;
@@ -2117,7 +2118,7 @@ void AppearanceView::adjustBackground()
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
-        surfacepreview->scale_ = edit_source_->mixingsurface_->scale_;
+//        surfacepreview->scale_ = edit_source_->mixingsurface_->scale_;
 
 //        surfacepreview->scale_.x = image_original_width;
 //        image_crop_area.x *= image_original_width;
