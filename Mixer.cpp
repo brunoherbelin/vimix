@@ -212,11 +212,8 @@ void Mixer::update()
     transition_.update(dt_);
 
     // deep update was performed
-    if  (View::need_deep_update_ > 0) {
-
-        Log::Info("View::need_deep_update_ %d", View::need_deep_update_);
+    if  (View::need_deep_update_ > 0)
         View::need_deep_update_--;
-    }
 }
 
 void Mixer::draw()

@@ -66,12 +66,6 @@ public:
     // tests if a given node is part of the source
     bool contains (Node *node) const;
 
-    // a Source has a shader used to render in fbo
-    inline Shader *renderingShader () const { return renderingshader_; }
-
-    // a Source has a surface used to draw images
-    inline Surface *renderingSurface () const { return texturesurface_; }
-
     // the rendering shader always have an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
@@ -82,6 +76,9 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
+
+    // a Source has a shader used to render in fbo
+    inline Shader *renderingShader () const { return renderingshader_; }
 
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;

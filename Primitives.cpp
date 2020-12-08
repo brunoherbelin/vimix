@@ -171,18 +171,8 @@ void MediaSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-
 FrameBufferSurface::FrameBufferSurface(FrameBuffer *fb, Shader *s) : Surface(s), frame_buffer_(fb)
 {
-
-}
-
-void FrameBufferSurface::init()
-{
-    Surface::init();
-
-    // set aspect ratio
-//    scale_.x = frame_buffer_->aspectRatio();
 
 }
 
@@ -204,7 +194,6 @@ void FrameBufferSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-
 Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) : Primitive(new Shader)
 {
     for(size_t i = 0; i < points.size(); ++i)
@@ -217,8 +206,6 @@ Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) :
     drawMode_ = GL_POINTS; // TODO implement drawing of points as Mesh
     pointsize_ = pointsize;
 }
-
-
 
 void Points::draw(glm::mat4 modelview, glm::mat4 projection)
 {

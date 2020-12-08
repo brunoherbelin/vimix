@@ -840,7 +840,8 @@ void showContextMenu(View::Mode m, const char* label)
                     if (output) scale.x = output->aspectRatio() / s->frame()->aspectRatio();
                 }
                 else if ( m == View::APPEARANCE ) {
-                    scale = s->renderingSurface()->scale_;
+                    glm::vec2 crop = s->frame()->projectionArea();
+                    scale = glm::vec3( crop, 1.f);
                 }
                 s->group(m)->scale_ = scale;
                 s->group(m)->rotation_.z = 0;
@@ -2118,7 +2119,7 @@ void AppearanceView::adjustBackground()
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         surfacepreview->setTextureIndex( edit_source_->frame()->texture() );
-//        surfacepreview->scale_ = edit_source_->mixingsurface_->scale_;
+        surfacepreview->scale_ = edit_source_->mixingsurface_->scale_;
 
 //        surfacepreview->scale_.x = image_original_width;
 //        image_crop_area.x *= image_original_width;
