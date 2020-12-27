@@ -9,7 +9,7 @@
 
 static ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 
-const char* MaskShader::mask_names[3] = { ICON_FA_EXPAND, ICON_FA_CIRCLE, ICON_FA_SQUARE };
+const char* MaskShader::mask_names[4] = { ICON_FA_EXPAND, ICON_FA_CIRCLE, ICON_FA_MINUS_CIRCLE, ICON_FA_SQUARE };
 std::vector< ShadingProgram* > MaskShader::mask_programs;
 
 ImageShader::ImageShader(): Shader(), /*mask(0), custom_textureindex(0),*/ stipple(0.0)
@@ -68,6 +68,7 @@ MaskShader::MaskShader(): Shader(), mode(0)
     if ( mask_programs.empty() ) {
         mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/simple.fs"));
         mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_elipse.fs"));
+        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_round.fs"));
         mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_box.fs"));
     }
     // reset instance

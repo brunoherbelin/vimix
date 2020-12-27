@@ -292,6 +292,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/image.fs
     ./rsc/shaders/mask_elipse.fs
     ./rsc/shaders/mask_box.fs
+    ./rsc/shaders/mask_round.fs
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
     ./rsc/fonts/Hack-Regular.ttf

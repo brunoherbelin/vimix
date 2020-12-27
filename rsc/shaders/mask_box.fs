@@ -15,33 +15,6 @@ uniform vec4 uv;
 uniform vec2 size;
 uniform float blur;
 
-// See: http://www.iquilezles.org/www/articles/ellipsoids/ellipsoids.htm
-float sdEllipse( in vec2 p, in vec2 e )
-{
-    p = abs( p );
-
-    if( e.x<e.y ) { p = p.yx; e = e.yx; }
-
-    vec2 r = e*e;
-    vec2 z = p/e;
-    vec2 n = r*z;
-
-    float g = dot(z,z) - 1.0;
-    float s0 = z.y - 1.0;
-    float s1 = (g<0.0) ? 0.0 : length( n )/r.y - 1.0;
-    float s = 0.0;
-    for( int i=0; i<64; i++ )
-    {
-        s = 0.5*(s0+s1);
-        vec2 ratio = n/(r.y*s+r);
-        g = dot(ratio,ratio) - 1.0;
-        if( g>0.0 ) s0=s; else s1=s;
-    }
-
-    vec2 q = p*r/(r.y*s+r);
-    return length( p-q ) * (((p.y-q.y)<0.0)?-1.0:1.0);
-}
-
 float sdRoundBox( in vec2 p, in vec2 b, in float r )
 {
     vec2 q = abs(p)-b+r;
@@ -52,11 +25,10 @@ void main()
 {
     vec2 uv = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
     uv.x *= iResolution.x / iResolution.y;
-   // float d = sdEllipse( uv, vec2(size.x * iResolution.x/iResolution.y, size.y)  );
 
     float d = sdRoundBox( uv, vec2(size.x * iResolution.x/iResolution.y, size.y), blur * 0.5 );
 
-    vec3 col = vec3(1.0- sign(d));
+    vec3 col = vec3(1.0 - sign(d));
     col *= 1.0 - exp( -60.0/ (blur * 100.f + 1.0) * abs(d));
 
     FragColor = vec4( col, 1.0 );

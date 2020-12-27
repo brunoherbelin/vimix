@@ -16,6 +16,13 @@ uniform vec2 size;
 uniform float blur;
 
 // See: http://www.iquilezles.org/www/articles/ellipsoids/ellipsoids.htm
+float sdEllipsoid( in vec2 p, in vec2 r )
+{
+    float k0 = length(p/r);
+    float k1 = length(p/(r*r));
+    return k0*(k0-1.0)/k1;
+}
+
 float sdEllipse( in vec2 p, in vec2 e )
 {
     p = abs( p );
@@ -46,6 +53,7 @@ void main()
 {
     vec2 uv = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
     uv.x *= iResolution.x / iResolution.y;
+
     float d = sdEllipse( uv, vec2(size.x * iResolution.x/iResolution.y, size.y)  );
 
     vec3 col = vec3(1.0- sign(d));

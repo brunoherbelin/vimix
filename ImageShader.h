@@ -47,7 +47,7 @@ public:
     float blur;
     glm::vec2 size;
 
-    static const char* mask_names[3];
+    static const char* mask_names[4];
     static std::vector< ShadingProgram* > mask_programs;
 };
 

@@ -2179,14 +2179,9 @@ void AppearanceView::adjustBackground()
 
         mask_node_->visible_ = edit_source_->maskShader()->mode > 0;
         mask_circle_->visible_ = edit_source_->maskShader()->mode == 1;
-        mask_square_->visible_ = edit_source_->maskShader()->mode == 2;
+        mask_square_->visible_ = edit_source_->maskShader()->mode >= 2;
         mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
         mask_corner_->scale_.y = mask_node_->scale_.x / mask_node_->scale_.y;
-
-//        crop_horizontal_->translation_.x = image_original_width * edit_source_->maskShader()->size.x;
-//        crop_vertical_->translation_.y = -edit_source_->maskShader()->size.y;
-//        crop_vertical_->translation_.x = -image_original_width - 0.12f;
-
 
 ///// Tests
 //        preview_mask_->scale_ = edit_source_->mixingsurface_->scale_;
@@ -2214,11 +2209,6 @@ void AppearanceView::adjustBackground()
     glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
     static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
     preview_checker_->shader()->iTransform = Ar * Tra;
-
-//    backgroundchecker_->scale_.x = image_original_width;
-//    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), glm::vec3(image_original_width, 1.f, 1.f) );
-//    static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
-//    backgroundchecker_->shader()->iTransform = Ar * Tra;
 
 }
 
