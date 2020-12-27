@@ -38,6 +38,7 @@ public:
     void visit(MediaPlayer& n) override;
     void visit(Shader& n) override;
     void visit(ImageShader& n) override;
+    void visit(MaskShader& n) override;
     void visit(ImageProcessingShader& n) override;
 
     // Sources

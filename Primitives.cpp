@@ -173,7 +173,6 @@ void MediaSurface::accept(Visitor& v)
 
 FrameBufferSurface::FrameBufferSurface(FrameBuffer *fb, Shader *s) : Surface(s), frame_buffer_(fb)
 {
-
 }
 
 void FrameBufferSurface::draw(glm::mat4 modelview, glm::mat4 projection)

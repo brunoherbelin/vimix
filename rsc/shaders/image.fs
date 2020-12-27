@@ -7,7 +7,7 @@ in vec2 vertexUV;
 
 // from General Shader
 uniform vec3 iResolution;           // viewport image resolution (in pixels)
-uniform mat4 iTransform;            // UV image transformation
+uniform mat4 iTransform;            // image transformation
 uniform vec4 color;
 uniform vec4 uv;
 

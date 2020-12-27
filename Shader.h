@@ -7,6 +7,7 @@
 
 // Forward declare classes referenced
 class Visitor;
+class FrameBuffer;
 
 class ShadingProgram
 {
@@ -22,13 +23,13 @@ public:
 	static void enduse();
 
 private:
-	void checkCompileErr();
-	void checkLinkingErr();
-	void compile();
-	void link();
-	unsigned int vertex_id_, fragment_id_, id_;
-	std::string vertex_code_;
-	std::string fragment_code_;
+    void checkCompileErr();
+    void checkLinkingErr();
+    void compile();
+    void link();
+    unsigned int vertex_id_, fragment_id_, id_;
+    std::string vertex_code_;
+    std::string fragment_code_;
     std::string vertex_file_;
     std::string fragment_file_;
 
@@ -71,7 +72,6 @@ public:
 
 protected:
     ShadingProgram *program_;
-    glm::vec3 iResolution;
 
 };
 

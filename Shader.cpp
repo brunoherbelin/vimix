@@ -1,5 +1,6 @@
 #include "Shader.h"
 #include "Resource.h"
+#include "FrameBuffer.h"
 #include "Log.h"
 #include "Visitor.h"
 #include "RenderingManager.h"
@@ -119,14 +120,20 @@ void ShadingProgram::setUniform<float>(const std::string& name, float val1, floa
 }
 
 template<>
-void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
-    glm::vec4 v(val);
-    glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+void ShadingProgram::setUniform<glm::vec2>(const std::string& name, glm::vec2 val) {
+    glm::vec2 v(val);
+    glUniform2fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
 }
 
 template<>
 void ShadingProgram::setUniform<glm::vec3>(const std::string& name, glm::vec3 val) {
     glm::vec3 v(val);
+    glUniform3fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+}
+
+template<>
+void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
+    glm::vec4 v(val);
     glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
 }
 
@@ -208,7 +215,7 @@ void Shader::use()
     program_->setUniform("iTransform", iTransform);
     program_->setUniform("color", color);
 
-    iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
+    glm::vec3 iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
     program_->setUniform("iResolution", iResolution);
 
     // Blending Function
@@ -238,7 +245,6 @@ void Shader::reset()
     projection = glm::identity<glm::mat4>();
     modelview  = glm::identity<glm::mat4>();
     iTransform = glm::identity<glm::mat4>();
-    iResolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 }
 

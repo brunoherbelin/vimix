@@ -25,6 +25,7 @@ class Stream;
 class MediaPlayer;
 class Shader;
 class ImageShader;
+class MaskShader;
 class ImageProcessingShader;
 class Source;
 class MediaSource;
@@ -64,6 +65,7 @@ public:
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
+    virtual void visit (MaskShader&) {}
     virtual void visit (ImageProcessingShader&) {}
 
     // utility

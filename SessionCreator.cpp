@@ -109,52 +109,6 @@ SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
 
 }
 
-//Source *SessionLoader::createSource(XMLElement *sourceNode)
-//{
-//    // source to load
-//    Source *load_source = nullptr;
-
-//    // check if a source with the given id exists in the session
-//    uint64_t id__ = 0;
-//    sourceNode->QueryUnsigned64Attribute("id", &id__);
-//    SourceList::iterator sit = session_->find(id__);
-
-//    // no source with this id exists
-//    if ( sit == session_->end() ) {
-//        // create a new source depending on type
-//        const char *pType = sourceNode->Attribute("type");
-//        if (!pType)
-//            continue;
-//        if ( std::string(pType) == "MediaSource") {
-//            load_source = new MediaSource;
-//        }
-//        else if ( std::string(pType) == "SessionSource") {
-//            load_source = new SessionSource;
-//        }
-//        else if ( std::string(pType) == "RenderSource") {
-//            load_source = new RenderSource(session_);
-//        }
-//        else if ( std::string(pType) == "PatternSource") {
-//            load_source = new PatternSource;
-//        }
-//        else if ( std::string(pType) == "DeviceSource") {
-//            load_source = new DeviceSource;
-//        }
-
-//        // skip failed (including clones)
-//        if (!load_source)
-//            continue;
-
-//        // add source to session
-//        session_->addSource(load_source);
-//    }
-//    // get reference to the existing source
-//    else
-//        load_source = *sit;
-
-//    return load_source;
-//}
-
 void SessionLoader::load(XMLElement *sessionNode)
 {
     sources_id_.clear();
@@ -431,9 +385,24 @@ void SessionLoader::visit(ImageShader &n)
     XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
     if (uniforms) {
         uniforms->QueryFloatAttribute("stipple", &n.stipple);
-        uniforms->QueryUnsignedAttribute("mask", &n.mask);
     }
+}
 
+void SessionLoader::visit(MaskShader &n)
+{
+    const char *pType = xmlCurrent_->Attribute("type");
+    if ( std::string(pType) != "MaskShader" )
+        return;
+
+    xmlCurrent_->QueryUnsignedAttribute("mode", &n.mode);
+
+    XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
+    if (uniforms) {
+        uniforms->QueryFloatAttribute("blur", &n.blur);
+        XMLElement* size = uniforms->FirstChildElement("size");
+        if (size)
+            tinyxml2::XMLElementToGLM( size->FirstChildElement("vec2"), n.size);
+    }
 }
 
 void SessionLoader::visit(ImageProcessingShader &n)
@@ -474,24 +443,29 @@ void SessionLoader::visit (Source& s)
     s.setName(pName);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
-    s.groupNode(View::MIXING)->accept(*this);
+    if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Geometry");
-    s.groupNode(View::GEOMETRY)->accept(*this);
+    if (xmlCurrent_) s.groupNode(View::GEOMETRY)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Layer");
-    s.groupNode(View::LAYER)->accept(*this);
+    if (xmlCurrent_) s.groupNode(View::LAYER)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Appearance");
-    s.groupNode(View::APPEARANCE)->accept(*this);
+    if (xmlCurrent_) s.groupNode(View::APPEARANCE)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
-    s.blendingShader()->accept(*this);
+    if (xmlCurrent_) s.blendingShader()->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Mask");
+    if (xmlCurrent_) s.maskShader()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
-    bool on = xmlCurrent_->BoolAttribute("enabled", true);
-    s.processingShader()->accept(*this);
-    s.setImageProcessingEnabled(on);
+    if (xmlCurrent_) {
+        bool on = xmlCurrent_->BoolAttribute("enabled", true);
+        s.processingShader()->accept(*this);
+        s.setImageProcessingEnabled(on);
+    }
 
     // restore current
     xmlCurrent_ = sourceNode;

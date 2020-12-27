@@ -249,17 +249,35 @@ private:
     Source *getEditOrCurrentSource();
     void adjustBackground();
 
-    Surface *surfacepreview;    
-    Surface *backgroundchecker_;
-    Frame *backgroundframe_;
-    Mesh *horizontal_line_;
-    Mesh *horizontal_mark_;
-    bool show_horizontal_scale_;
-    Group *vertical_line_;
-    Mesh *vertical_mark_;
-    bool show_vertical_scale_;
-    Symbol *crop_horizontal_;
-    Symbol *crop_vertical_;
+
+// /// tests
+//    Surface *preview_mask_;
+//    Surface *test_surface;
+//    class MaskShader *test_shader;
+//    FrameBuffer *test_buffer;
+
+
+    Surface *preview_surface_;
+    class ImageShader *preview_shader_;
+    Surface *preview_checker_;
+    Frame *preview_frame_;
+    Surface *background_surface_;
+    Frame *background_frame_;
+//    Mesh *horizontal_line_;
+//    Mesh *horizontal_mark_;
+//    bool show_horizontal_scale_;
+//    Group *vertical_line_;
+//    Mesh *vertical_mark_;
+//    bool show_vertical_scale_;
+//    Symbol *crop_horizontal_;
+//    Symbol *crop_vertical_;
+
+    Group *mask_node_;
+    Frame *mask_square_;
+    Mesh *mask_circle_;
+    Mesh *mask_corner_;
+    class Handles *mask_handle_;
+
     Symbol *overlay_position_;
     Symbol *overlay_position_cross_;
     Symbol *overlay_scaling_;

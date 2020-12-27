@@ -20,15 +20,35 @@ public:
     void use() override;
     void reset() override;
     void accept(Visitor& v) override;
-
     void operator = (const ImageShader &S);
 
-    uint mask;
-    uint custom_textureindex;
-    float stipple;
+    uint mask_texture;
 
-    static const char* mask_names[11];
-    static std::vector< uint > mask_presets;
+    // uniforms
+    float stipple;
+};
+
+
+class MaskShader : public Shader
+{
+
+public:
+
+    MaskShader();
+
+    void use() override;
+    void reset() override;
+    void accept(Visitor& v) override;
+    void operator = (const MaskShader &S);
+
+    uint mode;
+
+    // uniforms
+    float blur;
+    glm::vec2 size;
+
+    static const char* mask_names[3];
+    static std::vector< ShadingProgram* > mask_programs;
 };
 
 #endif // IMAGESHADER_H

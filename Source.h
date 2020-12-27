@@ -11,6 +11,7 @@
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
 
 class ImageShader;
+class MaskShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
@@ -76,6 +77,9 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
+
+    // a Source has a shader used to render mask
+    inline MaskShader *maskShader () const { return maskshader_; }
 
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader () const { return renderingshader_; }
@@ -170,6 +174,11 @@ protected:
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
     ImageShader *mixingshader_;
+
+    // shader and buffer to draw mask
+    MaskShader *maskshader_;
+    FrameBuffer *maskbuffer_;
+    Surface *masksurface_;
 
     // surface to draw on
     Surface *texturesurface_;

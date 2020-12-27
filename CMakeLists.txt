@@ -290,6 +290,8 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/simple.fs
     ./rsc/shaders/simple.vs
     ./rsc/shaders/image.fs
+    ./rsc/shaders/mask_elipse.fs
+    ./rsc/shaders/mask_box.fs
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
     ./rsc/fonts/Hack-Regular.ttf
@@ -321,6 +323,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/soft_shadow.dds
     ./rsc/mesh/disk.ply
     ./rsc/mesh/circle.ply
+    ./rsc/mesh/corner.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
     ./rsc/mesh/border_round.ply

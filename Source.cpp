@@ -179,12 +179,18 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     // create objects
     stored_status_  = new Group;
 
-    // those will be associated to nodes later
+    // simple image shader (with texturing) for blending
     blendingshader_ = new ImageShader;
+    // mask produced by dedicated shader
+    maskshader_ = new MaskShader;
+    masksurface_ = new Surface(maskshader_);
+
+    // filtered image shader (with texturing and processing) for rendering
     processingshader_   = new ImageProcessingShader;
-    // default to image processing enabled
+    // default rendering with image processing enabled
     renderingshader_ = (Shader *) processingshader_;
 
+    // for drawing in mixing view
     mixingshader_ = new ImageShader;
     mixingshader_->stipple = 1.0;
 
@@ -198,6 +204,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
     mixingsurface_  = nullptr;
+    maskbuffer_     = nullptr;
 
 }
 
@@ -213,6 +220,8 @@ Source::~Source()
     delete stored_status_;
     if (renderbuffer_)
         delete renderbuffer_;
+    if (maskbuffer_)
+        delete maskbuffer_;
 
     // all groups and their children are deleted in the scene
     // this includes rendersurface_, overlays, blendingshader_ and rendershader_
@@ -368,6 +377,11 @@ void Source::attach(FrameBuffer *renderbuffer)
         }
     }
 
+    // (re) create the masking buffer
+    if (maskbuffer_)
+        delete maskbuffer_;
+    maskbuffer_ = new FrameBuffer( renderbuffer->resolution() );
+
     // make the source visible
     if ( mode_ == UNINITIALIZED )
         setMode(VISIBLE);
@@ -410,7 +424,7 @@ void Source::update(float dt)
     dt_ = dt;
 
     // update nodes if needed
-    if (renderbuffer_ && mixingsurface_ && need_update_)
+    if (renderbuffer_ && mixingsurface_ && maskbuffer_ && need_update_)
     {
 //        Log::Info("UPDATE %s %f", initials_, dt);
 
@@ -472,9 +486,17 @@ void Source::update(float dt)
         // 7. switch back to UV coordinate system
         texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
+        // draw nask in mask frame buffer
+        maskbuffer_->begin();
+        masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
+        maskbuffer_->end();
+        // set the rendered mask as mask for blending
+        blendingshader_->mask_texture = maskbuffer_->texture();
+
         // do not update next frame
         need_update_ = false;
     }
+
 }
 
 FrameBuffer *Source::frame() const

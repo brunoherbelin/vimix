@@ -203,9 +203,23 @@ void SessionVisitor::visit(ImageShader &n)
 
     XMLElement *uniforms = xmlDoc_->NewElement("uniforms");
     uniforms->SetAttribute("stipple", n.stipple);
-    uniforms->SetAttribute("mask", n.mask);
     xmlCurrent_->InsertEndChild(uniforms);
+}
 
+void SessionVisitor::visit(MaskShader &n)
+{
+    // Shader of a textured type
+    xmlCurrent_->SetAttribute("type", "MaskShader");
+    xmlCurrent_->SetAttribute("id", n.id());
+    xmlCurrent_->SetAttribute("mode", n.mode);
+
+    XMLElement *uniforms = xmlDoc_->NewElement("uniforms");
+    uniforms->SetAttribute("blur", n.blur);
+    XMLElement *size = xmlDoc_->NewElement("size");
+    size->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.size) );
+    uniforms->InsertEndChild(size);
+
+    xmlCurrent_->InsertEndChild(uniforms);
 }
 
 void SessionVisitor::visit(ImageProcessingShader &n)
@@ -350,6 +364,10 @@ void SessionVisitor::visit (Source& s)
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.blendingShader()->accept(*this);
+
+    xmlCurrent_ = xmlDoc_->NewElement( "Mask" );
+    sourceNode->InsertEndChild(xmlCurrent_);
+    s.maskShader()->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
     xmlCurrent_->SetAttribute("enabled", s.imageProcessingEnabled());

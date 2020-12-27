@@ -1976,7 +1976,7 @@ void Navigator::Render()
         }
         if (ImGui::IsItemHovered())
             about = "Layers [F3]";
-        if (ImGui::Selectable( ICON_FA_SIGN, &selected_view[4], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::APPEARANCE);
             view_pannel_visible = previous_view == Settings::application.current_view;
