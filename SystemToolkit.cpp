@@ -7,6 +7,10 @@
 #include <ctime>
 #include <chrono>
 
+#include <locale>
+#include <unicode/ustream.h>
+#include <unicode/translit.h>
+
 using namespace std;
 
 #ifdef WIN32
@@ -355,4 +359,23 @@ void SystemToolkit::execute(const string& command)
 //                   "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
 
 
+// Using ICU transliteration :
+// https://unicode-org.github.io/icu/userguide/transforms/general/#icu-transliterators
 
+std::string SystemToolkit::transliterate(std::string input)
+{
+    auto ucs = icu_67::UnicodeString::fromUTF8(input);
+
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
+    firstTrans->transliterate(ucs);
+
+    icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+    secondTrans->transliterate(ucs);
+
+    std::ostringstream output;
+    output << ucs;
+    return output.str();
+}

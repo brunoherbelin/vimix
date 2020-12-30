@@ -1,5 +1,5 @@
-
 #include <algorithm>
+#include <locale>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -13,6 +13,7 @@
 #include "SearchVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "SystemToolkit.h"
 #include "Log.h"
 #include "Mixer.h"
 
@@ -246,10 +247,10 @@ Source::~Source()
 
 void Source::setName (const std::string &name)
 {
-    name_ = name;
+    name_ = SystemToolkit::transliterate(name);
 
-    initials_[0] = std::toupper( name_.front() );
-    initials_[1] = std::toupper( name_.back() );
+    initials_[0] = std::toupper( name_.front(), std::locale("en_US.utf8") );
+    initials_[1] = std::toupper( name_.back(), std::locale("en_US.utf8") );
 }
 
 void Source::accept(Visitor& v)

@@ -12,7 +12,7 @@ static ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs"
 const char* MaskShader::mask_names[4] = { ICON_FA_EXPAND, ICON_FA_CIRCLE, ICON_FA_MINUS_CIRCLE, ICON_FA_SQUARE };
 std::vector< ShadingProgram* > MaskShader::mask_programs;
 
-ImageShader::ImageShader(): Shader(), /*mask(0), custom_textureindex(0),*/ stipple(0.0)
+ImageShader::ImageShader(): Shader(), stipple(0.0)
 {
     // static program shader
     program_ = &imageShadingProgram;

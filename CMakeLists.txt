@@ -395,6 +395,7 @@ IF(APPLE)
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
         "-framework Appkit"
+        "-licuio -licui18n -licuuc"
     )
 
 ELSE(APPLE)
@@ -404,7 +405,7 @@ ELSE(APPLE)
         ${IMGUITEXTEDIT_SRC}
     )
 
-    set(PLATFORM_LIBS  ""
+    set(PLATFORM_LIBS  "-licuio -licui18n -licuuc"
     )
 
 ENDIF(APPLE)
