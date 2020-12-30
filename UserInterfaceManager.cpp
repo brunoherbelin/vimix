@@ -1015,7 +1015,7 @@ void UserInterface::RenderHistory()
     ImVec2 MinWindowSize = ImVec2(250.f, history_height);
 
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(250, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
     if ( !ImGui::Begin(IMGUI_TITLE_HISTORY, &Settings::application.widget.history, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
@@ -1055,7 +1055,7 @@ void UserInterface::RenderHistory()
 
     if (ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail() ) )
     {
-        for (int i = 1; i <= Action::manager().max(); i++) {
+        for (int i = Action::manager().max(); i > 0; i--) {
 
             std::string step_label_ = Action::manager().label(i);
 
@@ -1960,7 +1960,7 @@ void Navigator::Render()
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Mixing [F1]";
+            about = "Mixing [ F1 ]";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             if (ImGui::IsItemHovered())
@@ -1968,21 +1968,21 @@ void Navigator::Render()
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Geometry [F2]";
+            about = "Geometry [ F2 ]";
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Layers [F3]";
-        if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE, &selected_view[4], 0, iconsize))
+            about = "Layers [ F3 ]";
+        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::APPEARANCE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Source apppearance [F4]";
+            about = "Texturing [ F4 ]";
 
 
         ImGui::End();

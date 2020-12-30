@@ -1878,6 +1878,19 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     preview_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::GLOW);
     preview_frame_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
     scene.bg()->attach(preview_frame_);
+    // marks on the frame to show scale
+    show_scale_ = false;
+    horizontal_mark_ = new Mesh("mesh/h_mark.ply");
+    horizontal_mark_->translation_ = glm::vec3(0.f, 1.f, 0.0f);
+    horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.bg()->attach(horizontal_mark_);
+    vertical_mark_  = new Mesh("mesh/h_mark.ply");
+    vertical_mark_->translation_ = glm::vec3(-1.0f, 0.0f, 0.0f);
+    vertical_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    vertical_mark_->rotation_.z = M_PI_2;
+    vertical_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    scene.bg()->attach(vertical_mark_);
 
     //
     // surface to show the texture of the source
@@ -1887,79 +1900,25 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     preview_surface_->translation_.z = 0.002f;
     scene.bg()->attach(preview_surface_);
 
-
-//    // Horizontal axis
-//    horizontal_line_ = new Mesh("mesh/h_line.ply");
-//    horizontal_line_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-//    horizontal_line_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
-//    horizontal_line_->scale_.x = 1.0f;
-//    horizontal_line_->scale_.y = 3.0f;
-////    scene.bg()->attach(horizontal_line_);
-//    show_horizontal_scale_ = false;
-//    horizontal_mark_ = new Mesh("mesh/h_mark.ply");
-//    horizontal_mark_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
-//    horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
-//    horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-////    scene.bg()->attach(horizontal_mark_);
-//    // vertical axis
-//    vertical_line_ = new Group;
-//    Mesh *line  = new Mesh("mesh/h_line.ply");
-//    line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-//    line->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
-//    line->scale_.x = 1.0f;
-//    line->scale_.y = 3.0f;
-//    line->rotation_.z = M_PI_2;
-////    vertical_line_->attach(line);
-//    vertical_mark_  = new Mesh("mesh/h_mark.ply");
-//    vertical_mark_->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
-//    vertical_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
-//    vertical_mark_->rotation_.z = M_PI_2;
-//    vertical_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-//    vertical_line_->attach(vertical_mark_);
-////    scene.bg()->attach(vertical_line_);
-
-/// Tests
-//    test_buffer = new FrameBuffer(800, 450);
-//    Log::Info("test_buffer %s", test_buffer->info().c_str());
-//    test_shader = new MaskShader;
-//    test_shader->type = 0;
-//    test_shader->blur = 0.0;
-//    test_surface = new Surface(test_shader);
-//    preview_mask_ = new FrameBufferSurface(test_buffer); // to attach source preview
-//    preview_mask_->translation_.z = 0.002f;
-////    scene.bg()->attach(preview_mask_);
-
-    // Scene foreground
-    //
-//    // crop icons
-//    crop_horizontal_ = new Symbol(Symbol::ARROWS);
-//    crop_horizontal_->translation_ = glm::vec3(1.0f, 1.12f, 0.f);
-////    scene.fg()->attach(crop_horizontal_);
-//    crop_vertical_ = new Symbol(Symbol::ARROWS);
-//    crop_vertical_->rotation_.z = M_PI_2;
-//    crop_vertical_->translation_ = glm::vec3(-1.12f, -1.0f, 0.f);
-////    scene.fg()->attach(crop_vertical_);
-
     //
     // User interface foreground
     //
-
     // Mask manipulation
     mask_node_ = new Group;
     mask_square_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
-    mask_square_->color = glm::vec4( 0.2f, 1.f, 1.f, 1.0f );  //BLUE
+    mask_square_->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );  //BLUE
     mask_node_->attach(mask_square_);
     mask_handle_ = new Handles(Handles::CROP);
-    mask_handle_->color = glm::vec4( 0.2f, 1.f, 1.f, 1.0f );  //BLUE
+    mask_handle_->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );  //BLUE
     mask_node_->attach(mask_handle_);
     mask_circle_ = new Mesh("mesh/circle.ply");
-    mask_circle_->shader()->color = glm::vec4( 0.2f, 1.f, 1.f, 1.0f );
+    mask_circle_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );
     mask_node_->attach(mask_circle_);
     mask_corner_  = new Mesh("mesh/corner.ply");
-    mask_corner_->shader()->color = glm::vec4( 0.2f, 1.f, 1.f, 0.9f );
+    mask_corner_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.9f );
     mask_corner_->translation_ = glm::vec3(-1.f, -1.0f, 0.0f);
+    mask_corner_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
     mask_node_->attach(mask_corner_);
-
     scene.fg()->attach(mask_node_);
 
     // Source manipulation (texture coordinates)
@@ -2035,6 +1994,18 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     overlay_rotation_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
     scene.fg()->attach(overlay_rotation_);
     overlay_rotation_->visible_ = false;
+
+
+    /// Tests
+    //    test_buffer = new FrameBuffer(800, 450);
+    //    Log::Info("test_buffer %s", test_buffer->info().c_str());
+    //    test_shader = new MaskShader;
+    //    test_shader->type = 0;
+    //    test_shader->blur = 0.0;
+    //    test_surface = new Surface(test_shader);
+    //    preview_mask_ = new FrameBufferSurface(test_buffer); // to attach source preview
+    //    preview_mask_->translation_.z = 0.002f;
+    ////    scene.bg()->attach(preview_mask_);
 
 }
 
@@ -2129,10 +2100,6 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
                     pick = *itp;
                     break;
                 }
-                //                else if ( (*itp).first == crop_horizontal_ || (*itp).first == crop_vertical_ ) {
-                //                    pick = *itp;
-                //                    break;
-                //                }
                 else if ( (*itp).first == mask_handle_ ) {
                     pick = *itp;
                     break;
@@ -2172,44 +2139,33 @@ void AppearanceView::adjustBackground()
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         scale = edit_source_->mixingsurface_->scale_;
-
         preview_surface_->setTextureIndex( edit_source_->frame()->texture() );
         preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
         preview_surface_->scale_ = scale;
-
+        // mask appearance
         mask_node_->visible_ = edit_source_->maskShader()->mode > 0;
         mask_circle_->visible_ = edit_source_->maskShader()->mode == 1;
         mask_square_->visible_ = edit_source_->maskShader()->mode >= 2;
         mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
-        mask_corner_->scale_.y = mask_node_->scale_.x / mask_node_->scale_.y;
-
-///// Tests
-//        preview_mask_->scale_ = edit_source_->mixingsurface_->scale_;
-
+        mask_corner_->scale_.y = mask_corner_->scale_.x * mask_node_->scale_.x / mask_node_->scale_.y;
     }
 
-
-
-//    /// Tests
-//    // update mask
-//    test_buffer->begin();
-//    test_surface->draw(glm::identity<glm::mat4>(), test_buffer->projection());
-//    test_buffer->end();
-
-
     // background scene
-//    horizontal_line_->scale_.x = image_original_width;
-//    vertical_line_->translation_.x = -image_original_width;
-
     background_surface_->scale_.x = image_original_width;
     background_surface_->scale_.y = 1.f;
     background_frame_->scale_.x = image_original_width;
+    vertical_mark_->translation_.x = -image_original_width;
     preview_frame_->scale_ = scale;
     preview_checker_->scale_ = scale;
     glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
     static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
     preview_checker_->shader()->iTransform = Ar * Tra;
 
+    //    /// Tests
+    //    // update mask
+    //    test_buffer->begin();
+    //    test_surface->draw(glm::identity<glm::mat4>(), test_buffer->projection());
+    //    test_buffer->end();
 }
 
 Source *AppearanceView::getEditOrCurrentSource()
@@ -2255,23 +2211,23 @@ void AppearanceView::draw()
         adjustBackground();
     }
 
-//    // draw marks in axis
-//    if (edit_source_ != nullptr){
-//        if (show_horizontal_scale_) {
-//            int n = static_cast<int>( edit_source_->frame()->aspectRatio() / 0.2f );
-//            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.2f, 0.f, 0.f));
-//            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
-//            dv.loop(n + 1, T);
-//            scene.accept(dv);
-//        }
-//        if (show_vertical_scale_) {
-//            static glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), glm::vec3( 0.f, -0.2f, 0.f));
-//            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
-//            dv.loop(6, T);
-//            scene.accept(dv);
-//        }
-//    }
-
+    // draw marks in axis
+    if (edit_source_ != nullptr && show_scale_){
+        {
+            glm::vec3 dT = glm::vec3( -0.2f * edit_source_->mixingsurface_->scale_.x, 0.f, 0.f);
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), dT);
+            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
+            dv.loop(6, T);
+            scene.accept(dv);
+        }
+        {
+            glm::vec3 dT = glm::vec3( 0.f, -0.2f * edit_source_->mixingsurface_->scale_.y, 0.f);
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), dT);
+            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
+            dv.loop(6, T);
+            scene.accept(dv);
+        }
+    }
 
     // draw general view
     Shader::force_blending_opacity = true;
@@ -2300,16 +2256,29 @@ void AppearanceView::draw()
                 edit_source_->maskShader()->mode = type;
                 edit_source_->touch();
                 need_edit_update_ = true;
+                // store action history
+                std::ostringstream oss;
+                oss << edit_source_->name() << ": Texture Mask " << type;
+                Action::manager().store(oss.str(), edit_source_->id());
             }
 
             if (edit_source_->maskShader()->mode > 0) {
                 int val = int(edit_source_->maskShader()->blur * 100.f);
+                static bool smoothchanged = false;
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(190.f);
                 if (ImGui::DragInt("Smooth", &val, 1, 0, 100, "%d%%") ) {
                     edit_source_->maskShader()->blur = float(val) / 100.f;
                     edit_source_->touch();
                     need_edit_update_ = true;
+                    smoothchanged = true;
+                }
+                else if (smoothchanged && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
+                    // store action history
+                    std::ostringstream oss;
+                    oss << edit_source_->name() << ": Texture Smooth " << edit_source_->maskShader()->blur;
+                    Action::manager().store(oss.str(), edit_source_->id());
+                    smoothchanged = false;
                 }
             }
 
@@ -2319,9 +2288,6 @@ void AppearanceView::draw()
 
     }
 
-//    show_vertical_scale_ = false;
-//    show_horizontal_scale_ = false;
-
     // display popup menu
     if (show_context_menu_) {
         ImGui::OpenPopup( "AppearanceContextMenu" );
@@ -2329,7 +2295,7 @@ void AppearanceView::draw()
     }
     showContextMenu(mode_,"AppearanceContextMenu");
 
-
+    show_scale_ = false;
 }
 
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
@@ -2348,7 +2314,6 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         if ( edit_source_ != nullptr ) {
 
             // match edit source AR
-//            float image_original_width = edit_source_->frame()->aspectRatio();
             glm::vec3 scale = edit_source_->mixingsurface_->scale_;
             glm::vec3 delta = glm::vec3(0.1) / glm::vec3(scene.root()->scale_.x, scene.root()->scale_.y, 1.0);
 
@@ -2360,56 +2325,19 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
                 if (UserInterface::manager().altModifier()) {
                     val.x = ROUND(val.x, 5.f);
                     val.y = ROUND(val.y, 5.f);
+                    show_scale_ = true;
                 }
                 // crop mask horizontally
-                edit_source_->maskShader()->size.x = CLAMP(val.x, 0.3f, 2.f);
-                edit_source_->maskShader()->size.y = CLAMP(val.y, 0.3f, 2.f);
+                edit_source_->maskShader()->size.x = CLAMP(val.x, 0.2f, 2.f);
+                edit_source_->maskShader()->size.y = CLAMP(val.y, 0.2f, 2.f);
                 edit_source_->touch();
                 // update
                 need_edit_update_ = true;
                 // cursor indication
-                info << "Mask " << std::fixed << std::setprecision(3) << edit_source_->maskShader()->size.x;
+                info << "Texture Mask " << std::fixed << std::setprecision(3) << edit_source_->maskShader()->size.x;
                 info << " x "  << edit_source_->maskShader()->size.y;
                 ret.type = Cursor_ResizeNESW;
             }
-
-//            // picking on the resizing handles in the corners
-//            if ( pick.first == crop_horizontal_ ) {
-//                float max_width =  edit_source_->frame()->aspectRatio();
-//                // discretized scaling with ALT
-//                float val = scene_to.x;
-//                if (UserInterface::manager().altModifier()) {
-//                    val = ROUND(val, 5.f);
-//                    show_horizontal_scale_ = true;
-//                }
-//                // crop mask horizontally
-//                edit_source_->maskShader()->size.x = CLAMP(val, 0.2f, max_width) / max_width;
-//                edit_source_->touch();
-//                // update
-//                need_edit_update_ = true;
-//                // cursor indication
-//                info << "Mask " << std::fixed << std::setprecision(3) << max_width * edit_source_->maskShader()->size.x;
-//                info << " x "  << edit_source_->maskShader()->size.y;
-//                ret.type = Cursor_ResizeEW;
-//            }
-//            if ( pick.first == crop_vertical_ ) {
-//                float max_width =  edit_source_->frame()->aspectRatio();
-//                float val = -scene_to.y;
-//                // discretized scaling with ALT
-//                if (UserInterface::manager().altModifier()) {
-//                    val = ROUND(val, 5.f);
-//                    show_vertical_scale_ = true;
-//                }
-//                // crop mask vertically
-//                edit_source_->maskShader()->size.y = CLAMP(val, 0.2f, 1.0f);
-//                edit_source_->touch();
-//                // update
-//                need_edit_update_ = true;
-//                // cursor indication
-//                info << "Mask " << std::fixed << std::setprecision(3) << max_width * edit_source_->maskShader()->size.x ;
-//                info << " x "  << edit_source_->maskShader()->size.y;
-//                ret.type = Cursor_ResizeNS;
-//            }
 
             // store action in history
             current_action_ = edit_source_->name() + ": " + info.str();
@@ -2504,7 +2432,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             T = glm::scale(T, s->stored_status_->scale_);
             corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "Texture scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
 
         }
@@ -2547,7 +2475,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "Texture Scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the BORDER RESIZING handles top or bottom
@@ -2589,7 +2517,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "Texture Scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the CENTRER SCALING handle
@@ -2630,7 +2558,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             // show cursor depending on diagonal
             corner = glm::sign(sourceNode->scale_);
             ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
-            info << "UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "Texture Scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the rotating handle
@@ -2667,10 +2595,10 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
                 sourceNode->rotation_.z = glm::radians( float(degrees) );
                 overlay_rotation_clock_->visible_ = true;
                 overlay_rotation_clock_->copyTransform(overlay_rotation_);
-                info << "Angle " << degrees << "\u00b0"; // degree symbol
+                info << "Texture Angle " << degrees << "\u00b0"; // degree symbol
             }
             else
-                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
+                info << "Texture Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
 
             overlay_rotation_clock_hand_->visible_ = true;
             overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
@@ -2687,7 +2615,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
                 source_scaling = glm::vec3(factor, factor, 1.f);
                 // apply center scaling
                 sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
-                info << std::endl << "   UV scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+                info << std::endl << "          Scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
                 info << " x "  << sourceNode->scale_.y ;
                 overlay_rotation_fix_->visible_ = false;
             }
@@ -2724,7 +2652,7 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
             overlay_position_->translation_.y = sourceNode->translation_.y;
             overlay_position_->update(0);
             // Show move cursor
-            info << "UV shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+            info << "Texture Shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
             info << ", "  << sourceNode->translation_.y ;
         }
     }

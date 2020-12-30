@@ -146,27 +146,23 @@ void PickingVisitor::visit(Handles &n)
     }
     else if ( n.type() == Handles::ROTATE ){
         // the icon for rotation is on the right top corner at (0.12, 0.12) in scene coordinates
-        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
-        float l = glm::length( glm::vec2(vec) );
-        picked  = glm::length( glm::vec2( 1.f + l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
+        picked  = glm::length( glm::vec2( 1.f, 1.f) + glm::vec2(vec) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::SCALE ){
         // the icon for scaling is on the right bottom corner at (0.12, -0.12) in scene coordinates
-        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
-        float l = glm::length( glm::vec2(vec) );
-        picked  = glm::length( glm::vec2( 1.f + l, -1.f - l) - glm::vec2(P) ) < 1.5f * scale;
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.12f, -0.12f, 0.f, 0.f );
+        picked  = glm::length( glm::vec2( 1.f, -1.f) + glm::vec2(vec) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::CROP ){
-        // the icon for scaling is on the right bottom corner at (0.12, -0.12) in scene coordinates
-        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
-        float l = glm::length( glm::vec2(vec) );
-        picked  = glm::length( glm::vec2( -1.f + l, -1.f + l) - glm::vec2(P) ) < 1.5f * scale;
+        // the icon for cropping is on the left bottom corner at (0.12, 0.12) in scene coordinates
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
+        picked  = glm::length( glm::vec2( -1.f, -1.f) + glm::vec2(vec) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::MENU ){
         // the icon for restore is on the left top corner at (-0.12, 0.12) in scene coordinates
-        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( 0.1f, 0.1f, 0.f, 0.f );
-        float l = glm::length( glm::vec2(vec) );
-        picked  = glm::length( glm::vec2( -1.f - l, 1.f + l) - glm::vec2(P) ) < 1.5f * scale;
+        glm::vec4 vec = glm::inverse(modelview_) * glm::vec4( -0.12f, 0.12f, 0.f, 0.f );
+        picked  = glm::length( glm::vec2( -1.f, 1.f) + glm::vec2(vec) - glm::vec2(P) ) < 1.5f * scale;
     }
 
     if ( picked )
