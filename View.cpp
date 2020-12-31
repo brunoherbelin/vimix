@@ -1881,8 +1881,9 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     // marks on the frame to show scale
     show_scale_ = false;
     horizontal_mark_ = new Mesh("mesh/h_mark.ply");
-    horizontal_mark_->translation_ = glm::vec3(0.f, 1.f, 0.0f);
+    horizontal_mark_->translation_ = glm::vec3(0.f, -1.f, 0.0f);
     horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    horizontal_mark_->rotation_.z = M_PI;
     horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
     scene.bg()->attach(horizontal_mark_);
     vertical_mark_  = new Mesh("mesh/h_mark.ply");
@@ -2146,7 +2147,14 @@ void AppearanceView::adjustBackground()
         mask_node_->visible_ = edit_source_->maskShader()->mode > 0;
         mask_circle_->visible_ = edit_source_->maskShader()->mode == 1;
         mask_square_->visible_ = edit_source_->maskShader()->mode >= 2;
-        mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
+        if (edit_source_->maskShader()->mode >= 4) {
+            mask_node_->scale_ = scale;
+            mask_node_->translation_ = scale - glm::vec3(edit_source_->maskShader()->size, 0.f) * scale ;
+            mask_node_->translation_.z = 0.f;
+        } else {
+            mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f);
+        }
         mask_corner_->scale_.y = mask_corner_->scale_.x * mask_node_->scale_.x / mask_node_->scale_.y;
     }
 

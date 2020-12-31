@@ -1,4 +1,4 @@
-#ifndef IMAGESHADER_H
+﻿#ifndef IMAGESHADER_H
 #define IMAGESHADER_H
 
 #include <string>
@@ -47,7 +47,7 @@ public:
     float blur;
     glm::vec2 size;
 
-    static const char* mask_names[4];
+    static const char* mask_names[6];
     static std::vector< ShadingProgram* > mask_programs;
 };
 
