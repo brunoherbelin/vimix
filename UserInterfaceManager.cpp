@@ -255,7 +255,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // SHIFT + CTRL + O : reopen current session
-            if (ctrl_modifier_active && !Mixer::manager().session()->filename().empty())
+            if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
                 Mixer::manager().load( Mixer::manager().session()->filename() );
             // CTRL + O : Open session
             else
@@ -1125,7 +1125,7 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_SHARE_SQUARE "  Create Source") )
                     Mixer::manager().addSource( Mixer::manager().createSourceRender() );
 
-                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "D") )
                     Settings::application.widget.preview = false;
 
                 ImGui::EndMenu();
@@ -1407,7 +1407,7 @@ void MediaController::Render()
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
 
-            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
                 Settings::application.widget.media_player = false;
 
             ImGui::EndMenu();

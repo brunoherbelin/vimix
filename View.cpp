@@ -2242,8 +2242,9 @@ void AppearanceView::draw()
         scene.accept(dv);
 
         // display interface
-        glm::vec2 P = Rendering::manager().project(glm::vec3(-background_frame_->scale_.x - 0.03f, 1.2f, 0.f), scene.root()->transform_, false);
-        ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+        glm::vec2 P = glm::vec2(-background_frame_->scale_.x - 0.03f, background_frame_->scale_.y );
+        P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
         if (ImGui::Begin("##AppearanceMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
