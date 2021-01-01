@@ -23,7 +23,7 @@ namespace ImGuiToolkit
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
-    void HelpMarker (const char* desc);
+    void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE);
 
     // utility sliders
     bool TimelineSlider (const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width);

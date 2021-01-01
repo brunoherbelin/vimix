@@ -500,12 +500,17 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     s->touch();
 
     std::ostringstream info;
-    if (s->active())
+    if (s->active()) {
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
 //    else if ( Mixer::manager().concealed(s) )
 //        info << "Stashed";
+        if (s->blendingShader()->color.a > 0.f)
+            info << "  " << ICON_FA_EYE;
+        else
+            info << "  " << ICON_FA_EYE_SLASH;
+    }
     else
-        info << "Inactive " << ICON_FA_EYE_SLASH;
+        info << "Inactive  " << ICON_FA_SNOWFLAKE;
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();

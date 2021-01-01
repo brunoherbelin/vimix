@@ -273,9 +273,9 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 // In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.txt)
-void ImGuiToolkit::HelpMarker(const char* desc)
+void ImGuiToolkit::HelpMarker(const char* desc, const char* icon)
 {
-    ImGui::TextDisabled( ICON_FA_QUESTION_CIRCLE );
+    ImGui::TextDisabled( icon );
     if (ImGui::IsItemHovered())
     {
         ImGui::BeginTooltip();

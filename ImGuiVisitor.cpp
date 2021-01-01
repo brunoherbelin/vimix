@@ -403,11 +403,15 @@ void ImGuiVisitor::visit (Source& s)
 
     ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
 
-    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -height ) );
-    if (s.active())
-        ImGuiToolkit::Icon(10, 4);
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height ) );
+    if (s.active()) {
+        if (s.blendingShader()->color.a > 0.f)
+            ImGuiToolkit::HelpMarker("Visible", ICON_FA_EYE);
+        else
+            ImGuiToolkit::HelpMarker("Not visible", ICON_FA_EYE_SLASH);
+    }
     else
-        ImGuiToolkit::Icon(11, 4);
+        ImGuiToolkit::HelpMarker("Inactive", ICON_FA_SNOWFLAKE);
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
