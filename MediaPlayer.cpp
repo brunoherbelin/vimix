@@ -13,6 +13,7 @@ using namespace std;
 #include "Visitor.h"
 #include "SystemToolkit.h"
 #include "GlmToolkit.h"
+#include "GstToolkit.h"
 
 #include "MediaPlayer.h"
 
@@ -186,12 +187,10 @@ static MediaInfo UriDiscoverer_(std::string uri)
 void MediaPlayer::open(string path)
 {
     // set path
-    filename_ = path;
+    filename_ = SystemToolkit::transliterate( path );
 
     // set uri to open
-    gchar *uritmp = gst_filename_to_uri(path.c_str(), NULL);
-    uri_ = string( uritmp );
-    g_free(uritmp);
+    uri_ = GstToolkit::filename_to_uri(path);
 
     // reset
     ready_ = false;

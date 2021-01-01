@@ -15,7 +15,7 @@ using namespace std;
 #include "imgui_impl_opengl3.h"
 
 // Desktop OpenGL function loader
-#include <glad/glad.h> 
+#include <glad/glad.h>
 
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
@@ -1003,7 +1003,7 @@ void ToolBox::Render()
 
     // About and other utility windows
     if (show_icons_window)
-        ImGuiToolkit::ShowIconsWindow(&show_icons_window);    
+        ImGuiToolkit::ShowIconsWindow(&show_icons_window);
     if (show_sandbox)
         ShowSandbox(&show_sandbox);
     if (show_demo_window)
@@ -2139,7 +2139,7 @@ void Navigator::RenderSourcePannel(Source *s)
 //            ImGui::EndPopup();
 //        }
     }
-    ImGui::End();    
+    ImGui::End();
 }
 
 
@@ -2263,7 +2263,8 @@ void Navigator::RenderNewPannel()
                     fileImportFileDialogs.pop_back();
                     fileDialogPending_ = false;
                     // create a source with this file
-                    std::string label = open_filename.substr( open_filename.size() - MIN( 35, open_filename.size()) );
+                    std::string label = SystemToolkit::transliterate( open_filename );
+                    label = label.substr( label.size() - MIN( 35, label.size()) );
                     new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
                 }
             }
@@ -2277,7 +2278,8 @@ void Navigator::RenderNewPannel()
                 {
                     std::string recentpath(*path);
                     if ( SystemToolkit::file_exists(recentpath)) {
-                        std::string label = SystemToolkit::trunc_filename(recentpath, 35);
+                        std::string label = SystemToolkit::transliterate( recentpath );
+                        label = SystemToolkit::trunc_filename(label, 35);
                         if (ImGui::Selectable( label.c_str() )) {
                             new_source_preview_.setSource( Mixer::manager().createSourceFile(recentpath.c_str()), label);
                         }

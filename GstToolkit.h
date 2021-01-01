@@ -16,6 +16,7 @@ typedef enum {
 } time_string_mode;
 
 std::string time_to_string(guint64 t, time_string_mode m = TIME_STRING_ADJUSTED);
+std::string filename_to_uri(std::string filename);
 
 std::string gst_version();
 

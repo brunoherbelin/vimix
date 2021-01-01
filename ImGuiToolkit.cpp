@@ -32,7 +32,9 @@ std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
 {
     char label[512];
-    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, url );
+
+    std::string str = SystemToolkit::transliterate( url );
+    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, str.c_str() );
 
     if ( ImGui::Button(label, size_arg) )
         SystemToolkit::open(url);
