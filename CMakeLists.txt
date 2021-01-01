@@ -91,7 +91,6 @@ set(THREAD_LIBRARY Threads::Threads)
 find_package(PNG REQUIRED)
 set(PNG_LIBRARY PNG::PNG)
 
-#set(ICU_ROOT "/usr/local/Cellar/icu4c/67.1")
 find_package(ICU REQUIRED COMPONENTS i18n io uc)
 macro_log_feature(ICU_FOUND "ICU" "International Components for Unicode" "http://site.icu-project.org" TRUE)
 

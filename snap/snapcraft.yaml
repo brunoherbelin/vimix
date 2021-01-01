@@ -51,6 +51,7 @@ parts:
     -  libglfw3-dev
     -  libgstreamer1.0-dev
     -  libgstreamer-plugins-base1.0-dev
+    -  libicu-dev
     stage-packages:
     -  zenity
     -  libpng16-16
