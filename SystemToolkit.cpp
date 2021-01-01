@@ -364,7 +364,7 @@ void SystemToolkit::execute(const string& command)
 
 std::string SystemToolkit::transliterate(std::string input)
 {
-    auto ucs = icu_67::UnicodeString::fromUTF8(input);
+    auto ucs = icu::UnicodeString::fromUTF8(input);
 
     UErrorCode status = U_ZERO_ERROR;
     icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
