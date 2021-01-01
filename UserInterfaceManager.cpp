@@ -2897,7 +2897,8 @@ void ShowConfig(bool* p_open)
     ImGuiToolkit::IconToggle(10,0,11,0,&show_config);
     if (show_config)
     {
-        ImGui::Text("\nOpenGL options (enable all for optimal performance).");
+        ImGui::Text("\nPerformance options\n(enable all for optimal performance, disable for low hardware support).");
+        ImGui::Spacing();
         ImGui::Checkbox("Blit framebuffer (fast draw to output)", &Settings::application.render.blit);
         bool multi = (Settings::application.render.multisampling > 0);
         ImGui::Checkbox("Antialiasing framebuffer (fast multisampling)", &multi);
@@ -2905,7 +2906,7 @@ void ShowConfig(bool* p_open)
         bool vsync = (Settings::application.render.vsync < 2);
         ImGui::Checkbox("Sync refresh with monitor (v-sync 60Hz)", &vsync);
         Settings::application.render.vsync = vsync ? 1 : 2;
-        ImGui::Checkbox("Use GPU video decoding when possible", &Settings::application.render.gpu_decoding);
+        ImGui::Checkbox("Hardware video decoding (try if applicable)", &Settings::application.render.gpu_decoding);
         ImGui::Spacing();
         ImGui::Text( ICON_FA_EXCLAMATION "  Restart the application for change to take effect.");
         if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ", ImVec2(250,0)))

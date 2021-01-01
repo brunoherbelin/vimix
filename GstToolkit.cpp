@@ -140,9 +140,12 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins()
         const char *plugins[6] = { "nvh264dec", "nvh265dec", "nvmpeg2videodec",
                                    "nvmpeg4videodec", "nvvp8dec", "nvvp9dec" };
         const int N = 6;
-#elif GST_GL_HAVE_PLATFORM_WGL
-        const char *plugins[1] = { "avdec_h264"};
+#elif GST_GL_HAVE_PLATFORM_CGL
+        const char *plugins[1] = { "vtdec_hw" };
         const int N = 1;
+#else
+        const char *plugins[0] = { };
+        const int N = 0;
 #endif
 
         for (int i = 0; i < N; i++) {

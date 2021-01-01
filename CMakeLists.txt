@@ -91,6 +91,11 @@ set(THREAD_LIBRARY Threads::Threads)
 find_package(PNG REQUIRED)
 set(PNG_LIBRARY PNG::PNG)
 
+#set(ICU_ROOT "/usr/local/Cellar/icu4c/67.1")
+find_package(ICU REQUIRED COMPONENTS i18n io uc)
+macro_log_feature(ICU_FOUND "ICU" "International Components for Unicode" "http://site.icu-project.org" TRUE)
+
+
 #
 # GLFW3
 # NB: set glfw3_PATH to /usr/local/Cellar/glfw/3.3.2/lib/cmake/glfw3
@@ -227,6 +232,7 @@ include_directories(
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
     ${OSCPACK_INCLUDE_DIR}
+    ${ICU_INCLUDE_DIRS}
 )
 
 
@@ -397,7 +403,6 @@ IF(APPLE)
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
         "-framework Appkit"
-        "-licuio -licui18n -licuuc"
     )
 
 ELSE(APPLE)
@@ -407,7 +412,7 @@ ELSE(APPLE)
         ${IMGUITEXTEDIT_SRC}
     )
 
-    set(PLATFORM_LIBS  "-licuio -licui18n -licuuc"
+    set(PLATFORM_LIBS  ""
     )
 
 ENDIF(APPLE)
@@ -446,6 +451,9 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     IMGUI
     OSCPACK
     vmix::rc
+    ICU::i18n
+    ICU::io
+    ICU::uc
     ${PLATFORM_LIBS}
 )
 

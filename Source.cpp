@@ -249,8 +249,8 @@ void Source::setName (const std::string &name)
 {
     name_ = SystemToolkit::transliterate(name);
 
-    initials_[0] = std::toupper( name_.front(), std::locale("en_US.utf8") );
-    initials_[1] = std::toupper( name_.back(), std::locale("en_US.utf8") );
+    initials_[0] = std::toupper( name_.front(), std::locale("C") );
+    initials_[1] = std::toupper( name_.back(), std::locale("C") );
 }
 
 void Source::accept(Visitor& v)
