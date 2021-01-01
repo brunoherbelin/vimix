@@ -811,10 +811,10 @@ void UserInterface::showMenuFile()
         Mixer::manager().close();
         navigator.hidePannel();
     }
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##AR", &Settings::application.render.ratio, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x );
-    ImGui::Combo("##HEIGHT", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.6f);
+    ImGui::Combo("Ratio", &Settings::application.render.ratio, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.6f);
+    ImGui::Combo("Height", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
     ImGui::Separator();
 
@@ -822,6 +822,8 @@ void UserInterface::showMenuFile()
 
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
         selectOpenFilename();
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Re-Open", CTRL_MOD "+Shift+O"))
+        Mixer::manager().load( Mixer::manager().session()->filename() );
 
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
         // launch file dialog to open a session file
@@ -1119,6 +1121,23 @@ void UserInterface::RenderPreview()
         {
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
+                glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
+                std::ostringstream info;
+                info << "Resolution " << output->width() << "x" << output->height();
+                if (p.x > -1)
+                    info << "  " << FrameBuffer::aspect_ratio_name[p.x] ;
+                ImGui::MenuItem(info.str().c_str(), nullptr, false, false);
+                // cannot change resolution when recording
+                if (rec == nullptr && p.y > -1) {
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
+                    {
+                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
+                        Mixer::manager().session()->setResolution(res);
+                    }
+                }
+                ImGui::Separator();
+
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
@@ -1157,7 +1176,7 @@ void UserInterface::RenderPreview()
                     }
                     ImGui::PopStyleColor(1);
                     // select profile
-                    ImGui::SetNextItemWidth(300);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
 

@@ -13,6 +13,7 @@ public:
     static const char* resolution_name[4];
     static float resolution_height[4];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
+    static glm::ivec2 getParametersFromResolution(glm::vec3 res);
     // unbind any framebuffer object
     static void release();
 

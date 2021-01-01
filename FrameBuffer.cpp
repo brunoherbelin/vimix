@@ -10,7 +10,7 @@
 
 const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
 glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
-const char* FrameBuffer::resolution_name[4] = { "720", "1080", "1440", "4K" };
+const char* FrameBuffer::resolution_name[4] = { "720", "1080", "1440", "2160" };
 float FrameBuffer::resolution_height[4] = { 720.f, 1080.f, 1440.f, 2160.f };
 
 
@@ -20,6 +20,31 @@ glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
     glm::vec3 res = glm::vec3( width, resolution_height[h] , 0.f);
 
     return res;
+}
+
+glm::ivec2 FrameBuffer::getParametersFromResolution(glm::vec3 res)
+{
+    glm::ivec2 p = glm::ivec2(-1);
+
+    // get aspect ratio parameter
+    static int num_ar = ((int)(sizeof(FrameBuffer::aspect_ratio_size) / sizeof(*FrameBuffer::aspect_ratio_size)));
+    float myratio = res.x / res.y;
+    for(int ar = 0; ar < num_ar; ar++) {
+        if ( myratio - (FrameBuffer::aspect_ratio_size[ar].x / FrameBuffer::aspect_ratio_size[ar].y ) < EPSILON){
+            p.x = ar;
+            break;
+        }
+    }
+    // get height parameter
+    static int num_height = ((int)(sizeof(FrameBuffer::resolution_height) / sizeof(*FrameBuffer::resolution_height)));
+    for(int h = 0; h < num_height; h++) {
+        if ( res.y - FrameBuffer::resolution_height[h] < 1){
+            p.y = h;
+            break;
+        }
+    }
+
+    return p;
 }
 
 FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling):
