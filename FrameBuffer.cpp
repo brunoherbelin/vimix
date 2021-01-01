@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "FrameBuffer.h"
 #include "ImageShader.h"
 #include "Resource.h"
@@ -146,20 +148,14 @@ float FrameBuffer::aspectRatio() const
 
 std::string FrameBuffer::info() const
 {
-    std::string s = "";
+    glm::ivec2 p = FrameBuffer::getParametersFromResolution(resolution());
+    std::ostringstream info;
 
-    static int num_ar = ((int)(sizeof(FrameBuffer::aspect_ratio_size) / sizeof(*FrameBuffer::aspect_ratio_size)));
-    float myratio = aspectRatio();
-    for(int i= 0; i < num_ar; i++) {
-        if ( myratio - (FrameBuffer::aspect_ratio_size[i].x / FrameBuffer::aspect_ratio_size[i].y ) < EPSILON)
-        {
-            s += std::string( FrameBuffer::aspect_ratio_name[i]) + ", ";
-            break;
-        }
-    }
+    info << attrib_.viewport.x << "x" << attrib_.viewport.y;
+    if (p.x > -1)
+        info << "px, " << FrameBuffer::aspect_ratio_name[p.x];
 
-    s += std::to_string(width()) + "x" + std::to_string(height()) + " px";
-    return s;
+    return info.str();
 }
 
 glm::vec3 FrameBuffer::resolution() const
