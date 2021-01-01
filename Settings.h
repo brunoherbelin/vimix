@@ -136,14 +136,16 @@ struct RenderConfig
     int ratio;
     int res;
     float fading;
+    bool gpu_decoding;
 
     RenderConfig() {
         blit = false;
-        vsync = 1; // todo GUI selection
-        multisampling = 2; // todo GUI selection
+        vsync = 1;
+        multisampling = 2;
         ratio = 3;
         res = 1;
         fading = 0.0;
+        gpu_decoding = true;
     }
 };
 

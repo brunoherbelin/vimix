@@ -2,6 +2,8 @@
 #include <iomanip>
 using namespace std;
 
+#include <gst/gl/gl.h>
+
 #include "GstToolkit.h"
 
 string GstToolkit::time_to_string(guint64 t, time_string_mode m)
@@ -120,4 +122,38 @@ string GstToolkit::gst_version()
         oss << ( (GST_VERSION_NANO < 2 ) ? " - (CVS)" : " - (Prerelease)");
 
     return oss.str();
+}
+
+
+// see https://developer.ridgerun.com/wiki/index.php?title=GStreamer_modify_the_elements_rank
+
+std::list<std::string> GstToolkit::enable_gpu_decoding_plugins()
+{
+    static list<string> pluginslist;
+    static GstRegistry* plugins_register = nullptr;
+
+    if ( plugins_register == nullptr ) {
+        plugins_register = gst_registry_get();
+
+#if GST_GL_HAVE_PLATFORM_GLX
+        // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
+        const char *plugins[6] = { "nvh264dec", "nvh265dec", "nvmpeg2videodec",
+                                   "nvmpeg4videodec", "nvvp8dec", "nvvp9dec" };
+        const int N = 6;
+#elif GST_GL_HAVE_PLATFORM_WGL
+        const char *plugins[1] = { "avdec_h264"};
+        const int N = 1;
+#endif
+
+        for (int i = 0; i < N; i++) {
+            GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
+            if(feature != NULL) {
+                pluginslist.push_front( string( plugins[i] ) );
+                gst_plugin_feature_set_rank(feature, GST_RANK_PRIMARY + 1);
+                gst_object_unref(feature);
+            }
+        }
+    }
+
+    return pluginslist;
 }
