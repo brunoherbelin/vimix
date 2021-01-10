@@ -100,6 +100,7 @@ void MaskShader::use()
     program_->setUniform("cursor", cursor);
     program_->setUniform("brush", brush);
     program_->setUniform("option", option);
+    program_->setUniform("effect", effect);
 }
 
 void MaskShader::reset()
@@ -118,6 +119,7 @@ void MaskShader::reset()
     cursor = glm::vec4(-10.f, -10.f, 1.f, 1.f);
     brush = glm::vec3(0.5f, 0.1f, 0.f);
     option = 0;
+    effect = 0;
 }
 
 void MaskShader::operator = (const MaskShader &S)

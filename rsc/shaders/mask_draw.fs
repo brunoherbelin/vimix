@@ -19,6 +19,7 @@ uniform float blur;            // percent of blur
 uniform vec4  cursor;
 uniform vec3  brush;
 uniform int   option;
+uniform int   effect;
 
 float sdBox( in vec2 p, in float b)
 {
@@ -51,11 +52,17 @@ vec3 gaussian()
 
 void main()
 {
-    // blur the image incrementally each step
-    vec3 color = gaussian();
-    //    vec3 color = texture(iChannel0, vertexUV).rgb; // raw color
+    vec3 color = texture(iChannel0, vertexUV).rgb; // raw color
+
+    // clear
+    color += mix(vec3(0), vec3(1) - color, effect == 1);
+    // invert
+    color = mix(color, vec3(1) - color, effect == 2);
+    // step edge
+    color = mix(color, vec3(1.0 - step(dot(color, vec3(1.0/3.0)), 0.6)), effect == 3);
 
     if ( option > 0 ) {
+
         // fragment coordinates
         vec2 uv =  -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
         // adjust coordinates to match scaling area
@@ -71,6 +78,9 @@ void main()
         // modify only the pixels inside the brush
         if( d < 1.0 )
         {
+            // blur the image incrementally each step
+            color = gaussian();
+
             // mask intensity
             float c = dot(color, vec3(1.0/3.0));
 
@@ -92,6 +102,7 @@ void main()
         }
 
     }
+
 
     FragColor = vec4( clamp(color, 0.0, 1.0), 1.0);
 }

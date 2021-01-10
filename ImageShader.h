@@ -60,6 +60,7 @@ public:
     float blur;
 
     int option;
+    int effect;
     glm::vec4 cursor;
     glm::vec3 brush;
 

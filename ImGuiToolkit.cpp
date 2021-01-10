@@ -139,12 +139,8 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
     bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
     ImGui::PopID();
 
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", tooltip);
-        ImGui::EndTooltip();
-    }
+    if (tooltip != nullptr)
+        ImGuiToolkit::ToolTip(tooltip);
 
     return ret;
 }
@@ -273,6 +269,18 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::End();
 }
 
+void ImGuiToolkit::ToolTip(const char* desc)
+{
+    if (ImGui::IsItemHovered())
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+        ImGui::BeginTooltip();
+        ImGui::Text(desc);
+        ImGui::EndTooltip();
+        ImGui::PopFont();
+    }
+}
+
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 // In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.txt)
 void ImGuiToolkit::HelpMarker(const char* desc, const char* icon)
@@ -281,9 +289,11 @@ void ImGuiToolkit::HelpMarker(const char* desc, const char* icon)
     if (ImGui::IsItemHovered())
     {
         ImGui::BeginTooltip();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
         ImGui::TextUnformatted(desc);
         ImGui::PopTextWrapPos();
+        ImGui::PopFont();
         ImGui::EndTooltip();
     }
 }

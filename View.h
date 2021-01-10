@@ -285,6 +285,7 @@ private:
     Mesh *mask_cursor_square_;
     Mesh *mask_cursor_crop_;
     glm::vec3 stored_mask_size_;
+    bool show_cursor_forced_;
 
 };
 

@@ -2043,6 +2043,8 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     mask_cursor_crop_->visible_ = false;
     scene.fg()->attach(mask_cursor_crop_);
 
+    stored_mask_size_ = glm::vec3(0.f);
+    show_cursor_forced_ = false;
 }
 
 void AppearanceView::update(float dt)
@@ -2123,8 +2125,8 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
         mask_cursor_crop_->visible_   = false;
 
         ImGuiIO& io = ImGui::GetIO();
-        if (!io.WantCaptureMouse) {
-
+        if (!io.WantCaptureMouse || show_cursor_forced_)
+        {
             // show paint brush cursor
             if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
                 if (mask_cursor_paint_ > 0) {
@@ -2132,6 +2134,10 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
                         mask_cursor_circle_->visible_ = edit_source_->maskShader()->brush.z < 1.0;
                         mask_cursor_square_->visible_ = edit_source_->maskShader()->brush.z > 0.0;
                         edit_source_->maskShader()->option = mask_cursor_paint_;
+                        if (mask_cursor_paint_ > 1)
+                            mask_cursor_circle_->shader()->color = glm::vec4( 0.3f, 0.6f, 0.6f, 0.9f );
+                        else
+                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
                     }
                     else {
                         edit_source_->maskShader()->option = 0;
@@ -2349,7 +2355,7 @@ void AppearanceView::draw()
         scene.accept(dv);
 
         // display interface
-        glm::vec2 P = glm::vec2(-background_frame_->scale_.x - 0.03f, background_frame_->scale_.y );
+        glm::vec2 P = glm::vec2(-background_frame_->scale_.x - 0.02f, background_frame_->scale_.y + 0.01 );
         P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
         ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
         if (ImGui::Begin("##AppearanceMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
@@ -2360,7 +2366,7 @@ void AppearanceView::draw()
 
             int mode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth(100.f);
-            if ( ImGui::Combo("Mask    ", &mode, MaskShader::mask_names, IM_ARRAYSIZE(MaskShader::mask_names) ) ) {
+            if ( ImGui::Combo("##Mask", &mode, MaskShader::mask_names, IM_ARRAYSIZE(MaskShader::mask_names) ) ) {
                 edit_source_->maskShader()->mode = mode;
                 if (mode == MaskShader::NONE)
                     Mixer::manager().setCurrentSource(edit_source_);
@@ -2377,43 +2383,37 @@ void AppearanceView::draw()
             // GUI for drawing mask
             if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
 
+                ImGui::SameLine();
+                ImGuiToolkit::HelpMarker( ICON_FA_EDIT "  Mask paint \n\n"
+                                          ICON_FA_MOUSE_POINTER "    Edit texture\n"
+                                          ICON_FA_PAINT_BRUSH "  Brush\n"
+                                          ICON_FA_ERASER "  Eraser\n\n"
+                                          ICON_FA_CARET_SQUARE_DOWN "  Brush shape\n"
+                                          ICON_FA_GENDERLESS "    Brush size\n"
+                                          ICON_FA_ANGLE_DOUBLE_DOWN "    Brush strenght\n\n"
+                                          ICON_FA_MAGIC "   Effects");
+
                 // select cursor
                 static bool on = true;
-                ImGui::SameLine();
+                ImGui::SameLine(0, 60);
                 on = mask_cursor_paint_ == 0;
                 if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on)) {
                     Mixer::manager().setCurrentSource(edit_source_);
                     mask_cursor_paint_ = 0;
                 }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Cursor");
-                    ImGui::EndTooltip();
-                }
+
                 ImGui::SameLine();
                 on = mask_cursor_paint_ == 1;
                 if (ImGuiToolkit::ButtonToggle(ICON_FA_PAINT_BRUSH, &on)) {
                     Mixer::manager().unsetCurrentSource();
                     mask_cursor_paint_ = 1;
                 }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Paint");
-                    ImGui::EndTooltip();
-                }
+
                 ImGui::SameLine();
                 on = mask_cursor_paint_ == 2;
                 if (ImGuiToolkit::ButtonToggle(ICON_FA_ERASER, &on)) {
                     Mixer::manager().unsetCurrentSource();
                     mask_cursor_paint_ = 2;
-                }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Erase");
-                    ImGui::EndTooltip();
                 }
 
                 if (mask_cursor_paint_ > 0) {
@@ -2426,56 +2426,110 @@ void AppearanceView::draw()
                     if(ImGui::Combo("##BrushShape", &item, items, IM_ARRAYSIZE(items))) {
                         edit_source_->maskShader()->brush.z = float(item);
                     }
-                    ImGui::SameLine(0, 20);
-                    ImGui::SetNextItemWidth(180.f);
 
-                    int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
-                    int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
-                    int pixel_size = int(edit_source_->maskShader()->brush.x *
-                            edit_source_->frame()->height() );
-                    if (ImGui::SliderInt("##BrushSize", &pixel_size, pixel_size_min, pixel_size_max, "%dpx") )
-                        edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), 0.05, 2.0);
-//                    ImGui::SliderFloat("Size", &edit_source_->maskShader()->brush.x, 0.1, 2.0, "%.1f");
-
+                    ImGui::SameLine();
+                    show_cursor_forced_ = false;
+                    if (ImGuiToolkit::ButtonIcon(15,1))
+                        ImGui::OpenPopup("brush_size_popup");
+                    if (ImGui::BeginPopup("brush_size_popup", ImGuiWindowFlags_NoMove))
+                    {
+                        int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
+                        int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
+                        int pixel_size = int(edit_source_->maskShader()->brush.x * edit_source_->frame()->height() );
+                        show_cursor_forced_ = true;
+                        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
+                            edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), 0.05, 2.0);
+                        }
+                        if (ImGui::IsItemHovered())  {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("%d px", pixel_size);
+                            ImGui::EndTooltip();
+                        }
+                        ImGui::PopFont();
+                        ImGui::EndPopup();
+                    }
+////                    ImGui::SliderFloat("Size", &edit_source_->maskShader()->brush.x, 0.1, 2.0, "%.1f");
                     glm::vec2 s = glm::vec2(edit_source_->maskShader()->brush.x);
                     mask_cursor_circle_->scale_ = glm::vec3(s * 1.16f, 1.f);
                     mask_cursor_square_->scale_ = glm::vec3(s * 1.72f, 1.f);
-                    ImGui::SameLine(0, 20);
-                    ImGui::SetNextItemWidth(150.f);
-                    ImGui::SliderFloat("Strength", &edit_source_->maskShader()->brush.y, 0.01, 1.0, "%.2f", 3.f);
+
+                    ImGui::SameLine();
+                    if (ImGuiToolkit::ButtonIcon(10,10))
+                        ImGui::OpenPopup("brush_strenght_popup");
+                    if (ImGui::BeginPopup("brush_strenght_popup", ImGuiWindowFlags_NoMove))
+                    {
+                        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        ImGui::VSliderFloat("##BrushStrength", ImVec2(30,260), &edit_source_->maskShader()->brush.y, 0.01, 1.0, "", 2.f);
+                        if (ImGui::IsItemHovered())  {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("Strength %d%%", int(edit_source_->maskShader()->brush.y * 100.0 ));
+                            ImGui::EndTooltip();
+                        }
+                        ImGui::PopFont();
+                        ImGui::EndPopup();
+                    }
+//                    ImGui::SetNextItemWidth(150.f);
+//                    ImGui::SliderFloat("Strength", &edit_source_->maskShader()->brush.y, 0.01, 1.0, "%.2f", 3.f);
+
+                    ImGui::SameLine(0, 60);
+                    edit_source_->maskShader()->effect = 0;
+                    if (ImGuiToolkit::ButtonIcon(10,11))
+                        ImGui::OpenPopup( "brush_menu_popup" );
+                    if (ImGui::BeginPopup( "brush_menu_popup" ))
+                    {
+                        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        if (ImGui::Selectable( ICON_FA_UNDO " Clear")) {
+                            edit_source_->maskShader()->effect = 1;
+                            edit_source_->touch();
+                        }
+                        if (ImGui::Selectable( ICON_FA_ADJUST " Invert")) {
+                            edit_source_->maskShader()->effect = 2;
+                            edit_source_->touch();
+                        }
+                        if (ImGui::Selectable( ICON_FA_WAVE_SQUARE " Edge")) {
+                            edit_source_->maskShader()->effect = 3;
+                            edit_source_->touch();
+                        }
+                        ImGui::PopFont();
+                        ImGui::EndPopup();
+                    }
+
+
+                }
+                // disabled info
+                else {
+                    ImGui::SameLine(0, 60);
+                    ImGui::TextDisabled( "Paint mask" );
                 }
 
             }
             // GUI for all other masks
             else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
 
+                ImGui::SameLine();
+                ImGuiToolkit::HelpMarker( ICON_FA_SHAPES "  Mask shape \n\n"
+                                          ICON_FA_MOUSE_POINTER "    Edit texture\n"
+                                          ICON_FA_CROP_ALT "  Crop & Edit shape\n\n"
+                                          ICON_FA_CARET_SQUARE_DOWN "   Shape of the mask\n"
+                                          ICON_FA_RANDOM "  Smooth blending");
+
                 // select cursor
                 static bool on = true;
-                ImGui::SameLine();
+                ImGui::SameLine(0, 60);
                 on = mask_cursor_shape_ == 0;
                 if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on)) {
                     Mixer::manager().setCurrentSource(edit_source_);
                     need_edit_update_ = true;
                     mask_cursor_shape_ = 0;
                 }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Cursor");
-                    ImGui::EndTooltip();
-                }
+
                 ImGui::SameLine();
                 on = mask_cursor_shape_ == 1;
                 if (ImGuiToolkit::ButtonToggle(ICON_FA_CROP_ALT, &on)) {
                     Mixer::manager().unsetCurrentSource();
                     need_edit_update_ = true;
                     mask_cursor_shape_ = 1;
-                }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Crop");
-                    ImGui::EndTooltip();
                 }
 
                 int shape = edit_source_->maskShader()->shape;
@@ -2498,8 +2552,8 @@ void AppearanceView::draw()
                     static bool smoothchanged = false;
 
                     ImGui::SameLine(0, 20);
-                    ImGui::SetNextItemWidth(190.f);
-                    if (ImGui::DragInt("Smooth   ", &val, 1, 0, 100, "%d%%") ) {
+                    ImGui::SetNextItemWidth(220.f);
+                    if (ImGui::SliderInt("##smooth", &val, 0, 100, "%d%% smooth") ) {
                         edit_source_->maskShader()->blur = float(val) / 100.f;
                         edit_source_->touch();
                         need_edit_update_ = true;
@@ -2512,23 +2566,26 @@ void AppearanceView::draw()
                         Action::manager().store(oss.str(), edit_source_->id());
                         smoothchanged = false;
                     }
+
                 }
                 // disabled info
                 else {
                     ImGui::SameLine(0, 60);
                     ImGui::TextDisabled( MaskShader::mask_shapes[shape] );
-                    ImGui::SameLine(0, 180);
-                    ImGui::TextDisabled( "%d%%", val );
-                    ImGui::SameLine(0, 60);
-                    ImGui::TextDisabled( "Smooth" );
+                    ImGui::SameLine();
+                    ImGui::TextDisabled( "mask - %d%% smooth", val );
                 }
             }
             else {// mode == MaskShader::NONE
-                // always active mouse pointer
-                bool on = true;
                 ImGui::SameLine();
+                ImGuiToolkit::HelpMarker( ICON_FA_EXPAND "  No mask\n\n"
+                                          ICON_FA_MOUSE_POINTER "    Edit texture\n");
+                // always active mouse pointer
+                ImGui::SameLine(0, 60);
+                bool on = true;
                 ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on);
-
+                ImGui::SameLine(0, 60);
+                ImGui::TextDisabled( "No mask" );
             }
 
             ImGui::PopFont();
