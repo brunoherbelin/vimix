@@ -77,15 +77,14 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
-
-    // a Source has a shader used to render mask
-    inline MaskShader *maskShader () const { return maskshader_; }
-
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader () const { return renderingshader_; }
 
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;
+
+    // a Source has a shader used to render mask
+    inline MaskShader *maskShader () const { return maskshader_; }
 
     // touch to request update
     inline void touch () { need_update_ = true; }
@@ -111,6 +110,11 @@ public:
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
+
+    // operations on mask
+    void storeMask(FrameBufferImage *img = nullptr);
+    FrameBufferImage *getMask() const { return maskimage_; }
+    void setMask(FrameBufferImage *img);
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -179,6 +183,8 @@ protected:
     MaskShader *maskshader_;
     FrameBuffer *maskbuffer_;
     Surface *masksurface_;
+    bool mask_need_update_;
+    FrameBufferImage *maskimage_;
 
     // surface to draw on
     Surface *texturesurface_;

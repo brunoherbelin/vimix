@@ -15,21 +15,18 @@ uniform vec4 uv;
 uniform vec2  size;            // size of the mask area
 uniform float blur;            // percent of blur
 
-float sdRoundBox( in vec2 p, in vec2 b, in float r )
+float sdVertical( in vec2 p, in float x )
 {
-    vec2 q = abs(p)-b+r;
-    return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r;
+    float d = step(0.0, x);
+    d = d * smoothstep(0.0, 2.0 * blur, x + p.x) + (1.0-d)*smoothstep(-2.0 * blur, 0.0, (-2.0 * blur) - (x + p.x));
+    return d;
 }
 
 void main()
 {
     vec2 uv = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
-    uv.x *= iResolution.x / iResolution.y;
 
-    float d = sdRoundBox( uv, vec2(size.x * iResolution.x/iResolution.y, size.y), blur * 0.5 );
+    float d = sdVertical( uv, -size.x);
 
-    vec3 col = vec3(1.0 - sign(d));
-    col *= 1.0 - exp( -600.0/ (blur * 1000.f + 1.0) * abs(d));
-
-    FragColor = vec4( col, 1.0 );
+    FragColor = vec4( vec3(d), 1.0 );
 }

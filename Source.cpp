@@ -206,7 +206,8 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     rendersurface_  = nullptr;
     mixingsurface_  = nullptr;
     maskbuffer_     = nullptr;
-
+    maskimage_  = nullptr;
+    mask_need_update_ = false;
 }
 
 
@@ -223,6 +224,8 @@ Source::~Source()
         delete renderbuffer_;
     if (maskbuffer_)
         delete maskbuffer_;
+    if (maskimage_)
+        delete maskimage_;
 
     // all groups and their children are deleted in the scene
     // this includes rendersurface_, overlays, blendingshader_ and rendershader_
@@ -381,7 +384,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     // (re) create the masking buffer
     if (maskbuffer_)
         delete maskbuffer_;
-    maskbuffer_ = new FrameBuffer( renderbuffer->resolution() );
+    maskbuffer_ = new FrameBuffer( glm::vec3(0.5) * renderbuffer->resolution() );
 
     // make the source visible
     if ( mode_ == UNINITIALIZED )
@@ -433,8 +436,8 @@ void Source::update(float dt)
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
         // use the prefered transfer function
-        blendingshader_->color.a = sin_quad( dist.x, dist.y );
-        mixingshader_->color.a = blendingshader_->color.a;
+        blendingshader_->color = glm::vec4(1.0, 1.0, 1.0, sin_quad( dist.x, dist.y ));
+        mixingshader_->color = blendingshader_->color;
 
         // CHANGE update status based on limbo
         bool a = glm::length(dist) < 1.3f;
@@ -454,6 +457,7 @@ void Source::update(float dt)
 
         // MODIFY CROP projection based on GEOMETRY crop
         renderbuffer_->setProjectionArea( glm::vec2(groups_[View::GEOMETRY]->crop_) );
+
         // Mixing and layer icons scaled based on GEOMETRY crop
         mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
         mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
@@ -487,10 +491,24 @@ void Source::update(float dt)
         // 7. switch back to UV coordinate system
         texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
-        // draw nask in mask frame buffer
-        maskbuffer_->begin();
-        masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
-        maskbuffer_->end();
+        // if a mask image was given to be updated
+        if (mask_need_update_) {
+            // fill the mask buffer (once)
+            if (maskbuffer_->fill(maskimage_) )
+                mask_need_update_ = false;
+        }
+        // otherwise, render the mask buffer
+        else
+        {
+            // draw mask in mask frame buffer
+            maskbuffer_->begin(false);
+            // loopback maskbuffer texture for painting
+            masksurface_->setTextureIndex(maskbuffer_->texture());
+            // fill surface with mask texture
+            masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
+            maskbuffer_->end();
+        }
+
         // set the rendered mask as mask for blending
         blendingshader_->mask_texture = maskbuffer_->texture();
 
@@ -519,6 +537,49 @@ bool Source::contains(Node *node) const
 
     hasNode tester(node);
     return tester(this);
+}
+
+
+void Source::storeMask(FrameBufferImage *img)
+{
+    // free the output mask storage
+    if (maskimage_ != nullptr) {
+        delete maskimage_;
+        maskimage_ = nullptr;
+    }
+
+    // if no image is provided
+    if (img == nullptr) {
+        // if ready
+        if (maskbuffer_!=nullptr) {
+            // get & store image from mask buffer
+            maskimage_ = maskbuffer_->image();
+        }
+    }
+    else
+        // store the given image
+        maskimage_ = img;
+
+    // maskimage_ can now be accessed with Source::getStoredMask
+}
+
+void Source::setMask(FrameBufferImage *img)
+{
+    // if a valid image is given
+    if (img != nullptr && img->width>0 && img->height>0) {
+
+        // remember this new image as the current mask
+        // NB: will be freed when replaced
+        storeMask(img);
+
+        // ask Source::update to use it at next update for filling mask buffer
+        mask_need_update_ = true;
+
+        // ask to update the source
+        touch();
+    }
+    else
+        mask_need_update_ = false;
 }
 
 

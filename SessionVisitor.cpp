@@ -208,17 +208,18 @@ void SessionVisitor::visit(ImageShader &n)
 
 void SessionVisitor::visit(MaskShader &n)
 {
-    // Shader of a textured type
+    // Shader of a mask type
     xmlCurrent_->SetAttribute("type", "MaskShader");
     xmlCurrent_->SetAttribute("id", n.id());
     xmlCurrent_->SetAttribute("mode", n.mode);
+    xmlCurrent_->SetAttribute("shape", n.shape);
 
     XMLElement *uniforms = xmlDoc_->NewElement("uniforms");
     uniforms->SetAttribute("blur", n.blur);
+    uniforms->SetAttribute("option", n.option);
     XMLElement *size = xmlDoc_->NewElement("size");
     size->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.size) );
     uniforms->InsertEndChild(size);
-
     xmlCurrent_->InsertEndChild(uniforms);
 }
 
@@ -368,6 +369,28 @@ void SessionVisitor::visit (Source& s)
     xmlCurrent_ = xmlDoc_->NewElement( "Mask" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.maskShader()->accept(*this);
+    // if we are saving a pain mask
+    if (s.maskShader()->mode == MaskShader::PAINT) {
+        // get the mask previously stored
+        FrameBufferImage *img = s.getMask();
+        if (img != nullptr) {
+            // get the jpeg encoded buffer
+            FrameBufferImage::jpegBuffer jpgimg = img->getJpeg();
+            if (jpgimg.buffer != nullptr) {
+                // fill the xml array with jpeg buffer
+                XMLElement *array = XMLElementEncodeArray(xmlDoc_, jpgimg.buffer, jpgimg.len);
+                // free the buffer
+                free(jpgimg.buffer);
+                // if we could create the array
+                if (array) {
+                    // create an Image node to store the mask image
+                    XMLElement *imageelement = xmlDoc_->NewElement("Image");
+                    imageelement->InsertEndChild(array);
+                    xmlCurrent_->InsertEndChild(imageelement);
+                }
+            }
+        }
+    }
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
     xmlCurrent_->SetAttribute("enabled", s.imageProcessingEnabled());

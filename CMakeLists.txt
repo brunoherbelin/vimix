@@ -298,8 +298,9 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/mask_elipse.fs
     ./rsc/shaders/mask_box.fs
     ./rsc/shaders/mask_round.fs
-    ./rsc/shaders/mask_lowleftcorner.fs
-    ./rsc/shaders/mask_uprightcorner.fs
+    ./rsc/shaders/mask_horizontal.fs
+    ./rsc/shaders/mask_vertical.fs
+    ./rsc/shaders/mask_draw.fs
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
     ./rsc/fonts/Hack-Regular.ttf
@@ -373,6 +374,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
     ./rsc/mesh/icon_rightarrow.ply
+    ./rsc/mesh/icon_crop.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

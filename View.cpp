@@ -1681,14 +1681,14 @@ void TransitionView::draw()
     scene.accept(dv2);
 
     // display interface duration
-    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.11f, -0.14f, 0.f), scene.root()->transform_, false);
+    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.15f, -0.14f, 0.f), scene.root()->transform_, false);
     ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
     if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
     {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetNextItemWidth(100.f);
+        ImGui::SetNextItemWidth(160.f);
         ImGui::DragFloat("##transitionduration", &Settings::application.transition.duration,
                          0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         ImGui::SameLine();
@@ -1912,20 +1912,42 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     // Mask manipulation
     mask_node_ = new Group;
     mask_square_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
-    mask_square_->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );  //BLUE
+    mask_square_->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.f );
     mask_node_->attach(mask_square_);
-    mask_handle_ = new Handles(Handles::CROP);
-    mask_handle_->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );  //BLUE
-    mask_node_->attach(mask_handle_);
     mask_circle_ = new Mesh("mesh/circle.ply");
-    mask_circle_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.0f );
+    mask_circle_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.f );
     mask_node_->attach(mask_circle_);
-    mask_corner_  = new Mesh("mesh/corner.ply");
-    mask_corner_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.9f );
-    mask_corner_->translation_ = glm::vec3(-1.f, -1.0f, 0.0f);
-    mask_corner_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-    mask_node_->attach(mask_corner_);
+    mask_horizontal_ = new Mesh("mesh/h_line.ply");
+    mask_horizontal_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.f );
+    mask_horizontal_->scale_.x = 1.0f;
+    mask_horizontal_->scale_.y = 3.0f;
+    mask_node_->attach(mask_horizontal_);
+    mask_vertical_ = new Group;
+    Mesh *line = new Mesh("mesh/h_line.ply");
+    line->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 1.f );
+    line->scale_.x = 1.0f;
+    line->scale_.y = 3.0f;
+    line->rotation_.z = M_PI_2;
+    mask_vertical_->attach(line);
+    mask_node_->attach(mask_vertical_);
     scene.fg()->attach(mask_node_);
+
+    //    horizontal_mark_ = new Mesh("mesh/h_mark.ply");
+    //    horizontal_mark_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
+    //    horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
+    //    horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    ////    scene.bg()->attach(horizontal_mark_);
+    //    // vertical axis
+    //    vertical_line_ = new Group;
+    //    Mesh *line  = new Mesh("mesh/h_line.ply");
+    //    line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
+    //    line->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
+    //    line->scale_.x = 1.0f;
+    //    line->scale_.y = 3.0f;
+    //    line->rotation_.z = M_PI_2;
+    ////    vertical_line_->attach(line);
+
+
 
     // Source manipulation (texture coordinates)
     //
@@ -2001,17 +2023,25 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     scene.fg()->attach(overlay_rotation_);
     overlay_rotation_->visible_ = false;
 
-
-    /// Tests
-    //    test_buffer = new FrameBuffer(800, 450);
-    //    Log::Info("test_buffer %s", test_buffer->info().c_str());
-    //    test_shader = new MaskShader;
-    //    test_shader->type = 0;
-    //    test_shader->blur = 0.0;
-    //    test_surface = new Surface(test_shader);
-    //    preview_mask_ = new FrameBufferSurface(test_buffer); // to attach source preview
-    //    preview_mask_->translation_.z = 0.002f;
-    ////    scene.bg()->attach(preview_mask_);
+    // Mask draw
+    mask_cursor_paint_ = 0;
+    mask_cursor_shape_ = 0;
+    stored_mask_size_ = glm::vec3(0.f);
+    mask_cursor_circle_ = new Mesh("mesh/icon_circle.ply");
+    mask_cursor_circle_->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
+    mask_cursor_circle_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.8f );
+    mask_cursor_circle_->visible_ = false;
+    scene.fg()->attach(mask_cursor_circle_);
+    mask_cursor_square_ = new Mesh("mesh/icon_square.ply");
+    mask_cursor_square_->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
+    mask_cursor_square_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.8f );
+    mask_cursor_square_->visible_ = false;
+    scene.fg()->attach(mask_cursor_square_);
+    mask_cursor_crop_ = new Mesh("mesh/icon_crop.ply");
+    mask_cursor_crop_->scale_ = glm::vec3(1.2f, 1.2f, 1.f);
+    mask_cursor_crop_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.8f );
+    mask_cursor_crop_->visible_ = false;
+    scene.fg()->attach(mask_cursor_crop_);
 
 }
 
@@ -2078,6 +2108,48 @@ void AppearanceView::select(glm::vec2 A, glm::vec2 B)
 }
 
 
+View::Cursor AppearanceView::over (glm::vec2 pos)
+{
+    if (edit_source_ != nullptr)
+    {
+        glm::vec3 scene_pos = Rendering::manager().unProject(pos, scene.root()->transform_);
+        glm::vec2 P(scene_pos);
+        glm::vec2 S(preview_surface_->scale_);
+        mask_cursor_circle_->translation_ = glm::vec3(P, 0.f);
+        mask_cursor_square_->translation_ = glm::vec3(P, 0.f);
+        mask_cursor_crop_->translation_ = glm::vec3(P, 0.f);
+        mask_cursor_circle_->visible_ = false;
+        mask_cursor_square_->visible_ = false;
+        mask_cursor_crop_->visible_   = false;
+
+        ImGuiIO& io = ImGui::GetIO();
+        if (!io.WantCaptureMouse) {
+
+            // show paint brush cursor
+            if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
+                if (mask_cursor_paint_ > 0) {
+                    if ( ABS(P.x) < S.x && ABS(P.y) < S.y  ) {
+                        mask_cursor_circle_->visible_ = edit_source_->maskShader()->brush.z < 1.0;
+                        mask_cursor_square_->visible_ = edit_source_->maskShader()->brush.z > 0.0;
+                        edit_source_->maskShader()->option = mask_cursor_paint_;
+                    }
+                    else {
+                        edit_source_->maskShader()->option = 0;
+                    }
+                }
+            }
+            // show crup cursor
+            else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
+                if (mask_cursor_shape_ > 0) {
+                    mask_cursor_crop_->visible_   = true;
+                }
+            }
+        }
+    }
+
+    return Cursor();
+}
+
 std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
 {
     // prepare empty return value
@@ -2093,8 +2165,20 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
     // picking visitor found nodes?
     if ( !pv.empty()) {
         // keep edit source active if it is clicked
+        // AND if the cursor is not for drawing
         Source *s = edit_source_;
         if (s != nullptr) {
+
+            // special case for drawing in the mask
+            if ( s->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0) {
+                pick = { mask_cursor_circle_, P };
+                return pick;
+            }
+            // special case for cropping the mask shape
+            else if ( s->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0) {
+                pick = { mask_cursor_crop_, P };
+                return pick;
+            }
 
             // find if the edit source was picked
             auto itp = pv.rbegin();
@@ -2103,10 +2187,6 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
                 Source::hasNode is_in_source( (*itp).first );
                 if ( is_in_source( s ) ){
                     // a node in the current source was clicked !
-                    pick = *itp;
-                    break;
-                }
-                else if ( (*itp).first == mask_handle_ ) {
                     pick = *itp;
                     break;
                 }
@@ -2149,18 +2229,29 @@ void AppearanceView::adjustBackground()
         preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
         preview_surface_->scale_ = scale;
         // mask appearance
-        mask_node_->visible_ = edit_source_->maskShader()->mode > 0;
-        mask_circle_->visible_ = edit_source_->maskShader()->mode == 1;
-        mask_square_->visible_ = edit_source_->maskShader()->mode >= 2;
-        if (edit_source_->maskShader()->mode >= 4) {
-            mask_node_->scale_ = scale;
-            mask_node_->translation_ = scale - glm::vec3(edit_source_->maskShader()->size, 0.f) * scale ;
-            mask_node_->translation_.z = 0.f;
-        } else {
+        mask_node_->visible_ = edit_source_->maskShader()->mode > MaskShader::PAINT && mask_cursor_shape_ > 0;
+
+        int shape = edit_source_->maskShader()->shape;
+        mask_circle_->visible_ = shape == MaskShader::ELIPSE;
+        mask_square_->visible_ = shape == MaskShader::OBLONG || shape == MaskShader::RECTANGLE;
+        mask_horizontal_->visible_ = shape == MaskShader::HORIZONTAL;
+        mask_vertical_->visible_ = shape == MaskShader::VERTICAL;
+
+        // symetrical shapes
+        if ( shape < MaskShader::HORIZONTAL){
             mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
             mask_node_->translation_ = glm::vec3(0.f);
         }
-        mask_corner_->scale_.y = mask_corner_->scale_.x * mask_node_->scale_.x / mask_node_->scale_.y;
+        // vertical
+        else if ( shape > MaskShader::HORIZONTAL ) {
+            mask_node_->scale_ = glm::vec3(1.f, scale.y, 1.f);
+            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale.x, 0.f, 0.f);
+        }
+        // horizontal
+        else {
+            mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
+        }
     }
 
     // background scene
@@ -2174,11 +2265,6 @@ void AppearanceView::adjustBackground()
     static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
     preview_checker_->shader()->iTransform = Ar * Tra;
 
-    //    /// Tests
-    //    // update mask
-    //    test_buffer->begin();
-    //    test_surface->draw(glm::identity<glm::mat4>(), test_buffer->projection());
-    //    test_buffer->end();
 }
 
 Source *AppearanceView::getEditOrCurrentSource()
@@ -2226,17 +2312,25 @@ void AppearanceView::draw()
 
     // draw marks in axis
     if (edit_source_ != nullptr && show_scale_){
-        {
+        if (edit_source_->maskShader()->shape != MaskShader::HORIZONTAL){
+            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
             glm::vec3 dT = glm::vec3( -0.2f * edit_source_->mixingsurface_->scale_.x, 0.f, 0.f);
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), dT);
-            DrawVisitor dv(horizontal_mark_, Rendering::manager().Projection());
+            dv.loop(6, T);
+            scene.accept(dv);
+            dT = glm::vec3( +0.2f * edit_source_->mixingsurface_->scale_.x, 0.f, 0.f);
+            T = glm::translate(glm::identity<glm::mat4>(), dT);
             dv.loop(6, T);
             scene.accept(dv);
         }
-        {
+        if (edit_source_->maskShader()->shape != MaskShader::VERTICAL){
+            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
             glm::vec3 dT = glm::vec3( 0.f, -0.2f * edit_source_->mixingsurface_->scale_.y, 0.f);
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), dT);
-            DrawVisitor dv(vertical_mark_, Rendering::manager().Projection());
+            dv.loop(6, T);
+            scene.accept(dv);
+            dT = glm::vec3( 0.f, +0.2f * edit_source_->mixingsurface_->scale_.y, 0.f);
+            T = glm::translate(glm::identity<glm::mat4>(), dT);
             dv.loop(6, T);
             scene.accept(dv);
         }
@@ -2260,40 +2354,181 @@ void AppearanceView::draw()
         ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
         if (ImGui::Begin("##AppearanceMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
         {
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
-            int type = edit_source_->maskShader()->mode;
+            int mode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth(100.f);
-            if ( ImGui::Combo("Mask    ", &type, MaskShader::mask_names, IM_ARRAYSIZE(MaskShader::mask_names) ) ) {
-                edit_source_->maskShader()->mode = type;
+            if ( ImGui::Combo("Mask    ", &mode, MaskShader::mask_names, IM_ARRAYSIZE(MaskShader::mask_names) ) ) {
+                edit_source_->maskShader()->mode = mode;
+                if (mode == MaskShader::NONE)
+                    Mixer::manager().setCurrentSource(edit_source_);
+                else if (mode == MaskShader::PAINT)
+                    edit_source_->storeMask();
                 edit_source_->touch();
                 need_edit_update_ = true;
                 // store action history
                 std::ostringstream oss;
-                oss << edit_source_->name() << ": Texture Mask " << type;
+                oss << edit_source_->name() << ": Texture Mask " << mode;
                 Action::manager().store(oss.str(), edit_source_->id());
             }
 
-            if (edit_source_->maskShader()->mode > 0) {
-                int val = int(edit_source_->maskShader()->blur * 100.f);
-                static bool smoothchanged = false;
+            // GUI for drawing mask
+            if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
+
+                // select cursor
+                static bool on = true;
                 ImGui::SameLine();
-                ImGui::SetNextItemWidth(190.f);
-                if (ImGui::DragInt("Smooth", &val, 1, 0, 100, "%d%%") ) {
-                    edit_source_->maskShader()->blur = float(val) / 100.f;
-                    edit_source_->touch();
+                on = mask_cursor_paint_ == 0;
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on)) {
+                    Mixer::manager().setCurrentSource(edit_source_);
+                    mask_cursor_paint_ = 0;
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Cursor");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                on = mask_cursor_paint_ == 1;
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_PAINT_BRUSH, &on)) {
+                    Mixer::manager().unsetCurrentSource();
+                    mask_cursor_paint_ = 1;
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Paint");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                on = mask_cursor_paint_ == 2;
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_ERASER, &on)) {
+                    Mixer::manager().unsetCurrentSource();
+                    mask_cursor_paint_ = 2;
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Erase");
+                    ImGui::EndTooltip();
+                }
+
+                if (mask_cursor_paint_ > 0) {
+
+                    ImGui::SameLine(0, 50);
+                    ImGui::SetNextItemWidth(100.f);
+                    const char* items[] = { ICON_FA_CIRCLE, ICON_FA_SQUARE };
+                    static int item = 0;
+                    item = (int) round(edit_source_->maskShader()->brush.z);
+                    if(ImGui::Combo("##BrushShape", &item, items, IM_ARRAYSIZE(items))) {
+                        edit_source_->maskShader()->brush.z = float(item);
+                    }
+                    ImGui::SameLine(0, 20);
+                    ImGui::SetNextItemWidth(180.f);
+
+                    int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
+                    int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
+                    int pixel_size = int(edit_source_->maskShader()->brush.x *
+                            edit_source_->frame()->height() );
+                    if (ImGui::SliderInt("##BrushSize", &pixel_size, pixel_size_min, pixel_size_max, "%dpx") )
+                        edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), 0.05, 2.0);
+//                    ImGui::SliderFloat("Size", &edit_source_->maskShader()->brush.x, 0.1, 2.0, "%.1f");
+
+                    glm::vec2 s = glm::vec2(edit_source_->maskShader()->brush.x);
+                    mask_cursor_circle_->scale_ = glm::vec3(s * 1.16f, 1.f);
+                    mask_cursor_square_->scale_ = glm::vec3(s * 1.72f, 1.f);
+                    ImGui::SameLine(0, 20);
+                    ImGui::SetNextItemWidth(150.f);
+                    ImGui::SliderFloat("Strength", &edit_source_->maskShader()->brush.y, 0.01, 1.0, "%.2f", 3.f);
+                }
+
+            }
+            // GUI for all other masks
+            else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
+
+                // select cursor
+                static bool on = true;
+                ImGui::SameLine();
+                on = mask_cursor_shape_ == 0;
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on)) {
+                    Mixer::manager().setCurrentSource(edit_source_);
                     need_edit_update_ = true;
-                    smoothchanged = true;
+                    mask_cursor_shape_ = 0;
                 }
-                else if (smoothchanged && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
-                    // store action history
-                    std::ostringstream oss;
-                    oss << edit_source_->name() << ": Texture Smooth " << edit_source_->maskShader()->blur;
-                    Action::manager().store(oss.str(), edit_source_->id());
-                    smoothchanged = false;
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Cursor");
+                    ImGui::EndTooltip();
                 }
+                ImGui::SameLine();
+                on = mask_cursor_shape_ == 1;
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_CROP_ALT, &on)) {
+                    Mixer::manager().unsetCurrentSource();
+                    need_edit_update_ = true;
+                    mask_cursor_shape_ = 1;
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Crop");
+                    ImGui::EndTooltip();
+                }
+
+                int shape = edit_source_->maskShader()->shape;
+                int val = int(edit_source_->maskShader()->blur * 100.f);
+
+                if (mask_cursor_shape_ > 0) {
+
+                    ImGui::SameLine(0, 50);
+                    ImGui::SetNextItemWidth(220.f);
+                    if ( ImGui::Combo("##MaskShape", &shape, MaskShader::mask_shapes, IM_ARRAYSIZE(MaskShader::mask_shapes) ) ) {
+                        edit_source_->maskShader()->shape = shape;
+                        edit_source_->touch();
+                        need_edit_update_ = true;
+                        // store action history
+                        std::ostringstream oss;
+                        oss << edit_source_->name() << ": Texture Shape " << shape;
+                        Action::manager().store(oss.str(), edit_source_->id());
+                    }
+
+                    static bool smoothchanged = false;
+
+                    ImGui::SameLine(0, 20);
+                    ImGui::SetNextItemWidth(190.f);
+                    if (ImGui::DragInt("Smooth   ", &val, 1, 0, 100, "%d%%") ) {
+                        edit_source_->maskShader()->blur = float(val) / 100.f;
+                        edit_source_->touch();
+                        need_edit_update_ = true;
+                        smoothchanged = true;
+                    }
+                    else if (smoothchanged && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
+                        // store action history
+                        std::ostringstream oss;
+                        oss << edit_source_->name() << ": Texture Smooth " << edit_source_->maskShader()->blur;
+                        Action::manager().store(oss.str(), edit_source_->id());
+                        smoothchanged = false;
+                    }
+                }
+                // disabled info
+                else {
+                    ImGui::SameLine(0, 60);
+                    ImGui::TextDisabled( MaskShader::mask_shapes[shape] );
+                    ImGui::SameLine(0, 180);
+                    ImGui::TextDisabled( "%d%%", val );
+                    ImGui::SameLine(0, 60);
+                    ImGui::TextDisabled( "Smooth" );
+                }
+            }
+            else {// mode == MaskShader::NONE
+                // always active mouse pointer
+                bool on = true;
+                ImGui::SameLine();
+                ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on);
+
             }
 
             ImGui::PopFont();
@@ -2312,6 +2547,8 @@ void AppearanceView::draw()
     show_scale_ = false;
 }
 
+#define MASK_PAINT_ACTION_LABEL "Texture Paint"
+
 View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
     std::ostringstream info;
@@ -2327,38 +2564,57 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
         // work on the edited source
         if ( edit_source_ != nullptr ) {
 
-            // match edit source AR
-            glm::vec3 scale = edit_source_->mixingsurface_->scale_;
-            glm::vec3 delta = glm::vec3(0.1) / glm::vec3(scene.root()->scale_.x, scene.root()->scale_.y, 1.0);
+            if ( pick.first == mask_cursor_circle_ ) {
 
-            if ( pick.first == mask_handle_ ) {
-                // compute scaling of mask
-                glm::vec3 val = -scene_to + delta;
-                val /= scale;
-                // discretized scaling with ALT
+                // inform shader of a cursor action : coordinates and crop scaling
+                edit_source_->maskShader()->cursor = glm::vec4(scene_to.x, scene_to.y,
+                                                            edit_source_->mixingsurface_->scale_.x, edit_source_->mixingsurface_->scale_.y);
+                edit_source_->touch();
+                // action label
+                info << MASK_PAINT_ACTION_LABEL;
+                // cursor indication - no info, just cursor
+                ret.type = Cursor_Hand;
+            }
+            else if ( pick.first == mask_cursor_crop_ ) {
+
+                // special case for horizontal and vertical Shapes
+                bool hv = edit_source_->maskShader()->shape > MaskShader::RECTANGLE;
+                // match edit source AR
+                glm::vec3 val = edit_source_->mixingsurface_->scale_;
+                // use cursor translation to scale by quadrant
+                val = glm::sign( hv ? glm::vec3(1.f) : scene_from) * glm::vec3(scene_translation / val);
+                // relative change of stored mask size
+                val += stored_mask_size_;
+                // apply discrete scale with ALT modifier
                 if (UserInterface::manager().altModifier()) {
                     val.x = ROUND(val.x, 5.f);
                     val.y = ROUND(val.y, 5.f);
                     show_scale_ = true;
                 }
-                // crop mask horizontally
-                edit_source_->maskShader()->size.x = CLAMP(val.x, 0.2f, 2.f);
-                edit_source_->maskShader()->size.y = CLAMP(val.y, 0.2f, 2.f);
+                // Clamp | val | < 2.0
+                val = glm::sign(val) * glm::min( glm::abs(val), glm::vec3(2.f));
+                // clamp values for correct effect
+                if (edit_source_->maskShader()->shape == MaskShader::HORIZONTAL)
+                    edit_source_->maskShader()->size.y = val.y;
+                else if (edit_source_->maskShader()->shape == MaskShader::VERTICAL)
+                    edit_source_->maskShader()->size.x = val.x;
+                else
+                    edit_source_->maskShader()->size = glm::max(glm::abs(glm::vec2(val)), glm::vec2(0.2));
+//                edit_source_->maskShader()->size = glm::max( glm::min( glm::vec2(val), glm::vec2(2.f)), glm::vec2(hv?-2.f:0.2f));
                 edit_source_->touch();
                 // update
                 need_edit_update_ = true;
-                // cursor indication
+                // action label
                 info << "Texture Mask " << std::fixed << std::setprecision(3) << edit_source_->maskShader()->size.x;
                 info << " x "  << edit_source_->maskShader()->size.y;
-                ret.type = Cursor_ResizeNESW;
+                // cursor indication - no info, just cursor
+                ret.type = Cursor_Hand;
             }
 
             // store action in history
             current_action_ = edit_source_->name() + ": " + info.str();
             current_id_ = edit_source_->id();
 
-            // update cursor
-            ret.info = info.str();
         }
         return ret;
     }
@@ -2684,8 +2940,25 @@ View::Cursor AppearanceView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
 }
 
 
+void AppearanceView::initiate()
+{
+    // View default initiation of action
+    View::initiate();
+
+    if ( edit_source_ != nullptr )
+        stored_mask_size_ = glm::vec3(edit_source_->maskShader()->size, 0.0);
+    else
+        stored_mask_size_ = glm::vec3(0.f);
+}
+
 void AppearanceView::terminate()
 {
+    // special case for texture paint: store image on mouse release (end of action PAINT)
+    if ( edit_source_ != nullptr && current_action_.find(MASK_PAINT_ACTION_LABEL) != std::string::npos ) {
+        edit_source_->storeMask();
+    }
+
+    // View default termination of action
     View::terminate();
 
     // hide all overlays

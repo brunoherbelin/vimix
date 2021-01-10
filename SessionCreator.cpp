@@ -75,7 +75,7 @@ void SessionCreator::load(const std::string& filename)
     header->QueryIntAttribute("major", &version_major);
     header->QueryIntAttribute("minor", &version_minor);
     if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
-        Log::Warning("%s is in a different versions of session file. Loading might fail.", filename.c_str());
+        Log::Warning("%s is in an older versions of session file.\nLoading might fail or be incomplete.", filename.c_str());
 //        return;
     }
 
@@ -100,6 +100,7 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Appearance"), *session_->config(View::APPEARANCE));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
     }
 }
@@ -395,10 +396,12 @@ void SessionLoader::visit(MaskShader &n)
         return;
 
     xmlCurrent_->QueryUnsignedAttribute("mode", &n.mode);
+    xmlCurrent_->QueryUnsignedAttribute("shape", &n.shape);
 
     XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
     if (uniforms) {
         uniforms->QueryFloatAttribute("blur", &n.blur);
+        uniforms->QueryIntAttribute("option", &n.option);
         XMLElement* size = uniforms->FirstChildElement("size");
         if (size)
             tinyxml2::XMLElementToGLM( size->FirstChildElement("vec2"), n.size);
@@ -458,7 +461,33 @@ void SessionLoader::visit (Source& s)
     if (xmlCurrent_) s.blendingShader()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mask");
-    if (xmlCurrent_) s.maskShader()->accept(*this);
+    if (xmlCurrent_)  {
+        // read the mask shader attributes
+        s.maskShader()->accept(*this);
+        // if there is an Image mask stored
+        XMLElement* imageNode = xmlCurrent_->FirstChildElement("Image");
+        if (imageNode) {
+            // if there is an internal array of data
+            XMLElement* array = imageNode->FirstChildElement("array");
+            if (array) {
+                // create a temporary jpeg with size of the array
+                FrameBufferImage::jpegBuffer jpgimg;
+                array->QueryUnsignedAttribute("len", &jpgimg.len);
+                // ok, we got a size of data to load
+                if (jpgimg.len>0) {
+                    // allocate jpeg buffer
+                    jpgimg.buffer = (unsigned char*) malloc(jpgimg.len);
+                    // actual decoding of array
+                    if (XMLElementDecodeArray(array, jpgimg.buffer, jpgimg.len) )
+                        // create and set the image from jpeg
+                        s.setMask(new FrameBufferImage(jpgimg));
+                    // free temporary buffer
+                    if (jpgimg.buffer)
+                        free(jpgimg.buffer);
+                }
+            }
+        }
+    }
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
     if (xmlCurrent_) {

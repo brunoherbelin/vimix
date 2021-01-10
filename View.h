@@ -71,10 +71,10 @@ public:
         return Cursor();
     }
 
-//    // test mouse over provided a point in screen coordinates and the picking point
-//    virtual Cursor over (Source*, glm::vec2, std::pair<Node *, glm::vec2>) {
-//        return Cursor();
-//    }
+    // test mouse over provided a point in screen coordinates
+    virtual Cursor over (glm::vec2) {
+        return Cursor();
+    }
 
     // accessible scene
     Scene scene;
@@ -240,6 +240,9 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor drag (glm::vec2, glm::vec2) override;
+    Cursor over (glm::vec2) override;
+
+    void initiate() override;
     void terminate() override;
 
 private:
@@ -261,8 +264,8 @@ private:
     Group *mask_node_;
     Frame *mask_square_;
     Mesh *mask_circle_;
-    Mesh *mask_corner_;
-    class Handles *mask_handle_;
+    Mesh *mask_horizontal_;
+    Group *mask_vertical_;
 
     Symbol *overlay_position_;
     Symbol *overlay_position_cross_;
@@ -275,12 +278,14 @@ private:
     Symbol *overlay_rotation_clock_hand_;
     bool show_context_menu_;
 
+    // for mask shader draw: 0=cursor, 1=brush, 2=eraser, 3=crop_shape
+    int mask_cursor_paint_;
+    int mask_cursor_shape_;
+    Mesh *mask_cursor_circle_;
+    Mesh *mask_cursor_square_;
+    Mesh *mask_cursor_crop_;
+    glm::vec3 stored_mask_size_;
 
-    // /// tests
-    //    Surface *preview_mask_;
-    //    Surface *test_surface;
-    //    class MaskShader *test_shader;
-    //    FrameBuffer *test_buffer;
 };
 
 

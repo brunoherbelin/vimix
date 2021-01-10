@@ -25,8 +25,7 @@ void main()
     vec3 RGB = textureColor.rgb * vertexColor.rgb * color.rgb;
 
     // alpha is a mix of texture alpha, vertex alpha, and uniform alpha affected by stippling
-    vec4 maskColor = texture(iChannel1, vertexUV);
-    float maskIntensity = (maskColor.r + maskColor.g + maskColor.b) / 3.0;
+    float maskIntensity = dot(texture(iChannel1, vertexUV).rgb, vec3(1.0/3.0));
 
     float A = textureColor.a * vertexColor.a * color.a * maskIntensity;
     A -= stipple * ( int(gl_FragCoord.x + gl_FragCoord.y) % 2 > 0 ? 0.05 : 0.95 );

@@ -12,9 +12,8 @@ uniform vec4 color;            // drawing color
 uniform vec4 uv;
 
 // Mask Shader
-uniform vec2 size;
-uniform float blur;
-
+uniform vec2  size;            // size of the mask area
+uniform float blur;            // percent of blur
 
 float sdRoundSide( in vec2 p, in vec2 b, in float r )
 {
@@ -31,8 +30,8 @@ void main()
     float d = sdRoundSide( uv, vec2(s.x * iResolution.x/iResolution.y, s.y), blur );
 
     vec3 col = vec3(1.0 - sign(d));
-    float delta = 0.5 * length(min(size,1.0));
-    col *= 1.0 - exp( -20.0/ (blur * 100.0 * delta + 1.0)  * abs(d) );
+    float delta = 0.5 * length(min(size, 1.0));
+    col *= 1.0 - exp( -200.0/ (blur * 1000.0 * delta + 1.0)  * abs(d) );
 
     FragColor = vec4( col, 1.0 );
 }

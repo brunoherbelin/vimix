@@ -1,9 +1,35 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
-#include "Scene.h"
 #include "RenderingManager.h"
 
+#define FBI_JPEG_QUALITY 90
+
+/**
+ * @brief The FrameBufferImage class stores an RGB image in RAM
+ * Direct access to rgb array, and exchange format to JPEG in RAM
+ */
+class FrameBufferImage
+{
+public:
+    uint8_t *rgb = nullptr;
+    int width;
+    int height;
+
+    struct jpegBuffer {
+        unsigned char *buffer = nullptr;
+        uint len = 0;
+    };
+    jpegBuffer getJpeg();
+
+    FrameBufferImage(int w, int h);
+    FrameBufferImage(jpegBuffer jpgimg);
+    ~FrameBufferImage();
+};
+
+/**
+ * @brief The FrameBuffer class holds an OpenGL Frame Buffer Object.
+ */
 class FrameBuffer {
 
 public:
@@ -22,14 +48,14 @@ public:
     ~FrameBuffer();
 
     // Bind & push attribs to prepare draw
-    void begin();
+    void begin(bool clear = true);
     // pop attrib and unbind to end draw
     void end();
     // blit copy to another, returns true on success
-    bool blit(FrameBuffer *other);
+    bool blit(FrameBuffer *destination);
     // bind the FrameBuffer in READ and perform glReadPixels
-    // return the size of the buffer
-    void readPixels();
+    // (to be used after preparing a target PBO)
+    void readPixels(uint8_t* target_data = 0);
 
     // clear color
     inline void setClearColor(glm::vec4 color) { attrib_.clear_color = color; }
@@ -54,6 +80,10 @@ public:
     // index for texturing
     uint texture() const;
 
+    // get and fill image
+    FrameBufferImage *image();
+    bool fill(FrameBufferImage *image);
+
 private:
     void init();
     void checkFramebufferStatus();
@@ -64,6 +94,7 @@ private:
     uint textureid_, intermediate_textureid_;
     uint framebufferid_, intermediate_framebufferid_;
     bool use_alpha_, use_multi_sampling_;
+
 };
 
 

@@ -14,7 +14,6 @@ class ImageShader : public Shader
 {
 
 public:
-
     ImageShader();
 
     void use() override;
@@ -33,7 +32,6 @@ class MaskShader : public Shader
 {
 
 public:
-
     MaskShader();
 
     void use() override;
@@ -41,13 +39,32 @@ public:
     void accept(Visitor& v) override;
     void operator = (const MaskShader &S);
 
+    enum Modes {
+        NONE = 0,
+        PAINT = 1,
+        SHAPE = 2
+    };
     uint mode;
 
-    // uniforms
-    float blur;
-    glm::vec2 size;
+    enum Shapes {
+        ELIPSE = 0,
+        OBLONG = 1,
+        RECTANGLE = 2,
+        HORIZONTAL = 3,
+        VERTICAL = 4
+    };
+    uint shape;
 
-    static const char* mask_names[6];
+    // uniforms
+    glm::vec2 size;
+    float blur;
+
+    int option;
+    glm::vec4 cursor;
+    glm::vec3 brush;
+
+    static const char* mask_names[3];
+    static const char* mask_shapes[5];
     static std::vector< ShadingProgram* > mask_programs;
 };
 

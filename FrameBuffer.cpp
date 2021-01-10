@@ -9,6 +9,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <glad/glad.h>
+#include <stb_image.h>
+#include <stb_image_write.h>
 
 const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
 glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
@@ -129,6 +131,12 @@ FrameBuffer::~FrameBuffer()
 {
     if (framebufferid_)
         glDeleteFramebuffers(1, &framebufferid_);
+    if (intermediate_framebufferid_)
+        glDeleteFramebuffers(1, &intermediate_framebufferid_);
+    if (textureid_)
+        glDeleteTextures(1, &textureid_);
+    if (intermediate_textureid_)
+        glDeleteTextures(1, &intermediate_textureid_);
 }
 
 
@@ -163,7 +171,7 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
-void FrameBuffer::begin()
+void FrameBuffer::begin(bool clear)
 {
     if (!framebufferid_)
         init();
@@ -172,7 +180,8 @@ void FrameBuffer::begin()
 
     Rendering::manager().pushAttrib(attrib_);
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    if (clear)
+        glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void FrameBuffer::end()
@@ -197,7 +206,7 @@ void FrameBuffer::release()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FrameBuffer::readPixels()
+void FrameBuffer::readPixels(uint8_t *target_data)
 {
     if (!framebufferid_)
         return;
@@ -212,21 +221,24 @@ void FrameBuffer::readPixels()
     else
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);
+    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, (use_alpha_? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, target_data);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-bool FrameBuffer::blit(FrameBuffer *other)
+bool FrameBuffer::blit(FrameBuffer *destination)
 {
-    if (!framebufferid_ || !other || !other->framebufferid_)
+    if (!framebufferid_ || !destination)
         return false;
 
+    if (!destination->framebufferid_)
+        destination->init();
+
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other->framebufferid_);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination->framebufferid_);
     // blit to the frame buffer object
     glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
-                      0, 0, other->width(), other->height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                      0, 0, destination->width(), destination->height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     return true;
 }
@@ -284,4 +296,89 @@ void FrameBuffer::setProjectionArea(glm::vec2 c)
     projection_area_.y = CLAMP(c.y, 0.1f, 1.f);
     projection_ = glm::ortho(-projection_area_.x, projection_area_.x, projection_area_.y, -projection_area_.y, -1.f, 1.f);
 }
+
+
+FrameBufferImage::FrameBufferImage(int w, int h) :
+    rgb(nullptr), width(w), height(h)
+{
+    if (width>0 && height>0)
+        rgb = new uint8_t[width*height*3];
+}
+
+FrameBufferImage::FrameBufferImage(jpegBuffer jpgimg) :
+    rgb(nullptr), width(0), height(0)
+{
+    int c = 0;
+    if (jpgimg.buffer != nullptr && jpgimg.len >0)
+        rgb = stbi_load_from_memory(jpgimg.buffer, jpgimg.len, &width, &height, &c, 3);
+}
+
+FrameBufferImage::~FrameBufferImage() {
+    if (rgb!=nullptr)
+        delete rgb;
+}
+
+FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg()
+{
+    jpegBuffer jpgimg;
+
+    // if we hold a valid image
+    if (rgb!=nullptr && width>0 && height>0) {
+
+        // allocate JPEG buffer
+        // (NB: JPEG will need less than this but we can't know before...)
+        jpgimg.buffer = (unsigned char *) malloc( width * height * 3 * sizeof(unsigned char));
+
+        stbi_write_jpg_to_func( [](void *context, void *data, int size)
+        {
+            memcpy(((FrameBufferImage::jpegBuffer*)context)->buffer + ((FrameBufferImage::jpegBuffer*)context)->len, data, size);
+            ((FrameBufferImage::jpegBuffer*)context)->len += size;
+        }
+        ,&jpgimg, width, height, 3, rgb, FBI_JPEG_QUALITY);
+    }
+
+    return jpgimg;
+}
+
+FrameBufferImage *FrameBuffer::image(){
+
+    FrameBufferImage *img = nullptr;
+
+    // not ready
+    if (!framebufferid_)
+        return img;
+
+    // allocate image
+    img = new FrameBufferImage(attrib_.viewport.x, attrib_.viewport.y);
+
+    // get pixels into image
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); // set buffer target readpixel
+    readPixels(img->rgb);
+
+    return img;
+}
+
+bool FrameBuffer::fill(FrameBufferImage *image)
+{
+    if (!framebufferid_)
+        init();
+
+    // not compatible for RGB
+    if (use_alpha_ || use_multi_sampling_)
+        return false;
+
+    // invalid image
+    if ( image == nullptr ||
+         image->rgb==nullptr ||
+         image->width !=attrib_.viewport.x ||
+         image->height!=attrib_.viewport.y )
+        return false;
+
+    // fill texture with image
+    glBindTexture(GL_TEXTURE_2D, textureid_);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
+                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+    return true;
+}
+
 

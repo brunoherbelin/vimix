@@ -12,9 +12,8 @@ uniform vec4 color;            // drawing color
 uniform vec4 uv;
 
 // Mask Shader
-uniform vec2 size;
-uniform float blur;
-uniform float invert;
+uniform vec2  size;            // size of the mask area
+uniform float blur;            // percent of blur
 
 float udSegment( in vec2 p, in vec2 a, in vec2 b )
 {
@@ -49,7 +48,7 @@ void main()
     float d = udSegment( uv, v1, v2 )- th;
 
     vec3 col = vec3(1.0- sign(d));
-    col *= 1.0 - exp( -60.0/ (blur * 100.0 + 1.0) * abs(d));
+    col *= 1.0 - exp( -600.0/ (blur * 1000.0 + 1.0) * abs(d));
 
     FragColor = vec4( col, 1.0 );
 }

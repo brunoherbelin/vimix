@@ -12,8 +12,8 @@ uniform vec4 color;            // drawing color
 uniform vec4 uv;
 
 // Mask Shader
-uniform vec2 size;
-uniform float blur;
+uniform vec2  size;            // size of the mask area
+uniform float blur;            // percent of blur
 
 // See: http://www.iquilezles.org/www/articles/ellipsoids/ellipsoids.htm
 float sdEllipsoid( in vec2 p, in vec2 r )
@@ -57,7 +57,7 @@ void main()
     float d = sdEllipse( uv, vec2(size.x * iResolution.x/iResolution.y, size.y)  );
 
     vec3 col = vec3(1.0- sign(d));
-    col *= 1.0 - exp( -60.0/ (blur * 100.f + 1.0) * abs(d));
+    col *= 1.0 - exp( -600.0/ (blur * 1000.f + 1.0) * abs(d));
 
     FragColor = vec4( col, 1.0 );
 }

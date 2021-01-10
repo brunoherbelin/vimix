@@ -179,7 +179,6 @@ bool UserInterface::Init()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.FontGlobalScale = Settings::application.scale;
 
     // Setup Platform/Renderer bindings
@@ -447,10 +446,18 @@ void UserInterface::handleMouse()
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) /*|| ImGui::IsMouseClicked(ImGuiMouseButton_Middle)*/)
             ImGui::FocusWindow(NULL);
 
+    //
+    // Mouse over
+    //
+    {
+        View::Cursor c = Mixer::manager().view()->over(mousepos);
+        if (c.type > 0)
+            setMouseCursor(io.MousePos, c);
+    }
+
     // if not on any window
     if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
     {
-
         //
         // Mouse wheel over background
         //
