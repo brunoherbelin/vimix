@@ -60,11 +60,17 @@ void DrawVisitor::visit(Group &n)
 
 void DrawVisitor::visit(Scene &n)
 {
+    done_ = false;
+    modelview_ = glm::identity<glm::mat4>();
     n.root()->accept(*this);
 }
 
 void DrawVisitor::visit(Switch &n)
 {
+    // no need to traverse deeper if this node was drawn already
+    if (done_) return;
+
+    // traverse acive child
     glm::mat4 mv = modelview_;
     n.activeChild()->accept(*this);
     modelview_ = mv;
