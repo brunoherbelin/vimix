@@ -21,8 +21,8 @@ void XMLElementToGLM(XMLElement *elem, glm::vec3 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec4 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix);
 
-XMLElement *XMLElementEncodeArray(XMLDocument *doc, void *array, unsigned int arraysize);
-bool XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int arraysize);
+XMLElement *XMLElementEncodeArray(XMLDocument *doc, const void *array, uint arraysize);
+bool XMLElementDecodeArray(XMLElement *elem, void *array, uint arraysize);
 
 bool XMLSaveDoc(tinyxml2::XMLDocument * const doc, std::string filename);
 bool XMLResultError(int result);
