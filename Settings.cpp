@@ -128,8 +128,8 @@ void Settings::Save()
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // save current view only if [mixing, geometry or layers]
-        int v = application.current_view > 3 ? 1 : application.current_view;
+        // save current view only if [mixing, geometry, layers, appearance]
+        int v = application.current_view > 4 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
 
         map<int, Settings::ViewConfig>::iterator iter;
