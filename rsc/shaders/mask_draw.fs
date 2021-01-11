@@ -55,11 +55,11 @@ void main()
     vec3 color = texture(iChannel0, vertexUV).rgb; // raw color
 
     // clear
-    color += mix(vec3(0), vec3(1) - color, effect == 1);
+    color += mix(vec3(0), vec3(1) - color, int(effect == 1));
     // invert
-    color = mix(color, vec3(1) - color, effect == 2);
+    color = mix(color, vec3(1) - color, int(effect == 2));
     // step edge
-    color = mix(color, vec3(1.0 - step(dot(color, vec3(1.0/3.0)), 0.6)), effect == 3);
+    color = mix(color, vec3(1.0 - step(dot(color, vec3(1.0/3.0)), 0.6)), int(effect == 3));
 
     if ( option > 0 ) {
 

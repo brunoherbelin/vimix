@@ -2,6 +2,10 @@
 #define TINYXML2TOOLKIT_H
 
 #include <string>
+#ifdef __APPLE__
+#include <sys/types.h>
+#endif
+
 #include <glm/glm.hpp>
 
 namespace tinyxml2 {
