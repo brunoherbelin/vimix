@@ -256,7 +256,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 //    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 //    ImGui::SliderFloat4("Levels", glm::value_ptr(n.levels), 0.0, 1.0);
 
-    if (ImGuiToolkit::ButtonIcon(4, 1)) {
+    if (ImGuiToolkit::ButtonIcon(5, 16)) {
         n.brightness = 0.f;
         n.contrast = 0.f;
         Action::manager().store("B & C  0.0 0.0", n.id());
@@ -275,7 +275,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str(), n.id());
     }
 
-    if (ImGuiToolkit::ButtonIcon(2, 1)) {
+    if (ImGuiToolkit::ButtonIcon(9, 16)) {
         n.saturation = 0.f;
         Action::manager().store("Saturation 0.0", n.id());
     }
@@ -361,7 +361,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str(), n.id());
     }
 
-    if (ImGuiToolkit::ButtonIcon(7, 1)) {
+    if (ImGuiToolkit::ButtonIcon(6, 16)) {
         n.invert = 0;
         Action::manager().store("Invert None", n.id());
     }
