@@ -751,6 +751,8 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::load(const std::string& filename)
 {
+    if (filename.empty())
+        return;
 
 #ifdef THREADED_LOADING
     // load only one at a time

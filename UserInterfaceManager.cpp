@@ -829,7 +829,7 @@ void UserInterface::showMenuFile()
 
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
         selectOpenFilename();
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Re-Open", CTRL_MOD "+Shift+O"))
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Reload", CTRL_MOD "+Shift+O"))
         Mixer::manager().load( Mixer::manager().session()->filename() );
 
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
@@ -1040,7 +1040,7 @@ void UserInterface::RenderHistory()
         {
             if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
                 Action::manager().undo();
-            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "+Shift Z") )
+            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
                 Action::manager().redo();
 
             ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);

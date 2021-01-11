@@ -341,36 +341,59 @@ void Handles::accept(Visitor& v)
 
 Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
+    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
+    static Mesh *shadows[(int)EMPTY+1] = {nullptr};
     static Mesh *icons[(int)EMPTY+1] = {nullptr};
     if (icons[0] == nullptr)  {
         icons[CIRCLE_POINT]   = new Mesh("mesh/point.ply");
+        shadows[CIRCLE_POINT] = nullptr;
         icons[SQUARE_POINT]   = new Mesh("mesh/square_point.ply");
-        icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
-        icons[VIDEO]   = new Mesh("mesh/icon_video.ply");
-        icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
-        icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
-        icons[RENDER]  = new Mesh("mesh/icon_render.ply");
-        icons[PATTERN] = new Mesh("mesh/icon_gear.ply");
-        icons[CAMERA]  = new Mesh("mesh/icon_camera.ply");
-        icons[SHARE]   = new Mesh("mesh/icon_share.ply");
-        icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
-        icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
-        icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
-        icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
-        icons[ARROWS]  = new Mesh("mesh/icon_rightarrow.ply");
-        icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
-        icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
-        icons[CLOCK_H] = new Mesh("mesh/icon_clock_hand.ply");
-        icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
-        icons[CROSS]   = new Mesh("mesh/icon_cross.ply");
-        icons[GRID]    = new Mesh("mesh/icon_grid.ply");
-        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
+        shadows[SQUARE_POINT] = nullptr;
+        icons[IMAGE]    = new Mesh("mesh/icon_image.ply");
+        shadows[IMAGE]  = shadow;
+        icons[VIDEO]    = new Mesh("mesh/icon_video.ply");
+        shadows[VIDEO]  = shadow;
+        icons[SESSION]  = new Mesh("mesh/icon_vimix.ply");
+        shadows[SESSION]= shadow;
+        icons[CLONE]    = new Mesh("mesh/icon_clone.ply");
+        shadows[CLONE]  = shadow;
+        icons[RENDER]   = new Mesh("mesh/icon_render.ply");
+        shadows[RENDER] = shadow;
+        icons[PATTERN]  = new Mesh("mesh/icon_gear.ply");
+        shadows[PATTERN]= shadow;
+        icons[CAMERA]   = new Mesh("mesh/icon_camera.ply");
+        shadows[CAMERA] = shadow;
+        icons[SHARE]    = new Mesh("mesh/icon_share.ply");
+        shadows[SHARE]  = shadow;
+        icons[DOTS]     = new Mesh("mesh/icon_dots.ply");
+        shadows[DOTS]   = nullptr;
+        icons[BUSY]     = new Mesh("mesh/icon_circles.ply");
+        shadows[BUSY]   = nullptr;
+        icons[LOCK]     = new Mesh("mesh/icon_lock.ply");
+        shadows[LOCK]   = shadow;
+        icons[UNLOCK]   = new Mesh("mesh/icon_unlock.ply");
+        shadows[UNLOCK] = shadow;
+        icons[ARROWS]   = new Mesh("mesh/icon_rightarrow.ply");
+        shadows[ARROWS] = shadow;
+        icons[CIRCLE]   = new Mesh("mesh/icon_circle.ply");
+        shadows[CIRCLE] = nullptr;
+        icons[CLOCK]    = new Mesh("mesh/icon_clock.ply");
+        shadows[CLOCK]  = nullptr;
+        icons[CLOCK_H]  = new Mesh("mesh/icon_clock_hand.ply");
+        shadows[CLOCK_H]= nullptr;
+        icons[SQUARE]   = new Mesh("mesh/icon_square.ply");
+        shadows[SQUARE] = nullptr;
+        icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
+        shadows[CROSS]  = nullptr;
+        icons[GRID]     = new Mesh("mesh/icon_grid.ply");
+        shadows[GRID]   = nullptr;
+        icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
+        shadows[EMPTY]  = shadow;
     }
 
-    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
     symbol_ = icons[type_];
-    shadow_ = shadow;
+    shadow_ = shadows[type_];
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
@@ -413,7 +436,8 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // generate matrix
         ctm = GlmToolkit::transform(tran, rot, sca);
 
-        shadow_->draw( ctm, projection );
+        if (shadow_)
+            shadow_->draw( ctm, projection );
         symbol_->draw( ctm, projection);
     }
 }
