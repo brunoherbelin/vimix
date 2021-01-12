@@ -29,9 +29,9 @@ public:
     virtual void update (float dt);
     virtual void draw ();
 
-    virtual void zoom (float) {}
+    virtual void zoom (float);
     virtual void resize (int) {}
-    virtual int  size () { return 0; }
+    virtual int  size () { return 50; }
     virtual void recenter();
     virtual void centerSource(Source *) {}
 
@@ -100,7 +100,6 @@ public:
 
     void draw () override;
     void update (float dt) override;
-    void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
     void centerSource(Source *) override;
@@ -108,7 +107,6 @@ public:
 
     std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
-    Cursor drag (glm::vec2, glm::vec2) override;
 
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
@@ -153,14 +151,11 @@ public:
 
     void draw () override;
     void update (float dt) override;
-    void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
-//    Cursor over (Source *s, glm::vec2 pos, std::pair<Node *, glm::vec2> pick) override;
-    Cursor drag (glm::vec2, glm::vec2) override;
     void terminate() override;
 
 private:
@@ -183,12 +178,10 @@ public:
     LayerView();
 
     void update (float dt) override;
-    void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
 
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
-    Cursor drag (glm::vec2, glm::vec2) override;
 
     float setDepth (Source *, float d = -1.f);
 
@@ -233,13 +226,11 @@ public:
     void draw () override;
 
     void update (float dt) override;
-    void zoom (float factor) override;
     void resize (int) override;
     int  size () override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
-    Cursor drag (glm::vec2, glm::vec2) override;
     Cursor over (glm::vec2) override;
 
     void initiate() override;

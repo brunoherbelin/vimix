@@ -88,6 +88,9 @@ View::Cursor View::drag (glm::vec2 from, glm::vec2 to)
     // compute delta translation
     scene.root()->translation_ = start_translation + gl_Position_to - gl_Position_from;
 
+    // apply and clamp
+    zoom(0.f);
+
     return Cursor(Cursor_ResizeAll);
 }
 
@@ -130,6 +133,11 @@ void View::terminate()
     Action::manager().store(current_action_, current_id_);
     current_action_ = "";
     current_id_ = 0;
+}
+
+void View::zoom( float factor )
+{
+    resize( size() + int(factor * 2.f));
 }
 
 void View::recenter()
@@ -315,14 +323,6 @@ void MixingView::draw()
     Shader::force_blending_opacity = false;
 }
 
-void MixingView::zoom( float factor )
-{
-    float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, MIXING_MIN_SCALE, MIXING_MAX_SCALE);
-    scene.root()->scale_.x = z;
-    scene.root()->scale_.y = z;
-}
-
 void MixingView::resize ( int scale )
 {
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
@@ -331,6 +331,10 @@ void MixingView::resize ( int scale )
     z += MIXING_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+    // Clamp translation to acceptable area
+    glm::vec3 border(scene.root()->scale_.x * 1.f, scene.root()->scale_.y * 1.f, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 
 int  MixingView::size ()
@@ -517,16 +521,6 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeAll, info.str() );
-}
-
-View::Cursor MixingView::drag (glm::vec2 from, glm::vec2 to)
-{
-    Cursor ret = View::drag(from, to);
-
-    // Clamp translation to acceptable area
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -2.f, 0.f), glm::vec3(3.f, 2.f, 0.f));
-
-    return ret;
 }
 
 void MixingView::setAlpha(Source *s)
@@ -799,14 +793,6 @@ void GeometryView::update(float dt)
     }
 }
 
-void GeometryView::zoom( float factor )
-{
-    float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, GEOMETRY_MIN_SCALE, GEOMETRY_MAX_SCALE);
-    scene.root()->scale_.x = z;
-    scene.root()->scale_.y = z;
-}
-
 void GeometryView::resize ( int scale )
 {
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
@@ -815,6 +801,10 @@ void GeometryView::resize ( int scale )
     z += GEOMETRY_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+    // Clamp translation to acceptable area
+    glm::vec3 border(scene.root()->scale_.x * 1.5, scene.root()->scale_.y * 1.5, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 
 int  GeometryView::size ()
@@ -1366,22 +1356,6 @@ void GeometryView::terminate()
 
 }
 
-//View::Cursor GeometryView::over (Source*, glm::vec2, std::pair<Node *, glm::vec2>)
-//{
-//    View::Cursor ret = Cursor_Arrow;
-
-//    return ret;
-//}
-
-View::Cursor GeometryView::drag (glm::vec2 from, glm::vec2 to)
-{
-    Cursor ret = View::drag(from, to);
-
-    // Clamp translation to acceptable area
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -1.5f, 0.f), glm::vec3(3.f, 1.5f, 0.f));
-
-    return ret;
-}
 
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
@@ -1431,14 +1405,6 @@ void LayerView::update(float dt)
     }
 }
 
-void LayerView::zoom (float factor)
-{
-    float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
-    scene.root()->scale_.x = z;
-    scene.root()->scale_.y = z;
-}
-
 void LayerView::resize ( int scale )
 {
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
@@ -1447,6 +1413,10 @@ void LayerView::resize ( int scale )
     z += LAYER_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+    // Clamp translation to acceptable area
+    glm::vec3 border(scene.root()->scale_.x * 1.f, scene.root()->scale_.y * 1.f, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, 3.f * border);
 }
 
 int  LayerView::size ()
@@ -1517,17 +1487,6 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeNESW, info.str() );
-}
-
-
-View::Cursor LayerView::drag (glm::vec2 from, glm::vec2 to)
-{
-    Cursor ret = View::drag(from, to);
-
-    // Clamp translation to acceptable area
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(0.f), glm::vec3(4.f, 2.f, 0.f));
-
-    return ret;
 }
 
 
@@ -2057,14 +2016,6 @@ void AppearanceView::update(float dt)
 
 }
 
-void AppearanceView::zoom (float factor)
-{
-    float z = scene.root()->scale_.x;
-    z = CLAMP( z + 0.1f * factor, APPEARANCE_MIN_SCALE, APPEARANCE_MAX_SCALE);
-    scene.root()->scale_.x = z;
-    scene.root()->scale_.y = z;
-}
-
 void AppearanceView::resize ( int scale )
 {
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
@@ -2073,6 +2024,10 @@ void AppearanceView::resize ( int scale )
     z += APPEARANCE_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+    // Clamp translation to acceptable area
+    glm::vec3 border(scene.root()->scale_.x * 1.5, scene.root()->scale_.y * 1.5, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 
 int AppearanceView::size ()
@@ -3073,14 +3028,4 @@ void AppearanceView::terminate()
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
-}
-
-View::Cursor AppearanceView::drag (glm::vec2 from, glm::vec2 to)
-{
-    Cursor ret = View::drag(from, to);
-
-    // Clamp translation to acceptable area
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, glm::vec3(-3.f, -1.5f, 0.f), glm::vec3(3.f, 1.5f, 0.f));
-
-    return ret;
 }
