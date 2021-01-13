@@ -523,6 +523,25 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     return Cursor(Cursor_ResizeAll, info.str() );
 }
 
+void MixingView::arrow (glm::vec2 movement)
+{
+    Source *s = Mixer::manager().currentSource();
+    if (s) {
+
+        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+        if (UserInterface::manager().shiftModifier())
+            gl_delta *= 10.f;
+
+        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+
+        // request update
+        s->touch();
+    }
+}
+
 void MixingView::setAlpha(Source *s)
 {
     if (!s)
@@ -1357,6 +1376,25 @@ void GeometryView::terminate()
 }
 
 
+void GeometryView::arrow (glm::vec2 movement)
+{
+    Source *s = Mixer::manager().currentSource();
+    if (s) {
+
+        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+        if (UserInterface::manager().shiftModifier())
+            gl_delta *= 10.f;
+
+        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+
+        // request update
+        s->touch();
+    }
+}
+
 LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
 {
     // read default settings
@@ -2086,7 +2124,8 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
             // show paint brush cursor
             if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
                 if (mask_cursor_paint_ > 0) {
-                    if ( ABS(P.x) < S.x && ABS(P.y) < S.y  ) {
+                    S += glm::vec2(edit_source_->maskShader()->brush.x);
+                    if ( ABS(P.x) < S.x  && ABS(P.y) < S.y ) {
                         mask_cursor_circle_->visible_ = edit_source_->maskShader()->brush.z < 1.0;
                         mask_cursor_square_->visible_ = edit_source_->maskShader()->brush.z > 0.0;
                         edit_source_->maskShader()->option = mask_cursor_paint_;
@@ -2396,7 +2435,7 @@ void AppearanceView::draw()
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGuiToolkit::Icon(16,1);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
-                            edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), 0.05, 2.0);
+                            edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
@@ -2419,7 +2458,7 @@ void AppearanceView::draw()
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGui::Text(ICON_FA_FEATHER_ALT);
-                        ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &edit_source_->maskShader()->brush.y, 1.0, 0.01, "", 0.3f);
+                        ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &edit_source_->maskShader()->brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
                             ImGui::Text("Pressure %.1f%%", edit_source_->maskShader()->brush.y * 100.0);
@@ -3028,4 +3067,39 @@ void AppearanceView::terminate()
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
+}
+
+void AppearanceView::arrow (glm::vec2 movement)
+{
+    Source *s = Mixer::manager().currentSource();
+    if (s) {
+
+        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+        if (UserInterface::manager().shiftModifier())
+            gl_delta *= 10.f;
+
+        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+
+        // request update
+        s->touch();
+    }
+    else if (edit_source_) {
+        if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
+            if (mask_cursor_paint_ > 0) {
+                glm::vec2 b = 0.05f * movement;
+                edit_source_->maskShader()->brush.x = CLAMP(edit_source_->maskShader()->brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+                edit_source_->maskShader()->brush.y = CLAMP(edit_source_->maskShader()->brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
+            }
+        }
+        else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
+            if (mask_cursor_shape_ > 0) {
+                float b = -0.05 * movement.y;
+                edit_source_->maskShader()->blur = CLAMP(edit_source_->maskShader()->blur+b, SHAPE_MIN_BLUR, SHAPE_MAX_BLUR);
+                edit_source_->touch();
+            }
+        }
+    }
 }

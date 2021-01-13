@@ -76,6 +76,9 @@ public:
         return Cursor();
     }
 
+    // left-right [-1 1] and up-down [1 -1] action from arrow keys
+    virtual void arrow (glm::vec2) {}
+
     // accessible scene
     Scene scene;
 
@@ -107,6 +110,7 @@ public:
 
     std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
+    void arrow (glm::vec2) override;
 
     void setAlpha (Source *s);
     inline float limboScale() { return limbo_scale_; }
@@ -157,6 +161,7 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     void terminate() override;
+    void arrow (glm::vec2) override;
 
 private:
     Node *overlay_position_;
@@ -232,6 +237,7 @@ public:
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     Cursor over (glm::vec2) override;
+    void arrow (glm::vec2) override;
 
     void initiate() override;
     void terminate() override;
