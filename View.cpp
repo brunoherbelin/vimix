@@ -532,10 +532,14 @@ void MixingView::arrow (glm::vec2 movement)
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        if (UserInterface::manager().shiftModifier())
-            gl_delta *= 10.f;
-
-        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+        Group *sourceNode = s->group(mode_);
+        if (UserInterface::manager().altModifier()) {
+            sourceNode->translation_ += glm::vec3(movement.x, -movement.y, 0.f) * 0.1f;
+            sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
+            sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
+        }
+        else
+            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
 
         // request update
         s->touch();
@@ -1385,10 +1389,14 @@ void GeometryView::arrow (glm::vec2 movement)
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        if (UserInterface::manager().shiftModifier())
-            gl_delta *= 10.f;
-
-        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+        Group *sourceNode = s->group(mode_);
+        if (UserInterface::manager().altModifier()) {
+            sourceNode->translation_ += glm::vec3(movement.x, -movement.y, 0.f) * 0.1f;
+            sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
+            sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
+        }
+        else
+            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
 
         // request update
         s->touch();
@@ -1525,6 +1533,26 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeNESW, info.str() );
+}
+
+void LayerView::arrow (glm::vec2 movement)
+{
+    Source *s = Mixer::manager().currentSource();
+    if (s) {
+
+        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+        glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
+        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+        if (UserInterface::manager().altModifier())
+            gl_delta *= 10.f;
+
+        Group *sourceNode = s->group(mode_);
+        glm::vec3 dest_translation = sourceNode->translation_ + gl_delta * ARROWS_MOVEMENT_FACTOR;
+        setDepth( s,  MAX( -dest_translation.x, 0.f) );
+
+        // request update
+        s->touch();
+    }
 }
 
 
@@ -1821,15 +1849,32 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     float d = s->stored_status_->translation_.x + gl_Position_to.x - gl_Position_from.x;
     std::ostringstream info;
     if (d > 0.2) {
-        s->group(View::TRANSITION)->translation_.x = 0.4;
+        s->group(mode_)->translation_.x = 0.4;
         info << "Open session";
     }
     else {
-        s->group(View::TRANSITION)->translation_.x = CLAMP(d, -1.f, 0.f);
+        s->group(mode_)->translation_.x = CLAMP(d, -1.f, 0.f);
         info << "Transition " <<  int( 100.f * (1.f + s->group(View::TRANSITION)->translation_.x)) << "%";
     }
 
     return Cursor(Cursor_ResizeEW, info.str() );
+}
+
+void TransitionView::arrow (glm::vec2 movement)
+{
+    Source *s = Mixer::manager().currentSource();
+    if (s) {
+
+        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+        float d = s->group(mode_)->translation_.x + gl_delta.x * ARROWS_MOVEMENT_FACTOR;
+        s->group(mode_)->translation_.x = CLAMP(d, -1.f, 0.f);
+
+        // request update
+        s->touch();
+    }
 }
 
 View::Cursor TransitionView::drag (glm::vec2 from, glm::vec2 to)
@@ -2129,10 +2174,13 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
                         mask_cursor_circle_->visible_ = edit_source_->maskShader()->brush.z < 1.0;
                         mask_cursor_square_->visible_ = edit_source_->maskShader()->brush.z > 0.0;
                         edit_source_->maskShader()->option = mask_cursor_paint_;
-                        if (mask_cursor_paint_ > 1)
-                            mask_cursor_circle_->shader()->color = glm::vec4( 0.3f, 0.6f, 0.6f, 0.9f );
-                        else
+                        if (mask_cursor_paint_ > 1) {
+                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
+                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
+                        } else {
                             mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
+                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
+                        }
                     }
                     else {
                         edit_source_->maskShader()->option = 0;
@@ -2449,7 +2497,7 @@ void AppearanceView::draw()
                     // make sure the visual brush is up to date
                     glm::vec2 s = glm::vec2(edit_source_->maskShader()->brush.x);
                     mask_cursor_circle_->scale_ = glm::vec3(s * 1.16f, 1.f);
-                    mask_cursor_square_->scale_ = glm::vec3(s * 1.72f, 1.f);
+                    mask_cursor_square_->scale_ = glm::vec3(s * 1.75f, 1.f);
 
                     ImGui::SameLine();
                     if (ImGui::Button(ICON_FA_FEATHER_ALT))
@@ -3078,10 +3126,14 @@ void AppearanceView::arrow (glm::vec2 movement)
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        if (UserInterface::manager().shiftModifier())
-            gl_delta *= 10.f;
-
-        s->group(mode_)->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+        Group *sourceNode = s->group(mode_);
+        if (UserInterface::manager().altModifier()) {
+            sourceNode->translation_ += glm::vec3(movement.x, -movement.y, 0.f) * 0.1f;
+            sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
+            sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
+        }
+        else
+            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
 
         // request update
         s->touch();
