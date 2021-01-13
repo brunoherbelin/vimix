@@ -2925,9 +2925,9 @@ void ShowConfig(bool* p_open)
         bool multi = (Settings::application.render.multisampling > 0);
         ImGui::Checkbox("Antialiasing framebuffer (fast multisampling)", &multi);
         Settings::application.render.multisampling = multi ? 3 : 0;
-        bool vsync = (Settings::application.render.vsync < 2);
+        bool vsync = (Settings::application.render.vsync > 0);
         ImGui::Checkbox("Sync refresh with monitor (v-sync 60Hz)", &vsync);
-        Settings::application.render.vsync = vsync ? 1 : 2;
+        Settings::application.render.vsync = vsync ? 1 : 0;
         ImGui::Checkbox("Hardware video decoding (try if applicable)", &Settings::application.render.gpu_decoding);
         ImGui::Spacing();
         ImGui::Text( ICON_FA_EXCLAMATION "  Restart the application for change to take effect.");

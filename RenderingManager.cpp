@@ -274,10 +274,10 @@ void Rendering::draw()
     g_main_context_iteration(NULL, FALSE);
 
     // software framerate limiter 60FPS if not v-sync
-    if ( Settings::application.render.vsync > 1 ) {
-        int dt = 17000 - int( 1000.f * Mixer::manager().dt() );
+    if ( Settings::application.render.vsync < 1 ) {
+        int dt = 18000 - int( 1000.f * Mixer::manager().dt() );
         if (dt > 100)
-            usleep( dt );
+            g_usleep( dt );
     }
 }
 
