@@ -915,6 +915,9 @@ void Mixer::clear()
     // swap current with empty
     sessionSwapRequested_ = true;
 
+    // need to deeply update view to apply eventual changes
+    View::need_deep_update_++;
+
     Log::Info("New session ready.");
 }
 
