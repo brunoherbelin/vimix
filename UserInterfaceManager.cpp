@@ -382,8 +382,12 @@ void UserInterface::handleKeyboard()
             else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
                 navigator.togglePannelNew();
             // button tab to select next
-            else if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
-                Mixer::manager().setCurrentNext();
+            else if (ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+                if (shift_modifier_active)
+                    Mixer::manager().setCurrentPrevious();
+                else
+                    Mixer::manager().setCurrentNext();
+            }
         }
     }
 
