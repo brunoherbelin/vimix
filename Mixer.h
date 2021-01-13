@@ -59,6 +59,7 @@ public:
     void setCurrentSource (Node *node);
     void setCurrentSource (uint64_t id);
     void setCurrentNext ();
+    void setCurrentPrevious ();
     void unsetCurrentSource ();
 
     void setCurrentIndex (int index);
