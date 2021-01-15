@@ -25,6 +25,11 @@ void DrawVisitor::loop(int num, glm::mat4 transform)
 
 void DrawVisitor::visit(Node &n)
 {
+    // force visible status if required
+    bool v = n.visible_;
+    if (force_)
+        n.visible_ = true;
+
     // draw the target
     if ( target_ && n.id() == target_->id()) {
 
@@ -36,6 +41,9 @@ void DrawVisitor::visit(Node &n)
 
         done_ = true;
     }
+
+    // restore visibility
+    n.visible_ = v;
 
     if (done_) return;
 
@@ -72,11 +80,11 @@ void DrawVisitor::visit(Switch &n)
 
     // traverse acive child
     glm::mat4 mv = modelview_;
-    n.activeChild()->accept(*this);
+    if ( n.activeChild()->visible_ || force_)
+        n.activeChild()->accept(*this);
     modelview_ = mv;
 }
 
 void DrawVisitor::visit(Primitive &n)
 {
-
 }
