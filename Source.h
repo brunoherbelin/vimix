@@ -99,6 +99,10 @@ public:
     virtual void setActive (bool on);
     inline bool active () { return active_; }
 
+    // lock mode
+    virtual void setLocked (bool on);
+    inline bool locked () { return locked_; }
+
     // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed () const = 0;
 
@@ -196,10 +200,11 @@ protected:
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
     std::map<View::Mode, Handles*[7]> handles_;
-    Symbol *symbol_;
+    Symbol *symbol_, *locker_;
 
     // update
     bool  active_;
+    bool  locked_;
     bool  need_update_;
     float dt_;
     Group *stored_status_;

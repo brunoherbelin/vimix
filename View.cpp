@@ -505,13 +505,8 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 
     std::ostringstream info;
     if (s->active()) {
-        info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a;
-//    else if ( Mixer::manager().concealed(s) )
-//        info << "Stashed";q
-        if (s->blendingShader()->color.a > 0.f)
-            info << "  " << ICON_FA_EYE;
-        else
-            info << "  " << ICON_FA_EYE_SLASH;
+        info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a << "  ";
+        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
     }
     else
         info << "Inactive  " << ICON_FA_SNOWFLAKE;
@@ -711,11 +706,10 @@ GeometryView::GeometryView() : View(GEOMETRY)
     else
         restoreSettings();
 
-    // Geometry Scene background
-    Surface *rect = new Surface;
-    scene.bg()->attach(rect);
-
     // Geometry Scene foreground
+    output_surface_ = new Surface;
+    output_surface_->visible_ = false;
+    scene.fg()->attach(output_surface_);
     Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     border->color = glm::vec4( COLOR_FRAME, 1.f );
     scene.fg()->attach(border);
@@ -812,6 +806,7 @@ void GeometryView::update(float dt)
             for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
                 (*node)->scale_.x = aspect_ratio;
             }
+            output_surface_->setTextureIndex( output->texture() );
         }
     }
 }
@@ -892,11 +887,17 @@ void GeometryView::draw()
     // draw scene of this view    
     View::draw();
 
+    glm::mat4 projection = Rendering::manager().Projection();
+
+    // draw scene rendered on top
+    DrawVisitor draw_rendering(output_surface_, projection, true);
+    scene.accept(draw_rendering);
+
     // re-draw frames of all sources on top
     // (otherwise hidden in stack of sources)
-    for (auto source_iter = Mixer::manager().session()->begin(); source_iter != Mixer::manager().session()->end(); source_iter++)
-    {
-        DrawVisitor dv((*source_iter)->frames_[mode_], Rendering::manager().Projection());
+    for (auto source_iter = Mixer::manager().session()->begin();
+         source_iter != Mixer::manager().session()->end(); source_iter++) {
+        DrawVisitor dv((*source_iter)->frames_[mode_], projection);
         scene.accept(dv);
     }
 
@@ -904,12 +905,13 @@ void GeometryView::draw()
     // (allows manipulation current source even when hidden below others)
     if (s != nullptr) {
         s->setMode(Source::CURRENT);
-        DrawVisitor dv(s->overlays_[mode_], Rendering::manager().Projection());
+        DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
     }
 
-    DrawVisitor dv(scene.fg(), Rendering::manager().Projection());
-    scene.accept(dv);
+    // draw overlays of view
+    DrawVisitor draw_overlay(scene.fg(), projection);
+    scene.accept(draw_overlay);
 
     // display popup menu
     if (show_context_menu_) {
@@ -1417,17 +1419,33 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
         restoreSettings();
 
     // Geometry Scene background
+    frame_ = new Group;
     Surface *rect = new Surface;
     rect->shader()->color.a = 0.3f;
-    scene.bg()->attach(rect);
-
-    Mesh *persp = new Mesh("mesh/perspective_layer.ply");
-    persp->translation_.z = -0.1f;
-    scene.bg()->attach(persp);
+    frame_->attach(rect);
 
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
-    border->color = glm::vec4( COLOR_FRAME, 0.7f );
-    scene.bg()->attach(border);
+    border->color = glm::vec4( COLOR_FRAME, 0.95f );
+    frame_->attach(border);
+    scene.bg()->attach(frame_);
+
+//    persp_layer_ = new Mesh("mesh/perspective_layer.ply");
+//    persp_layer_->shader()->color = glm::vec4( COLOR_FRAME, 0.8f );
+//    persp_layer_->scale_.x = LAYER_PERSPECTIVE;
+//    persp_layer_->translation_.z = -0.1f;
+//    scene.bg()->attach(persp_layer_);
+
+    persp_left_ = new Mesh("mesh/perspective_axis_left.ply");
+    persp_left_->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    persp_left_->scale_.x = LAYER_PERSPECTIVE;
+    persp_left_->translation_.z = -0.1f;
+    scene.bg()->attach(persp_left_);
+
+    persp_right_ = new Mesh("mesh/perspective_axis_right.ply");
+    persp_right_->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    persp_right_->scale_.x = LAYER_PERSPECTIVE;
+    persp_right_->translation_.z = -0.1f;
+    scene.bg()->attach(persp_right_);
 }
 
 void LayerView::update(float dt)
@@ -1441,12 +1459,17 @@ void LayerView::update(float dt)
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
             aspect_ratio = output->aspectRatio();
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-                (*node)->scale_.x = aspect_ratio;
-            }
-            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-                (*node)->scale_.x = aspect_ratio;
-            }
+            frame_->scale_.x = aspect_ratio;
+
+            persp_left_->translation_.x = -aspect_ratio;
+            persp_right_->translation_.x = aspect_ratio + 0.06;
+//            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+//                (*node)->scale_.x = aspect_ratio;
+//            }
+//            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+//                (*node)->scale_.x = aspect_ratio;
+//            }
+//
         }
     }
 }
@@ -1461,8 +1484,9 @@ void LayerView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec3 border(scene.root()->scale_.x * 1.f, scene.root()->scale_.y * 1.f, 0.f);
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, 3.f * border);
+    glm::vec3 border_left(scene.root()->scale_.x * -2.f, scene.root()->scale_.y * -1.f, 0.f);
+    glm::vec3 border_right(scene.root()->scale_.x * 8.f, scene.root()->scale_.y * 8.f, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, border_left, border_right);
 }
 
 int  LayerView::size ()
@@ -1483,21 +1507,25 @@ float LayerView::setDepth(Source *s, float d)
 
     // negative or no  depth given; find the front most depth
     if ( depth < 0.f ) {
-        Node *front = scene.ws()->front();
-        if (front)
-            depth = front->translation_.z + 0.5f;
-        else
-            depth = 0.5f;
+        // default to place visible in front of background
+        depth = BACKGROUND_DEPTH + 0.25f;
+
+        // find the front-most souce in the workspace (behind FOREGROUND)
+        for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); node++) {
+            if ( (*node)->translation_.z > FOREGROUND_DEPTH )
+                break;
+            depth = MAX(depth, (*node)->translation_.z + 0.25f);
+        }
+
     }
 
     // move on x
-    sourceNode->translation_.x = CLAMP( -depth, -(SCENE_DEPTH - 2.f), 0.f);
+    sourceNode->translation_.x = CLAMP( -depth, -MAX_DEPTH, -MIN_DEPTH);
+
     // discretized translation with ALT
-    if (UserInterface::manager().altModifier()) {
+    if (UserInterface::manager().altModifier())
         sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 5.f);
-    }
-    // diagonal movement only
-    sourceNode->translation_.y = sourceNode->translation_.x / aspect_ratio;
+
     // change depth
     sourceNode->translation_.z = -sourceNode->translation_.x;
 
@@ -1526,7 +1554,8 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
 
     std::ostringstream info;
-    info << "Depth " << std::fixed << std::setprecision(2) << d;
+    info << "Depth " << std::fixed << std::setprecision(2) << d << "  ";
+    info << (s->locked() ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN);
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
@@ -1600,7 +1629,6 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     scene.fg()->translation_ = glm::vec3(0.f, -0.11f, 0.0f);
 
     output_surface_ = new Surface;
-    output_surface_->shader()->color.a = 0.9f;
     scene.bg()->attach(output_surface_);
 
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);

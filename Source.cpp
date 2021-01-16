@@ -17,7 +17,7 @@
 #include "Log.h"
 #include "Mixer.h"
 
-Source::Source() : initialized_(false), active_(true), need_update_(true), symbol_(nullptr)
+Source::Source() : initialized_(false), active_(true), locked_(false), need_update_(true), symbol_(nullptr)
 {
     // create unique id
     id_ = GlmToolkit::uniqueId();
@@ -177,6 +177,23 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     // empty transition node
     groups_[View::TRANSITION] = new Group;
 
+    //
+    // shared locker symbol
+    //
+    locker_ = new Symbol(Symbol::LOCK, glm::vec3(0.8f, -0.8f, 0.01f));
+    locker_->color = glm::vec4(1.f, 1.f, 1.f, 0.6f);
+
+    // add semi transparent icon statically to mixing and layer views
+    Group *lockgroup = new Group;
+    lockgroup->translation_.z = 0.1;
+    lockgroup->attach( locker_ );
+    groups_[View::LAYER]->attach(lockgroup);
+    groups_[View::MIXING]->attach(lockgroup);
+
+    // add semi transparent icon dynamically with overlay
+    overlays_[View::LAYER]->attach( locker_ );
+    overlays_[View::MIXING]->attach( locker_ );
+
     // create objects
     stored_status_  = new Group;
 
@@ -206,7 +223,7 @@ Source::Source() : initialized_(false), active_(true), need_update_(true), symbo
     rendersurface_  = nullptr;
     mixingsurface_  = nullptr;
     maskbuffer_     = nullptr;
-    maskimage_  = nullptr;
+    maskimage_      = nullptr;
     mask_need_update_ = false;
 }
 
@@ -344,7 +361,7 @@ void Source::attach(FrameBuffer *renderbuffer)
 {
     renderbuffer_ = renderbuffer;
 
-    // if a symbol is available, add it to icons
+    // if a symbol is available, add it to overlay
     if (symbol_) {
         overlays_[View::MIXING]->attach( symbol_ );
         overlays_[View::LAYER]->attach( symbol_ );
@@ -381,6 +398,10 @@ void Source::attach(FrameBuffer *renderbuffer)
         }
     }
 
+    // hack to place the symbols in the corner independently of aspect ratio
+    symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
+    locker_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
+
     // (re) create the masking buffer
     if (maskbuffer_)
         delete maskbuffer_;
@@ -399,16 +420,32 @@ void Source::setActive (bool on)
 {
     active_ = on;
 
+    // do not disactivate if a clone depends on it
     for(auto clone = clones_.begin(); clone != clones_.end(); clone++) {
         if ( (*clone)->active() )
             active_ = true;
     }
 
+    // an inactive source is visible only in the MIXING view
     groups_[View::RENDERING]->visible_ = active_;
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
 }
+
+void Source::setLocked (bool on)
+{
+    locked_ = on;
+
+    // the lock icon is visible when locked
+    locker_->visible_ = on;
+
+    // a locked source is not visible in the GEOMETRY view (that's the whole point of it!)
+    groups_[View::GEOMETRY]->visible_ = !locked_;
+
+}
+
+
 // Transfer functions from coordinates to alpha (1 - transparency)
 float linear_(float x, float y) {
     return 1.f - CLAMP( sqrt( ( x * x ) + ( y * y ) ), 0.f, 1.f );
@@ -440,8 +477,9 @@ void Source::update(float dt)
         mixingshader_->color = blendingshader_->color;
 
         // CHANGE update status based on limbo
-        bool a = glm::length(dist) < 1.3f;
+        bool a = glm::length(dist) < MIXING_LIMBO_SCALE;
         setActive( a );
+        // adjust scale of mixing icon : smaller if not active
         groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( a ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
 
         // MODIFY geometry based on GEOMETRY node
@@ -462,6 +500,20 @@ void Source::update(float dt)
         mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
         mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
         mixingsurface_->update(dt_);
+
+        // Layers icons are displayed in Perspective (diagonal)
+        groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
+
+        // CHANGE lock based on range of layers stage
+        bool l = (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH)
+                || (groups_[View::LAYER]->translation_.x > -BACKGROUND_DEPTH);
+        setLocked( l );
+
+        // adjust position of layer icon: step up when on stage
+        if (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH)
+            groups_[View::LAYER]->translation_.y -= 0.3f;
+        else if (groups_[View::LAYER]->translation_.x < -BACKGROUND_DEPTH)
+            groups_[View::LAYER]->translation_.y -= 0.15f;
 
         // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;

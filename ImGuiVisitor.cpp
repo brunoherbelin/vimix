@@ -403,6 +403,7 @@ void ImGuiVisitor::visit (Source& s)
 
     ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
 
+    // inform on visibility status
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height ) );
     if (s.active()) {
         if (s.blendingShader()->color.a > 0.f)
@@ -412,6 +413,13 @@ void ImGuiVisitor::visit (Source& s)
     }
     else
         ImGuiToolkit::HelpMarker("Inactive", ICON_FA_SNOWFLAKE);
+
+    // Inform on status of lock
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + ImGui::GetFrameHeight()) );
+    if (s.locked())
+        ImGuiToolkit::HelpMarker("Locked", ICON_FA_LOCK);
+    else
+        ImGuiToolkit::HelpMarker("Unlocked", ICON_FA_LOCK_OPEN);
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();

@@ -164,6 +164,7 @@ public:
     void arrow (glm::vec2) override;
 
 private:
+    Surface *output_surface_;
     Node *overlay_position_;
     Node *overlay_position_cross_;
     Node *overlay_rotation_;
@@ -193,6 +194,9 @@ public:
 
 private:
     float aspect_ratio;
+    Mesh *persp_layer_;
+    Mesh *persp_left_, *persp_right_;
+    Group *frame_;
 };
 
 class TransitionView : public View

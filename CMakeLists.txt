@@ -351,6 +351,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
+    ./rsc/mesh/perspective_axis_left.ply
+    ./rsc/mesh/perspective_axis_right.ply
     ./rsc/mesh/shadow_perspective.ply
     ./rsc/mesh/point.ply
     ./rsc/mesh/square_point.ply
