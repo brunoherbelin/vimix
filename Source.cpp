@@ -456,7 +456,9 @@ float quad_(float x, float y) {
 }
 
 float sin_quad(float x, float y) {
-    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
+    float D = sqrt( ( x * x ) + ( y * y ) );
+    return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
+//    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
 }
 
 void Source::update(float dt)
@@ -472,7 +474,7 @@ void Source::update(float dt)
         // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-        // use the prefered transfer function
+        // use the sinusoidal transfer function
         blendingshader_->color = glm::vec4(1.0, 1.0, 1.0, sin_quad( dist.x, dist.y ));
         mixingshader_->color = blendingshader_->color;
 

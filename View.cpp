@@ -230,9 +230,7 @@ void View::select(glm::vec2 A, glm::vec2 B)
         }
         // set the selection with list of picked (overlaped) sources
         Mixer::selection().set(selection);
-
     }
-
 }
 
 
@@ -357,6 +355,35 @@ void MixingView::centerSource(Source *s)
 
 }
 
+void MixingView::select(glm::vec2 A, glm::vec2 B)
+{
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_A = Rendering::manager().unProject(A);
+    glm::vec3 scene_point_B = Rendering::manager().unProject(B);
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_A, scene_point_B);
+    scene.accept(pv);
+
+    // reset selection
+    Mixer::selection().clear();
+
+    // picking visitor found nodes in the area?
+    if ( !pv.empty()) {
+
+        // create a list of source matching the list of picked nodes
+        SourceList selection;
+        // loop over the nodes and add all sources found.
+        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+            Source *s = Mixer::manager().findSource( p->first );
+            if (s && !s->locked())
+                selection.push_back( s );
+        }
+        // set the selection with list of picked (overlaped) sources
+        Mixer::selection().set(selection);
+    }
+}
+
 void MixingView::selectAll()
 {
     for(auto sit = Mixer::manager().session()->begin();
@@ -432,6 +459,14 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
 
         // capture this pick
         pick = { nullptr, glm::vec2(0.f) };
+    }
+    else {
+        // get if a source was picked
+        Source *s = Mixer::manager().findSource(pick.first);
+        if (s != nullptr && s->locked()) {
+            if ( !UserInterface::manager().ctrlModifier() )
+                pick = { nullptr, glm::vec2(0.f) };
+        }
     }
 
     return pick;
@@ -572,7 +607,9 @@ void MixingView::setAlpha(Source *s)
 //#define CIRCLE_PIXEL_RADIUS 262144.0
 
 float sin_quad_texture(float x, float y) {
-    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ) / CIRCLE_PIXEL_RADIUS, 0.f, 1.f ) );
+//    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ) / CIRCLE_PIXEL_RADIUS, 0.f, 1.f ) );
+    float D = sqrt( ( x * x )/ CIRCLE_PIXEL_RADIUS + ( y * y )/ CIRCLE_PIXEL_RADIUS );
+    return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
 }
 
 uint MixingView::textureMixingQuadratic()

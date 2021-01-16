@@ -106,6 +106,7 @@ public:
     void resize (int) override;
     int  size () override;
     void centerSource(Source *) override;
+    void select(glm::vec2, glm::vec2) override;
     void selectAll() override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2) override;
