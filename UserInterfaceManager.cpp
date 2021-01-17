@@ -158,7 +158,7 @@ UserInterface::UserInterface()
     ctrl_modifier_active = false;
     alt_modifier_active = false;
     shift_modifier_active = false;
-    show_vimix_config = false;
+    show_vimix_about = false;
     show_imgui_about = false;
     show_gst_about = false;
     show_opengl_about = false;
@@ -785,8 +785,8 @@ void UserInterface::Render()
             Log::ShowLogWindow(&Settings::application.widget.logs);
 
         // about dialogs
-        if (show_vimix_config)
-            ShowConfig(&show_vimix_config);
+        if (show_vimix_about)
+            RenderAbout(&show_vimix_about);
         if (show_imgui_about)
             ImGui::ShowAboutWindow(&show_imgui_about);
         if (show_gst_about)
@@ -2702,49 +2702,55 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
-        // Settings application appearance
+        // Settings & application appearance
+        static bool show_config = false;
+
         ImGui::Spacing();
-        ImGui::Text("Appearance");
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
-            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-
-//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//        if ( ImGui::Combo("Accent", &Settings::application.accent_color, "Blue\0Orange\0Grey\0\0"))
-//            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
-        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
-        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
-        if (b || o || g)
-            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-
-        static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-        static float height_about = 3.f * ImGui::GetTextLineHeightWithSpacing();
-        bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
-        bool show_about = ImGui::GetCursorPosY() + height_about < height_ ;
-
-        // Bottom aligned About buttons
-        if ( show_about) {
-            // Bottom aligned Logo
-            if ( show_icon ) {
-                ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -height_about - 128.f));
-                ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
-            }
-            else {
-                ImGui::SetCursorPosY(height_ -height_about);
-            }
+        if (show_config)
+        {
+            ImGui::Text("System");
+            bool vsync = (Settings::application.render.vsync > 0);
+            ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
+            Settings::application.render.vsync = vsync ? 1 : 0;
+            ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &Settings::application.render.blit);
+            bool multi = (Settings::application.render.multisampling > 0);
+            ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+            Settings::application.render.multisampling = multi ? 3 : 0;
+            ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &Settings::application.render.gpu_decoding);
             ImGui::Spacing();
-            if ( ImGui::Button( ICON_FA_CROW " vimix", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-                UserInterface::manager().show_vimix_config = true;
-            if ( ImGui::Button("    ImGui    "))
-                UserInterface::manager().show_imgui_about = true;
-            ImGui::SameLine();
-            if ( ImGui::Button(" GStreamer "))
-                UserInterface::manager().show_gst_about = true;
-            ImGui::SameLine();
-            if ( ImGui::Button("OpenGL", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-                UserInterface::manager().show_opengl_about = true;
+            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0)))
+                Rendering::manager().close();
         }
+        else {
+            ImGui::Text("Appearance");
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
+                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+            bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
+            bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
+            bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
+            if (b || o || g)
+                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+
+        }
+
+        // Bottom aligned Logo (if enougth room)
+        static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
+        static float height_about = 1.6f * ImGui::GetTextLineHeightWithSpacing();
+        bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
+        if ( show_icon ) {
+            ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -height_about - 128.f));
+            ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
+        }
+        else {
+            ImGui::SetCursorPosY(height_ -height_about);
+        }
+
+        // About & System config toggle
+        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0)) )
+            UserInterface::manager().show_vimix_about = true;
+        ImGui::SameLine();
+        ImGuiToolkit::IconToggle(13,5,12,5,&show_config);
 
     }
     ImGui::End();
@@ -2893,7 +2899,7 @@ void ShowSandbox(bool* p_open)
     ImGui::End();
 }
 
-void ShowConfig(bool* p_open)
+void UserInterface::RenderAbout(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About " APP_NAME APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
@@ -2908,32 +2914,41 @@ void ShowConfig(bool* p_open)
     ImGui::Separator();
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
     ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2020 Bruno Herbelin.");
-    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/");
-    ImGui::SameLine();
 
-    static bool show_config = false;
-    ImGui::SetNextItemWidth(-100.f);
-    ImGui::Text("          Details");
-    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
-    ImGuiToolkit::IconToggle(10,0,11,0,&show_config);
-    if (show_config)
-    {
-        ImGui::Text("\nPerformance options\n(enable all for optimal performance, disable for low hardware support).");
-        ImGui::Spacing();
-        ImGui::Checkbox("Blit framebuffer (fast draw to output)", &Settings::application.render.blit);
-        bool multi = (Settings::application.render.multisampling > 0);
-        ImGui::Checkbox("Antialiasing framebuffer (fast multisampling)", &multi);
-        Settings::application.render.multisampling = multi ? 3 : 0;
-        bool vsync = (Settings::application.render.vsync > 0);
-        ImGui::Checkbox("Sync refresh with monitor (v-sync 60Hz)", &vsync);
-        Settings::application.render.vsync = vsync ? 1 : 0;
-        ImGui::Checkbox("Hardware video decoding (try if applicable)", &Settings::application.render.gpu_decoding);
-        ImGui::Spacing();
-        ImGui::Text( ICON_FA_EXCLAMATION "  Restart the application for change to take effect.");
-        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ", ImVec2(250,0)))
-            Rendering::manager().close();
-    }
+
+    ImGui::Spacing();
+    ImGui::Text("\nvimix is built using the following libraries:");
+
+    ImGui::Columns(3, "abouts");
+    ImGui::Separator();
+
+    ImGui::Text("Dear ImGui");
+    ImGui::PushID("dearimguiabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_imgui_about = true;
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::Text("GStreamer");
+    ImGui::PushID("gstreamerabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_gst_about = true;
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::Text("OpenGL");
+    ImGui::PushID("openglabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_opengl_about = true;
+    ImGui::PopID();
+
+    ImGui::Columns(1);
+
 
     ImGui::End();
 }

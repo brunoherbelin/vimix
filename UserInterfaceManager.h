@@ -109,7 +109,7 @@ class UserInterface
     bool ctrl_modifier_active;
     bool alt_modifier_active;
     bool shift_modifier_active;
-    bool show_vimix_config;
+    bool show_vimix_about;
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;
@@ -168,6 +168,7 @@ protected:
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();
+    void RenderAbout(bool* p_open);
 };
 
 #endif /* #define __UI_MANAGER_H_ */

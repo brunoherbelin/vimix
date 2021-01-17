@@ -1449,7 +1449,7 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
         // no settings found: store application default
         Settings::application.views[mode_].name = "Layer";
         scene.root()->scale_ = glm::vec3(LAYER_DEFAULT_SCALE, LAYER_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(1.3f, 1.f, 0.0f);
+        scene.root()->translation_ = glm::vec3(2.2f, 1.2f, 0.0f);
         saveSettings();
     }
     else
