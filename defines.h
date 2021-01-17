@@ -5,7 +5,7 @@
 #define APP_TITLE " -- Video Live Mixer"
 #define APP_SETTINGS "vimix.xml"
 #define APP_VERSION_MAJOR 0
-#define APP_VERSION_MINOR 4
+#define APP_VERSION_MINOR 5
 #define XML_VERSION_MAJOR 0
 #define XML_VERSION_MINOR 2
 #define MAX_RECENT_HISTORY 20
@@ -88,6 +88,7 @@
 #define COLOR_APPEARANCE_MASK 0.1f, 0.9f, 0.9f
 #define COLOR_APPEARANCE_MASK_DISABLE 0.3f, 0.6f, 0.6f
 #define COLOR_FRAME 0.8f, 0.f, 0.8f
+#define COLOR_FRAME_LIGHT 0.95f, 0.3f, 0.95f
 #define COLOR_LIMBO_CIRCLE 0.16f, 0.16f, 0.16f
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f
 #define COLOR_STASH_CIRCLE 0.06f, 0.06f, 0.06f
