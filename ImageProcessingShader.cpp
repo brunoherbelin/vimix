@@ -80,8 +80,6 @@ void ImageProcessingShader::reset()
 
 void ImageProcessingShader::operator = (const ImageProcessingShader &S )
 {
-    Shader::operator =(S);
-
     brightness = S.brightness;
     contrast = S.contrast;
     saturation = S.saturation;
