@@ -137,7 +137,7 @@ string GstToolkit::gst_version()
 
 // see https://developer.ridgerun.com/wiki/index.php?title=GStreamer_modify_the_elements_rank
 
-std::list<std::string> GstToolkit::enable_gpu_decoding_plugins()
+std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
 {
     static list<string> pluginslist;
     static GstRegistry* plugins_register = nullptr;
@@ -162,7 +162,7 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins()
             GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
             if(feature != NULL) {
                 pluginslist.push_front( string( plugins[i] ) );
-                gst_plugin_feature_set_rank(feature, GST_RANK_PRIMARY + 1);
+                gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + 1 : GST_RANK_MARGINAL);
                 gst_object_unref(feature);
             }
         }
