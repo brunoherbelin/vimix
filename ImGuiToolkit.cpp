@@ -25,6 +25,7 @@
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
 
+
 unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
@@ -870,6 +871,7 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
             ImGui::Text("Refresh %.1f FPS", io.Framerate);
             ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
             ImGui::PopFont();
+
         }
 
         if (ImGui::BeginPopupContextWindow())
@@ -884,6 +886,24 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
     }
 }
 
+// BHBN : TODO stats on video decoding : would be useful if we could know which is HW or SW decoder
+//#include "MediaPlayer.h"
+//ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+//uint bitrate_ = 0;
+//uint pixels_ = 0;
+//uint videos_ = 0;
+//uint images_ = 0;
+//for (auto it = MediaPlayer::begin(); it != MediaPlayer::end(); it++)
+//{
+//    MediaInfo info = (*it)->media();
+//    bitrate_ += info.bitrate;
+//    pixels_ +=  info.height * info.width * 4;
+//    if (info.isimage) images_++; else videos_++;
+//}
+//ImGui::Text("%d video%s %d image%s", videos_, videos_>1?"s":" ", images_, images_>1?"s":" ");
+//ImGui::Text("Bitrate %s/s", SystemToolkit::bits_to_string( bitrate_ ).c_str() );
+//ImGui::Text("Texture %s", SystemToolkit::byte_to_string( pixels_ ).c_str()  );
+//ImGui::PopFont();
 
 void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
 {

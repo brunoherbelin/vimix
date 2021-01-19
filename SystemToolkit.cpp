@@ -109,6 +109,24 @@ string SystemToolkit::byte_to_string(long b)
     return oss.str();
 }
 
+string SystemToolkit::bits_to_string(long b)
+{
+    double numbytes = static_cast<double>(b);
+    ostringstream oss;
+
+    std::list<std::string> list = {" bit", " Kbit", " Mbit", " Gbit", " Tbit"};
+    std::list<std::string>::iterator i = list.begin();
+
+    while(numbytes >= 1000.0 && i != list.end())
+    {
+        i++;
+        numbytes /= 1000.0;
+    }
+    oss << std::fixed << std::setprecision(2) << numbytes << *i;
+    return oss.str();
+}
+
+
 
 string SystemToolkit::date_time_string()
 {
