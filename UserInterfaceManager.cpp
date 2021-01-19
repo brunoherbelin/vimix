@@ -71,7 +71,6 @@ static TextEditor editor;
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
-void ShowConfig(bool* p_open);
 void ShowSandbox(bool* p_open);
 
 // static objects for multithreaded file dialog
@@ -765,7 +764,7 @@ void UserInterface::NewFrame()
 void UserInterface::Render()
 {
     // warning modal dialog
-    Log::Render();
+    Log::Render(&Settings::application.widget.logs);
 
     // clear view mode in Transition view
     if ( !Settings::application.transition.hide_windows || Settings::application.current_view < View::TRANSITION) {
@@ -1535,8 +1534,8 @@ void MediaController::Render()
 
                 ImGui::SetCursorScreenPos(tooltip_pos);
                 ImGui::Text(" %s", mp_->filename().c_str());
-                ImGui::Text(" %s", mp_->codec().c_str());
-                if ( mp_->frameRate() > 0.f )
+                ImGui::Text(" %s", mp_->media().codec_name.c_str());
+                if ( mp_->frameRate() > 1.f )
                     ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
                 else
                     ImGui::Text(" %d x %d px", mp_->width(), mp_->height());

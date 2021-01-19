@@ -933,9 +933,9 @@ void MediaPlayer::setTimeline(Timeline tl)
 //    return media_.timeline.toggleGaps(from, to);
 //}
 
-std::string MediaPlayer::codec() const
+MediaInfo MediaPlayer::media() const
 {
-    return media_.codec_name;
+    return media_;
 }
 
 std::string MediaPlayer::uri() const

@@ -195,10 +195,10 @@ void Log::Warning(const char* fmt, ...)
     Log::Info("Warning - %s\n", buf.c_str());
 }
 
-void Log::Render(bool showNofitications, bool showWarnings)
+void Log::Render(bool *showWarnings)
 {
-    bool show_warnings = !warnings.empty() & showWarnings;
-    bool show_notification = !notifications.empty() & showNofitications;
+    bool show_warnings = !warnings.empty();
+    bool show_notification = !notifications.empty();
 
     if (!show_notification && !show_warnings)
         return;
@@ -238,6 +238,7 @@ void Log::Render(bool showNofitications, bool showWarnings)
             notifications.clear();
     }
 
+
     if (show_warnings) {
         ImGui::OpenPopup("Warning");
         if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
@@ -255,8 +256,21 @@ void Log::Render(bool showNofitications, bool showWarnings)
             }
             ImGui::PopTextWrapPos();
 
-            ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
-            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))) {
+            bool close = false;
+            ImGui::Spacing();
+            if (ImGui::Button("Show logs", ImVec2(width * 0.2f, 0))) {
+                close = true;
+                if (showWarnings!= nullptr)
+                    *showWarnings = true;
+            }
+
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(width * 0.6f, 0)); // right align
+            ImGui::SameLine();
+            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0)))
+                close = true;
+
+            if (close) {
                 ImGui::CloseCurrentPopup();
                 // messages have been seen
                 warnings.clear();
@@ -266,7 +280,6 @@ void Log::Render(bool showNofitications, bool showWarnings)
             ImGui::EndPopup();
         }
     }
-
 
 }
 

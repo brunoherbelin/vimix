@@ -12,7 +12,7 @@ namespace Log
     // Draw logs
     void ShowLogWindow(bool* p_open = nullptr);
 
-    void Render(bool showNofitications = true, bool showWarnings = true);
+    void Render(bool *showWarnings = nullptr);
 }
 
 #endif // __LOG_H_

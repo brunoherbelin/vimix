@@ -101,7 +101,7 @@ public:
     /**
      * Get name of Codec of the media
      * */
-    std::string codec() const;
+    MediaInfo media() const;
     /**
      * True if a media was oppenned
      * */
