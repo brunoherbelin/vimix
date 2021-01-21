@@ -373,6 +373,10 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[LOCK]   = shadow;
         icons[UNLOCK]   = new Mesh("mesh/icon_unlock.ply");
         shadows[UNLOCK] = shadow;
+        icons[EYE]      = new Mesh("mesh/icon_eye.ply");
+        shadows[EYE]    = shadow;
+        icons[EYESLASH] = new Mesh("mesh/icon_eye_slash.ply");
+        shadows[EYESLASH] = shadow;
         icons[ARROWS]   = new Mesh("mesh/icon_rightarrow.ply");
         shadows[ARROWS] = shadow;
         icons[CIRCLE]   = new Mesh("mesh/icon_circle.ply");

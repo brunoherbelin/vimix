@@ -377,6 +377,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_grid.ply
     ./rsc/mesh/icon_rightarrow.ply
     ./rsc/mesh/icon_crop.ply
+    ./rsc/mesh/icon_eye.ply
+    ./rsc/mesh/icon_eye_slash.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )
