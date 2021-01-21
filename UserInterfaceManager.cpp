@@ -2081,10 +2081,9 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
     if (ImGui::Begin("##ViewPannel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        bool dumm = true;
         ImGui::SetCursorPosX(10.f);
         ImGui::SetCursorPosY(10.f);
-        if (ImGuiToolkit::IconToggle(4,7,5,7, &dumm)) {
+        if (ImGuiToolkit::IconButton(5,7)) {
             // reset zoom
             Mixer::manager().view((View::Mode)Settings::application.current_view)->recenter();
         }

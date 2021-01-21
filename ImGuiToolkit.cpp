@@ -91,7 +91,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // hover
     ImU32 col_bg;
-    if (ImGui::IsItemHovered())
+    if (ImGui::IsItemHovered()) //
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
     else
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
@@ -116,7 +116,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 }
 
 
-void ImGuiToolkit::Icon(int i, int j)
+void ImGuiToolkit::Icon(int i, int j, bool enabled)
 {
     // icons.dds is a 20 x 20 grid of icons 
     if (textureicons == 0)
@@ -124,7 +124,8 @@ void ImGuiToolkit::Icon(int i, int j)
 
     ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1);
+    ImVec4 tint_color = ImVec4(1.f,1.f,1.f, enabled ? 1.f : 0.6f);
+    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
 bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
@@ -169,6 +170,34 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 }
 
 
+bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
+{
+    bool ret = false;
+    ImGui::PushID( i * 20 + j );
+
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = frame_height;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
+    if (ImGui::IsItemClicked())
+        ret = true;
+
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(i, j, !ret);
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
 bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
     bool ret = false;
@@ -187,10 +216,10 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 
     ImGui::SetCursorScreenPos(draw_pos);
     if (*toggle) {
-        Icon(i_toggle, j_toggle);
+        Icon(i_toggle, j_toggle, !ret);
     }
     else {
-        Icon(i, j);
+        Icon(i, j, !ret);
     }
 
     int tooltipid = *toggle ? 1 : 0;
@@ -841,12 +870,16 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
     if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         int mode = (*p_timer) ? 1 : 0;
-        ImGui::SetNextItemWidth(250);
+        ImGui::SetNextItemWidth(220);
         if (ImGui::Combo("##mode", &mode, ICON_FA_TACHOMETER_ALT "  Performance\0" ICON_FA_HOURGLASS_HALF "  Timers\0") ) {
             (*p_timer) = mode > 0;
         }
 
-        bool dumm = true;
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(5,8))
+            ImGui::OpenPopup("metrics_menu");
+        ImGui::Spacing();
+
         if (*p_timer) {
             guint64 time_ = gst_util_get_timestamp ();
 
@@ -854,14 +887,14 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
             ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
             ImGui::PopFont();
             ImGui::SameLine(0, 10);
-            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
+            if (ImGuiToolkit::IconButton(12, 14))
                 start_time_1_ = time_; // reset timer 1
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
             ImGui::PopFont();
-            ImGui::SameLine(0, 10); dumm = true;
-            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
-                start_time_1_ = time_; // reset timer 2
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconButton(12, 14))
+                start_time_2_ = time_; // reset timer 2
 
         }
         else {
@@ -874,7 +907,7 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
 
         }
 
-        if (ImGui::BeginPopupContextWindow())
+        if (ImGui::BeginPopup("metrics_menu"))
         {
             if (ImGui::MenuItem("Free position", NULL, corner == -1)) *p_corner = -1;
             if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;

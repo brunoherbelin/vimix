@@ -11,7 +11,9 @@
 namespace ImGuiToolkit
 {
     // Icons from resource icon.dds
-    void Icon(int i, int j);
+    void Icon(int i, int j, bool enabled = true);
+    bool IconButton(int i, int j, const char *tooltips = nullptr);
+    bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
 
     // utility buttons
@@ -20,7 +22,6 @@ namespace ImGuiToolkit
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state);
     bool ButtonToggle(const char* label, bool* toggle);
     void ButtonSwitch (const char* label, bool* toggle , const char *help = nullptr);
-    bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
     void ToolTip (const char* desc);
