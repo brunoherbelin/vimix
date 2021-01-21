@@ -79,9 +79,10 @@ void MediaSource::init()
 
             // icon in mixing view
             if (mediaplayer_->isImage())
-                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f));
+                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
             else
-                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f));
+                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
+            symbol_->scale_.y = 1.5f;
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);

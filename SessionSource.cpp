@@ -48,7 +48,8 @@ SessionSource::SessionSource() : Source(), path_("")
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
     // set symbol
-    symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 
     failed_ = false;
     wait_for_sources_ = false;
@@ -221,7 +222,8 @@ void SessionSource::accept(Visitor& v)
 RenderSource::RenderSource(Session *session) : Source(), session_(session)
 {
     // set symbol
-    symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 

@@ -103,6 +103,10 @@ public:
     virtual void setLocked (bool on);
     inline bool locked () { return locked_; }
 
+    // lock mode
+    virtual void setFixed (bool on);
+    inline bool fixed () { return fixed_; }
+
     // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed () const = 0;
 
@@ -205,6 +209,7 @@ protected:
     // update
     bool  active_;
     bool  locked_;
+    bool  fixed_;
     bool  need_update_;
     float dt_;
     Group *stored_status_;

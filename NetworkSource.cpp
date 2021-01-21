@@ -274,8 +274,8 @@ NetworkSource::NetworkSource() : StreamSource()
     stream_ = (Stream *) new NetworkStream;
 
     // set symbol
-    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f));
-
+    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 

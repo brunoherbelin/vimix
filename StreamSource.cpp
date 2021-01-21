@@ -18,7 +18,8 @@ GenericStreamSource::GenericStreamSource() : StreamSource()
     stream_ = new Stream;
 
     // set symbol
-    symbol_ = new Symbol(Symbol::EMPTY, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::EMPTY, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 void GenericStreamSource::setDescription(const std::string &desc)

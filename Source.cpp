@@ -440,9 +440,14 @@ void Source::setLocked (bool on)
     // the lock icon is visible when locked
     locker_->visible_ = on;
 
-    // a locked source is not visible in the GEOMETRY view (that's the whole point of it!)
-    groups_[View::GEOMETRY]->visible_ = !locked_;
+}
 
+void Source::setFixed (bool on)
+{
+    fixed_ = on;
+
+    groups_[View::GEOMETRY]->visible_ = !fixed_;
+    groups_[View::MIXING]->visible_ = !fixed_;
 }
 
 
@@ -677,7 +682,8 @@ CloneSource *Source::clone()
 CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
 {
     // set symbol
-    symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 CloneSource::~CloneSource()

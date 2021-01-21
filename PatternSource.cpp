@@ -137,7 +137,8 @@ PatternSource::PatternSource() : StreamSource()
     stream_ = (Stream *) new Pattern;
 
     // set symbol
-    symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 void PatternSource::setPattern(uint type, glm::ivec2 resolution)
