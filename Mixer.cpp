@@ -700,7 +700,11 @@ void Mixer::setView(View::Mode m)
     if ( current_view_ == &transition_ ) {
         // get the session detached from the transition view and set it as current session
         // NB: detatch() can return nullptr, which is then ignored.
-        set ( transition_.detach() );
+        Session *se = transition_.detach();
+        if ( se != nullptr )
+            set ( se );
+        else
+            Log::Info("Transition interrupted: Session source added.");
     }
 
     switch (m) {
@@ -923,10 +927,8 @@ void Mixer::clear()
 
 void Mixer::set(Session *s)
 {
-    if ( s == nullptr ) {
-        Log::Warning("Session loading cancelled.");
+    if ( s == nullptr )
         return;
-    }
 
     // delete previous back session if needed
     if (back_session_)
