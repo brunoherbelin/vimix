@@ -132,6 +132,8 @@ void PickingVisitor::visit(Handles &n)
     glm::vec4 vec = modelview_ * glm::vec4(1.f, 0.f, 0.f, 0.f);
     rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
     ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview_ ;
+    vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
+    glm::vec4 mirror = glm::sign(vec);
 
     bool picked = false;
     if ( n.type() == Handles::RESIZE ) {
@@ -153,23 +155,28 @@ void PickingVisitor::visit(Handles &n)
     }
     else if ( n.type() == Handles::ROTATE ){
         // the icon for rotation is on the right top corner at (0.12, 0.12) in scene coordinates
-        glm::vec4 pos = glm::inverse(ctm) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.12f, 0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( 1.f, 1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::SCALE ){
         // the icon for scaling is on the right bottom corner at (0.12, -0.12) in scene coordinates
-        glm::vec4 pos = glm::inverse(ctm) * glm::vec4( 0.12f, -0.12f, 0.f, 0.f );
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.12f, -0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( 1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::CROP ){
         // the icon for cropping is on the left bottom corner at (0.12, 0.12) in scene coordinates
-        glm::vec4 pos = glm::inverse(ctm) * glm::vec4( 0.12f, 0.12f, 0.f, 0.f );
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.12f, 0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( -1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::MENU ){
-        // the icon for restore is on the left top corner at (-0.12, 0.12) in scene coordinates
-        glm::vec4 pos = glm::inverse(ctm) * glm::vec4( -0.12f, 0.12f, 0.f, 0.f );
+        // the icon for menu is on the left top corner at (-0.12, 0.12) in scene coordinates
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( -0.12f, 0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( -1.f, 1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
+    }
+    else if ( n.type() == Handles::LOCKED || n.type()  == Handles::UNLOCKED  ){
+        // the icon for lock is on the right bottom corner at (-0.12, 0.12) in scene coordinates
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( -0.12f, 0.12f, 0.f, 0.f ) );
+        picked  = glm::length( glm::vec2( 1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
 
     if ( picked )

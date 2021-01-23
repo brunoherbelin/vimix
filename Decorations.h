@@ -36,7 +36,7 @@ protected:
 class Handles : public Node
 {
 public:
-    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, CROP, MENU } Type;
+    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, CROP, MENU, LOCKED, UNLOCKED } Type;
     Handles(Type type);
     ~Handles();
 

@@ -161,6 +161,8 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
     static Mesh *handle_crop     = new Mesh("mesh/border_handles_crop.ply");
     static Mesh *handle_menu     = new Mesh("mesh/border_handles_menu.ply");
+    static Mesh *handle_lock     = new Mesh("mesh/border_handles_lock.ply");
+    static Mesh *handle_unlock   = new Mesh("mesh/border_handles_lock_open.ply");
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
     if ( type_ == Handles::ROTATE ) {
@@ -174,6 +176,12 @@ Handles::Handles(Type type) : Node(), type_(type)
     }
     else if ( type_ == Handles::CROP ) {
         handle_ = handle_crop;
+    }
+    else if ( type_ == Handles::LOCKED ) {
+        handle_ = handle_lock;
+    }
+    else if ( type_ == Handles::UNLOCKED ) {
+        handle_ = handle_unlock;
     }
     else {
         handle_ = handle_corner;
@@ -222,6 +230,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
         vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
         glm::vec4 mirror = glm::sign(vec);
+        mirror.z = 1.f;
 
         if ( type_ == Handles::RESIZE ) {
 
@@ -299,7 +308,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * -0.12f, 0.f, 1.f);
             // 2. ..from the bottom right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
+            ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
@@ -309,9 +318,9 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
             glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * 0.12f, 0.f, 1.f);
-            // 2. ..from the bottom right corner (1,1)
+            // 2. ..from the bottom right corner (1,-1)
             vec = ( modelview * glm::vec4(-1.f, -1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
+            ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
@@ -323,7 +332,19 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
             // 2. ..from the top right corner (1,1)
             vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            ctm = GlmToolkit::transform(vec, rot, mirror);
+            // 3. draw
+            shadow_->draw( ctm, projection );
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::LOCKED || type_ == Handles::UNLOCKED ){
+            // one icon in top left corner
+            // 1. Fixed displacement by (-0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
+            // 2. ..from the bottom right corner (1,-1)
+            vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
