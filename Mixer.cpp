@@ -500,6 +500,16 @@ void Mixer::uncover(Source *s)
     }
 }
 
+
+void Mixer::deselect(Source *s)
+{
+    if ( s != nullptr ) {
+        if ( s == *current_source_)
+            unsetCurrentSource();
+        Mixer::selection().remove(s);
+    }
+}
+
 void Mixer::deleteSelection()
 {
     // get clones first : this way we store the history of deletion in the right order

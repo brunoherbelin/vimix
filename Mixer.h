@@ -50,6 +50,7 @@ public:
     void renameSource (Source *s, const std::string &newname);
     void attach       (Source *s);
     void detach       (Source *s);
+    void deselect     (Source *s);
     void deleteSelection();
 
     // current source
