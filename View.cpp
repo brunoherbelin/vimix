@@ -3267,6 +3267,7 @@ void AppearanceView::terminate()
     // special case for texture paint: store image on mouse release (end of action PAINT)
     if ( edit_source_ != nullptr && current_action_.find(MASK_PAINT_ACTION_LABEL) != std::string::npos ) {
         edit_source_->storeMask();
+        edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
     }
 
     // View default termination of action
