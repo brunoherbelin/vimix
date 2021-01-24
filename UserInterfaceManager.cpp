@@ -1048,6 +1048,8 @@ void UserInterface::RenderHistory()
     bool tmp = false;
     if (ImGui::BeginMenuBar())
     {
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.history = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_HISTORY))
         {
             if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
@@ -1138,6 +1140,8 @@ void UserInterface::RenderPreview()
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
+            if (ImGuiToolkit::IconButton(4,16))
+                Settings::application.widget.preview = false;
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
@@ -1441,6 +1445,8 @@ void MediaController::Render()
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.media_player = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);

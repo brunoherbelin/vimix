@@ -33,6 +33,11 @@ float sdCircle( in vec2 p, in float b)
     return ( length( p ) /  b );
 }
 
+float sdElipse( in vec2 p, in float b)
+{
+    return ( length( p ) /  b );
+}
+
 const mat3 KERNEL = mat3( 0.0625, 0.125, 0.0625,
                           0.125, 0.25, 0.125,
                           0.0625, 0.125, 0.0625);

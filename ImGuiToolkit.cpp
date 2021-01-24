@@ -963,10 +963,10 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
 
         if (ImGui::BeginPopup("metrics_menu"))
         {
-            if (ImGui::MenuItem("Free position", NULL, corner == -1)) *p_corner = -1;
-            if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;
-            if (ImGui::MenuItem("Bottom", NULL, corner == 3)) *p_corner = 3;
-            if (p_open && ImGui::MenuItem("Close")) *p_open = false;
+            if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
+            if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
+            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
+            if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close")) *p_open = false;
             ImGui::EndPopup();
         }
         ImGui::End();
