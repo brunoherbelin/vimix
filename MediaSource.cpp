@@ -45,7 +45,7 @@ MediaPlayer *MediaSource::mediaplayer() const
 glm::ivec2 MediaSource::icon() const
 {
     if (mediaplayer_->isImage())
-        return glm::ivec2(2, 9);
+        return glm::ivec2(4, 9);
     else
         return glm::ivec2(18, 13);
 }

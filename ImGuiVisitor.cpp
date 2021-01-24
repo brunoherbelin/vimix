@@ -414,21 +414,21 @@ void ImGuiVisitor::visit (Source& s)
     else
         ImGuiToolkit::HelpMarker("Inactive", ICON_FA_SNOWFLAKE);
 
-    // Inform on status of lock
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + ImGui::GetFrameHeight()) );
-    if (s.locked())
-        ImGuiToolkit::HelpMarker("Locked", ICON_FA_LOCK);
-    else
-        ImGuiToolkit::HelpMarker("Unlocked", ICON_FA_LOCK_OPEN);
-
     // Inform on workspace
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + 2.f * ImGui::GetFrameHeight()) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + ImGui::GetFrameHeight()) );
     if (s.workspace() == Source::BACKGROUND)
         ImGuiToolkit::HelpIcon("Background",10, 16);
     else if (s.workspace() == Source::FOREGROUND)
         ImGuiToolkit::HelpIcon("Foreground",12, 16);
     else
         ImGuiToolkit::HelpIcon("Stage",11, 16);
+
+    // locking
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + 2.f * ImGui::GetFrameHeightWithSpacing()) );
+    const char *tooltip[2] = {"Unlocked", "Locked"};
+    bool l = s.locked();
+    if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) )
+        s.setLocked(l);
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
@@ -455,16 +455,13 @@ void ImGuiVisitor::visit (Source& s)
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    if ( s.mediaplayer()->isImage() ) {
-        ImGuiToolkit::Icon(2,9);
-        ImGui::SameLine(0, 10);
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, 10);
+    if ( s.mediaplayer()->isImage() )
         ImGui::Text("Image File");
-    }
-    else {
-        ImGuiToolkit::Icon(18,13);
-        ImGui::SameLine(0, 10);
+    else
         ImGui::Text("Video File");
-    }
+
     if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().showMediaPlayer( s.mediaplayer());
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
@@ -489,9 +486,9 @@ void ImGuiVisitor::visit (SessionSource& s)
         Action::manager().store(oss.str(), s.id());
     }
 
-    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Make Current", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
-    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().merge( s.detach() );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
