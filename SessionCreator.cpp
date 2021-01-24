@@ -447,6 +447,9 @@ void SessionLoader::visit (Source& s)
     XMLElement* sourceNode = xmlCurrent_;
     const char *pName = sourceNode->Attribute("name");
     s.setName(pName);
+    bool l = false;
+    sourceNode->QueryBoolAttribute("locked", &l);
+    s.setLocked(l);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);

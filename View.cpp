@@ -197,9 +197,12 @@ void View::selectAll()
     Mixer::selection().clear();
     for(auto sit = Mixer::manager().session()->begin();
         sit != Mixer::manager().session()->end(); sit++) {
-        if ( (*sit)->active() )
+        if (canSelect(*sit))
             Mixer::selection().add(*sit);
     }
+    // special case of one single source in selection : make current after release
+    if (Mixer::selection().size() == 1)
+        Mixer::manager().setCurrentSource( Mixer::selection().front() );
 }
 
 void View::select(glm::vec2 A, glm::vec2 B)
@@ -212,25 +215,28 @@ void View::select(glm::vec2 A, glm::vec2 B)
     PickingVisitor pv(scene_point_A, scene_point_B);
     scene.accept(pv);
 
-    // reset selection
-    Mixer::selection().clear();
-
     // picking visitor found nodes in the area?
     if ( !pv.empty()) {
 
         // create a list of source matching the list of picked nodes
         SourceList selection;
-//        std::vector< std::pair<Node *, glm::vec2> > pick = pv.picked();
         // loop over the nodes and add all sources found.
-//        for(std::vector< std::pair<Node *, glm::vec2> >::iterator p = pick.begin(); p != pick.end(); p++){
-        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
             Source *s = Mixer::manager().findSource( p->first );
-            if (s)
+            if (canSelect(s))
                 selection.push_back( s );
         }
         // set the selection with list of picked (overlaped) sources
         Mixer::selection().set(selection);
     }
+    else
+        // reset selection
+        Mixer::selection().clear();
+}
+
+bool View::canSelect(Source *s) {
+
+    return ( s!=nullptr && !s->locked() );
 }
 
 
@@ -355,81 +361,46 @@ void MixingView::centerSource(Source *s)
 
 }
 
-void MixingView::select(glm::vec2 A, glm::vec2 B)
-{
-    // unproject mouse coordinate into scene coordinates
-    glm::vec3 scene_point_A = Rendering::manager().unProject(A);
-    glm::vec3 scene_point_B = Rendering::manager().unProject(B);
-
-    // picking visitor traverses the scene
-    PickingVisitor pv(scene_point_A, scene_point_B);
-    scene.accept(pv);
-
-    // reset selection
-    Mixer::selection().clear();
-
-    // picking visitor found nodes in the area?
-    if ( !pv.empty()) {
-
-        // create a list of source matching the list of picked nodes
-        SourceList selection;
-        // loop over the nodes and add all sources found.
-        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
-            Source *s = Mixer::manager().findSource( p->first );
-            if (s && !s->locked())
-                selection.push_back( s );
-        }
-        // set the selection with list of picked (overlaped) sources
-        Mixer::selection().set(selection);
-    }
-}
-
-void MixingView::selectAll()
-{
-    for(auto sit = Mixer::manager().session()->begin();
-        sit != Mixer::manager().session()->end(); sit++) {
-        Mixer::selection().add(*sit);
-    }
-}
-
 void MixingView::update(float dt)
 {
     View::update(dt);
 
-    // a more complete update is requested
-    // for mixing, this means restore position of the fading slider
-    if (View::need_deep_update_ > 0) {
+    if (Mixer::manager().view() == this ) {
+        // a more complete update is requested
+        // for mixing, this means restore position of the fading slider
+        if (View::need_deep_update_ > 0) {
 
-        //
-        // Set slider to match the actual fading of the session
-        //
-        float f = Mixer::manager().session()->fading();
+            //
+            // Set slider to match the actual fading of the session
+            //
+            float f = Mixer::manager().session()->fading();
 
-        // reverse calculate angle from fading & move slider
-        slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
-
-        // visual feedback on mixing circle
-        f = 1.f - f;
-        mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
-
-    }
-    else {
-        //
-        // Set session fading to match the slider angle
-        //
-
-        // calculate fading from angle
-        float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
-
-        // apply fading
-        if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
-        {
-            // apply fading to session
-            Mixer::manager().session()->setFading(f);
+            // reverse calculate angle from fading & move slider
+            slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
 
             // visual feedback on mixing circle
             f = 1.f - f;
             mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+
+        }
+        else {
+            //
+            // Set session fading to match the slider angle
+            //
+
+            // calculate fading from angle
+            float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
+
+            // apply fading
+            if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
+            {
+                // apply fading to session
+                Mixer::manager().session()->setFading(f);
+
+                // visual feedback on mixing circle
+                f = 1.f - f;
+                mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+            }
         }
     }
 
@@ -463,8 +434,19 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
     else {
         // get if a source was picked
         Source *s = Mixer::manager().findSource(pick.first);
-        if (s != nullptr && s->locked()) {
-            if ( !UserInterface::manager().ctrlModifier() )
+        if (s != nullptr) {
+            // pick on the lock icon; unlock source
+            if ( pick.first == s->lock_) {
+                s->setLocked(false);
+                pick = { s->locker_, pick.second };
+            }
+            // pick on the open lock icon; lock source and cancel pick
+            else if ( pick.first == s->unlock_ ) {
+                s->setLocked(true);
+                pick = { nullptr, glm::vec2(0.f) };
+            }
+            // pick a locked source without CTRL key; cancel pick
+            else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
                 pick = { nullptr, glm::vec2(0.f) };
         }
     }
@@ -679,6 +661,11 @@ RenderView::~RenderView()
         delete frame_buffer_;
     if (fading_overlay_)
         delete fading_overlay_;
+}
+
+bool RenderView::canSelect(Source *s) {
+
+    return false;
 }
 
 void RenderView::setFading(float f)
@@ -921,34 +908,83 @@ void GeometryView::draw()
         }
     }
 
-    // draw scene of this view    
-    View::draw();
+    // Drawing of Geometry view is different as it renders
+    // only sources in the current workspace
+    std::vector<Node *> surfaces;
+    std::vector<Node *> overlays;
+    for (auto source_iter = Mixer::manager().session()->begin();
+         source_iter != Mixer::manager().session()->end(); source_iter++) {
+        // if it is in the current workspace
+        if ((*source_iter)->workspace() == Settings::application.current_workspace) {
+            // will draw its surface
+            surfaces.push_back((*source_iter)->groups_[mode_]);
+            // will draw its frame and locker icon
+            overlays.push_back((*source_iter)->frames_[mode_]);
+            overlays.push_back((*source_iter)->locker_);
+        }
+    }
 
+    // 0. prepare projection for draw visitors
     glm::mat4 projection = Rendering::manager().Projection();
 
-    // draw scene rendered on top
+    // 1. Draw surface of sources in the current workspace
+    DrawVisitor draw_surfaces(surfaces, projection);
+    scene.accept(draw_surfaces);
+
+    // 2. Draw scene rendering on top (which includes rendering of all visible sources)
     DrawVisitor draw_rendering(output_surface_, projection, true);
     scene.accept(draw_rendering);
 
-    // re-draw frames of all sources on top
-    // (otherwise hidden in stack of sources)
-    for (auto source_iter = Mixer::manager().session()->begin();
-         source_iter != Mixer::manager().session()->end(); source_iter++) {
-        DrawVisitor dv((*source_iter)->frames_[mode_], projection);
-        scene.accept(dv);
-    }
+    // 3. Draw frames and icons of sources in the current workspace
+    DrawVisitor draw_overlays(overlays, projection);
+    scene.accept(draw_overlays);
 
-    // re-draw overlay of current source on top
-    // (allows manipulation current source even when hidden below others)
-    if (s != nullptr) {
+    // 4. Draw control overlays of current source on top (if selectable)
+    if (canSelect(s)) {
         s->setMode(Source::CURRENT);
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
     }
 
-    // draw overlays of view
-    DrawVisitor draw_overlay(scene.fg(), projection);
-    scene.accept(draw_overlay);
+    // 5. Finally, draw overlays of view
+    DrawVisitor draw_foreground(scene.fg(), projection);
+    scene.accept(draw_foreground);
+
+    // display interface
+    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01 );
+    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
+    if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+    {
+        // style grey
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 0.98f));  // 1
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.84f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.67f, 0.67f, 0.67f, 0.79f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.88f, 0.88f, 0.88f, 0.73f));
+        ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
+        ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
+        ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));   // 14 colors
+        // large display
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
+        if ( ImGuiToolkit::ComboIcon (icons_ws, &Settings::application.current_workspace) ){
+             View::need_deep_update_++;
+        }
+
+        ImGui::PopFont();
+        ImGui::PopStyleColor(14);  // 14 colors
+        ImGui::End();
+    }
 
     // display popup menu
     if (show_context_menu_) {
@@ -975,14 +1011,14 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
     // picking visitor found nodes?
     if ( !pv.empty() ) {
         // keep current source active if it is clicked
-        Source *s = Mixer::manager().currentSource();
-        if (s != nullptr) {
+        Source *current = Mixer::manager().currentSource();
+        if (current != nullptr) {
             // find if the current source was picked
             auto itp = pv.rbegin();
             for (; itp != pv.rend(); itp++){
                 // test if source contains this node
                 Source::hasNode is_in_source((*itp).first );
-                if ( is_in_source( s ) ){
+                if ( is_in_source( current ) ){
                     // a node in the current source was clicked !
                     pick = *itp;
                     break;
@@ -990,21 +1026,64 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             }
             // not found: the current source was not clicked
             if (itp == pv.rend())
-                s = nullptr;
-            // picking on the menu handle
-            else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
-                // show context menu
+                current = nullptr;
+            // picking on the menu handle: show context menu
+            else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
                 show_context_menu_ = true;
+            }
+            // pick on the lock icon; unlock source
+            else if ( pick.first == current->lock_ ) {
+                current->setLocked(false);
+            }
+            // pick on the open lock icon; lock source and cancel pick
+            else if ( pick.first == current->unlock_ ) {
+                current->setLocked(true);
+                pick = { nullptr, glm::vec2(0.f) };
+            }
+            // pick a locked source without CTRL key; cancel pick
+            else if ( current->locked() && !UserInterface::manager().ctrlModifier() ) {
+                pick = { nullptr, glm::vec2(0.f) };
             }
         }
         // the clicked source changed (not the current source)
-        if (s == nullptr) {
-            // select top-most Node picked
-            pick = pv.back();
+        if (current == nullptr){
+
+            // default to failed pick
+            pick = { nullptr, glm::vec2(0.f) };
+
+            // loop over all nodes picked
+            for (auto itp = pv.rbegin(); itp != pv.rend(); itp++){
+
+                // get if a source was picked
+                Source *s = Mixer::manager().findSource((*itp).first);
+
+                // accept picked sources in current workspaces
+                if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
+
+                    // lock icon of a source is picked : unlock
+                    if ( (*itp).first == s->lock_) {
+                        s->setLocked(false);
+                        pick = { s->locker_,  (*itp).second };
+                        break;
+                    }
+                    // a non-locked source is picked (or locked with CTRL key)
+                    else if ( !s->locked() || ( s->locked() && UserInterface::manager().ctrlModifier() ) ) {
+                        pick = { s->locker_,  (*itp).second };
+                        break;
+                    }
+                }
+
+            }
+
         }
     }
 
     return pick;
+}
+
+bool GeometryView::canSelect(Source *s) {
+
+    return ( View::canSelect(s) && s->active() && s->workspace() == Settings::application.current_workspace);
 }
 
 View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
@@ -1418,7 +1497,6 @@ void GeometryView::terminate()
 
 }
 
-
 void GeometryView::arrow (glm::vec2 movement)
 {
     Source *s = Mixer::manager().currentSource();
@@ -1466,12 +1544,6 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     frame_->attach(border);
     scene.bg()->attach(frame_);
 
-//    persp_layer_ = new Mesh("mesh/perspective_layer.ply");
-//    persp_layer_->shader()->color = glm::vec4( COLOR_FRAME, 0.8f );
-//    persp_layer_->scale_.x = LAYER_PERSPECTIVE;
-//    persp_layer_->translation_.z = -0.1f;
-//    scene.bg()->attach(persp_layer_);
-
     persp_left_ = new Mesh("mesh/perspective_axis_left.ply");
     persp_left_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 0.9f );
     persp_left_->scale_.x = LAYER_PERSPECTIVE;
@@ -1483,6 +1555,8 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp_right_->scale_.x = LAYER_PERSPECTIVE;
     persp_right_->translation_.z = -0.1f;
     scene.bg()->attach(persp_right_);
+
+
 }
 
 void LayerView::update(float dt)
@@ -1495,20 +1569,18 @@ void LayerView::update(float dt)
         // update rendering of render frame
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
+            // correct with aspect ratio
             aspect_ratio = output->aspectRatio();
             frame_->scale_.x = aspect_ratio;
-
             persp_left_->translation_.x = -aspect_ratio;
             persp_right_->translation_.x = aspect_ratio + 0.06;
-//            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
-//                (*node)->scale_.x = aspect_ratio;
-//            }
-//            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
-//                (*node)->scale_.x = aspect_ratio;
-//            }
-//
         }
     }
+}
+
+bool LayerView::canSelect(Source *s) {
+
+    return ( View::canSelect(s) && s->active() );
 }
 
 void LayerView::resize ( int scale )
@@ -1531,6 +1603,35 @@ int  LayerView::size ()
     float z = (scene.root()->scale_.x - LAYER_MIN_SCALE) / (LAYER_MAX_SCALE - LAYER_MIN_SCALE);
     return (int) ( sqrt(z) * 100.f);
 }
+
+
+std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
+{
+    // get picking from generic View
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
+
+
+    // get if a source was picked
+    Source *s = Mixer::manager().findSource(pick.first);
+    if (s != nullptr) {
+        // pick on the lock icon; unlock source
+        if ( pick.first == s->lock_) {
+            s->setLocked(false);
+            pick = { s->locker_, pick.second };
+        }
+        // pick on the open lock icon; lock source and cancel pick
+        else if ( pick.first == s->unlock_ ) {
+            s->setLocked(true);
+            pick = { nullptr, glm::vec2(0.f) };
+        }
+        // pick a locked source without CTRL key; cancel pick
+        else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
+            pick = { nullptr, glm::vec2(0.f) };
+    }
+
+    return pick;
+}
+
 
 float LayerView::setDepth(Source *s, float d)
 {
@@ -1592,7 +1693,7 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
     std::ostringstream info;
     info << "Depth " << std::fixed << std::setprecision(2) << d << "  ";
-    info << (s->locked() ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN);
+//    info << (s->locked() ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN); // TODO static not locked
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
@@ -1694,6 +1795,7 @@ void TransitionView::update(float dt)
             }
             output_surface_->setTextureIndex( output->texture() );
         }
+
     }
 
     // Update transition source
@@ -1790,10 +1892,9 @@ void TransitionView::draw()
 
 }
 
-void TransitionView::selectAll()
-{
-    Mixer::selection().clear();
-    Mixer::selection().add(transition_source_);
+bool TransitionView::canSelect(Source *s) {
+
+    return ( s!=nullptr && s == transition_source_);
 }
 
 void TransitionView::attach(SessionSource *ts)
@@ -1838,6 +1939,8 @@ Session *TransitionView::detach()
         if ( tg->translation_.x > 0.f )
             // detatch the session and return it
             ret = transition_source_->detach();
+
+        Mixer::manager().setCurrentSource(transition_source_);
 
         // done with transition
         transition_source_ = nullptr;
@@ -2039,23 +2142,6 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     mask_node_->attach(mask_vertical_);
     scene.fg()->attach(mask_node_);
 
-    //    horizontal_mark_ = new Mesh("mesh/h_mark.ply");
-    //    horizontal_mark_->translation_ = glm::vec3(0.f, 1.12f, 0.0f);
-    //    horizontal_mark_->scale_ = glm::vec3(2.5f, -2.5f, 0.0f);
-    //    horizontal_mark_->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    ////    scene.bg()->attach(horizontal_mark_);
-    //    // vertical axis
-    //    vertical_line_ = new Group;
-    //    Mesh *line  = new Mesh("mesh/h_line.ply");
-    //    line->shader()->color = glm::vec4( COLOR_TRANSITION_LINES, 0.9f );
-    //    line->translation_ = glm::vec3(-0.12f, 0.0f, 0.0f);
-    //    line->scale_.x = 1.0f;
-    //    line->scale_.y = 3.0f;
-    //    line->rotation_.z = M_PI_2;
-    ////    vertical_line_->attach(line);
-
-
-
     // Source manipulation (texture coordinates)
     //
     // point to show POSITION
@@ -2159,8 +2245,9 @@ void AppearanceView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested (e.g. after switching to view)
-    if  (View::need_deep_update_ > 0 || edit_source_ != Mixer::manager().currentSource())
+    if  (View::need_deep_update_ > 0 || edit_source_ != Mixer::manager().currentSource()) {
         need_edit_update_ = true;
+    }
 
 }
 
@@ -2184,12 +2271,6 @@ int AppearanceView::size ()
     return (int) ( sqrt(z) * 100.f);
 }
 
-
-void AppearanceView::selectAll()
-{
-    Mixer::manager().setCurrentSource( getEditOrCurrentSource() );
-}
-
 void AppearanceView::select(glm::vec2 A, glm::vec2 B)
 {
     // unproject mouse coordinate into scene coordinates
@@ -2197,21 +2278,32 @@ void AppearanceView::select(glm::vec2 A, glm::vec2 B)
     glm::vec3 scene_point_B = Rendering::manager().unProject(B);
 
     // picking visitor traverses the scene
-    PickingVisitor pv(scene_point_A, scene_point_B, true);
+    PickingVisitor pv(scene_point_A, scene_point_B, true); // here is the difference
     scene.accept(pv);
 
     // picking visitor found nodes in the area?
     if ( !pv.empty()) {
-        // loop over sources matching the list of picked nodes
-        for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+
+        // create a list of source matching the list of picked nodes
+        SourceList selection;
+        // loop over the nodes and add all sources found.
+         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
             Source *s = Mixer::manager().findSource( p->first );
-            // set the edit source as current if selected
-            if (s != nullptr && s == edit_source_)
-                Mixer::manager().setCurrentSource( s );
+            if (canSelect(s))
+                selection.push_back( s );
         }
+        // set the selection with list of picked (overlaped) sources
+        Mixer::selection().set(selection);
     }
+    else
+        // reset selection
+        Mixer::selection().clear();
 }
 
+bool AppearanceView::canSelect(Source *s) {
+
+    return ( s!=nullptr && ( s == Mixer::manager().currentSource() || s == edit_source_ ));
+}
 
 View::Cursor AppearanceView::over (glm::vec2 pos)
 {
@@ -2252,7 +2344,7 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
                     }
                 }
             }
-            // show crup cursor
+            // show crop cursor
             else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
                 if (mask_cursor_shape_ > 0) {
                     mask_cursor_crop_->visible_   = true;
@@ -2470,6 +2562,23 @@ void AppearanceView::draw()
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
         {
+
+            // style grey
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.00f, 1.00f, 1.00f, 0.98f));  // 1
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.84f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+            ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
+            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.67f, 0.67f, 0.67f, 0.79f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.88f, 0.88f, 0.88f, 0.73f));
+            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
+            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
+            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));   // 14 colors
+            // large display
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
             int mode = edit_source_->maskShader()->mode;
@@ -2537,7 +2646,7 @@ void AppearanceView::draw()
 
                     ImGui::SameLine();
                     show_cursor_forced_ = false;
-                    if (ImGui::Button(ICON_FA_DOT_CIRCLE))
+                    if (ImGui::Button(ICON_FA_DOT_CIRCLE ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup("brush_size_popup");
                     if (ImGui::BeginPopup("brush_size_popup", ImGuiWindowFlags_NoMove))
                     {
@@ -2567,7 +2676,7 @@ void AppearanceView::draw()
                     mask_cursor_square_->scale_ = glm::vec3(s * 1.75f, 1.f);
 
                     ImGui::SameLine();
-                    if (ImGui::Button(ICON_FA_FEATHER_ALT))
+                    if (ImGui::Button(ICON_FA_FEATHER_ALT ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup("brush_pressure_popup");
                     if (ImGui::BeginPopup("brush_pressure_popup", ImGuiWindowFlags_NoMove))
                     {
@@ -2588,7 +2697,7 @@ void AppearanceView::draw()
 
                     ImGui::SameLine(0, 60);
                     edit_source_->maskShader()->effect = 0;
-                    if (ImGui::Button(ICON_FA_MAGIC))
+                    if (ImGui::Button(ICON_FA_MAGIC ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup( "brush_menu_popup" );
                     if (ImGui::BeginPopup( "brush_menu_popup" ))
                     {
@@ -2679,7 +2788,7 @@ void AppearanceView::draw()
                     }
 
                     ImGui::SameLine(0, 20);
-                    if (ImGui::Button(ICON_FA_RADIATION_ALT))
+                    if (ImGui::Button(ICON_FA_RADIATION_ALT ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup("shape_smooth_popup");
                     if (ImGui::BeginPopup("shape_smooth_popup", ImGuiWindowFlags_NoMove))
                     {
@@ -2733,6 +2842,7 @@ void AppearanceView::draw()
             }
 
             ImGui::PopFont();
+            ImGui::PopStyleColor(14);  // 14 colors
             ImGui::End();
         }
 

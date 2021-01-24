@@ -421,6 +421,15 @@ void ImGuiVisitor::visit (Source& s)
     else
         ImGuiToolkit::HelpMarker("Unlocked", ICON_FA_LOCK_OPEN);
 
+    // Inform on workspace
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + 2.f * ImGui::GetFrameHeight()) );
+    if (s.workspace() == Source::BACKGROUND)
+        ImGuiToolkit::HelpIcon("Background",10, 16);
+    else if (s.workspace() == Source::FOREGROUND)
+        ImGuiToolkit::HelpIcon("Foreground",12, 16);
+    else
+        ImGuiToolkit::HelpIcon("Stage",11, 16);
+
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );

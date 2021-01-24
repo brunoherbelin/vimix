@@ -736,6 +736,12 @@ void Mixer::setView(View::Mode m)
         break;
     }
 
+    // selection might have to change
+    for (auto sit = session_->begin(); sit != session_->end(); sit++) {
+        if ( !current_view_->canSelect(*sit) )
+            deselect( *sit );
+    }
+
     // need to deeply update view to apply eventual changes
     View::need_deep_update_++;
 

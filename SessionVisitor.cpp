@@ -342,6 +342,7 @@ void SessionVisitor::visit (Source& s)
     XMLElement *sourceNode = xmlDoc_->NewElement( "Source" );
     sourceNode->SetAttribute("id", s.id());
     sourceNode->SetAttribute("name", s.name().c_str() );
+    sourceNode->SetAttribute("locked", s.locked() );
 
     // insert into hierarchy
     xmlCurrent_->InsertFirstChild(sourceNode);

@@ -60,6 +60,7 @@ public:
     // select sources provided a start and end selection points in screen coordinates
     virtual void select(glm::vec2, glm::vec2);
     virtual void selectAll();
+    virtual bool canSelect(Source *);
 
     // drag the view provided a start and an end point in screen coordinates
     virtual Cursor drag (glm::vec2, glm::vec2);
@@ -106,8 +107,6 @@ public:
     void resize (int) override;
     int  size () override;
     void centerSource(Source *) override;
-    void select(glm::vec2, glm::vec2) override;
-    void selectAll() override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
@@ -139,6 +138,7 @@ public:
     ~RenderView ();
 
     void draw () override;
+    bool canSelect(Source *) override;
 
     void setResolution (glm::vec3 resolution = glm::vec3(0.f));
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
@@ -158,6 +158,7 @@ public:
     void update (float dt) override;
     void resize (int) override;
     int  size () override;
+    bool canSelect(Source *) override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
@@ -177,6 +178,7 @@ private:
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
     bool show_context_menu_;
+
 };
 
 class LayerView : public View
@@ -187,7 +189,9 @@ public:
     void update (float dt) override;
     void resize (int) override;
     int  size () override;
+    bool canSelect(Source *) override;
 
+    std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     void arrow (glm::vec2) override;
 
@@ -208,7 +212,7 @@ public:
     void draw () override;
     void update (float dt) override;
     void zoom (float factor) override;
-    void selectAll() override;
+    bool canSelect(Source *) override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
@@ -232,14 +236,12 @@ class AppearanceView : public View
 public:
     AppearanceView();
 
-    void select(glm::vec2, glm::vec2) override;
-    void selectAll() override;
-
     void draw () override;
-
     void update (float dt) override;
     void resize (int) override;
     int  size () override;
+    bool canSelect(Source *) override;
+    void select(glm::vec2 A, glm::vec2 B) override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;

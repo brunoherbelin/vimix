@@ -190,6 +190,7 @@ struct Application
 
     // Settings of Views
     int current_view;
+    int current_workspace;
     std::map<int, ViewConfig> views;
 
     // settings render
@@ -221,6 +222,7 @@ struct Application
         action_history_follow_view = false;
         accept_connections = false;
         current_view = 1;
+        current_workspace= 1;
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
         windows[0].w = 1600;

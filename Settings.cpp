@@ -131,6 +131,7 @@ void Settings::Save()
         // save current view only if [mixing, geometry, layers, appearance]
         int v = application.current_view > 4 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
+        viewsNode->SetAttribute("workspace", application.current_workspace);
 
         map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); iter++)
@@ -332,6 +333,7 @@ void Settings::Load()
         if (pElement)
         {
             pElement->QueryIntAttribute("current", &application.current_view);
+            pElement->QueryIntAttribute("workspace", &application.current_workspace);
 
             XMLElement* viewNode = pElement->FirstChildElement("View");
             for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

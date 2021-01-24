@@ -17,7 +17,7 @@
 #include "Log.h"
 #include "Mixer.h"
 
-Source::Source() : initialized_(false), active_(true), locked_(false), need_update_(true), symbol_(nullptr)
+Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
 {
     // create unique id
     id_ = GlmToolkit::uniqueId();
@@ -178,21 +178,12 @@ Source::Source() : initialized_(false), active_(true), locked_(false), need_upda
     groups_[View::TRANSITION] = new Group;
 
     //
-    // shared locker symbol
-    //
-    locker_ = new Symbol(Symbol::LOCK, glm::vec3(0.8f, -0.8f, 0.01f));
-    locker_->color = glm::vec4(1.f, 1.f, 1.f, 0.6f);
-
-    // add semi transparent icon statically to mixing and layer views
-    Group *lockgroup = new Group;
-    lockgroup->translation_.z = 0.1;
-    lockgroup->attach( locker_ );
-    groups_[View::LAYER]->attach(lockgroup);
-    groups_[View::MIXING]->attach(lockgroup);
-
-    // add semi transparent icon dynamically with overlay
-    overlays_[View::LAYER]->attach( locker_ );
-    overlays_[View::MIXING]->attach( locker_ );
+    // locker switch button : locked / unlocked icons
+    locker_  = new Switch;
+    lock_ = new Handles(Handles::LOCKED);
+    locker_->attach(lock_);
+    unlock_ = new Handles(Handles::UNLOCKED);
+    locker_->attach(unlock_);
 
     // create objects
     stored_status_  = new Group;
@@ -299,7 +290,7 @@ void Source::setMode(Source::Mode m)
     // show overlay if current
     bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
-        (*o).second->visible_ = current;
+        (*o).second->visible_ = current & !locked_;
 
     // show in appearance view if current
     groups_[View::APPEARANCE]->visible_ = m > Source::VISIBLE;
@@ -389,6 +380,14 @@ void Source::attach(FrameBuffer *renderbuffer)
     if (groups_[View::TRANSITION]->numChildren() > 0)
         groups_[View::TRANSITION]->attach(mixingsurface_);
 
+    // hack to place the symbols in the corner independently of aspect ratio
+    symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
+
+    // add lock icon to views (displayed on front)
+    groups_[View::LAYER]->attach( locker_ );
+    groups_[View::MIXING]->attach( locker_ );
+    groups_[View::GEOMETRY]->attach( locker_ );
+
     // scale all icon nodes to match aspect ratio
     for (int v = View::MIXING; v < View::INVALID; v++) {
         NodeSet::iterator node;
@@ -397,10 +396,6 @@ void Source::attach(FrameBuffer *renderbuffer)
             (*node)->scale_.x = renderbuffer_->aspectRatio();
         }
     }
-
-    // hack to place the symbols in the corner independently of aspect ratio
-    symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
-    locker_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
 
     // (re) create the masking buffer
     if (maskbuffer_)
@@ -430,26 +425,15 @@ void Source::setActive (bool on)
     groups_[View::RENDERING]->visible_ = active_;
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
-
 }
 
 void Source::setLocked (bool on)
 {
     locked_ = on;
 
-    // the lock icon is visible when locked
-    locker_->visible_ = on;
-
+    // the lock icon
+    locker_->setActive( on ? 0 : 1);
 }
-
-void Source::setFixed (bool on)
-{
-    fixed_ = on;
-
-    groups_[View::GEOMETRY]->visible_ = !fixed_;
-    groups_[View::MIXING]->visible_ = !fixed_;
-}
-
 
 // Transfer functions from coordinates to alpha (1 - transparency)
 float linear_(float x, float y) {
@@ -511,16 +495,18 @@ void Source::update(float dt)
         // Layers icons are displayed in Perspective (diagonal)
         groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
 
-        // CHANGE lock based on range of layers stage
-        bool l = (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH)
-                || (groups_[View::LAYER]->translation_.x > -BACKGROUND_DEPTH);
-        setLocked( l );
-
-        // adjust position of layer icon: step up when on stage
-        if (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH)
+        // Update workspace based on depth, and
+        // adjust vertical position of icon depending on workspace
+        if (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH) {
             groups_[View::LAYER]->translation_.y -= 0.3f;
-        else if (groups_[View::LAYER]->translation_.x < -BACKGROUND_DEPTH)
+            workspace_ = Source::FOREGROUND;
+        }
+        else if (groups_[View::LAYER]->translation_.x < -BACKGROUND_DEPTH) {
             groups_[View::LAYER]->translation_.y -= 0.15f;
+            workspace_ = Source::STAGE;
+        }
+        else
+            workspace_ = Source::BACKGROUND;
 
         // MODIFY depth based on LAYER node
         groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
