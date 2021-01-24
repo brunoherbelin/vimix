@@ -124,7 +124,10 @@ void ImGuiToolkit::Icon(int i, int j, bool enabled)
 
     ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-    ImVec4 tint_color = ImVec4(1.f,1.f,1.f, enabled ? 1.f : 0.6f);
+
+    ImVec4 tint_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+    if (!enabled)
+        tint_color.w = 0.6f;
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
@@ -262,6 +265,42 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     return ret;
 }
 
+bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, int* state)
+{
+    bool ret = false;
+    Sum id = std::for_each(icons.begin(), icons.end(), Sum());
+    ImGui::PushID( id.sum );
+
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+    float w = ImGui::GetTextLineHeight();
+    ImGui::SetNextItemWidth(w * 2.8f);
+    if (ImGui::BeginCombo("##ComboIcon", "  ") )
+    {
+        std::vector<std::pair<int, int> >::iterator it = icons.begin();
+        for(int i = 0 ; it != icons.end(); i++, it++) {
+            ImGui::PushID( id.sum + i + 1);
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            // combo selectable item
+            if ( ImGui::Selectable("  ", i == *state )){
+                *state = i;
+                ret = true;
+            }
+            // draw item icon
+            ImGui::SetCursorScreenPos( pos + ImVec2(w/6.f,0) );
+            Icon( (*it).first, (*it).second );
+            ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+
+    // redraw current ad preview value
+    ImGui::SetCursorScreenPos(draw_pos + ImVec2(w/9.f,w/9.f));
+    Icon(icons[*state].first, icons[*state].second );
+
+    ImGui::PopID();
+    return ret;
+}
+
 
 void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 {
@@ -316,6 +355,21 @@ void ImGuiToolkit::ToolTip(const char* desc)
 void ImGuiToolkit::HelpMarker(const char* desc, const char* icon)
 {
     ImGui::TextDisabled( icon );
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::PopFont();
+        ImGui::EndTooltip();
+    }
+}
+
+void ImGuiToolkit::HelpIcon(const char* desc, int i, int j)
+{
+    ImGuiToolkit::Icon(i, j, false);
     if (ImGui::IsItemHovered())
     {
         ImGui::BeginTooltip();
