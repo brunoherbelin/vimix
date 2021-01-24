@@ -1656,9 +1656,12 @@ float LayerView::setDepth(Source *s, float d)
 
         // find the front-most souce in the workspace (behind FOREGROUND)
         for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); node++) {
-            if ( (*node)->translation_.z > FOREGROUND_DEPTH )
-                break;
+            // place in front of previous sources
             depth = MAX(depth, (*node)->translation_.z + 0.25f);
+
+            // in case node is already at max depth
+            if ((*node)->translation_.z + 0.05 > MAX_DEPTH )
+                (*node)->translation_.z -= 0.05;
         }
 
     }
@@ -1825,6 +1828,8 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
+            // no fading
+            Mixer::manager().session()->setFading( 0.f );
         }
         // fade to black
         else
@@ -1862,7 +1867,7 @@ void TransitionView::draw()
     gradient_->setActive( 2*Settings::application.transition.profile + (Settings::application.transition.cross_fade ? 0 : 1) );
 
     // draw scene of this view
-    scene.root()->draw(glm::identity<glm::mat4>(), Rendering::manager().Projection());
+    View::draw();
 
     // 100ms tic marks
     int n = static_cast<int>( Settings::application.transition.duration / 0.1f );
@@ -1879,19 +1884,56 @@ void TransitionView::draw()
     scene.accept(dv2);
 
     // display interface duration
-    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.15f, -0.14f, 0.f), scene.root()->transform_, false);
+    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.17f, -0.14f, 0.f), scene.root()->transform_, false);
     ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
     if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
     {
+
+        // style grey
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.79f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
+
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetNextItemWidth(160.f);
-        ImGui::DragFloat("##transitionduration", &Settings::application.transition.duration,
-                         0.1f, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
+        ImGui::SetNextItemWidth(180.f);
+        ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
+                           TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         ImGui::SameLine();
         if ( ImGui::Button(ICON_FA_STEP_FORWARD) )
             play(false);
+
+        ImGui::PopFont();
+        ImGui::PopStyleColor(7);  // 7 colors
+        ImGui::End();
+    }
+
+    P = Rendering::manager().project(glm::vec3(-0.535f, -0.14f, 0.f), scene.root()->transform_, false);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+    if (ImGui::Begin("##TransitionType", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+        // black background in icon 'transition to black'
+        if (!Settings::application.transition.cross_fade) {
+            ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.98f));
+            ImGuiToolkit::Icon(19,1);
+            ImGui::PopStyleColor(1);
+            ImGui::SetCursorScreenPos(draw_pos);
+        }
+
+        // toggle transition mode
+        const char *tooltip[2] = {"Transition to black", "Cross fading"};
+        ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
+
         ImGui::PopFont();
         ImGui::End();
     }
