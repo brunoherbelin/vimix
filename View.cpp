@@ -1013,6 +1013,10 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         // keep current source active if it is clicked
         Source *current = Mixer::manager().currentSource();
         if (current != nullptr) {
+            if (current->workspace() != Settings::application.current_workspace){
+                current = nullptr;
+            }
+
             // find if the current source was picked
             auto itp = pv.rbegin();
             for (; itp != pv.rend(); itp++){
@@ -1025,8 +1029,9 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 }
             }
             // not found: the current source was not clicked
-            if (itp == pv.rend())
+            if (itp == pv.rend()) {
                 current = nullptr;
+            }
             // picking on the menu handle: show context menu
             else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
                 show_context_menu_ = true;
@@ -1093,6 +1098,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     // work on the given source
     if (!s)
         return ret;
+
     Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // grab coordinates in scene-View reference frame
