@@ -2326,10 +2326,10 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
             // show paint brush cursor
             if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
                 if (mask_cursor_paint_ > 0) {
-                    S += glm::vec2(edit_source_->maskShader()->brush.x);
+                    S += glm::vec2(Settings::application.brush.x);
                     if ( ABS(P.x) < S.x  && ABS(P.y) < S.y ) {
-                        mask_cursor_circle_->visible_ = edit_source_->maskShader()->brush.z < 1.0;
-                        mask_cursor_square_->visible_ = edit_source_->maskShader()->brush.z > 0.0;
+                        mask_cursor_circle_->visible_ = Settings::application.brush.z < 1.0;
+                        mask_cursor_square_->visible_ = Settings::application.brush.z > 0.0;
                         edit_source_->maskShader()->option = mask_cursor_paint_;
                         if (mask_cursor_paint_ > 1) {
                             mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
@@ -2642,7 +2642,6 @@ void AppearanceView::draw()
                     item = (int) round(Settings::application.brush.z);
                     if(ImGui::Combo("##BrushShape", &item, items, IM_ARRAYSIZE(items))) {
                         Settings::application.brush.z = float(item);
-                        edit_source_->maskShader()->brush.z = Settings::application.brush.z;
                     }
 
                     ImGui::SameLine();
@@ -2660,7 +2659,6 @@ void AppearanceView::draw()
                         ImGuiToolkit::ToolTip("Large  [ " ICON_FA_ARROW_RIGHT " ]");
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
-                            edit_source_->maskShader()->brush.x = Settings::application.brush.x;
                         }
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
@@ -2685,8 +2683,7 @@ void AppearanceView::draw()
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGui::Text(ICON_FA_FEATHER_ALT);
                         ImGuiToolkit::ToolTip("Light  [ " ICON_FA_ARROW_UP " ]");
-                        if (ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f) )
-                            edit_source_->maskShader()->brush.y = Settings::application.brush.y;
+                        ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
@@ -3259,8 +3256,12 @@ void AppearanceView::initiate()
     // View default initiation of action
     View::initiate();
 
-    if ( edit_source_ != nullptr )
+    if ( edit_source_ != nullptr ) {
         stored_mask_size_ = glm::vec3(edit_source_->maskShader()->size, 0.0);
+
+        // apply mask settings
+        edit_source_->maskShader()->brush = Settings::application.brush;
+    }
     else
         stored_mask_size_ = glm::vec3(0.f);
 }
@@ -3332,8 +3333,6 @@ void AppearanceView::arrow (glm::vec2 movement)
                 glm::vec2 b = 0.05f * movement;
                 Settings::application.brush.x = CLAMP(Settings::application.brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                 Settings::application.brush.y = CLAMP(Settings::application.brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
-                edit_source_->maskShader()->brush.x = Settings::application.brush.x;
-                edit_source_->maskShader()->brush.y = Settings::application.brush.y;
             }
         }
         else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
