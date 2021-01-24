@@ -2639,9 +2639,10 @@ void AppearanceView::draw()
                     ImGui::SetNextItemWidth(100.f);
                     const char* items[] = { ICON_FA_CIRCLE, ICON_FA_SQUARE };
                     static int item = 0;
-                    item = (int) round(edit_source_->maskShader()->brush.z);
+                    item = (int) round(Settings::application.brush.z);
                     if(ImGui::Combo("##BrushShape", &item, items, IM_ARRAYSIZE(items))) {
-                        edit_source_->maskShader()->brush.z = float(item);
+                        Settings::application.brush.z = float(item);
+                        edit_source_->maskShader()->brush.z = Settings::application.brush.z;
                     }
 
                     ImGui::SameLine();
@@ -2652,13 +2653,14 @@ void AppearanceView::draw()
                     {
                         int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
                         int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
-                        int pixel_size = int(edit_source_->maskShader()->brush.x * edit_source_->frame()->height() );
+                        int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGuiToolkit::Icon(16,1);
                         ImGuiToolkit::ToolTip("Large  [ " ICON_FA_ARROW_RIGHT " ]");
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
-                            edit_source_->maskShader()->brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+                            Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+                            edit_source_->maskShader()->brush.x = Settings::application.brush.x;
                         }
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
@@ -2671,7 +2673,7 @@ void AppearanceView::draw()
                         ImGui::EndPopup();
                     }
                     // make sure the visual brush is up to date
-                    glm::vec2 s = glm::vec2(edit_source_->maskShader()->brush.x);
+                    glm::vec2 s = glm::vec2(Settings::application.brush.x);
                     mask_cursor_circle_->scale_ = glm::vec3(s * 1.16f, 1.f);
                     mask_cursor_square_->scale_ = glm::vec3(s * 1.75f, 1.f);
 
@@ -2683,10 +2685,11 @@ void AppearanceView::draw()
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGui::Text(ICON_FA_FEATHER_ALT);
                         ImGuiToolkit::ToolTip("Light  [ " ICON_FA_ARROW_UP " ]");
-                        ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &edit_source_->maskShader()->brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
+                        if (ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f) )
+                            edit_source_->maskShader()->brush.y = Settings::application.brush.y;
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
-                            ImGui::Text("%.1f%%", edit_source_->maskShader()->brush.y * 100.0);
+                            ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
                             ImGui::EndTooltip();
                         }
                         ImGui::Text(ICON_FA_WEIGHT_HANGING);
@@ -3327,8 +3330,10 @@ void AppearanceView::arrow (glm::vec2 movement)
         if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
             if (mask_cursor_paint_ > 0) {
                 glm::vec2 b = 0.05f * movement;
-                edit_source_->maskShader()->brush.x = CLAMP(edit_source_->maskShader()->brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
-                edit_source_->maskShader()->brush.y = CLAMP(edit_source_->maskShader()->brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
+                Settings::application.brush.x = CLAMP(Settings::application.brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+                Settings::application.brush.y = CLAMP(Settings::application.brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
+                edit_source_->maskShader()->brush.x = Settings::application.brush.x;
+                edit_source_->maskShader()->brush.y = Settings::application.brush.y;
             }
         }
         else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {

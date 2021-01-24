@@ -193,6 +193,9 @@ struct Application
     int current_workspace;
     std::map<int, ViewConfig> views;
 
+    // settings brush texture paint
+    glm::vec3 brush;
+
     // settings render
     RenderConfig render;
 
@@ -223,6 +226,7 @@ struct Application
         accept_connections = false;
         current_view = 1;
         current_workspace= 1;
+        brush = glm::vec3(0.5f, 0.1f, 0.f);
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
         windows[0].w = 1600;

@@ -110,6 +110,11 @@ void Settings::Save()
     SourceConfNode->SetAttribute("res", application.source.res);
     pRoot->InsertEndChild(SourceConfNode);
 
+    // Brush
+    XMLElement *BrushNode = xmlDoc.NewElement( "Brush" );
+    BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
+    pRoot->InsertEndChild(BrushNode);
+
     // bloc connections
     {
         XMLElement *connectionsNode = xmlDoc.NewElement( "Connections" );
@@ -325,6 +330,12 @@ void Settings::Load()
             }
         }
 	}
+
+    // Brush
+    XMLElement * brushnode = pRoot->FirstChildElement("Brush");
+    if (brushnode != nullptr) {
+        tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
+    }
 
     // bloc views
     {
