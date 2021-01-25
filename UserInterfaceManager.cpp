@@ -1945,8 +1945,9 @@ void Navigator::Render()
                 SourceList::iterator iter;
                 for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
                 {
+                    Source *s = (*iter);
                     // draw an indicator for current source
-                    if ( (*iter)->mode() >= Source::SELECTED ){
+                    if ( s->mode() >= Source::SELECTED ){
                         ImDrawList* draw_list = ImGui::GetWindowDrawList();
                         ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
                         ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
@@ -1958,13 +1959,32 @@ void Navigator::Render()
                         draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
                     }
                     // draw select box
-                    ImGui::PushID(std::to_string((*iter)->group(View::RENDERING)->id()).c_str());
-                    if (ImGui::Selectable( (*iter)->initials(), &selected_button[index], 0, iconsize))
+                    ImGui::PushID(std::to_string(s->group(View::RENDERING)->id()).c_str());
+                    if (ImGui::Selectable(s->initials(), &selected_button[index], 0, iconsize))
                     {
                         applyButtonSelection(index);
                         if (selected_button[index])
                             Mixer::manager().setCurrentIndex(index);
                     }
+
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+                    {
+                        ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
+                        ImGui::Text("%s", s->initials());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SOURCE"))
+                        {
+                            if ( payload->DataSize == sizeof(int) ) {
+                                int payload_index = *(const int*)payload->Data;
+                                Mixer::manager().session()->move(payload_index, index);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
                     ImGui::PopID();
                 }
 
@@ -2501,10 +2521,10 @@ void Navigator::RenderMainPannel()
         ImGui::PopFont();
 
         // Icon to switch fullscreen
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        ImGui::SetCursorPos(ImVec2(pannel_width_  - 40.f, 13.f));
         const char *tooltip[2] = {"Enter Fullscreen (" CTRL_MOD "Shift+F)", "Exit Fullscreen (" CTRL_MOD "Shift+F)"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
-        if ( ImGuiToolkit::IconToggle(3,15,2,15, &fs, tooltip ) ) {
+        if ( ImGuiToolkit::IconToggle(4,15,3,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
         }
         // Session menu
@@ -2629,7 +2649,7 @@ void Navigator::RenderMainPannel()
         // display the sessions list and detect if one was selected (double clic)
         bool session_selected = false;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##Sessions", 5);
+        ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8));
         static std::string file_info = "";
         static std::list<std::string>::iterator file_selected = sessions_list.end();
         for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {

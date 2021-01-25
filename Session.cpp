@@ -275,6 +275,23 @@ int Session::index(SourceList::iterator it) const
     return index;
 }
 
+void Session::move(int current_index, int target_index)
+{
+    if ( current_index < 0 || current_index > sources_.size()
+         || target_index < 0 || target_index > sources_.size()
+         || target_index == current_index )
+        return;
+
+    SourceList::iterator from = at(current_index);
+    SourceList::iterator to   = at(target_index);
+    if ( target_index > current_index )
+        to++;
+
+    Source *s = (*from);
+    sources_.erase(from);
+    sources_.insert(to, s);
+}
+
 void Session::lock()
 {
     access_.lock();

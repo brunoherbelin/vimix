@@ -43,7 +43,8 @@ public:
     std::list<uint64_t> getIdList() const;
 
     SourceList::iterator at (int index);
-    int index (SourceList::iterator it) const;
+    int index (SourceList::iterator it) const;    
+    void move (int current_index, int target_index);
 
     // update all sources and mark sources which failed
     void update (float dt);
