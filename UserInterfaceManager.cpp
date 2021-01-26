@@ -342,18 +342,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F ) && shift_modifier_active) {
             Rendering::manager().mainWindow().toggleFullscreen();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
-            show_view_navigator += shift_modifier_active ? 3 : 1;
-        }
     }
     // No CTRL modifier
     else {
         ctrl_modifier_active = false;
-
-        if (show_view_navigator > 0) {
-            show_view_navigator  = 0;
-            Mixer::manager().setView((View::Mode) target_view_navigator);
-        }
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -408,6 +400,16 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().view()->arrow( glm::vec2(0.f, 1.f) );
         }
     }
+
+    // special case: CTRL + TAB is the same in OSX and other OSs
+    if (io.KeyCtrl) {
+        if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
+            show_view_navigator += shift_modifier_active ? 3 : 1;
+    } else if (show_view_navigator > 0) {
+        show_view_navigator  = 0;
+        Mixer::manager().setView((View::Mode) target_view_navigator);
+    }
+
 
     // confirmation for leaving vimix: prevent un-wanted Ctrl+Q, but make it easy to confirm
     if (ImGui::BeginPopup("confirm_quit_popup"))
