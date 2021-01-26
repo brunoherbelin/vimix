@@ -383,7 +383,7 @@ void UserInterface::handleKeyboard()
             else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
                 navigator.togglePannelNew();
             // button tab to select next
-            else if (ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+            else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
                 if (shift_modifier_active)
                     Mixer::manager().setCurrentPrevious();
                 else
@@ -401,11 +401,12 @@ void UserInterface::handleKeyboard()
         }
     }
 
-    // special case: CTRL + TAB is the same in OSX and other OSs
-    if (io.KeyCtrl) {
+    // special case: CTRL + TAB is ALT + TAB in OSX
+    if (io.ConfigMacOSXBehaviors ? io.KeyAlt : io.KeyCtrl) {
         if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
             show_view_navigator += shift_modifier_active ? 3 : 1;
-    } else if (show_view_navigator > 0) {
+    }
+    else if (show_view_navigator > 0) {
         show_view_navigator  = 0;
         Mixer::manager().setView((View::Mode) target_view_navigator);
     }
