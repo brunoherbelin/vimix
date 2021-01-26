@@ -2630,7 +2630,7 @@ void AppearanceView::draw()
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
             int mode = edit_source_->maskShader()->mode;
-            ImGui::SetNextItemWidth(100.f);
+            ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
             if ( ImGui::Combo("##Mask", &mode, MaskShader::mask_names, IM_ARRAYSIZE(MaskShader::mask_names) ) ) {
                 edit_source_->maskShader()->mode = mode;
                 if (mode == MaskShader::NONE)
@@ -2684,7 +2684,7 @@ void AppearanceView::draw()
                 if (mask_cursor_paint_ > 0) {
 
                     ImGui::SameLine(0, 50);
-                    ImGui::SetNextItemWidth(100.f);
+                    ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
                     const char* items[] = { ICON_FA_CIRCLE, ICON_FA_SQUARE };
                     static int item = 0;
                     item = (int) round(Settings::application.brush.z);
@@ -2824,7 +2824,7 @@ void AppearanceView::draw()
                 if (mask_cursor_shape_ > 0) {
 
                     ImGui::SameLine(0, 50);
-                    ImGui::SetNextItemWidth(230.f);
+                    ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 6.5f);
                     if ( ImGui::Combo("##MaskShape", &shape, MaskShader::mask_shapes, IM_ARRAYSIZE(MaskShader::mask_shapes) ) ) {
                         edit_source_->maskShader()->shape = shape;
                         edit_source_->touch();

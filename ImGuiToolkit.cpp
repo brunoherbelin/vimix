@@ -273,7 +273,7 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, int* stat
 
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
     float w = ImGui::GetTextLineHeight();
-    ImGui::SetNextItemWidth(w * 2.8f);
+    ImGui::SetNextItemWidth(w * 2.6f);
     if (ImGui::BeginCombo("##ComboIcon", "  ") )
     {
         std::vector<std::pair<int, int> >::iterator it = icons.begin();
