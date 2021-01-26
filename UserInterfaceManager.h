@@ -113,6 +113,8 @@ class UserInterface
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;
+    int  show_view_navigator;
+    int  target_view_navigator;
     unsigned int screenshot_step;
 
     // frame grabbers
@@ -165,6 +167,7 @@ protected:
     void RenderPreview();
     void RenderHistory();
     void RenderShaderEditor();
+    int   RenderViewNavigator(int* shift);
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();

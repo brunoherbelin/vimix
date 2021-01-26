@@ -161,6 +161,8 @@ UserInterface::UserInterface()
     show_imgui_about = false;
     show_gst_about = false;
     show_opengl_about = false;
+    show_view_navigator  = 0;
+    target_view_navigator = 1;
     currentTextEdit = "";
     screenshot_step = 0;
 
@@ -340,10 +342,18 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F ) && shift_modifier_active) {
             Rendering::manager().mainWindow().toggleFullscreen();
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+            show_view_navigator += shift_modifier_active ? 3 : 1;
+        }
     }
     // No CTRL modifier
     else {
         ctrl_modifier_active = false;
+
+        if (show_view_navigator > 0) {
+            show_view_navigator  = 0;
+            Mixer::manager().setView((View::Mode) target_view_navigator);
+        }
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -783,7 +793,9 @@ void UserInterface::Render()
         if (Settings::application.widget.logs)
             Log::ShowLogWindow(&Settings::application.widget.logs);
 
-        // about dialogs
+        // dialogs
+        if (show_view_navigator > 0)
+            target_view_navigator = RenderViewNavigator( &show_view_navigator );
         if (show_vimix_about)
             RenderAbout(&show_vimix_about);
         if (show_imgui_about)
@@ -1373,6 +1385,88 @@ void UserInterface::RenderPreview()
         ImGui::EndPopup();
     }
 #endif
+}
+
+
+int UserInterface::RenderViewNavigator(int *shift)
+{
+    // calculate potential target view index :
+    // - shift increment : minus 1 to not react to first trigger
+    // - current_view : indices are between 1 (Mixing) and 5 (Appearance)
+    // - Modulo 4 to allow multiple repetition of shift increment
+    int target_index = ( (Settings::application.current_view -1)+ (*shift -1) )%4 + 1;
+
+    // prepare rendering of centered, fixed-size, semi-transparent window;
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 window_pos = ImVec2(io.DisplaySize.x / 2.f, io.DisplaySize.y / 2.f);
+    ImVec2 window_pos_pivot = ImVec2(0.5f, 0.5f);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    ImGui::SetNextWindowSize(ImVec2(500.f, 120.f + 2.f * ImGui::GetTextLineHeight()), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.85f);
+
+    // show window
+    if (ImGui::Begin("Views", NULL,  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // prepare rendering of the array of selectable icons
+        bool selected_view[View::INVALID] = { };
+        selected_view[ target_index ] = true;
+        ImVec2 iconsize(120.f, 120.f);
+
+        // draw icons centered horizontally and vertically
+        ImVec2 alignment = ImVec2(0.4f, 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
+
+        // draw in 4 columns
+        ImGui::Columns(4, NULL, false);
+
+        // 4 selectable large icons
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
+        {
+            Mixer::manager().setView(View::MIXING);
+            *shift = 0;
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
+        {
+            Mixer::manager().setView(View::GEOMETRY);
+            *shift = 0;
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
+        {
+            Mixer::manager().setView(View::LAYER);
+            *shift = 0;
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
+        {
+            Mixer::manager().setView(View::APPEARANCE);
+            *shift = 0;
+        }
+        ImGui::PopFont();
+
+        // 4 subtitles (text centered in column)
+        ImGui::NextColumn();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Mixing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::Text("Mixing");
+        ImGui::NextColumn();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Geometry").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::Text("Geometry");
+        ImGui::NextColumn();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Layers").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::Text("Layers");
+        ImGui::NextColumn();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Texturing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::Text("Texturing");
+
+        ImGui::Columns(1);
+        ImGui::PopStyleVar();
+
+        ImGui::End();
+    }
+
+    return target_index;
 }
 
 void UserInterface::showMediaPlayer(MediaPlayer *mp)
@@ -1970,7 +2064,7 @@ void Navigator::Render()
                     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                     {
                         ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
-                        ImGui::Text("%s", s->initials());
+                        ImGui::Text( ICON_FA_SORT " %s ", s->initials());
                         ImGui::EndDragDropSource();
                     }
                     if (ImGui::BeginDragDropTarget())
@@ -2027,7 +2121,6 @@ void Navigator::Render()
             about = "Mixing [ F1 ]";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
-            if (ImGui::IsItemHovered())
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
