@@ -229,6 +229,8 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
+//     guint64 _time = gst_util_get_timestamp ();
+
     // operate on main window context
     main_.makeCurrent();
 
@@ -275,10 +277,13 @@ void Rendering::draw()
 
     // software framerate limiter 60FPS if not v-sync
     if ( Settings::application.render.vsync < 1 ) {
-        int dt = 18000 - int( 1000.f * Mixer::manager().dt() );
-        if (dt > 100)
-            g_usleep( dt );
+        static GTimer *timer = g_timer_new ();
+        double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
+        if (elapsed < 16000)
+            g_usleep( 16000 - (gulong)elapsed  );
+        g_timer_start(timer);
     }
+
 }
 
 
