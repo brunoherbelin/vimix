@@ -1452,16 +1452,25 @@ int UserInterface::RenderViewNavigator(int *shift)
         // 4 subtitles (text centered in column)
         ImGui::NextColumn();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Mixing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+
+        ImGuiToolkit::PushFont(Settings::application.current_view == 1 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
         ImGui::Text("Mixing");
+        ImGui::PopFont();
         ImGui::NextColumn();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Geometry").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGuiToolkit::PushFont(Settings::application.current_view == 2 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
         ImGui::Text("Geometry");
+        ImGui::PopFont();
         ImGui::NextColumn();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Layers").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGuiToolkit::PushFont(Settings::application.current_view == 3 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
         ImGui::Text("Layers");
+        ImGui::PopFont();
         ImGui::NextColumn();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Texturing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGuiToolkit::PushFont(Settings::application.current_view == 4 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
         ImGui::Text("Texturing");
+        ImGui::PopFont();
 
         ImGui::Columns(1);
         ImGui::PopStyleVar();

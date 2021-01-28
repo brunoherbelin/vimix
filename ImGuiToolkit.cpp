@@ -921,7 +921,7 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
 
     ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
 
-    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         int mode = (*p_timer) ? 1 : 0;
         ImGui::SetNextItemWidth(220);

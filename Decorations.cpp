@@ -27,8 +27,8 @@ Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), 
         frames[2] = new Mesh("mesh/border_large_round.ply");
         frames[3] = new Mesh("mesh/border_large_top.ply");
     }
-    static LineSquare *sharpframethin = new LineSquare( 3 );
-    static LineSquare *sharpframelarge = new LineSquare( 5 );
+    static LineSquare *sharpframethin = new LineSquare( 4.f );
+    static LineSquare *sharpframelarge = new LineSquare( 6.f );
 
     if (corner == SHARP) {
         if (border == LARGE)
@@ -116,7 +116,7 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // top (scaled)
         if(square_) {
-            square_->shader()->color = color;
+            square_->setColor(color);
             square_->draw( ctm, projection);
         }
 

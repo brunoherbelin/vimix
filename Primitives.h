@@ -124,6 +124,52 @@ public:
 };
 
 
+class HLine : public Primitive {
+
+public:
+
+    HLine(float width = 1.f);
+    virtual ~HLine();
+
+    void init () override;
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
+
+    glm::vec4 color;
+    float width;
+};
+
+class VLine : public Primitive {
+
+public:
+
+    VLine(float width = 1.f);
+    virtual ~VLine();
+
+    void init () override;
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
+
+    glm::vec4 color;
+    float width;
+};
+
+/**
+ * @brief The LineSquare class is a group of 4 lines (width & height = 1.0)
+ */
+class LineSquare : public Group {
+
+    HLine *top_, *bottom_;
+    VLine *left_, *right_;
+
+public:
+    LineSquare(float linewidth = 1.f);
+
+    void setLineWidth(float v);
+    inline float lineWidth() const { return top_->width; }
+
+    void setColor(glm::vec4 c);
+    inline glm::vec4 color() const { return top_->color; }
+};
+
 /**
  * @brief The LineStrip class is a Primitive to draw lines
  */
@@ -142,21 +188,6 @@ public:
 
     inline void setLineWidth(uint v) { linewidth_ = v; }
     inline uint getLineWidth() const { return linewidth_; }
-};
-
-
-/**
- * @brief The LineSquare class is a square LineStrip (width & height = 1.0)
- */
-class LineSquare : public LineStrip {
-
-public:
-    LineSquare(uint linewidth = 1);
-
-    void init() override;
-    void accept(Visitor& v) override;
-
-    virtual ~LineSquare();
 };
 
 

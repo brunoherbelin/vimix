@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/constants.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -224,6 +225,204 @@ void Points::accept(Visitor& v)
     v.visit(*this);
 }
 
+
+
+HLine::HLine(float linewidth): Primitive(new Shader), width(linewidth)
+{
+    //                      1       3
+    //                      +-------+        ^
+    //                    / |     / | \      |
+    //    +-----+   => 0 +  |   /   |  + 5   | linewidth
+    //   -1     1         \ | /     | /      |
+    //                      +-------+        v
+    //                      2       4
+    //
+    points_ = std::vector<glm::vec3> { glm::vec3( -1.f, 0.f, 0.f ),
+            glm::vec3( -0.999f, 0.001f, 0.f ),
+            glm::vec3( -0.999f, -0.001f, 0.f ),
+            glm::vec3( 0.999f, 0.001f, 0.f ),
+            glm::vec3( 0.999f, -0.001f, 0.f ),
+            glm::vec3( 1.f, 0.f, 0.f ) };
+    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
+    indices_ = std::vector<uint> { 0, 1, 2, 3, 4, 5 };
+    drawMode_ = GL_TRIANGLE_STRIP;
+
+    // default scale
+    scale_.y = width;
+
+    //default color
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+}
+
+HLine::~HLine()
+{
+    // do NOT delete vao_ (unique)
+    vao_ = 0;
+}
+
+void HLine::init()
+{
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
+        // 1. only init Node (not the primitive vao)
+        Node::init();
+        // 2. use the global vertex array object
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
+        // compute AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
+    }
+    else {
+        // 1. init the Primitive (only once)
+        Primitive::init();
+        // 2. remember global vertex array object
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted
+    }
+
+}
+
+void HLine::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    // extract pure scaling from modelview (without rotation)
+    glm::mat4 ctm;
+    glm::vec3 rot(0.f);
+    glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
+    rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+    ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+    vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
+
+    // Change transform to use linewidth independently of scale in Y (vertical)
+    scale_.y = (float) width / vec.y;
+    update(0);
+
+    // change color
+    shader_->color = color;
+
+    Primitive::draw(modelview, projection);
+}
+
+VLine::VLine(float linewidth): Primitive(new Shader), width(linewidth)
+{
+    points_ = std::vector<glm::vec3> { glm::vec3( 0.f, -1.f, 0.f ),
+            glm::vec3( 0.001f, -0.999f, 0.f ),
+            glm::vec3( -0.001f, -0.999f, 0.f ),
+            glm::vec3( 0.001f, 0.999f, 0.f ),
+            glm::vec3( -0.001f, 0.999f, 0.f ),
+            glm::vec3( 0.f, 1.f, 0.f )};
+    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
+            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
+    indices_ = std::vector<uint> { 0, 1, 2, 3, 4, 5 };
+    drawMode_ = GL_TRIANGLE_STRIP;
+
+    // default scale
+    scale_.x = width;
+
+    // default color
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+}
+
+VLine::~VLine()
+{
+    // do NOT delete vao_ (unique)
+    vao_ = 0;
+}
+
+void VLine::init()
+{
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
+        // 1. only init Node (not the primitive vao)
+        Node::init();
+        // 2. use the global vertex array object
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
+        // compute AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
+    }
+    else {
+        // 1. init the Primitive (only once)
+        Primitive::init();
+        // 2. remember global vertex array object
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted
+    }
+
+}
+
+void VLine::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    // extract pure scaling from modelview (without rotation)
+    glm::mat4 ctm;
+    glm::vec3 rot(0.f);
+    glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
+    rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+    ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+    vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
+
+    // Change transform to use linewidth independently of scale in X (horizontal)
+    scale_.x = width / vec.x;
+    update(0);
+
+    // change color
+    shader_->color = color;
+
+    Primitive::draw(modelview, projection);
+}
+
+LineSquare::LineSquare(float linewidth) : Group()
+{
+    top_    = new HLine(linewidth);
+    top_->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    attach(top_);
+    bottom_ = new HLine(linewidth);
+    bottom_->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    attach(bottom_);
+    left_   = new VLine(linewidth);
+    left_->translation_ = glm::vec3(-1.f, 0.f, 0.f);
+    attach(left_);
+    right_  = new VLine(linewidth);
+    right_->translation_ = glm::vec3(1.f, 0.f, 0.f);
+    attach(right_);
+}
+
+
+void LineSquare::setLineWidth(float v)
+{
+    top_->width = v;
+    bottom_->width = v;
+    left_->width = v;
+    right_->width = v;
+}
+
+void LineSquare::setColor(glm::vec4 c)
+{
+    top_->color = c;
+    bottom_->color = c;
+    left_->color = c;
+    right_->color = c;
+}
+
+
 LineStrip::LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth) : Primitive(new Shader), linewidth_(linewidth)
 {
     for(size_t i = 0; i < points.size(); ++i)
@@ -260,64 +459,6 @@ void LineStrip::accept(Visitor& v)
 {
     Primitive::accept(v);
     v.visit(*this);
-}
-
-
-
-static const std::vector<glm::vec3> square_points {
-            glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-            glm::vec3( 1.f, 1.f, 0.f ), glm::vec3( 1.f, -1.f, 0.f ),
-            glm::vec3( -1.f, -1.f, 0.f )
-};
-
-static const std::vector<glm::vec4> square_colors {
-            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
-            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ),
-            glm::vec4( 1.f, 1.f, 1.f, 1.f )
-};
-
-LineSquare::LineSquare(uint linewidth) : LineStrip(square_points, square_colors, linewidth)
-{
-}
-
-void LineSquare::init()
-{
-    // use static unique vertex array object
-    static uint unique_vao_ = 0;
-    static uint unique_drawCount = 0;
-    if (unique_vao_) {
-        // 1. only init Node (not the primitive vao)
-        Node::init();
-        // 2. use the global vertex array object
-        vao_ = unique_vao_;
-        drawCount_ = unique_drawCount;
-        // compute AxisAlignedBoundingBox
-        bbox_.extend(points_);
-        // arrays of vertices are not needed anymore
-        points_.clear();
-        colors_.clear();
-        texCoords_.clear();
-        indices_.clear();
-    }
-    else {
-        // 1. init the Primitive (only once)
-        Primitive::init();
-        // 2. remember global vertex array object
-        unique_vao_ = vao_;
-        unique_drawCount = drawCount_;
-    }
-}
-
-void LineSquare::accept(Visitor& v)
-{
-    Primitive::accept(v);
-    v.visit(*this);
-}
-
-LineSquare::~LineSquare()
-{
-    // do NOT delete vao_ (unique)
-    vao_ = 0;
 }
 
 
