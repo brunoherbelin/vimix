@@ -34,6 +34,7 @@ using namespace tinyxml2;
 #define THREADED_LOADING
 static std::vector< std::future<Session *> > sessionLoaders_;
 static std::vector< std::future<Session *> > sessionImporters_;
+static std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
@@ -162,6 +163,18 @@ void Mixer::update()
         }
     }
 #endif
+
+    // if there is a session source to import
+    if (!sessionSourceToImport_.empty()) {
+        // get the session source to be imported
+        SessionSource *source = sessionSourceToImport_.back();
+        // merge the session inside this session source, and adjust alpha and depth
+        merge( source->detach(), source->alpha(), source->depth() );
+        // important: delete the sessionsource itself
+        deleteSource(source);
+        // done with this session source
+        sessionSourceToImport_.pop_back();
+    }
 
     // if a change of session is requested
     if (sessionSwapRequested_) {
@@ -839,19 +852,50 @@ void Mixer::import(const std::string& filename)
 #endif
 }
 
-void Mixer::merge(Session *session)
+void Mixer::import(SessionSource *s)
+{
+    sessionSourceToImport_.push_back( s );
+}
+
+
+void Mixer::merge(Session *session, float alpha, float depth)
 {
     if ( session == nullptr ) {
         Log::Warning("Failed to import Session.");
         return;
     }
 
+    // new state in history manager
+    Action::manager().store( std::to_string(session->numSource()) + std::string(" sources imported."));
+
     // import every sources
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+        // avoid name duplicates
         renameSource(s, s->name());
-        insertSource(s);
+
+        // scale alpha
+        if ( alpha > 0.f )
+            s->setAlpha( s->alpha() * alpha );
+
+        // set depth at given location
+        if ( depth > 0.f )
+            s->setDepth( depth + (s->depth() / MAX_DEPTH));
+
+        // Add source to Session
+        session_->addSource(s);
+
+        // Attach source to Mixer
+        attach(s);
     }
+
+    // needs to update !
+    View::need_deep_update_++;
+
+    // avoid display issues
+    current_view_->update(0.f);
+
 }
+
 
 void Mixer::swap()
 {

@@ -24,15 +24,13 @@
 #define ROUND(val, factor) float( int( val * factor ) ) / factor;
 
 #define SCENE_UNIT 5.f
-#define CIRCLE_SQUARE_DIST(x,y) ( (x*x + y*y) / (SCENE_UNIT * SCENE_UNIT * SCENE_UNIT * SCENE_UNIT) )
 #define MIN_SCALE 0.01f
 #define MAX_SCALE 10.f
 #define CLAMP_SCALE(x) SIGN(x) * CLAMP( ABS(x), MIN_SCALE, MAX_SCALE)
 #define SCENE_DEPTH 14.f
 #define MIN_DEPTH 0.f
 #define MAX_DEPTH 12.f
-#define BACKGROUND_DEPTH 2.f
-#define FOREGROUND_DEPTH 10.f
+#define DELTA_DEPTH 0.05f
 #define MIXING_DEFAULT_SCALE 2.4f
 #define MIXING_MIN_SCALE 0.8f
 #define MIXING_MAX_SCALE 7.0f
@@ -45,6 +43,9 @@
 #define LAYER_MIN_SCALE 0.4f
 #define LAYER_MAX_SCALE 1.7f
 #define LAYER_PERSPECTIVE 2.0f
+#define LAYER_BACKGROUND 2.f
+#define LAYER_FOREGROUND 10.f
+#define LAYER_STEP 0.25f
 #define APPEARANCE_DEFAULT_SCALE 2.f
 #define APPEARANCE_MIN_SCALE 0.4f
 #define APPEARANCE_MAX_SCALE 7.0f

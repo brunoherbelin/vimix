@@ -469,6 +469,9 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionSource& s)
 {
+    if (s.session() == nullptr)
+        return;
+
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
@@ -489,7 +492,7 @@ void ImGuiVisitor::visit (SessionSource& s)
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
     if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().merge( s.detach() );
+        Mixer::manager().import( &s );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }

@@ -450,6 +450,48 @@ float sin_quad(float x, float y) {
 //    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
 }
 
+
+float Source::depth()
+{
+    return groups_[View::RENDERING]->translation_.z;
+}
+
+void Source::setDepth(float d)
+{
+    groups_[View::LAYER]->translation_.z = CLAMP(d, MIN_DEPTH, MAX_DEPTH);
+    groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
+    touch();
+}
+
+float Source::alpha()
+{
+    return sin_quad( groups_[View::MIXING]->translation_.x, groups_[View::MIXING]->translation_.y );
+}
+
+void Source::setAlpha(float a)
+{
+    // todo clamp a
+    glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
+    glm::vec2 step = glm::normalize(dist) * 0.01f;
+
+    // special case: perfectly centered (step is null).
+    if ( glm::length(dist) < EPSILON)
+        // step in the diagonal
+        step = glm::vec2(0.01f, 0.01f);
+
+    // converge linearly to reduce the difference of alpha
+    float delta = sin_quad(dist.x, dist.y) - a;
+    while ( glm::abs(delta) > 0.01 ){
+        dist += step * glm::sign(delta);
+        delta = sin_quad(dist.x, dist.y) - a;
+    }
+
+    // apply new mixing coordinates
+    groups_[View::MIXING]->translation_.x = dist.x;
+    groups_[View::MIXING]->translation_.y = dist.y;
+    touch();
+}
+
 void Source::update(float dt)
 {
     // keep delta-t
@@ -458,8 +500,6 @@ void Source::update(float dt)
     // update nodes if needed
     if (renderbuffer_ && mixingsurface_ && maskbuffer_ && need_update_)
     {
-//        Log::Info("UPDATE %s %f", initials_, dt);
-
         // ADJUST alpha based on MIXING node
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
@@ -497,11 +537,11 @@ void Source::update(float dt)
 
         // Update workspace based on depth, and
         // adjust vertical position of icon depending on workspace
-        if (groups_[View::LAYER]->translation_.x < -FOREGROUND_DEPTH) {
+        if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
             groups_[View::LAYER]->translation_.y -= 0.3f;
             workspace_ = Source::FOREGROUND;
         }
-        else if (groups_[View::LAYER]->translation_.x < -BACKGROUND_DEPTH) {
+        else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
             groups_[View::LAYER]->translation_.y -= 0.15f;
             workspace_ = Source::STAGE;
         }

@@ -128,6 +128,12 @@ public:
     FrameBufferImage *getMask() const { return maskimage_; }
     void setMask(FrameBufferImage *img);
 
+    float depth();
+    void setDepth(float d);
+
+    float alpha();
+    void setAlpha(float a);
+
     struct hasNode: public std::unary_function<Source*, bool>
     {
         bool operator()(const Source* elem) const;
