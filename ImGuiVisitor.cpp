@@ -475,7 +475,7 @@ void ImGuiVisitor::visit (SessionSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Session File");
-    ImGui::Text("%s", SystemToolkit::base_filename(s.path()).c_str());
+//    ImGui::Text("%s", SystemToolkit::base_filename(s.path()).c_str());
 
     if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFading(0.f);
     float f = s.session()->fading();

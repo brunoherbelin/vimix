@@ -252,7 +252,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         if ( ext == "mix" )
         {
             // create a session source
-            SessionSource *ss = new SessionSource();
+            SessionSource *ss = new SessionSource;
             ss->load(path);
             s = ss;
         }
@@ -824,7 +824,7 @@ void Mixer::open(const std::string& filename)
         Log::Info("\nStarting transition to session %s", filename.c_str());
 
         // create special SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource();
+        SessionSource *ts = new SessionSource;
         // open filename if specified
         if (!filename.empty())
             ts->load(filename);
@@ -998,7 +998,6 @@ void Mixer::close()
     {
         // create empty SessionSource to be used for the smooth transition
         SessionSource *ts = new SessionSource;
-        ts->load();
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);
