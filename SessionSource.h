@@ -25,12 +25,11 @@ public:
     inline std::string path() const { return path_; }
     inline Session *session() const { return session_; }
 
-    glm::ivec2 icon() const override { return glm::ivec2(3, 16); }
+    glm::ivec2 icon() const override { return glm::ivec2(2, 16); }
 
 protected:
 
     void init() override;
-    static void loadSession(const std::string& filename, SessionSource *source);
 
     std::string path_;
     Session *session_;

@@ -53,7 +53,7 @@ SessionSource::SessionSource() : Source(), path_("")
 
     failed_ = false;
     wait_for_sources_ = false;
-    session_ = nullptr;
+    session_ = new Session;
 }
 
 SessionSource::~SessionSource()
@@ -67,14 +67,22 @@ void SessionSource::load(const std::string &p)
 {
     path_ = p;
 
-    if ( path_.empty() )
+    // delete session
+    if (session_) {
+        delete session_;
+        session_ = nullptr;
+    }
+
+    // init session
+    if ( path_.empty() ) {
         // empty session
         session_ = new Session;
-    else
+    }
+    else {
         // launch a thread to load the session file
         sessionLoader_ = std::async(std::launch::async, Session::load, path_);
-
-    Log::Notify("Opening %s", p.c_str());
+        Log::Notify("Opening %s", p.c_str());
+    }
 }
 
 Session *SessionSource::detach()
@@ -87,8 +95,10 @@ Session *SessionSource::detach()
 
     // make disabled
     initialized_ = false;
+    // ask to delete me
     failed_ = true;
 
+    // lost ref to previous session: to be deleted elsewhere...
     return giveaway;
 }
 
