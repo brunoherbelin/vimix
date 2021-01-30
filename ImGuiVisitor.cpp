@@ -393,18 +393,22 @@ void ImGuiVisitor::visit (Source& s)
 
     // preview
     float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-    float width = preview_width;
-    float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
-    if (height > 230) {
-        height = 230;
-        width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
-    }
-    ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
-
+    float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
     ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
 
+    float space = ImGui::GetStyle().ItemSpacing.y;
+    float width = preview_width;
+    float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+    if (height > preview_height - space) {
+        height = preview_height - space;
+        width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+    }
+    // centered image
+    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+    ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+
     // inform on visibility status
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height ) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
     if (s.active()) {
         if (s.blendingShader()->color.a > 0.f)
             ImGuiToolkit::HelpMarker("Visible", ICON_FA_EYE);
@@ -415,7 +419,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGuiToolkit::HelpMarker("Inactive", ICON_FA_SNOWFLAKE);
 
     // Inform on workspace
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + ImGui::GetFrameHeight()) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
     if (s.workspace() == Source::BACKGROUND)
         ImGuiToolkit::HelpIcon("Background",10, 16);
     else if (s.workspace() == Source::FOREGROUND)
@@ -424,7 +428,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGuiToolkit::HelpIcon("Stage",11, 16);
 
     // locking
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y -height + 2.f * ImGui::GetFrameHeightWithSpacing()) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.f * ImGui::GetFrameHeightWithSpacing()) );
     const char *tooltip[2] = {"Unlocked", "Locked"};
     bool l = s.locked();
     if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) )
@@ -432,7 +436,7 @@ void ImGuiVisitor::visit (Source& s)
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
-    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y -ImGui::GetFrameHeight() ) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y + 3.5f * ImGui::GetFrameHeightWithSpacing()) );
     if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) ){
         std::ostringstream oss;
         oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
@@ -440,7 +444,7 @@ void ImGuiVisitor::visit (Source& s)
     }
     s.setImageProcessingEnabled(on);
 
-    ImGui::SetCursorPos(pos); // ...come back
+    ImGui::SetCursorPosY(pos.y + preview_height); // ...come back
 
     // image processing pannel
     if (s.imageProcessingEnabled())
