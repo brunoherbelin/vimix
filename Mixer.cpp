@@ -17,6 +17,7 @@ using namespace tinyxml2;
 #include "Settings.h"
 #include "Log.h"
 #include "View.h"
+#include "ImageShader.h"
 #include "SystemToolkit.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -168,8 +169,8 @@ void Mixer::update()
     if (!sessionSourceToImport_.empty()) {
         // get the session source to be imported
         SessionSource *source = sessionSourceToImport_.back();
-        // merge the session inside this session source, and adjust alpha and depth
-        merge( source->detach(), source->alpha(), source->depth() );
+        // merge the session inside this session source
+        merge( source );
         // important: delete the sessionsource itself
         deleteSource(source);
         // done with this session source
@@ -852,13 +853,13 @@ void Mixer::import(const std::string& filename)
 #endif
 }
 
-void Mixer::import(SessionSource *s)
+void Mixer::import(SessionSource *source)
 {
-    sessionSourceToImport_.push_back( s );
+    sessionSourceToImport_.push_back( source );
 }
 
 
-void Mixer::merge(Session *session, float alpha, float depth)
+void Mixer::merge(Session *session)
 {
     if ( session == nullptr ) {
         Log::Warning("Failed to import Session.");
@@ -873,13 +874,54 @@ void Mixer::merge(Session *session, float alpha, float depth)
         // avoid name duplicates
         renameSource(s, s->name());
 
+        // Add source to Session
+        session_->addSource(s);
+
+        // Attach source to Mixer
+        attach(s);
+    }
+
+    // needs to update !
+    View::need_deep_update_++;
+
+    // avoid display issues
+    current_view_->update(0.f);
+}
+
+void Mixer::merge(SessionSource *source)
+{
+    if ( source == nullptr ) {
+        Log::Warning("Failed to import Session Source.");
+        return;
+    }
+
+    // new state in history manager
+    Action::manager().store( source->name().c_str() + std::string(" imported."));
+
+    Session *session = source->detach();
+
+    // import every sources
+    for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+
+        // avoid name duplicates
+        renameSource(s, s->name());
+
         // scale alpha
-        if ( alpha > 0.f )
-            s->setAlpha( s->alpha() * alpha );
+        s->setAlpha( s->alpha() * source->alpha() );
 
         // set depth at given location
-        if ( depth > 0.f )
-            s->setDepth( depth + (s->depth() / MAX_DEPTH));
+        s->group(View::LAYER)->translation_.z = source->depth() + (s->depth() / MAX_DEPTH);
+
+        // set location
+        // a. transform of node to import
+        Group *sNode = s->group(View::GEOMETRY);
+        glm::mat4 sTransform  = GlmToolkit::transform(sNode->translation_, sNode->rotation_, sNode->scale_);
+        // b. transform of session source
+        Group *sourceNode = source->group(View::GEOMETRY);
+        glm::mat4 sourceTransform  = GlmToolkit::transform(sourceNode->translation_, sourceNode->rotation_, sourceNode->scale_);
+        // c. combined transform of source and session source
+        sourceTransform *= sTransform;
+        GlmToolkit::inverse_transform(sourceTransform, sNode->translation_, sNode->rotation_, sNode->scale_);
 
         // Add source to Session
         session_->addSource(s);
@@ -895,7 +937,6 @@ void Mixer::merge(Session *session, float alpha, float depth)
     current_view_->update(0.f);
 
 }
-
 
 void Mixer::swap()
 {

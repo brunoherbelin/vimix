@@ -86,9 +86,10 @@ public:
     void saveas (const std::string& filename);
     void load   (const std::string& filename);
     void import (const std::string& filename);
-    void import (SessionSource *s);
-    void merge  (Session *s, float alpha = -1.f, float depth = -1.f);
-    void set    (Session *s);
+    void import (SessionSource *source);
+    void merge  (Session *session);
+    void merge  (SessionSource *source);
+    void set    (Session *session);
 
     // operations depending on transition mode
     void close  ();

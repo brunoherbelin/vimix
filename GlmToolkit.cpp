@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/random.hpp>
 
 #include <chrono>
@@ -25,6 +26,25 @@ glm::mat4 GlmToolkit::transform(glm::vec3 translation, glm::vec3 rotation, glm::
     View = glm::rotate(View, rotation.z, glm::vec3(0.f, 0.f, 1.f));
     glm::mat4 Model = glm::scale(glm::identity<glm::mat4>(), scale);
     return View * Model;
+}
+
+void GlmToolkit::inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec3 &rotation, glm::vec3 &scale)
+{
+    // extract rotation from modelview
+    glm::mat4 ctm;
+    glm::vec3 rot(0.f);
+    glm::vec4 vec = M * glm::vec4(1.f, 0.f, 0.f, 0.f);
+    rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+    rotation = rot;
+
+    // extract scaling
+    ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * M ;
+    vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
+    scale = glm::vec3(vec.x, vec.y, 1.f);
+
+    // extract translation
+    vec = M * glm::vec4(0.f, 0.f, 0.f, 1.f);
+    translation = glm::vec3(vec);
 }
 
 

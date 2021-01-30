@@ -13,6 +13,7 @@ uint64_t uniqueId();
 
 // get Matrix for these transformation components
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
+void inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec3 &rotation, glm::vec3 &scale);
 
 class AxisAlignedBoundingBox
 {

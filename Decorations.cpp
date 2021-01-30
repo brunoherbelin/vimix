@@ -220,17 +220,26 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         handle_->shader()->color = color;
         handle_active->shader()->color = color;
 
-        // extract rotation from modelview
         glm::mat4 ctm;
-        glm::vec3 rot(0.f);
-        glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
-        rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+        glm::vec4 vec;
+        glm::vec3 tra, rot, sca;
 
-        // extract scaling and mirroring
-        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
-        vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
-        glm::vec4 mirror = glm::sign(vec);
-        mirror.z = 1.f;
+        // get rotation and mirroring from the modelview
+        GlmToolkit::inverse_transform(modelview, tra, rot, sca);
+        glm::vec3 mirror = glm::sign(sca);
+
+//        // extract rotation from modelview
+//        glm::mat4 ctm;
+//        glm::vec3 rot(0.f);
+//        glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
+//        rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+
+//        // extract scaling and mirroring
+//        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+//        vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
+//        glm::vec4 mirror = glm::sign(vec);
+//        mirror.z = 1.f;
+
 
         if ( type_ == Handles::RESIZE ) {
 
