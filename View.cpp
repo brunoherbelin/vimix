@@ -951,9 +951,12 @@ void GeometryView::draw()
     scene.accept(draw_foreground);
 
     // display interface
+    // Locate window at upper left corner
     glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01 );
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
+    // Set window position depending on icons size
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
     if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -973,18 +976,16 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
         ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
         ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));   // 14 colors
-        // large display
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
         static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
         if ( ImGuiToolkit::ComboIcon (icons_ws, &Settings::application.current_workspace) ){
              View::need_deep_update_++;
         }
 
-        ImGui::PopFont();
         ImGui::PopStyleColor(14);  // 14 colors
         ImGui::End();
     }
+    ImGui::PopFont();
 
     // display popup menu
     if (show_context_menu_) {
@@ -2601,9 +2602,12 @@ void AppearanceView::draw()
         scene.accept(dv);
 
         // display interface
+        // Locate window at upper left corner
         glm::vec2 P = glm::vec2(-background_frame_->scale_.x - 0.02f, background_frame_->scale_.y + 0.01 );
         P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
-        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 70.f ), ImGuiCond_Always);
+        // Set window position depending on icons size
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
         if (ImGui::Begin("##AppearanceMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -2624,8 +2628,6 @@ void AppearanceView::draw()
             ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
             ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
             ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));   // 14 colors
-            // large display
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
             int mode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
@@ -2887,10 +2889,10 @@ void AppearanceView::draw()
                 ImGui::TextDisabled( "No mask" );
             }
 
-            ImGui::PopFont();
             ImGui::PopStyleColor(14);  // 14 colors
             ImGui::End();
         }
+        ImGui::PopFont();
 
     }
 
