@@ -1666,21 +1666,19 @@ float LayerView::setDepth(Source *s, float d)
 
     }
 
-    // move on x
-    sourceNode->translation_.x = CLAMP( -depth, -MAX_DEPTH, -MIN_DEPTH);
+    // change depth
+    sourceNode->translation_.z = CLAMP( depth, MIN_DEPTH, MAX_DEPTH);
 
     // discretized translation with ALT
     if (UserInterface::manager().altModifier())
-        sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 5.f);
-
-    // change depth
-    sourceNode->translation_.z = -sourceNode->translation_.x;
+        sourceNode->translation_.z = ROUND(sourceNode->translation_.z, 5.f);
 
     // request reordering of scene at next update
     View::need_deep_update_++;
 
     // request update of source
     s->touch();
+
     return sourceNode->translation_.z;
 }
 

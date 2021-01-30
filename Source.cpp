@@ -459,13 +459,12 @@ float Source::depth()
 void Source::setDepth(float d)
 {
     groups_[View::LAYER]->translation_.z = CLAMP(d, MIN_DEPTH, MAX_DEPTH);
-    groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
     touch();
 }
 
 float Source::alpha()
 {
-    return sin_quad( groups_[View::MIXING]->translation_.x, groups_[View::MIXING]->translation_.y );
+    return blendingShader()->color.a;
 }
 
 void Source::setAlpha(float a)
@@ -533,6 +532,7 @@ void Source::update(float dt)
         mixingsurface_->update(dt_);
 
         // Layers icons are displayed in Perspective (diagonal)
+        groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
         groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
 
         // Update workspace based on depth, and

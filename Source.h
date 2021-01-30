@@ -77,6 +77,7 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
+
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader () const { return renderingshader_; }
 
