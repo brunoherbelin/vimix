@@ -888,7 +888,7 @@ void showContextMenu(View::Mode m, const char* label)
             }
             else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
                 s->group(m)->scale_.x = s->group(m)->scale_.y;
-                s->group(m)->scale_ *= s->group(m)->crop_;
+                s->group(m)->scale_.x *= s->group(m)->crop_.x / s->group(m)->crop_.y;
                 s->touch();
             }
         }
