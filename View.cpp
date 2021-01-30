@@ -372,7 +372,7 @@ void MixingView::update(float dt)
         //
         // Set slider to match the actual fading of the session
         //
-        float f = Mixer::manager().session()->fading();
+        float f = Mixer::manager().session()->empty() ? 0.f : Mixer::manager().session()->fading();
 
         // reverse calculate angle from fading & move slider
         slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
