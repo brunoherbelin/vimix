@@ -184,6 +184,7 @@ void Mixer::update()
         if ( back_session_ ) {
             // swap front and back sessions
             swap();
+            View::need_deep_update_++;
             // set session filename
             Rendering::manager().mainWindow().setTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
@@ -750,6 +751,9 @@ void Mixer::setView(View::Mode m)
         break;
     }
 
+    // setttings
+    Settings::application.current_view = (int) m;
+
     // selection might have to change
     for (auto sit = session_->begin(); sit != session_->end(); sit++) {
         if ( !current_view_->canSelect(*sit) )
@@ -758,8 +762,6 @@ void Mixer::setView(View::Mode m)
 
     // need to deeply update view to apply eventual changes
     View::need_deep_update_++;
-
-    Settings::application.current_view = (int) m;
 }
 
 View *Mixer::view(View::Mode m)
@@ -995,7 +997,7 @@ void Mixer::close()
     if (Settings::application.smooth_transition)
     {
         // create empty SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource();
+        SessionSource *ts = new SessionSource;
         ts->load();
 
         // insert source and switch to transition view

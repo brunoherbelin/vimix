@@ -365,42 +365,42 @@ void MixingView::update(float dt)
 {
     View::update(dt);
 
-    if (Mixer::manager().view() == this ) {
-        // a more complete update is requested
-        // for mixing, this means restore position of the fading slider
-        if (View::need_deep_update_ > 0) {
+    // a more complete update is requested
+    // for mixing, this means restore position of the fading slider
+    if (View::need_deep_update_ > 0) {
 
-            //
-            // Set slider to match the actual fading of the session
-            //
-            float f = Mixer::manager().session()->fading();
+        //
+        // Set slider to match the actual fading of the session
+        //
+        float f = Mixer::manager().session()->fading();
 
-            // reverse calculate angle from fading & move slider
-            slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
+        // reverse calculate angle from fading & move slider
+        slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
+
+        // visual feedback on mixing circle
+        f = 1.f - f;
+        mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
+
+    }
+    // the current view is the mixing view
+    else if (Mixer::manager().view() == this )
+    {
+        //
+        // Set session fading to match the slider angle (during animation)
+        //
+
+        // calculate fading from angle
+        float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
+
+        // apply fading
+        if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
+        {
+            // apply fading to session
+            Mixer::manager().session()->setFading(f);
 
             // visual feedback on mixing circle
             f = 1.f - f;
             mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
-
-        }
-        else {
-            //
-            // Set session fading to match the slider angle
-            //
-
-            // calculate fading from angle
-            float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
-
-            // apply fading
-            if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
-            {
-                // apply fading to session
-                Mixer::manager().session()->setFading(f);
-
-                // visual feedback on mixing circle
-                f = 1.f - f;
-                mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
-            }
         }
     }
 
@@ -1826,8 +1826,6 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
-            // no fading
-            Mixer::manager().session()->setFading( 0.f );
         }
         // fade to black
         else
@@ -1957,7 +1955,7 @@ void TransitionView::attach(SessionSource *ts)
         // in fade to black transition, start transition from current fading value
         if ( !Settings::application.transition.cross_fade) {
 
-            // reverse calculate x position to match actual vading of session
+            // reverse calculate x position to match actual fading of session
             float d = 0.f;
             if (Settings::application.transition.profile == 0)
                 d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
@@ -1981,12 +1979,14 @@ Session *TransitionView::detach()
         Group *tg = transition_source_->group(View::TRANSITION);
         scene.ws()->detach( tg );
 
+
         // test if the icon of the transition source is "Ready"
         if ( tg->translation_.x > 0.f )
             // detatch the session and return it
             ret = transition_source_->detach();
-
-        Mixer::manager().setCurrentSource(transition_source_);
+        else
+            // not detached: make current
+            Mixer::manager().setCurrentSource(transition_source_);
 
         // done with transition
         transition_source_ = nullptr;
