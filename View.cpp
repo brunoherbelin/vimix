@@ -2026,6 +2026,15 @@ void TransitionView::play(bool open)
 {
     if (transition_source_ != nullptr) {
 
+        // toggle play/stop with button
+        if (!transition_source_->group(View::TRANSITION)->update_callbacks_.empty() && !open) {
+            // just cancel previous animation
+            transition_source_->group(View::TRANSITION)->clearCallbacks();
+            return;
+        }
+        // else cancel previous animation and start new one
+        transition_source_->group(View::TRANSITION)->clearCallbacks();
+
         // if want to open session after play, target  movement till end position, otherwise stop at 0
         float target_x = open ? 0.4f : 0.f;
 
@@ -2036,8 +2045,6 @@ void TransitionView::play(bool open)
         // calculate remaining time on the total duration, in ms
         time *= Settings::application.transition.duration  * 1000.f;
 
-        // cancel previous animation
-        transition_source_->group(View::TRANSITION)->update_callbacks_.clear();
 
         // if remaining time is more than 50ms
         if (time > 50.f) {
