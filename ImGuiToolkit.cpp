@@ -98,7 +98,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // draw help text if present
     if (help) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
         ImGui::RenderText(draw_pos, help);
         ImGui::PopStyleColor(1);
     }
@@ -127,7 +127,7 @@ void ImGuiToolkit::Icon(int i, int j, bool enabled)
 
     ImVec4 tint_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
     if (!enabled)
-        tint_color.w = 0.6f;
+        tint_color = ImVec4(0.6f, 0.6f, 0.6f, 0.8f);
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
@@ -338,48 +338,37 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::End();
 }
 
-void ImGuiToolkit::ToolTip(const char* desc)
+void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
-    if (ImGui::IsItemHovered())
-    {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-        ImGui::BeginTooltip();
-        ImGui::Text(desc);
-        ImGui::EndTooltip();
-        ImGui::PopFont();
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::TextUnformatted(desc);
+    ImGui::PopTextWrapPos();
+
+    if (shortcut) {
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+        ImGui::Text(shortcut);
+        ImGui::PopStyleColor();
     }
+    ImGui::EndTooltip();
+    ImGui::PopFont();
 }
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
-// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.txt)
-void ImGuiToolkit::HelpMarker(const char* desc, const char* icon)
+void ImGuiToolkit::HelpMarker(const char* desc, const char* icon, const char* shortcut)
 {
     ImGui::TextDisabled( icon );
     if (ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::PopFont();
-        ImGui::EndTooltip();
-    }
+        ToolTip(desc, shortcut);
 }
 
-void ImGuiToolkit::HelpIcon(const char* desc, int i, int j)
+void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut)
 {
     ImGuiToolkit::Icon(i, j, false);
     if (ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::PopFont();
-        ImGui::EndTooltip();
-    }
+        ToolTip(desc, shortcut);
 }
 
 // Draws a timeline showing

@@ -23,13 +23,13 @@ namespace ImGuiToolkit
     bool ComboIcon (std::vector<std::pair<int, int> > icons, int* state);
 
     // utility buttons
-    bool ButtonToggle (const char* label, bool* toggle);
-    void ButtonSwitch (const char* label, bool* toggle , const char *help = nullptr);
+    bool ButtonToggle  (const char* label, bool* toggle);
+    void ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
     void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
-    void ToolTip    (const char* desc);
-    void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE);
-    void HelpIcon   (const char* desc, int i, int j);
+    void ToolTip    (const char* desc, const char* shortcut = "");
+    void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE, const char* shortcut = nullptr);
+    void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = "");
 
     // utility sliders
     bool TimelineSlider (const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width);

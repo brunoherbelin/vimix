@@ -263,7 +263,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
             // Save Session
-            if (Mixer::manager().session()->filename().empty())
+            if (shift_modifier_active || Mixer::manager().session()->filename().empty())
                 selectSaveFilename();
             else
                 Mixer::manager().save();
@@ -856,7 +856,7 @@ void UserInterface::showMenuFile()
 
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
         selectOpenFilename();
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Reload", CTRL_MOD "+Shift+O"))
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Reload", CTRL_MOD "Shift+O"))
         Mixer::manager().load( Mixer::manager().session()->filename() );
 
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
@@ -875,7 +875,7 @@ void UserInterface::showMenuFile()
             navigator.hidePannel();
         }
     }
-    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as"))
+    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as", CTRL_MOD "Shift+S"))
         selectSaveFilename();
 
     ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
@@ -2007,8 +2007,8 @@ void Navigator::hidePannel()
 
 void Navigator::Render()
 {
-    std::string about = "";
-    static uint count_about = 0;
+    std::string tooltip_ = "";
+    static uint timer_tooltip_ = 0;
 
     ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
@@ -2044,7 +2044,7 @@ void Navigator::Render()
                     applyButtonSelection(NAV_MENU);
                 }
                 if (ImGui::IsItemHovered())
-                    about = "Main menu [Home]";
+                    tooltip_ = "Main menu HOME";
 
                 // the list of INITIALS for sources
                 int index = 0;
@@ -2101,7 +2101,7 @@ void Navigator::Render()
                     applyButtonSelection(NAV_NEW);
                 }
                 if (ImGui::IsItemHovered())
-                    about = "New Source [Ins]";
+                    tooltip_ = "New Source INS";
 
             }
             else {
@@ -2130,45 +2130,42 @@ void Navigator::Render()
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Mixing [ F1 ]";
+            tooltip_ = "Mixing  F1";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Geometry [ F2 ]";
+            tooltip_ = "Geometry  F2";
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Layers [ F3 ]";
+            tooltip_ = "Layers  F3";
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::APPEARANCE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            about = "Texturing [ F4 ]";
+            tooltip_ = "Texturing  F4";
 
 
         ImGui::End();
     }
 
-    if (!about.empty()) {
-        count_about++;
-        if (count_about > 100) {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-            ImGui::BeginTooltip();
-            ImGui::Text("%s", about.c_str());
-            ImGui::EndTooltip();
-            ImGui::PopFont();
-        }
+    // show tooltip
+    if (!tooltip_.empty()) {
+        timer_tooltip_++;
+        // pseudo timeout for showing tooltip
+        if (timer_tooltip_ > 80)
+            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-4).c_str(), tooltip_.substr(tooltip_.size()-4, 4).c_str());
     }
     else
-        count_about = 0;
+        timer_tooltip_ = 0;
 
     if ( view_pannel_visible && !pannel_visible_ )
         RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );

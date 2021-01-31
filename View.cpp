@@ -962,8 +962,8 @@ void GeometryView::draw()
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
     {
         // style grey
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.76f, 0.95f, 0.98f));  // 1
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.84f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.76f, 0.95f, 1.f));  // 1
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
         ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
@@ -1921,9 +1921,9 @@ void TransitionView::draw()
         // black background in icon 'transition to black'
         if (!Settings::application.transition.cross_fade) {
             ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.98f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.f));
             ImGuiToolkit::Icon(19,1);
-            ImGui::PopStyleColor(1);
+            ImGui::PopStyleColor();
             ImGui::SetCursorScreenPos(draw_pos);
         }
 
@@ -2621,9 +2621,9 @@ void AppearanceView::draw()
         {
 
             // style grey
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.00f, 1.00f, 0.90f, 0.98f));  // 1
-            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.84f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.00f, 1.00f, 0.90f, 1.0f));  // 1
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
             ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
@@ -2710,8 +2710,7 @@ void AppearanceView::draw()
                         int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::Icon(16,1);
-                        ImGuiToolkit::ToolTip("Large  [ " ICON_FA_ARROW_RIGHT " ]");
+                        ImGuiToolkit::HelpIcon("Large  ", 16, 1, ICON_FA_CARET_SQUARE_RIGHT);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
@@ -2720,8 +2719,7 @@ void AppearanceView::draw()
                             ImGui::Text("%d px", pixel_size);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Icon(15,1);
-                        ImGuiToolkit::ToolTip("Small  [ " ICON_FA_ARROW_LEFT " ]");
+                        ImGuiToolkit::HelpIcon("Small  ", 15, 1, ICON_FA_CARET_SQUARE_LEFT);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -2736,16 +2734,14 @@ void AppearanceView::draw()
                     if (ImGui::BeginPopup("brush_pressure_popup", ImGuiWindowFlags_NoMove))
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGui::Text(ICON_FA_FEATHER_ALT);
-                        ImGuiToolkit::ToolTip("Light  [ " ICON_FA_ARROW_UP " ]");
+                        ImGuiToolkit::HelpMarker("Light  ", ICON_FA_FEATHER_ALT, ICON_FA_CARET_SQUARE_UP);
                         ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered())  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
                             ImGui::EndTooltip();
                         }
-                        ImGui::Text(ICON_FA_WEIGHT_HANGING);
-                        ImGuiToolkit::ToolTip("Heavy  [ " ICON_FA_ARROW_DOWN " ]");
+                        ImGuiToolkit::HelpMarker("Heavy  ", ICON_FA_WEIGHT_HANGING, ICON_FA_CARET_SQUARE_DOWN);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -2849,8 +2845,7 @@ void AppearanceView::draw()
                     {
                         static bool smoothchanged = false;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::Icon(7, 16);
-                        ImGuiToolkit::ToolTip("Blur  [ " ICON_FA_ARROW_UP " ]");
+                        ImGuiToolkit::HelpIcon("Blur  ", 7, 16, ICON_FA_CARET_SQUARE_UP);
                         if (ImGui::VSliderInt("##shapeblur", ImVec2(30,260), &blur_percent, 0, 100, "") ){
                             edit_source_->maskShader()->blur = float(blur_percent) / 100.f;
                             edit_source_->touch();
@@ -2869,8 +2864,7 @@ void AppearanceView::draw()
                             ImGui::Text("%.d%%", blur_percent);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Icon(8, 16);
-                        ImGuiToolkit::ToolTip("Sharp  [ " ICON_FA_ARROW_DOWN " ]");
+                        ImGuiToolkit::HelpIcon("Sharp ", 8, 16, ICON_FA_CARET_SQUARE_DOWN);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
