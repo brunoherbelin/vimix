@@ -421,15 +421,15 @@ void ImGuiVisitor::visit (Source& s)
     // Inform on workspace
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
     if (s.workspace() == Source::BACKGROUND)
-        ImGuiToolkit::HelpIcon("Background",10, 16);
+        ImGuiToolkit::HelpIcon(" in Background",10, 16);
     else if (s.workspace() == Source::FOREGROUND)
-        ImGuiToolkit::HelpIcon("Foreground",12, 16);
+        ImGuiToolkit::HelpIcon(" in Foreground",12, 16);
     else
-        ImGuiToolkit::HelpIcon("Stage",11, 16);
+        ImGuiToolkit::HelpIcon(" on Stage",11, 16);
 
     // locking
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.f * ImGui::GetFrameHeightWithSpacing()) );
-    const char *tooltip[2] = {"Unlocked", "Locked"};
+    const char *tooltip[2] = {"Unlocked\n(clic to toggle)", "Locked\n(clic to toggle)"};
     bool l = s.locked();
     if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) )
         s.setLocked(l);
