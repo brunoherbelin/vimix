@@ -226,8 +226,12 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
     }
 
     int tooltipid = *toggle ? 1 : 0;
-    if (tooltips != nullptr && IM_ARRAYSIZE(*tooltips) > 1 && ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(tooltips[tooltipid]);
+    if (tooltips != nullptr && tooltips[tooltipid] != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltips[tooltipid]);
+        ImGui::EndTooltip();
+    }
 
     ImGui::PopID();
     return ret;
@@ -338,7 +342,7 @@ void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     ImGui::BeginTooltip();
-    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 13.0f);
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
     ImGui::TextUnformatted(desc);
     ImGui::PopTextWrapPos();
 

@@ -2254,8 +2254,8 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Text("Source");
         ImGui::PopFont();
 
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 40.f, 15.f));
-        const char *tooltip[2] = {"Panel unpined:\nDouble-clic on a source to open the source panel.", "Panel pined:\nSingle-clic on a source to open the source panel."};
+        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
         ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
 
         static char buf5[128];
@@ -2533,7 +2533,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n- webcams or frame grabbers\n- screen capture\n- vimix shared stream");
+            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n- webcams or frame grabbers\n- screen capture\n- vimix stream from connected machines");
 
         }
 
@@ -2602,7 +2602,7 @@ void Navigator::RenderTransitionPannel()
         if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Mixer::manager().setView(View::MIXING);
         ImGui::SameLine();
-        ImGuiToolkit::HelpMarker("Exit transition leaves the output 'as is', with the newly openned session as a source if the transition is not finished.");
+        ImGuiToolkit::HelpMarker("Exit transition leaves the output 'as is',\nwith the newly openned session as a source\nif the transition is not finished.");
 
     }
     ImGui::End();
@@ -2624,7 +2624,7 @@ void Navigator::RenderMainPannel()
 
         // Icon to switch fullscreen
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 40.f, 13.f));
-        const char *tooltip[2] = {"Enter Fullscreen  " CTRL_MOD "Shift+F", "Exit Fullscreen  " CTRL_MOD "Shift+F)"};
+        const char *tooltip[2] = {"Enter Fullscreen (" CTRL_MOD "Shift+F)", "Exit Fullscreen (" CTRL_MOD "Shift+F)"};
         bool fs = Rendering::manager().mainWindow().isFullscreen();
         if ( ImGuiToolkit::IconToggle(4,15,3,15, &fs, tooltip ) ) {
             Rendering::manager().mainWindow().toggleFullscreen();
@@ -2794,7 +2794,7 @@ void Navigator::RenderMainPannel()
 
         pos = ImGui::GetCursorPos();
         ImGui::SameLine();
-        ImGuiToolkit::HelpMarker("Quick access to Session files;\nSelect the history of recently opened files or a folder, and double-clic a filename to open.");
+        ImGuiToolkit::HelpMarker("Quick access to Session files;\nSelect the history of recently\nopened files or a folder, and\ndouble-clic a filename to open.");
         ImGui::SetCursorPos(pos);
 
         // done the selection !
