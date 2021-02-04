@@ -651,8 +651,6 @@ uint MixingView::textureMixingQuadratic()
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr)
 {
-    // set resolution to settings default
-    setResolution();
 }
 
 RenderView::~RenderView()
@@ -710,12 +708,14 @@ void RenderView::draw()
 {
     static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
 
-    // draw in frame buffer
-    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
-    frame_buffer_->begin();
-    scene.root()->draw(glm::identity<glm::mat4>(), P);
-    fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
-    frame_buffer_->end();
+    if (frame_buffer_) {
+        // draw in frame buffer
+        glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
+        frame_buffer_->begin();
+        scene.root()->draw(glm::identity<glm::mat4>(), P);
+        fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
+        frame_buffer_->end();
+    }
 }
 
 GeometryView::GeometryView() : View(GEOMETRY)

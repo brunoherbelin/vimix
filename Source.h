@@ -97,12 +97,12 @@ public:
     virtual void update (float dt);
 
     // update mode
+    inline  bool active () const { return active_; }
     virtual void setActive (bool on);
-    inline bool active () const { return active_; }
 
     // lock mode
+    inline  bool locked () const { return locked_; }
     virtual void setLocked (bool on);
-    inline bool locked () const { return locked_; }
 
     // Workspace
     typedef enum {
@@ -125,15 +125,16 @@ public:
     virtual void accept (Visitor& v);
 
     // operations on mask
-    void storeMask(FrameBufferImage *img = nullptr);
-    FrameBufferImage *getMask() const { return maskimage_; }
-    void setMask(FrameBufferImage *img);
+    inline FrameBufferImage *getMask () const { return maskimage_; }
+    void setMask (FrameBufferImage *img);
+    void storeMask (FrameBufferImage *img = nullptr);
 
-    float depth();
-    void setDepth(float d);
+    float depth () const;
+    void  setDepth (float d);
 
-    float alpha();
-    void setAlpha(float a);
+    float alpha () const;
+    void  setAlpha (float a);
+
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -164,6 +165,9 @@ public:
     };
 
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
+
+    // get the xml description text of a source
+    static std::string xml(Source *s);
 
 protected:
     // name

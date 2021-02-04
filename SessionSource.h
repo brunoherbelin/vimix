@@ -43,12 +43,15 @@ protected:
 class RenderSource : public Source
 {
 public:
-    RenderSource(Session *session);
+    RenderSource();
 
     // implementation of source API
-    bool failed() const override;
+    bool failed () const override;
     uint texture() const override;
     void accept (Visitor& v) override;
+
+    inline Session *session () const { return session_; }
+    inline void setSession (Session *se) { session_ = se; }
 
     glm::ivec2 icon() const override { return glm::ivec2(0, 2); }
 

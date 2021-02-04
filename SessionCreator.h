@@ -48,6 +48,7 @@ public:
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionSource& s) override;
+    void visit (RenderSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;

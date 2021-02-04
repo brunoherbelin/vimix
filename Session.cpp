@@ -7,6 +7,7 @@
 #include "GarbageVisitor.h"
 #include "FrameGrabber.h"
 #include "SessionCreator.h"
+#include "SessionSource.h"
 
 #include "Log.h"
 
@@ -15,7 +16,7 @@ Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
     filename_ = "";
 
     config_[View::RENDERING] = new Group;
-    config_[View::RENDERING]->scale_ = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
+    config_[View::RENDERING]->scale_ = glm::vec3(0.f);
 
     config_[View::GEOMETRY] = new Group;
     config_[View::GEOMETRY]->scale_ = Settings::application.views[View::GEOMETRY].default_scale;
@@ -63,10 +64,20 @@ void Session::setActive (bool on)
 // update all sources
 void Session::update(float dt)
 {
-    failedSource_ = nullptr;
+    // no update until render view is initialized
+    if ( render_.frame() == nullptr )
+        return;
 
     // pre-render of all sources
+    failedSource_ = nullptr;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); it++){
+
+        // ensure the RenderSource is rendering this session
+        RenderSource *s = dynamic_cast<RenderSource *>( *it );
+        if ( s!= nullptr ){
+            if ( s->session() != this /*|| s->session()->frame()->resolution() != frame()->resolution()*/)
+                s->setSession(nullptr); // RenderSource will fail and be replaced
+        }
 
         if ( (*it)->failed() ) {
             failedSource_ = (*it);

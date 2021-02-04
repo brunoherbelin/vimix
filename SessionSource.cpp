@@ -95,6 +95,7 @@ Session *SessionSource::detach()
 
     // make disabled
     initialized_ = false;
+
     // ask to delete me
     failed_ = true;
 
@@ -165,7 +166,7 @@ void SessionSource::init()
             texturesurface_->setTextureIndex( session_->frame()->texture() );
 
             // create Frame buffer matching size of session
-            FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution());
+            FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution() );
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
@@ -175,12 +176,13 @@ void SessionSource::init()
                 wait_for_sources_ = true;
             else {
                 initialized_ = true;
-                Log::Info("New Session created.");
+                Log::Info("New Session created %d x %d.", session_->frame()->width(), session()->frame()->height());
             }
         }
     }
 
-    if (initialized_){
+    if (initialized_)
+    {
         // remove the loading icon
         Node *loader = overlays_[View::TRANSITION]->back();
         overlays_[View::TRANSITION]->detach(loader);
@@ -229,7 +231,8 @@ void SessionSource::accept(Visitor& v)
 }
 
 
-RenderSource::RenderSource(Session *session) : Source(), session_(session)
+
+RenderSource::RenderSource() : Source(), session_(nullptr)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -239,20 +242,20 @@ RenderSource::RenderSource(Session *session) : Source(), session_(session)
 
 bool RenderSource::failed() const
 {
-    return session_ == nullptr;
+    return (initialized_ && session_ == nullptr);
 }
 
 uint RenderSource::texture() const
 {
-    if (session_ == nullptr)
-        return Resource::getTextureBlack();
-    else
+    if (session_ && session_->frame())
         return session_->frame()->texture();
+    else
+        return Resource::getTextureBlack(); // getTextureTransparent ?
 }
 
 void RenderSource::init()
 {
-    if (session_ && session_->frame()->texture() != Resource::getTextureBlack()) {
+    if (session_ && session_->frame() && session_->frame()->texture() != Resource::getTextureBlack()) {
 
         FrameBuffer *fb = session_->frame();
 
@@ -260,7 +263,7 @@ void RenderSource::init()
         texturesurface_->setTextureIndex( fb->texture() );
 
         // create Frame buffer matching size of output session
-        FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution());
+        FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);

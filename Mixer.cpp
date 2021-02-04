@@ -212,10 +212,20 @@ void Mixer::update()
     // delete sources which failed update (one by one)
     Source *failure = session()->failedSource();
     if (failure != nullptr) {
-        MediaSource *failedFile = dynamic_cast<MediaSource *>(failure);
-        if (failedFile != nullptr) {
-            Settings::application.recentImport.remove( failedFile->path() );
+        // failed media: remove it from the list of imports
+        MediaSource *failedMedia = dynamic_cast<MediaSource *>(failure);
+        if (failedMedia != nullptr) {
+            Settings::application.recentImport.remove( failedMedia->path() );
         }
+        // failed Render loopback: replace it with one matching the current session
+        RenderSource *failedRender = dynamic_cast<RenderSource *>(failure);
+        if (failedRender != nullptr) {
+            RenderSource *fixedRender = new RenderSource;
+            replaceSource(failedRender, fixedRender);
+            fixedRender->setSession(session_);
+            failure = nullptr; // prevent delete (already done in replace)
+        }
+        // delete the source
         deleteSource(failure, false);
     }
 
@@ -282,7 +292,8 @@ Source * Mixer::createSourceFile(const std::string &path)
 Source * Mixer::createSourceRender()
 {
     // ready to create a source
-    RenderSource *s = new RenderSource(session_);
+    RenderSource *s = new RenderSource;
+    s->setSession(session_);
 
     // propose a new name based on session name
     s->setName(SystemToolkit::base_filename(session_->filename()));
@@ -409,6 +420,39 @@ void Mixer::insertSource(Source *s, View::Mode m)
             setCurrentSource( sit );
         }
     }
+}
+
+
+void Mixer::replaceSource(Source *from, Source *to)
+{
+    if ( from != nullptr && to != nullptr)
+    {
+        // rename
+        renameSource(to, from->name());
+
+        // remove source Nodes from all views
+        detach(from);
+
+        // copy all transforms
+        to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+        to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
+        to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
+        to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+
+        // TODO copy all filters
+
+
+        // add sources Nodes to all views
+        attach(to);
+
+        // add source
+        session_->addSource(to);
+
+        // delete source
+        session_->deleteSource(from);
+
+    }
+
 }
 
 void Mixer::deleteSource(Source *s, bool withundo)

@@ -85,11 +85,11 @@ void SessionCreator::load(const std::string& filename)
     // session file seems legit, create a session
     session_ = new Session;
 
+    // load views config (includes resolution of session rendering)
+    loadConfig( xmlDoc_.FirstChildElement("Views") );
+
     // ready to read sources
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
-
-    // load optionnal config
-    loadConfig( xmlDoc_.FirstChildElement("Views") );
 
     // all good
     session_->setFilename(filename);
@@ -145,7 +145,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                     load_source = new SessionSource;
                 }
                 else if ( std::string(pType) == "RenderSource") {
-                    load_source = new RenderSource(session_);
+                    load_source = new RenderSource;
                 }
                 else if ( std::string(pType) == "PatternSource") {
                     load_source = new PatternSource;
@@ -245,7 +245,7 @@ Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
                 load_source = new SessionSource;
             }
             else if ( std::string(pType) == "RenderSource") {
-                load_source = new RenderSource(session_);
+                load_source = new RenderSource;
             }
             else if ( std::string(pType) == "PatternSource") {
                 load_source = new PatternSource;
@@ -532,6 +532,11 @@ void SessionLoader::visit (SessionSource& s)
             s.load(path);
     }
 
+}
+
+void SessionLoader::visit (RenderSource& s)
+{
+    s.setSession( session_ );
 }
 
 void SessionLoader::visit (PatternSource& s)

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <locale>
+#include <tinyxml2.h>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -14,6 +15,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "SystemToolkit.h"
+#include "SessionVisitor.h"
 #include "Log.h"
 #include "Mixer.h"
 
@@ -350,6 +352,13 @@ void Source::render()
 
 void Source::attach(FrameBuffer *renderbuffer)
 {
+    // invalid argument
+//    if (renderbuffer == nullptr)
+//        return;
+
+//    // replace renderbuffer_
+//    if (renderbuffer_)
+//        delete renderbuffer_;
     renderbuffer_ = renderbuffer;
 
     // if a symbol is available, add it to overlay
@@ -451,9 +460,9 @@ float sin_quad(float x, float y) {
 }
 
 
-float Source::depth()
+float Source::depth() const
 {
-    return groups_[View::RENDERING]->translation_.z;
+    return group(View::RENDERING)->translation_.z;
 }
 
 void Source::setDepth(float d)
@@ -462,7 +471,7 @@ void Source::setDepth(float d)
     touch();
 }
 
-float Source::alpha()
+float Source::alpha() const
 {
     return blendingShader()->color.a;
 }
@@ -665,6 +674,27 @@ void Source::setMask(FrameBufferImage *img)
     }
     else
         mask_need_update_ = false;
+}
+
+
+std::string Source::xml(Source *s)
+{
+    std::string x = "";
+
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
+    selectionNode->SetAttribute("size", 1);
+    xmlDoc.InsertEndChild(selectionNode);
+
+    SessionVisitor sv(&xmlDoc, selectionNode);
+    s->accept(sv);
+
+    // get compact string
+    tinyxml2::XMLPrinter xmlPrint(0, true);
+    xmlDoc.Print( &xmlPrint );
+    x = xmlPrint.CStr();
+
+    return x;
 }
 
 
