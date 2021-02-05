@@ -2085,7 +2085,10 @@ void Navigator::Render()
                         {
                             if ( payload->DataSize == sizeof(int) ) {
                                 int payload_index = *(const int*)payload->Data;
+                                int current_source_index = Mixer::manager().indexCurrentSource();
                                 Mixer::manager().session()->move(payload_index, index);
+                                if (payload_index == current_source_index)
+                                    applyButtonSelection(index);
                             }
                         }
                         ImGui::EndDragDropTarget();
