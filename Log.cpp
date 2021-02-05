@@ -43,6 +43,7 @@ struct AppLog
     {
         mtx.lock();
         int old_size = Buf.size();
+        Buf.appendf("%04d  ", LineOffsets.size()); // this adds 6 characters to show line number
         Buf.appendfv(fmt, args);
         Buf.append("\n");
 
@@ -66,6 +67,9 @@ struct AppLog
 
         //  window
         ImGui::SameLine(0, 0);
+        static bool numbering = true;
+        ImGuiToolkit::ButtonToggle( ICON_FA_SORT_NUMERIC_DOWN, &numbering );
+        ImGui::SameLine();
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();
         bool copy = ImGui::Button( ICON_FA_COPY " Copy");
@@ -73,7 +77,7 @@ struct AppLog
         Filter.Draw("Filter", -60.0f);
 
         ImGui::Separator();
-        ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysHorizontalScrollbar);
 
         if (clear)
             Clear();
@@ -118,7 +122,7 @@ struct AppLog
             {
                 for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                 {
-                    const char* line_start = buf + LineOffsets[line_no];
+                    const char* line_start = buf + LineOffsets[line_no] + (numbering?0:6);
                     const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
                     ImGui::TextUnformatted(line_start, line_end);
                 }
