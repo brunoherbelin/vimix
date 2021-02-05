@@ -109,7 +109,8 @@ protected:
     SourceList candidate_sources_;
     SourceList stash_;
     void insertSource(Source *s, View::Mode m = View::INVALID);
-    void replaceSource(Source *from, Source *to);
+    bool replaceSource(Source *from, Source *to);
+    bool recreateSource(Source *s);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

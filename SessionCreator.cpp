@@ -220,7 +220,7 @@ void SessionLoader::load(XMLElement *sessionNode)
 
 }
 
-Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
+Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates)
 {
     xmlCurrent_ = sourceNode;
 
@@ -228,10 +228,13 @@ Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
     Source *load_source = nullptr;
     bool is_clone = false;
 
+    SourceList::iterator sit = session_->end();
     // check if a source with the given id exists in the session
-    uint64_t id__ = 0;
-    xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
-    SourceList::iterator sit = session_->find(id__);
+    if (clone_duplicates) {
+        uint64_t id__ = 0;
+        xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
+        sit = session_->find(id__);
+    }
 
     // no source with this id exists
     if ( sit == session_->end() ) {
@@ -278,8 +281,6 @@ Source *SessionLoader::cloneOrCreateSource(tinyxml2::XMLElement *sourceNode)
     // apply config to source
     if (load_source) {
         load_source->accept(*this);
-        // reset mixing (force to place in mixing scene)
-        load_source->group(View::MIXING)->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
         // increment depth for clones (avoid supperposition)
         if (is_clone)
             load_source->group(View::LAYER)->translation_.z += 0.2f;

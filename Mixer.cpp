@@ -220,10 +220,8 @@ void Mixer::update()
         // failed Render loopback: replace it with one matching the current session
         RenderSource *failedRender = dynamic_cast<RenderSource *>(failure);
         if (failedRender != nullptr) {
-            RenderSource *fixedRender = new RenderSource;
-            replaceSource(failedRender, fixedRender);
-            fixedRender->setSession(session_);
-            failure = nullptr; // prevent delete (already done in replace)
+            if ( recreateSource(failedRender) )
+                failure = nullptr; // prevent delete (already done in recreateSource)
         }
         // delete the source
         deleteSource(failure, false);
@@ -423,36 +421,75 @@ void Mixer::insertSource(Source *s, View::Mode m)
 }
 
 
-void Mixer::replaceSource(Source *from, Source *to)
+bool Mixer::replaceSource(Source *from, Source *to)
 {
-    if ( from != nullptr && to != nullptr)
-    {
-        // rename
-        renameSource(to, from->name());
+    if ( from == nullptr || to == nullptr)
+        return false;
 
-        // remove source Nodes from all views
-        detach(from);
+    // rename
+    renameSource(to, from->name());
 
-        // copy all transforms
-        to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
-        to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
-        to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
-        to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+    // remove source Nodes from all views
+    detach(from);
 
-        // TODO copy all filters
+    // copy all transforms
+    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+    to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
+    to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
+    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+
+    // TODO copy all filters
 
 
-        // add sources Nodes to all views
-        attach(to);
+    // add source Nodes to all views
+    attach(to);
 
-        // add source
-        session_->addSource(to);
+    // add source
+    session_->addSource(to);
 
-        // delete source
-        session_->deleteSource(from);
+    // delete source
+    session_->deleteSource(from);
 
-    }
+    return true;
+}
 
+
+bool Mixer::recreateSource(Source *s)
+{
+    if ( s == nullptr )
+        return false;
+
+    // get the xml description from this source, and exit if not wellformed
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError eResult = xmlDoc.Parse(Source::xml(s).c_str());
+    if ( XMLResultError(eResult))
+        return false;
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return false;
+    XMLElement* sourceNode = root->FirstChildElement("Source");
+    if ( sourceNode == nullptr )
+        return false;
+
+    // actually create the source with SessionLoader using xml description
+    SessionLoader loader( session_ );
+    Source *replacement = loader.createSource(sourceNode, false); // not clone
+    if (replacement == nullptr)
+        return false;
+
+    // remove source Nodes from all views
+    detach(s);
+
+    // delete source
+    session_->deleteSource(s);
+
+    // add sources Nodes to all views
+    attach(replacement);
+
+    // add source
+    session_->addSource(replacement);
+
+    return true;
 }
 
 void Mixer::deleteSource(Source *s, bool withundo)
@@ -1106,7 +1143,7 @@ void Mixer::paste(const std::string& clipboard)
     XMLElement* sourceNode = root->FirstChildElement("Source");
     for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
     {
-        addSource(loader.cloneOrCreateSource(sourceNode));
+        addSource(loader.createSource(sourceNode));
     }
 
 }

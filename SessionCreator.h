@@ -19,7 +19,7 @@ public:
     void load(tinyxml2::XMLElement *sessionNode);
     inline std::list<uint64_t> getIdList() const { return sources_id_; }
 
-    Source *cloneOrCreateSource(tinyxml2::XMLElement *sourceNode);
+    Source *createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates = true);
 
     // Elements of Scene
     void visit (Node& n) override;

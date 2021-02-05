@@ -226,7 +226,7 @@ void SessionSource::update(float dt)
 void SessionSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
+//    if (!failed())
         v.visit(*this);
 }
 
@@ -281,6 +281,6 @@ void RenderSource::init()
 void RenderSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
+//    if (!failed())
         v.visit(*this);
 }
