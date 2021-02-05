@@ -156,9 +156,21 @@ std::string Selection::xml()
         xmlDoc.InsertEndChild(selectionNode);
 
         // fill doc
+        SourceList selection_clones_;
         SessionVisitor sv(&xmlDoc, selectionNode);
-        for (auto iter = selection_.begin(); iter != selection_.end(); iter++, sv.setRoot(selectionNode) )
+        for (auto iter = selection_.begin(); iter != selection_.end(); iter++, sv.setRoot(selectionNode) ){
+            // keep the clones for later
+            CloneSource *clone = dynamic_cast<CloneSource *>(*iter);
+            if (clone)
+                (*iter)->accept(sv);
+            else
+                selection_clones_.push_back(*iter);
+        }
+        // add the clones at the end
+        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); iter++, sv.setRoot(selectionNode) ){
+
             (*iter)->accept(sv);
+        }
 
         // get compact string
         tinyxml2::XMLPrinter xmlPrint(0, true);

@@ -110,24 +110,28 @@ void Session::update(float dt)
 
 SourceList::iterator Session::addSource(Source *s)
 {
+    SourceList::iterator its = sources_.end();
+
     // lock before change
     access_.lock();
 
     // find the source
-    SourceList::iterator its = find(s);
+    its = find(s);
+
     // ok, its NOT in the list !
     if (its == sources_.end()) {
         // insert the source in the rendering
         render_.scene.ws()->attach(s->group(View::RENDERING));
         // insert the source to the beginning of the list
         sources_.push_front(s);
+        // return the iterator to the source created at the beginning
+        its = sources_.begin();
     }
 
     // unlock access
     access_.unlock();
 
-    // return the iterator to the source created at the beginning
-    return sources_.begin();
+    return its;
 }
 
 SourceList::iterator Session::deleteSource(Source *s)

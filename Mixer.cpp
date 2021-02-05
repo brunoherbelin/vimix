@@ -1143,7 +1143,13 @@ void Mixer::paste(const std::string& clipboard)
     XMLElement* sourceNode = root->FirstChildElement("Source");
     for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
     {
-        addSource(loader.createSource(sourceNode));
+        Source *s = loader.createSource(sourceNode);
+        if (s) {
+            // Add source to Session
+            session_->addSource(s);
+            // Add source to Mixer
+            addSource(s);
+        }
     }
 
 }
