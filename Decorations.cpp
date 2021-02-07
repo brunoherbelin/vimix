@@ -12,7 +12,8 @@
 #include "Log.h"
 
 
-Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
+Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(),
+    right_(nullptr), left_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
 {
     static Mesh *shadows[3] = {nullptr};
     if (shadows[0] == nullptr)  {
@@ -20,32 +21,53 @@ Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), 
         shadows[1] = new Mesh("mesh/shadow.ply", "images/shadow.dds");
         shadows[2] = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
     }
-    static Mesh *frames[4] = {nullptr};
+    static Mesh *frames[9] = {nullptr};
     if (frames[0] == nullptr)  {
         frames[0] = new Mesh("mesh/border_round.ply");
-        frames[1] = new Mesh("mesh/border_top.ply");
-        frames[2] = new Mesh("mesh/border_large_round.ply");
-        frames[3] = new Mesh("mesh/border_large_top.ply");
+        frames[1] = new Mesh("mesh/border_round_left.ply");
+        frames[2] = new Mesh("mesh/border_top.ply");
+        frames[3] = new Mesh("mesh/border_large_round.ply");
+        frames[4] = new Mesh("mesh/border_large_round_left.ply");
+        frames[5] = new Mesh("mesh/border_large_top.ply");
+        frames[6] = new Mesh("mesh/border_perspective_round.ply");
+        frames[7] = new Mesh("mesh/border_perspective_round_left.ply");
+        frames[8] = new Mesh("mesh/border_perspective_top.ply");
     }
     static LineSquare *sharpframethin = new LineSquare( 4.f );
     static LineSquare *sharpframelarge = new LineSquare( 6.f );
 
-    if (corner == SHARP) {
+    // Round corners
+    if (corner == ROUND){
+        if (border == THIN) {
+            right_ = frames[0];
+            left_  = frames[1];
+            top_   = frames[2];
+        }
+        else{
+            right_ = frames[3];
+            left_  = frames[4];
+            top_   = frames[5];
+        }
+    }
+    // Group corners
+    else if (corner == GROUP){
+        if (border == THIN) {
+            right_ = frames[6];
+            left_  = frames[7];
+            top_   = frames[8];
+        }
+        else{
+            right_ = frames[6];
+            left_  = frames[7];
+            top_   = frames[8];
+        }
+    }
+    // Sharp corner
+    else {
         if (border == LARGE)
             square_ = sharpframelarge;
         else
             square_ = sharpframethin;
-    }
-    else {
-        // Round corners
-        if (border == THIN) {
-            side_  = frames[0];
-            top_   = frames[1];
-        }
-        else{
-            side_  = frames[2];
-            top_   = frames[3];
-        }
     }
 
     switch (shadow) {
@@ -76,8 +98,10 @@ void Frame::update( float dt )
     Node::update(dt);
     if(top_)
         top_->update(dt);
-    if(side_)
-        side_->update(dt);
+    if(right_)
+        right_->update(dt);
+    if(left_)
+        left_->update(dt);
     if(shadow_)
         shadow_->update(dt);
     if(square_)
@@ -87,9 +111,11 @@ void Frame::update( float dt )
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(side_  && !side_->initialized())
-            side_->init();
-        if(top_  && !top_->initialized())
+        if(right_ && !right_->initialized())
+            right_->init();
+        if(left_ && !left_->initialized())
+            left_->init();
+        if(top_ && !top_->initialized())
             top_->init();
         if(shadow_ && !shadow_->initialized())
             shadow_->init();
@@ -102,27 +128,28 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
         glm::mat4 ctm = modelview * transform_;
 
+        // sharp border (scaled)
+        if(square_) {
+            square_->setColor(color);
+            square_->draw( ctm, projection);
+        }
+
         // shadow (scaled)
         if(shadow_){
             shadow_->shader()->color.a = 0.98f;
             shadow_->draw( ctm, projection);
         }
 
-        // top (scaled)
+        // round top (scaled)
         if(top_) {
             top_->shader()->color = color;
             top_->draw( ctm, projection);
         }
 
-        // top (scaled)
-        if(square_) {
-            square_->setColor(color);
-            square_->draw( ctm, projection);
-        }
+        // round sides
+        if(right_) {
 
-        if(side_) {
-
-            side_->shader()->color = color;
+            right_->shader()->color = color;
 
             // get scale
             glm::vec4 scale = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
@@ -132,17 +159,26 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 vec = ctm * glm::vec4(1.f, 0.f, 0.f, 0.f);
             rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
 
-            if(side_) {
+            // right side
+            vec = ctm * glm::vec4(1.f, 0.f, 0.f, 1.f);
+            right_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
 
-                // left side
-                vec = ctm * glm::vec4(1.f, 0.f, 0.f, 1.f);
-                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
+        }
+        if(left_) {
 
-                // right side
-                vec = ctm * glm::vec4(-1.f, 0.f, 0.f, 1.f);
-                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(-scale.y, scale.y, 1.f)), projection );
+            left_->shader()->color = color;
 
-            }
+            // get scale
+            glm::vec4 scale = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
+
+            // get rotation
+            glm::vec3 rot(0.f);
+            glm::vec4 vec = ctm * glm::vec4(1.f, 0.f, 0.f, 0.f);
+            rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+
+            // right side
+            vec = ctm * glm::vec4(-1.f, 0.f, 0.f, 1.f);
+            left_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
         }
     }
 }

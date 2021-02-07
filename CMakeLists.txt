@@ -335,9 +335,14 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/corner.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
+    ./rsc/mesh/border_round_left.ply
     ./rsc/mesh/border_round.ply
     ./rsc/mesh/border_top.ply
+    ./rsc/mesh/border_perspective_round_left.ply
+    ./rsc/mesh/border_perspective_round.ply
+    ./rsc/mesh/border_perspective_top.ply
     ./rsc/mesh/border_sharp.ply
+    ./rsc/mesh/border_large_round_left.ply
     ./rsc/mesh/border_large_round.ply
     ./rsc/mesh/border_large_top.ply
     ./rsc/mesh/border_handles_rotation.ply

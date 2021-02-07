@@ -12,7 +12,7 @@ class Frame : public Node
 {
 public:
 
-    typedef enum { ROUND = 0, SHARP } CornerType;
+    typedef enum { ROUND = 0, SHARP, GROUP } CornerType;
     typedef enum { THIN = 0, LARGE } BorderType;
     typedef enum { NONE = 0, GLOW, DROP, PERSPECTIVE } ShadowType;
 
@@ -23,11 +23,11 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    Mesh *border() const { return side_; }
     glm::vec4 color;
 
 protected:
-    Mesh *side_;
+    Mesh *right_;
+    Mesh *left_;
     Mesh *top_;
     Mesh *shadow_;
     LineSquare *square_;
