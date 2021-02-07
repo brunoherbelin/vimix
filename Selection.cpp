@@ -117,6 +117,12 @@ Source *Selection::front()
     return selection_.front();
 }
 
+void Selection::pop_front()
+{
+    if (!selection_.empty()) // TODO set mode ?
+        selection_.pop_front();
+}
+
 bool Selection::empty()
 {
     return selection_.empty();
