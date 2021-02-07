@@ -35,7 +35,7 @@ using namespace tinyxml2;
 #define THREADED_LOADING
 static std::vector< std::future<Session *> > sessionLoaders_;
 static std::vector< std::future<Session *> > sessionImporters_;
-static std::vector< SessionSource * > sessionSourceToImport_;
+static std::vector< SessionFileSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
@@ -168,7 +168,7 @@ void Mixer::update()
     // if there is a session source to import
     if (!sessionSourceToImport_.empty()) {
         // get the session source to be imported
-        SessionSource *source = sessionSourceToImport_.back();
+        SessionFileSource *source = sessionSourceToImport_.back();
         // merge the session inside this session source
         merge( source );
         // important: delete the sessionsource itself
@@ -260,7 +260,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         if ( ext == "mix" )
         {
             // create a session source
-            SessionSource *ss = new SessionSource;
+            SessionFileSource *ss = new SessionFileSource;
             ss->load(path);
             s = ss;
         }
@@ -347,6 +347,20 @@ Source * Mixer::createSourceNetwork(const std::string &nameconnection)
 
     // propose a new name based on address
     s->setName(nameconnection);
+
+    return s;
+}
+
+
+Source * Mixer::createSourceGroup()
+{
+    SessionGroupSource *s = new SessionGroupSource;
+
+    s->setResolution( Mixer::manager().session()->frame()->resolution() );
+
+
+    // propose a new name
+    s->setName("Group");
 
     return s;
 }
@@ -622,7 +636,49 @@ void Mixer::deleteSelection()
     }
     // empty the selection
     while ( !selection().empty() )
-        deleteSource( selection().front()); // this also remove element from selection()
+        deleteSource( selection().front() ); // this also remove element from selection()
+
+}
+
+void Mixer::groupSelection()
+{
+    float d = 2.f;
+
+    SessionGroupSource *group = new SessionGroupSource;
+    group->setResolution( Mixer::manager().session()->frame()->resolution() );
+
+    // empty the selection
+    while ( !selection().empty() ) {
+
+        Source *s = selection().front();
+        d = s->depth();
+
+        // import source into group
+        if ( group->import(s) ) {
+            // detach & remove element from selection()
+            detach (s);
+            // remove source from session
+            session_->removeSource(s);
+        }
+        else
+            selection().pop_front();
+
+    }
+
+    // set depth at given location
+    group->group(View::LAYER)->translation_.z = d;
+
+    // scale alpha
+    group->setAlpha( 1.f );
+
+    // Add source to Session
+    session_->addSource(group);
+
+    // Attach source to Mixer
+    attach(group);
+
+    // avoid name duplicates
+    renameSource(group, "group");
 
 }
 
@@ -905,7 +961,7 @@ void Mixer::open(const std::string& filename)
         Log::Info("\nStarting transition to session %s", filename.c_str());
 
         // create special SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource;
+        SessionFileSource *ts = new SessionFileSource;
         // open filename if specified
         if (!filename.empty())
             ts->load(filename);
@@ -936,7 +992,7 @@ void Mixer::import(const std::string& filename)
 #endif
 }
 
-void Mixer::import(SessionSource *source)
+void Mixer::import(SessionFileSource *source)
 {
     sessionSourceToImport_.push_back( source );
 }
@@ -971,7 +1027,7 @@ void Mixer::merge(Session *session)
     current_view_->update(0.f);
 }
 
-void Mixer::merge(SessionSource *source)
+void Mixer::merge(SessionFileSource *source)
 {
     if ( source == nullptr ) {
         Log::Warning("Failed to import Session Source.");
@@ -1078,7 +1134,7 @@ void Mixer::close()
     if (Settings::application.smooth_transition)
     {
         // create empty SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource;
+        SessionFileSource *ts = new SessionFileSource;
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);

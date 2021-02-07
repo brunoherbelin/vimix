@@ -9,11 +9,14 @@
 class Source;
 typedef std::list<Source *> SourceList;
 
-class SessionSource;
+class Session;
+class SessionFileSource;
 class Surface;
 class Symbol;
 class Mesh;
 class Frame;
+class Disk;
+class Handles;
 
 class View
 {
@@ -94,6 +97,10 @@ protected:
     std::string current_action_;
     uint64_t current_id_;
     Mode mode_;
+
+    // contex menu
+    bool show_context_menu_;
+    inline void openContextMenu() { show_context_menu_ = true; }
 };
 
 
@@ -120,12 +127,11 @@ private:
     float limbo_scale_;
 
     Group *slider_root_;
-    class Disk *slider_;
-    class Disk *button_white_;
-    class Disk *button_black_;
-    class Disk *stashCircle_;
-    class Mesh *mixingCircle_;
-
+    Disk *slider_;
+    Disk *button_white_;
+    Disk *button_black_;
+    Disk *stashCircle_;
+    Mesh *mixingCircle_;
 };
 
 class RenderView : public View
@@ -140,7 +146,7 @@ public:
     void draw () override;
     bool canSelect(Source *) override;
 
-    void setResolution (glm::vec3 resolution = glm::vec3(0.f));
+    void setResolution (glm::vec3 resolution = glm::vec3(0.f), bool useAlpha = false);
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
     void setFading(float f = 0.f);
@@ -177,8 +183,6 @@ private:
     Node *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
-    bool show_context_menu_;
-
 };
 
 class LayerView : public View
@@ -186,6 +190,7 @@ class LayerView : public View
 public:
     LayerView();
 
+    void draw () override;
     void update (float dt) override;
     void resize (int) override;
     int  size () override;
@@ -202,6 +207,10 @@ private:
     Mesh *persp_layer_;
     Mesh *persp_left_, *persp_right_;
     Group *frame_;
+    Group *overlay_group_;
+    Frame *overlay_group_frame_;
+    Handles *overlay_group_icon_;
+
 };
 
 class TransitionView : public View
@@ -219,15 +228,15 @@ public:
     void arrow (glm::vec2) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
-    void attach(SessionSource *ts);
-    class Session *detach();
+    void attach(SessionFileSource *ts);
+    Session *detach();
     void play(bool open);
 
 private:
     Surface *output_surface_;
     Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
-    SessionSource *transition_source_;
+    SessionFileSource *transition_source_;
 };
 
 
@@ -282,7 +291,6 @@ private:
     Symbol *overlay_rotation_fix_;
     Node *overlay_rotation_clock_;
     Symbol *overlay_rotation_clock_hand_;
-    bool show_context_menu_;
 
     // for mask shader draw: 0=cursor, 1=brush, 2=eraser, 3=crop_shape
     int mask_cursor_paint_;

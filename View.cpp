@@ -38,6 +38,7 @@ uint View::need_deep_update_ = 1;
 
 View::View(Mode m) : mode_(m)
 {
+    show_context_menu_ = false;
 }
 
 void View::restoreSettings()
@@ -308,7 +309,6 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     slider_->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
     slider_root_->attach(slider_);
 
-
     stashCircle_ = new Disk();
     stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
     stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
@@ -412,7 +412,7 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
     // get picking from generic View
     std::pair<Node *, glm::vec2> pick = View::pick(P);
 
-    // deal with internal interactive objects and do not forward
+    // deal with internal interactive objects
     if ( pick.first == button_white_ || pick.first == button_black_ ) {
 
         RotateToCallback *anim = nullptr;
@@ -428,8 +428,6 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
         slider_root_->update_callbacks_.clear();
         slider_root_->update_callbacks_.push_back(anim);
 
-        // capture this pick
-        pick = { nullptr, glm::vec2(0.f) };
     }
     else {
         // get if a source was picked
@@ -682,7 +680,7 @@ float RenderView::fading() const
         return 0.f;
 }
 
-void RenderView::setResolution(glm::vec3 resolution)
+void RenderView::setResolution(glm::vec3 resolution, bool useAlpha)
 {
     // use default resolution if invalid resolution is given (default behavior)
     if (resolution.x < 2.f || resolution.y < 2.f)
@@ -698,7 +696,7 @@ void RenderView::setResolution(glm::vec3 resolution)
 
     if (!frame_buffer_)
         // output frame is an RBG Multisamples FrameBuffer
-        frame_buffer_ = new FrameBuffer(resolution, false, true);
+        frame_buffer_ = new FrameBuffer(resolution, useAlpha, true);
 
     // reset fading
     setFading();
@@ -810,7 +808,6 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
 
-    show_context_menu_ = false;
 }
 
 void GeometryView::update(float dt)
@@ -1035,7 +1032,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             }
             // picking on the menu handle: show context menu
             else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
-                show_context_menu_ = true;
+                openContextMenu();
             }
             // pick on the lock icon; unlock source
             else if ( pick.first == current->lock_ ) {
@@ -1563,8 +1560,42 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp_right_->translation_.z = -0.1f;
     scene.bg()->attach(persp_right_);
 
-
+    overlay_group_ = new Group;
+    overlay_group_->visible_ = false;
+    overlay_group_icon_ = new Handles(Handles::MENU);
+    overlay_group_->attach(overlay_group_icon_);
+    overlay_group_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    overlay_group_frame_->scale_ = glm::vec3(1.05f, 1.1f, 1.f);
+    overlay_group_->attach(overlay_group_frame_);
+    scene.fg()->attach(overlay_group_);
 }
+
+
+void showContextMenuLayer(const char* label)
+{
+    if (ImGui::BeginPopup(label)) {
+
+        if (ImGui::Selectable( ICON_FA_CUBE "  Create group" )){
+
+             Mixer::manager().groupSelection();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void LayerView::draw()
+{
+    View::draw();
+
+    // display popup menu
+    if (show_context_menu_) {
+        ImGui::OpenPopup( "LayerContextMenu" );
+        show_context_menu_ = false;
+    }
+    showContextMenuLayer("LayerContextMenu");
+}
+
 
 void LayerView::update(float dt)
 {
@@ -1583,6 +1614,49 @@ void LayerView::update(float dt)
             persp_right_->translation_.x = aspect_ratio + 0.06;
         }
     }
+
+    // no overlay by default
+    overlay_group_->visible_ = false;
+
+    // Test selection for possible group with selection of min 2 sources
+    if (Mixer::selection().size() > 1) {
+
+        // initialize the verification of the selection
+        bool candidate_group = true;
+        BoundingBoxVisitor selection_visitor_bbox;
+        // start loop on selection
+        SourceList::iterator  it = Mixer::selection().begin();
+        float depth_first = (*it)->depth();
+        for (; it != Mixer::selection().end(); it++) {
+            // test if selection is contiguous in layer (i.e. not interrupted)
+            SourceList::iterator inter = Mixer::manager().session()->find(depth_first, (*it)->depth());
+            if ( inter != Mixer::manager().session()->end() && !Mixer::selection().contains(*inter)){
+                // NOT a group: there is a source in the session that
+                // - is between two selected sources (in depth)
+                // - is not part of the selection
+                candidate_group = false;
+                break;
+            }
+
+            // calculate bounding box of area covered by selection
+            selection_visitor_bbox.setModelview( scene.ws()->transform_ );
+            (*it)->group(mode_)->accept(selection_visitor_bbox);
+        }
+
+        // the selection is a potential candidate for making a group
+        if (candidate_group) {
+            // adjust group overlay to selection
+            GlmToolkit::AxisAlignedBoundingBox selection_box = selection_visitor_bbox.bbox();
+            overlay_group_->scale_ = selection_box.scale();
+            overlay_group_->translation_ = selection_box.center();
+            // show group overlay
+            overlay_group_->visible_ = true;
+            ImVec4 c = ImGuiToolkit::HighlightColor();
+            overlay_group_frame_->color = glm::vec4(c.x, c.y, c.z, c.w);
+            overlay_group_icon_->color = glm::vec4(c.x, c.y, c.z, c.w);
+        }
+    }
+
 }
 
 bool LayerView::canSelect(Source *s) {
@@ -1617,23 +1691,29 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
     // get picking from generic View
     std::pair<Node *, glm::vec2> pick = View::pick(P);
 
+    // deal with internal interactive objects
+    if ( pick.first == overlay_group_icon_ ) {
 
-    // get if a source was picked
-    Source *s = Mixer::manager().findSource(pick.first);
-    if (s != nullptr) {
-        // pick on the lock icon; unlock source
-        if ( pick.first == s->lock_) {
-            s->setLocked(false);
-            pick = { s->locker_, pick.second };
+        openContextMenu();
+    }
+    else {
+        // get if a source was picked
+        Source *s = Mixer::manager().findSource(pick.first);
+        if (s != nullptr) {
+            // pick on the lock icon; unlock source
+            if ( pick.first == s->lock_) {
+                s->setLocked(false);
+                pick = { s->locker_, pick.second };
+            }
+            // pick on the open lock icon; lock source and cancel pick
+            else if ( pick.first == s->unlock_ ) {
+                s->setLocked(true);
+                pick = { nullptr, glm::vec2(0.f) };
+            }
+            // pick a locked source without CTRL key; cancel pick
+            else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
+                pick = { nullptr, glm::vec2(0.f) };
         }
-        // pick on the open lock icon; lock source and cancel pick
-        else if ( pick.first == s->unlock_ ) {
-            s->setLocked(true);
-            pick = { nullptr, glm::vec2(0.f) };
-        }
-        // pick a locked source without CTRL key; cancel pick
-        else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
-            pick = { nullptr, glm::vec2(0.f) };
     }
 
     return pick;
@@ -1664,7 +1744,6 @@ float LayerView::setDepth(Source *s, float d)
             if ((*node)->translation_.z + DELTA_DEPTH > MAX_DEPTH )
                 (*node)->translation_.z -= DELTA_DEPTH;
         }
-
     }
 
     // change depth
@@ -1942,7 +2021,7 @@ bool TransitionView::canSelect(Source *s) {
     return ( s!=nullptr && s == transition_source_);
 }
 
-void TransitionView::attach(SessionSource *ts)
+void TransitionView::attach(SessionFileSource *ts)
 {
     // store source for later (detatch & interaction)
     transition_source_ = ts;
@@ -2457,7 +2536,7 @@ std::pair<Node *, glm::vec2> AppearanceView::pick(glm::vec2 P)
             // picking on the menu handle
             else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
                 // show context menu
-                show_context_menu_ = true;
+                openContextMenu();
             }
         }
 
@@ -2558,7 +2637,7 @@ Source *AppearanceView::getEditOrCurrentSource()
 void AppearanceView::draw()
 {
     // edit view needs to be updated (source changed)
-    if  ( need_edit_update_ )
+    if ( need_edit_update_ )
     {
         need_edit_update_ = false;
 

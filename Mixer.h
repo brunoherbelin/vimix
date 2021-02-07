@@ -43,6 +43,7 @@ public:
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
     Source * createSourceNetwork(const std::string &nameconnection);
+    Source * createSourceGroup  ();
 
     // operations on sources
     void addSource    (Source *s);
@@ -52,6 +53,7 @@ public:
     void detach       (Source *s);
     void deselect     (Source *s);
     void deleteSelection();
+    void groupSelection();
 
     // current source
     Source * currentSource ();
@@ -75,8 +77,8 @@ public:
     View *view   (View::Mode m = View::INVALID);
     void setView (View::Mode m);
 
-    void conceal(Source *s);
-    void uncover(Source *s);
+    void conceal  (Source *s);
+    void uncover  (Source *s);
     bool concealed(Source *s);
 
     // manipulate, load and save sessions
@@ -86,9 +88,9 @@ public:
     void saveas (const std::string& filename);
     void load   (const std::string& filename);
     void import (const std::string& filename);
-    void import (SessionSource *source);
+    void import (SessionFileSource *source);
     void merge  (Session *session);
-    void merge  (SessionSource *source);
+    void merge  (SessionFileSource *source);
     void set    (Session *session);
 
     // operations depending on transition mode
@@ -108,8 +110,8 @@ protected:
 
     SourceList candidate_sources_;
     SourceList stash_;
-    void insertSource(Source *s, View::Mode m = View::INVALID);
-    bool replaceSource(Source *from, Source *to);
+    void insertSource  (Source *s, View::Mode m = View::INVALID);
+    bool replaceSource (Source *from, Source *to);
     bool recreateSource(Source *s);
 
     void setCurrentSource(SourceList::iterator it);

@@ -5,6 +5,7 @@
 #include "Decorations.h"
 #include "Source.h"
 #include "MediaSource.h"
+#include "Session.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -413,7 +414,7 @@ void SessionVisitor::visit (MediaSource& s)
     s.mediaplayer()->accept(*this);
 }
 
-void SessionVisitor::visit (SessionSource& s)
+void SessionVisitor::visit (SessionFileSource& s)
 {
     xmlCurrent_->SetAttribute("type", "SessionSource");
 
@@ -421,6 +422,21 @@ void SessionVisitor::visit (SessionSource& s)
     xmlCurrent_->InsertEndChild(path);
     XMLText *text = xmlDoc_->NewText( s.path().c_str() );
     path->InsertEndChild( text );
+}
+
+void SessionVisitor::visit (SessionGroupSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "GroupSource");
+
+    Session *se = s.session();
+
+    XMLElement *rootgroup = xmlDoc_->NewElement("Session");
+    xmlCurrent_->InsertEndChild(rootgroup);
+
+    setRoot(rootgroup);
+    for (auto iter = se->begin(); iter != se->end(); iter++, setRoot(rootgroup) )
+        (*iter)->accept(*this);
+
 }
 
 void SessionVisitor::visit (RenderSource&)

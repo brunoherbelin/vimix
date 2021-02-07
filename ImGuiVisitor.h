@@ -23,7 +23,8 @@ public:
     void visit (ImageProcessingShader& n) override;
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
-    void visit (SessionSource& s) override;
+    void visit (SessionFileSource& s) override;
+    void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;
     void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;

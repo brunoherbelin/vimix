@@ -17,7 +17,81 @@
 #include "Mixer.h"
 
 
-SessionSource::SessionSource() : Source(), path_("")
+SessionSource::SessionSource() : Source()
+{
+    failed_ = false;
+    session_ = new Session;
+}
+
+SessionSource::~SessionSource()
+{
+    // delete session
+    if (session_)
+        delete session_;
+}
+
+Session *SessionSource::detach()
+{
+    // remember pointer to give away
+    Session *giveaway = session_;
+
+    // work on a new session
+    session_ = new Session;
+
+    // make disabled
+    initialized_ = false;
+
+    // ask to delete me
+    failed_ = true;
+
+    // lost ref to previous session: to be deleted elsewhere...
+    return giveaway;
+}
+
+bool SessionSource::failed() const
+{
+    return failed_;
+}
+
+uint SessionSource::texture() const
+{
+    if (session_ && session_->frame())
+        return session_->frame()->texture();
+    else
+        return Resource::getTextureBlack();
+}
+
+void SessionSource::setActive (bool on)
+{
+    Source::setActive(on);
+
+    // change status of session (recursive change of internal sources)
+    if (session_ != nullptr)
+        session_->setActive(active_);
+}
+
+void SessionSource::update(float dt)
+{
+    if (session_ == nullptr)
+        return;
+
+    // update content
+    if (active_)
+        session_->update(dt);
+
+    // delete a source which failed
+    if (session_->failedSource() != nullptr) {
+        session_->deleteSource(session_->failedSource());
+        // fail session if all sources failed
+        if ( session_->numSource() < 1)
+            failed_ = true;
+    }
+
+    Source::update(dt);
+}
+
+
+SessionFileSource::SessionFileSource() : SessionSource(), path_("")
 {
     // specific node for transition view
     groups_[View::TRANSITION]->visible_ = false;
@@ -51,19 +125,10 @@ SessionSource::SessionSource() : Source(), path_("")
     symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
-    failed_ = false;
     wait_for_sources_ = false;
-    session_ = new Session;
 }
 
-SessionSource::~SessionSource()
-{
-    // delete session
-    if (session_)
-        delete session_;
-}
-
-void SessionSource::load(const std::string &p)
+void SessionFileSource::load(const std::string &p)
 {
     path_ = p;
 
@@ -85,37 +150,7 @@ void SessionSource::load(const std::string &p)
     }
 }
 
-Session *SessionSource::detach()
-{
-    // remember pointer to give away
-    Session *giveaway = session_;
-
-    // work on a new session
-    session_ = new Session;
-
-    // make disabled
-    initialized_ = false;
-
-    // ask to delete me
-    failed_ = true;
-
-    // lost ref to previous session: to be deleted elsewhere...
-    return giveaway;
-}
-
-bool SessionSource::failed() const
-{
-    return failed_;
-}
-
-uint SessionSource::texture() const
-{
-    if (session_ == nullptr)
-        return Resource::getTextureBlack();
-    return session_->frame()->texture();
-}
-
-void SessionSource::init()
+void SessionFileSource::init()
 {
     // init is first about getting the loaded session
     if (session_ == nullptr) {
@@ -176,7 +211,7 @@ void SessionSource::init()
                 wait_for_sources_ = true;
             else {
                 initialized_ = true;
-                Log::Info("New Session created %d x %d.", session_->frame()->width(), session()->frame()->height());
+                Log::Info("New Session created (%d x %d).", renderbuffer->width(), renderbuffer->height());
             }
         }
     }
@@ -192,41 +227,66 @@ void SessionSource::init()
     }
 }
 
-void SessionSource::setActive (bool on)
-{
-    Source::setActive(on);
-
-    // change status of session (recursive change of internal sources)
-    if (session_ != nullptr)
-        session_->setActive(active_);
-}
-
-
-void SessionSource::update(float dt)
-{
-    if (session_ == nullptr)
-        return;
-
-    // update content
-    if (active_)
-        session_->update(dt);
-
-    // delete a source which failed
-    if (session_->failedSource() != nullptr) {
-        session_->deleteSource(session_->failedSource());
-        // fail session if all sources failed
-        if ( session_->numSource() < 1)
-            failed_ = true;
-    }
-
-    Source::update(dt);
-}
-
-
-void SessionSource::accept(Visitor& v)
+void SessionFileSource::accept(Visitor& v)
 {
     Source::accept(v);
-//    if (!failed())
+    if (!failed())
+        v.visit(*this);
+}
+
+
+SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec3(0.f))
+{
+    // set symbol TODO Symbol::GROUP
+    symbol_ = new Symbol(Symbol::GROUP, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
+}
+
+void SessionGroupSource::init()
+{
+    if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
+
+        session_->setResolution( resolution_, true );
+
+        //  update to draw framebuffer
+        session_->update( dt_ );
+
+        // get the texture index from framebuffer of session, apply it to the surface
+        texturesurface_->setTextureIndex( session_->frame()->texture() );
+
+        // create Frame buffer matching size of session
+        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), true );
+
+        // set the renderbuffer of the source and attach rendering nodes
+        attach(renderbuffer);
+
+        // deep update to reorder
+        View::need_deep_update_++;
+
+        // done init
+        initialized_ = true;
+        Log::Info("Source Group (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+    }
+}
+
+bool SessionGroupSource::import(Source *source)
+{
+    bool ret = false;
+
+    if ( session_ )
+    {
+        SourceList::iterator its = session_->addSource(source);
+        if (its != session_->end())
+            ret = true;
+    }
+
+    return ret;
+}
+
+void SessionGroupSource::accept(Visitor& v)
+{
+    Source::accept(v);
+    if (!failed())
         v.visit(*this);
 }
 

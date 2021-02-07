@@ -38,6 +38,7 @@ public:
     SourceList::iterator find (Source *s);
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
+    SourceList::iterator find (float depth_from, float depth_to);
 
     SourceList::iterator find (uint64_t id);
     std::list<uint64_t> getIdList() const;
@@ -60,7 +61,7 @@ public:
     inline FrameBuffer *frame () const { return render_.frame(); }
 
     // configure rendering resolution
-    void setResolution(glm::vec3 resolution);
+    void setResolution(glm::vec3 resolution, bool useAlpha = false);
 
     // manipulate fading of output
     void setFading(float f, bool forcenow = false);

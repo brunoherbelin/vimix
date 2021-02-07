@@ -142,7 +142,10 @@ void SessionLoader::load(XMLElement *sessionNode)
                     load_source = new MediaSource;
                 }
                 else if ( std::string(pType) == "SessionSource") {
-                    load_source = new SessionSource;
+                    load_source = new SessionFileSource;
+                }
+                else if ( std::string(pType) == "GroupSource") {
+                    load_source = new SessionGroupSource;
                 }
                 else if ( std::string(pType) == "RenderSource") {
                     load_source = new RenderSource;
@@ -245,7 +248,10 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, bool clone
                 load_source = new MediaSource;
             }
             else if ( std::string(pType) == "SessionSource") {
-                load_source = new SessionSource;
+                load_source = new SessionFileSource;
+            }
+            else if ( std::string(pType) == "GroupSource") {
+                load_source = new SessionGroupSource;
             }
             else if ( std::string(pType) == "RenderSource") {
                 load_source = new RenderSource;
@@ -522,7 +528,7 @@ void SessionLoader::visit (MediaSource& s)
     s.mediaplayer()->accept(*this);
 }
 
-void SessionLoader::visit (SessionSource& s)
+void SessionLoader::visit (SessionFileSource& s)
 {
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
@@ -531,6 +537,21 @@ void SessionLoader::visit (SessionSource& s)
         // load only new files
         if ( path != s.path() )
             s.load(path);
+    }
+
+}
+
+void SessionLoader::visit (SessionGroupSource& s)
+{
+    // set resolution from host session
+    s.setResolution( session_->config(View::RENDERING)->scale_ );
+
+    // get the inside session
+    XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
+    if (sessionGroupNode) {
+        // load session inside group
+        SessionLoader grouploader( s.session() );
+        grouploader.load( sessionGroupNode );
     }
 
 }

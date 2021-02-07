@@ -196,9 +196,9 @@ Source *Session::popSource()
     return s;
 }
 
-void Session::setResolution(glm::vec3 resolution)
+void Session::setResolution(glm::vec3 resolution, bool useAlpha)
 {
-    render_.setResolution(resolution);
+    render_.setResolution( resolution, useAlpha );
     config_[View::RENDERING]->scale_ = resolution;
 }
 
@@ -238,6 +238,11 @@ SourceList::iterator Session::find(std::string namesource)
 SourceList::iterator Session::find(Node *node)
 {
     return std::find_if(sources_.begin(), sources_.end(), Source::hasNode(node));
+}
+
+SourceList::iterator Session::find(float depth_from, float depth_to)
+{
+    return std::find_if(sources_.begin(), sources_.end(), Source::hasDepth(depth_from, depth_to));
 }
 
 uint Session::numSource() const

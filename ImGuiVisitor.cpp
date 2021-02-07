@@ -471,7 +471,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 }
 
-void ImGuiVisitor::visit (SessionSource& s)
+void ImGuiVisitor::visit (SessionFileSource& s)
 {
     if (s.session() == nullptr)
         return;
@@ -499,6 +499,21 @@ void ImGuiVisitor::visit (SessionSource& s)
         Mixer::manager().import( &s );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+}
+
+void ImGuiVisitor::visit (SessionGroupSource& s)
+{
+    if (s.session() == nullptr)
+        return;
+
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Group");
+
+    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Ungroup", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+//        Mixer::manager().import( &s );
+    }
+
 }
 
 void ImGuiVisitor::visit (RenderSource& s)

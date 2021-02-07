@@ -272,6 +272,10 @@ void UserInterface::handleKeyboard()
             // New Session
             Mixer::manager().close();
         }
+//        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
+//            // New Session
+//            Mixer::manager().session()->setActive( !Mixer::manager().session()->active() );
+//        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
             Settings::application.widget.logs = !Settings::application.widget.logs;
@@ -559,7 +563,7 @@ void UserInterface::handleMouse()
                     }
                     // no source is selected
                     else
-                        clear_selection = true;
+                        Mixer::manager().unsetCurrentSource();
                 }
                 if (clear_selection) {
                     // unset current
@@ -620,7 +624,7 @@ void UserInterface::handleMouse()
                         glm::vec2 d = mousepos - mouse_smooth;
                         mouse_smooth += smoothing * d;
                         ImVec2 start = ImVec2(mouse_smooth.x / io.DisplayFramebufferScale.x, mouse_smooth.y / io.DisplayFramebufferScale.y);
-                        ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_ResizeGripHovered), 5.f);
+                        ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_HeaderActive), 5.f);
                     }
                     else
                         mouse_smooth = mousepos;
@@ -648,9 +652,9 @@ void UserInterface::handleMouse()
                 // Selection area
                 else {
                     ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                            ImGui::GetColorU32(ImGuiCol_ResizeGripHovered));
+                                                            ImGui::GetColorU32(ImGuiCol_HeaderActive));
                     ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                            ImGui::GetColorU32(ImGuiCol_ResizeGripHovered, 0.3f));
+                                                            ImGui::GetColorU32(ImGuiCol_Header, 0.3f));
 
                     // Bounding box multiple sources selection
                     Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);

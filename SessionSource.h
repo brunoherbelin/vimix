@@ -9,22 +9,35 @@ class SessionSource : public Source
 {
 public:
     SessionSource();
-    ~SessionSource();
+    virtual ~SessionSource();
 
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
-    bool failed() const override;
-    uint texture() const override;
-    void accept (Visitor& v) override;
+    bool failed () const override;
+    uint texture () const override;
 
-    // Session Source specific interface
-    void load(const std::string &p = "");
     Session *detach();
-
-    inline std::string path() const { return path_; }
     inline Session *session() const { return session_; }
 
+protected:
+
+    Session *session_;
+    std::atomic<bool> failed_;
+};
+
+class SessionFileSource : public SessionSource
+{
+public:
+    SessionFileSource();
+
+    // implementation of source API
+    void accept (Visitor& v) override;
+
+    // SessionFile Source specific interface
+    void load(const std::string &p = "");
+
+    inline std::string path() const { return path_; }
     glm::ivec2 icon() const override { return glm::ivec2(2, 16); }
 
 protected:
@@ -32,11 +45,34 @@ protected:
     void init() override;
 
     std::string path_;
-    Session *session_;
-
-    std::atomic<bool> failed_;
     std::atomic<bool> wait_for_sources_;
     std::future<Session *> sessionLoader_;
+};
+
+class SessionGroupSource : public SessionSource
+{
+public:
+    SessionGroupSource();
+
+    // implementation of source API
+    void accept (Visitor& v) override;
+
+    // SessionGroup Source specific interface
+    inline void setResolution (glm::vec3 v) { resolution_ = v; }
+
+    // import a source
+    bool import(Source *source);
+
+    // TODO import session entirely : bool import();
+
+    glm::ivec2 icon() const override { return glm::ivec2(4, 3); }
+
+protected:
+
+    void init() override;
+
+    glm::vec3 resolution_;
+
 };
 
 

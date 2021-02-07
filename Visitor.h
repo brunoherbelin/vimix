@@ -32,7 +32,8 @@ class MediaSource;
 class PatternSource;
 class DeviceSource;
 class GenericStreamSource;
-class SessionSource;
+class SessionFileSource;
+class SessionGroupSource;
 class RenderSource;
 class CloneSource;
 class NetworkSource;
@@ -75,7 +76,8 @@ public:
     virtual void visit (GenericStreamSource&) {}
     virtual void visit (DeviceSource&) {}
     virtual void visit (PatternSource&) {}
-    virtual void visit (SessionSource&) {}
+    virtual void visit (SessionFileSource&) {}
+    virtual void visit (SessionGroupSource&) {}
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}
 
