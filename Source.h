@@ -164,6 +164,20 @@ public:
         uint64_t _id;
     };
 
+    struct hasDepth: public std::unary_function<Source*, bool>
+    {
+        inline bool operator()(const Source* elem) const {
+           return (elem && elem->depth()>_from && elem->depth()<_to );
+        }
+        hasDepth(float d1, float d2) {
+            _from = MIN(d1, d2);
+            _to   = MAX(d1, d2);
+        }
+    private:
+        float _from;
+        float _to;
+    };
+
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
     // get the xml description text of a source
