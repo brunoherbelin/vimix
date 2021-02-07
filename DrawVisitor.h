@@ -1,9 +1,7 @@
 #ifndef DRAWVISITOR_H
 #define DRAWVISITOR_H
 
-#include <vector>
-
-#include <glm/glm.hpp>
+#include "GlmToolkit.h"
 #include "Visitor.h"
 
 class DrawVisitor : public Visitor
