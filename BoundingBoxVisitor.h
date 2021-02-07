@@ -8,11 +8,11 @@
 class BoundingBoxVisitor: public Visitor
 {
     glm::mat4 modelview_;
+    bool force_;
     GlmToolkit::AxisAlignedBoundingBox bbox_;
 
 public:
-
-    BoundingBoxVisitor();
+    BoundingBoxVisitor(bool force = false);
 
     void setModelview(glm::mat4 modelview);
     GlmToolkit::AxisAlignedBoundingBox bbox();
@@ -23,6 +23,7 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
+
 };
 
 #endif // BOUNDINGBOXVISITOR_H

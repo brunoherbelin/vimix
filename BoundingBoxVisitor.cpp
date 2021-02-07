@@ -6,7 +6,7 @@
 #include "Primitives.h"
 #include "Decorations.h"
 
-BoundingBoxVisitor::BoundingBoxVisitor(): Visitor()
+BoundingBoxVisitor::BoundingBoxVisitor(bool force): force_(force)
 {
     modelview_ = glm::identity<glm::mat4>();
 
@@ -35,7 +35,7 @@ void BoundingBoxVisitor::visit(Group &n)
         return;
     glm::mat4 mv = modelview_;
     for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
-        if ( (*node)->visible_ )
+        if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;
     }
@@ -46,14 +46,13 @@ void BoundingBoxVisitor::visit(Switch &n)
     if (!n.visible_ || n.numChildren() < 1)
         return;
     glm::mat4 mv = modelview_;
-    n.activeChild()->accept(*this);
+    if ( n.activeChild()->visible_ || force_)
+        n.activeChild()->accept(*this);
     modelview_ = mv;
 }
 
 void BoundingBoxVisitor::visit(Primitive &n)
 {
-    if (!n.visible_)
-        return;
 
     bbox_.extend(n.bbox().transformed(modelview_));
 
@@ -64,3 +63,4 @@ void BoundingBoxVisitor::visit(Scene &n)
 {
     n.ws()->accept(*this);
 }
+
