@@ -382,6 +382,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_eye.ply
     ./rsc/mesh/icon_eye_slash.ply
     ./rsc/mesh/icon_vector_square_slash.ply
+    ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )
