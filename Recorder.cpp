@@ -145,7 +145,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
     "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
 #else
-    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 ! h264parse ! ",
+    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
 #endif
     "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=16 speed-preset=4 threads=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control x265 encoder quality :
