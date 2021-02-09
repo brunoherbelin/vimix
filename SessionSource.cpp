@@ -101,7 +101,7 @@ SessionFileSource::SessionFileSource() : SessionSource(), path_("")
     frames_[View::TRANSITION] = new Switch;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     frames_[View::TRANSITION]->attach(frame);
     frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
     frame->translation_.z = 0.01;
@@ -244,11 +244,11 @@ SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec
     Group *group = new Group;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     group->attach(frame);
     Frame *persp = new Frame(Frame::GROUP, Frame::THIN, Frame::NONE);
     persp->translation_.z = 0.1;
-    persp->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
+    persp->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     group->attach(persp);
     frames_[View::LAYER]->attach(group);
 

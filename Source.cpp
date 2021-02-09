@@ -43,7 +43,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     frames_[View::MIXING] = new Switch;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.9f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     frames_[View::MIXING]->attach(frame);
     frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
     frame->translation_.z = 0.01;
@@ -65,7 +65,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     frames_[View::GEOMETRY] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.7f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
     frames_[View::GEOMETRY]->attach(frame);
     frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
     frame->translation_.z = 0.1;
@@ -119,7 +119,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     frames_[View::LAYER] = new Switch;
     frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);    
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     frames_[View::LAYER]->attach(frame);
     frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
     frame->translation_.z = 0.1;
