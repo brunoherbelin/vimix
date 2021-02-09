@@ -5,6 +5,8 @@
 #include "Session.h"
 #include "Selection.h"
 
+class SessionSource;
+
 class Mixer
 {
     // Private Constructor
@@ -88,9 +90,9 @@ public:
     void saveas (const std::string& filename);
     void load   (const std::string& filename);
     void import (const std::string& filename);
-    void import (SessionFileSource *source);
+    void import (SessionSource *source);
     void merge  (Session *session);
-    void merge  (SessionFileSource *source);
+    void merge  (SessionSource *source);
     void set    (Session *session);
 
     // operations depending on transition mode

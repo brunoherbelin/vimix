@@ -511,7 +511,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     ImGui::Text("Group");
 
     if ( ImGui::Button( ICON_FA_FILE_EXPORT " Ungroup", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-//        Mixer::manager().import( &s );
+        Mixer::manager().import( &s );
     }
 
 }

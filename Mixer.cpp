@@ -35,7 +35,7 @@ using namespace tinyxml2;
 #define THREADED_LOADING
 static std::vector< std::future<Session *> > sessionLoaders_;
 static std::vector< std::future<Session *> > sessionImporters_;
-static std::vector< SessionFileSource * > sessionSourceToImport_;
+static std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
@@ -168,7 +168,7 @@ void Mixer::update()
     // if there is a session source to import
     if (!sessionSourceToImport_.empty()) {
         // get the session source to be imported
-        SessionFileSource *source = sessionSourceToImport_.back();
+        SessionSource *source = sessionSourceToImport_.back();
         // merge the session inside this session source
         merge( source );
         // important: delete the sessionsource itself
@@ -992,7 +992,7 @@ void Mixer::import(const std::string& filename)
 #endif
 }
 
-void Mixer::import(SessionFileSource *source)
+void Mixer::import(SessionSource *source)
 {
     sessionSourceToImport_.push_back( source );
 }
@@ -1027,7 +1027,7 @@ void Mixer::merge(Session *session)
     current_view_->update(0.f);
 }
 
-void Mixer::merge(SessionFileSource *source)
+void Mixer::merge(SessionSource *source)
 {
     if ( source == nullptr ) {
         Log::Warning("Failed to import Session Source.");
