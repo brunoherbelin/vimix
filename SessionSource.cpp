@@ -329,7 +329,10 @@ RenderSource::RenderSource() : Source(), session_(nullptr)
 
 bool RenderSource::failed() const
 {
-    return (initialized_ && session_ == nullptr);
+    if (initialized_ && session_!=nullptr)
+        return renderbuffer_->resolution() != session_->frame()->resolution();
+
+    return false;
 }
 
 uint RenderSource::texture() const
@@ -364,6 +367,16 @@ void RenderSource::init()
     }
 }
 
+
+glm::vec3 RenderSource::resolution() const
+{
+    if (initialized_)
+        return renderbuffer_->resolution();
+    else if (session_ && session_->frame())
+        return session_->frame()->resolution();
+    else
+        return glm::vec3(0.f);
+}
 
 void RenderSource::accept(Visitor& v)
 {

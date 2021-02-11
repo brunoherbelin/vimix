@@ -89,6 +89,8 @@ public:
     inline Session *session () const { return session_; }
     inline void setSession (Session *se) { session_ = se; }
 
+    glm::vec3 resolution() const;
+
     glm::ivec2 icon() const override { return glm::ivec2(0, 2); }
 
 protected:

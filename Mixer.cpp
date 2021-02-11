@@ -668,8 +668,9 @@ void Mixer::groupSelection()
     // set depth at given location
     group->group(View::LAYER)->translation_.z = d;
 
-    // scale alpha
-    group->setAlpha( 1.f );
+    // set alpha to full opacity
+    group->group(View::MIXING)->translation_.x = 0.f;
+    group->group(View::MIXING)->translation_.y = 0.f;
 
     // Add source to Session
     session_->addSource(group);

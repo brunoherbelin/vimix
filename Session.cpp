@@ -74,10 +74,8 @@ void Session::update(float dt)
 
         // ensure the RenderSource is rendering this session
         RenderSource *s = dynamic_cast<RenderSource *>( *it );
-        if ( s!= nullptr ){
-            if ( s->session() != this /*|| s->session()->frame()->resolution() != frame()->resolution()*/)
-                s->setSession(nullptr); // RenderSource will fail and be replaced
-        }
+        if ( s!= nullptr && s->session() != this )
+                s->setSession(this);
 
         if ( (*it)->failed() ) {
             failedSource_ = (*it);
@@ -198,8 +196,10 @@ Source *Session::popSource()
 
 void Session::setResolution(glm::vec3 resolution, bool useAlpha)
 {
+    // setup the render view: if not specified the default config resulution will be used
     render_.setResolution( resolution, useAlpha );
-    config_[View::RENDERING]->scale_ = resolution;
+    // store the actual resolution set in the render view
+    config_[View::RENDERING]->scale_ = render_.resolution();
 }
 
 void Session::setFading(float f, bool forcenow)
