@@ -651,10 +651,11 @@ void UserInterface::handleMouse()
                 }
                 // Selection area
                 else {
-                    ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                            ImGui::GetColorU32(ImGuiCol_HeaderActive));
-                    ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos,
-                                                            ImGui::GetColorU32(ImGuiCol_Header, 0.3f));
+                    // highlight-colored selection rectangle
+                    ImVec4 color = ImGuiToolkit::HighlightColor();
+                    ImGui::GetBackgroundDrawList()->AddRect(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos, ImGui::GetColorU32(color));
+                    color.w = 0.12; // transparent
+                    ImGui::GetBackgroundDrawList()->AddRectFilled(io.MouseClickedPos[ImGuiMouseButton_Left], io.MousePos, ImGui::GetColorU32(color));
 
                     // Bounding box multiple sources selection
                     Mixer::manager().view()->select(mouseclic[ImGuiMouseButton_Left], mousepos);

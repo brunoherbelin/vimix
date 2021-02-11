@@ -60,7 +60,7 @@ namespace ImGuiToolkit
         ACCENT_GREY
     } accent_color;
     void SetAccentColor (accent_color color);
-    struct ImVec4 HighlightColor ();
+    struct ImVec4 HighlightColor (bool active = true);
 
     void ShowStats (bool* p_open, int* p_corner, bool* p_timer);
 

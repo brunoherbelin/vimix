@@ -265,15 +265,15 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     mixingCircle_->shader()->color = glm::vec4( 1.f, 1.f, 1.f, 1.f );
     scene.bg()->attach(mixingCircle_);
 
-    tmp = new Mesh("mesh/circle.ply");
-    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
-    scene.bg()->attach(tmp);
+    circle_ = new Mesh("mesh/circle.ply");
+    circle_->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    scene.bg()->attach(circle_);
 
     // Mixing scene foreground
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
     tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     scene.fg()->attach(tmp);
 
     button_white_ = new Disk();
@@ -285,7 +285,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
     tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     scene.fg()->attach(tmp);
 
     button_black_ = new Disk();
@@ -300,7 +300,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.08f, 0.08f, 1.f);
     tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_FRAME, 0.9f );
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     slider_root_->attach(tmp);
 
     slider_ = new Disk();
@@ -959,7 +959,7 @@ void GeometryView::draw()
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
     {
         // style grey
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.76f, 0.95f, 1.f));  // 1
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));  // 1
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
@@ -1549,13 +1549,13 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     scene.bg()->attach(frame_);
 
     persp_left_ = new Mesh("mesh/perspective_axis_left.ply");
-    persp_left_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 0.9f );
+    persp_left_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 1.f );
     persp_left_->scale_.x = LAYER_PERSPECTIVE;
     persp_left_->translation_.z = -0.1f;
     scene.bg()->attach(persp_left_);
 
     persp_right_ = new Mesh("mesh/perspective_axis_right.ply");
-    persp_right_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 0.9f );
+    persp_right_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 1.f );
     persp_right_->scale_.x = LAYER_PERSPECTIVE;
     persp_right_->translation_.z = -0.1f;
     scene.bg()->attach(persp_right_);
@@ -1564,7 +1564,7 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     overlay_group_->visible_ = false;
     overlay_group_icon_ = new Handles(Handles::MENU);
     overlay_group_->attach(overlay_group_icon_);
-    overlay_group_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    overlay_group_frame_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
     overlay_group_frame_->scale_ = glm::vec3(1.05f, 1.1f, 1.f);
     overlay_group_->attach(overlay_group_frame_);
     scene.fg()->attach(overlay_group_);
@@ -2364,8 +2364,8 @@ AppearanceView::AppearanceView() : View(APPEARANCE), edit_source_(nullptr), need
     mask_cursor_square_->visible_ = false;
     scene.fg()->attach(mask_cursor_square_);
     mask_cursor_crop_ = new Mesh("mesh/icon_crop.ply");
-    mask_cursor_crop_->scale_ = glm::vec3(1.2f, 1.2f, 1.f);
-    mask_cursor_crop_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.8f );
+    mask_cursor_crop_->scale_ = glm::vec3(1.4f, 1.4f, 1.f);
+    mask_cursor_crop_->shader()->color = glm::vec4( COLOR_APPEARANCE_MASK, 0.9f );
     mask_cursor_crop_->visible_ = false;
     scene.fg()->attach(mask_cursor_crop_);
 
@@ -2465,11 +2465,17 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
                         mask_cursor_square_->visible_ = Settings::application.brush.z > 0.0;
                         edit_source_->maskShader()->option = mask_cursor_paint_;
                         if (mask_cursor_paint_ > 1) {
-                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
-                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
+                            ImVec4 c = ImGuiToolkit::HighlightColor(false);
+                            mask_cursor_circle_->shader()->color = glm::vec4(c.x, c.y, c.z, 0.8f );
+                            mask_cursor_square_->shader()->color = glm::vec4(c.x, c.y, c.z, 0.8f );
+//                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
+//                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK_DISABLE, 0.9f );
                         } else {
-                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
-                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
+                            ImVec4 c = ImGuiToolkit::HighlightColor();
+                            mask_cursor_circle_->shader()->color = glm::vec4(c.x, c.y, c.z, 0.8f );
+                            mask_cursor_square_->shader()->color = glm::vec4(c.x, c.y, c.z, 0.8f );
+//                            mask_cursor_circle_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
+//                            mask_cursor_square_->shader()->color = glm::vec4(COLOR_APPEARANCE_MASK, 0.9f );
                         }
                     }
                     else {
@@ -2480,7 +2486,8 @@ View::Cursor AppearanceView::over (glm::vec2 pos)
             // show crop cursor
             else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
                 if (mask_cursor_shape_ > 0) {
-                    mask_cursor_crop_->visible_   = true;
+                    mask_cursor_crop_->visible_   = true;                    
+                    mask_cursor_crop_->scale_ = glm::vec3(1.4f /scene.root()->scale_.x, 1.4f / scene.root()->scale_.x, 1.f);
                 }
             }
         }
@@ -2591,6 +2598,7 @@ void AppearanceView::adjustBackground()
             mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
             mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
         }
+
     }
 
     // background scene
@@ -2700,7 +2708,7 @@ void AppearanceView::draw()
         {
 
             // style grey
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.00f, 1.00f, 0.90f, 1.0f));  // 1
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_APPEARANCE_LIGHT, 1.0f));  // 1
             ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));

@@ -132,6 +132,7 @@ private:
     Disk *button_black_;
     Disk *stashCircle_;
     Mesh *mixingCircle_;
+    Mesh *circle_;
 };
 
 class RenderView : public View
