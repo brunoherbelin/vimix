@@ -39,3 +39,52 @@ void SearchVisitor::visit(Scene &n)
     // search only in workspace
     n.ws()->accept(*this);
 }
+
+
+
+SearchFileVisitor::SearchFileVisitor(std::string filename) : Visitor(), filename_(filename), found_(false)
+{
+
+}
+
+
+void SearchFileVisitor::visit(Node &n)
+{
+
+}
+
+void SearchFileVisitor::visit(Group &n)
+{
+    if (found_)
+        return;
+
+    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+        (*node)->accept(*this);
+        if (found_)
+            break;
+    }
+}
+
+void SearchFileVisitor::visit(Switch &n)
+{
+    if (n.numChildren()>0)
+        n.activeChild()->accept(*this);
+}
+
+
+void SearchFileVisitor::visit(Scene &n)
+{
+    // search only in workspace
+    n.ws()->accept(*this);
+}
+
+
+void SearchFileVisitor::visit (MediaSource& s)
+{
+
+}
+
+void SearchFileVisitor::visit (SessionFileSource& s)
+{
+
+}
