@@ -678,9 +678,11 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-    //
+    // fast mipmaps (we are not really using mipmaps anyway)
+    glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
+    // acurate derivative for shader
     glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
-    glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     // if not main window
     if ( master_ != NULL ) {
