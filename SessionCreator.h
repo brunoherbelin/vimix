@@ -13,7 +13,7 @@ class SessionLoader : public Visitor {
 
 public:
 
-    SessionLoader(Session *session);
+    SessionLoader(Session *session, uint recursion = 0);
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
@@ -58,6 +58,7 @@ protected:
     tinyxml2::XMLElement *xmlCurrent_;
     Session *session_;
     std::list<uint64_t> sources_id_;
+    uint recursion_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };
@@ -69,7 +70,7 @@ class SessionCreator : public SessionLoader {
     void loadConfig(tinyxml2::XMLElement *viewsNode);
 
 public:
-    SessionCreator();
+    SessionCreator(uint recursion = 0);
 
     void load(const std::string& filename);
 

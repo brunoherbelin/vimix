@@ -14,7 +14,7 @@ public:
     Session();
     ~Session();
 
-    static Session *load(const std::string& filename);
+    static Session *load(const std::string& filename, uint recursion = 0);
 
     // add given source into the session
     SourceList::iterator addSource (Source *s);

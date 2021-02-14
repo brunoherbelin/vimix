@@ -35,7 +35,7 @@ public:
     void accept (Visitor& v) override;
 
     // SessionFile Source specific interface
-    void load(const std::string &p = "");
+    void load(const std::string &p = "", uint recursion = 0);
 
     inline std::string path() const { return path_; }
     glm::ivec2 icon() const override { return glm::ivec2(2, 16); }

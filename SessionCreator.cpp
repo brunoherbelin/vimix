@@ -52,7 +52,7 @@ std::string SessionCreator::info(const std::string& filename)
     return ret;
 }
 
-SessionCreator::SessionCreator(): SessionLoader(nullptr)
+SessionCreator::SessionCreator(uint recursion): SessionLoader(nullptr, recursion)
 {
 
 }
@@ -108,7 +108,7 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
     }
 }
 
-SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
+SessionLoader::SessionLoader(Session *session, uint recursion): Visitor(), session_(session), recursion_(recursion)
 {
 
 }
@@ -116,6 +116,11 @@ SessionLoader::SessionLoader(Session *session): Visitor(), session_(session)
 void SessionLoader::load(XMLElement *sessionNode)
 {
     sources_id_.clear();
+
+    if (recursion_ > MAX_SESSION_LEVEL) {
+        Log::Warning("Recursive or imbricated sessions detected! Interrupting loading after %d iterations.\n", MAX_SESSION_LEVEL);
+        return;
+    }
 
     if (sessionNode != nullptr && session_ != nullptr) {
 
@@ -534,11 +539,11 @@ void SessionLoader::visit (SessionFileSource& s)
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
         std::string path = std::string ( pathNode->GetText() );
+
         // load only new files
         if ( path != s.path() )
-            s.load(path);
+            s.load(path, recursion_ + 1);
     }
-
 }
 
 void SessionLoader::visit (SessionGroupSource& s)
@@ -550,10 +555,9 @@ void SessionLoader::visit (SessionGroupSource& s)
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
     if (sessionGroupNode) {
         // load session inside group
-        SessionLoader grouploader( s.session() );
+        SessionLoader grouploader( s.session(), recursion_ + 1 );
         grouploader.load( sessionGroupNode );
     }
-
 }
 
 void SessionLoader::visit (RenderSource& s)

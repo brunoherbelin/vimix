@@ -948,7 +948,7 @@ void Mixer::load(const std::string& filename)
     if (sessionLoaders_.empty()) {
         // Start async thread for loading the session
         // Will be obtained in the future in update()
-        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename) );
+        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );
     }
 #else
     set( Session::load(filename) );
@@ -986,7 +986,7 @@ void Mixer::import(const std::string& filename)
     if (sessionImporters_.empty()) {
         // Start async thread for loading the session
         // Will be obtained in the future in update()
-        sessionImporters_.emplace_back( std::async(std::launch::async, Session::load, filename) );
+        sessionImporters_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );
     }
 #else
     merge( Session::load(filename) );

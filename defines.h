@@ -9,6 +9,7 @@
 #define XML_VERSION_MAJOR 0
 #define XML_VERSION_MINOR 2
 #define MAX_RECENT_HISTORY 20
+#define MAX_SESSION_LEVEL 3
 
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))

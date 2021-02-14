@@ -433,9 +433,10 @@ void SessionVisitor::visit (SessionGroupSource& s)
     XMLElement *rootgroup = xmlDoc_->NewElement("Session");
     xmlCurrent_->InsertEndChild(rootgroup);
 
-    setRoot(rootgroup);
-    for (auto iter = se->begin(); iter != se->end(); iter++, setRoot(rootgroup) )
+    for (auto iter = se->begin(); iter != se->end(); iter++){
+        setRoot(rootgroup);
         (*iter)->accept(*this);
+    }
 
 }
 

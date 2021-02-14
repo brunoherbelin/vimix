@@ -4,7 +4,6 @@
 #include "Settings.h"
 #include "FrameBuffer.h"
 #include "Session.h"
-#include "GarbageVisitor.h"
 #include "FrameGrabber.h"
 #include "SessionCreator.h"
 #include "SessionSource.h"
@@ -323,9 +322,9 @@ void Session::unlock()
 }
 
 
-Session *Session::load(const std::string& filename)
+Session *Session::load(const std::string& filename, uint recursion)
 {
-    SessionCreator creator;
+    SessionCreator creator(recursion);
     creator.load(filename);
 
     return creator.session();

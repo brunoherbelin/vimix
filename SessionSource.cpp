@@ -128,7 +128,7 @@ SessionFileSource::SessionFileSource() : SessionSource(), path_("")
     wait_for_sources_ = false;
 }
 
-void SessionFileSource::load(const std::string &p)
+void SessionFileSource::load(const std::string &p, uint recursion)
 {
     path_ = p;
 
@@ -142,10 +142,11 @@ void SessionFileSource::load(const std::string &p)
     if ( path_.empty() ) {
         // empty session
         session_ = new Session;
+        Log::Warning("Empty Session filename provided.");
     }
     else {
         // launch a thread to load the session file
-        sessionLoader_ = std::async(std::launch::async, Session::load, path_);
+        sessionLoader_ = std::async(std::launch::async, Session::load, path_, recursion);
         Log::Notify("Opening %s", p.c_str());
     }
 }
