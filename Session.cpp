@@ -296,8 +296,8 @@ int Session::index(SourceList::iterator it) const
 
 void Session::move(int current_index, int target_index)
 {
-    if ( current_index < 0 || current_index > sources_.size()
-         || target_index < 0 || target_index > sources_.size()
+    if ( current_index < 0 || current_index > (int) sources_.size()
+         || target_index < 0 || target_index > (int) sources_.size()
          || target_index == current_index )
         return;
 

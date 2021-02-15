@@ -52,7 +52,7 @@ std::string SessionCreator::info(const std::string& filename)
     return ret;
 }
 
-SessionCreator::SessionCreator(uint recursion): SessionLoader(nullptr, recursion)
+SessionCreator::SessionCreator(int recursion): SessionLoader(nullptr, recursion)
 {
 
 }
@@ -108,7 +108,7 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
     }
 }
 
-SessionLoader::SessionLoader(Session *session, uint recursion): Visitor(), session_(session), recursion_(recursion)
+SessionLoader::SessionLoader(Session *session, int recursion): Visitor(), session_(session), recursion_(recursion)
 {
 
 }
