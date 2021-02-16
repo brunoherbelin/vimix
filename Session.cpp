@@ -99,9 +99,6 @@ void Session::update(float dt)
     // draw render view in Frame Buffer
     render_.draw();
 
-    // grab frames to recorders & streamers
-    FrameGrabbing::manager().grabFrame(render_.frame(), dt);
-
 }
 
 

@@ -209,6 +209,9 @@ void Mixer::update()
     // update session and associated sources
     session_->update(dt_);
 
+    // grab frames to recorders & streamers
+    FrameGrabbing::manager().grabFrame(session_->frame(), dt_);
+
     // delete sources which failed update (one by one)
     Source *failure = session()->failedSource();
     if (failure != nullptr) {
