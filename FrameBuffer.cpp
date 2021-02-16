@@ -56,8 +56,8 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, bool useAlpha, bool multiSampling
     use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(resolution);
-    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
     setProjectionArea(glm::vec2(1.f, 1.f));
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampling):
@@ -65,8 +65,8 @@ FrameBuffer::FrameBuffer(uint width, uint height, bool useAlpha, bool multiSampl
     use_alpha_(useAlpha), use_multi_sampling_(multiSampling)
 {
     attrib_.viewport = glm::ivec2(width, height);
-    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, use_alpha_ ? 0.f : 1.f);
     setProjectionArea(glm::vec2(1.f, 1.f));
+    attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
 }
 
 void FrameBuffer::init()
