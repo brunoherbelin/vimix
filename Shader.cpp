@@ -1,4 +1,4 @@
-#include "Shader.h"
+﻿#include "Shader.h"
 #include "Resource.h"
 #include "FrameBuffer.h"
 #include "Log.h"
@@ -221,18 +221,19 @@ void Shader::use()
     // Blending Function
     if (force_blending_opacity) {
         glEnable(GL_BLEND);
-        glBlendEquation(blending_equation[BLEND_OPACITY]);
-        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
+//        glBlendEquation(blending_equation[BLEND_OPACITY]);
+//        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
+        glBlendEquationSeparate(blending_equation[BLEND_OPACITY], GL_MAX);
+        glBlendFuncSeparate(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY], GL_SRC_ALPHA, GL_ONE);
 
     }
     else if ( blending != BLEND_CUSTOM ) {
         glEnable(GL_BLEND);
-        glBlendEquation(blending_equation[blending]);
-        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
-
-        // TODO different blending for alpha and color
-        //        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
-        //        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//        glBlendEquation(blending_equation[blending]);
+//        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
+        // different blending for alpha and color
+        glBlendEquationSeparate(blending_equation[blending], GL_MAX);
+        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE);
 
     }
     else
