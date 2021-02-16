@@ -152,31 +152,34 @@ void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
-    newelement->SetAttribute("play", n.isPlaying());
-    newelement->SetAttribute("loop", (int) n.loop());
-    newelement->SetAttribute("speed", n.playSpeed());
 
-    // timeline
-    XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
+    if (!n.isImage()) {
+        newelement->SetAttribute("play", n.isPlaying());
+        newelement->SetAttribute("loop", (int) n.loop());
+        newelement->SetAttribute("speed", n.playSpeed());
 
-    // gaps in timeline
-    XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
-    TimeIntervalSet gaps = n.timeline()->gaps();
-    for( auto it = gaps.begin(); it!= gaps.end(); it++) {
-        XMLElement *g = xmlDoc_->NewElement("Interval");
-        g->SetAttribute("begin", (*it).begin);
-        g->SetAttribute("end", (*it).end);
-        gapselement->InsertEndChild(g);
+        // timeline
+        XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
+
+        // gaps in timeline
+        XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
+        TimeIntervalSet gaps = n.timeline()->gaps();
+        for( auto it = gaps.begin(); it!= gaps.end(); it++) {
+            XMLElement *g = xmlDoc_->NewElement("Interval");
+            g->SetAttribute("begin", (*it).begin);
+            g->SetAttribute("end", (*it).end);
+            gapselement->InsertEndChild(g);
+        }
+        timelineelement->InsertEndChild(gapselement);
+
+        // fading in timeline
+        XMLElement *fadingelement = xmlDoc_->NewElement("Fading");
+        XMLElement *array = XMLElementEncodeArray(xmlDoc_, n.timeline()->fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
+        fadingelement->InsertEndChild(array);
+        timelineelement->InsertEndChild(fadingelement);
+        newelement->InsertEndChild(timelineelement);
     }
-    timelineelement->InsertEndChild(gapselement);
 
-    // fading in timeline
-    XMLElement *fadingelement = xmlDoc_->NewElement("Fading");
-    XMLElement *array = XMLElementEncodeArray(xmlDoc_, n.timeline()->fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
-    fadingelement->InsertEndChild(array);
-    timelineelement->InsertEndChild(fadingelement);
-
-    newelement->InsertEndChild(timelineelement);
     xmlCurrent_->InsertEndChild(newelement);
 }
 
