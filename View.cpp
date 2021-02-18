@@ -257,7 +257,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(1.3f)
     // Mixing scene background
     Mesh *tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
-    tmp->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
+    tmp->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.7f );
     scene.bg()->attach(tmp);
 
     mixingCircle_ = new Mesh("mesh/disk.ply");

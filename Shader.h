@@ -60,10 +60,11 @@ public:
 
     typedef enum {
         BLEND_OPACITY = 0,
-        BLEND_ADD,
+        BLEND_SCREEN,
         BLEND_SUBSTRACT,
-        BLEND_LAYER_ADD,
-        BLEND_LAYER_SUBSTRACT,
+        BLEND_MULTIPLY,
+        BLEND_SOFT_LIGHT,
+        BLEND_SOFT_SUBTRACT,
         BLEND_CUSTOM
     } BlendMode;
     BlendMode blending;

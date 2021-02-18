@@ -23,11 +23,32 @@
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
-// Blending presets for matching with Shader::BlendMode
-GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
-GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA};
-GLenum blending_destination_function[6] = {GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
+// Blending presets for matching with Shader::BlendModes:
+GLenum blending_equation[7] = { GL_FUNC_ADD,  // normal
+                                GL_FUNC_ADD,  // screen
+                                GL_FUNC_REVERSE_SUBTRACT, // subtract
+                                GL_FUNC_ADD,  // multiply
+                                GL_FUNC_ADD,  // soft light
+                                GL_FUNC_REVERSE_SUBTRACT, // soft subtract
+                                GL_FUNC_ADD};
+GLenum blending_source_function[7] = { GL_ONE,  // normal
+                                       GL_ONE,  // screen
+                                       GL_SRC_COLOR,  // subtract (can be GL_ONE)
+                                       GL_DST_COLOR,  // multiply : src x dst color
+                                       GL_DST_COLOR,  // soft light : src x dst color
+                                       GL_DST_COLOR,  // soft subtract
+                                       GL_ONE};
+GLenum blending_destination_function[7] = {GL_ONE_MINUS_SRC_ALPHA,// normal
+                                           GL_ONE, // screen
+                                           GL_ONE, // subtract
+                                           GL_ONE_MINUS_SRC_ALPHA, // multiply
+                                           GL_ONE, // soft light
+                                           GL_ONE, // soft subtract
+                                           GL_ONE_MINUS_SRC_ALPHA};
 
+//GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
+//GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA};
+//GLenum blending_destination_function[6] = {GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
 
 
 ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
@@ -223,18 +244,28 @@ void Shader::use()
         glEnable(GL_BLEND);
 //        glBlendEquation(blending_equation[BLEND_OPACITY]);
 //        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
-        glBlendEquationSeparate(blending_equation[BLEND_OPACITY], GL_MAX);
-        glBlendFuncSeparate(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY], GL_SRC_ALPHA, GL_ONE);
+        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
     }
     else if ( blending != BLEND_CUSTOM ) {
         glEnable(GL_BLEND);
 //        glBlendEquation(blending_equation[blending]);
 //        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
-        // different blending for alpha and color
-        glBlendEquationSeparate(blending_equation[blending], GL_MAX);
-        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE);
 
+        // different blending for alpha and color
+//        glBlendColor(1.f, 1.f, 1.f, 1.f);
+        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
+        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ZERO);
+//        glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
+//        glBlendFuncSeparate( GL_SRC_ALPHA, GL_CONSTANT_COLOR, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+//        glBlendEquation(GL_FUNC_ADD);
+//        glBlendFunc(GL_DST_COLOR, GL_ZERO);
+
+
+//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+//        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     }
     else
         glDisable(GL_BLEND);

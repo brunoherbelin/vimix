@@ -366,7 +366,7 @@ void main(void)
     transformedRGB = LevelsControl(transformedRGB, levels.x, gamma.rgb * gamma.a, levels.y, levels.z, levels.w);
 
     // apply base color and alpha for final fragment color
-    FragColor = vec4(transformedRGB * vertexColor.rgb * color.rgb, clamp(alpha, 0.0, 1.0) );
+    FragColor = vec4(transformedRGB * vertexColor.rgb * color.rgb * alpha, clamp(alpha, 0.0, 1.0) );
 
 }
 

@@ -31,8 +31,9 @@ void main()
     // alpha is a mix of texture alpha, vertex alpha, and uniform alpha affected by stippling
     float A = textureColor.a * vertexColor.a * color.a * maskIntensity;
     A += textureColor.a * stipple * ( int(gl_FragCoord.x + gl_FragCoord.y) % 2 );
+    A = clamp(A, 0.0, 1.0);
 
     // output RGBA
-    FragColor = vec4(RGB, clamp(A, 0.0, 1.0) );
+    FragColor = vec4(RGB * A, A);
 //    FragColor = texture(iChannel1, vertexUV);
 }
