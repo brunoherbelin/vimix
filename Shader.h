@@ -61,15 +61,17 @@ public:
     typedef enum {
         BLEND_OPACITY = 0,
         BLEND_SCREEN,
-        BLEND_SUBSTRACT,
+        BLEND_SUBTRACT,
         BLEND_MULTIPLY,
         BLEND_SOFT_LIGHT,
         BLEND_SOFT_SUBTRACT,
+        BLEND_LIGHTEN_ONLY,
         BLEND_CUSTOM
     } BlendMode;
     BlendMode blending;
 
     static bool force_blending_opacity;
+    static bool force_blending_overwrite;
 
 protected:
     ShadingProgram *program_;

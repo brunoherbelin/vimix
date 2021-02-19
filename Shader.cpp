@@ -24,26 +24,29 @@ ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
 // Blending presets for matching with Shader::BlendModes:
-GLenum blending_equation[7] = { GL_FUNC_ADD,  // normal
+GLenum blending_equation[8] = { GL_FUNC_ADD,  // normal
                                 GL_FUNC_ADD,  // screen
                                 GL_FUNC_REVERSE_SUBTRACT, // subtract
                                 GL_FUNC_ADD,  // multiply
                                 GL_FUNC_ADD,  // soft light
                                 GL_FUNC_REVERSE_SUBTRACT, // soft subtract
+                                GL_MAX,       // lighten only
                                 GL_FUNC_ADD};
-GLenum blending_source_function[7] = { GL_ONE,  // normal
+GLenum blending_source_function[8] = { GL_ONE,  // normal
                                        GL_ONE,  // screen
                                        GL_SRC_COLOR,  // subtract (can be GL_ONE)
                                        GL_DST_COLOR,  // multiply : src x dst color
                                        GL_DST_COLOR,  // soft light : src x dst color
                                        GL_DST_COLOR,  // soft subtract
+                                       GL_ONE,        //  lighten only
                                        GL_ONE};
-GLenum blending_destination_function[7] = {GL_ONE_MINUS_SRC_ALPHA,// normal
+GLenum blending_destination_function[8] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ONE, // screen
                                            GL_ONE, // subtract
                                            GL_ONE_MINUS_SRC_ALPHA, // multiply
                                            GL_ONE, // soft light
                                            GL_ONE, // soft subtract
+                                           GL_ONE, // lighten only
                                            GL_ONE_MINUS_SRC_ALPHA};
 
 //GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
@@ -199,6 +202,7 @@ void ShadingProgram::checkLinkingErr()
 
 
 bool Shader::force_blending_opacity = false;
+bool Shader::force_blending_overwrite = false;
 
 Shader::Shader() : blending(BLEND_OPACITY)
 {
@@ -242,30 +246,30 @@ void Shader::use()
     // Blending Function
     if (force_blending_opacity) {
         glEnable(GL_BLEND);
-//        glBlendEquation(blending_equation[BLEND_OPACITY]);
-//        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
         glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    }
+    else if (force_blending_overwrite) {
+        glDisable(GL_BLEND);
+//        glEnable(GL_BLEND);
+//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+//        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+
+//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+//        glBlendColor(1.f, 1.f, 1.f, 1.f);
+//        glBlendFuncSeparate(GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, GL_CONSTANT_ALPHA);
+//        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
+//        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ONE);
+
+//        Log::Info("force_blending_overwrite");
 
     }
     else if ( blending != BLEND_CUSTOM ) {
         glEnable(GL_BLEND);
-//        glBlendEquation(blending_equation[blending]);
-//        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
-
-        // different blending for alpha and color
-//        glBlendColor(1.f, 1.f, 1.f, 1.f);
         glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
-        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ZERO);
-//        glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
-//        glBlendFuncSeparate( GL_SRC_ALPHA, GL_CONSTANT_COLOR, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-//        glBlendEquation(GL_FUNC_ADD);
-//        glBlendFunc(GL_DST_COLOR, GL_ZERO);
-
-
-//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-//        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     }
     else
         glDisable(GL_BLEND);
