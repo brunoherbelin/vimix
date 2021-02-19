@@ -11,7 +11,8 @@ uniform vec4 uv;
 
 void main()
 {
-    FragColor = color * vertexColor;
+    vec4 c = color * vertexColor;
+    FragColor = vec4( vec3(c) * c.a, c.a);
 }
 
 // RGBA 2 YUVA converter
