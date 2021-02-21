@@ -353,12 +353,12 @@ void Source::render()
 void Source::attach(FrameBuffer *renderbuffer)
 {
     // invalid argument
-//    if (renderbuffer == nullptr)
-//        return;
+    if (renderbuffer == nullptr)
+        return;
 
-//    // replace renderbuffer_
-//    if (renderbuffer_)
-//        delete renderbuffer_;
+    // replace renderbuffer_
+    if (renderbuffer_)
+        delete renderbuffer_;
     renderbuffer_ = renderbuffer;
 
     // if a symbol is available, add it to overlay
@@ -488,10 +488,10 @@ void Source::setAlpha(float a)
         step = glm::vec2(0.01f, 0.01f);
 
     // converge linearly to reduce the difference of alpha
-    float delta = sin_quad(dist.x, dist.y) - a;
-    while ( glm::abs(delta) > 0.01 ){
+    float delta = sin_quad(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
+    while ( glm::abs(delta) > 0.01f ){
         dist += step * glm::sign(delta);
-        delta = sin_quad(dist.x, dist.y) - a;
+        delta = sin_quad(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
     }
 
     // apply new mixing coordinates
@@ -512,7 +512,7 @@ void Source::update(float dt)
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
         // use the sinusoidal transfer function
-        blendingshader_->color = glm::vec4(1.0, 1.0, 1.0, sin_quad( dist.x, dist.y ));
+        blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, sin_quad( dist.x, dist.y ));
         mixingshader_->color = blendingshader_->color;
 
         // CHANGE update status based on limbo

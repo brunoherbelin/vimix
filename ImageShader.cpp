@@ -2,14 +2,15 @@
 
 #include "defines.h"
 #include "Visitor.h"
-#include "ImageShader.h"
 #include "Resource.h"
 #include "rsc/fonts/IconsFontAwesome5.h"
-//#include
 
-static ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
+#include "ImageShader.h"
 
-const char* MaskShader::mask_names[3] = { ICON_FA_EXPAND,  ICON_FA_EDIT, ICON_FA_SHAPES };
+ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
+ShadingProgram inverseAlphaProgram("shaders/image.vs", "shaders/imageblending.fs");
+
+const char* MaskShader::mask_names[3]  = { ICON_FA_EXPAND, ICON_FA_EDIT, ICON_FA_SHAPES };
 const char* MaskShader::mask_shapes[5] = { "Elipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 std::vector< ShadingProgram* > MaskShader::mask_programs;
 
@@ -25,15 +26,15 @@ void ImageShader::use()
 {
     Shader::use();
 
+    // set stippling
     program_->setUniform("stipple", stipple);
 
+    // setup mask texture
     glActiveTexture(GL_TEXTURE1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D, mask_texture);
-
+    glBindTexture  (GL_TEXTURE_2D, mask_texture);
     glActiveTexture(GL_TEXTURE0);
-
 }
 
 void ImageShader::reset()
@@ -61,6 +62,15 @@ void ImageShader::accept(Visitor& v) {
 }
 
 
+DivideAlphaShader::DivideAlphaShader(): ImageShader()
+{
+    // to inverse alpha mode, use dedicated shading program
+    program_ = &inverseAlphaProgram;
+    // reset instance
+    reset();
+
+    blending = Shader::BLEND_NONE;
+}
 
 
 MaskShader::MaskShader(): Shader(), mode(0)

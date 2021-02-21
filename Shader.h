@@ -66,16 +66,14 @@ public:
         BLEND_SOFT_LIGHT,
         BLEND_SOFT_SUBTRACT,
         BLEND_LIGHTEN_ONLY,
-        BLEND_CUSTOM
+        BLEND_NONE
     } BlendMode;
     BlendMode blending;
 
     static bool force_blending_opacity;
-    static bool force_blending_overwrite;
 
 protected:
     ShadingProgram *program_;
-
 };
 
 

@@ -709,6 +709,8 @@ void RenderView::draw()
     if (frame_buffer_) {
         // draw in frame buffer
         glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
+
+        // render the scene normally (pre-multiplied alpha in RGB)
         frame_buffer_->begin();
         scene.root()->draw(glm::identity<glm::mat4>(), P);
         fading_overlay_->draw(glm::identity<glm::mat4>(), projection);

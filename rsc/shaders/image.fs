@@ -9,11 +9,10 @@ in vec2 vertexUV;
 uniform vec3 iResolution;           // viewport image resolution (in pixels)
 uniform mat4 iTransform;            // image transformation
 uniform vec4 color;
-uniform vec4 uv;
 
 // Image Shader
-uniform sampler2D iChannel0;             // input channel (texture id).
-uniform sampler2D iChannel1;             // input mask
+uniform sampler2D iChannel0;        // input channel (texture id).
+uniform sampler2D iChannel1;        // input mask
 uniform float stipple;
 
 void main()
@@ -28,12 +27,11 @@ void main()
     // read mask intensity as average of RGB
     float maskIntensity = dot(texture(iChannel1, vertexUV).rgb, vec3(1.0/3.0));
 
-    // alpha is a mix of texture alpha, vertex alpha, and uniform alpha affected by stippling
+    // alpha is a mix of texture, vertex, uniform and mask alpha, affected by stippling
     float A = textureColor.a * vertexColor.a * color.a * maskIntensity;
     A += textureColor.a * stipple * ( int(gl_FragCoord.x + gl_FragCoord.y) % 2 );
     A = clamp(A, 0.0, 1.0);
 
-    // output RGBA
+    // output RGB with Alpha pre-multiplied
     FragColor = vec4(RGB * A, A);
-//    FragColor = texture(iChannel1, vertexUV);
 }

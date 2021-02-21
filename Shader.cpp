@@ -47,12 +47,7 @@ GLenum blending_destination_function[8] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ONE, // soft light
                                            GL_ONE, // soft subtract
                                            GL_ONE, // lighten only
-                                           GL_ONE_MINUS_SRC_ALPHA};
-
-//GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
-//GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA};
-//GLenum blending_destination_function[6] = {GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
-
+                                           GL_ZERO};
 
 ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
 {
@@ -202,7 +197,6 @@ void ShadingProgram::checkLinkingErr()
 
 
 bool Shader::force_blending_opacity = false;
-bool Shader::force_blending_overwrite = false;
 
 Shader::Shader() : blending(BLEND_OPACITY)
 {
@@ -231,7 +225,7 @@ void Shader::use()
     if (!program_->initialized())
         program_->init();
 
-    // Use program and set uniforms
+    // Use program
     program_->use();
 
     // set uniforms
@@ -248,25 +242,8 @@ void Shader::use()
         glEnable(GL_BLEND);
         glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
         glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
     }
-    else if (force_blending_overwrite) {
-        glDisable(GL_BLEND);
-//        glEnable(GL_BLEND);
-//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-//        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-
-//        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-//        glBlendColor(1.f, 1.f, 1.f, 1.f);
-//        glBlendFuncSeparate(GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, GL_CONSTANT_ALPHA);
-//        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
-//        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ONE);
-
-//        Log::Info("force_blending_overwrite");
-
-    }
-    else if ( blending != BLEND_CUSTOM ) {
+    else if ( blending < BLEND_NONE ) {
         glEnable(GL_BLEND);
         glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
         glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ONE_MINUS_SRC_ALPHA);

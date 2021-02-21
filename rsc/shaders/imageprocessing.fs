@@ -326,8 +326,7 @@ void main(void)
     float alpha = clamp(ma * color.a, 0.0, 1.0);
 
     // read color & apply basic filterid
-    vec3 transformedRGB;
-    transformedRGB = apply_filter();
+    vec3 transformedRGB = apply_filter();
 
     // chromakey
     alpha -= mix( 0.0, 1.0 - alphachromakey( transformedRGB, chromakey.rgb, chromadelta), float(chromadelta > 0.0001) );
@@ -355,6 +354,7 @@ void main(void)
 
     // luma key
     alpha -= mix( 0.0, step( transformedHSL.z, lumakey ), float(lumakey > EPSILON));
+    alpha = clamp(alpha, 0.0, 1.0);
 
     // level threshold
     transformedHSL = mix( transformedHSL, vec3(0.0, 0.0, 0.95 - step( transformedHSL.z, threshold )), float(threshold > EPSILON));
@@ -366,7 +366,7 @@ void main(void)
     transformedRGB = LevelsControl(transformedRGB, levels.x, gamma.rgb * gamma.a, levels.y, levels.z, levels.w);
 
     // apply base color and alpha for final fragment color
-    FragColor = vec4(transformedRGB * vertexColor.rgb * color.rgb * alpha, clamp(alpha, 0.0, 1.0) );
+    FragColor = vec4(transformedRGB * vertexColor.rgb * color.rgb * alpha, alpha);
 
 }
 

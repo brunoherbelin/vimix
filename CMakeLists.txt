@@ -303,6 +303,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/mask_draw.fs
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
+    ./rsc/shaders/imageblending.fs
     ./rsc/fonts/Hack-Regular.ttf
     ./rsc/fonts/Roboto-Regular.ttf
     ./rsc/fonts/Roboto-Bold.ttf

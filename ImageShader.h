@@ -27,6 +27,14 @@ public:
     float stipple;
 };
 
+class DivideAlphaShader : public ImageShader
+{
+
+public:
+    DivideAlphaShader();
+
+};
+
 
 class MaskShader : public Shader
 {

@@ -264,7 +264,6 @@ SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec
     group->attach(persp);
     frames_[View::LAYER]->attach(group);
 
-
     // set symbol
     symbol_ = new Symbol(Symbol::GROUP, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
@@ -274,7 +273,7 @@ void SessionGroupSource::init()
 {
     if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
 
-        session_->setResolution( resolution_, true );
+        session_->setResolution( resolution_ );
 
         //  update to draw framebuffer
         session_->update( dt_ );
@@ -283,7 +282,7 @@ void SessionGroupSource::init()
         texturesurface_->setTextureIndex( session_->frame()->texture() );
 
         // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), true );
+        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
