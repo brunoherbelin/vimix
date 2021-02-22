@@ -171,7 +171,8 @@ void ImGuiVisitor::visit(Shader &n)
 //    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int mode = n.blending;
-    if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Subtract\0Multiply\0Soft light\0Soft subtract\0Lighten only\0None\0") ) {
+    if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Subtract\0Multiply\0Soft light"
+                     "\0Hard light\0Soft subtract\0Lighten only\0") ) {
         n.blending = Shader::BlendMode(mode);
 
         std::ostringstream oss;
@@ -188,6 +189,9 @@ void ImGuiVisitor::visit(Shader &n)
             break;
         case Shader::BLEND_MULTIPLY:
             oss<<"Multiply";
+            break;
+        case Shader::BLEND_HARD_LIGHT:
+            oss<<"Hard light";
             break;
         case Shader::BLEND_SOFT_LIGHT:
             oss<<"Soft light";

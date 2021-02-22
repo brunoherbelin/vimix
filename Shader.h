@@ -64,6 +64,7 @@ public:
         BLEND_SUBTRACT,
         BLEND_MULTIPLY,
         BLEND_SOFT_LIGHT,
+        BLEND_HARD_LIGHT,
         BLEND_SOFT_SUBTRACT,
         BLEND_LIGHTEN_ONLY,
         BLEND_NONE

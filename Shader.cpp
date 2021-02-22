@@ -24,29 +24,32 @@ ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
 // Blending presets for matching with Shader::BlendModes:
-GLenum blending_equation[8] = { GL_FUNC_ADD,  // normal
+GLenum blending_equation[9] = { GL_FUNC_ADD,  // normal
                                 GL_FUNC_ADD,  // screen
                                 GL_FUNC_REVERSE_SUBTRACT, // subtract
                                 GL_FUNC_ADD,  // multiply
                                 GL_FUNC_ADD,  // soft light
+                                GL_FUNC_ADD,  // hard light
                                 GL_FUNC_REVERSE_SUBTRACT, // soft subtract
                                 GL_MAX,       // lighten only
                                 GL_FUNC_ADD};
-GLenum blending_source_function[8] = { GL_ONE,  // normal
+GLenum blending_source_function[9] = { GL_ONE,  // normal
                                        GL_ONE,  // screen
                                        GL_SRC_COLOR,  // subtract (can be GL_ONE)
                                        GL_DST_COLOR,  // multiply : src x dst color
                                        GL_DST_COLOR,  // soft light : src x dst color
+                                       GL_SRC_COLOR,  // hard light : src x src color
                                        GL_DST_COLOR,  // soft subtract
                                        GL_ONE,        //  lighten only
                                        GL_ONE};
-GLenum blending_destination_function[8] = {GL_ONE_MINUS_SRC_ALPHA,// normal
-                                           GL_ONE, // screen
-                                           GL_ONE, // subtract
+GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
+                                           GL_ONE,   // screen
+                                           GL_ONE,   // subtract
                                            GL_ONE_MINUS_SRC_ALPHA, // multiply
-                                           GL_ONE, // soft light
-                                           GL_ONE, // soft subtract
-                                           GL_ONE, // lighten only
+                                           GL_ONE,   // soft light
+                                           GL_ONE,   // hard light
+                                           GL_ONE,   // soft subtract
+                                           GL_ONE,   // lighten only
                                            GL_ZERO};
 
 ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
