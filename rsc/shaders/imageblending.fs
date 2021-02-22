@@ -22,15 +22,7 @@ void main()
 
     // color texture
     vec4 textureColor = texture(iChannel0, texcoord.xy);
-    vec3 RGB = textureColor.rgb * vertexColor.rgb * color.rgb;
-
-    // alpha is a mix of texture, vertex, uniform and mask alpha
-    float A = textureColor.a * vertexColor.a * color.a;
-
-    // post-reversing premultiplication of alpha
-    float invA = 1.0 / clamp( A , 0.000001, 10.0);
-//    float invA = 1.0 / (A*A);
 
     // output
-    FragColor = vec4( RGB * invA, A);
+    FragColor = vec4( textureColor.a);
 }

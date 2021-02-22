@@ -8,7 +8,7 @@
 #include "ImageShader.h"
 
 ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
-ShadingProgram inverseAlphaProgram("shaders/image.vs", "shaders/imageblending.fs");
+ShadingProgram imageAlphaProgram  ("shaders/image.vs", "shaders/imageblending.fs");
 
 const char* MaskShader::mask_names[3]  = { ICON_FA_EXPAND, ICON_FA_EDIT, ICON_FA_SHAPES };
 const char* MaskShader::mask_shapes[5] = { "Elipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
@@ -62,10 +62,10 @@ void ImageShader::accept(Visitor& v) {
 }
 
 
-DivideAlphaShader::DivideAlphaShader(): ImageShader()
+AlphaShader::AlphaShader(): ImageShader()
 {
     // to inverse alpha mode, use dedicated shading program
-    program_ = &inverseAlphaProgram;
+    program_ = &imageAlphaProgram;
     // reset instance
     reset();
 
