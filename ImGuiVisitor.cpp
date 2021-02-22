@@ -499,9 +499,9 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         Action::manager().store(oss.str(), s.id());
     }
 
-    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open File", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
-    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import sources", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
@@ -514,9 +514,9 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
-    ImGui::Text("Group");
+    ImGui::Text("Flat Session");
 
-    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Ungroup", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+    if ( ImGui::Button( ICON_FA_UPLOAD " Expand sources", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
         Mixer::manager().import( &s );
     }
 

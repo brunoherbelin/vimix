@@ -372,6 +372,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_share.ply
     ./rsc/mesh/icon_clone.ply
     ./rsc/mesh/icon_vimix.ply
+    ./rsc/mesh/icon_group_vimix.ply
     ./rsc/mesh/icon_circles.ply
     ./rsc/mesh/icon_dots.ply
     ./rsc/mesh/icon_empty.ply

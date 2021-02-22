@@ -38,7 +38,7 @@ public:
     void load(const std::string &p = "", uint recursion = 0);
 
     inline std::string path() const { return path_; }
-    glm::ivec2 icon() const override { return glm::ivec2(2, 16); }
+    glm::ivec2 icon() const override { return glm::ivec2(19, 6); }
 
 protected:
 
@@ -65,7 +65,7 @@ public:
 
     // TODO import session entirely : bool import();
 
-    glm::ivec2 icon() const override { return glm::ivec2(4, 3); }
+    glm::ivec2 icon() const override { return glm::ivec2(10, 6); }
 
 protected:
 

@@ -1577,7 +1577,7 @@ void showContextMenuLayer(const char* label)
 {
     if (ImGui::BeginPopup(label)) {
 
-        if (ImGui::Selectable( ICON_FA_CUBE "  Create group" )){
+        if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )){
 
              Mixer::manager().groupSelection();
         }

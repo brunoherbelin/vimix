@@ -238,31 +238,31 @@ void SessionFileSource::accept(Visitor& v)
 
 SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec3(0.f))
 {
-    // redo frame for layers view
-    frames_[View::LAYER]->clear();
+//    // redo frame for layers view
+//    frames_[View::LAYER]->clear();
 
-    // Groups in LAYER have an additional border
-    Group *group = new Group;
-    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
-    frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
-    group->attach(frame);
-    Frame *persp = new Frame(Frame::GROUP, Frame::THIN, Frame::NONE);
-    persp->translation_.z = 0.1;
-    persp->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
-    group->attach(persp);
-    frames_[View::LAYER]->attach(group);
+//    // Groups in LAYER have an additional border
+//    Group *group = new Group;
+//    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
+//    frame->translation_.z = 0.1;
+//    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+//    group->attach(frame);
+//    Frame *persp = new Frame(Frame::GROUP, Frame::THIN, Frame::NONE);
+//    persp->translation_.z = 0.1;
+//    persp->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+//    group->attach(persp);
+//    frames_[View::LAYER]->attach(group);
 
-    group = new Group;
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
-    frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    group->attach(frame);
-    persp = new Frame(Frame::GROUP, Frame::LARGE, Frame::NONE);
-    persp->translation_.z = 0.1;
-    persp->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    group->attach(persp);
-    frames_[View::LAYER]->attach(group);
+//    group = new Group;
+//    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
+//    frame->translation_.z = 0.1;
+//    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+//    group->attach(frame);
+//    persp = new Frame(Frame::GROUP, Frame::LARGE, Frame::NONE);
+//    persp->translation_.z = 0.1;
+//    persp->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+//    group->attach(persp);
+//    frames_[View::LAYER]->attach(group);
 
     // set symbol
     symbol_ = new Symbol(Symbol::GROUP, glm::vec3(0.75f, 0.75f, 0.01f));
