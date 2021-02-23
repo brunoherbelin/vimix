@@ -33,7 +33,7 @@ public:
     // update session and all views
     void update();
     inline float dt() const { return dt_;}
-    inline float fps() const { return fps_;}
+    inline int fps() const { return int(roundf(1000.f/dt__));}
 
     // draw session and current view
     void draw();
@@ -129,7 +129,7 @@ protected:
     TransitionView transition_;
 
     float dt_;
-    float fps_;
+    float dt__;
 };
 
 #endif // MIXER_H

@@ -109,8 +109,7 @@ static void saveSession(const std::string& filename, Session *session)
     session->unlock();
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
-                 /*update_time_(GST_CLOCK_TIME_NONE),*/ dt_(0.f), fps_(59.f)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), dt_(0.f), dt__(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -203,9 +202,8 @@ void Mixer::update()
     dt_ = g_timer_elapsed (timer, NULL) * 1000.0;
     g_timer_start(timer);
 
-    // compute fps
-    if (dt_ > 1.f)
-        fps_ = 1.f / (dt_+1.f) + 0.999f * fps_;
+    // compute stabilized dt__
+    dt__ = 0.05f * dt_ + 0.95f * dt__;
 
     // update session and associated sources
     session_->update(dt_);
