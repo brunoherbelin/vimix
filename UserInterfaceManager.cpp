@@ -1119,6 +1119,10 @@ void UserInterface::RenderHistory()
 
 void UserInterface::RenderPreview()
 {
+#if defined(LINUX)
+    bool openInitializeSystemLoopback = false;
+#endif
+
     struct CustomConstraints // Helper functions for aspect-ratio constraints
     {
         static void AspectRatio(ImGuiSizeCallbackData* data) {
