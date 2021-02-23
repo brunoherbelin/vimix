@@ -3042,9 +3042,16 @@ void UserInterface::RenderAbout(bool* p_open)
         return;
     }
 
+#ifdef VIMIX_VERSION_MAJOR
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("%s %d.%d", APP_NAME, APP_VERSION_MAJOR, APP_VERSION_MINOR);
+    ImGui::Text("%s %d.%d.%d", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
     ImGui::PopFont();
+#else
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("%s", APP_NAME);
+    ImGui::PopFont();
+#endif
+
     ImGui::Separator();
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
     ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2020 Bruno Herbelin.");

@@ -22,9 +22,11 @@ void Settings::Save()
     xmlDoc.InsertFirstChild(pDec);
 
     XMLElement *pRoot = xmlDoc.NewElement(application.name.c_str());
-    pRoot->SetAttribute("major", APP_VERSION_MAJOR);
-    pRoot->SetAttribute("minor", APP_VERSION_MINOR);
+#ifdef VIMIX_VERSION_MAJOR
+    pRoot->SetAttribute("major", VIMIX_VERSION_MAJOR);
+    pRoot->SetAttribute("minor", VIMIX_VERSION_MINOR);
     xmlDoc.InsertEndChild(pRoot);
+#endif
 
     string comment = "Settings for " + application.name;
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
@@ -233,12 +235,14 @@ void Settings::Load()
     if (application.name.compare( string( pRoot->Value() ) ) != 0 )
         return;
 
+#ifdef VIMIX_VERSION_MAJOR
     // cancel on different version
     int version_major = -1, version_minor = -1;
     pRoot->QueryIntAttribute("major", &version_major);
     pRoot->QueryIntAttribute("minor", &version_minor);
-    if (version_major != APP_VERSION_MAJOR || version_minor != APP_VERSION_MINOR)
+    if (version_major != VIMIX_VERSION_MAJOR || version_minor != VIMIX_VERSION_MINOR)
         return;
+#endif
 
     XMLElement * applicationNode = pRoot->FirstChildElement("Application");
     if (applicationNode != nullptr) {
