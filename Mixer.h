@@ -33,6 +33,7 @@ public:
     // update session and all views
     void update();
     inline float dt() const { return dt_;}
+    inline float fps() const { return fps_;}
 
     // draw session and current view
     void draw();
@@ -127,8 +128,8 @@ protected:
     AppearanceView appearance_;
     TransitionView transition_;
 
-    guint64 update_time_;
     float dt_;
+    float fps_;
 };
 
 #endif // MIXER_H

@@ -913,7 +913,7 @@ void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
     if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         int mode = (*p_timer) ? 1 : 0;
-        ImGui::SetNextItemWidth(220);
+        ImGui::SetNextItemWidth(200);
         if (ImGui::Combo("##mode", &mode, ICON_FA_TACHOMETER_ALT "  Performance\0" ICON_FA_HOURGLASS_HALF "  Timers\0") ) {
             (*p_timer) = mode > 0;
         }

@@ -1098,7 +1098,7 @@ void UserInterface::RenderHistory()
 
     if (ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail() ) )
     {
-        for (int i = Action::manager().max(); i > 0; i--) {
+        for (uint i = Action::manager().max(); i > 0; i--) {
 
             std::string step_label_ = Action::manager().label(i);
 
@@ -1119,7 +1119,6 @@ void UserInterface::RenderHistory()
 
 void UserInterface::RenderPreview()
 {
-    bool openInitializeSystemLoopback = false;
     struct CustomConstraints // Helper functions for aspect-ratio constraints
     {
         static void AspectRatio(ImGuiSizeCallbackData* data) {
@@ -1143,8 +1142,9 @@ void UserInterface::RenderPreview()
         }
 
         FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
+#if defined(LINUX)
         FrameGrabber *cam = FrameGrabbing::manager().get(webcam_emulator_);
-
+#endif
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
             // check that file dialog thread finished
@@ -1321,7 +1321,7 @@ void UserInterface::RenderPreview()
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" %d x %d px, %d fps", output->width(), output->height(), int(1000.f / Mixer::manager().dt()) );
+            ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
         }
         // recording indicator overlay
         if (rec)

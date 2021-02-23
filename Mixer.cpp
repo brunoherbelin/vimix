@@ -110,7 +110,7 @@ static void saveSession(const std::string& filename, Session *session)
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
-                 update_time_(GST_CLOCK_TIME_NONE), dt_(0.f)
+                 /*update_time_(GST_CLOCK_TIME_NONE),*/ dt_(0.f), fps_(59.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -199,12 +199,13 @@ void Mixer::update()
     }
 
     // compute dt
-    if (update_time_ == GST_CLOCK_TIME_NONE)
-        update_time_ = gst_util_get_timestamp ();
-    guint64 current_time = gst_util_get_timestamp ();
-    // dt is in milisecond, with fractional precision (from micro seconds)
-    dt_ = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) ) * 0.001f;
-    update_time_ = current_time;
+    static GTimer *timer = g_timer_new ();
+    dt_ = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
+
+    // compute fps
+    if (dt_ > 1.f)
+        fps_ = 1.f / (dt_+1.f) + 0.999f * fps_;
 
     // update session and associated sources
     session_->update(dt_);
@@ -1118,9 +1119,6 @@ void Mixer::swap()
     // no current source
     current_source_ = session_->end();
     current_source_index_ = -1;
-
-    // reset timer
-    update_time_ = GST_CLOCK_TIME_NONE;
 
     // delete back (former front session)
     garbage_.push_back(back_session_);
