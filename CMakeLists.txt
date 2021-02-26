@@ -271,6 +271,12 @@ set(VMIX_SRCS
     Mesh.cpp
     Decorations.cpp
     View.cpp
+    RenderView.cpp
+    GeometryView.cpp
+    MixingView.cpp
+    LayerView.cpp
+    TextureView.cpp
+    TransitionView.cpp
     Source.cpp
     Session.cpp
     Selection.cpp

@@ -3,7 +3,7 @@
 
 #include <mutex>
 
-#include "View.h"
+#include "RenderView.h"
 #include "Source.h"
 
 class FrameGrabber;

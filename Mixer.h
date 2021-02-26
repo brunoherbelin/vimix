@@ -1,7 +1,11 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-#include "View.h"
+#include "GeometryView.h"
+#include "MixingView.h"
+#include "LayerView.h"
+#include "TextureView.h"
+#include "TransitionView.h"
 #include "Session.h"
 #include "Selection.h"
 
@@ -125,7 +129,7 @@ protected:
     MixingView mixing_;
     GeometryView geometry_;
     LayerView layer_;
-    AppearanceView appearance_;
+    TextureView appearance_;
     TransitionView transition_;
 
     float dt_;

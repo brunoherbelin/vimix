@@ -22,6 +22,7 @@ public:
     SourceList::iterator begin ();
     SourceList::iterator end ();
     Source *front();
+    Source *back();
     void pop_front();
     bool contains (Source *s);
     bool empty();

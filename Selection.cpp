@@ -117,6 +117,14 @@ Source *Selection::front()
     return selection_.front();
 }
 
+Source *Selection::back()
+{
+    if (selection_.empty())
+        return nullptr;
+
+    return selection_.back();
+}
+
 void Selection::pop_front()
 {
     if (!selection_.empty()) // TODO set mode ?

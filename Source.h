@@ -30,7 +30,7 @@ class Source
     friend class MixingView;
     friend class GeometryView;
     friend class LayerView;
-    friend class AppearanceView;
+    friend class TextureView;
     friend class TransitionView;
 
 public:
