@@ -29,9 +29,9 @@ Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
     config_[View::MIXING]->scale_ = Settings::application.views[View::MIXING].default_scale;
     config_[View::MIXING]->translation_ = Settings::application.views[View::MIXING].default_translation;
 
-    config_[View::APPEARANCE] = new Group;
-    config_[View::APPEARANCE]->scale_ = Settings::application.views[View::APPEARANCE].default_scale;
-    config_[View::APPEARANCE]->translation_ = Settings::application.views[View::APPEARANCE].default_translation;
+    config_[View::TEXTURE] = new Group;
+    config_[View::TEXTURE]->scale_ = Settings::application.views[View::TEXTURE].default_scale;
+    config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
 }
 
 
@@ -47,7 +47,7 @@ Session::~Session()
     delete config_[View::GEOMETRY];
     delete config_[View::LAYER];
     delete config_[View::MIXING];
-    delete config_[View::APPEARANCE];
+    delete config_[View::TEXTURE];
 }
 
 void Session::setActive (bool on)

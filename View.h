@@ -22,7 +22,7 @@ class View
 {
 public:
 
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, APPEARANCE=4, TRANSITION=5, INVALID=6 } Mode;
+    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, TEXTURE=4, TRANSITION=5, INVALID=6 } Mode;
 
     View(Mode m);
     virtual ~View() {}

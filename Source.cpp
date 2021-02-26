@@ -133,48 +133,48 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // default appearance node
-    groups_[View::APPEARANCE] = new Group;
-    groups_[View::APPEARANCE]->visible_ = false;
+    groups_[View::TEXTURE] = new Group;
+    groups_[View::TEXTURE]->visible_ = false;
 
-    frames_[View::APPEARANCE] = new Switch;
+    frames_[View::TEXTURE] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.7f);
-    frames_[View::APPEARANCE]->attach(frame);
+    frames_[View::TEXTURE]->attach(frame);
     frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    frames_[View::APPEARANCE]->attach(frame);
-    groups_[View::APPEARANCE]->attach(frames_[View::APPEARANCE]);
+    frames_[View::TEXTURE]->attach(frame);
+    groups_[View::TEXTURE]->attach(frames_[View::TEXTURE]);
 
-    overlays_[View::APPEARANCE] = new Group;
-    overlays_[View::APPEARANCE]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->visible_ = false;
-    handles_[View::APPEARANCE][Handles::RESIZE] = new Handles(Handles::RESIZE);
-    handles_[View::APPEARANCE][Handles::RESIZE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::RESIZE]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE]);
-    handles_[View::APPEARANCE][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
-    handles_[View::APPEARANCE][Handles::RESIZE_H]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::RESIZE_H]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_H]);
-    handles_[View::APPEARANCE][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
-    handles_[View::APPEARANCE][Handles::RESIZE_V]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::RESIZE_V]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::RESIZE_V]);
-    handles_[View::APPEARANCE][Handles::ROTATE] = new Handles(Handles::ROTATE);
-    handles_[View::APPEARANCE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::ROTATE]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::ROTATE]);
-    handles_[View::APPEARANCE][Handles::SCALE] = new Handles(Handles::SCALE);
-    handles_[View::APPEARANCE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::SCALE]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::SCALE]);
-    handles_[View::APPEARANCE][Handles::MENU] = new Handles(Handles::MENU);
-    handles_[View::APPEARANCE][Handles::MENU]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
-    handles_[View::APPEARANCE][Handles::MENU]->translation_.z = 0.1;
-    overlays_[View::APPEARANCE]->attach(handles_[View::APPEARANCE][Handles::MENU]);
-    groups_[View::APPEARANCE]->attach(overlays_[View::APPEARANCE]);
+    overlays_[View::TEXTURE] = new Group;
+    overlays_[View::TEXTURE]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->visible_ = false;
+    handles_[View::TEXTURE][Handles::RESIZE] = new Handles(Handles::RESIZE);
+    handles_[View::TEXTURE][Handles::RESIZE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::RESIZE]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::RESIZE]);
+    handles_[View::TEXTURE][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+    handles_[View::TEXTURE][Handles::RESIZE_H]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::RESIZE_H]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::RESIZE_H]);
+    handles_[View::TEXTURE][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+    handles_[View::TEXTURE][Handles::RESIZE_V]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::RESIZE_V]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::RESIZE_V]);
+    handles_[View::TEXTURE][Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handles_[View::TEXTURE][Handles::ROTATE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::ROTATE]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::ROTATE]);
+    handles_[View::TEXTURE][Handles::SCALE] = new Handles(Handles::SCALE);
+    handles_[View::TEXTURE][Handles::SCALE]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::SCALE]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::SCALE]);
+    handles_[View::TEXTURE][Handles::MENU] = new Handles(Handles::MENU);
+    handles_[View::TEXTURE][Handles::MENU]->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
+    handles_[View::TEXTURE][Handles::MENU]->translation_.z = 0.1;
+    overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::MENU]);
+    groups_[View::TEXTURE]->attach(overlays_[View::TEXTURE]);
 
     // empty transition node
     groups_[View::TRANSITION] = new Group;
@@ -243,7 +243,7 @@ Source::~Source()
     delete groups_[View::MIXING];
     delete groups_[View::GEOMETRY];
     delete groups_[View::LAYER];
-    delete groups_[View::APPEARANCE];
+    delete groups_[View::TEXTURE];
     delete groups_[View::TRANSITION];
 
     groups_.clear();
@@ -295,7 +295,7 @@ void Source::setMode(Source::Mode m)
         (*o).second->visible_ = current & !locked_;
 
     // show in appearance view if current
-    groups_[View::APPEARANCE]->visible_ = m > Source::VISIBLE;
+    groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;
 
     mode_ = m;
 }
@@ -381,7 +381,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     // for views showing a scaled mixing surface, a dedicated transparent surface allows grabbing
     Surface *surfacetmp = new Surface();
     surfacetmp->setTextureIndex(Resource::getTextureTransparent());
-    groups_[View::APPEARANCE]->attach(surfacetmp);
+    groups_[View::TEXTURE]->attach(surfacetmp);
     groups_[View::MIXING]->attach(surfacetmp);
     groups_[View::LAYER]->attach(surfacetmp);
 
@@ -570,11 +570,11 @@ void Source::update(float dt)
         // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
         glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
         // Translation : same as Appearance Frame (modified by Ar)
-        glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->translation_);
+        glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->translation_);
         // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(groups_[View::APPEARANCE]->scale_.x,groups_[View::APPEARANCE]->scale_.y, 1.f));
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y, 1.f));
         // Rotation : same angle than Appearance Frame, inverted axis
-        glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::APPEARANCE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
+        glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
         // Combine transformations (non transitive) in this order:
         // 1. switch to Scene coordinate system
         // 2. Apply the aspect ratio correction

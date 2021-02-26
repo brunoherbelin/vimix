@@ -363,9 +363,9 @@ void SessionVisitor::visit (Source& s)
     sourceNode->InsertEndChild(xmlCurrent_);
     s.groupNode(View::LAYER)->accept(*this);
 
-    xmlCurrent_ = xmlDoc_->NewElement( "Appearance" );
+    xmlCurrent_ = xmlDoc_->NewElement( "Texture" );
     sourceNode->InsertEndChild(xmlCurrent_);
-    s.groupNode(View::APPEARANCE)->accept(*this);
+    s.groupNode(View::TEXTURE)->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Blending" );
     sourceNode->InsertEndChild(xmlCurrent_);

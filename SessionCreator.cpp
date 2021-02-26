@@ -103,7 +103,7 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
-        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Appearance"), *session_->config(View::APPEARANCE));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Texture"), *session_->config(View::TEXTURE));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
     }
 }
@@ -472,8 +472,8 @@ void SessionLoader::visit (Source& s)
     xmlCurrent_ = sourceNode->FirstChildElement("Layer");
     if (xmlCurrent_) s.groupNode(View::LAYER)->accept(*this);
 
-    xmlCurrent_ = sourceNode->FirstChildElement("Appearance");
-    if (xmlCurrent_) s.groupNode(View::APPEARANCE)->accept(*this);
+    xmlCurrent_ = sourceNode->FirstChildElement("Texture");
+    if (xmlCurrent_) s.groupNode(View::TEXTURE)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     if (xmlCurrent_) s.blendingShader()->accept(*this);

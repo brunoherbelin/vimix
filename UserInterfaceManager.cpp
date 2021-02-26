@@ -359,7 +359,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
             Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4 ))
-            Mixer::manager().setView(View::APPEARANCE);
+            Mixer::manager().setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
         // normal keys // make sure no entry / window box is active
@@ -1453,7 +1453,7 @@ int UserInterface::RenderViewNavigator(int *shift)
         ImGui::NextColumn();
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
-            Mixer::manager().setView(View::APPEARANCE);
+            Mixer::manager().setView(View::TEXTURE);
             *shift = 0;
         }
         ImGui::PopFont();
@@ -2159,7 +2159,7 @@ void Navigator::Render()
             tooltip_ = "Layers  F3";
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
-            Mixer::manager().setView(View::APPEARANCE);
+            Mixer::manager().setView(View::TEXTURE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
