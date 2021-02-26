@@ -22,10 +22,15 @@ class View
 {
 public:
 
-    typedef enum {RENDERING = 0, MIXING=1, GEOMETRY=2, LAYER=3, TEXTURE=4, TRANSITION=5, INVALID=6 } Mode;
-
-    View(Mode m);
-    virtual ~View() {}
+    typedef enum {
+        RENDERING = 0,
+        MIXING = 1,
+        GEOMETRY = 2,
+        LAYER = 3,
+        TEXTURE = 4,
+        TRANSITION = 5,
+        INVALID = 6
+    } Mode;
 
     inline Mode mode() const { return mode_; }
 
@@ -91,6 +96,9 @@ public:
 
 protected:
 
+    View(Mode m);
+    virtual ~View() {}
+
     virtual void restoreSettings();
     virtual void saveSettings();
 
@@ -102,7 +110,7 @@ protected:
     Group *overlay_selection_;
     Frame *overlay_selection_frame_;
     Handles *overlay_selection_icon_;
-    void updateSelectionOverlay();
+    virtual void updateSelectionOverlay();
 
     // contex menu
     typedef enum {

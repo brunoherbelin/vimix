@@ -32,6 +32,7 @@ private:
     Disk *stashCircle_;
     Mesh *mixingCircle_;
     Mesh *circle_;
+
     // TEST
     std::vector<glm::vec2> points_;
     class LineStrip *lines_;

@@ -5,30 +5,21 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-
 #include "imgui.h"
 #include "ImGuiToolkit.h"
 
-// memmove
-#include <string.h>
+#include <string>
 #include <sstream>
-#include <regex>
 #include <iomanip>
 
 #include "Mixer.h"
 #include "defines.h"
 #include "Settings.h"
-#include "Session.h"
 #include "Resource.h"
-#include "Source.h"
-#include "SessionSource.h"
 #include "PickingVisitor.h"
-#include "BoundingBoxVisitor.h"
 #include "DrawVisitor.h"
 #include "Decorations.h"
-#include "Mixer.h"
 #include "UserInterfaceManager.h"
-#include "UpdateCallback.h"
 #include "ActionManager.h"
 #include "Log.h"
 
