@@ -423,36 +423,151 @@ void LineSquare::setColor(glm::vec4 c)
 }
 
 
-LineStrip::LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth) : Primitive(new Shader), linewidth_(linewidth)
+LineStrip::LineStrip(std::vector<glm::vec2> path, float linewidth) : Primitive(new Shader), arrayBuffer_(0)
 {
-    for(size_t i = 0; i < points.size(); ++i)
+    path_ = path;
+    linewidth_ = 0.002f * linewidth;
+
+    size_t index = 0;
+    for(size_t i = 1; i < path_.size(); ++i)
     {
-        points_.push_back( points[i] );
-        colors_.push_back( colors[i] );
-        indices_.push_back ( i );
+        glm::vec3 begin = glm::vec3(path_[i-1], 0.f);
+        glm::vec3 end   = glm::vec3(path_[i], 0.f);
+        glm::vec3 dir   = end - begin;
+        glm::vec3 perp  = glm::cross(dir, glm::vec3(0.f, 0.f, 1.f));
+
+        points_.push_back( begin + perp * linewidth_ );
+        colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+        indices_.push_back ( index++ );
+
+        points_.push_back( begin - perp * linewidth_ );
+        colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+        indices_.push_back ( index++ );
+
+        points_.push_back( end + perp * linewidth_ );
+        colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+        indices_.push_back ( index++ );
+
+        points_.push_back( end - perp * linewidth_ );
+        colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+        indices_.push_back ( index++ );
     }
 
-    drawMode_ = GL_LINE_STRIP;
+    drawMode_ = GL_TRIANGLE_STRIP;
 }
 
-void LineStrip::draw(glm::mat4 modelview, glm::mat4 projection)
+LineStrip::~LineStrip()
 {
-    if ( !initialized() )
-        init();
+    // delete buffer
+    if ( arrayBuffer_ )
+        glDeleteBuffers ( 1, &arrayBuffer_);
+}
 
-   // glLineWidth(linewidth_ * 2.f * Rendering::manager().mainWindow().dpiScale());
+void LineStrip::init()
+{
+    if ( vao_ )
+        glDeleteVertexArrays ( 1, &vao_);
 
-    glm::mat4 mv = modelview;
-    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.001f, 1.001f, 1.f));
+    // Vertex Array
+    glGenVertexArrays( 1, &vao_ );
 
-    // TODO FIXME drawing multiple times is not correct to draw lines of different width
-    // TODO Draw LineStrip using polygons
-    for (uint i = 0 ; i < linewidth_ ; ++i ) {
-        Primitive::draw(mv, projection);
-        mv *= scale;
+    // Create and initialize buffer objects
+    if ( arrayBuffer_ )
+        glDeleteBuffers ( 1, &arrayBuffer_);
+    glGenBuffers( 1, &arrayBuffer_ );
+    uint elementBuffer_;
+    glGenBuffers( 1, &elementBuffer_);
+    glBindVertexArray( vao_ );
+
+    // setup the array buffers for vertices
+    std::size_t sizeofPoints = sizeof(glm::vec3) * points_.size();
+    std::size_t sizeofColors = sizeof(glm::vec4) * colors_.size();
+    glBindBuffer( GL_ARRAY_BUFFER, arrayBuffer_ );
+    glBufferData( GL_ARRAY_BUFFER, sizeofPoints + sizeofColors, NULL, GL_DYNAMIC_DRAW);
+    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeofPoints, &points_[0] );
+    glBufferSubData( GL_ARRAY_BUFFER, sizeofPoints, sizeofColors, &colors_[0] );
+
+    // setup the element array for indices
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, elementBuffer_);
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * indices_.size(), &(indices_[0]), GL_STATIC_DRAW);
+
+    // explain how to read attributes 0 and 1
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0 );
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void *)(sizeofPoints) );
+    glEnableVertexAttribArray(1);
+
+    // done
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // drawing indications
+    drawCount_ = indices_.size();
+
+    if ( elementBuffer_ )
+        glDeleteBuffers ( 1, &elementBuffer_);
+    indices_.clear();
+
+    // compute AxisAlignedBoundingBox
+    bbox_.extend(points_);
+
+    Node::init();
+}
+
+void LineStrip::updatePath()
+{
+    // redo points_ array
+    points_.clear();
+    for(size_t i = 1; i < path_.size(); ++i)
+    {
+        glm::vec3 begin = glm::vec3(path_[i-1], 0.f);
+        glm::vec3 end   = glm::vec3(path_[i], 0.f);
+        glm::vec3 dir   = end - begin;
+        glm::vec3 perp  = glm::normalize(glm::cross(dir, glm::vec3(0.f, 0.f, 1.f)));
+
+        points_.push_back( begin + perp * linewidth_ );
+        points_.push_back( begin - perp * linewidth_ );
+        points_.push_back( end + perp * linewidth_ );
+        points_.push_back( end - perp * linewidth_ );
     }
 
-   // glLineWidth(1);
+    // bind the vertex array and change the point coordinates
+    glBindVertexArray( vao_ );
+    glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer_);
+    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(glm::vec3) * points_.size(), &points_[0] );
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // re-compute AxisAlignedBoundingBox
+    bbox_.extend(points_);
+}
+
+void LineStrip::editPath(uint index, glm::vec2 position)
+{
+    if (index < path_.size()) {
+        path_[index] = position;
+        updatePath();
+    }
+}
+
+void LineStrip::changePath(std::vector<glm::vec2> path)
+{
+    // invalid if not enough points given
+    size_t N = path_.size();
+    if (path.size() < N)
+        return;
+
+    // replace path but keep number of points
+    path_ = path;
+    path_.resize(N);
+
+    updatePath();
+}
+
+void LineStrip::setLineWidth(float linewidth) {
+
+    linewidth_ = 0.002f * linewidth;
+    updatePath();
 }
 
 void LineStrip::accept(Visitor& v)
@@ -461,54 +576,20 @@ void LineStrip::accept(Visitor& v)
     v.visit(*this);
 }
 
+#define LINE_CIRCLE_DENSITY 72
 
-LineCircle::LineCircle(uint linewidth) : LineStrip(std::vector<glm::vec3>(), std::vector<glm::vec4>(), linewidth)
+LineCircle::LineCircle(float linewidth) : LineStrip(std::vector<glm::vec2>(LINE_CIRCLE_DENSITY), linewidth)
 {
-    static int N = 72;
-    static float a =  glm::two_pi<float>() / static_cast<float>(N);
-    static glm::vec4 circle_color_points = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    static float a =  glm::two_pi<float>() / static_cast<float>(LINE_CIRCLE_DENSITY-1);
     // loop to build a circle
     glm::vec3 P(1.f, 0.f, 0.f);
-    for (int i = 0; i < N ; i++ ){
-        points_.push_back( glm::vec3(P) );
-        colors_.push_back( circle_color_points );
-        indices_.push_back ( i );
 
+    for (int i = 0; i < LINE_CIRCLE_DENSITY - 1 ; i++ ){
+        path_[i] = glm::vec2(P);
         P = glm::rotateZ(P, a);
     }
-    // close loop
-    points_.push_back( glm::vec3(1.f, 0.f, 0.f) );
-    colors_.push_back( circle_color_points );
-    indices_.push_back ( N );
-}
-
-void LineCircle::init()
-{
-    // use static unique vertex array object
-    static uint unique_vao_ = 0;
-    static uint unique_drawCount = 0;
-    if (unique_vao_) {
-        // 1. only init Node (not the primitive vao)
-        Node::init();
-        // 2. use the global vertex array object
-        vao_ = unique_vao_;
-        drawCount_ = unique_drawCount;        
-        // replace AxisAlignedBoundingBox
-        bbox_.extend(points_);
-        // arrays of vertices are not needed anymore (STATIC DRAW of vertex object)
-        points_.clear();
-        colors_.clear();
-        texCoords_.clear();
-        indices_.clear();
-    }
-    else {
-        // 1. init the Primitive (only once)
-        Primitive::init();
-        // 2. remember global vertex array object
-        unique_vao_ = vao_;
-        unique_drawCount = drawCount_;
-        // 3. unique_vao_ will NOT be deleted because LineCircle::deleteGLBuffers_() is empty
-    }
+    path_[LINE_CIRCLE_DENSITY-1] = glm::vec2(1.f, 0.f);
+    updatePath();
 }
 
 void LineCircle::accept(Visitor& v)
@@ -518,8 +599,3 @@ void LineCircle::accept(Visitor& v)
 }
 
 
-LineCircle::~LineCircle()
-{
-    // do NOT delete vao_ (unique)
-    vao_ = 0;
-}

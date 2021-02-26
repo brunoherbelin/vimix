@@ -175,19 +175,26 @@ public:
  */
 class LineStrip : public Primitive {
 
-    uint linewidth_;
-
 public:
-    LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth = 1);
+    LineStrip(std::vector<glm::vec2> path, float linewidth = 1.f);
+    virtual ~LineStrip();
 
-    virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void init () override;
     virtual void accept(Visitor& v) override;
 
-    std::vector<glm::vec3> getPoints() { return points_; }
-    std::vector<glm::vec4> getColors() { return colors_; }
+    inline std::vector<glm::vec2> path() { return path_; }
+    inline float lineWidth() const { return linewidth_ * 500.f; }
 
-    inline void setLineWidth(uint v) { linewidth_ = v; }
-    inline uint getLineWidth() const { return linewidth_; }
+    void changePath(std::vector<glm::vec2> path);
+    void editPath(uint index, glm::vec2 position);
+    void setLineWidth(float linewidth);
+
+protected:
+    float linewidth_;
+    uint arrayBuffer_;
+    std::vector<glm::vec2> path_;
+    void updatePath();
+
 };
 
 
@@ -197,12 +204,10 @@ public:
 class LineCircle : public LineStrip {
 
 public:
-    LineCircle(uint linewidth = 1);
+    LineCircle(float linewidth = 1.f);
 
-    void init() override;
-    void accept(Visitor& v) override;
+    virtual void accept(Visitor& v) override;
 
-    virtual ~LineCircle();
 };
 
 

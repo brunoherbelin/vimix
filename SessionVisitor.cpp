@@ -266,24 +266,24 @@ void SessionVisitor::visit(LineStrip &n)
     xmlCurrent_->SetAttribute("type", "LineStrip");
 
     XMLElement *points_node = xmlDoc_->NewElement("points");
-    std::vector<glm::vec3> points = n.getPoints();
-    for(size_t i = 0; i < points.size(); ++i)
+    std::vector<glm::vec2> path = n.path();
+    for(size_t i = 0; i < path.size(); ++i)
     {
-        XMLElement *p = XMLElementFromGLM(xmlDoc_, points[i]);
+        XMLElement *p = XMLElementFromGLM(xmlDoc_, path[i]);
         p->SetAttribute("index", (int) i);
         points_node->InsertEndChild(p);
     }
     xmlCurrent_->InsertEndChild(points_node);
 
-    XMLElement *colors_node = xmlDoc_->NewElement("colors");
-    std::vector<glm::vec4> colors = n.getColors();
-    for(size_t i = 0; i < colors.size(); ++i)
-    {
-        XMLElement *p = XMLElementFromGLM(xmlDoc_, colors[i]);
-        p->SetAttribute("index", (int) i);
-        colors_node->InsertEndChild(p);
-    }
-    xmlCurrent_->InsertEndChild(colors_node);
+//    XMLElement *colors_node = xmlDoc_->NewElement("colors");
+//    std::vector<glm::vec4> colors = n.getColors();
+//    for(size_t i = 0; i < colors.size(); ++i)
+//    {
+//        XMLElement *p = XMLElementFromGLM(xmlDoc_, colors[i]);
+//        p->SetAttribute("index", (int) i);
+//        colors_node->InsertEndChild(p);
+//    }
+//    xmlCurrent_->InsertEndChild(colors_node);
 }
 
 void SessionVisitor::visit(LineSquare &)
