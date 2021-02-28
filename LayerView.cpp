@@ -118,7 +118,7 @@ void LayerView::draw()
             }
             View::need_deep_update_++;
         }
-        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Fixed space" )){
+        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Space equally" )){
             SourceList dsl = depthSorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
@@ -128,7 +128,7 @@ void LayerView::draw()
             }
             View::need_deep_update_++;
         }
-        if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Inverse order" )){
+        if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
             SourceList dsl = depthSorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();

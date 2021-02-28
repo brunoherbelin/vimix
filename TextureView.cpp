@@ -838,7 +838,7 @@ void TextureView::draw()
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
             }
-            else if (ImGui::Selectable( ICON_FA_PERCENTAGE "   Original aspect ratio" )){ //ICON_FA_ARROWS_ALT_H
+            else if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Restore aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();

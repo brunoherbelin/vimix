@@ -141,7 +141,7 @@ void MixingView::draw()
                 (*it)->touch();
             }
         }
-        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to borders" )){
+        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.f);
