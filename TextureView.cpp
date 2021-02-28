@@ -549,8 +549,8 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.67f, 0.67f, 0.67f, 0.79f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.36f, 0.36f, 0.36f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.5f));
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.88f, 0.88f, 0.88f, 0.73f));
             ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
             ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
@@ -824,6 +824,7 @@ void TextureView::draw()
     }
     if (ImGui::BeginPopup("AppearanceSourceContextMenu")) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_APPEARANCE_SOURCE, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
@@ -843,7 +844,7 @@ void TextureView::draw()
                 s->touch();
             }
         }
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
 

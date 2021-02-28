@@ -265,7 +265,7 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     return ret;
 }
 
-bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, int* state)
+bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state)
 {
     bool ret = false;
     Sum id = std::for_each(icons.begin(), icons.end(), Sum());
@@ -276,18 +276,20 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, int* stat
     ImGui::SetNextItemWidth(w * 2.6f);
     if (ImGui::BeginCombo("##ComboIcon", "  ") )
     {
-        std::vector<std::pair<int, int> >::iterator it = icons.begin();
-        for(int i = 0 ; it != icons.end(); i++, it++) {
+        std::vector<std::pair<int, int> >::iterator it_icon = icons.begin();
+        std::vector<std::string>::iterator it_label = labels.begin();
+        for(int i = 0 ; it_icon != icons.end(); i++, it_icon++, it_label++) {
             ImGui::PushID( id.sum + i + 1);
             ImVec2 pos = ImGui::GetCursorScreenPos();
             // combo selectable item
-            if ( ImGui::Selectable("  ", i == *state )){
+            std::string label = "   " + (*it_label);
+            if ( ImGui::Selectable(label.c_str(), i == *state )){
                 *state = i;
                 ret = true;
             }
             // draw item icon
             ImGui::SetCursorScreenPos( pos + ImVec2(w/6.f,0) );
-            Icon( (*it).first, (*it).second );
+            Icon( (*it_icon).first, (*it_icon).second );
             ImGui::PopID();
         }
         ImGui::EndCombo();

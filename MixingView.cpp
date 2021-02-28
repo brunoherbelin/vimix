@@ -47,7 +47,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     scene.bg()->attach(mixingCircle_);
 
     circle_ = new Mesh("mesh/circle.ply");
-    circle_->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    circle_->shader()->color = glm::vec4( COLOR_CIRCLE, 1.0f );
     scene.bg()->attach(circle_);
 
     // Mixing scene foreground
@@ -100,10 +100,10 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
 //    points_.push_back(glm::vec2(0.f, 1.f));
 //    points_.push_back(glm::vec2(1.f, 1.f));
 //    points_.push_back(glm::vec2(1.f, 0.f));
-////    lines_ = new LineStrip(points_, 1.f);
-//    lines_ = new LineCircle();
+//    lines_ = new LineStrip(points_, 1.f);
 //    scene.fg()->attach(lines_);
 
+    lines_ = nullptr;
 }
 
 
@@ -123,13 +123,31 @@ void MixingView::draw()
     }
     if (ImGui::BeginPopup("MixingSelectionContextMenu")) {
 
+        // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
 
+        // special action of Mixing view
         if (ImGui::Selectable( ICON_FA_DRAW_POLYGON "  Link" )){
 
         }
+        ImGui::Separator();
 
-        ImGui::PopStyleColor();
+        // manipulation of sources in Mixing view
+        if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
+            SourceList::iterator  it = Mixer::selection().begin();
+            for (; it != Mixer::selection().end(); it++) {
+                (*it)->group(View::MIXING)->translation_ -= overlay_selection_->translation_;
+                (*it)->touch();
+            }
+        }
+        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to borders" )){
+            SourceList::iterator  it = Mixer::selection().begin();
+            for (; it != Mixer::selection().end(); it++) {
+                (*it)->setAlpha(0.f);
+            }
+        }
+        ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
 }
@@ -381,9 +399,9 @@ void MixingView::setAlpha(Source *s)
     glm::vec2 mix_pos = glm::vec2(DEFAULT_MIXING_TRANSLATION);
 
     for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
-
-        if ( glm::distance(glm::vec2((*it)->translation_), mix_pos) < 0.001) {
-            mix_pos += glm::vec2(-0.03, 0.03);
+        // avoid superposing icons: distribute equally
+        if ( glm::distance(glm::vec2((*it)->translation_), mix_pos) < DELTA_ALPHA) {
+            mix_pos += glm::vec2(-0.03f, 0.03f);
         }
     }
 
@@ -392,6 +410,29 @@ void MixingView::setAlpha(Source *s)
 
     // request update
     s->touch();
+}
+
+
+void MixingView::updateSelectionOverlay()
+{
+    View::updateSelectionOverlay();
+
+    if (overlay_selection_->visible_) {
+        // slightly extend the boundary of the selection
+        overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.01f, 0.01f, 1.f) / overlay_selection_->scale_;
+
+//        if (lines_) {
+//            scene.fg()->detach(lines_);
+//            delete lines_;
+//        }
+
+//        points_.push_back(glm::vec2(0.f, 0.f));
+//        points_.push_back(glm::vec2(0.f, 1.f));
+//        points_.push_back(glm::vec2(1.f, 1.f));
+//        points_.push_back(glm::vec2(1.f, 0.f));
+//        lines_ = new LineStrip(points_, 1.f);
+//        scene.fg()->attach(lines_);
+    }
 }
 
 #define CIRCLE_PIXELS 64

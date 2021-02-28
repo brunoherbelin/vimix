@@ -30,6 +30,7 @@
 #define MIN_DEPTH 0.f
 #define MAX_DEPTH 12.f
 #define DELTA_DEPTH 0.05f
+#define DELTA_ALPHA 0.0005f
 #define MIXING_DEFAULT_SCALE 2.4f
 #define MIXING_MIN_SCALE 0.8f
 #define MIXING_MAX_SCALE 7.0f
@@ -90,7 +91,7 @@
 #define COLOR_APPEARANCE_MASK_DISABLE 0.6f, 0.6f, 0.6f
 #define COLOR_FRAME 0.75f, 0.2f, 0.75f
 #define COLOR_FRAME_LIGHT 0.9f, 0.6f, 0.9f
-#define COLOR_CIRCLE 0.25f, 0.65f, 0.7f
+#define COLOR_CIRCLE 0.2f, 0.65f, 0.7f
 #define COLOR_CIRCLE_LIGHT 0.6f, 0.95f, 1.f
 #define COLOR_LIMBO_CIRCLE 0.16f, 0.16f, 0.16f
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f

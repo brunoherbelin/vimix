@@ -92,26 +92,53 @@ void LayerView::draw()
     }
     if (ImGui::BeginPopup("LayerSelectionContextMenu")) {
 
+        // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+
+        // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )){
+            if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" ))
                 Mixer::manager().groupSelection();
-            }
         }
         else {
             ImGui::TextDisabled( ICON_FA_DOWNLOAD "  Flatten" );
         }
-        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "  Distribute" )){
-            SourceList::iterator  it = Mixer::selection().begin();
+        ImGui::Separator();
+
+        // manipulation of sources in Mixing view
+        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Distribute" )){
+            SourceList dsl = Mixer::selection().depthSortedList();
+            SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
-            float depth_inc   = (Mixer::selection().back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
-            for (it++; it != Mixer::selection().end(); it++) {
+            float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
+            for (it++; it != dsl.end(); it++) {
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
             View::need_deep_update_++;
         }
-        ImGui::PopStyleColor();
+        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Fix spacing" )){
+            SourceList dsl = Mixer::selection().depthSortedList();
+            SourceList::iterator  it = dsl.begin();
+            float depth = (*it)->depth();
+            for (it++; it != dsl.end(); it++) {
+                depth += 2.f * LAYER_STEP;
+                (*it)->setDepth(depth);
+            }
+            View::need_deep_update_++;
+        }
+        if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Inverse order" )){
+            SourceList dsl = Mixer::selection().depthSortedList();
+            SourceList::iterator  it = dsl.begin();
+            SourceList::reverse_iterator  rit = dsl.rbegin();
+            for (; it != dsl.end(); it++, rit++) {
+                (*it)->setDepth((*rit)->depth());
+            }
+            View::need_deep_update_++;
+        }
+
+        ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
 }
@@ -198,6 +225,8 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
                 pick = { nullptr, glm::vec2(0.f) };
         }
+        else
+            pick = { nullptr, glm::vec2(0.f) };
     }
 
     return pick;
@@ -293,3 +322,14 @@ void LayerView::arrow (glm::vec2 movement)
     }
 }
 
+
+
+void LayerView::updateSelectionOverlay()
+{
+    View::updateSelectionOverlay();
+
+    if (overlay_selection_->visible_) {
+        // slightly extend the boundary of the selection
+        overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.07f, 0.07f, 1.f) / overlay_selection_->scale_;
+    }
+}

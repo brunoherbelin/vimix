@@ -36,6 +36,7 @@ private:
     // TEST
     std::vector<glm::vec2> points_;
     class LineStrip *lines_;
+    void updateSelectionOverlay() override;
 };
 
 

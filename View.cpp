@@ -252,7 +252,7 @@ void View::updateSelectionOverlay()
         overlay_selection_icon_ = new Handles(Handles::MENU);
         overlay_selection_->attach(overlay_selection_icon_);
         overlay_selection_frame_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
-        overlay_selection_frame_->scale_ = glm::vec3(1.05f, 1.05f, 1.f);
+//        overlay_selection_frame_->scale_ = glm::vec3(1.05f, 1.05f, 1.f);
         overlay_selection_->attach(overlay_selection_frame_);
         scene.fg()->attach(overlay_selection_);
     }
@@ -277,7 +277,7 @@ void View::updateSelectionOverlay()
         // show group overlay
         overlay_selection_->visible_ = true;
         ImVec4 c = ImGuiToolkit::HighlightColor();
-        overlay_selection_frame_->color = glm::vec4(c.x, c.y, c.z, c.w);
+        overlay_selection_frame_->color = glm::vec4(c.x, c.y, c.z, c.w * 0.8f);
         overlay_selection_icon_->color = glm::vec4(c.x, c.y, c.z, c.w);
     }
     // no selection: reset drawing selection overlay
