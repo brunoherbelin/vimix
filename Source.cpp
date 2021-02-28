@@ -445,15 +445,19 @@ void Source::setLocked (bool on)
 }
 
 // Transfer functions from coordinates to alpha (1 - transparency)
+
+// linear distance
 float linear_(float x, float y) {
     return 1.f - CLAMP( sqrt( ( x * x ) + ( y * y ) ), 0.f, 1.f );
 }
 
+// quadratic distance
 float quad_(float x, float y) {
     return 1.f - CLAMP( ( x * x ) + ( y * y ), 0.f, 1.f );
 }
 
-float sin_quad(float x, float y) {
+// best alpha transfer function: quadratic sinusoidal shape
+float sin_quad_(float x, float y) {
     float D = sqrt( ( x * x ) + ( y * y ) );
     return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
 //    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
@@ -478,20 +482,19 @@ float Source::alpha() const
 
 void Source::setAlpha(float a)
 {
-    // todo clamp a
     glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-    glm::vec2 step = glm::normalize(dist) * 0.01f;
+    glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));// step in diagonal by default
 
-    // special case: perfectly centered (step is null).
-    if ( glm::length(dist) < EPSILON)
-        // step in the diagonal
-        step = glm::vec2(0.01f, 0.01f);
+    // step in direction of source translation if possible
+    if ( glm::length(dist) > DELTA_ALPHA)
+        step = glm::normalize(dist);
 
-    // converge linearly to reduce the difference of alpha
-    float delta = sin_quad(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
-    while ( glm::abs(delta) > 0.01f ){
-        dist += step * glm::sign(delta);
-        delta = sin_quad(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
+    // converge to reduce the difference of alpha
+    // using dichotomic algorithm
+    float delta = sin_quad_(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
+    while ( glm::abs(delta) > DELTA_ALPHA ){
+        dist += step * (delta / 2.f);
+        delta = sin_quad_(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
     }
 
     // apply new mixing coordinates
@@ -512,7 +515,7 @@ void Source::update(float dt)
         // read position of the mixing node and interpret this as transparency of render output
         glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
         // use the sinusoidal transfer function
-        blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, sin_quad( dist.x, dist.y ));
+        blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, sin_quad_( dist.x, dist.y ));
         mixingshader_->color = blendingshader_->color;
 
         // CHANGE update status based on limbo
