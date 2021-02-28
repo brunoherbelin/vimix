@@ -518,7 +518,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
-    ImGui::Text("Flat Session");
+    ImGui::Text("Sub-Session");
 
     if ( ImGui::Button( ICON_FA_UPLOAD " Expand sources", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
         Mixer::manager().import( &s );
