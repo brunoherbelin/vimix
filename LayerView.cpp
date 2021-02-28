@@ -108,7 +108,7 @@ void LayerView::draw()
 
         // manipulation of sources in Mixing view
         if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Distribute" )){
-            SourceList dsl = Mixer::selection().depthSortedList();
+            SourceList dsl = depthSorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
@@ -118,8 +118,8 @@ void LayerView::draw()
             }
             View::need_deep_update_++;
         }
-        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Fix spacing" )){
-            SourceList dsl = Mixer::selection().depthSortedList();
+        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Fixed space" )){
+            SourceList dsl = depthSorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             for (it++; it != dsl.end(); it++) {
@@ -129,7 +129,7 @@ void LayerView::draw()
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Inverse order" )){
-            SourceList dsl = Mixer::selection().depthSortedList();
+            SourceList dsl = depthSorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();
             for (; it != dsl.end(); it++, rit++) {
@@ -274,7 +274,6 @@ float LayerView::setDepth(Source *s, float d)
 
     return sourceNode->translation_.z;
 }
-
 
 View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {

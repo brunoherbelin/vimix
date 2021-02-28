@@ -241,6 +241,13 @@ SourceList::iterator Session::find(float depth_from, float depth_to)
     return std::find_if(sources_.begin(), sources_.end(), Source::hasDepth(depth_from, depth_to));
 }
 
+SourceList Session::getCopy() const
+{
+    SourceList list;
+    list = sources_;
+    return list;
+}
+
 uint Session::numSource() const
 {
     return sources_.size();

@@ -39,6 +39,7 @@ public:
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
     SourceList::iterator find (float depth_from, float depth_to);
+    SourceList getCopy() const;
 
     SourceList::iterator find (uint64_t id);
     std::list<uint64_t> getIdList() const;

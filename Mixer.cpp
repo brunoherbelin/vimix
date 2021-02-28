@@ -764,6 +764,19 @@ Source * Mixer::findSource (uint64_t id)
     return nullptr;
 }
 
+SourceList Mixer::findSources (float depth_from, float depth_to)
+{
+    SourceList found;
+    SourceList dsl = depthSorted( session_->getCopy() );
+    SourceList::iterator  it = dsl.begin();
+    for (; it != dsl.end(); it++) {
+        if ( (*it)->depth() > depth_to )
+            break;
+        if ( (*it)->depth() >= depth_from )
+            found.push_back(*it);
+    }
+    return found;
+}
 
 void Mixer::setCurrentSource(uint64_t id)
 {
@@ -1040,40 +1053,68 @@ void Mixer::merge(SessionSource *source)
     // new state in history manager
     Action::manager().store( source->name().c_str() + std::string(" imported."));
 
+    // detach session from SessionSource (source will fail and be deleted later)
     Session *session = source->detach();
 
-    // import every sources
-    for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+    // import sources of the session (if not empty)
+    if ( !session->empty() ) {
 
-        // avoid name duplicates
-        renameSource(s, s->name());
+        // where to put the sources imported in depth?
+        float target_depth = source->depth();
 
-        // scale alpha
-        s->setAlpha( s->alpha() * source->alpha() );
+        // get how much space we need from there
+        SourceList dsl = depthSorted( session->getCopy() );
+        float  start_depth = dsl.front()->depth();
+        float  end_depth = dsl.back()->depth();
+        float  need_depth = MAX( end_depth - start_depth, LAYER_STEP);
 
-        // set depth at given location
-        s->group(View::LAYER)->translation_.z = source->depth() + (s->depth() / MAX_DEPTH);
+        // make room if there is not enough space
+        SourceList to_be_moved = findSources(target_depth, MAX_DEPTH);
+        if (!to_be_moved.empty()){
+            float next_depth = to_be_moved.front()->depth();
+            if ( next_depth < target_depth + need_depth) {
+                SourceList::iterator  it = to_be_moved.begin();
+                for (; it != to_be_moved.end(); it++) {
+                    float scale_depth = (MAX_DEPTH-(*it)->depth()) / (MAX_DEPTH-next_depth);
+                    (*it)->setDepth( (*it)->depth() + scale_depth );
+                }
+            }
+        }
 
-        // set location
-        // a. transform of node to import
-        Group *sNode = s->group(View::GEOMETRY);
-        glm::mat4 sTransform  = GlmToolkit::transform(sNode->translation_, sNode->rotation_, sNode->scale_);
-        // b. transform of session source
-        Group *sourceNode = source->group(View::GEOMETRY);
-        glm::mat4 sourceTransform  = GlmToolkit::transform(sourceNode->translation_, sourceNode->rotation_, sourceNode->scale_);
-        // c. combined transform of source and session source
-        sourceTransform *= sTransform;
-        GlmToolkit::inverse_transform(sourceTransform, sNode->translation_, sNode->rotation_, sNode->scale_);
+        // import every sources
+        for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
-        // Add source to Session
-        session_->addSource(s);
+            // avoid name duplicates
+            renameSource(s, s->name());
 
-        // Attach source to Mixer
-        attach(s);
+            // scale alpha
+            s->setAlpha( s->alpha() * source->alpha() );
+
+            // set depth (proportional to depth of s, adjusted by needed space)
+            s->setDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) );
+
+            // set location
+            // a. transform of node to import
+            Group *sNode = s->group(View::GEOMETRY);
+            glm::mat4 sTransform  = GlmToolkit::transform(sNode->translation_, sNode->rotation_, sNode->scale_);
+            // b. transform of session source
+            Group *sourceNode = source->group(View::GEOMETRY);
+            glm::mat4 sourceTransform  = GlmToolkit::transform(sourceNode->translation_, sourceNode->rotation_, sourceNode->scale_);
+            // c. combined transform of source and session source
+            sourceTransform *= sTransform;
+            GlmToolkit::inverse_transform(sourceTransform, sNode->translation_, sNode->rotation_, sNode->scale_);
+
+            // Add source to Session
+            session_->addSource(s);
+
+            // Attach source to Mixer
+            attach(s);
+        }
+
+        // needs to update !
+        View::need_deep_update_++;
+
     }
-
-    // needs to update !
-    View::need_deep_update_++;
 
     // avoid display issues
     current_view_->update(0.f);

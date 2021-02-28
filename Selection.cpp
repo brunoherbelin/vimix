@@ -104,7 +104,7 @@ void Selection::clear()
     selection_.clear();
 }
 
-uint Selection::size()
+uint Selection::size() const
 {
     return selection_.size();
 }
@@ -131,7 +131,7 @@ void Selection::pop_front()
         selection_.pop_front();
 }
 
-bool Selection::empty()
+bool Selection::empty() const
 {
     return selection_.empty();
 }
@@ -157,7 +157,7 @@ SourceList::iterator Selection::end()
     return selection_.end();
 }
 
-std::string Selection::xml()
+std::string Selection::xml() const
 {
     std::string x = "";
 
@@ -195,16 +195,9 @@ std::string Selection::xml()
     return x;
 }
 
-bool compare_depth (Source * first, Source * second)
-{
-  return ( first->depth() < second->depth() );
-}
-
-SourceList Selection::depthSortedList()
+SourceList Selection::getCopy() const
 {
     SourceList dsl = selection_;
-    dsl.sort(compare_depth);
-
     return dsl;
 }
 

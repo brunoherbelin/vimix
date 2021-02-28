@@ -79,6 +79,7 @@ public:
     Source * findSource (Node *node);
     Source * findSource (std::string name);
     Source * findSource (uint64_t id);
+    SourceList findSources (float depth_from, float depth_to);
 
     // management of view
     View *view   (View::Mode m = View::INVALID);

@@ -29,12 +29,12 @@ public:
 
     // properties
     bool contains (Source *s);
-    bool empty();
-    uint size ();
+    bool empty() const;
+    uint size () const;
 
     // extract
-    std::string xml();
-    SourceList depthSortedList();
+    std::string xml() const;
+    SourceList getCopy() const;
 
 protected:
     SourceList::iterator find (Source *s);

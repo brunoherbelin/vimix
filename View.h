@@ -6,9 +6,6 @@
 #include "Scene.h"
 #include "FrameBuffer.h"
 
-class Source;
-typedef std::list<Source *> SourceList;
-
 class Session;
 class SessionFileSource;
 class Surface;
@@ -17,6 +14,10 @@ class Mesh;
 class Frame;
 class Disk;
 class Handles;
+class Source;
+
+typedef std::list<Source *> SourceList;
+SourceList depthSorted(SourceList);
 
 class View
 {
