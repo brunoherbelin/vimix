@@ -1,6 +1,7 @@
 
 cmake_minimum_required(VERSION 3.8.0)
 project(vimix VERSION 0.0.1 LANGUAGES CXX C)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # use git
 find_package (Git)
