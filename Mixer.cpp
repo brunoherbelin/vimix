@@ -1180,6 +1180,14 @@ void Mixer::set(Session *s)
     sessionSwapRequested_ = true;
 }
 
+bool Mixer::isClipboard (const std::string& text)
+{
+    if (text.size() > 6 && text.substr(0, 6) == "<vimix")
+        return true;
+
+    return false;
+}
+
 void Mixer::paste(const std::string& clipboard)
 {
     if (clipboard.empty())

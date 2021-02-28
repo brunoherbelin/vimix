@@ -161,6 +161,7 @@ public:
 protected:
 
     void showMenuFile();
+    void showMenuEdit();
     void selectSaveFilename();
     void selectOpenFilename();
 

@@ -844,6 +844,36 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
+void UserInterface::showMenuEdit()
+{
+    bool has_selection = !Mixer::selection().empty();
+    const char *clipboard = ImGui::GetClipboardText();
+    bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && Mixer::manager().isClipboard(clipboard));
+
+    if (ImGui::MenuItem( ICON_FA_CUT "  Cut", CTRL_MOD "X", false, has_selection)) {
+        std::string copied_text = Mixer::selection().xml();
+        if (!copied_text.empty()) {
+            ImGui::SetClipboardText(copied_text.c_str());
+            Mixer::manager().deleteSelection();
+        }
+        navigator.hidePannel();
+    }
+    if (ImGui::MenuItem( ICON_FA_COPY "  Copy", CTRL_MOD "C", false, has_selection)) {
+        std::string copied_text = Mixer::selection().xml();
+        if (!copied_text.empty())
+            ImGui::SetClipboardText(copied_text.c_str());
+        navigator.hidePannel();
+    }
+    if (ImGui::MenuItem( ICON_FA_PASTE "  Paste", CTRL_MOD "V", false, has_clipboard)) {
+        Mixer::manager().paste(clipboard);
+        navigator.hidePannel();
+    }
+    if (ImGui::MenuItem( ICON_FA_LIST "  Select all", CTRL_MOD "A")) {
+        Mixer::manager().view()->selectAll();
+        navigator.hidePannel();
+    }
+}
+
 void UserInterface::showMenuFile()
 {
     if (ImGui::MenuItem( ICON_FA_FILE "  New", CTRL_MOD "W")) {
@@ -2053,7 +2083,7 @@ void Navigator::Render()
                     applyButtonSelection(NAV_MENU);
                 }
                 if (ImGui::IsItemHovered())
-                    tooltip_ = "Main menu HOME";
+                    tooltip_ = "Main menu  HOME";
 
                 // the list of INITIALS for sources
                 int index = 0;
@@ -2109,11 +2139,11 @@ void Navigator::Render()
                 // the "+" icon for action of creating new source
                 if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
                 {
-                    Mixer::manager().unsetCurrentSource();
+//                    Mixer::manager().unsetCurrentSource();
                     applyButtonSelection(NAV_NEW);
                 }
                 if (ImGui::IsItemHovered())
-                    tooltip_ = "New Source INS";
+                    tooltip_ = "New Source   INS";
 
             }
             else {
@@ -2142,28 +2172,28 @@ void Navigator::Render()
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Mixing  F1";
+            tooltip_ = "Mixing    F1";
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Geometry  F2";
+            tooltip_ = "Geometry    F2";
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Layers  F3";
+            tooltip_ = "Layers    F3";
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::TEXTURE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Texturing  F4";
+            tooltip_ = "Texturing    F4";
 
 
         ImGui::End();
@@ -2174,7 +2204,7 @@ void Navigator::Render()
         timer_tooltip_++;
         // pseudo timeout for showing tooltip
         if (timer_tooltip_ > 80)
-            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-4).c_str(), tooltip_.substr(tooltip_.size()-4, 4).c_str());
+            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-6).c_str(), tooltip_.substr(tooltip_.size()-6, 6).c_str());
     }
     else
         timer_tooltip_ = 0;
@@ -2280,22 +2310,13 @@ void Navigator::RenderSourcePannel(Source *s)
         // Source pannel
         static ImGuiVisitor v;
         s->accept(v);
-        // ensure change is applied // TODO : touch() in visitor ? [avoid here as it forces useless update]
-//        s->touch();
-        // delete button
+        // clone & delete buttons
         ImGui::Text(" ");
         // Action on source
         if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
         if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-//            ImGui::OpenPopup("confirm_delete_popup");
-//        if (ImGui::BeginPopup("confirm_delete_popup"))
-//        {
-//            ImGui::Text("Delete '%s'", s->name().c_str());
-//            if (ImGui::Button( ICON_FA_BACKSPACE " Yes, delete"))
-                Mixer::manager().deleteSource(s);
-//            ImGui::EndPopup();
-//        }
+            Mixer::manager().deleteSource(s);
     }
     ImGui::End();
 }
@@ -2350,7 +2371,7 @@ void SourcePreview::Render(float width, bool controlbutton)
             if (controlbutton && source_->ready()) {
                 ImVec2 pos = ImGui::GetCursorPos();
                 ImGui::SameLine();
-                if (ImGuiToolkit::IconToggle(9,7,1,8, &active))
+                if (ImGuiToolkit::IconToggle(12,7,1,8, &active))
                     source_->setActive(active);
                 ImGui::SetCursorPos(pos);
             }
@@ -2378,18 +2399,29 @@ void Navigator::RenderNewPannel()
         // TITLE
         ImGui::SetCursorPosY(10);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("New Source");
+        ImGui::Text("New");
         ImGui::PopFont();
 
+        // Edit menu
         ImGui::SetCursorPosY(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Text("Source");
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginMenu("Edit"))
+        {
+            UserInterface::manager().showMenuEdit();
+            ImGui::EndMenu();
+        }
 
+        //
+        // News Source selection pannel
+        //
         static const char* origin_names[4] = { ICON_FA_PHOTO_VIDEO "  File",
                                                ICON_FA_SYNC "   Internal",
                                                ICON_FA_COG "   Generated",
                                                ICON_FA_PLUG "    Connected"
                                              };
-        // TODO IMPLEMENT EXTERNAL SOURCES static const char* origin_names[3] = { ICON_FA_FILE " File", ICON_FA_SITEMAP " Internal", ICON_FA_PLUG " External" };
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
 

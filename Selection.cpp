@@ -195,3 +195,16 @@ std::string Selection::xml()
     return x;
 }
 
+bool compare_depth (Source * first, Source * second)
+{
+  return ( first->depth() < second->depth() );
+}
+
+SourceList Selection::depthSortedList()
+{
+    SourceList dsl = selection_;
+    dsl.sort(compare_depth);
+
+    return dsl;
+}
+

@@ -9,26 +9,32 @@ class Selection
 public:
     Selection();
 
+    // construct list
     void add    (Source *s);
+    void add    (SourceList l);
     void remove (Source *s);
+    void remove (SourceList l);
     void set    (Source *s);
+    void set    (SourceList l);
     void toggle (Source *s);
 
-    void add    (SourceList l);
-    void remove (SourceList l);
-    void set    (SourceList l);
     void clear  ();
+    void pop_front();
 
+    // access elements
     SourceList::iterator begin ();
     SourceList::iterator end ();
     Source *front();
     Source *back();
-    void pop_front();
+
+    // properties
     bool contains (Source *s);
     bool empty();
     uint size ();
 
+    // extract
     std::string xml();
+    SourceList depthSortedList();
 
 protected:
     SourceList::iterator find (Source *s);
