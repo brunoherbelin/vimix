@@ -2,32 +2,23 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/matrix_access.hpp>
-#include <glm/gtx/vector_angle.hpp>
 
+#include <algorithm>
+#include <string>
+#include <sstream>
+#include <regex>
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
 
-#include <algorithm>
-#include <string.h>
-#include <sstream>
-#include <regex>
-
-#include "Mixer.h"
 #include "defines.h"
 #include "Settings.h"
-#include "Session.h"
-#include "Resource.h"
 #include "Source.h"
-#include "SessionSource.h"
 #include "PickingVisitor.h"
 #include "BoundingBoxVisitor.h"
-#include "DrawVisitor.h"
 #include "Decorations.h"
 #include "Mixer.h"
 #include "UserInterfaceManager.h"
-#include "UpdateCallback.h"
 #include "ActionManager.h"
 #include "Log.h"
 

@@ -25,15 +25,15 @@ public:
 
     typedef enum {
         RENDERING = 0,
-        MIXING = 1,
-        GEOMETRY = 2,
-        LAYER = 3,
-        TEXTURE = 4,
+        MIXING    = 1,
+        GEOMETRY  = 2,
+        LAYER     = 3,
+        TEXTURE   = 4,
         TRANSITION = 5,
-        INVALID = 6
+        INVALID   = 6
     } Mode;
 
-    inline Mode mode() const { return mode_; }
+    inline Mode mode () const { return mode_; }
 
     virtual void update (float dt);
     virtual void draw ();
@@ -41,7 +41,7 @@ public:
     virtual void zoom (float);
     virtual void resize (int) {}
     virtual int  size () { return 50; }
-    virtual void recenter();
+    virtual void recenter ();
     virtual void centerSource(Source *) {}
 
     typedef enum {
@@ -59,31 +59,31 @@ public:
     typedef struct Cursor {
         CursorType type;
         std::string info;
-        Cursor() { type = Cursor_Arrow; info = "";}
-        Cursor(CursorType t, std::string i = "") { type = t; info = i;}
+        Cursor () { type = Cursor_Arrow; info = "";}
+        Cursor (CursorType t, std::string i = "") { type = t; info = i;}
     } Cursor;
 
     // picking of nodes in a view provided a point coordinates in screen coordinates
     virtual std::pair<Node *, glm::vec2> pick(glm::vec2);
 
     // select sources provided a start and end selection points in screen coordinates
-    virtual void select(glm::vec2, glm::vec2);
-    virtual void selectAll();
-    virtual bool canSelect(Source *);
+    virtual void select (glm::vec2, glm::vec2);
+    virtual void selectAll ();
+    virtual bool canSelect (Source *);
 
     // drag the view provided a start and an end point in screen coordinates
     virtual Cursor drag (glm::vec2, glm::vec2);
 
     // grab a source provided a start and an end point in screen coordinates and the picking point
-    virtual void initiate();
-    virtual void terminate();
+    virtual void initiate ();
+    virtual void terminate ();
     virtual Cursor grab (Source*, glm::vec2, glm::vec2, std::pair<Node *, glm::vec2>) {
-        return Cursor();
+        return Cursor ();
     }
 
     // test mouse over provided a point in screen coordinates
     virtual Cursor over (glm::vec2) {
-        return Cursor();
+        return Cursor ();
     }
 
     // left-right [-1 1] and up-down [1 -1] action from arrow keys
@@ -97,11 +97,11 @@ public:
 
 protected:
 
-    View(Mode m);
-    virtual ~View() {}
+    View (Mode m);
+    virtual ~View () {}
 
-    virtual void restoreSettings();
-    virtual void saveSettings();
+    virtual void restoreSettings ();
+    virtual void saveSettings ();
 
     std::string current_action_;
     uint64_t current_id_;
@@ -111,7 +111,7 @@ protected:
     Group *overlay_selection_;
     Frame *overlay_selection_frame_;
     Handles *overlay_selection_icon_;
-    virtual void updateSelectionOverlay();
+    virtual void updateSelectionOverlay ();
 
     // contex menu
     typedef enum {
@@ -120,7 +120,7 @@ protected:
         MENU_SELECTION = 2
     } ContextMenu;
     ContextMenu show_context_menu_;
-    inline void openContextMenu(ContextMenu m) { show_context_menu_ = m; }
+    inline void openContextMenu (ContextMenu m) { show_context_menu_ = m; }
 };
 
 
