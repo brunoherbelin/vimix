@@ -6,15 +6,8 @@
 #include <vector>
 #include <string>
 #include <map>
-
 #include <future>
 #include <functional>
-#include <thread>
-#include <atomic>
-#include <mutex>
-#include <string>
-#include <vector>
-#include <list>
 
 #define MAX_FILE_DIALOG_NAME_BUFFER 1024
 
@@ -78,8 +71,8 @@ public:
 protected:
 
 	FileDialog(); // Prevent construction
-	FileDialog(const FileDialog&) {}; // Prevent construction by copying
-	FileDialog& operator =(const FileDialog&) { return *this; }; // Prevent assignment
+    FileDialog(const FileDialog&) {} // Prevent construction by copying
+    FileDialog& operator =(const FileDialog&) { return *this; } // Prevent assignment
 	~FileDialog(); // Prevent unwanted destruction
 
 public:

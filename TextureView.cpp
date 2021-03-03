@@ -5,15 +5,15 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-#include "imgui.h"
-#include "ImGuiToolkit.h"
-
 #include <string>
 #include <sstream>
 #include <iomanip>
 
-#include "Mixer.h"
+#include "imgui.h"
+#include "ImGuiToolkit.h"
+
 #include "defines.h"
+#include "Mixer.h"
 #include "Settings.h"
 #include "Resource.h"
 #include "PickingVisitor.h"

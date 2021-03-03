@@ -8,7 +8,6 @@
 #include "imgui.h"
 #include "ImGuiToolkit.h"
 
-// memmove
 #include <string>
 #include <iomanip>
 
@@ -98,8 +97,10 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" ))
+            if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
                 Mixer::manager().groupSelection();
+
+            }
         }
         else {
             ImGui::TextDisabled( ICON_FA_DOWNLOAD "  Flatten" );

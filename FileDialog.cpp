@@ -1,14 +1,8 @@
-#include "FileDialog.h"
-#include "ImGuiToolkit.h"
-
 #include <fstream>
 #include <iostream>
-#include <cstring>
 #include <sstream>
-#include <cstdlib>
-#include <algorithm>
-#include <iostream>
 
+#include <stb_image.h>
 #include <glad/glad.h>
 
 #ifdef WIN32
@@ -29,8 +23,8 @@
 #endif
 #include "imgui_internal.h"
 
-#include <stb_image.h>
-
+#include "ImGuiToolkit.h"
+#include "FileDialog.h"
 
 static std::string s_fs_root(1u, PATH_SEP);
 static std::string currentFileDialog;
