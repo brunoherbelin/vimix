@@ -18,8 +18,14 @@
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "Log.h"
+#include "MixingGroup.h"
 
 #include "MixingView.h"
+
+// internal utility
+float sin_quad_texture(float x, float y);
+uint textureMixingQuadratic();
+
 
 
 MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
@@ -96,14 +102,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
 //    scene.bg()->attach(stashCircle_);
 
-//    points_.push_back(glm::vec2(0.f, 0.f));
-//    points_.push_back(glm::vec2(0.f, 1.f));
-//    points_.push_back(glm::vec2(1.f, 1.f));
-//    points_.push_back(glm::vec2(1.f, 0.f));
-//    lines_ = new LineStrip(points_, 1.f);
-//    scene.fg()->attach(lines_);
 
-    lines_ = nullptr;
 }
 
 
@@ -129,6 +128,11 @@ void MixingView::draw()
 
         // special action of Mixing view
         if (ImGui::Selectable( ICON_FA_DRAW_POLYGON "  Link" )){
+            // TODO create MixingGroup
+            MixingGroup *mg = new MixingGroup(Mixer::selection().getCopy());
+            groups_.push_back(mg);
+            scene.fg()->attach(mg->node());
+            Mixer::selection().clear();
 
         }
         ImGui::Separator();
@@ -141,7 +145,7 @@ void MixingView::draw()
                 (*it)->touch();
             }
         }
-        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to hide" )){
+        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand & Hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.f);
@@ -326,6 +330,12 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // compute delta translation
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
+    // manage mixing groups
+    if (s->mixinggroup_ != nullptr) {
+        s->mixinggroup_->update(s);
+
+    }
+
 //    // diagonal translation with SHIFT
 //    if (UserInterface::manager().shiftModifier()) {
 //        s->group(mode_)->translation_.y = s->group(mode_)->translation_.x * s->stored_status_->translation_.y / s->stored_status_->translation_.x;
@@ -421,17 +431,6 @@ void MixingView::updateSelectionOverlay()
         // slightly extend the boundary of the selection
         overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.01f, 0.01f, 1.f) / overlay_selection_->scale_;
 
-//        if (lines_) {
-//            scene.fg()->detach(lines_);
-//            delete lines_;
-//        }
-
-//        points_.push_back(glm::vec2(0.f, 0.f));
-//        points_.push_back(glm::vec2(0.f, 1.f));
-//        points_.push_back(glm::vec2(1.f, 1.f));
-//        points_.push_back(glm::vec2(1.f, 0.f));
-//        lines_ = new LineStrip(points_, 1.f);
-//        scene.fg()->attach(lines_);
     }
 }
 
@@ -448,7 +447,7 @@ float sin_quad_texture(float x, float y) {
     return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
 }
 
-uint MixingView::textureMixingQuadratic()
+uint textureMixingQuadratic()
 {
     static GLuint texid = 0;
     if (texid == 0) {

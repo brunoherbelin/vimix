@@ -4,20 +4,19 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Source.h"
-
 #include "defines.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
 #include "Resource.h"
-#include "Session.h"
 #include "SearchVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "SystemToolkit.h"
 #include "SessionVisitor.h"
 #include "Log.h"
-#include "Mixer.h"
+#include "MixingGroup.h"
+
+#include "Source.h"
 
 Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
 {
@@ -179,7 +178,6 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     // empty transition node
     groups_[View::TRANSITION] = new Group;
 
-    //
     // locker switch button : locked / unlocked icons
     locker_  = new Switch;
     lock_ = new Handles(Handles::LOCKED);
@@ -204,6 +202,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     // for drawing in mixing view
     mixingshader_ = new ImageShader;
     mixingshader_->stipple = 1.0;
+    mixinggroup_ = nullptr;
 
     // create media surface:
     // - textured with original texture from media player
@@ -227,6 +226,10 @@ Source::~Source()
     for (auto it = clones_.begin(); it != clones_.end(); it++)
         (*it)->detach();
     clones_.clear();
+
+    // inform group
+    if (mixinggroup_)
+        mixinggroup_->detach(this);
 
     // delete objects
     delete stored_status_;

@@ -20,6 +20,7 @@ class Frame;
 class Handles;
 class Symbol;
 class CloneSource;
+class MixingGroup;
 
 typedef std::list<CloneSource *> CloneList;
 
@@ -28,6 +29,7 @@ class Source
     friend class CloneSource;
     friend class View;
     friend class MixingView;
+    friend class MixingGroup;
     friend class GeometryView;
     friend class LayerView;
     friend class TextureView;
@@ -52,8 +54,8 @@ public:
 
     // Display mode
     typedef enum {
-        UNINITIALIZED   = 0,
-        VISIBLE   = 1,
+        UNINITIALIZED = 0,
+        VISIBLE  = 1,
         SELECTED = 2,
         CURRENT  = 3
     } Mode;
@@ -106,8 +108,8 @@ public:
 
     // Workspace
     typedef enum {
-        BACKGROUND   = 0,
-        STAGE   = 1,
+        BACKGROUND = 0,
+        STAGE      = 1,
         FOREGROUND = 2
     } Workspace;
     inline Workspace workspace () const { return workspace_; }
@@ -134,7 +136,6 @@ public:
 
     float alpha () const;
     void  setAlpha (float a);
-
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -247,6 +248,9 @@ protected:
 
     // clones
     CloneList clones_;
+
+    // Mixing
+    MixingGroup *mixinggroup_;
 };
 
 

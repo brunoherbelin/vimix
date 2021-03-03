@@ -1,5 +1,13 @@
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_access.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/random.hpp>
+
+#include <glad/glad.h>
+
+#include <algorithm>
+
 #include "defines.h"
-#include "Scene.h"
 #include "Shader.h"
 #include "Primitives.h"
 #include "Visitor.h"
@@ -8,14 +16,7 @@
 #include "GlmToolkit.h"
 #include "SessionVisitor.h"
 
-#include <glad/glad.h>
-
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/matrix_access.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/random.hpp>
-
-#include <algorithm>
+#include "Scene.h"
 
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)

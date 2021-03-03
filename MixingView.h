@@ -3,6 +3,8 @@
 
 #include "View.h"
 
+class MixingGroup;
+
 class MixingView : public View
 {
 public:
@@ -22,7 +24,8 @@ public:
     inline float limboScale() { return limbo_scale_; }
 
 private:
-    uint textureMixingQuadratic();
+    void updateSelectionOverlay() override;
+
     float limbo_scale_;
 
     Group *slider_root_;
@@ -33,10 +36,8 @@ private:
     Mesh *mixingCircle_;
     Mesh *circle_;
 
-    // TEST
-    std::vector<glm::vec2> points_;
-    class LineStrip *lines_;
-    void updateSelectionOverlay() override;
+    // linked sources
+    std::list< MixingGroup *> groups_;
 };
 
 

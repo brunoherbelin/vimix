@@ -683,6 +683,7 @@ void Mixer::groupSelection()
     // avoid name duplicates
     renameSource(group, "group");
 
+    Mixer::manager().setCurrentSource(group);
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)

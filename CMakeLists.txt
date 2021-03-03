@@ -275,6 +275,7 @@ set(VMIX_SRCS
     RenderView.cpp
     GeometryView.cpp
     MixingView.cpp
+    MixingGroup.cpp
     LayerView.cpp
     TextureView.cpp
     TransitionView.cpp
