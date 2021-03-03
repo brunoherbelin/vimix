@@ -193,20 +193,30 @@ protected:
     float linewidth_;
     uint arrayBuffer_;
     std::vector<glm::vec2> path_;
-    void updatePath();
+    virtual void updatePath();
 
+};
+
+/**
+ * @brief The LineLoop class is a LineStrip with closed path
+ */
+class LineLoop : public LineStrip {
+
+public:
+    LineLoop(std::vector<glm::vec2> path, float linewidth = 1.f);
+
+protected:
+    void updatePath() override;
 };
 
 
 /**
- * @brief The LineCircle class is a circular LineStrip (diameter = 1.0)
+ * @brief The LineCircle class is a circular LineLoop (diameter = 1.0)
  */
-class LineCircle : public LineStrip {
+class LineCircle : public LineLoop {
 
 public:
     LineCircle(float linewidth = 1.f);
-
-    virtual void accept(Visitor& v) override;
 
 };
 

@@ -56,7 +56,6 @@ public:
     virtual void visit (FrameBufferSurface&) {}
     virtual void visit (LineStrip&)  {}
     virtual void visit (LineSquare&) {}
-    virtual void visit (LineCircle&) {}
     virtual void visit (Mesh&) {}
     virtual void visit (Frame&) {}
     virtual void visit (Handles&) {}

@@ -293,16 +293,6 @@ void SessionVisitor::visit(LineSquare &)
 
 }
 
-void SessionVisitor::visit(LineCircle &)
-{
-    // Node of a different type
-    xmlCurrent_->SetAttribute("type", "LineCircle");
-
-//    XMLElement *color = xmlDoc_->NewElement("color");
-//    color->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.getColor()) );
-//    xmlCurrent_->InsertEndChild(color);
-}
-
 void SessionVisitor::visit(Mesh &n)
 {
     // Node of a different type

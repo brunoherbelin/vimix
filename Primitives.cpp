@@ -428,7 +428,6 @@ LineStrip::LineStrip(std::vector<glm::vec2> path, float linewidth) : Primitive(n
     path_ = path;
     linewidth_ = 0.002f * linewidth;
 
-    size_t index = 0;
     for(size_t i = 1; i < path_.size(); ++i)
     {
         glm::vec3 begin = glm::vec3(path_[i-1], 0.f);
@@ -438,19 +437,19 @@ LineStrip::LineStrip(std::vector<glm::vec2> path, float linewidth) : Primitive(n
 
         points_.push_back( begin + perp * linewidth_ );
         colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
-        indices_.push_back ( index++ );
+        indices_.push_back ( indices_.size() );
 
         points_.push_back( begin - perp * linewidth_ );
         colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
-        indices_.push_back ( index++ );
+        indices_.push_back ( indices_.size() );
 
         points_.push_back( end + perp * linewidth_ );
         colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
-        indices_.push_back ( index++ );
+        indices_.push_back ( indices_.size() );
 
         points_.push_back( end - perp * linewidth_ );
         colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
-        indices_.push_back ( index++ );
+        indices_.push_back ( indices_.size() );
     }
 
     drawMode_ = GL_TRIANGLE_STRIP;
@@ -534,7 +533,7 @@ void LineStrip::updatePath()
     // bind the vertex array and change the point coordinates
     glBindVertexArray( vao_ );
     glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer_);
-    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(glm::vec3) * points_.size(), &points_[0] );
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec3) * points_.size(), &points_[0] );
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
@@ -576,26 +575,89 @@ void LineStrip::accept(Visitor& v)
     v.visit(*this);
 }
 
+
+LineLoop::LineLoop(std::vector<glm::vec2> path, float linewidth) : LineStrip(path, linewidth)
+{
+    // close linestrip loop
+    glm::vec3 begin = glm::vec3(path_[path_.size()-1], 0.f);
+    glm::vec3 end   = glm::vec3(path_[0], 0.f);
+    glm::vec3 dir   = end - begin;
+    glm::vec3 perp  = glm::cross(dir, glm::vec3(0.f, 0.f, 1.f));
+
+    points_.push_back( begin + perp * linewidth_ );
+    colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+    indices_.push_back ( indices_.size()  );
+
+    points_.push_back( begin - perp * linewidth_ );
+    colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+    indices_.push_back ( indices_.size() );
+
+    points_.push_back( end + perp * linewidth_ );
+    colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+    indices_.push_back ( indices_.size()  );
+
+    points_.push_back( end - perp * linewidth_ );
+    colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
+    indices_.push_back ( indices_.size() );
+}
+
+void LineLoop::updatePath()
+{
+    glm::vec3 begin;
+    glm::vec3 end;
+    glm::vec3 dir;
+    glm::vec3 perp;
+
+    // redo points_ array
+    points_.clear();
+    size_t i = 1;
+    for(; i < path_.size(); ++i)
+    {
+        begin = glm::vec3(path_[i-1], 0.f);
+        end   = glm::vec3(path_[i], 0.f);
+        dir   = end - begin;
+        perp  = glm::normalize(glm::cross(dir, glm::vec3(0.f, 0.f, 1.f)));
+
+        points_.push_back( begin + perp * linewidth_ );
+        points_.push_back( begin - perp * linewidth_ );
+        points_.push_back( end + perp * linewidth_ );
+        points_.push_back( end - perp * linewidth_ );
+    }
+
+    // close linestrip loop
+    begin = glm::vec3(path_[i-1], 0.f);
+    end   = glm::vec3(path_[0], 0.f);
+    dir   = end - begin;
+    perp  = glm::normalize(glm::cross(dir, glm::vec3(0.f, 0.f, 1.f)));
+    points_.push_back( begin + perp * linewidth_ );
+    points_.push_back( begin - perp * linewidth_ );
+    points_.push_back( end + perp * linewidth_ );
+    points_.push_back( end - perp * linewidth_ );
+
+    // bind the vertex array and change the point coordinates
+    glBindVertexArray( vao_ );
+    glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer_);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec3) * points_.size(), &points_[0] );
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // re-compute AxisAlignedBoundingBox
+    bbox_.extend(points_);
+}
+
 #define LINE_CIRCLE_DENSITY 72
 
-LineCircle::LineCircle(float linewidth) : LineStrip(std::vector<glm::vec2>(LINE_CIRCLE_DENSITY), linewidth)
+LineCircle::LineCircle(float linewidth) : LineLoop(std::vector<glm::vec2>(LINE_CIRCLE_DENSITY), linewidth)
 {
     static float a =  glm::two_pi<float>() / static_cast<float>(LINE_CIRCLE_DENSITY-1);
     // loop to build a circle
     glm::vec3 P(1.f, 0.f, 0.f);
 
-    for (int i = 0; i < LINE_CIRCLE_DENSITY - 1 ; i++ ){
+    for (int i = 0; i < LINE_CIRCLE_DENSITY - 1; i++ ){
         path_[i] = glm::vec2(P);
         P = glm::rotateZ(P, a);
     }
-    path_[LINE_CIRCLE_DENSITY-1] = glm::vec2(1.f, 0.f);
     updatePath();
-}
-
-void LineCircle::accept(Visitor& v)
-{
-    Primitive::accept(v);
-    v.visit(*this);
 }
 
 

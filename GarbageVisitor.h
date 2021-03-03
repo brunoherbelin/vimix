@@ -30,7 +30,6 @@ public:
     void visit(FrameBufferSurface& n) override;
     void visit(LineStrip& n) override;
     void visit(LineSquare&) override;
-    void visit(LineCircle& n) override;
     void visit(Mesh& n) override;
     void visit(Frame& n) override;
 

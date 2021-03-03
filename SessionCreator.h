@@ -23,19 +23,10 @@ public:
 
     // Elements of Scene
     void visit (Node& n) override;
-
     void visit (Scene&) override {}
     void visit (Group&) override {}
     void visit (Switch&) override {}
     void visit (Primitive&) override {}
-    void visit (Surface&) override {}
-    void visit (ImageSurface&) override {}
-    void visit (MediaSurface&) override {}
-    void visit (FrameBufferSurface&) override {}
-    void visit (LineStrip&) override {}
-    void visit (LineSquare&) override {}
-    void visit (LineCircle&) override {}
-    void visit (Mesh&) override {}
 
     // Elements with attributes
     void visit (MediaPlayer& n) override;

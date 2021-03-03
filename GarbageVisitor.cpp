@@ -132,11 +132,6 @@ void GarbageVisitor::visit(LineSquare &)
 
 }
 
-void GarbageVisitor::visit(LineCircle &n)
-{
-
-}
-
 void GarbageVisitor::visit(Mesh &n)
 {
 
