@@ -251,6 +251,8 @@ protected:
 
     // Mixing
     MixingGroup *mixinggroup_;
+    Switch *overlay_mixinggroup_;
+    Symbol *rotation_mixingroup_;
 };
 
 

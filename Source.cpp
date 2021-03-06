@@ -57,6 +57,17 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     overlays_[View::MIXING]->attach(center);
     groups_[View::MIXING]->attach(overlays_[View::MIXING]);
 
+    overlay_mixinggroup_ = new Switch;
+    overlay_mixinggroup_->translation_.z = 0.1;
+    center = new Symbol(Symbol::CIRCLE_POINT, glm::vec3(0.f, 0.f, 0.1f));
+    center->color = glm::vec4( COLOR_MIXING_GROUP, 0.96f);
+    overlay_mixinggroup_->attach(center);
+    rotation_mixingroup_ = new Symbol(Symbol::ROTATION, glm::vec3(0.f, 0.f, 0.1f));
+    rotation_mixingroup_->color = glm::vec4( COLOR_MIXING_GROUP, 0.94f);
+    rotation_mixingroup_->scale_ = glm::vec3(3.f, 3.f, 1.f);
+    overlay_mixinggroup_->attach(rotation_mixingroup_);
+    groups_[View::MIXING]->attach(overlay_mixinggroup_);
+
     // default geometry nodes
     groups_[View::GEOMETRY] = new Group;
     groups_[View::GEOMETRY]->visible_ = false;
@@ -296,6 +307,9 @@ void Source::setMode(Source::Mode m)
     bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current & !locked_;
+
+    overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr;
+    overlay_mixinggroup_->setActive(current);
 
     // show in appearance view if current
     groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;

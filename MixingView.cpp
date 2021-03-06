@@ -131,9 +131,11 @@ void MixingView::draw()
             // TODO create MixingGroup
             MixingGroup *mg = new MixingGroup(Mixer::selection().getCopy());
             groups_.push_back(mg);
-            scene.fg()->attach(mg->node());
+            scene.fg()->attach(mg->group());
+            Source *cur = Mixer::selection().front();
+            Mixer::manager().unsetCurrentSource();
             Mixer::selection().clear();
-
+            Mixer::manager().setCurrentSource( cur );
         }
         ImGui::Separator();
 
@@ -193,6 +195,10 @@ void MixingView::centerSource(Source *s)
 void MixingView::update(float dt)
 {
     View::update(dt);
+
+    // always update the mixinggroups
+    for (auto g = groups_.begin(); g != groups_.end(); g++)
+        (*g)->update(dt);
 
     // a more complete update is requested
     // for mixing, this means restore position of the fading slider
@@ -281,8 +287,20 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick a locked source without CTRL key; cancel pick
-            else if ( s->locked() && !UserInterface::manager().ctrlModifier() )
+            else if ( s->locked() && !UserInterface::manager().ctrlModifier() ) {
                 pick = { nullptr, glm::vec2(0.f) };
+            }
+            // pick on the mixing group rotation icon
+            else if ( pick.first == s->rotation_mixingroup_ ) {
+                s->mixinggroup_->setAction( MixingGroup::ACTION_ROTATE_ALL );
+            }
+            // pick source of a mixing group
+            else if ( s->mixinggroup_ != nullptr ) {
+                if (UserInterface::manager().shiftModifier())
+                    s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ONE );
+                else
+                    s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ALL );
+            }
         }
     }
 
@@ -331,9 +349,9 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
     // manage mixing groups
-    if (s->mixinggroup_ != nullptr) {
-        s->mixinggroup_->update(s);
-
+    if (s->mixinggroup_ != nullptr && s->mixinggroup_->action() != MixingGroup::ACTION_NONE ) {
+        // indicate which source to follow
+        s->mixinggroup_->follow(s);
     }
 
 //    // diagonal translation with SHIFT
@@ -374,6 +392,16 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     current_id_ = s->id();
 
     return Cursor(Cursor_ResizeAll, info.str() );
+}
+
+void MixingView::terminate()
+{
+    View::terminate();
+
+    // terminate all group actions
+    for (auto g = groups_.begin(); g != groups_.end(); g++)
+        (*g)->setAction( MixingGroup::ACTION_NONE );
+
 }
 
 void MixingView::arrow (glm::vec2 movement)
