@@ -438,6 +438,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[VECTORSLASH] = shadow;
         icons[ARROWS]   = new Mesh("mesh/icon_rightarrow.ply");
         shadows[ARROWS] = shadow;
+        icons[ROTATION]   = new Mesh("mesh/border_handles_rotation.ply");
+        shadows[ROTATION] = shadow;
         icons[CIRCLE]   = new Mesh("mesh/icon_circle.ply");
         shadows[CIRCLE] = nullptr;
         icons[CLOCK]    = new Mesh("mesh/icon_clock.ply");
