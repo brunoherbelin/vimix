@@ -433,7 +433,7 @@ LineStrip::LineStrip(std::vector<glm::vec2> path, float linewidth) : Primitive(n
         glm::vec3 begin = glm::vec3(path_[i-1], 0.f);
         glm::vec3 end   = glm::vec3(path_[i], 0.f);
         glm::vec3 dir   = end - begin;
-        glm::vec3 perp  = glm::cross(dir, glm::vec3(0.f, 0.f, 1.f));
+        glm::vec3 perp  = glm::normalize(glm::cross(dir, glm::vec3(0.f, 0.f, 1.f)));
 
         points_.push_back( begin + perp * linewidth_ );
         colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
@@ -537,7 +537,9 @@ void LineStrip::updatePath()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // re-compute AxisAlignedBoundingBox
+    // reset and compute AxisAlignedBoundingBox
+    GlmToolkit::AxisAlignedBoundingBox b;
+    bbox_ = b;
     bbox_.extend(points_);
 }
 
@@ -582,7 +584,7 @@ LineLoop::LineLoop(std::vector<glm::vec2> path, float linewidth) : LineStrip(pat
     glm::vec3 begin = glm::vec3(path_[path_.size()-1], 0.f);
     glm::vec3 end   = glm::vec3(path_[0], 0.f);
     glm::vec3 dir   = end - begin;
-    glm::vec3 perp  = glm::cross(dir, glm::vec3(0.f, 0.f, 1.f));
+    glm::vec3 perp  = glm::normalize(glm::cross(dir, glm::vec3(0.f, 0.f, 1.f)));
 
     points_.push_back( begin + perp * linewidth_ );
     colors_.push_back( glm::vec4( 1.f, 1.f, 1.f, 1.f ) );
