@@ -7,6 +7,7 @@
 #include "Source.h"
 
 class FrameGrabber;
+class MixingGroup;
 
 class Session
 {
@@ -39,10 +40,10 @@ public:
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
     SourceList::iterator find (float depth_from, float depth_to);
-    SourceList getCopy() const;
+    SourceList depthSorted() const;
 
     SourceList::iterator find (uint64_t id);
-    std::list<uint64_t> getIdList() const;
+    SourceIdList getIdList() const;
 
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;    
@@ -75,6 +76,15 @@ public:
     void setFilename(const std::string &filename) { filename_ = filename; }
     std::string filename() const { return filename_; }
 
+    // mixing group
+    bool addMixingGroup(MixingGroup *mg);
+    MixingGroup *createMixingGroup (SourceList sources);
+    std::vector<MixingGroup *>::iterator eraseMixingGroup (std::vector<MixingGroup *>::iterator g);
+    void createMixingGroups (std::list<SourceList> groups);
+    uint numMixingGroup() const;
+    std::vector<MixingGroup *>::iterator beginMixingGroup();
+    std::vector<MixingGroup *>::iterator endMixingGroup();
+
     // lock and unlock access (e.g. while saving)
     void lock();
     void unlock();
@@ -84,6 +94,7 @@ protected:
     std::string filename_;
     Source *failedSource_;
     SourceList sources_;
+    std::vector<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     bool active_;
     std::list<FrameGrabber *> grabbers_;

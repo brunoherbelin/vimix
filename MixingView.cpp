@@ -129,8 +129,7 @@ void MixingView::draw()
         // special action of Mixing view
         if (ImGui::Selectable( ICON_FA_DRAW_POLYGON "  Link" )){
             // TODO create MixingGroup
-            MixingGroup *mg = new MixingGroup(Mixer::selection().getCopy());
-            groups_.push_back(mg);
+            MixingGroup *mg = Mixer::manager().session()->createMixingGroup(Mixer::selection().getCopy());
             scene.fg()->attach(mg->group());
             Source *cur = Mixer::selection().front();
             Mixer::manager().unsetCurrentSource();
@@ -196,9 +195,9 @@ void MixingView::update(float dt)
 {
     View::update(dt);
 
-    // always update the mixinggroups
-    for (auto g = groups_.begin(); g != groups_.end(); g++)
-        (*g)->update(dt);
+//    // always update the mixinggroups
+//    for (auto g = groups_.begin(); g != groups_.end(); g++)
+//        (*g)->update(dt);
 
     // a more complete update is requested
     // for mixing, this means restore position of the fading slider
@@ -398,8 +397,9 @@ void MixingView::terminate()
 {
     View::terminate();
 
-    // terminate all group actions
-    for (auto g = groups_.begin(); g != groups_.end(); g++)
+    // terminate all mixing group actions
+    for (auto g = Mixer::manager().session()->beginMixingGroup();
+         g != Mixer::manager().session()->endMixingGroup(); g++)
         (*g)->setAction( MixingGroup::ACTION_NONE );
 
 }

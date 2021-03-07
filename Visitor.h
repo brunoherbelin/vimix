@@ -37,6 +37,7 @@ class SessionGroupSource;
 class RenderSource;
 class CloneSource;
 class NetworkSource;
+class MixingGroup;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -69,6 +70,7 @@ public:
     virtual void visit (ImageProcessingShader&) {}
 
     // utility
+    virtual void visit (MixingGroup&) {}
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
     virtual void visit (NetworkSource&) {}

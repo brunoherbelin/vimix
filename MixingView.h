@@ -3,7 +3,7 @@
 
 #include "View.h"
 
-class MixingGroup;
+//class MixingGroup;
 
 class MixingView : public View
 {
@@ -36,9 +36,6 @@ private:
     Disk *stashCircle_;
     Mesh *mixingCircle_;
     Mesh *circle_;
-
-    // linked sources
-    std::list< MixingGroup *> groups_;
 };
 
 

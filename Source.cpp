@@ -238,10 +238,6 @@ Source::~Source()
         (*it)->detach();
     clones_.clear();
 
-    // inform group
-    if (mixinggroup_)
-        mixinggroup_->detach(this);
-
     // delete objects
     delete stored_status_;
     if (renderbuffer_)

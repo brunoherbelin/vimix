@@ -131,11 +131,16 @@ public:
     void setMask (FrameBufferImage *img);
     void storeMask (FrameBufferImage *img = nullptr);
 
+    // operations on depth
     float depth () const;
     void  setDepth (float d);
 
+    // operations on alpha
     float alpha () const;
     void  setAlpha (float a);
+
+    // groups for mixing
+    MixingGroup *mixingGroup() const { return mixinggroup_; }
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -179,6 +184,7 @@ public:
         float _to;
     };
 
+    // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
     // get the xml description text of a source

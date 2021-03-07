@@ -275,16 +275,3 @@ void View::updateSelectionOverlay()
         overlay_selection_->scale_ = glm::vec3(0.f, 0.f, 1.f);
 }
 
-
-bool compare_depth (Source * first, Source * second)
-{
-  return ( first->depth() < second->depth() );
-}
-
-SourceList depthSorted(SourceList list)
-{
-    SourceList dsl = list;
-    dsl.sort(compare_depth);
-
-    return dsl;
-}

@@ -7,6 +7,7 @@
 #include "FrameGrabber.h"
 #include "SessionCreator.h"
 #include "SessionSource.h"
+#include "MixingGroup.h"
 
 #include "Log.h"
 
@@ -37,6 +38,9 @@ Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
 
 Session::~Session()
 {
+    // TODO delete all mixing groups?
+
+
     // delete all sources
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // erase this source from the list
@@ -86,6 +90,18 @@ void Session::update(float dt)
             (*it)->update(dt);
         }
     }
+
+//    // update the mixinggroups
+//    for (auto g = mixing_groups_.begin(); g != mixing_groups_.end(); ) {
+//        // update all valid groups
+//        if ((*g)->size() > 1) {
+//            (*g)->update(dt);
+//            g++;
+//        }
+//        // delete invalid groups (singletons)
+//        else
+//            g = deleteMixingGroup(g);
+//    }
 
     // apply fading (smooth dicotomic reaching)
     float f = render_.fading();
@@ -139,6 +155,9 @@ SourceList::iterator Session::deleteSource(Source *s)
     if (its != sources_.end()) {
         // remove Node from the rendering scene
         render_.scene.ws()->detach( s->group(View::RENDERING) );
+        // inform group
+        if (s->mixingGroup() != nullptr)
+            s->mixingGroup()->detach(s);
         // erase the source from the update list & get next element
         its = sources_.erase(its);
         // delete the source : safe now
@@ -241,11 +260,9 @@ SourceList::iterator Session::find(float depth_from, float depth_to)
     return std::find_if(sources_.begin(), sources_.end(), Source::hasDepth(depth_from, depth_to));
 }
 
-SourceList Session::getCopy() const
+SourceList Session::depthSorted() const
 {
-    SourceList list;
-    list = sources_;
-    return list;
+    return depth_sorted(sources_);
 }
 
 uint Session::numSource() const
@@ -253,17 +270,9 @@ uint Session::numSource() const
     return sources_.size();
 }
 
-std::list<uint64_t> Session::getIdList() const
+SourceIdList Session::getIdList() const
 {
-    std::list<uint64_t> idlist;
-
-    for( auto sit = sources_.begin(); sit != sources_.end(); sit++)
-        idlist.push_back( (*sit)->id() );
-
-    // make sure no duplicate
-    idlist.unique();
-
-    return idlist;
+    return ids(sources_);
 }
 
 bool Session::empty() const
@@ -315,6 +324,73 @@ void Session::move(int current_index, int target_index)
     sources_.insert(to, s);
 }
 
+MixingGroup *Session::createMixingGroup(SourceList sources)
+{
+    // will return the pointer to created MixingGroup
+    MixingGroup *g = nullptr;
+
+    // verify that all sources given are valid in the sesion
+    SourceList valid_sources;
+    for (auto _it = sources.begin(); _it != sources.end(); _it++) {
+        SourceList::iterator found = std::find(sources_.begin(), sources_.end(), *_it);
+        if ( found != sources_.end())
+            valid_sources.push_back(*found);
+    }
+
+    // create mixing group with valid sources (if it is a group of at least 2 sources)
+    if (valid_sources.size() > 1) {
+        g = new MixingGroup(valid_sources);
+        mixing_groups_.push_back(g);
+    }
+
+    return g;
+}
+
+
+bool Session::addMixingGroup (MixingGroup *mg)
+{
+    // verify that all sources given in MixingGroup are valid in the sesion
+    bool ok = true;
+    for (auto _it = mg->begin(); _it != mg->end(); _it++) {
+        SourceList::iterator found = std::find(sources_.begin(), sources_.end(), *_it);
+        if ( found == sources_.end()) {
+            ok = false;
+            break;
+        }
+    }
+    if (ok)
+        mixing_groups_.push_back(mg);
+    return ok;
+}
+
+void Session::createMixingGroups (std::list<SourceList> groups)
+{
+    // create mixing groups (if any)
+    for (auto group_it = groups.begin(); group_it != groups.end(); group_it++){
+         createMixingGroup( *group_it );
+    }
+}
+
+std::vector<MixingGroup *>::iterator Session::eraseMixingGroup (std::vector<MixingGroup *>::iterator g)
+{
+    return mixing_groups_.erase(g);
+}
+
+uint Session::numMixingGroup() const
+{
+    return mixing_groups_.size();
+}
+
+std::vector<MixingGroup *>::iterator Session::beginMixingGroup()
+{
+    return mixing_groups_.begin();
+}
+
+std::vector<MixingGroup *>::iterator Session::endMixingGroup()
+{
+    return mixing_groups_.end();
+}
+
 void Session::lock()
 {
     access_.lock();
@@ -328,9 +404,11 @@ void Session::unlock()
 
 Session *Session::load(const std::string& filename, uint recursion)
 {
+    // create session
     SessionCreator creator(recursion);
     creator.load(filename);
 
+    // return created session
     return creator.session();
 }
 

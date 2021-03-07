@@ -5,6 +5,7 @@
 
 #include "Scene.h"
 #include "FrameBuffer.h"
+#include "SourceList.h"
 
 class Session;
 class SessionFileSource;
@@ -16,8 +17,6 @@ class Disk;
 class Handles;
 class Source;
 
-typedef std::list<Source *> SourceList;
-SourceList depthSorted(SourceList);
 
 class View
 {

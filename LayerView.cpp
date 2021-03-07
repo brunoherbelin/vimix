@@ -109,7 +109,7 @@ void LayerView::draw()
 
         // manipulation of sources in Mixing view
         if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Distribute" )){
-            SourceList dsl = depthSorted(Mixer::selection().getCopy());
+            SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
@@ -120,7 +120,7 @@ void LayerView::draw()
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Space equally" )){
-            SourceList dsl = depthSorted(Mixer::selection().getCopy());
+            SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             for (it++; it != dsl.end(); it++) {
@@ -130,7 +130,7 @@ void LayerView::draw()
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
-            SourceList dsl = depthSorted(Mixer::selection().getCopy());
+            SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();
             for (; it != dsl.end(); it++, rit++) {

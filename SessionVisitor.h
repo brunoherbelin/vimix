@@ -50,6 +50,7 @@ public:
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
+    void visit (MixingGroup& s) override;
 
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
 };

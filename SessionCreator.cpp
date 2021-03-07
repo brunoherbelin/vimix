@@ -91,8 +91,36 @@ void SessionCreator::load(const std::string& filename)
     // ready to read sources
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
 
+    // create groups
+    session_->createMixingGroups( getMixingGroups() );
+
     // all good
     session_->setFilename(filename);
+
+//    for (std::map< uint64_t, Source* >::iterator qwe = sources_id_.begin(); qwe != sources_id_.end(); qwe++){
+//        Log::Info("%ld - %ld ", qwe->first, qwe->second->id());
+//    }
+
+//    int count = 0;
+//    std::list< SourceIdList >::iterator git;
+//    for (git = groups_sources_id_.begin(); git != groups_sources_id_.end(); git++)
+//    {
+//        Log::Info("XML Groups %d", count++);
+//        std::list<uint64_t>::iterator sit;
+//        for (sit = (*git).begin(); sit != (*git).end(); sit++ ) {
+//            Log::Info("- %ld", (*sit) );
+//        }
+//    }
+
+//    std::list< SourceList > ngrou = getMixingGroupsIdList();
+//    count = 0;
+//    for (auto git = ngrou.begin(); git != ngrou.end(); git++)
+//    {
+//        Log::Info("NEW Groups %d", count++);
+//        for (auto sit = (*git).begin(); sit != (*git).end(); sit++  ) {
+//            Log::Info("- %ld", (*sit)->id() );
+//        }
+//    }
 }
 
 
@@ -108,9 +136,46 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
     }
 }
 
-SessionLoader::SessionLoader(Session *session, int recursion): Visitor(), session_(session), recursion_(recursion)
+SessionLoader::SessionLoader(Session *session, int recursion): Visitor(),
+    session_(session), xmlCurrent_(nullptr), recursion_(recursion)
 {
 
+}
+
+// get the list of new source id (value in sources_id_ map)
+SourceIdList SessionLoader::getIdList() const
+{
+    SourceIdList id_current_value;
+    for (auto it = sources_id_.begin(); it != sources_id_.end(); it++)
+        id_current_value.push_back( it->second->id() );
+
+    return id_current_value;
+}
+
+// groups_sources_id_ is parsed in XML and contains list of groups of ids
+// Here we return the list of groups of newly created sources
+// based on correspondance map sources_id_
+// NB: importantly the list is cleared from duplicates
+std::list< SourceList > SessionLoader::getMixingGroups() const
+{
+    std::list< SourceList > groups_new_sources_id;
+
+    // perform conversion from xml id to new id
+    for (auto git = groups_sources_id_.begin(); git != groups_sources_id_.end(); git++)
+    {
+        SourceList new_sources;
+        for (auto sit = (*git).begin(); sit != (*git).end(); sit++  ) {
+            if (sources_id_.count(*sit) > 0)
+                new_sources.push_back( sources_id_.at(*sit) );
+        }
+        new_sources.sort();
+        groups_new_sources_id.push_back( new_sources );
+    }
+
+    // remove duplicates
+    groups_new_sources_id.unique();
+
+    return groups_new_sources_id;
 }
 
 void SessionLoader::load(XMLElement *sessionNode)
@@ -133,9 +198,9 @@ void SessionLoader::load(XMLElement *sessionNode)
             Source *load_source = nullptr;
 
             // check if a source with the given id exists in the session
-            uint64_t id__ = 0;
-            xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
-            SourceList::iterator sit = session_->find(id__);
+            uint64_t id_xml_ = 0;
+            xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+            SourceList::iterator sit = session_->find(id_xml_);
 
             // no source with this id exists
             if ( sit == session_->end() ) {
@@ -179,8 +244,10 @@ void SessionLoader::load(XMLElement *sessionNode)
             // apply config to source
             load_source->accept(*this);
             load_source->touch();
+
             // remember
-            sources_id_.push_back( load_source->id() );
+            sources_id_[id_xml_] = load_source;
+//            sources_id_[id_xml_] = load_source->id();
         }
 
         // create clones after all sources, to be able to clone a source created above
@@ -194,9 +261,9 @@ void SessionLoader::load(XMLElement *sessionNode)
             if ( pType && std::string(pType) == "CloneSource") {
 
                 // check if a source with same id exists
-                uint64_t id__ = 0;
-                xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
-                SourceList::iterator sit = session_->find(id__);
+                uint64_t id_xml_ = 0;
+                xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+                SourceList::iterator sit = session_->find(id_xml_);
 
                 // no source clone with this id exists
                 if ( sit == session_->end() ) {
@@ -210,20 +277,23 @@ void SessionLoader::load(XMLElement *sessionNode)
                         if (origin != session_->end()) {
                             // create a new source of type Clone
                             Source *clone_source = (*origin)->clone();
+
                             // add source to session
                             session_->addSource(clone_source);
+
                             // apply config to source
                             clone_source->accept(*this);
                             clone_source->touch();
+
                             // remember
-                            sources_id_.push_back( clone_source->id() );
+                            sources_id_[id_xml_] = clone_source;
+//                            sources_id_[id_xml_] = clone_source->id();
                         }
                     }
                 }
             }
         }
-        // make sure no duplicate
-        sources_id_.unique();
+
     }
 
 }
@@ -512,6 +582,18 @@ void SessionLoader::visit (Source& s)
         bool on = xmlCurrent_->BoolAttribute("enabled", true);
         s.processingShader()->accept(*this);
         s.setImageProcessingEnabled(on);
+    }
+
+    xmlCurrent_ = sourceNode->FirstChildElement("MixingGroup");
+    if (xmlCurrent_) {
+        SourceIdList idlist;
+        XMLElement* sourceNode = xmlCurrent_->FirstChildElement("source");
+        for ( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement()) {
+            uint64_t id__ = 0;
+            sourceNode->QueryUnsigned64Attribute("id", &id__);
+            idlist.push_back(id__);
+        }
+        groups_sources_id_.push_back(idlist);
     }
 
     // restore current

@@ -1,10 +1,11 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
-#include <list>
+#include <map>
+#include <tinyxml2.h>
 
 #include "Visitor.h"
-#include <tinyxml2.h>
+#include "SourceList.h"
 
 class Session;
 
@@ -17,7 +18,8 @@ public:
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
-    inline std::list<uint64_t> getIdList() const { return sources_id_; }
+    SourceIdList getIdList() const;
+    std::list< SourceList > getMixingGroups() const;
 
     Source *createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates = true);
 
@@ -46,10 +48,16 @@ public:
     void visit (NetworkSource& s) override;
 
 protected:
-    tinyxml2::XMLElement *xmlCurrent_;
+    // result created session
     Session *session_;
-    std::list<uint64_t> sources_id_;
+    // parsing current xml
+    tinyxml2::XMLElement *xmlCurrent_;
+    // level of loading recursion
     int recursion_;
+    // map of correspondance from xml source id (key) to new source pointer (value)
+    std::map< uint64_t, Source* > sources_id_;
+    // list of groups (lists of xml source id)
+    std::list< SourceIdList > groups_sources_id_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };

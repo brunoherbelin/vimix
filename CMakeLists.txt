@@ -280,6 +280,7 @@ set(VMIX_SRCS
     TextureView.cpp
     TransitionView.cpp
     Source.cpp
+    SourceList.cpp
     Session.cpp
     Selection.cpp
     SessionSource.cpp

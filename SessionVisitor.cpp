@@ -13,6 +13,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
+#include "MixingGroup.h"
 
 #include <iostream>
 
@@ -274,16 +275,6 @@ void SessionVisitor::visit(LineStrip &n)
         points_node->InsertEndChild(p);
     }
     xmlCurrent_->InsertEndChild(points_node);
-
-//    XMLElement *colors_node = xmlDoc_->NewElement("colors");
-//    std::vector<glm::vec4> colors = n.getColors();
-//    for(size_t i = 0; i < colors.size(); ++i)
-//    {
-//        XMLElement *p = XMLElementFromGLM(xmlDoc_, colors[i]);
-//        p->SetAttribute("index", (int) i);
-//        colors_node->InsertEndChild(p);
-//    }
-//    xmlCurrent_->InsertEndChild(colors_node);
 }
 
 void SessionVisitor::visit(LineSquare &)
@@ -392,6 +383,12 @@ void SessionVisitor::visit (Source& s)
     sourceNode->InsertEndChild(xmlCurrent_);
     s.processingShader()->accept(*this);
 
+    if (s.mixingGroup()) {
+        xmlCurrent_ = xmlDoc_->NewElement( "MixingGroup" );
+        sourceNode->InsertEndChild(xmlCurrent_);
+        s.mixingGroup()->accept(*this);
+    }
+
     xmlCurrent_ = sourceNode;  // parent for next visits (other subtypes of Source)
 }
 
@@ -423,11 +420,11 @@ void SessionVisitor::visit (SessionGroupSource& s)
 
     Session *se = s.session();
 
-    XMLElement *rootgroup = xmlDoc_->NewElement("Session");
-    xmlCurrent_->InsertEndChild(rootgroup);
+    XMLElement *sessionNode = xmlDoc_->NewElement("Session");
+    xmlCurrent_->InsertEndChild(sessionNode);
 
     for (auto iter = se->begin(); iter != se->end(); iter++){
-        setRoot(rootgroup);
+        setRoot(sessionNode);
         (*iter)->accept(*this);
     }
 
@@ -468,4 +465,15 @@ void SessionVisitor::visit (NetworkSource& s)
 {
     xmlCurrent_->SetAttribute("type", "NetworkSource");
     xmlCurrent_->SetAttribute("connection", s.connection().c_str() );
+}
+
+void SessionVisitor::visit (MixingGroup& g)
+{
+    xmlCurrent_->SetAttribute("size", g.size());
+
+    for (auto it = g.begin(); it != g.end(); it++) {
+        XMLElement *sour = xmlDoc_->NewElement("source");
+        sour->SetAttribute("id", (*it)->id());
+        xmlCurrent_->InsertEndChild(sour);
+    }
 }

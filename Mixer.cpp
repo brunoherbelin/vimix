@@ -28,6 +28,7 @@ using namespace tinyxml2;
 #include "StreamSource.h"
 #include "NetworkSource.h"
 #include "ActionManager.h"
+#include "MixingGroup.h"
 #include "Streamer.h"
 
 #include "Mixer.h"
@@ -207,6 +208,22 @@ void Mixer::update()
 
     // update session and associated sources
     session_->update(dt_);
+
+    // update session's mixing groups
+    auto group_iter = session_->beginMixingGroup();
+    while ( group_iter != session_->endMixingGroup() ){
+        // update all valid groups
+        if ((*group_iter)->size() > 1) {
+            (*group_iter)->update(dt_);
+            group_iter++;
+        }
+        // delete invalid groups (singletons)
+        else {
+            mixing_.scene.fg()->detach( (*group_iter)->group() );
+            delete (*group_iter);
+            group_iter = session_->eraseMixingGroup(group_iter);
+        }
+    }
 
     // grab frames to recorders & streamers
     FrameGrabbing::manager().grabFrame(session_->frame(), dt_);
@@ -768,7 +785,7 @@ Source * Mixer::findSource (uint64_t id)
 SourceList Mixer::findSources (float depth_from, float depth_to)
 {
     SourceList found;
-    SourceList dsl = depthSorted( session_->getCopy() );
+    SourceList dsl = session_->depthSorted();
     SourceList::iterator  it = dsl.begin();
     for (; it != dsl.end(); it++) {
         if ( (*it)->depth() > depth_to )
@@ -1037,6 +1054,16 @@ void Mixer::merge(Session *session)
         attach(s);
     }
 
+    // import and attach session's mixing groups
+    auto group_iter = session->beginMixingGroup();
+    while ( group_iter != session->endMixingGroup() ){
+        if (session_->addMixingGroup( *group_iter ) )
+            mixing_.scene.fg()->attach( (*group_iter)->group() );
+        else
+            delete (*group_iter);
+        group_iter = session->eraseMixingGroup(group_iter);
+    }
+
     // needs to update !
     View::need_deep_update_++;
 
@@ -1064,7 +1091,7 @@ void Mixer::merge(SessionSource *source)
         float target_depth = source->depth();
 
         // get how much space we need from there
-        SourceList dsl = depthSorted( session->getCopy() );
+        SourceList dsl = session->depthSorted();
         float  start_depth = dsl.front()->depth();
         float  end_depth = dsl.back()->depth();
         float  need_depth = MAX( end_depth - start_depth, LAYER_STEP);
@@ -1112,6 +1139,16 @@ void Mixer::merge(SessionSource *source)
             attach(s);
         }
 
+        // import and attach session's mixing groups
+        auto group_iter = session->beginMixingGroup();
+        while ( group_iter != session->endMixingGroup() ){
+            if (session_->addMixingGroup( *group_iter ) )
+                mixing_.scene.fg()->attach( (*group_iter)->group() );
+            else
+                delete (*group_iter);
+            group_iter = session->eraseMixingGroup(group_iter);
+        }
+
         // needs to update !
         View::need_deep_update_++;
 
@@ -1133,6 +1170,9 @@ void Mixer::swap()
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
             detach(*source_iter);
+        // detatch current session's mixing groups
+        for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
+            mixing_.scene.fg()->detach( (*group_iter)->group() );
     }
 
     // swap back and front
@@ -1149,6 +1189,10 @@ void Mixer::swap()
     geometry_.scene.root()->copyTransform( session_->config(View::GEOMETRY) );
     layer_.scene.root()->copyTransform( session_->config(View::LAYER) );
     appearance_.scene.root()->copyTransform( session_->config(View::TEXTURE) );
+
+    // attach new session's mixing group to mixingview
+    for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
+        mixing_.scene.fg()->attach( (*group_iter)->group() );
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
@@ -1257,5 +1301,7 @@ void Mixer::paste(const std::string& clipboard)
             addSource(s);
         }
     }
+
+    // TODO : Mixing groups
 
 }
