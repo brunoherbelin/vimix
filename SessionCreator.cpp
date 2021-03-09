@@ -92,35 +92,12 @@ void SessionCreator::load(const std::string& filename)
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
 
     // create groups
-    session_->createMixingGroups( getMixingGroups() );
+    std::list< SourceList > groups = getMixingGroups();
+    for (auto group_it = groups.begin(); group_it != groups.end(); group_it++)
+         session_->updateMixingGroup( *group_it );
 
     // all good
     session_->setFilename(filename);
-
-//    for (std::map< uint64_t, Source* >::iterator qwe = sources_id_.begin(); qwe != sources_id_.end(); qwe++){
-//        Log::Info("%ld - %ld ", qwe->first, qwe->second->id());
-//    }
-
-//    int count = 0;
-//    std::list< SourceIdList >::iterator git;
-//    for (git = groups_sources_id_.begin(); git != groups_sources_id_.end(); git++)
-//    {
-//        Log::Info("XML Groups %d", count++);
-//        std::list<uint64_t>::iterator sit;
-//        for (sit = (*git).begin(); sit != (*git).end(); sit++ ) {
-//            Log::Info("- %ld", (*sit) );
-//        }
-//    }
-
-//    std::list< SourceList > ngrou = getMixingGroupsIdList();
-//    count = 0;
-//    for (auto git = ngrou.begin(); git != ngrou.end(); git++)
-//    {
-//        Log::Info("NEW Groups %d", count++);
-//        for (auto sit = (*git).begin(); sit != (*git).end(); sit++  ) {
-//            Log::Info("- %ld", (*sit)->id() );
-//        }
-//    }
 }
 
 

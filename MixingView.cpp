@@ -12,12 +12,13 @@
 #include <sstream>
 #include <iomanip>
 
+#include "Log.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
-#include "Log.h"
+#include "ActionManager.h"
 #include "MixingGroup.h"
 
 #include "MixingView.h"
@@ -128,13 +129,15 @@ void MixingView::draw()
 
         // special action of Mixing view
         if (ImGui::Selectable( ICON_FA_DRAW_POLYGON "  Link" )){
-            // TODO create MixingGroup
-            MixingGroup *mg = Mixer::manager().session()->createMixingGroup(Mixer::selection().getCopy());
-            scene.fg()->attach(mg->group());
-            Source *cur = Mixer::selection().front();
-            Mixer::manager().unsetCurrentSource();
-            Mixer::selection().clear();
-            Mixer::manager().setCurrentSource( cur );
+            // create MixingGroup
+            if (Mixer::manager().session()->updateMixingGroup(Mixer::selection().getCopy(), scene.fg() ) ) {
+                Action::manager().store(std::string("Sources linked."), Mixer::manager().session()->lastMixingGroup()->id());
+                // clear selection and select one of the sources of the group
+                Source *cur = Mixer::selection().front();
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+                Mixer::manager().setCurrentSource( cur );
+            }
         }
         ImGui::Separator();
 

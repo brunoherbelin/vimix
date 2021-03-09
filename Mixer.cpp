@@ -148,6 +148,7 @@ void Mixer::update()
         if (sessionImporters_.back().wait_for(timeout_) == std::future_status::ready ) {
             // get the session loaded by this loader
             merge( sessionImporters_.back().get() );
+            // FIXME: shouldn't we delete the imported session?
             // done with this session loader
             sessionImporters_.pop_back();
         }
@@ -208,22 +209,6 @@ void Mixer::update()
 
     // update session and associated sources
     session_->update(dt_);
-
-    // update session's mixing groups
-    auto group_iter = session_->beginMixingGroup();
-    while ( group_iter != session_->endMixingGroup() ){
-        // update all valid groups
-        if ((*group_iter)->size() > 1) {
-            (*group_iter)->update(dt_);
-            group_iter++;
-        }
-        // delete invalid groups (singletons)
-        else {
-            mixing_.scene.fg()->detach( (*group_iter)->group() );
-            delete (*group_iter);
-            group_iter = session_->eraseMixingGroup(group_iter);
-        }
-    }
 
     // grab frames to recorders & streamers
     FrameGrabbing::manager().grabFrame(session_->frame(), dt_);
@@ -785,7 +770,7 @@ Source * Mixer::findSource (uint64_t id)
 SourceList Mixer::findSources (float depth_from, float depth_to)
 {
     SourceList found;
-    SourceList dsl = session_->depthSorted();
+    SourceList dsl = session_->getDepthSortedList();
     SourceList::iterator  it = dsl.begin();
     for (; it != dsl.end(); it++) {
         if ( (*it)->depth() > depth_to )
@@ -1057,11 +1042,8 @@ void Mixer::merge(Session *session)
     // import and attach session's mixing groups
     auto group_iter = session->beginMixingGroup();
     while ( group_iter != session->endMixingGroup() ){
-        if (session_->addMixingGroup( *group_iter ) )
-            mixing_.scene.fg()->attach( (*group_iter)->group() );
-        else
-            delete (*group_iter);
-        group_iter = session->eraseMixingGroup(group_iter);
+        session_->updateMixingGroup((*group_iter)->getCopy(), mixing_.scene.fg());
+        group_iter = session->deleteMixingGroup(group_iter);
     }
 
     // needs to update !
@@ -1091,7 +1073,7 @@ void Mixer::merge(SessionSource *source)
         float target_depth = source->depth();
 
         // get how much space we need from there
-        SourceList dsl = session->depthSorted();
+        SourceList dsl = session->getDepthSortedList();
         float  start_depth = dsl.front()->depth();
         float  end_depth = dsl.back()->depth();
         float  need_depth = MAX( end_depth - start_depth, LAYER_STEP);
@@ -1142,11 +1124,8 @@ void Mixer::merge(SessionSource *source)
         // import and attach session's mixing groups
         auto group_iter = session->beginMixingGroup();
         while ( group_iter != session->endMixingGroup() ){
-            if (session_->addMixingGroup( *group_iter ) )
-                mixing_.scene.fg()->attach( (*group_iter)->group() );
-            else
-                delete (*group_iter);
-            group_iter = session->eraseMixingGroup(group_iter);
+            session_->updateMixingGroup((*group_iter)->getCopy(), mixing_.scene.fg());
+            group_iter = session->deleteMixingGroup(group_iter);
         }
 
         // needs to update !
@@ -1170,9 +1149,6 @@ void Mixer::swap()
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
             detach(*source_iter);
-        // detatch current session's mixing groups
-        for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
-            mixing_.scene.fg()->detach( (*group_iter)->group() );
     }
 
     // swap back and front
@@ -1192,7 +1168,7 @@ void Mixer::swap()
 
     // attach new session's mixing group to mixingview
     for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
-        mixing_.scene.fg()->attach( (*group_iter)->group() );
+        (*group_iter)->attachTo( mixing_.scene.fg() );
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );

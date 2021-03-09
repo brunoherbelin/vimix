@@ -13,24 +13,20 @@
 #include "MixingGroup.h"
 
 
-MixingGroup::MixingGroup (SourceList sources) : root_(nullptr), lines_(nullptr), center_(nullptr),
+MixingGroup::MixingGroup (SourceList sources) : parent_(nullptr), root_(nullptr), lines_(nullptr), center_(nullptr),
     center_pos_(glm::vec2(0.f, 0.f)), active_(true), update_action_(ACTION_NONE), updated_source_(nullptr)
 {
+    // create unique id
+    id_ = GlmToolkit::uniqueId();
+
     // fill the vector of sources with the given list
     for (auto it = sources.begin(); it != sources.end(); it++){
         // add only if not linked already
         if ((*it)->mixinggroup_ == nullptr) {
             (*it)->mixinggroup_ = this;
             sources_.push_back(*it);
-            // compute barycenter on the way (1)
-            center_pos_ += glm::vec2((*it)->group(View::MIXING)->translation_);
         }
     }
-    // compute barycenter (2)
-    center_pos_ /= sources_.size();
-
-    // sort the vector of sources in clockwise order around the center pos_
-    sources_ = mixing_sorted( sources_, center_pos_);
 
     // scene elements
     root_ = new Group;
@@ -38,24 +34,52 @@ MixingGroup::MixingGroup (SourceList sources) : root_(nullptr), lines_(nullptr),
     center_->visible_ = false;
     center_->color  = glm::vec4(COLOR_MIXING_GROUP, 0.75f);
     center_->scale_ = glm::vec3(0.6f, 0.6f, 1.f);
-    center_->translation_ = glm::vec3(center_pos_, 0.f);
     root_->attach(center_);
+
+    // create
+    recenter();
     createLineStrip();
 }
 
 MixingGroup::~MixingGroup ()
 {
-    for (auto it = sources_.begin(); it != sources_.end(); it++) {
-        (*it)->mixinggroup_ = nullptr;
-        (*it)->overlay_mixinggroup_->visible_ = false;
-    }
+    for (auto it = sources_.begin(); it != sources_.end(); it++)
+        (*it)->clearMixingGroup();
 
+    if (parent_)
+        parent_->detach( root_ );
     delete root_;
 }
 
 void MixingGroup::accept(Visitor& v)
 {
     v.visit(*this);
+}
+
+void MixingGroup::attachTo( Group *parent )
+{
+    if (parent_ != nullptr)
+        parent_->detach( root_ );
+
+    parent_ = parent;
+
+    if (parent_ != nullptr)
+        parent_->attach(root_);
+}
+
+void MixingGroup::recenter()
+{
+    // compute barycenter (0)
+    center_pos_ = glm::vec2(0.f, 0.f);
+    for (auto it = sources_.begin(); it != sources_.end(); it++){
+        // compute barycenter (1)
+        center_pos_ += glm::vec2((*it)->group(View::MIXING)->translation_);
+    }
+    // compute barycenter (2)
+    center_pos_ /= sources_.size();
+
+    // set center
+    center_->translation_ = glm::vec3(center_pos_, 0.f);
 }
 
 void MixingGroup::update (float dt)
@@ -71,16 +95,7 @@ void MixingGroup::update (float dt)
 
             // update path
             move(updated_source_);
-
-            // compute barycenter (0)
-            center_pos_ = glm::vec2(0.f, 0.f);
-            for (auto it = sources_.begin(); it != sources_.end(); it++){
-                // compute barycenter (1)
-                center_pos_ += glm::vec2((*it)->group(View::MIXING)->translation_);
-            }
-            // compute barycenter (2)
-            center_pos_ /= sources_.size();
-            center_->translation_ = glm::vec3(center_pos_, 0.f);
+            recenter();
         }
         else if (update_action_ == ACTION_GRAB_ALL ) {
 
@@ -170,18 +185,76 @@ void MixingGroup::detach (Source *s)
     // ok, its in the list !
     if (its != sources_.end()) {
         // tell the source
-        (*its)->mixinggroup_ = nullptr;
+        (*its)->clearMixingGroup();
         // erase the source from the list
         sources_.erase(its);
+        // update barycenter
+        recenter();
         // clear index, delete lines_, and recreate path and index with remaining sources
         createLineStrip();
     }
 }
 
+void MixingGroup::detach (SourceList l)
+{
+    for (auto sit = l.begin(); sit !=  l.end(); sit++) {
+        // find the source
+        SourceList::iterator its = std::find(sources_.begin(), sources_.end(), *sit);
+        // ok, its in the list !
+        if (its != sources_.end()) {
+            // tell the source
+            (*its)->clearMixingGroup();
+            // erase the source from the list
+            sources_.erase(its);
+        }
+    }
+    // update barycenter
+    recenter();
+    // clear index, delete lines_, and recreate path and index with remaining sources
+    createLineStrip();
+}
+
+
+void MixingGroup::attach (Source *s)
+{
+    // if source is not already in a group (this or other)
+    if (s->mixinggroup_ == nullptr) {
+        // tell the source
+        s->mixinggroup_ = this;
+        // add the source
+        sources_.push_back(s);
+        // update barycenter
+        recenter();
+        // clear index, delete lines_, and recreate path and index with remaining sources
+        createLineStrip();
+    }
+}
+
+void MixingGroup::attach (SourceList l)
+{
+    for (auto sit = l.begin(); sit !=  l.end(); sit++) {
+        if ( (*sit)->mixinggroup_ == nullptr) {
+            // tell the source
+            (*sit)->mixinggroup_ = this;
+            // add the source
+            sources_.push_back(*sit);
+        }
+    }
+    // update barycenter
+    recenter();
+    // clear index, delete lines_, and recreate path and index with remaining sources
+    createLineStrip();
+}
 
 uint MixingGroup::size()
 {
     return sources_.size();
+}
+
+SourceList MixingGroup::getCopy() const
+{
+    SourceList sl = sources_;
+    return sl;
 }
 
 SourceList::iterator MixingGroup::begin ()
@@ -219,6 +292,10 @@ void MixingGroup::createLineStrip()
             delete lines_;
         }
 
+        // sort the vector of sources in clockwise order around the center pos_
+        sources_ = mixing_sorted( sources_, center_pos_);
+
+        // start afresh list of indices
         index_points_.clear();
 
         // path linking all sources

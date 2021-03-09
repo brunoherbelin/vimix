@@ -16,6 +16,9 @@ public:
     MixingGroup (SourceList sources);
     ~MixingGroup ();
 
+    // Get unique id
+    inline uint64_t id () const { return id_; }
+
     // actions for update
     typedef enum {
         ACTION_NONE = 0,
@@ -28,7 +31,7 @@ public:
     inline void follow (Source *s) { updated_source_ = s; }
 
     // node to draw
-    inline Group *group () { return root_; }
+    void attachTo( Group *parent );
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
@@ -39,19 +42,25 @@ public:
     void setActive (bool on);
 
     // Source list manipulation
+    SourceList getCopy() const;
     SourceList::iterator begin ();
     SourceList::iterator end ();
     uint size ();
     bool contains (Source *s);
     void detach (Source *s);
+    void detach (SourceList l);
+    void attach (Source *s);
+    void attach (SourceList l);
 
 private:
 
     // Drawing elements
+    Group *parent_;
     Group *root_;
     LineLoop *lines_;
     Symbol *center_;
     void createLineStrip();
+    void recenter();
     void move (Source *s);
 
     // properties linked to sources
@@ -60,10 +69,10 @@ private:
     std::map< Source *, uint> index_points_;
 
     // status and actions
+    uint64_t id_;
     bool active_;
     Action update_action_;
     Source *updated_source_;
-
 
 };
 

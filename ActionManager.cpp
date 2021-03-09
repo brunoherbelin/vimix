@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "View.h"
 #include "Mixer.h"
+#include "MixingGroup.h"
 #include "tinyxml2Toolkit.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
@@ -163,6 +164,10 @@ void Action::restore(uint target, uint64_t id)
     Log::Info("Restore %s '%s' ", nodename.c_str(), sessionNode->Attribute("label"));
 #endif
 
+    //
+    // compare source lists
+    //
+
     // we operate on the current session
     Session *se = Mixer::manager().session();
     if (se == nullptr)
@@ -194,6 +199,7 @@ void Action::restore(uint target, uint64_t id)
         else
             lsit++;
     }
+
     // remaining ids in list sessionsources : to remove
     while ( !sessionsources.empty() ){
         Source *s = Mixer::manager().findSource( sessionsources.front() );
@@ -208,6 +214,7 @@ void Action::restore(uint target, uint64_t id)
         }
         sessionsources.pop_front();
     }
+
     // remaining ids in list loadersources : to add
     while ( !loadersources.empty() ){
 #ifdef ACTION_DEBUG
@@ -218,6 +225,54 @@ void Action::restore(uint target, uint64_t id)
         // add the source to the mixer
         Mixer::manager().attach( Mixer::manager().findSource( loadersources.front() ) );
         loadersources.pop_front();
+    }
+
+    //
+    // compare mixing groups
+    //
+
+    // Get the list of mixing groups in the xml loader
+    std::list< SourceList > loadergroups = loader.getMixingGroups();
+
+    // apply all changes creating or modifying groups in the session
+    // (after this, new groups are created and existing groups are adjusted)
+    for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
+        se->updateMixingGroup( *group_loader_it );
+    }
+
+    // Get the updated list of mixing groups in the session
+    std::list< SourceList > sessiongroups = se->getMixingGroups();
+    // the remaining case is if session has groups that are not in the loaded xml
+    // (that should therefore be deleted)
+    if ( sessiongroups.size() > loadergroups.size() )
+    {
+        // find those groups ! : loop over every session group
+        for (auto group_se_it = sessiongroups.begin(); group_se_it != sessiongroups.end(); ) {
+            // asume we do not find it in the loadergroups
+            bool is_in_loadergroups = false;
+            // look in the loaded groups if there is one EQUAL to it
+            for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
+                // compare the groups
+                if ( compare( *group_loader_it, *group_se_it) == SOURCELIST_EQUAL ) {
+                    // yeah, found an EQUAL group that was loaded
+                    is_in_loadergroups = true;
+                    break;
+                }
+            }
+            // remove the group from the list if it was loaded
+            if ( is_in_loadergroups )
+                group_se_it = sessiongroups.erase(group_se_it);
+            // else keep it and continue
+            else
+                group_se_it++;
+        }
+
+        // the remaining groups in sessiongroups do not have an EQUAL match in the loader groups
+        for (auto group_se_it = sessiongroups.begin(); group_se_it != sessiongroups.end(); ) {
+            // remove that group from the session
+            se->removeMixingGroup( *group_se_it );
+            group_se_it = sessiongroups.erase(group_se_it);
+        }
     }
 
     // free

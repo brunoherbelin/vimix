@@ -114,5 +114,7 @@ SourceList join (SourceList first, SourceList second)
     SourceList l = second;
     for (auto it = first.begin(); it != first.end(); it++)
         l.push_back(*it);
+    l.unique();
     return l;
 }
+

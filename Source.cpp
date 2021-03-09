@@ -741,6 +741,13 @@ bool Source::hasNode::operator()(const Source* elem) const
     return false;
 }
 
+
+void Source::clearMixingGroup()
+{
+    mixinggroup_ = nullptr;
+    overlay_mixinggroup_->visible_ = false;
+}
+
 CloneSource *Source::clone()
 {
     CloneSource *s = new CloneSource(this);

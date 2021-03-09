@@ -141,6 +141,7 @@ public:
 
     // groups for mixing
     MixingGroup *mixingGroup() const { return mixinggroup_; }
+    void clearMixingGroup();
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
