@@ -22,11 +22,12 @@ public:
     // actions for update
     typedef enum {
         ACTION_NONE = 0,
-        ACTION_GRAB_ONE = 1,
-        ACTION_GRAB_ALL = 2,
-        ACTION_ROTATE_ALL = 3
+        ACTION_UPDATE = 1,
+        ACTION_GRAB_ONE = 2,
+        ACTION_GRAB_ALL = 3,
+        ACTION_ROTATE_ALL = 4
     } Action;
-    inline void setAction (Action a) { update_action_ = a; }
+    void setAction (Action a) ;
     inline Action action () { return update_action_; }
     inline void follow (Source *s) { updated_source_ = s; }
 

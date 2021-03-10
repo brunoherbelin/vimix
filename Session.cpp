@@ -332,55 +332,83 @@ void Session::move(int current_index, int target_index)
     sources_.insert(to, s);
 }
 
-bool Session::updateMixingGroup(SourceList sources, Group *parent)
+bool Session::canlink (SourceList sources)
+{
+    bool canlink = false;
+
+    // verify that all sources given are valid in the sesion
+    validate(sources);
+
+    // we need at least 2 sources to make a group
+    if (sources.size() > 1) {
+        // does this interfere with existing groups?
+        SourceListCompare c = SOURCELIST_DISTINCT;
+        for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++) {
+            // get the list of sources in the group
+            SourceList group_sources = (*group_it)->getCopy();
+            c = compare( group_sources, sources );
+            if ( c != SOURCELIST_DISTINCT ){
+                // in case the source list containing entirely the group
+                // then extend the group with extra sources
+                if ( c == SOURCELIST_FIRST_IN_SECOND ) {
+                    canlink = true;
+                }
+                // stop the loop
+                // (ignore INTERSECT and EQUAL cases)
+                break;
+            }
+        }
+        canlink |= ( c == SOURCELIST_DISTINCT );
+    }
+
+    return canlink;
+}
+
+bool Session::link(SourceList sources, Group *parent)
 {
     // pointer to created MixingGroup
     MixingGroup *g = nullptr;
 
     // verify that all sources given are valid in the sesion
-    SourceList valid_sources;
-    for (auto _it = sources.begin(); _it != sources.end(); _it++) {
-        SourceList::iterator found = std::find(sources_.begin(), sources_.end(), *_it);
-        if ( found != sources_.end())
-            valid_sources.push_back(*found);
-    }
+    validate(sources);
 
-    // try to create mixing group with valid sources (if it is a group of at least 2 sources)
-    if (valid_sources.size() > 1) {
+    // we need at least 2 sources to make a group
+    if (sources.size() > 1) {
 
         // does this interfere with existing groups?
         SourceListCompare c = SOURCELIST_DISTINCT;
         for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++) {
+            // get the list of sources in the group
             SourceList group_sources = (*group_it)->getCopy();
             c = compare( group_sources, sources );
             if ( c != SOURCELIST_DISTINCT ){
-                // case of source list containing entirely the group
+                // in case the source list containing entirely the group
+                // then extend the group with extra sources
                 if ( c == SOURCELIST_FIRST_IN_SECOND ) {
-                    // extend the group with extra sources
                     g = *group_it;
                     // add all sources (will ignore already linked sources)
                     g->attach( sources );
                 }
-                // case of mixing group containing entirely the source list
+                // in case the mixing group contains entirely the source list
+                // then reduce the group to the source list
                 else if ( c == SOURCELIST_SECOND_IN_FIRST ) {
-                    // reduce the group from the extra sources
                     g = *group_it;
-                    // keep only elements of group_sources that are not in sources
+                    // i.e. keep elements of group_sources that are not in list
                     for (auto it = sources.begin(); it != sources.end(); it++)
                         group_sources.remove(*it);
                     // remove all extra sources
                     g->detach( group_sources );
                 }
                 // stop the loop
+                // (we ignore INTERSECT and EQUAL cases)
                 break;
             }
         }
 
-        // the sourcelist is distinct from all existing groups
-        // (NB: ignore INTERSECT and EQUAL cases)
+        // remaining case: the sourcelist is distinct from all existing groups
         if ( c == SOURCELIST_DISTINCT ) {
             // create and add a new mixing group
-            g = new MixingGroup(valid_sources);
+            g = new MixingGroup(sources);
             mixing_groups_.push_back(g);
         }
 
@@ -393,40 +421,52 @@ bool Session::updateMixingGroup(SourceList sources, Group *parent)
     return ( g != nullptr );
 }
 
-bool Session::removeMixingGroup (SourceList sources)
+bool Session::unlink (SourceList sources)
 {
     bool ret = false;
 
     // verify that all sources given are valid in the sesion
-    SourceList valid_sources;
-    for (auto _it = sources.begin(); _it != sources.end(); _it++) {
-        SourceList::iterator found = std::find(sources_.begin(), sources_.end(), *_it);
-        if ( found != sources_.end())
-            valid_sources.push_back(*found);
-    }
+    validate(sources);
 
-    // does this intersect with existing groups?
-    SourceListCompare c = SOURCELIST_DISTINCT;
+    // we need at least 1 sources to make a decision
+    if (sources.size() > 0) {
 
-    for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++) {
-        SourceList group_sources = (*group_it)->getCopy();
-        c = compare( group_sources, sources );
-        if ( c == SOURCELIST_EQUAL ) {
-            delete (*group_it);
-            mixing_groups_.erase(group_it);
-            // stop the loop
-            ret = true;
-            break;
+        // does this list intersect with existing groups?
+        SourceListCompare c = SOURCELIST_DISTINCT;
+        for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++) {
+            // get the list of sources in the group
+            SourceList group_sources = (*group_it)->getCopy();
+            c = compare( group_sources, sources );
+            // in case the group source is the same or inside the list,
+            // then delete the group entirely
+            if ( c == SOURCELIST_EQUAL || c == SOURCELIST_FIRST_IN_SECOND) {
+                delete (*group_it);
+                mixing_groups_.erase(group_it);
+                // did something
+                ret = true;
+                // stop the loop
+                break;
+            }
+            // in case of the source list is inside the group,
+            // then remove the listed sources from the group
+            else if ( c == SOURCELIST_SECOND_IN_FIRST ) {
+                // remove all extra sources
+                (*group_it)->detach( sources );
+                // did something
+                ret = true;
+            }
+            // in case of the group source intersects with the list,
+            // then remove the listed sources from the group
+            else if ( c == SOURCELIST_INTERSECT ) {
+                group_sources = intersect( group_sources, sources);
+                // remove all extra sources
+                (*group_it)->detach( group_sources );
+                // did something
+                ret = true;
+            }
+            // (NB: we ignore DISTINCT case)
         }
-        // case of mixing group containing entirely the source list
-        else if ( c == SOURCELIST_INTERSECT ) {
-            group_sources = intersect( group_sources, sources);
-            // remove all extra sources
-            (*group_it)->detach( group_sources );
-            // stop the loop
-            ret = true;
-            break;
-        }
+
     }
 
     return ret;
@@ -442,12 +482,6 @@ std::list<SourceList> Session::getMixingGroups () const
     return lmg;
 }
 
-MixingGroup *Session::lastMixingGroup ()
-{
-    if (mixing_groups_.empty())
-        return nullptr;
-    return mixing_groups_.back();
-}
 
 std::list<MixingGroup *>::iterator Session::deleteMixingGroup (std::list<MixingGroup *>::iterator g)
 {
@@ -478,6 +512,19 @@ void Session::unlock()
     access_.unlock();
 }
 
+
+void Session::validate (SourceList &sources)
+{
+    // verify that all sources given are valid in the sesion
+    // and remove the invalid sources
+    for (auto _it = sources.begin(); _it != sources.end(); ) {
+        SourceList::iterator found = std::find(sources_.begin(), sources_.end(), *_it);
+        if ( found == sources_.end() )
+            _it = sources.erase(_it);
+        else
+            _it++;
+    }
+}
 
 Session *Session::load(const std::string& filename, uint recursion)
 {

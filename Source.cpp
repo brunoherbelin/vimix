@@ -516,6 +516,13 @@ void Source::setAlpha(float a)
     touch();
 }
 
+void Source::touch ()
+{
+    need_update_ = true;
+    if (mixinggroup_)
+        mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
+}
+
 void Source::update(float dt)
 {
     // keep delta-t

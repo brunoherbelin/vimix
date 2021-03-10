@@ -82,6 +82,16 @@ void MixingGroup::recenter()
     center_->translation_ = glm::vec3(center_pos_, 0.f);
 }
 
+void MixingGroup::setAction (Action a)
+{
+    if (a == ACTION_UPDATE) {
+        if (update_action_ == ACTION_NONE)
+            update_action_ = ACTION_UPDATE;
+    }
+    else
+        update_action_ = a;
+}
+
 void MixingGroup::update (float dt)
 {
     // active if current source in the group
@@ -89,7 +99,31 @@ void MixingGroup::update (float dt)
     setActive(currentsource != sources_.end());
 
     // perform action
-    if (update_action_ != ACTION_NONE && updated_source_ != nullptr) {
+    if (update_action_ == ACTION_UPDATE ) {
+
+        std::vector<glm::vec2> p = lines_->path();
+
+        // compute barycenter (0)
+        center_pos_ = glm::vec2(0.f, 0.f);
+        auto it = sources_.begin();
+        for (; it != sources_.end(); it++){
+            // update point
+            p[ index_points_[*it] ] = glm::vec2((*it)->group(View::MIXING)->translation_);
+
+            // compute barycenter (1)
+            center_pos_ += glm::vec2((*it)->group(View::MIXING)->translation_);
+        }
+        // compute barycenter (2)
+        center_pos_ /= sources_.size();
+        center_->translation_ = glm::vec3(center_pos_, 0.f);
+
+        // update path
+        lines_->changePath(p);
+
+        update_action_ = ACTION_NONE;
+    }
+
+    else if (update_action_ != ACTION_NONE && updated_source_ != nullptr) {
 
         if (update_action_ == ACTION_GRAB_ONE ) {
 
@@ -175,7 +209,7 @@ void MixingGroup::setActive (bool on)
 
     // overlays
     lines_->shader()->color.a = active_ ? 0.96f : 0.5f;
-    center_->visible_ = update_action_ != ACTION_NONE;
+    center_->visible_ = update_action_ > ACTION_UPDATE;
 }
 
 void MixingGroup::detach (Source *s)

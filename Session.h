@@ -76,11 +76,19 @@ public:
     void setFilename (const std::string &filename) { filename_ = filename; }
     std::string filename () const { return filename_; }
 
-    // mixing group
-    bool updateMixingGroup (SourceList sources, Group *parent = nullptr);
-    bool removeMixingGroup (SourceList sources);
-    MixingGroup *lastMixingGroup ();
+    // get the list of sources in mixing groups
     std::list<SourceList> getMixingGroups () const;
+    // returns true if something can be done to create a mixing group
+    bool canlink (SourceList sources);
+    // try to link sources of the given list:
+    // can either create a new mixing group or extend an existing group
+    // returns true if something was done
+    bool link (SourceList sources, Group *parent = nullptr);
+    // try to unlink sources of the given list:
+    // can either delete an entire mixing group, or remove the given sources from existing groups
+    // returns true if something was done
+    bool unlink (SourceList sources);
+    // iterators for looping over mixing groups
     std::list<MixingGroup *>::iterator beginMixingGroup ();
     std::list<MixingGroup *>::iterator endMixingGroup ();
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
@@ -94,6 +102,8 @@ protected:
     std::string filename_;
     Source *failedSource_;
     SourceList sources_;
+    void validate(SourceList &sources);
+
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     bool active_;

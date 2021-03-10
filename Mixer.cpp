@@ -1042,7 +1042,7 @@ void Mixer::merge(Session *session)
     // import and attach session's mixing groups
     auto group_iter = session->beginMixingGroup();
     while ( group_iter != session->endMixingGroup() ){
-        session_->updateMixingGroup((*group_iter)->getCopy(), mixing_.scene.fg());
+        session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
         group_iter = session->deleteMixingGroup(group_iter);
     }
 
@@ -1124,7 +1124,7 @@ void Mixer::merge(SessionSource *source)
         // import and attach session's mixing groups
         auto group_iter = session->beginMixingGroup();
         while ( group_iter != session->endMixingGroup() ){
-            session_->updateMixingGroup((*group_iter)->getCopy(), mixing_.scene.fg());
+            session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
             group_iter = session->deleteMixingGroup(group_iter);
         }
 

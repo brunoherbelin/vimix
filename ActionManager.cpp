@@ -237,11 +237,12 @@ void Action::restore(uint target, uint64_t id)
     // apply all changes creating or modifying groups in the session
     // (after this, new groups are created and existing groups are adjusted)
     for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
-        se->updateMixingGroup( *group_loader_it );
+        se->link( *group_loader_it );
     }
 
     // Get the updated list of mixing groups in the session
     std::list< SourceList > sessiongroups = se->getMixingGroups();
+
     // the remaining case is if session has groups that are not in the loaded xml
     // (that should therefore be deleted)
     if ( sessiongroups.size() > loadergroups.size() )
@@ -270,7 +271,7 @@ void Action::restore(uint target, uint64_t id)
         // the remaining groups in sessiongroups do not have an EQUAL match in the loader groups
         for (auto group_se_it = sessiongroups.begin(); group_se_it != sessiongroups.end(); ) {
             // remove that group from the session
-            se->removeMixingGroup( *group_se_it );
+            se->unlink( *group_se_it );
             group_se_it = sessiongroups.erase(group_se_it);
         }
     }

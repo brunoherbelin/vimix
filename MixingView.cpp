@@ -127,18 +127,32 @@ void MixingView::draw()
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
 
-        // special action of Mixing view
-        if (ImGui::Selectable( ICON_FA_DRAW_POLYGON "  Link" )){
-            // create MixingGroup
-            if (Mixer::manager().session()->updateMixingGroup(Mixer::selection().getCopy(), scene.fg() ) ) {
-                Action::manager().store(std::string("Sources linked."), Mixer::manager().session()->lastMixingGroup()->id());
-                // clear selection and select one of the sources of the group
-                Source *cur = Mixer::selection().front();
-                Mixer::manager().unsetCurrentSource();
-                Mixer::selection().clear();
-                Mixer::manager().setCurrentSource( cur );
+        // special action of Mixing view: link or unlink
+        SourceList selected = Mixer::selection().getCopy();
+        if ( Mixer::manager().session()->canlink( selected )) {
+            // the selected sources can be linked
+            if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
+                // assemble a MixingGroup
+                if (Mixer::manager().session()->link(selected, scene.fg() ) ) {
+                    Action::manager().store(std::string("Sources linked."), selected.front()->id());
+                    // clear selection and select one of the sources of the group
+                    Source *cur = Mixer::selection().front();
+                    Mixer::manager().unsetCurrentSource();
+                    Mixer::selection().clear();
+                    Mixer::manager().setCurrentSource( cur );
+                }
             }
         }
+        else {
+            // the selected sources cannot be linked: offer to unlink!
+            if (ImGui::Selectable( ICON_FA_UNLINK "  Unlink" )){
+                // dismantle MixingGroup(s)
+                if (Mixer::manager().session()->unlink(selected) ) {
+                    Action::manager().store(std::string("Sources unlinked."), selected.front()->id());
+                }
+            }
+        }
+
         ImGui::Separator();
 
         // manipulation of sources in Mixing view

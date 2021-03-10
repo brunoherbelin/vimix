@@ -94,7 +94,7 @@ void SessionCreator::load(const std::string& filename)
     // create groups
     std::list< SourceList > groups = getMixingGroups();
     for (auto group_it = groups.begin(); group_it != groups.end(); group_it++)
-         session_->updateMixingGroup( *group_it );
+         session_->link( *group_it );
 
     // all good
     session_->setFilename(filename);

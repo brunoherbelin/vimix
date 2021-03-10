@@ -90,7 +90,7 @@ public:
     inline MaskShader *maskShader () const { return maskshader_; }
 
     // touch to request update
-    inline void touch () { need_update_ = true; }
+    void touch ();
 
     // informs if its ready (i.e. initialized)
     inline bool ready () const  { return initialized_; }
