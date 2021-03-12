@@ -539,7 +539,8 @@ void UserInterface::handleMouse()
                 else {
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource(picked.first);
-                    if (s != nullptr) {
+                    if (s != nullptr)
+                    {
                         // CTRL + clic = multiple selection
                         if (ctrl_modifier_active) {
                             if ( !Mixer::selection().contains(s) )
@@ -554,7 +555,10 @@ void UserInterface::handleMouse()
                             }
                         }
                         // making the picked source the current one
-                        Mixer::manager().setCurrentSource( s );
+                        if (s)
+                            Mixer::manager().setCurrentSource( s );
+                        else
+                            Mixer::manager().unsetCurrentSource();
                         if (navigator.pannelVisible())
                             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
@@ -574,17 +578,6 @@ void UserInterface::handleMouse()
                 }
             }
         }
-//        else if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) )
-//        {
-//            view_drag = nullptr;
-//            mousedown = false;
-//            picked = { nullptr, glm::vec2(0.f) };
-//            Mixer::manager().view()->terminate();
-
-//            // special case of one single source in selection : make current after release
-//            if (Mixer::selection().size() == 1)
-//                Mixer::manager().setCurrentSource( Mixer::selection().front() );
-//        }
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
@@ -643,7 +636,7 @@ void UserInterface::handleMouse()
                         setMouseCursor(io.MousePos, c);
                     }
                     // action on other (non-source) elements in the view
-                    else //if ( picked.first != nullptr )
+                    else
                     {
                         View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
                         setMouseCursor(io.MousePos, c);

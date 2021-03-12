@@ -185,11 +185,11 @@ public:
         float _to;
     };
 
-    static bool isCurrent(const Source* elem)  {
+    static bool isCurrent (const Source* elem)  {
         return (elem && elem->mode_ == Source::CURRENT);
     }
 
-    static bool isInitialized(const Source* elem)  {
+    static bool isInitialized (const Source* elem)  {
         return (elem && elem->mode_ > Source::UNINITIALIZED);
     }
 
