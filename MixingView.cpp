@@ -133,23 +133,21 @@ void MixingView::draw()
             // the selected sources can be linked
             if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
                 // assemble a MixingGroup
-                if (Mixer::manager().session()->link(selected, scene.fg() ) ) {
-                    Action::manager().store(std::string("Sources linked."), selected.front()->id());
-                    // clear selection and select one of the sources of the group
-                    Source *cur = Mixer::selection().front();
-                    Mixer::manager().unsetCurrentSource();
-                    Mixer::selection().clear();
-                    Mixer::manager().setCurrentSource( cur );
-                }
+                Mixer::manager().session()->link(selected, scene.fg() );
+                Action::manager().store(std::string("Sources linked."), selected.front()->id());
+                // clear selection and select one of the sources of the group
+                Source *cur = Mixer::selection().front();
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+                Mixer::manager().setCurrentSource( cur );
             }
         }
         else {
             // the selected sources cannot be linked: offer to unlink!
             if (ImGui::Selectable( ICON_FA_UNLINK "  Unlink" )){
                 // dismantle MixingGroup(s)
-                if (Mixer::manager().session()->unlink(selected) ) {
-                    Action::manager().store(std::string("Sources unlinked."), selected.front()->id());
-                }
+                Mixer::manager().session()->unlink(selected);
+                Action::manager().store(std::string("Sources unlinked."), selected.front()->id());
             }
         }
 
@@ -364,17 +362,17 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // compute delta translation
     s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
-    // manage mixing groups
-    if (s->mixinggroup_ != nullptr && s->mixinggroup_->action() != MixingGroup::ACTION_NONE ) {
-        // indicate which source to follow
-        s->mixinggroup_->follow(s);
+    // manage mixing group
+    if (s->mixinggroup_ != nullptr  ) {
+        // inform mixing groups to follow the current source
+        if (Source::isCurrent(s) && s->mixinggroup_->action() > MixingGroup::ACTION_UPDATE)
+            s->mixinggroup_->follow(s);
+        else
+            s->mixingGroup()->setAction(MixingGroup::ACTION_NONE);
     }
 
-//    // diagonal translation with SHIFT
-//    if (UserInterface::manager().shiftModifier()) {
-//        s->group(mode_)->translation_.y = s->group(mode_)->translation_.x * s->stored_status_->translation_.y / s->stored_status_->translation_.x;
-//    }
-
+    // request update
+    s->touch();
 
 //    // trying to enter stash
 //    if ( glm::distance( glm::vec2(s->group(mode_)->translation_), glm::vec2(stashCircle_->translation_)) < stashCircle_->scale_.x) {
@@ -392,8 +390,6 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 //        s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE);
 //    }
 
-    // request update
-    s->touch();
 
     std::ostringstream info;
     if (s->active()) {

@@ -516,13 +516,6 @@ void Source::setAlpha(float a)
     touch();
 }
 
-void Source::touch ()
-{
-    need_update_ = true;
-    if (mixinggroup_)
-        mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
-}
-
 void Source::update(float dt)
 {
     // keep delta-t
@@ -628,6 +621,10 @@ void Source::update(float dt)
 
         // set the rendered mask as mask for blending
         blendingshader_->mask_texture = maskbuffer_->texture();
+
+        // inform mixing group
+        if (mixinggroup_)
+            mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
 
         // do not update next frame
         need_update_ = false;

@@ -7,7 +7,6 @@
 #include "Source.h"
 #include "Decorations.h"
 #include "Visitor.h"
-#include "Mixer.h"
 #include "Log.h"
 
 #include "MixingGroup.h"
@@ -30,6 +29,7 @@ MixingGroup::MixingGroup (SourceList sources) : parent_(nullptr), root_(nullptr)
 
     // scene elements
     root_ = new Group;
+    root_->visible_ = false;
     center_ = new Symbol(Symbol::CIRCLE_POINT);
     center_->visible_ = false;
     center_->color  = glm::vec4(COLOR_MIXING_GROUP, 0.75f);
@@ -85,6 +85,7 @@ void MixingGroup::recenter()
 void MixingGroup::setAction (Action a)
 {
     if (a == ACTION_UPDATE) {
+        // accept UPDATE action only if no other action is ongoing
         if (update_action_ == ACTION_NONE)
             update_action_ = ACTION_UPDATE;
     }
@@ -92,10 +93,16 @@ void MixingGroup::setAction (Action a)
         update_action_ = a;
 }
 
-void MixingGroup::update (float dt)
+void MixingGroup::update (float)
 {
-    // active if current source in the group
-    auto currentsource = std::find(sources_.begin(), sources_.end(), Mixer::manager().currentSource());
+    // after creation, root is not visible: wait that all sources are initialized to make it visible
+    if (!root_->visible_) {
+        auto unintitializedsource = std::find_if_not(sources_.begin(), sources_.end(), Source::isInitialized);
+        root_->visible_ = (unintitializedsource == sources_.end());
+    }
+
+    // group is active if one source in the group is current
+    auto currentsource = std::find_if(sources_.begin(), sources_.end(), Source::isCurrent);
     setActive(currentsource != sources_.end());
 
     // perform action
@@ -120,9 +127,9 @@ void MixingGroup::update (float dt)
         // update path
         lines_->changePath(p);
 
+        // update only once
         update_action_ = ACTION_NONE;
     }
-
     else if (update_action_ != ACTION_NONE && updated_source_ != nullptr) {
 
         if (update_action_ == ACTION_GRAB_ONE ) {
@@ -209,7 +216,7 @@ void MixingGroup::setActive (bool on)
 
     // overlays
     lines_->shader()->color.a = active_ ? 0.96f : 0.5f;
-    center_->visible_ = update_action_ > ACTION_UPDATE;
+    center_->visible_ = update_action_ > ACTION_GRAB_ONE;
 }
 
 void MixingGroup::detach (Source *s)

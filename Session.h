@@ -82,12 +82,10 @@ public:
     bool canlink (SourceList sources);
     // try to link sources of the given list:
     // can either create a new mixing group or extend an existing group
-    // returns true if something was done
-    bool link (SourceList sources, Group *parent = nullptr);
+    void link (SourceList sources, Group *parent = nullptr);
     // try to unlink sources of the given list:
     // can either delete an entire mixing group, or remove the given sources from existing groups
-    // returns true if something was done
-    bool unlink (SourceList sources);
+    void unlink (SourceList sources);
     // iterators for looping over mixing groups
     std::list<MixingGroup *>::iterator beginMixingGroup ();
     std::list<MixingGroup *>::iterator endMixingGroup ();

@@ -90,7 +90,7 @@ public:
     inline MaskShader *maskShader () const { return maskshader_; }
 
     // touch to request update
-    void touch ();
+    inline void touch () { need_update_ = true; }
 
     // informs if its ready (i.e. initialized)
     inline bool ready () const  { return initialized_; }
@@ -184,6 +184,14 @@ public:
         float _from;
         float _to;
     };
+
+    static bool isCurrent(const Source* elem)  {
+        return (elem && elem->mode_ == Source::CURRENT);
+    }
+
+    static bool isInitialized(const Source* elem)  {
+        return (elem && elem->mode_ > Source::UNINITIALIZED);
+    }
 
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }

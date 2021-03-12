@@ -237,7 +237,7 @@ void Action::restore(uint target, uint64_t id)
     // apply all changes creating or modifying groups in the session
     // (after this, new groups are created and existing groups are adjusted)
     for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
-        se->link( *group_loader_it );
+        se->link( *group_loader_it, Mixer::manager().view(View::MIXING)->scene.fg() );
     }
 
     // Get the updated list of mixing groups in the session
