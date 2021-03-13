@@ -310,7 +310,13 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             }
             // pick source of a mixing group
             else if ( s->mixinggroup_ != nullptr ) {
-                if (UserInterface::manager().shiftModifier())
+                if (UserInterface::manager().ctrlModifier()) {
+                    SourceList linked = s->mixinggroup_->getCopy();
+                    linked.remove(s);
+                    if (Mixer::selection().empty())
+                        Mixer::selection().add(linked);
+                }
+                else if (UserInterface::manager().shiftModifier())
                     s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ONE );
                 else
                     s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ALL );
