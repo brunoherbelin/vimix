@@ -274,7 +274,7 @@ void GeometryView::draw()
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(std::string("Source Fit."), s->id());
+                Action::manager().store(s->name() + std::string("Source Fit."), s->id());
             }
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
@@ -282,23 +282,23 @@ void GeometryView::draw()
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(std::string("Source Reset."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset."), s->id());
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(std::string("Source Reset position."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset position."), s->id());
             }
             if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(std::string("Source Reset rotation."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset rotation."), s->id());
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
-                Action::manager().store(std::string("Source aspect ratio."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset aspect ratio."), s->id());
             }
         }
         ImGui::EndPopup();

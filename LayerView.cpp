@@ -17,6 +17,7 @@
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
+#include "ActionManager.h"
 #include "Log.h"
 
 #include "LayerView.h"
@@ -100,7 +101,7 @@ void LayerView::draw()
         if (candidate_flatten_group){
             if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
                 Mixer::manager().groupSelection();
-
+//                Action::manager().store(std::string("Selection Flatten."), Mixer::selection().front()->id());
             }
         }
         else {
@@ -118,6 +119,7 @@ void LayerView::draw()
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
+            Action::manager().store(std::string("Selection Distribute."), dsl.front()->id());
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Space equally" )){
@@ -128,6 +130,7 @@ void LayerView::draw()
                 depth += 2.f * LAYER_STEP;
                 (*it)->setDepth(depth);
             }
+            Action::manager().store(std::string("Selection Space equally."), dsl.front()->id());
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
@@ -137,6 +140,7 @@ void LayerView::draw()
             for (; it != dsl.end(); it++, rit++) {
                 (*it)->setDepth((*rit)->depth());
             }
+            Action::manager().store(std::string("Selection Reverse order."), dsl.front()->id());
             View::need_deep_update_++;
         }
 
