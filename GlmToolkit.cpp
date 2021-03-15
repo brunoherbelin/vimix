@@ -47,6 +47,17 @@ void GlmToolkit::inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec
     translation = glm::vec3(vec);
 }
 
+//float rewrapAngleRestricted(float angle)
+//// This function takes an angle in the range [-3*pi, 3*pi] and
+//// wraps it to the range [-pi, pi].
+//{
+//    if (angle > glm::pi<float>() )
+//        return angle - glm::two_pi<float>();
+//    else if (angle < - glm::pi<float>())
+//        return angle + glm::two_pi<float>();
+//    else
+//        return angle;
+//}
 
 GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() {
     mMin = glm::vec3(1.f);
@@ -195,10 +206,10 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transform
     glm::vec4 vec;
 
     // Apply transform to all four corners (can be rotated) and update bbox accordingly
-    vec = m * glm::vec4(mMin, 1.f);
+    vec = m * glm::vec4(mMin.x, mMin.y, 0.f, 1.f);
     bb.extend(glm::vec3(vec));
 
-    vec = m * glm::vec4(mMax, 1.f);
+    vec = m * glm::vec4(mMax.x, mMax.y, 0.f, 1.f);
     bb.extend(glm::vec3(vec));
 
     vec = m * glm::vec4(mMin.x, mMax.y, 0.f, 1.f);
@@ -210,6 +221,14 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transform
     return bb;
 }
 
+bool GlmToolkit::operator< (const GlmToolkit::AxisAlignedBoundingBox& A, const GlmToolkit::AxisAlignedBoundingBox& B )
+{
+    if (A.isNull())
+        return true;
+    if (B.isNull())
+        return false;
+    return ( glm::length2(A.mMax-A.mMin) < glm::length2(B.mMax-B.mMin) );
+}
 
 glm::ivec2 GlmToolkit::resolutionFromDescription(int aspectratio, int height)
 {

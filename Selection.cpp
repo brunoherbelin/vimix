@@ -1,8 +1,10 @@
 #include <algorithm>
 
+#include <tinyxml2.h>
+
 #include "defines.h"
 #include "SessionVisitor.h"
-#include <tinyxml2.h>
+#include "Source.h"
 
 #include "Selection.h"
 

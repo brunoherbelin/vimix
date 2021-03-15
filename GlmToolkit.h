@@ -17,13 +17,10 @@ void inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec3 &rotation,
 
 class AxisAlignedBoundingBox
 {
-    glm::vec3 mMin;
-    glm::vec3 mMax;
-
 public:
     AxisAlignedBoundingBox();
 
-    void operator = (const AxisAlignedBoundingBox &D ) {
+    inline void operator = (const AxisAlignedBoundingBox &D ) {
         mMin = D.mMin;
         mMax = D.mMax;
     }
@@ -46,7 +43,27 @@ public:
     AxisAlignedBoundingBox translated(glm::vec3 t) const;
     AxisAlignedBoundingBox scaled(glm::vec3 s) const;
     AxisAlignedBoundingBox transformed(glm::mat4 m) const;
+
+    friend bool operator<(const AxisAlignedBoundingBox& A, const AxisAlignedBoundingBox& B );
+
+protected:
+    glm::vec3 mMin;
+    glm::vec3 mMax;
 };
+
+// a bbox A is < from bbox B if its diagonal is shorter
+bool operator< (const AxisAlignedBoundingBox& A, const AxisAlignedBoundingBox& B );
+
+
+class OrientedBoundingBox
+{
+public:
+    OrientedBoundingBox() : orientation(glm::vec3(0.f,0.f,0.f)) {}
+
+    AxisAlignedBoundingBox aabb;
+    glm::vec3 orientation;
+};
+
 
 
 static const char* aspect_ratio_names[6] = { "1:1", "4:3", "3:2", "16:10", "16:9", "21:9" };

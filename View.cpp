@@ -15,10 +15,10 @@
 #include "Settings.h"
 #include "Source.h"
 #include "PickingVisitor.h"
-#include "BoundingBoxVisitor.h"
 #include "Decorations.h"
 #include "Mixer.h"
 #include "UserInterfaceManager.h"
+#include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "Log.h"
 
@@ -119,6 +119,7 @@ void View::initiate()
 
         (*sit)->stored_status_->copyTransform((*sit)->group(mode_));
     }
+
 }
 
 void View::terminate()
@@ -242,7 +243,6 @@ void View::updateSelectionOverlay()
         overlay_selection_icon_ = new Handles(Handles::MENU);
         overlay_selection_->attach(overlay_selection_icon_);
         overlay_selection_frame_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
-//        overlay_selection_frame_->scale_ = glm::vec3(1.05f, 1.05f, 1.f);
         overlay_selection_->attach(overlay_selection_frame_);
         scene.fg()->attach(overlay_selection_);
     }
@@ -252,18 +252,6 @@ void View::updateSelectionOverlay()
 
     // potential selection if more than 1 source selected
     if (Mixer::selection().size() > 1) {
-        // calculate bbox on selection
-        BoundingBoxVisitor selection_visitor_bbox;
-        SourceList::iterator  it = Mixer::selection().begin();
-        for (; it != Mixer::selection().end(); it++) {
-            // calculate bounding box of area covered by selection
-            selection_visitor_bbox.setModelview( scene.ws()->transform_ );
-            (*it)->group(mode_)->accept(selection_visitor_bbox);
-        }
-        // adjust group overlay to selection
-        GlmToolkit::AxisAlignedBoundingBox selection_box = selection_visitor_bbox.bbox();
-        overlay_selection_->scale_ = selection_box.scale();
-        overlay_selection_->translation_ = selection_box.center();
         // show group overlay
         overlay_selection_->visible_ = true;
         ImVec4 c = ImGuiToolkit::HighlightColor();

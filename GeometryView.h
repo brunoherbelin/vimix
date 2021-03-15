@@ -31,6 +31,12 @@ private:
     Node *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
+
+    void updateSelectionOverlay() override;
+    bool overlay_selection_active_;
+    Group *overlay_selection_stored_status_;
+    Handles *overlay_selection_scale_;
+    Handles *overlay_selection_rotate_;
 };
 
 

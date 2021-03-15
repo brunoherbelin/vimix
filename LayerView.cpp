@@ -16,6 +16,7 @@
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
+#include "BoundingBoxVisitor.h"
 #include "Log.h"
 
 #include "LayerView.h"
@@ -329,6 +330,11 @@ void LayerView::updateSelectionOverlay()
     View::updateSelectionOverlay();
 
     if (overlay_selection_->visible_) {
+        // calculate bbox on selection
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), this);
+        overlay_selection_->scale_ = selection_box.scale();
+        overlay_selection_->translation_ = selection_box.center();
+
         // slightly extend the boundary of the selection
         overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.07f, 0.07f, 1.f) / overlay_selection_->scale_;
     }

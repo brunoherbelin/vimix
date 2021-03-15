@@ -12,14 +12,15 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Log.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
+#include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
+#include "Log.h"
 
 #include "MixingView.h"
 
@@ -331,6 +332,9 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
 
 View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
+    View::Cursor ret = Cursor();
+    ret.type = Cursor_ResizeAll;
+
     // unproject
     glm::vec3 gl_Position_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(to, scene.root()->transform_);
@@ -371,8 +375,11 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // manage mixing group
     if (s->mixinggroup_ != nullptr  ) {
         // inform mixing groups to follow the current source
-        if (Source::isCurrent(s) && s->mixinggroup_->action() > MixingGroup::ACTION_UPDATE)
+        if (Source::isCurrent(s) && s->mixinggroup_->action() > MixingGroup::ACTION_UPDATE) {
             s->mixinggroup_->follow(s);
+            if (s->mixinggroup_->action() == MixingGroup::ACTION_ROTATE_ALL)
+                ret.type = Cursor_Hand;
+        }
         else
             s->mixingGroup()->setAction(MixingGroup::ACTION_NONE);
     }
@@ -409,7 +416,9 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     current_action_ = s->name() + ": " + info.str();
     current_id_ = s->id();
 
-    return Cursor(Cursor_ResizeAll, info.str() );
+    // update cursor
+    ret.info = info.str();
+    return ret;
 }
 
 void MixingView::terminate()
@@ -475,9 +484,13 @@ void MixingView::updateSelectionOverlay()
     View::updateSelectionOverlay();
 
     if (overlay_selection_->visible_) {
+        // calculate bbox on selection
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), this);
+        overlay_selection_->scale_ = selection_box.scale();
+        overlay_selection_->translation_ = selection_box.center();
+
         // slightly extend the boundary of the selection
         overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.01f, 0.01f, 1.f) / overlay_selection_->scale_;
-
     }
 }
 

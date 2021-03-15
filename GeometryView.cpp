@@ -20,6 +20,7 @@
 #include "DrawVisitor.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
+#include "BoundingBoxVisitor.h"
 #include "Log.h"
 
 #include "GeometryView.h"
@@ -117,6 +118,11 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
 
+    // will be init later
+    overlay_selection_scale_ = nullptr;
+    overlay_selection_rotate_ = nullptr;
+    overlay_selection_stored_status_ = nullptr;
+    overlay_selection_active_ = false;
 }
 
 void GeometryView::update(float dt)
@@ -374,6 +380,19 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                         break;
                     }
                 }
+                // no source picked
+                else {
+                    // picked on selection handles
+                    if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
+                        pick = (*itp);
+                        // initiate selection manipulation
+                        if (overlay_selection_stored_status_) {
+                            overlay_selection_stored_status_->copyTransform(overlay_selection_);
+                            overlay_selection_active_ = true;
+                        }
+                        break;
+                    }
+                }
 
             }
 
@@ -392,16 +411,87 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 {
     View::Cursor ret = Cursor();
 
-    // work on the given source
-    if (!s)
-        return ret;
-
-    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
-
     // grab coordinates in scene-View reference frame
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
+
+    // No source is given
+    if (!s) {
+
+        // possibly grabing the selection overlay handles
+        if (overlay_selection_ && overlay_selection_active_ ) {
+
+            // rotation center to selection position
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), overlay_selection_stored_status_->translation_);
+            glm::vec4 selection_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
+            glm::vec4 selection_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+
+            // calculate scaling of selection
+            float factor = glm::length( glm::vec2( selection_to ) ) / glm::length( glm::vec2( selection_from ) );
+            glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+
+            // if interaction with selection
+            if (pick.first == overlay_selection_scale_) {
+
+                // apply to overlay
+                glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
+                overlay_selection_->scale_ = glm::vec3(vec);
+
+                // Transform sources
+                // complete transform matrix (right to left) : move to center, scale and move back
+                glm::mat4 M = T * S * glm::inverse(T);
+                // apply to every sources in selection
+                for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                    // displacement
+                    vec = M * glm::vec4( (*sit)->stored_status_->translation_, 1.f );
+                    (*sit)->group(mode_)->translation_ = glm::vec3(vec);
+                    // scale
+                    vec = M * glm::vec4( (*sit)->stored_status_->scale_, 0.f );
+                    (*sit)->group(mode_)->scale_ = glm::vec3(vec);
+                    // will have to be updated
+                    (*sit)->touch();
+                }
+
+                ret.type = Cursor_ResizeNWSE;
+            }
+            else if (pick.first == overlay_selection_rotate_) {
+
+                // compute rotation angle
+                float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
+                glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
+
+                // apply to overlay
+                glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
+                overlay_selection_->scale_ = glm::vec3(vec);
+                overlay_selection_->rotation_.z = overlay_selection_stored_status_->rotation_.z + angle;
+
+                // Transform sources
+                // complete transform matrix (right to left) : move to center, rotate, scale and move back
+                glm::mat4 M = T * S * R * glm::inverse(T);
+                // apply to every sources in selection:
+                for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+
+                    glm::mat4 transform = M * (*sit)->stored_status_->transform_;
+                    glm::vec3 tra, rot, sca;
+                    GlmToolkit::inverse_transform(transform, tra, rot, sca);
+                    (*sit)->group(mode_)->translation_ = tra;
+                    (*sit)->group(mode_)->scale_ = sca;
+                    (*sit)->group(mode_)->rotation_ = rot;
+
+                    // will have to be updated
+                    (*sit)->touch();
+                }
+
+                ret.type = Cursor_Hand;
+            }
+        }
+
+        // update cursor
+        return ret;
+    }
+
+    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // make sure matrix transform of stored status is updated
     s->stored_status_->update(0);
@@ -619,7 +709,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::ROTATE]->visible_ = false;
             s->handles_[mode_][Handles::SCALE]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
-
             // prepare overlay
             overlay_crop_->scale_ = s->stored_status_->scale_ / s->stored_status_->crop_;
             overlay_crop_->scale_.x  *= s->frame()->aspectRatio();
@@ -628,7 +717,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_crop_->update(0);
             overlay_crop_->visible_ = true;
-
             // PROPORTIONAL ONLY
             if (UserInterface::manager().shiftModifier()) {
                 float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
@@ -763,8 +851,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     return ret;
 }
 
-
-
 void GeometryView::terminate()
 {
     View::terminate();
@@ -798,6 +884,7 @@ void GeometryView::terminate()
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
     }
 
+    overlay_selection_active_ = false;
 }
 
 void GeometryView::arrow (glm::vec2 movement)
@@ -820,5 +907,40 @@ void GeometryView::arrow (glm::vec2 movement)
 
         // request update
         s->touch();
+    }
+}
+
+void GeometryView::updateSelectionOverlay()
+{
+    View::updateSelectionOverlay();
+
+    // create first
+    if (overlay_selection_scale_ == nullptr) {
+
+        overlay_selection_stored_status_ = new Group;
+        overlay_selection_scale_ = new Handles(Handles::SCALE);
+        overlay_selection_->attach(overlay_selection_scale_);
+        overlay_selection_rotate_ = new Handles(Handles::ROTATE);
+        overlay_selection_->attach(overlay_selection_rotate_);
+    }
+
+    if (overlay_selection_->visible_) {
+
+        if ( !overlay_selection_active_) {
+
+            // calculate ORIENTED bbox on selection
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), this);
+
+            // apply transform
+            overlay_selection_->rotation_ = selection_box.orientation;
+            overlay_selection_->scale_ = selection_box.aabb.scale();
+            glm::mat4 rot = glm::rotate(glm::identity<glm::mat4>(), selection_box.orientation.z, glm::vec3(0.f, 0.f, 1.f) );
+            glm::vec4 vec = rot * glm::vec4(selection_box.aabb.center(), 1.f);
+            overlay_selection_->translation_ = glm::vec3(vec);
+        }
+
+        // cosmetics
+        overlay_selection_scale_->color = overlay_selection_icon_->color;
+        overlay_selection_rotate_->color = overlay_selection_icon_->color;
     }
 }

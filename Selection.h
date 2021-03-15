@@ -1,7 +1,7 @@
 #ifndef SELECTION_H
 #define SELECTION_H
 
-#include "Source.h"
+#include "SourceList.h"
 
 class Selection
 {
