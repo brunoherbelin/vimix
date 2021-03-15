@@ -449,17 +449,29 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 // accept picked sources in current workspaces
                 if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
 
-                    // lock icon of a source is picked : unlock
+                    // lock icon of a source (not current) is picked : unlock
                     if ( (*itp).first == s->lock_) {
                         s->setLocked(false);
                         pick = { s->locker_,  (*itp).second };
                         break;
                     }
-                    // a non-locked source is picked (or locked with CTRL key)
-                    else if ( !s->locked() || ( s->locked() && UserInterface::manager().ctrlModifier() ) ) {
+                    // a non-locked source is picked (anywhere)
+                    else if ( !s->locked() ) {
+                        // not in an active selection? don't pick this one!
+                        if ( !UserInterface::manager().ctrlModifier() &&
+                             Mixer::selection().size() > 1 &&
+                             !Mixer::selection().contains(s))
+                            continue;
+                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
                         pick = { s->locker_,  (*itp).second };
                         break;
                     }
+                    // force pick a locked source with CTRL key
+                    else if ( s->locked() && UserInterface::manager().ctrlModifier() ) {
+                        pick = { s->locker_,  (*itp).second };
+                        break;
+                    }
+
                 }
                 // no source picked
                 else {
