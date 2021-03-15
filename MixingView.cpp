@@ -161,12 +161,43 @@ void MixingView::draw()
                 (*it)->group(View::MIXING)->translation_ -= overlay_selection_->translation_;
                 (*it)->touch();
             }
+            Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
         }
-        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand & Hide" )){
+        if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
+            SourceList list;
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                list.push_back(*it);
+                // compute barycenter (1)
+                center += glm::vec2((*it)->group(View::MIXING)->translation_);
+            }
+            // compute barycenter (2)
+            center /= list.size();
+            // sort the vector of sources in clockwise order around the center pos_
+            list = mixing_sorted( list, center);
+            // average distance
+            float d = 0.f;
+            for (SourceList::iterator it = list.begin(); it != list.end(); it++) {
+                d += glm::distance(glm::vec2((*it)->group(View::MIXING)->translation_), center);
+            }
+            d /= list.size();
+            // distribute with equal angle
+            float angle = 0.f;
+            for (SourceList::iterator it = list.begin(); it != list.end(); it++) {
+                glm::vec2 P = center + glm::rotate(glm::vec2(0.f, d), angle);
+                (*it)->group(View::MIXING)->translation_.x = P.x;
+                (*it)->group(View::MIXING)->translation_.y = P.y;
+                (*it)->touch();
+                angle -= glm::two_pi<float>() / float(list.size());
+            }
+            Action::manager().store(std::string("Selection Distribute."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to border" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.f);
             }
+            Action::manager().store(std::string("Selection Expand to border."), Mixer::selection().front()->id());
         }
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();

@@ -834,11 +834,15 @@ void TextureView::draw()
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
             }
-            else  if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
+            if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
             }
-            else if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Restore aspect ratio" )){
+            if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
+                s->group(mode_)->rotation_.z = 0;
+                s->touch();
+            }
+            if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();

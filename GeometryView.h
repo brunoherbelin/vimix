@@ -23,12 +23,12 @@ private:
     Surface *output_surface_;
     Node *overlay_position_;
     Node *overlay_position_cross_;
-    Node *overlay_rotation_;
-    Node *overlay_rotation_fix_;
+    Symbol *overlay_rotation_;
+    Symbol *overlay_rotation_fix_;
     Node *overlay_rotation_clock_;
     Node *overlay_rotation_clock_hand_;
-    Node *overlay_scaling_;
-    Node *overlay_scaling_cross_;
+    Symbol *overlay_scaling_;
+    Symbol *overlay_scaling_cross_;
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
 
@@ -37,6 +37,8 @@ private:
     Group *overlay_selection_stored_status_;
     Handles *overlay_selection_scale_;
     Handles *overlay_selection_rotate_;
+
+    void applySelectionTransform(glm::mat4 M);
 };
 
 

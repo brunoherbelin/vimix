@@ -21,6 +21,7 @@
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
+#include "ActionManager.h"
 #include "Log.h"
 
 #include "GeometryView.h"
@@ -150,7 +151,7 @@ void GeometryView::update(float dt)
     if (Mixer::manager().view() == this )
     {
         updateSelectionOverlay();
-        overlay_selection_icon_->visible_ = false;
+//        overlay_selection_icon_->visible_ = false;
     }
 }
 
@@ -268,32 +269,112 @@ void GeometryView::draw()
     if (ImGui::BeginPopup("GeometrySourceContextMenu")) {
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
+            if (ImGui::Selectable( ICON_FA_EXPAND "   Fit" )){
+                s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
+                s->group(mode_)->rotation_.z = 0;
+                s->group(mode_)->translation_ = glm::vec3(0.f);
+                s->touch();
+                Action::manager().store(std::string("Source Fit."), s->id());
+            }
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
+                Action::manager().store(std::string("Source Reset."), s->id());
             }
-            else if (ImGui::Selectable( ICON_FA_EXPAND "  Fit" )){
-                glm::vec3 scale = glm::vec3(1.f);
-                FrameBuffer *output = Mixer::manager().session()->frame();
-                if (output) scale.x = output->aspectRatio() / s->frame()->aspectRatio();
-                s->group(mode_)->scale_ = scale;
+            if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
+                s->group(mode_)->translation_ = glm::vec3(0.f);
+                s->touch();
+                Action::manager().store(std::string("Source Reset position."), s->id());
+            }
+            if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
-                s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
+                Action::manager().store(std::string("Source Reset rotation."), s->id());
             }
-            else  if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
-                s->group(mode_)->translation_ = glm::vec3(0.f);
-                s->touch();
-            }
-            else if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Restore aspect ratio" )){
+            if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
+                Action::manager().store(std::string("Source aspect ratio."), s->id());
             }
         }
+        ImGui::EndPopup();
+    }
+    // display popup menu
+    if (show_context_menu_ == MENU_SELECTION) {
+        ImGui::OpenPopup( "GeometrySelectionContextMenu" );
+        show_context_menu_ = MENU_NONE;
+    }
+    if (ImGui::BeginPopup("GeometrySelectionContextMenu")) {
+
+        // colored context menu
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+
+        // batch manipulation of sources in Geometry view
+        if (ImGui::Selectable( ICON_FA_EXPAND "  Fit all" )){
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                (*sit)->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ (*sit)->frame()->aspectRatio(), 1.f, 1.f);
+                (*sit)->group(mode_)->rotation_.z = 0;
+                (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
+                (*sit)->touch();
+            }
+            Action::manager().store(std::string("Selection Fit all."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset all" )){
+            // apply to every sources in selection
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                (*sit)->group(mode_)->scale_ = glm::vec3(1.f);
+                (*sit)->group(mode_)->rotation_.z = 0;
+                (*sit)->group(mode_)->crop_ = glm::vec3(1.f);
+                (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
+                (*sit)->touch();
+            }
+            Action::manager().store(std::string("Selection Reset all."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_COMPASS "  Align all" )){
+            // apply to every sources in selection
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
+                (*sit)->touch();
+            }
+            Action::manager().store(std::string("Selection Align all."), Mixer::selection().front()->id());
+        }
+//        if (ImGui::Selectable( ICON_FA_TH "  Mosaic" )){ // TODO
+
+//        }
+        ImGui::Separator();
+        // manipulation of selection
+        if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+            initiate();
+            applySelectionTransform(T);
+            Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_COMPRESS "  Best Fit" )){
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+            float factor = 1.f;
+            float angle = -overlay_selection_->rotation_.z;
+            if ( overlay_selection_->scale_.x < overlay_selection_->scale_.y) {
+                factor *= output_surface_->scale_.x / overlay_selection_->scale_.y;
+                angle += glm::pi<float>() / 2.f;
+            }
+            else {
+                factor *= output_surface_->scale_.x / overlay_selection_->scale_.x;
+            }
+            glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+            glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
+            glm::mat4 M = S * R * T;
+            initiate();
+            applySelectionTransform(M);
+            Action::manager().store(std::string("Selection Best Fit."), Mixer::selection().front()->id());
+        }
+
+
+        ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
 }
@@ -392,6 +473,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                         }
                         break;
                     }
+                    else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
+                        pick = (*itp);
+                        openContextMenu(MENU_SELECTION);
+                        break;
+                    }
                 }
 
             }
@@ -405,6 +491,22 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 bool GeometryView::canSelect(Source *s) {
 
     return ( View::canSelect(s) && s->active() && s->workspace() == Settings::application.current_workspace);
+}
+
+
+void GeometryView::applySelectionTransform(glm::mat4 M)
+{
+    for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+        // recompute all from matrix transform
+        glm::mat4 transform = M * (*sit)->stored_status_->transform_;
+        glm::vec3 tra, rot, sca;
+        GlmToolkit::inverse_transform(transform, tra, rot, sca);
+        (*sit)->group(mode_)->translation_ = tra;
+        (*sit)->group(mode_)->scale_ = sca;
+        (*sit)->group(mode_)->rotation_ = rot;
+        // will have to be updated
+        (*sit)->touch();
+    }
 }
 
 View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
@@ -431,60 +533,75 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             float factor = glm::length( glm::vec2( selection_to ) ) / glm::length( glm::vec2( selection_from ) );
             glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
 
-            // if interaction with selection
+            // if interaction with selection SCALING handle
             if (pick.first == overlay_selection_scale_) {
 
-                // apply to overlay
+                // show manipulation overlay
+                overlay_scaling_cross_->visible_ = true;
+                overlay_scaling_grid_->visible_ = false;
+                overlay_scaling_->visible_ = true;
+                overlay_scaling_->translation_.x = overlay_selection_stored_status_->translation_.x;
+                overlay_scaling_->translation_.y = overlay_selection_stored_status_->translation_.y;
+                overlay_scaling_->rotation_.z = overlay_selection_stored_status_->rotation_.z;
+                overlay_scaling_->update(0);
+                overlay_scaling_cross_->copyTransform(overlay_scaling_);
+                overlay_scaling_->color = overlay_selection_icon_->color;
+                overlay_scaling_cross_->color = overlay_selection_icon_->color;
+
+                // apply to selection overlay
                 glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
                 overlay_selection_->scale_ = glm::vec3(vec);
 
-                // Transform sources
-                // complete transform matrix (right to left) : move to center, scale and move back
+                // apply to selection sources
+                // NB: complete transform matrix (right to left) : move to center, scale and move back
                 glm::mat4 M = T * S * glm::inverse(T);
-                // apply to every sources in selection
-                for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
-                    // displacement
-                    vec = M * glm::vec4( (*sit)->stored_status_->translation_, 1.f );
-                    (*sit)->group(mode_)->translation_ = glm::vec3(vec);
-                    // scale
-                    vec = M * glm::vec4( (*sit)->stored_status_->scale_, 0.f );
-                    (*sit)->group(mode_)->scale_ = glm::vec3(vec);
-                    // will have to be updated
-                    (*sit)->touch();
-                }
+                applySelectionTransform(M);
 
+                // store action in history
+                current_action_ = "Scale selection";
+                current_id_ = Mixer::selection().front()->id();
                 ret.type = Cursor_ResizeNWSE;
             }
+            // if interaction with selection ROTATION handle
             else if (pick.first == overlay_selection_rotate_) {
+
+                // show manipulation overlay
+                overlay_rotation_->visible_ = true;
+                overlay_rotation_->translation_.x = overlay_selection_stored_status_->translation_.x;
+                overlay_rotation_->translation_.y = overlay_selection_stored_status_->translation_.y;
+                overlay_rotation_->update(0);
+                overlay_rotation_->color = overlay_selection_icon_->color;
+                overlay_rotation_fix_->visible_ = false;
+                overlay_rotation_fix_->copyTransform(overlay_rotation_);
+                overlay_rotation_fix_->color = overlay_selection_icon_->color;
+
+                // cancel out scaling with SHIFT modifier key
+                if (UserInterface::manager().shiftModifier()) {
+                    overlay_rotation_fix_->visible_ = true;
+                    float factor = glm::length( glm::vec2( overlay_selection_->scale_ ) ) / glm::length( glm::vec2( overlay_selection_stored_status_->scale_ ) );
+                    S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+                }
 
                 // compute rotation angle
                 float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
                 glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
 
-                // apply to overlay
+                // apply to selection overlay
                 glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
                 overlay_selection_->scale_ = glm::vec3(vec);
                 overlay_selection_->rotation_.z = overlay_selection_stored_status_->rotation_.z + angle;
 
-                // Transform sources
-                // complete transform matrix (right to left) : move to center, rotate, scale and move back
+                // apply to selection sources
+                // NB: complete transform matrix (right to left) : move to center, rotate, scale and move back
                 glm::mat4 M = T * S * R * glm::inverse(T);
-                // apply to every sources in selection:
-                for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                applySelectionTransform(M);
 
-                    glm::mat4 transform = M * (*sit)->stored_status_->transform_;
-                    glm::vec3 tra, rot, sca;
-                    GlmToolkit::inverse_transform(transform, tra, rot, sca);
-                    (*sit)->group(mode_)->translation_ = tra;
-                    (*sit)->group(mode_)->scale_ = sca;
-                    (*sit)->group(mode_)->rotation_ = rot;
-
-                    // will have to be updated
-                    (*sit)->touch();
-                }
-
+                // store action in history
+                current_action_ = "Scale and rotate selection";
+                current_id_ = Mixer::selection().front()->id();
                 ret.type = Cursor_Hand;
             }
+
         }
 
         // update cursor
@@ -751,7 +868,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::SCALE]->visible_ = false;
             s->handles_[mode_][Handles::CROP]->visible_ = false;
             s->handles_[mode_][Handles::MENU]->visible_ = false;
-
             // ROTATION on CENTER
             overlay_rotation_->visible_ = true;
             overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
@@ -760,7 +876,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_rotation_fix_->visible_ = true;
             overlay_rotation_fix_->copyTransform(overlay_rotation_);
             overlay_rotation_clock_->visible_ = false;
-
             // rotation center to center of source (disregarding scale)
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
             source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
@@ -867,6 +982,11 @@ void GeometryView::terminate()
     overlay_scaling_->visible_        = false;
     overlay_crop_->visible_           = false;
 
+    overlay_rotation_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_rotation_fix_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_scaling_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_scaling_cross_->color =  glm::vec4(1.f, 1.f, 1.f, 0.8f);
+
     // restore of all handles overlays
     glm::vec2 c(0.f, 0.f);
     for (auto sit = Mixer::manager().session()->begin();
@@ -944,3 +1064,4 @@ void GeometryView::updateSelectionOverlay()
         overlay_selection_rotate_->color = overlay_selection_icon_->color;
     }
 }
+
