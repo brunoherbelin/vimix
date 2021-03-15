@@ -335,14 +335,6 @@ void GeometryView::draw()
             }
             Action::manager().store(std::string("Selection Reset all."), Mixer::selection().front()->id());
         }
-        if (ImGui::Selectable( ICON_FA_COMPASS "  Align all" )){
-            // apply to every sources in selection
-            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
-                (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
-                (*sit)->touch();
-            }
-            Action::manager().store(std::string("Selection Align all."), Mixer::selection().front()->id());
-        }
 //        if (ImGui::Selectable( ICON_FA_TH "  Mosaic" )){ // TODO
 
 //        }
@@ -354,7 +346,15 @@ void GeometryView::draw()
             applySelectionTransform(T);
             Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
         }
-        if (ImGui::Selectable( ICON_FA_COMPRESS "  Best Fit" )){
+        if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
+            // apply to every sources in selection
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+                (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
+                (*sit)->touch();
+            }
+            Action::manager().store(std::string("Selection Align."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_COMPRESS "   Best Fit" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
             float factor = 1.f;
             float angle = -overlay_selection_->rotation_.z;
@@ -372,7 +372,14 @@ void GeometryView::draw()
             applySelectionTransform(M);
             Action::manager().store(std::string("Selection Best Fit."), Mixer::selection().front()->id());
         }
-
+        if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Mirror" )){
+            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+            glm::mat4 F = glm::scale(glm::identity<glm::mat4>(), glm::vec3(-1.f, 1.f, 1.f));
+            glm::mat4 M = glm::inverse(T) * F * T;
+            initiate();
+            applySelectionTransform(M);
+            Action::manager().store(std::string("Selection Mirror."), Mixer::selection().front()->id());
+        }
 
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
