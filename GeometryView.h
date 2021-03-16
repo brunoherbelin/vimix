@@ -25,7 +25,8 @@ private:
     Node *overlay_position_cross_;
     Symbol *overlay_rotation_;
     Symbol *overlay_rotation_fix_;
-    Node *overlay_rotation_clock_;
+    Group *overlay_rotation_clock_;
+    Symbol *overlay_rotation_clock_tic_;
     Node *overlay_rotation_clock_hand_;
     Symbol *overlay_scaling_;
     Symbol *overlay_scaling_cross_;

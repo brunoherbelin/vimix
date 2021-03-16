@@ -62,15 +62,14 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_position_cross_->visible_ = false;
     // 'clock' : tic marks every 10 degrees for ROTATION
     // with dark background
-    Group *g = new Group;
-    Symbol *s = new Symbol(Symbol::CLOCK);
-    g->attach(s);
-    s = new Symbol(Symbol::CIRCLE_POINT);
+    overlay_rotation_clock_ = new Group;
+    overlay_rotation_clock_tic_ = new Symbol(Symbol::CLOCK);
+    overlay_rotation_clock_->attach(overlay_rotation_clock_tic_);
+    Symbol *s = new Symbol(Symbol::CIRCLE_POINT);
     s->color = glm::vec4(0.f, 0.f, 0.f, 0.1f);
     s->scale_ = glm::vec3(28.f, 28.f, 1.f);
     s->translation_.z = -0.1;
-    g->attach(s);
-    overlay_rotation_clock_ = g;
+    overlay_rotation_clock_->attach(s);
     overlay_rotation_clock_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
     scene.fg()->attach(overlay_rotation_clock_);
     overlay_rotation_clock_->visible_ = false;
@@ -90,7 +89,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_rotation_->visible_ = false;
     // 'grid' : tic marks every 0.1 step for SCALING
     // with dark background
-    g = new Group;
+    Group *g = new Group;
     s = new Symbol(Symbol::GRID);
     g->attach(s);
     s = new Symbol(Symbol::SQUARE_POINT);
@@ -603,15 +602,26 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
                 // compute rotation angle
                 float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
-                glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
 
                 // apply to selection overlay
                 glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
                 overlay_selection_->scale_ = glm::vec3(vec);
                 overlay_selection_->rotation_.z = overlay_selection_stored_status_->rotation_.z + angle;
 
+                // POST-CORRECTION ; discretized rotation with ALT
+                if (UserInterface::manager().altModifier()) {
+                    int degrees = int(  glm::degrees(overlay_selection_->rotation_.z) );
+                    degrees = (degrees / 10) * 10;
+                    overlay_selection_->rotation_.z = glm::radians( float(degrees) );
+                    angle = overlay_selection_->rotation_.z - overlay_selection_stored_status_->rotation_.z;
+                    overlay_rotation_clock_->visible_ = true;
+                    overlay_rotation_clock_->copyTransform(overlay_rotation_);
+                    overlay_rotation_clock_tic_->color = overlay_selection_icon_->color;
+                }
+
                 // apply to selection sources
                 // NB: complete transform matrix (right to left) : move to center, rotate, scale and move back
+                glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
                 glm::mat4 M = T * S * R * glm::inverse(T);
                 applySelectionTransform(M);
 
@@ -1003,6 +1013,7 @@ void GeometryView::terminate()
 
     overlay_rotation_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
     overlay_rotation_fix_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_rotation_clock_tic_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
     overlay_scaling_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
     overlay_scaling_cross_->color =  glm::vec4(1.f, 1.f, 1.f, 0.8f);
 
