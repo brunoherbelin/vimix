@@ -394,14 +394,21 @@ void UserInterface::handleKeyboard()
                     Mixer::manager().setCurrentNext();
             }
             // arrow keys to act on current view
-            else if (ImGui::IsKeyPressed( GLFW_KEY_LEFT ))
+            else if (ImGui::IsKeyDown( GLFW_KEY_LEFT ))
                 Mixer::manager().view()->arrow( glm::vec2(-1.f, 0.f) );
-            else if (ImGui::IsKeyPressed( GLFW_KEY_RIGHT ))
+            else if (ImGui::IsKeyDown( GLFW_KEY_RIGHT ))
                 Mixer::manager().view()->arrow( glm::vec2(+1.f, 0.f) );
-            else if (ImGui::IsKeyPressed( GLFW_KEY_UP ))
+            if (ImGui::IsKeyDown( GLFW_KEY_UP ))
                 Mixer::manager().view()->arrow( glm::vec2(0.f, -1.f) );
-            else if (ImGui::IsKeyPressed( GLFW_KEY_DOWN ))
+            else if (ImGui::IsKeyDown( GLFW_KEY_DOWN ))
                 Mixer::manager().view()->arrow( glm::vec2(0.f, 1.f) );
+
+            if (ImGui::IsKeyReleased( GLFW_KEY_LEFT ) ||
+                ImGui::IsKeyReleased( GLFW_KEY_RIGHT ) ||
+                ImGui::IsKeyReleased( GLFW_KEY_UP ) ||
+                ImGui::IsKeyReleased( GLFW_KEY_DOWN ) ){
+                Mixer::manager().view()->terminate();
+            }
         }
     }
 

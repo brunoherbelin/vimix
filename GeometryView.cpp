@@ -1036,13 +1036,23 @@ void GeometryView::arrow (glm::vec2 movement)
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
         Group *sourceNode = s->group(mode_);
+        static glm::vec3 alt_move_ = sourceNode->translation_;
         if (UserInterface::manager().altModifier()) {
-            sourceNode->translation_ += glm::vec3(movement.x, -movement.y, 0.f) * 0.1f;
-            sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
-            sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
+            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
+            sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
         }
-        else
+        else {
             sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            alt_move_ = sourceNode->translation_;
+        }
+
+        // store action in history
+        std::ostringstream info;
+        info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+        info << ", "  << sourceNode->translation_.y ;
+        current_action_ = s->name() + ": " + info.str();
+        current_id_ = s->id();
 
         // request update
         s->touch();

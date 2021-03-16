@@ -1317,13 +1317,23 @@ void TextureView::arrow (glm::vec2 movement)
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
         Group *sourceNode = s->group(mode_);
+        static glm::vec3 alt_move_ = sourceNode->translation_;
         if (UserInterface::manager().altModifier()) {
-            sourceNode->translation_ += glm::vec3(movement.x, -movement.y, 0.f) * 0.1f;
-            sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
-            sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
+            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
+            sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
         }
-        else
+        else {
             sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            alt_move_ = sourceNode->translation_;
+        }
+
+        // store action in history
+        std::ostringstream info;
+        info << "Texture Shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+        info << ", "  << sourceNode->translation_.y ;
+        current_action_ = s->name() + ": " + info.str();
+        current_id_ = s->id();
 
         // request update
         s->touch();
@@ -1331,14 +1341,14 @@ void TextureView::arrow (glm::vec2 movement)
     else if (edit_source_) {
         if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
             if (mask_cursor_paint_ > 0) {
-                glm::vec2 b = 0.05f * movement;
+                glm::vec2 b = 0.02f * movement;
                 Settings::application.brush.x = CLAMP(Settings::application.brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                 Settings::application.brush.y = CLAMP(Settings::application.brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
             }
         }
         else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
             if (mask_cursor_shape_ > 0) {
-                float b = -0.05 * movement.y;
+                float b = -0.02f * movement.y;
                 edit_source_->maskShader()->blur = CLAMP(edit_source_->maskShader()->blur+b, SHAPE_MIN_BLUR, SHAPE_MAX_BLUR);
                 edit_source_->touch();
             }

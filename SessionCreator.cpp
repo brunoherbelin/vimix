@@ -378,10 +378,11 @@ void SessionLoader::visit(Node &n)
 void SessionLoader::visit(MediaPlayer &n)
 {
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
-    uint64_t id__ = -1;
-    mediaplayerNode->QueryUnsigned64Attribute("id", &id__);
 
     if (mediaplayerNode) {
+        uint64_t id__ = -1;
+        mediaplayerNode->QueryUnsigned64Attribute("id", &id__);
+
         // timeline
         XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
         if (timelineelement) {

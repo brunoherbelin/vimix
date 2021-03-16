@@ -9,6 +9,7 @@
 #include "ImGuiToolkit.h"
 
 #include <string>
+#include <sstream>
 #include <iomanip>
 
 #include "Mixer.h"
@@ -101,7 +102,7 @@ void LayerView::draw()
         if (candidate_flatten_group){
             if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
                 Mixer::manager().groupSelection();
-//                Action::manager().store(std::string("Selection Flatten."), Mixer::selection().front()->id());
+                Action::manager().store(std::string("Selection Flatten."), Mixer::selection().front()->id());
             }
         }
         else {
@@ -315,12 +316,27 @@ void LayerView::arrow (glm::vec2 movement)
         glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
-        if (UserInterface::manager().altModifier())
-            gl_delta *= 10.f;
 
         Group *sourceNode = s->group(mode_);
-        glm::vec3 dest_translation = sourceNode->translation_ + gl_delta * ARROWS_MOVEMENT_FACTOR;
+        glm::vec3 dest_translation = sourceNode->translation_;
+        static glm::vec3 alt_move_ = sourceNode->translation_;
+        if (UserInterface::manager().altModifier()) {
+            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            dest_translation.x = ROUND(alt_move_.x, 10.f);
+            dest_translation.y = ROUND(alt_move_.y, 10.f);
+        }
+        else {
+            dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            alt_move_ = dest_translation;
+        }
+
         setDepth( s,  MAX( -dest_translation.x, 0.f) );
+
+        // store action in history
+        std::ostringstream info;
+        info << "Depth " << std::fixed << std::setprecision(2) << s->depth() << "  ";
+        current_action_ = s->name() + ": " + info.str();
+        current_id_ = s->id();
 
         // request update
         s->touch();
