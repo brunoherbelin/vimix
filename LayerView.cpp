@@ -51,12 +51,14 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp_left_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 1.f );
     persp_left_->scale_.x = LAYER_PERSPECTIVE;
     persp_left_->translation_.z = -0.1f;
+    persp_left_->translation_.x = -1.f;
     scene.bg()->attach(persp_left_);
 
     persp_right_ = new Mesh("mesh/perspective_axis_right.ply");
     persp_right_->shader()->color = glm::vec4( COLOR_FRAME_LIGHT, 1.f );
     persp_right_->scale_.x = LAYER_PERSPECTIVE;
     persp_right_->translation_.z = -0.1f;
+    persp_right_->translation_.x = 1.f;
     scene.bg()->attach(persp_right_);
 
 }
