@@ -441,65 +441,64 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             }
         }
         // the clicked source changed (not the current source)
-        if (current == nullptr){
+        if (current == nullptr) {
 
             // default to failed pick
             pick = { nullptr, glm::vec2(0.f) };
 
-            // loop over all nodes picked
+            // loop over all nodes picked to detect clic on locks
             for (auto itp = pv.rbegin(); itp != pv.rend(); itp++){
-
                 // get if a source was picked
                 Source *s = Mixer::manager().findSource((*itp).first);
-
-                // accept picked sources in current workspaces
-                if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
-
-                    // lock icon of a source (not current) is picked : unlock
-                    if ( (*itp).first == s->lock_) {
-                        s->setLocked(false);
-                        pick = { s->locker_,  (*itp).second };
-                        break;
-                    }
-                    // a non-locked source is picked (anywhere)
-                    else if ( !s->locked() ) {
-                        // not in an active selection? don't pick this one!
-                        if ( !UserInterface::manager().ctrlModifier() &&
-                             Mixer::selection().size() > 1 &&
-                             !Mixer::selection().contains(s))
-                            continue;
-                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-                        pick = { s->locker_,  (*itp).second };
-                        break;
-                    }
-                    // force pick a locked source with CTRL key
-                    else if ( s->locked() && UserInterface::manager().ctrlModifier() ) {
-                        pick = { s->locker_,  (*itp).second };
-                        break;
-                    }
-
+                // lock icon of a source (not current) is picked : unlock
+                if ( s!=nullptr && (*itp).first == s->lock_) {
+                    s->setLocked(false);
+                    pick = { s->locker_,  (*itp).second };
+                    break;
                 }
-                // no source picked
-                else {
-                    // picked on selection handles
-                    if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
-                        pick = (*itp);
-                        // initiate selection manipulation
-                        if (overlay_selection_stored_status_) {
-                            overlay_selection_stored_status_->copyTransform(overlay_selection_);
-                            overlay_selection_active_ = true;
-                        }
-                        break;
-                    }
-                    else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
-                        pick = (*itp);
-                        openContextMenu(MENU_SELECTION);
-                        break;
-                    }
-                }
-
             }
+            // no lock icon picked, find what else was picked
+            if ( pick.first == nullptr) {
 
+                // loop over all nodes picked
+                for (auto itp = pv.rbegin(); itp != pv.rend(); itp++){
+                    // get if a source was picked
+                    Source *s = Mixer::manager().findSource((*itp).first);
+                    // accept picked sources in current workspaces
+                    if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
+                        // a non-locked source is picked (anywhere)
+                        if ( !s->locked() ) {
+                            // not in an active selection? don't pick this one!
+                            if ( !UserInterface::manager().ctrlModifier() &&
+                                 Mixer::selection().size() > 1 &&
+                                 !Mixer::selection().contains(s))
+                                continue;
+                            // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
+                            pick = { s->locker_,  (*itp).second };
+                            break;
+                        }
+
+                    }
+                    // not a source picked
+                    else {
+                        // picked on selection handles
+                        if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
+                            pick = (*itp);
+                            // initiate selection manipulation
+                            if (overlay_selection_stored_status_) {
+                                overlay_selection_stored_status_->copyTransform(overlay_selection_);
+                                overlay_selection_active_ = true;
+                            }
+                            break;
+                        }
+                        else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
+                            pick = (*itp);
+                            openContextMenu(MENU_SELECTION);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 

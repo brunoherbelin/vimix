@@ -345,8 +345,8 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
                 s->setLocked(true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
-            // pick a locked source without CTRL key; cancel pick
-            else if ( s->locked() && !UserInterface::manager().ctrlModifier() ) {
+            // pick a locked source ; cancel pick
+            else if ( s->locked() ) {
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the mixing group rotation icon
