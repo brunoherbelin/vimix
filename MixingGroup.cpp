@@ -181,6 +181,7 @@ void MixingGroup::update (float)
             angle -= glm::orientedAngle( glm::normalize(pos_second), glm::vec2(1.f, 0.f) );
             dist /= glm::length( pos_second );
 
+            int numactions = 0;
             auto it = sources_.begin();
             for (; it != sources_.end(); it++){
 
@@ -193,6 +194,7 @@ void MixingGroup::update (float)
                     (*it)->group(View::MIXING)->translation_.x = vec.x;
                     (*it)->group(View::MIXING)->translation_.y = vec.y;
                     (*it)->touch();
+                    numactions++;
                 }
 
                 // update point
@@ -200,6 +202,9 @@ void MixingGroup::update (float)
             }
             // update path
             lines_->changePath(p);
+            // no source was rotated? better action is thus to grab
+            if (numactions<1)
+                update_action_ = ACTION_GRAB_ALL;
         }
 
         // done
