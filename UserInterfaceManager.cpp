@@ -363,30 +363,33 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
-        // normal keys // make sure no entry / window box is active
+        // button esc to toggle fullscreen
+        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
+            if (Rendering::manager().mainWindow().isFullscreen())
+                Rendering::manager().mainWindow().exitFullscreen();
+            else if (Settings::application.widget.preview || Settings::application.widget.media_player)  {
+                Settings::application.widget.preview = false;
+                Settings::application.widget.media_player = false;
+            }
+            else if (navigator.pannelVisible())
+                navigator.hidePannel();
+            else if (!Mixer::selection().empty()) {
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+            }
+        }
+        // button home to toggle menu
+        else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
+            navigator.togglePannelMenu();
+        // button home to toggle menu
+        else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
+            navigator.togglePannelNew();
+        // normal keys in workspace // make sure no entry / window box is active
         else if ( !ImGui::IsAnyWindowFocused() ){
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
                 Mixer::manager().deleteSelection();
-            // button esc to toggle fullscreen
-            else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
-                if (Rendering::manager().mainWindow().isFullscreen())
-                    Rendering::manager().mainWindow().exitFullscreen();
-                else if (navigator.pannelVisible())
-                    navigator.hidePannel();
-                else if (!Mixer::selection().empty()) {
-                    Mixer::manager().unsetCurrentSource();
-                    Mixer::selection().clear();
-                }
-                else
-                    Mixer::manager().setView(View::MIXING);
-            }
-            // button home to toggle menu
-            else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
-                navigator.togglePannelMenu();
-            // button home to toggle menu
-            else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
-                navigator.togglePannelNew();
+
             // button tab to select next
             else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
                 if (shift_modifier_active)
