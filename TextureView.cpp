@@ -158,6 +158,7 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     // with dark background
     g = new Group;
     s = new Symbol(Symbol::CLOCK);
+    s->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     g->attach(s);
     s = new Symbol(Symbol::CIRCLE_POINT);
     s->color = glm::vec4(0.f, 0.f, 0.f, 0.25f);
@@ -1210,22 +1211,22 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
                 sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
-            }
-            // ALT: single axis movement
-            overlay_position_cross_->visible_ = false;
-            if (UserInterface::manager().shiftModifier()) {
-                overlay_position_cross_->visible_ = true;
-                overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
-                overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
-                overlay_position_cross_->update(0);
+                // + SHIFT: single axis movement
+                overlay_position_cross_->visible_ = false;
+                if (UserInterface::manager().shiftModifier()) {
+                    overlay_position_cross_->visible_ = true;
+                    overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
+                    overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
+                    overlay_position_cross_->update(0);
 
-                glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
-                if (ABS(dif.x) > ABS(dif.y) ) {
-                    sourceNode->translation_.y = s->stored_status_->translation_.y;
-                    ret.type = Cursor_ResizeEW;
-                } else {
-                    sourceNode->translation_.x = s->stored_status_->translation_.x;
-                    ret.type = Cursor_ResizeNS;
+                    glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
+                    if (ABS(dif.x) > ABS(dif.y) ) {
+                        sourceNode->translation_.y = s->stored_status_->translation_.y;
+                        ret.type = Cursor_ResizeEW;
+                    } else {
+                        sourceNode->translation_.x = s->stored_status_->translation_.x;
+                        ret.type = Cursor_ResizeNS;
+                    }
                 }
             }
             // Show center overlay for POSITION

@@ -422,7 +422,6 @@ void UserInterface::handleKeyboard()
         Mixer::manager().setView((View::Mode) target_view_navigator);
     }
 
-
     // confirmation for leaving vimix: prevent un-wanted Ctrl+Q, but make it easy to confirm
     if (ImGui::BeginPopup("confirm_quit_popup"))
     {
@@ -633,10 +632,12 @@ void UserInterface::handleMouse()
                     Source *current = Mixer::manager().currentSource();
                     if (current)
                     {
-                        // grab others from selection
-                        for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
-                            if ( *it != current )
-                                Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        if (!shift_modifier_active) {
+                            // grab others from selection
+                            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                                if ( *it != current )
+                                    Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                            }
                         }
                         // grab current sources
                         View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);

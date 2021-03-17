@@ -954,23 +954,23 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
                 sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
-            }
-            // ALT: single axis movement
-            overlay_position_cross_->visible_ = false;
-            if (UserInterface::manager().shiftModifier()) {
-                overlay_position_cross_->visible_ = true;
-                overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
-                overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
-                overlay_position_cross_->update(0);
+//            // + SHIFT: single axis movement
+//            overlay_position_cross_->visible_ = false;
+//            if (UserInterface::manager().shiftModifier()) {
+//                overlay_position_cross_->visible_ = true;
+//                overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
+//                overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
+//                overlay_position_cross_->update(0);
 
-                glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
-                if (ABS(dif.x) > ABS(dif.y) ) {
-                    sourceNode->translation_.y = s->stored_status_->translation_.y;
-                    ret.type = Cursor_ResizeEW;
-                } else {
-                    sourceNode->translation_.x = s->stored_status_->translation_.x;
-                    ret.type = Cursor_ResizeNS;
-                }
+//                glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
+//                if (ABS(dif.x) > ABS(dif.y) ) {
+//                    sourceNode->translation_.y = s->stored_status_->translation_.y;
+//                    ret.type = Cursor_ResizeEW;
+//                } else {
+//                    sourceNode->translation_.x = s->stored_status_->translation_.x;
+//                    ret.type = Cursor_ResizeNS;
+//                }
+//            }
             }
             // Show center overlay for POSITION
             overlay_position_->visible_ = true;
@@ -1011,6 +1011,7 @@ void GeometryView::terminate()
     overlay_scaling_->visible_        = false;
     overlay_crop_->visible_           = false;
 
+    // restore possible color change after selection operation
     overlay_rotation_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
     overlay_rotation_fix_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
     overlay_rotation_clock_tic_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
@@ -1039,34 +1040,64 @@ void GeometryView::terminate()
 
 void GeometryView::arrow (glm::vec2 movement)
 {
-    Source *s = Mixer::manager().currentSource();
-    if (s) {
+    static int accumulator = 0;
+    accumulator++;
 
-        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        Group *sourceNode = s->group(mode_);
-        static glm::vec3 alt_move_ = sourceNode->translation_;
-        if (UserInterface::manager().altModifier()) {
-            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
-            sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
-            sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+    bool first = true;
+    glm::vec3 delta_translation(0.f);
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+
+        // individual move with SHIFT
+        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
+            continue;
+
+        Group *sourceNode = (*it)->group(mode_);
+        glm::vec3 dest_translation(0.f);
+
+        if (first) {
+            // dest starts at current
+            dest_translation = sourceNode->translation_;
+
+            // + ALT : discrete displacement
+            if (UserInterface::manager().altModifier()) {
+                if (accumulator > 10) {
+                    dest_translation += glm::sign(gl_delta) * 0.11f;
+                    dest_translation.x = ROUND(dest_translation.x, 10.f);
+                    dest_translation.y = ROUND(dest_translation.y, 10.f);
+                    accumulator = 0;
+                }
+                else
+                    break;
+            }
+            else {
+                // normal case: dest += delta
+                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            }
+
+            // store action in history
+            std::ostringstream info;
+            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+            info << ", "  << sourceNode->translation_.y ;
+            current_action_ = (*it)->name() + ": " + info.str();
+            current_id_ = (*it)->id();
+
+            // delta for others to follow
+            delta_translation = dest_translation - sourceNode->translation_;
         }
         else {
-            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
-            alt_move_ = sourceNode->translation_;
+            // dest = current + delta from first
+            dest_translation = sourceNode->translation_ + delta_translation;
         }
 
-        // store action in history
-        std::ostringstream info;
-        info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-        info << ", "  << sourceNode->translation_.y ;
-        current_action_ = s->name() + ": " + info.str();
-        current_id_ = s->id();
+        // apply & request update
+        sourceNode->translation_ = dest_translation;
+        (*it)->touch();
 
-        // request update
-        s->touch();
+        first = false;
     }
 }
 

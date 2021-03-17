@@ -269,10 +269,6 @@ float LayerView::setDepth(Source *s, float d)
     // change depth
     sourceNode->translation_.z = CLAMP( depth, MIN_DEPTH, MAX_DEPTH);
 
-    // discretized translation with ALT
-    if (UserInterface::manager().altModifier())
-        sourceNode->translation_.z = ROUND(sourceNode->translation_.z, 5.f);
-
     // request reordering of scene at next update
     View::need_deep_update_++;
 
@@ -294,6 +290,10 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     // compute delta translation
     glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
+    // discretized translation with ALT
+    if (UserInterface::manager().altModifier())
+        dest_translation.x = ROUND(dest_translation.x, 5.f);
+
     // apply change
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
 
@@ -310,36 +310,61 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
 void LayerView::arrow (glm::vec2 movement)
 {
-    Source *s = Mixer::manager().currentSource();
-    if (s) {
+    static int accumulator = 0;
+    accumulator++;
 
-        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-        glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
-        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+    glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
+    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        Group *sourceNode = s->group(mode_);
-        glm::vec3 dest_translation = sourceNode->translation_;
-        static glm::vec3 alt_move_ = sourceNode->translation_;
-        if (UserInterface::manager().altModifier()) {
-            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
-            dest_translation.x = ROUND(alt_move_.x, 10.f);
-            dest_translation.y = ROUND(alt_move_.y, 10.f);
+    bool first = true;
+    glm::vec3 delta_translation(0.f);
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+
+        // individual move with SHIFT
+        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
+            continue;
+
+        Group *sourceNode = (*it)->group(mode_);
+        glm::vec3 dest_translation(0.f);
+
+        if (first) {
+            // dest starts at current
+            dest_translation = sourceNode->translation_;
+
+            // + ALT : discrete displacement
+            if (UserInterface::manager().altModifier()) {
+                if (accumulator > 10) {
+                    dest_translation += glm::sign(gl_delta) * 0.21f;
+                    dest_translation.x = ROUND(dest_translation.x, 10.f);
+                    accumulator = 0;
+                }
+                else
+                    break;
+            }
+            else {
+                // normal case: dest += delta
+                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            }
+
+            // store action in history
+            std::ostringstream info;
+            info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
+            current_action_ = (*it)->name() + ": " + info.str();
+            current_id_ = (*it)->id();
+
+            // delta for others to follow
+            delta_translation = dest_translation - sourceNode->translation_;
         }
         else {
-            dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR;
-            alt_move_ = dest_translation;
+            // dest = current + delta from first
+            dest_translation = sourceNode->translation_ + delta_translation;
         }
 
-        setDepth( s,  MAX( -dest_translation.x, 0.f) );
+        // apply & request update
+        setDepth( *it,  MAX( -dest_translation.x, 0.f) );
 
-        // store action in history
-        std::ostringstream info;
-        info << "Depth " << std::fixed << std::setprecision(2) << s->depth() << "  ";
-        current_action_ = s->name() + ": " + info.str();
-        current_id_ = s->id();
-
-        // request update
-        s->touch();
+        first = false;
     }
 }
 
