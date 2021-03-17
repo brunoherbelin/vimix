@@ -89,7 +89,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.08f, 0.08f, 1.f);
     tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    tmp->shader()->color = glm::vec4( 0.8f, 0.8f, 0.8f, 0.9f );
     slider_root_->attach(tmp);
 
     slider_ = new Disk();
@@ -167,7 +167,7 @@ void MixingView::draw()
                 (*it)->group(View::MIXING)->translation_ -= glm::vec3(center, 0.f);
                 (*it)->touch();
             }
-            Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Center."), Mixer::selection().front()->id());
         }
         if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
             SourceList list;
@@ -196,14 +196,21 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(list.size());
             }
-            Action::manager().store(std::string("Selection Distribute."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Distribute."), Mixer::selection().front()->id());
         }
-        if (ImGui::Selectable( ICON_FA_EXPAND_ARROWS_ALT "  Expand to border" )){
+        if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.f);
             }
-            Action::manager().store(std::string("Selection Expand to border."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Expand & hide."), Mixer::selection().front()->id());
+        }
+        if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
+            SourceList::iterator  it = Mixer::selection().begin();
+            for (; it != Mixer::selection().end(); it++) {
+                (*it)->setAlpha(0.99f);
+            }
+            Action::manager().store(std::string("Selection Mixing Compress & show."), Mixer::selection().front()->id());
         }
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();

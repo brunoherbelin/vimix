@@ -120,18 +120,18 @@ void LayerView::draw()
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Distribute."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Distribute."), dsl.front()->id());
             View::need_deep_update_++;
         }
-        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Space equally" )){
+        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             for (it++; it != dsl.end(); it++) {
-                depth += 2.f * LAYER_STEP;
+                depth += LAYER_STEP;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Space equally."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Compress."), dsl.front()->id());
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
@@ -141,7 +141,7 @@ void LayerView::draw()
             for (; it != dsl.end(); it++, rit++) {
                 (*it)->setDepth((*rit)->depth());
             }
-            Action::manager().store(std::string("Selection Reverse order."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Reverse order."), dsl.front()->id());
             View::need_deep_update_++;
         }
 
