@@ -156,9 +156,15 @@ void MixingView::draw()
 
         // manipulation of sources in Mixing view
         if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
-            SourceList::iterator  it = Mixer::selection().begin();
-            for (; it != Mixer::selection().end(); it++) {
-                (*it)->group(View::MIXING)->translation_ -= overlay_selection_->translation_;
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                // compute barycenter (1)
+                center += glm::vec2((*it)->group(View::MIXING)->translation_);
+            }
+            // compute barycenter (2)
+            center /= Mixer::selection().size();
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                (*it)->group(View::MIXING)->translation_ -= glm::vec3(center, 0.f);
                 (*it)->touch();
             }
             Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
