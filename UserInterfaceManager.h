@@ -152,6 +152,7 @@ public:
     void StartScreenshot();
     void showPannel(int id = 0);
 
+    void showSourceEditor(Source *s);
     void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor

@@ -57,6 +57,7 @@ using namespace std;
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
+#include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
@@ -1519,6 +1520,27 @@ int UserInterface::RenderViewNavigator(int *shift)
     }
 
     return target_index;
+}
+
+
+void UserInterface::showSourceEditor(Source *s)
+{
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        showMediaPlayer(ms->mediaplayer());
+        return;
+    }
+    CloneSource *cs = dynamic_cast<CloneSource *>(s);
+    if (cs != nullptr) {
+        Mixer::manager().setCurrentSource( cs->origin() );
+        return;
+    }
+    RenderSource *rs = dynamic_cast<RenderSource *>(s);
+    if (rs != nullptr) {
+        Settings::application.widget.preview = true;
+        return;
+    }
+    navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 }
 
 void UserInterface::showMediaPlayer(MediaPlayer *mp)

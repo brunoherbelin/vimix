@@ -349,6 +349,10 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             else if ( s->locked() ) {
                 pick = { nullptr, glm::vec2(0.f) };
             }
+            // pick the symbol: ask to show editor
+            else if ( pick.first == s->symbol_ ) {
+                UserInterface::manager().showSourceEditor(s);
+            }
             // pick on the mixing group rotation icon
             else if ( pick.first == s->rotation_mixingroup_ ) {
                 s->mixinggroup_->setAction( MixingGroup::ACTION_ROTATE_ALL );
