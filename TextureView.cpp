@@ -121,16 +121,16 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     scene.fg()->attach(overlay_position_);
     overlay_position_->visible_ = false;
     // cross to show the axis for POSITION
-    overlay_position_cross_ = new Symbol(Symbol::CROSS);
+    overlay_position_cross_ = new Symbol(Symbol::GRID);
     overlay_position_cross_->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
-    overlay_position_cross_->rotation_ = glm::vec3(0.f, 0.f, M_PI_4);
-    overlay_position_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
+    overlay_position_cross_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
     scene.fg()->attach(overlay_position_cross_);
     overlay_position_cross_->visible_ = false;
     // 'grid' : tic marks every 0.1 step for SCALING
     // with dark background
     Group *g = new Group;
     Symbol *s = new Symbol(Symbol::GRID);
+    s->scale_ = glm::vec3(1.655f, 1.655f, 1.f);
     s->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f );
     g->attach(s);
     s = new Symbol(Symbol::SQUARE_POINT);
@@ -1210,24 +1210,12 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             // discretized translation with ALT
             if (UserInterface::manager().altModifier()) {
                 sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
-                sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);
-                // + SHIFT: single axis movement
-                overlay_position_cross_->visible_ = false;
-                if (UserInterface::manager().shiftModifier()) {
-                    overlay_position_cross_->visible_ = true;
-                    overlay_position_cross_->translation_.x = s->stored_status_->translation_.x;
-                    overlay_position_cross_->translation_.y = s->stored_status_->translation_.y;
-                    overlay_position_cross_->update(0);
-
-                    glm::vec3 dif = s->stored_status_->translation_ - sourceNode->translation_;
-                    if (ABS(dif.x) > ABS(dif.y) ) {
-                        sourceNode->translation_.y = s->stored_status_->translation_.y;
-                        ret.type = Cursor_ResizeEW;
-                    } else {
-                        sourceNode->translation_.x = s->stored_status_->translation_.x;
-                        ret.type = Cursor_ResizeNS;
-                    }
-                }
+                sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);                
+                // Show grid overlay for POSITION
+                overlay_position_cross_->visible_ = true;
+                overlay_position_cross_->translation_.x = sourceNode->translation_.x;
+                overlay_position_cross_->translation_.y = sourceNode->translation_.y;
+                overlay_position_cross_->update(0);
             }
             // Show center overlay for POSITION
             overlay_position_->visible_ = true;
