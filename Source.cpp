@@ -588,7 +588,9 @@ void Source::update(float dt)
         // Translation : same as Appearance Frame (modified by Ar)
         glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->translation_);
         // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y, 1.f));
+        glm::vec2 scale =  glm::vec2(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y);
+        scale = glm::sign(scale) * glm::max( glm::vec2(glm::epsilon<float>()), glm::abs(scale));
+        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, 1.f));
         // Rotation : same angle than Appearance Frame, inverted axis
         glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
         // Combine transformations (non transitive) in this order:
