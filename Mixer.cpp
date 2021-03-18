@@ -359,9 +359,7 @@ Source * Mixer::createSourceNetwork(const std::string &nameconnection)
 Source * Mixer::createSourceGroup()
 {
     SessionGroupSource *s = new SessionGroupSource;
-
-    s->setResolution( Mixer::manager().session()->frame()->resolution() );
-
+    s->setResolution( session_->frame()->resolution() );
 
     // propose a new name
     s->setName("Group");
@@ -646,19 +644,21 @@ void Mixer::deleteSelection()
 
 void Mixer::groupSelection()
 {
-    float d = 2.f;
+    if (selection().empty())
+        return;
 
-    SessionGroupSource *group = new SessionGroupSource;
-    group->setResolution( Mixer::manager().session()->frame()->resolution() );
+    SessionGroupSource *sessiongroup = new SessionGroupSource;
+    sessiongroup->setResolution( session_->frame()->resolution() );
 
     // empty the selection
+    float d = selection().front()->depth();
     while ( !selection().empty() ) {
 
         Source *s = selection().front();
-        d = s->depth();
+        d = MIN(s->depth(), d);
 
         // import source into group
-        if ( group->import(s) ) {
+        if ( sessiongroup->import(s) ) {
             // detach & remove element from selection()
             detach (s);
             // remove source from session
@@ -670,22 +670,24 @@ void Mixer::groupSelection()
     }
 
     // set depth at given location
-    group->group(View::LAYER)->translation_.z = d;
+    sessiongroup->group(View::LAYER)->translation_.z = d;
 
     // set alpha to full opacity
-    group->group(View::MIXING)->translation_.x = 0.f;
-    group->group(View::MIXING)->translation_.y = 0.f;
+    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
+    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
 
     // Add source to Session
-    session_->addSource(group);
+    session_->addSource(sessiongroup);
 
     // Attach source to Mixer
-    attach(group);
+    attach(sessiongroup);
 
     // avoid name duplicates
-    renameSource(group, "group");
+    renameSource(sessiongroup, "group");
 
-    Mixer::manager().setCurrentSource(group);
+    Mixer::manager().setCurrentSource(sessiongroup);
+
+    Log::Notify("Session 'group' created. %d source(s) flatten.", sessiongroup->session()->numSource());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -1277,7 +1279,5 @@ void Mixer::paste(const std::string& clipboard)
             addSource(s);
         }
     }
-
-    // TODO : Mixing groups
 
 }
