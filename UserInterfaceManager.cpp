@@ -363,16 +363,20 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
-        // button esc to toggle fullscreen
+        // button esc
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
+            // 1. escape fullscreen
             if (Rendering::manager().mainWindow().isFullscreen())
                 Rendering::manager().mainWindow().exitFullscreen();
+            // 2. hide panel
+            else if (navigator.pannelVisible())
+                navigator.hidePannel();
+            // 3. hide windows
             else if (Settings::application.widget.preview || Settings::application.widget.media_player)  {
                 Settings::application.widget.preview = false;
                 Settings::application.widget.media_player = false;
             }
-            else if (navigator.pannelVisible())
-                navigator.hidePannel();
+            // 4. cancel selection
             else if (!Mixer::selection().empty()) {
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();
@@ -389,7 +393,6 @@ void UserInterface::handleKeyboard()
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
                 Mixer::manager().deleteSelection();
-
             // button tab to select next
             else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
                 if (shift_modifier_active)
