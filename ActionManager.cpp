@@ -234,46 +234,15 @@ void Action::restore(uint target, uint64_t id)
     // Get the list of mixing groups in the xml loader
     std::list< SourceList > loadergroups = loader.getMixingGroups();
 
+    // clear all session groups
+    auto group_iter = se->beginMixingGroup();
+    while ( group_iter != se->endMixingGroup() )
+        group_iter = se->deleteMixingGroup(group_iter);
+
     // apply all changes creating or modifying groups in the session
     // (after this, new groups are created and existing groups are adjusted)
     for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
         se->link( *group_loader_it, Mixer::manager().view(View::MIXING)->scene.fg() );
-    }
-
-    // Get the updated list of mixing groups in the session
-    std::list< SourceList > sessiongroups = se->getMixingGroups();
-
-    // the remaining case is if session has groups that are not in the loaded xml
-    // (that should therefore be deleted)
-    if ( sessiongroups.size() > loadergroups.size() )
-    {
-        // find those groups ! : loop over every session group
-        for (auto group_se_it = sessiongroups.begin(); group_se_it != sessiongroups.end(); ) {
-            // asume we do not find it in the loadergroups
-            bool is_in_loadergroups = false;
-            // look in the loaded groups if there is one EQUAL to it
-            for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
-                // compare the groups
-                if ( compare( *group_loader_it, *group_se_it) == SOURCELIST_EQUAL ) {
-                    // yeah, found an EQUAL group that was loaded
-                    is_in_loadergroups = true;
-                    break;
-                }
-            }
-            // remove the group from the list if it was loaded
-            if ( is_in_loadergroups )
-                group_se_it = sessiongroups.erase(group_se_it);
-            // else keep it and continue
-            else
-                group_se_it++;
-        }
-
-        // the remaining groups in sessiongroups do not have an EQUAL match in the loader groups
-        for (auto group_se_it = sessiongroups.begin(); group_se_it != sessiongroups.end(); ) {
-            // remove that group from the session
-            se->unlink( *group_se_it );
-            group_se_it = sessiongroups.erase(group_se_it);
-        }
     }
 
     // free
