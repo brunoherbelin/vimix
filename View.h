@@ -80,7 +80,7 @@ public:
         return Cursor ();
     }
 
-    // test mouse over provided a point in screen coordinates
+    //TODO: test mouse over provided a point in screen coordinates
     virtual Cursor over (glm::vec2) {
         return Cursor ();
     }
@@ -120,6 +120,7 @@ protected:
     } ContextMenu;
     ContextMenu show_context_menu_;
     inline void openContextMenu (ContextMenu m) { show_context_menu_ = m; }
+    void lock(Source *s, bool on);
 };
 
 

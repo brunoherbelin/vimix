@@ -263,3 +263,13 @@ void View::updateSelectionOverlay()
         overlay_selection_->scale_ = glm::vec3(0.f, 0.f, 1.f);
 }
 
+
+void View::lock(Source *s, bool on)
+{
+    s->setLocked(on);
+    if (on)
+        Action::manager().store(s->name() + std::string(" lock."), s->id());
+    else
+        Action::manager().store(s->name() + std::string(" unlock."), s->id());
+}
+

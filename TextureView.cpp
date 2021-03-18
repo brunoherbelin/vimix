@@ -830,11 +830,15 @@ void TextureView::draw()
         if (s != nullptr) {
 
             if (s->textureMirrored()) {
-                if (ImGui::Selectable( ICON_FA_TH "  Repeat " ))
+                if (ImGui::Selectable( ICON_FA_TH "  Repeat " )){
                     s->setTextureMirrored(false);
+                    Action::manager().store(s->name() + std::string(": Texture Repeat."), s->id());
+                }
             } else {
-                if (ImGui::Selectable( ICON_FA_TH "  Mirror " ))
+                if (ImGui::Selectable( ICON_FA_TH "  Mirror " )){
                     s->setTextureMirrored(true);
+                    Action::manager().store(s->name() + std::string(": Texture Mirror."), s->id());
+                }
             }
             ImGui::Separator();
 

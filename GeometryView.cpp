@@ -428,11 +428,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             }
             // pick on the lock icon; unlock source
             else if ( pick.first == current->lock_ ) {
-                current->setLocked(false);
+                lock(current, false);
             }
             // pick on the open lock icon; lock source and cancel pick
             else if ( pick.first == current->unlock_ ) {
-                current->setLocked(true);
+                lock(current, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick a locked source without CTRL key; cancel pick
@@ -452,7 +452,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 Source *s = Mixer::manager().findSource((*itp).first);
                 // lock icon of a source (not current) is picked : unlock
                 if ( s!=nullptr && (*itp).first == s->lock_) {
-                    s->setLocked(false);
+                    lock(s, false);
                     pick = { s->locker_,  (*itp).second };
                     break;
                 }

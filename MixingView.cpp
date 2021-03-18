@@ -337,12 +337,12 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
         if (s != nullptr) {
             // pick on the lock icon; unlock source
             if ( pick.first == s->lock_) {
-                s->setLocked(false);
+                lock(s, false);
                 pick = { s->locker_, pick.second };
             }
             // pick on the open lock icon; lock source and cancel pick
             else if ( pick.first == s->unlock_ ) {
-                s->setLocked(true);
+                lock(s, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick a locked source ; cancel pick

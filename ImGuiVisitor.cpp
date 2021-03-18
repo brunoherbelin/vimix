@@ -443,10 +443,14 @@ void ImGuiVisitor::visit (Source& s)
     bool l = s.locked();
     if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
         s.setLocked(l);
-        if (l)
+        if (l) {
             Mixer::selection().clear();
-        else
+            Action::manager().store(s.name() + std::string(" lock."), s.id());
+        }
+        else {
             Mixer::selection().set(&s);
+            Action::manager().store(s.name() + std::string(" unlock."), s.id());
+        }
     }
 
     // toggle enable/disable image processing
