@@ -30,8 +30,12 @@ public:
     inline void setTextureIndex(uint t) { textureindex_ = t; }
     inline uint textureIndex() const { return textureindex_; }
 
+    inline void setMirrorTexture(bool m) { mirror_ = m; }
+    inline bool mirrorTexture() { return mirror_; }
+
 protected:
     uint textureindex_;
+    bool mirror_;
 };
 
 

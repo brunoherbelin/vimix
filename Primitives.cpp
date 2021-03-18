@@ -19,7 +19,7 @@
 
 
 
-Surface::Surface(Shader *s) : Primitive(s), textureindex_(0)
+Surface::Surface(Shader *s) : Primitive(s), textureindex_(0), mirror_(true)
 {
     // geometry for a trianglulated simple rectangle surface with UV
     //  (0,0) B +---+ D (1,0)
@@ -89,12 +89,8 @@ void Surface::draw(glm::mat4 modelview, glm::mat4 projection)
     glActiveTexture(GL_TEXTURE0);
     if ( textureindex_ ) {
         glBindTexture(GL_TEXTURE_2D, textureindex_);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,  GL_MIRRORED_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,  GL_MIRRORED_REPEAT);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // TODO add user input to select mode
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,  GL_REPEAT);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,  GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mirror_ ? GL_MIRRORED_REPEAT : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mirror_ ? GL_MIRRORED_REPEAT : GL_REPEAT);
     }
     else
         glBindTexture(GL_TEXTURE_2D, Resource::getTextureBlack());

@@ -521,7 +521,12 @@ void SessionLoader::visit (Source& s)
     if (xmlCurrent_) s.groupNode(View::LAYER)->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Texture");
-    if (xmlCurrent_) s.groupNode(View::TEXTURE)->accept(*this);
+    if (xmlCurrent_) {
+        s.groupNode(View::TEXTURE)->accept(*this);
+        bool m = true;
+        xmlCurrent_->QueryBoolAttribute("mirrored", &m);
+        s.setTextureMirrored(m);
+    }
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
     if (xmlCurrent_) s.blendingShader()->accept(*this);

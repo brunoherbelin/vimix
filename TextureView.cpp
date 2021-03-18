@@ -828,6 +828,16 @@ void TextureView::draw()
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
+
+            if (s->textureMirrored()) {
+                if (ImGui::Selectable( ICON_FA_TH "  Repeat " ))
+                    s->setTextureMirrored(false);
+            } else {
+                if (ImGui::Selectable( ICON_FA_TH "  Mirror " ))
+                    s->setTextureMirrored(true);
+            }
+            ImGui::Separator();
+
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
                 s->group(mode_)->rotation_.z = 0;

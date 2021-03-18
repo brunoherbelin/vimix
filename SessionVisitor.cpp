@@ -345,6 +345,7 @@ void SessionVisitor::visit (Source& s)
     s.groupNode(View::LAYER)->accept(*this);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Texture" );
+    xmlCurrent_->SetAttribute("mirrored", s.textureMirrored() );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.groupNode(View::TEXTURE)->accept(*this);
 

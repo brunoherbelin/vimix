@@ -119,6 +119,8 @@ public:
 
     // a Source shall define a way to get a texture
     virtual uint texture () const = 0;
+    void setTextureMirrored (bool on);
+    bool textureMirrored ();
 
     // a Source shall define how to render into the frame buffer
     virtual void render ();

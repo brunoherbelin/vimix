@@ -350,6 +350,16 @@ void Source::setImageProcessingEnabled (bool on)
     texturesurface_->replaceShader(renderingshader_);
 }
 
+void Source::setTextureMirrored (bool on)
+{
+    texturesurface_->setMirrorTexture(on);
+}
+
+bool Source::textureMirrored ()
+{
+    return texturesurface_->mirrorTexture();
+}
+
 bool Source::imageProcessingEnabled()
 {
     return ( renderingshader_ == processingshader_ );
