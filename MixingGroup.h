@@ -36,7 +36,8 @@ public:
         ACTION_UPDATE = 1,
         ACTION_GRAB_ONE = 2,
         ACTION_GRAB_ALL = 3,
-        ACTION_ROTATE_ALL = 4
+        ACTION_ROTATE_ALL = 4,
+        ACTION_FINISH = 5
     } Action;
     void setAction (Action a) ;
     inline Action action () { return update_action_; }

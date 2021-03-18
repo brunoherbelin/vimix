@@ -60,6 +60,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     overlay_mixinggroup_ = new Switch;
     overlay_mixinggroup_->translation_.z = 0.1;
     center = new Symbol(Symbol::CIRCLE_POINT, glm::vec3(0.f, 0.f, 0.1f));
+    center->scale_= glm::vec3(1.6f, 1.6f, 1.f);
     center->color = glm::vec4( COLOR_MIXING_GROUP, 0.96f);
     overlay_mixinggroup_->attach(center);
     rotation_mixingroup_ = new Symbol(Symbol::ROTATION, glm::vec3(0.f, 0.f, 0.1f));
@@ -304,7 +305,11 @@ void Source::setMode(Source::Mode m)
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
         (*o).second->visible_ = current & !locked_;
 
-    overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr;
+    // the lock icon
+    locker_->setActive( locked_ ? 0 : 1);
+
+    // the mixing group overlay
+    overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr && !locked_;
     overlay_mixinggroup_->setActive(current);
 
     // show in appearance view if current
@@ -453,8 +458,7 @@ void Source::setLocked (bool on)
 {
     locked_ = on;
 
-    // the lock icon
-    locker_->setActive( on ? 0 : 1);
+    setMode(mode_);
 }
 
 // Transfer functions from coordinates to alpha (1 - transparency)

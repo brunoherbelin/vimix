@@ -476,7 +476,7 @@ void MixingView::terminate()
     // terminate all mixing group actions
     for (auto g = Mixer::manager().session()->beginMixingGroup();
          g != Mixer::manager().session()->endMixingGroup(); g++)
-        (*g)->setAction( MixingGroup::ACTION_NONE );
+        (*g)->setAction( MixingGroup::ACTION_FINISH );
 
 }
 

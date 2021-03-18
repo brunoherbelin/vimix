@@ -89,6 +89,11 @@ void MixingGroup::setAction (Action a)
         if (update_action_ == ACTION_NONE)
             update_action_ = ACTION_UPDATE;
     }
+    else if (a == ACTION_FINISH) {
+        // only needs to finish if an action was done
+        if (update_action_ != ACTION_NONE)
+            update_action_ = ACTION_FINISH;
+    }
     else
         update_action_ = a;
 }
@@ -106,7 +111,15 @@ void MixingGroup::update (float)
     setActive(currentsource != sources_.end());
 
     // perform action
-    if (update_action_ == ACTION_UPDATE ) {
+    if (update_action_ == ACTION_FINISH ) {
+        // update barycenter
+        recenter();
+        // clear index, delete lines_, and recreate path and index with remaining sources
+        createLineStrip();
+        // update only once
+        update_action_ = ACTION_NONE;
+    }
+    else if (update_action_ == ACTION_UPDATE ) {
 
         std::vector<glm::vec2> p = lines_->path();
 
