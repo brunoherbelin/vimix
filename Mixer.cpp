@@ -419,7 +419,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(" inserted"), s->id());
+        Action::manager().store(s->name() + std::string(" inserted"));
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -524,7 +524,7 @@ void Mixer::deleteSource(Source *s, bool withundo)
 
         // store new state in history manager
         if (withundo)
-            Action::manager().store(name + std::string(" deleted"), id);
+            Action::manager().store(name + std::string(" deleted"));
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());

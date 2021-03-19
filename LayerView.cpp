@@ -104,7 +104,7 @@ void LayerView::draw()
         if (candidate_flatten_group){
             if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
                 Mixer::manager().groupSelection();
-                Action::manager().store(std::string("Selection Flatten."), Mixer::selection().front()->id());
+                Action::manager().store(std::string("Selection Flatten."));
             }
         }
         else {
@@ -122,7 +122,7 @@ void LayerView::draw()
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Layer Distribute."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Distribute."));
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
@@ -133,7 +133,7 @@ void LayerView::draw()
                 depth += LAYER_STEP;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Layer Compress."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Compress."));
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
@@ -143,7 +143,7 @@ void LayerView::draw()
             for (; it != dsl.end(); it++, rit++) {
                 (*it)->setDepth((*rit)->depth());
             }
-            Action::manager().store(std::string("Selection Layer Reverse order."), dsl.front()->id());
+            Action::manager().store(std::string("Selection Layer Reverse order."));
             View::need_deep_update_++;
         }
 
@@ -310,7 +310,6 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
-    current_id_ = s->id();
 
     return Cursor(Cursor_ResizeNESW, info.str() );
 }
@@ -358,7 +357,6 @@ void LayerView::arrow (glm::vec2 movement)
             std::ostringstream info;
             info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
             current_action_ = (*it)->name() + ": " + info.str();
-            current_id_ = (*it)->id();
 
             // delta for others to follow
             delta_translation = dest_translation - sourceNode->translation_;

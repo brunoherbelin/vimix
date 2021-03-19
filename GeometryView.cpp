@@ -273,7 +273,7 @@ void GeometryView::draw()
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Fit."), s->id());
+                Action::manager().store(s->name() + std::string("Source Fit."));
             }
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
@@ -281,23 +281,23 @@ void GeometryView::draw()
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset."));
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset position."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset position."));
             }
             if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset rotation."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset rotation."));
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset aspect ratio."), s->id());
+                Action::manager().store(s->name() + std::string("Source Reset aspect ratio."));
             }
         }
         ImGui::EndPopup();
@@ -321,7 +321,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Fit all."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Fit all."));
         }
         if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset all" )){
             // apply to every sources in selection
@@ -332,7 +332,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Reset all."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Reset all."));
         }
 //        if (ImGui::Selectable( ICON_FA_TH "  Mosaic" )){ // TODO
 
@@ -343,7 +343,7 @@ void GeometryView::draw()
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
             initiate();
             applySelectionTransform(T);
-            Action::manager().store(std::string("Selection Center."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Center."));
         }
         if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
             // apply to every sources in selection
@@ -351,7 +351,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Align."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Align."));
         }
         if (ImGui::Selectable( ICON_FA_COMPRESS "   Best Fit" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -369,7 +369,7 @@ void GeometryView::draw()
             glm::mat4 M = S * R * T;
             initiate();
             applySelectionTransform(M);
-            Action::manager().store(std::string("Selection Best Fit."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Best Fit."));
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Mirror" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -377,7 +377,7 @@ void GeometryView::draw()
             glm::mat4 M = glm::inverse(T) * F * T;
             initiate();
             applySelectionTransform(M);
-            Action::manager().store(std::string("Selection Mirror."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mirror."));
         }
 
         ImGui::PopStyleColor(2);
@@ -576,7 +576,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
                 // store action in history
                 current_action_ = "Scale selection";
-                current_id_ = Mixer::selection().front()->id();
                 ret.type = Cursor_ResizeNWSE;
             }
             // if interaction with selection ROTATION handle
@@ -626,7 +625,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
                 // store action in history
                 current_action_ = "Scale and rotate selection";
-                current_id_ = Mixer::selection().front()->id();
                 ret.type = Cursor_Hand;
             }
 
@@ -975,7 +973,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
-    current_id_ = s->id();
 
     // update cursor
     ret.info = info.str();
@@ -1070,7 +1067,6 @@ void GeometryView::arrow (glm::vec2 movement)
             info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
             info << ", "  << sourceNode->translation_.y ;
             current_action_ = (*it)->name() + ": " + info.str();
-            current_id_ = (*it)->id();
 
             // delta for others to follow
             delta_translation = dest_translation - sourceNode->translation_;

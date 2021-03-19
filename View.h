@@ -103,7 +103,6 @@ protected:
     virtual void saveSettings ();
 
     std::string current_action_;
-    uint64_t current_id_;
     Mode mode_;
 
     // selection

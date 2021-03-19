@@ -22,7 +22,7 @@ public:
         return _instance;
     }
 
-    void store(const std::string &label, uint64_t id = 0);
+    void store(const std::string &label);
 
     void clear();
     void undo();

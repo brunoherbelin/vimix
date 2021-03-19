@@ -135,7 +135,7 @@ void MixingView::draw()
             if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
                 // assemble a MixingGroup
                 Mixer::manager().session()->link(selected, scene.fg() );
-                Action::manager().store(std::string("Sources linked."), selected.front()->id());
+                Action::manager().store(std::string("Sources linked."));
                 // clear selection and select one of the sources of the group
                 Source *cur = Mixer::selection().front();
                 Mixer::manager().unsetCurrentSource();
@@ -148,7 +148,7 @@ void MixingView::draw()
             if (ImGui::Selectable( ICON_FA_UNLINK "  Unlink" )){
                 // dismantle MixingGroup(s)
                 Mixer::manager().session()->unlink(selected);
-                Action::manager().store(std::string("Sources unlinked."), selected.front()->id());
+                Action::manager().store(std::string("Sources unlinked."));
             }
         }
 
@@ -167,7 +167,7 @@ void MixingView::draw()
                 (*it)->group(View::MIXING)->translation_ -= glm::vec3(center, 0.f);
                 (*it)->touch();
             }
-            Action::manager().store(std::string("Selection Mixing Center."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Center."));
         }
         if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
             SourceList list;
@@ -196,21 +196,21 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(list.size());
             }
-            Action::manager().store(std::string("Selection Mixing Distribute."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Distribute."));
         }
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.f);
             }
-            Action::manager().store(std::string("Selection Mixing Expand & hide."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Expand & hide."));
         }
         if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); it++) {
                 (*it)->setAlpha(0.99f);
             }
-            Action::manager().store(std::string("Selection Mixing Compress & show."), Mixer::selection().front()->id());
+            Action::manager().store(std::string("Selection Mixing Compress & show."));
         }
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
@@ -462,7 +462,6 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
-    current_id_ = s->id();
 
     // update cursor
     ret.info = info.str();
@@ -529,7 +528,6 @@ void MixingView::arrow (glm::vec2 movement)
             else
                 info << "Inactive  " << ICON_FA_SNOWFLAKE;
             current_action_ = (*it)->name() + ": " + info.str();
-            current_id_ = (*it)->id();
 
             // delta for others to follow
             delta_translation = dest_translation - sourceNode->translation_;

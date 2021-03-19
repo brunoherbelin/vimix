@@ -113,7 +113,6 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 void View::initiate()
 {
     current_action_ = "";
-    current_id_ = 0;
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
 
@@ -126,9 +125,8 @@ void View::terminate()
 {
     std::regex r("\\n");
     current_action_ = std::regex_replace(current_action_, r, " ");
-    Action::manager().store(current_action_, current_id_);
+    Action::manager().store(current_action_);
     current_action_ = "";
-    current_id_ = 0;
 }
 
 void View::zoom( float factor )
@@ -268,8 +266,8 @@ void View::lock(Source *s, bool on)
 {
     s->setLocked(on);
     if (on)
-        Action::manager().store(s->name() + std::string(" lock."), s->id());
+        Action::manager().store(s->name() + std::string(" lock."));
     else
-        Action::manager().store(s->name() + std::string(" unlock."), s->id());
+        Action::manager().store(s->name() + std::string(" unlock."));
 }
 

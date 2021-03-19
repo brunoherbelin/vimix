@@ -34,7 +34,7 @@ void Action::clear()
     store("Session start");
 }
 
-void Action::store(const std::string &label, uint64_t id)
+void Action::store(const std::string &label)
 {
     // ignore if locked or if no label is given
     if (locked_ || label.empty())
@@ -58,8 +58,6 @@ void Action::store(const std::string &label, uint64_t id)
     xmlDoc_.InsertEndChild(sessionNode);
     // label describes the action
     sessionNode->SetAttribute("label", label.c_str());
-    // id indicates which object was modified
-    sessionNode->SetAttribute("id", id);
     // view indicates the view when this action occured
     sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
 
@@ -104,23 +102,10 @@ void Action::stepTo(uint target)
     // get reasonable target
     uint t = CLAMP(target, 1, max_step_);
 
-    // going backward
-    if ( t < step_ ) {
-        // go back one step at a time
-        while (t < step_)
-            undo();
-    }
-    // step forward
-    else if ( t > step_ ) {
-        // go forward one step at a time
-        while (t > step_)
-            redo();
-    }
     // ignore t == step_
-
-//    restore(t);
+    if (t != step_)
+        restore(t);
 }
-
 
 std::string Action::label(uint s) const
 {

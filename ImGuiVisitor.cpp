@@ -52,7 +52,7 @@ void ImGuiVisitor::visit(Group &n)
         n.rotation_.z = 0.f;
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
-        Action::manager().store("Geometry Reset", n.id());
+        Action::manager().store("Geometry Reset");
     }
     ImGui::SameLine(0, 10);
     ImGui::Text("Geometry");
@@ -60,7 +60,7 @@ void ImGuiVisitor::visit(Group &n)
     if (ImGuiToolkit::ButtonIcon(6, 15)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
-        Action::manager().store("Position 0.0, 0.0", n.id());
+        Action::manager().store("Position 0.0, 0.0");
     }
     ImGui::SameLine(0, 10);
     float translation[2] = { n.translation_.x, n.translation_.y};
@@ -73,12 +73,12 @@ void ImGuiVisitor::visit(Group &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Position " << std::setprecision(3) << n.translation_.x << ", " << n.translation_.y;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
     if (ImGuiToolkit::ButtonIcon(3, 15))  {
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
-        Action::manager().store("Scale 1.0 x 1.0", n.id());
+        Action::manager().store("Scale 1.0 x 1.0");
     }
     ImGui::SameLine(0, 10);
     float scale[2] = { n.scale_.x, n.scale_.y} ;
@@ -91,12 +91,12 @@ void ImGuiVisitor::visit(Group &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Scale " << std::setprecision(3) << n.scale_.x << " x " << n.scale_.y;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(18, 9)){
         n.rotation_.z = 0.f;
-        Action::manager().store("Angle 0.0", n.id());
+        Action::manager().store("Angle 0.0");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -104,7 +104,7 @@ void ImGuiVisitor::visit(Group &n)
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         std::ostringstream oss;
         oss << "Angle " << std::setprecision(3) << n.rotation_.z * 180.f / M_PI;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
 
@@ -132,7 +132,7 @@ void ImGuiVisitor::visit(Scene &n)
 void ImGuiVisitor::visit(Primitive &n)
 {
     ImGui::PushID(std::to_string(n.id()).c_str());
-    ImGui::Text("Primitive %d", n.id());
+    ImGui::Text("Primitive %d");
 
     n.shader()->accept(*this);
 
@@ -206,7 +206,7 @@ void ImGuiVisitor::visit(Shader &n)
             oss<<"None";
             break;
         }
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     ImGui::PopID();
@@ -228,7 +228,7 @@ void ImGuiVisitor::visit(Shader &n)
 //        else {
 //            // TODO ask for custom mask
 //        }
-//        Action::manager().store("Mask "+ std::string(ImageShader::mask_names[n.mask]), n.id());
+//        Action::manager().store("Mask "+ std::string(ImageShader::mask_names[n.mask]));
 //    }
 //    ImGui::PopID();
 //}
@@ -240,19 +240,19 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::ButtonIcon(6, 2)) {
         ImageProcessingShader defaultvalues;
         n = defaultvalues;
-        Action::manager().store("Reset Filters", n.id());
+        Action::manager().store("Reset Filters");
     }
     ImGui::SameLine(0, 10);
     ImGui::Text("Filters");
 
     if (ImGuiToolkit::ButtonIcon(6, 4)) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
-        Action::manager().store("Gamma & Color", n.id());
+        Action::manager().store("Gamma & Color");
     }
     ImGui::SameLine(0, 10);
     ImGui::ColorEdit3("Gamma Color", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
     if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store("Gamma Color changed", n.id());
+        Action::manager().store("Gamma Color changed");
 
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -260,7 +260,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Gamma " << std::setprecision(2) << n.gamma.w;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
 //    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -269,7 +269,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::ButtonIcon(5, 16)) {
         n.brightness = 0.f;
         n.contrast = 0.f;
-        Action::manager().store("B & C  0.0 0.0", n.id());
+        Action::manager().store("B & C  0.0 0.0");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -282,12 +282,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "B & C  " << std::setprecision(2) << n.brightness << " " << n.contrast;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(9, 16)) {
         n.saturation = 0.f;
-        Action::manager().store("Saturation 0.0", n.id());
+        Action::manager().store("Saturation 0.0");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -295,12 +295,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Saturation " << std::setprecision(2) << n.saturation;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(12, 4)) {
         n.hueshift = 0.f;
-        Action::manager().store("Hue shift 0.0", n.id());
+        Action::manager().store("Hue shift 0.0");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -308,12 +308,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Hue shift " << std::setprecision(2) << n.hueshift;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(18, 1)) {
         n.nbColors = 0;
-        Action::manager().store("Posterize None", n.id());
+        Action::manager().store("Posterize None");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -322,12 +322,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         std::ostringstream oss;
         oss << "Posterize ";
         if (n.nbColors == 0) oss << "None"; else oss << n.nbColors;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(8, 1)) {
         n.threshold = 0.f;
-        Action::manager().store("Threshold None", n.id());
+        Action::manager().store("Threshold None");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -336,12 +336,12 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         std::ostringstream oss;
         oss << "Threshold ";
         if (n.threshold < 0.001) oss << "None"; else oss << std::setprecision(2) << n.threshold;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(3, 1)) {
         n.lumakey = 0.f;
-        Action::manager().store("Lumakey 0.0", n.id());
+        Action::manager().store("Lumakey 0.0");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -349,18 +349,18 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Lumakey " << std::setprecision(2) << n.lumakey;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(13, 4)) {
         n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
         n.chromadelta = 0.f;
-        Action::manager().store("Chromakey & Color Reset", n.id());
+        Action::manager().store("Chromakey & Color Reset");
     }
     ImGui::SameLine(0, 10);
     ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;    
     if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store("Chroma color changed", n.id());
+        Action::manager().store("Chroma color changed");
     ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
@@ -368,26 +368,26 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         std::ostringstream oss;
         oss << "Chromakey ";
         if (n.chromadelta < 0.001) oss << "None"; else oss << std::setprecision(2) << n.chromadelta;
-        Action::manager().store(oss.str(), n.id());
+        Action::manager().store(oss.str());
     }
 
     if (ImGuiToolkit::ButtonIcon(6, 16)) {
         n.invert = 0;
-        Action::manager().store("Invert None", n.id());
+        Action::manager().store("Invert None");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0"))
-        Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")), n.id());
+        Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
 
     if (ImGuiToolkit::ButtonIcon(1, 7)) {
         n.filterid = 0;
-        Action::manager().store("Filter None", n.id());
+        Action::manager().store("Filter None");
     }
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
-        Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]), n.id());
+        Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]));
 
     ImGui::PopID();
 
@@ -445,11 +445,11 @@ void ImGuiVisitor::visit (Source& s)
         s.setLocked(l);
         if (l) {
             Mixer::selection().clear();
-            Action::manager().store(s.name() + std::string(" lock."), s.id());
+            Action::manager().store(s.name() + std::string(" lock."));
         }
         else {
             Mixer::selection().set(&s);
-            Action::manager().store(s.name() + std::string(" unlock."), s.id());
+            Action::manager().store(s.name() + std::string(" unlock."));
         }
     }
 
@@ -459,7 +459,7 @@ void ImGuiVisitor::visit (Source& s)
     if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) ){
         std::ostringstream oss;
         oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
-        Action::manager().store(oss.str(), s.id());
+        Action::manager().store(oss.str());
     }
     s.setImageProcessingEnabled(on);
 
@@ -509,7 +509,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << s.name() << ": Fading " << std::setprecision(2) << f;
-        Action::manager().store(oss.str(), s.id());
+        Action::manager().store(oss.str());
     }
 
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open File", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
@@ -567,7 +567,7 @@ void ImGuiVisitor::visit (PatternSource& s)
                 s.setPattern(p, s.pattern()->resolution());
                 std::ostringstream oss;
                 oss << s.name() << ": Pattern " << Pattern::pattern_types[p];
-                Action::manager().store(oss.str(), s.id());
+                Action::manager().store(oss.str());
             }
         }
         ImGui::EndCombo();
@@ -589,7 +589,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
                 s.setDevice(namedev);
                 std::ostringstream oss;
                 oss << s.name() << " Device " << namedev;
-                Action::manager().store(oss.str(), s.id());
+                Action::manager().store(oss.str());
             }
         }
         ImGui::EndCombo();

@@ -581,7 +581,7 @@ void TextureView::draw()
                 // store action history
                 std::ostringstream oss;
                 oss << edit_source_->name() << ": Mask " << (mode>1?"Shape":(mode>0?"Paint":"None"));
-                Action::manager().store(oss.str(), edit_source_->id());
+                Action::manager().store(oss.str());
             }
 
             // GUI for drawing mask
@@ -692,7 +692,7 @@ void TextureView::draw()
                             // store action history
                             std::ostringstream oss;
                             oss << edit_source_->name() << ": Mask Paint Clear";
-                            Action::manager().store(oss.str(), edit_source_->id());
+                            Action::manager().store(oss.str());
                         }
                         if (ImGui::Selectable( ICON_FA_ADJUST "\tInvert")) {
                             edit_source_->maskShader()->effect = 2;
@@ -701,7 +701,7 @@ void TextureView::draw()
                             // store action history
                             std::ostringstream oss;
                             oss << edit_source_->name() << ": Mask Paint Invert";
-                            Action::manager().store(oss.str(), edit_source_->id());
+                            Action::manager().store(oss.str());
                         }
                         if (ImGui::Selectable( ICON_FA_WAVE_SQUARE "\tEdge")) {
                             edit_source_->maskShader()->effect = 3;
@@ -710,7 +710,7 @@ void TextureView::draw()
                             // store action history
                             std::ostringstream oss;
                             oss << edit_source_->name() << ": Mask Paint Edge";
-                            Action::manager().store(oss.str(), edit_source_->id());
+                            Action::manager().store(oss.str());
                         }
                         ImGui::PopFont();
                         ImGui::EndPopup();
@@ -767,7 +767,7 @@ void TextureView::draw()
                         // store action history
                         std::ostringstream oss;
                         oss << edit_source_->name() << ": Mask Shape " << MaskShader::mask_shapes[shape];
-                        Action::manager().store(oss.str(), edit_source_->id());
+                        Action::manager().store(oss.str());
                     }
 
                     ImGui::SameLine(0, 20);
@@ -788,7 +788,7 @@ void TextureView::draw()
                             // store action history
                             std::ostringstream oss;
                             oss << edit_source_->name() << ": Mask Shape Blur " << blur_percent << "%";
-                            Action::manager().store(oss.str(), edit_source_->id());
+                            Action::manager().store(oss.str());
                             smoothchanged = false;
                         }
                         if (ImGui::IsItemHovered())  {
@@ -843,12 +843,12 @@ void TextureView::draw()
             if (s->textureMirrored()) {
                 if (ImGui::Selectable( ICON_FA_TH "  Repeat " )){
                     s->setTextureMirrored(false);
-                    Action::manager().store(s->name() + std::string(": Texture Repeat."), s->id());
+                    Action::manager().store(s->name() + std::string(": Texture Repeat."));
                 }
             } else {
                 if (ImGui::Selectable( ICON_FA_TH "  Mirror " )){
                     s->setTextureMirrored(true);
-                    Action::manager().store(s->name() + std::string(": Texture Mirror."), s->id());
+                    Action::manager().store(s->name() + std::string(": Texture Mirror."));
                 }
             }
             ImGui::Separator();
@@ -859,23 +859,23 @@ void TextureView::draw()
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset."), s->id());
+                Action::manager().store(s->name() + std::string(": Texture Reset."));
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset position."), s->id());
+                Action::manager().store(s->name() + std::string(": Texture Reset position."));
             }
             if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset rotation."), s->id());
+                Action::manager().store(s->name() + std::string(": Texture Reset rotation."));
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio."), s->id());
+                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio."));
             }
         }
         ImGui::PopStyleColor(2);
@@ -951,7 +951,6 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
 
             // store action in history
             current_action_ = edit_source_->name() + ": " + info.str();
-            current_id_ = edit_source_->id();
 
         }
         return ret;
@@ -1262,7 +1261,6 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
-    current_id_ = s->id();
 
     // update cursor
     ret.info = info.str();
@@ -1351,7 +1349,6 @@ void TextureView::arrow (glm::vec2 movement)
         info << "Texture Shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
         info << ", "  << sourceNode->translation_.y ;
         current_action_ = s->name() + ": " + info.str();
-        current_id_ = s->id();
 
         // request update
         s->touch();

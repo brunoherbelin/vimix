@@ -1783,7 +1783,7 @@ void MediaController::Render()
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
 //            if (ImGui::IsItemDeactivatedAfterEdit())
-//                Action::manager().store("Play Speed", mp_->id());
+//                Action::manager().store("Play Speed");
             // TODO: avoid seek every time speed is set
 
             // Timeline popup menu
@@ -1799,21 +1799,21 @@ void MediaController::Render()
                     timeline_zoom = 1.f;
                     mp_->timeline()->clearFading();
                     mp_->timeline()->clearGaps();
-                    Action::manager().store("Timeline Reset", mp_->id());
+                    Action::manager().store("Timeline Reset");
                 }
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(150);
                 int smoothcurve = 0;
                 if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
                     mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
-                    Action::manager().store("Timeline Smooth curve", mp_->id());
+                    Action::manager().store("Timeline Smooth curve");
                 }
                 ImGui::SetNextItemWidth(150);
                 int autofade = 0;
                 if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
                     mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );
                     mp_->timeline()->smoothFading( 10 * autofade );
-                    Action::manager().store("Timeline Auto fading", mp_->id());
+                    Action::manager().store("Timeline Auto fading");
                 }
                 ImGui::EndPopup();
             }
@@ -1842,7 +1842,7 @@ void MediaController::Render()
                     mp_->timeline()->update();
                 }
                 else if (released) {
-                    Action::manager().store("Timeline change", mp_->id());
+                    Action::manager().store("Timeline change");
                 }
 
                 // custom timeline slider
