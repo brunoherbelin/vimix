@@ -424,6 +424,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::LAYER]->attach( locker_ );
     groups_[View::MIXING]->attach( locker_ );
     groups_[View::GEOMETRY]->attach( locker_ );
+    groups_[View::TEXTURE]->attach( locker_ );
 
     // scale all icon nodes to match aspect ratio
     for (int v = View::MIXING; v < View::INVALID; v++) {

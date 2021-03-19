@@ -346,16 +346,16 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
     if ( !pv.empty()) {
         // keep edit source active if it is clicked
         // AND if the cursor is not for drawing
-        Source *s = edit_source_;
-        if (s != nullptr) {
+        Source *current = edit_source_;
+        if (current != nullptr) {
 
             // special case for drawing in the mask
-            if ( s->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0) {
+            if ( current->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0) {
                 pick = { mask_cursor_circle_, P };
                 return pick;
             }
             // special case for cropping the mask shape
-            else if ( s->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0) {
+            else if ( current->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0) {
                 pick = { mask_cursor_crop_, P };
                 return pick;
             }
@@ -365,24 +365,33 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
             for (; itp != pv.rend(); itp++){
                 // test if source contains this node
                 Source::hasNode is_in_source( (*itp).first );
-                if ( is_in_source( s ) ){
+                if ( is_in_source( current ) ){
                     // a node in the current source was clicked !
                     pick = *itp;
                     break;
                 }
             }
             // not found: the edit source was not clicked
-            if ( itp == pv.rend() )
-                s = nullptr;
+            if ( itp == pv.rend() ) {
+                current = nullptr;
+            }
             // picking on the menu handle
-            else if ( pick.first == s->handles_[mode_][Handles::MENU] ) {
+            else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
                 // show context menu
                 openContextMenu(MENU_SOURCE);
+            }
+            // pick on the lock icon; unlock source
+            else if ( pick.first == current->lock_ ) {
+                lock(current, false);
+            }
+            // pick on the open lock icon; lock source and cancel pick
+            else if ( pick.first == current->unlock_ ) {
+                lock(current, true);
             }
         }
 
         // not the edit source (or no edit source)
-        if (s == nullptr) {
+        if (current == nullptr) {
             // cancel pick
             pick = { nullptr, glm::vec2(0.f) };
         }
@@ -526,7 +535,7 @@ void TextureView::draw()
     if (edit_source_ != nullptr){
 
         // force to redraw the frame of the edit source (even if source is not visible)
-        DrawVisitor dv(edit_source_->frames_[mode_], Rendering::manager().Projection(), true);
+        DrawVisitor dv(edit_source_->groups_[mode_], Rendering::manager().Projection(), true);
         scene.accept(dv);
 
         // display interface
@@ -887,7 +896,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
     glm::vec3 scene_translation = scene_to - scene_from;
 
     // Not grabbing a source
-    if (!s) {
+    if (!s || s->locked()) {
         // work on the edited source
         if ( edit_source_ != nullptr ) {
 
