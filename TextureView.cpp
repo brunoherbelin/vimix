@@ -383,10 +383,12 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
             // pick on the lock icon; unlock source
             else if ( pick.first == current->lock_ ) {
                 lock(current, false);
+                pick = { current->locker_,  pick.second };
             }
             // pick on the open lock icon; lock source and cancel pick
             else if ( pick.first == current->unlock_ ) {
                 lock(current, true);
+                current = nullptr;
             }
         }
 
@@ -896,7 +898,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
     glm::vec3 scene_translation = scene_to - scene_from;
 
     // Not grabbing a source
-    if (!s || s->locked()) {
+    if (!s) {
         // work on the edited source
         if ( edit_source_ != nullptr ) {
 
@@ -954,6 +956,10 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
         }
         return ret;
     }
+
+    // do not operate on locked source
+    if (s->locked())
+        return ret;
 
     Group *sourceNode = s->group(mode_); // groups_[View::APPEARANCE]
 
