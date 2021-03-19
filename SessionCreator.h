@@ -18,7 +18,7 @@ public:
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
-    SourceIdList getIdList() const;
+    std::map< uint64_t, Source* > getSources() const;
     std::list< SourceList > getMixingGroups() const;
 
     Source *createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates = true);

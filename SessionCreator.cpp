@@ -119,14 +119,10 @@ SessionLoader::SessionLoader(Session *session, int recursion): Visitor(),
 
 }
 
-// get the list of new source id (value in sources_id_ map)
-SourceIdList SessionLoader::getIdList() const
-{
-    SourceIdList id_current_value;
-    for (auto it = sources_id_.begin(); it != sources_id_.end(); it++)
-        id_current_value.push_back( it->second->id() );
 
-    return id_current_value;
+std::map< uint64_t, Source* > SessionLoader::getSources() const
+{
+    return sources_id_;
 }
 
 // groups_sources_id_ is parsed in XML and contains list of groups of ids
@@ -224,7 +220,6 @@ void SessionLoader::load(XMLElement *sessionNode)
 
             // remember
             sources_id_[id_xml_] = load_source;
-//            sources_id_[id_xml_] = load_source->id();
         }
 
         // create clones after all sources, to be able to clone a source created above
@@ -264,7 +259,6 @@ void SessionLoader::load(XMLElement *sessionNode)
 
                             // remember
                             sources_id_[id_xml_] = clone_source;
-//                            sources_id_[id_xml_] = clone_source->id();
                         }
                     }
                 }
@@ -604,7 +598,6 @@ void SessionLoader::visit (SessionFileSource& s)
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
         std::string path = std::string ( pathNode->GetText() );
-
         // load only new files
         if ( path != s.path() )
             s.load(path, recursion_ + 1);
@@ -619,9 +612,12 @@ void SessionLoader::visit (SessionGroupSource& s)
     // get the inside session
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
     if (sessionGroupNode) {
-        // load session inside group
-        SessionLoader grouploader( s.session(), recursion_ + 1 );
-        grouploader.load( sessionGroupNode );
+        // only parse if newly created
+        if (s.session()->empty()) {
+            // load session inside group
+            SessionLoader grouploader( s.session(), recursion_ + 1 );
+            grouploader.load( sessionGroupNode );
+        }
     }
 }
 
