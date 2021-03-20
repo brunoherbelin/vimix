@@ -625,15 +625,14 @@ uint textureMixingQuadratic()
     if (texid == 0) {
         // generate the texture with alpha exactly as computed for sources
         GLubyte matrix[CIRCLE_PIXELS*CIRCLE_PIXELS * 4];
-        GLubyte color[4] = {0,0,0,0};
         GLfloat luminance = 1.f;
         GLfloat alpha = 0.f;
         GLfloat distance = 0.f;
         int l = -CIRCLE_PIXELS / 2 + 1, c = 0;
 
-        for (int i = 0; i < CIRCLE_PIXELS / 2; ++i) {
+        for (int i = 0; i < CIRCLE_PIXELS ; ++i) {
             c = -CIRCLE_PIXELS / 2 + 1;
-            for (int j=0; j < CIRCLE_PIXELS / 2; ++j) {
+            for (int j = 0; j < CIRCLE_PIXELS ; ++j) {
                 // distance to the center
                 distance = sin_quad_texture( (float) c , (float) l  );
 //                distance = 1.f - (GLfloat) ((c * c) + (l * l)) / CIRCLE_PIXEL_RADIUS;  // quadratic
@@ -641,20 +640,17 @@ uint textureMixingQuadratic()
 
                 // transparency
                 alpha = 255.f * CLAMP( distance , 0.f, 1.f);
-                color[3] = static_cast<GLubyte>(alpha);
+                GLubyte A = static_cast<GLubyte>(alpha);
 
                 // luminance adjustment
                 luminance = 255.f * CLAMP( 0.2f + 0.75f * distance, 0.f, 1.f);
-                color[0] = color[1] = color[2] = static_cast<GLubyte>(luminance);
+                GLubyte L = static_cast<GLubyte>(luminance);
 
-                // 1st quadrant
-                memmove(&matrix[ j * 4 + i * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
-                // 4nd quadrant
-                memmove(&matrix[ (CIRCLE_PIXELS -j -1)* 4 + i * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
-                // 3rd quadrant
-                memmove(&matrix[ j * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
-                // 4th quadrant
-                memmove(&matrix[ (CIRCLE_PIXELS -j -1) * 4 + (CIRCLE_PIXELS -i -1) * CIRCLE_PIXELS * 4 ], color, 4 * sizeof(GLubyte));
+                // fill pixel RGBA
+                matrix[ i * CIRCLE_PIXELS * 4 + j * 4 + 0 ] = L;
+                matrix[ i * CIRCLE_PIXELS * 4 + j * 4 + 1 ] = L;
+                matrix[ i * CIRCLE_PIXELS * 4 + j * 4 + 2 ] = L;
+                matrix[ i * CIRCLE_PIXELS * 4 + j * 4 + 3 ] = A;
 
                 ++c;
             }
