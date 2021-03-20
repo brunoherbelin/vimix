@@ -50,7 +50,6 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     scene.bg()->attach(tmp);
 
     mixingCircle_ = new Mesh("mesh/disk.ply");
-    mixingCircle_->setTexture(textureMixingQuadratic());
     mixingCircle_->shader()->color = glm::vec4( 1.f, 1.f, 1.f, 1.f );
     scene.bg()->attach(mixingCircle_);
 
@@ -107,12 +106,14 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
 //    scene.bg()->attach(stashCircle_);
 
-
 }
 
 
 void MixingView::draw()
 {
+    if (mixingCircle_->texture() == 0)
+        mixingCircle_->setTexture(textureMixingQuadratic());
+
     // temporarily force shaders to use opacity blending for rendering icons
     Shader::force_blending_opacity = true;
     // draw scene of this view

@@ -18,6 +18,7 @@ public:
     Mesh(const std::string& ply_path, const std::string& tex_path = "");
 
     void setTexture(uint textureindex);
+    inline uint texture() const { return textureindex_; }
 
     void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
