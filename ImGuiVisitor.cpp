@@ -488,6 +488,8 @@ void ImGuiVisitor::visit (MediaSource& s)
     if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().showMediaPlayer( s.mediaplayer());
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    ImGui::SameLine();
+    ImGui::Text("Folder");
 }
 
 void ImGuiVisitor::visit (SessionFileSource& s)
@@ -513,8 +515,12 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     }
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
+    ImGui::SameLine();
+    ImGui::Text("File");
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    ImGui::SameLine();
+    ImGui::Text("Folder");
 
     ImGui::Text("Contains %d sources.", s.session()->numSource());
     if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
@@ -553,6 +559,8 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGui::Text("Clone");
     if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
+    ImGui::SameLine();
+    ImGui::Text("Source");
 }
 
 void ImGuiVisitor::visit (PatternSource& s)
@@ -574,6 +582,8 @@ void ImGuiVisitor::visit (PatternSource& s)
         }
         ImGui::EndCombo();
     }
+    ImGui::SameLine();
+    ImGui::Text("Generator");
 }
 
 void ImGuiVisitor::visit (DeviceSource& s)
