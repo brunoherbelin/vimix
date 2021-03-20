@@ -92,6 +92,7 @@
 #define COLOR_FRAME 0.75f, 0.2f, 0.75f
 #define COLOR_FRAME_LIGHT 0.9f, 0.6f, 0.9f
 #define COLOR_CIRCLE 0.75f, 0.2f, 0.75f
+#define COLOR_CIRCLE_OVER 0.8f, 0.8f, 0.8f
 #define COLOR_MIXING_GROUP 0.f, 0.95f, 0.2f
 #define COLOR_LIMBO_CIRCLE 0.16f, 0.16f, 0.16f
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f

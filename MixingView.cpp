@@ -59,44 +59,47 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     scene.bg()->attach(circle_);
 
     // Mixing scene foreground
+
+    // button frame
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
     tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
     tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     scene.fg()->attach(tmp);
-
+    // interactive button
     button_white_ = new Disk();
     button_white_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
     button_white_->translation_ = glm::vec3(0.f, 1.f, 0.f);
     button_white_->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.0f );
     scene.fg()->attach(button_white_);
-
+    // button frame
     tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
     tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
     tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     scene.fg()->attach(tmp);
-
+    // interactive button
     button_black_ = new Disk();
     button_black_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
     button_black_->translation_ = glm::vec3(0.f, -1.f, 0.f);
     button_black_->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.0f );
     scene.fg()->attach(button_black_);
-
+    // moving slider
     slider_root_ = new Group;
     scene.fg()->attach(slider_root_);
-
+    // interactive slider
+    slider_ = new Disk();
+    slider_->scale_ = glm::vec3(0.08f, 0.08f, 1.f);
+    slider_->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
+    slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    slider_root_->attach(slider_);
+    // dark mask in front
     tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(0.08f, 0.08f, 1.f);
+    tmp->scale_ = glm::vec3(0.075f, 0.075f, 1.f);
     tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
-    tmp->shader()->color = glm::vec4( 0.8f, 0.8f, 0.8f, 0.9f );
+    tmp->shader()->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
     slider_root_->attach(tmp);
 
-    slider_ = new Disk();
-    slider_->scale_ = glm::vec3(0.075f, 0.075f, 1.f);
-    slider_->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
-    slider_->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
-    slider_root_->attach(slider_);
 
     stashCircle_ = new Disk();
     stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
@@ -406,6 +409,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             slider_root_->rotation_.z = angle;
 
             // cursor feedback
+            slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
             std::ostringstream info;
             info  << "Global opacity " << 100 - int(Mixer::manager().session()->fading() * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
@@ -477,6 +481,23 @@ void MixingView::terminate()
          g != Mixer::manager().session()->endMixingGroup(); g++)
         (*g)->setAction( MixingGroup::ACTION_FINISH );
 
+}
+
+View::Cursor MixingView::over (glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+    std::pair<Node *, glm::vec2> pick = View::pick(pos);
+
+    // deal with internal interactive objects
+    if ( pick.first == slider_ ) {
+        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
+        ret.type = Cursor_Hand;
+    }
+    else
+        slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+
+
+    return ret;
 }
 
 void MixingView::arrow (glm::vec2 movement)
