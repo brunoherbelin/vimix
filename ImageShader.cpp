@@ -14,7 +14,7 @@ const char* MaskShader::mask_names[3]  = { ICON_FA_EXPAND, ICON_FA_EDIT, ICON_FA
 const char* MaskShader::mask_shapes[5] = { "Elipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 std::vector< ShadingProgram* > MaskShader::mask_programs;
 
-ImageShader::ImageShader(): Shader(), stipple(0.0)
+ImageShader::ImageShader(): Shader(), stipple(0.f), mask_texture(0)
 {
     // static program shader
     program_ = &imageShadingProgram;
@@ -29,6 +29,10 @@ void ImageShader::use()
     // set stippling
     program_->setUniform("stipple", stipple);
 
+    // default mask
+    if (mask_texture == 0)
+        mask_texture = Resource::getTextureWhite();
+
     // setup mask texture
     glActiveTexture(GL_TEXTURE1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -40,9 +44,8 @@ void ImageShader::use()
 void ImageShader::reset()
 {
     Shader::reset();
+    mask_texture = 0;
 
-    // default mask
-    mask_texture = Resource::getTextureWhite();
     // no stippling
     stipple = 0.f;
 }
