@@ -372,9 +372,10 @@ void UserInterface::handleKeyboard()
             else if (navigator.pannelVisible())
                 navigator.hidePannel();
             // 3. hide windows
-            else if (Settings::application.widget.preview || Settings::application.widget.media_player)  {
+            else if (Settings::application.widget.preview || Settings::application.widget.media_player || Settings::application.widget.history)  {
                 Settings::application.widget.preview = false;
                 Settings::application.widget.media_player = false;
+                Settings::application.widget.history = false;
             }
             // 4. cancel selection
             else if (!Mixer::selection().empty()) {
