@@ -445,11 +445,11 @@ void ImGuiVisitor::visit (Source& s)
         s.setLocked(l);
         if (l) {
             Mixer::selection().clear();
-            Action::manager().store(s.name() + std::string(" lock."));
+            Action::manager().store(s.name() + std::string(": lock."));
         }
         else {
             Mixer::selection().set(&s);
-            Action::manager().store(s.name() + std::string(" unlock."));
+            Action::manager().store(s.name() + std::string(": unlock."));
         }
     }
 
@@ -511,13 +511,14 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         oss << s.name() << ": Fading " << std::setprecision(2) << f;
         Action::manager().store(oss.str());
     }
-
-    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open File", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open Session", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
-    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import sources", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().import( &s );
 
     ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
+    ImGui::Text("Contains %d sources.", s.session()->numSource());
+    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Mixer::manager().import( &s );
 }
 
 void ImGuiVisitor::visit (SessionGroupSource& s)
@@ -527,9 +528,10 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
-    ImGui::Text("Sub-Session");
+    ImGui::Text("Flat Sesion group");
+    ImGui::Text("Contains %d sources.", s.session()->numSource());
 
-    if ( ImGui::Button( ICON_FA_UPLOAD " Expand sources", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+    if ( ImGui::Button( ICON_FA_UPLOAD " Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
         Mixer::manager().import( &s );
     }
 

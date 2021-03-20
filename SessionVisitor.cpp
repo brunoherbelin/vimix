@@ -460,6 +460,8 @@ void SessionVisitor::visit (MediaSource& s)
 void SessionVisitor::visit (SessionFileSource& s)
 {
     xmlCurrent_->SetAttribute("type", "SessionSource");
+    if (s.session() != nullptr)
+        xmlCurrent_->SetAttribute("fading", s.session()->fading());
 
     XMLElement *path = xmlDoc_->NewElement("path");
     xmlCurrent_->InsertEndChild(path);

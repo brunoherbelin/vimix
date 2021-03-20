@@ -603,8 +603,11 @@ void Mixer::groupSelection()
     SessionGroupSource *sessiongroup = new SessionGroupSource;
     sessiongroup->setResolution( session_->frame()->resolution() );
 
-    // empty the selection
+    // prepare for new session group attributes
+    std::string name;
     float d = selection().front()->depth();
+
+    // empty the selection
     while ( !selection().empty() ) {
 
         Source *s = selection().front();
@@ -612,6 +615,7 @@ void Mixer::groupSelection()
 
         // import source into group
         if ( sessiongroup->import(s) ) {
+            name += s->initials();
             // detach & remove element from selection()
             detach (s);
             // remove source from session
@@ -635,15 +639,15 @@ void Mixer::groupSelection()
     // Attach source to Mixer
     attach(sessiongroup);
 
-    // avoid name duplicates
-    renameSource(sessiongroup, "group");
+    // rename and avoid name duplicates
+    renameSource(sessiongroup, name);
 
     // store in action manager
     std::ostringstream info;
     info << sessiongroup->name() << " source inserted, " << sessiongroup->session()->numSource() << " sources flatten.";
     Action::manager().store(info.str());
 
-    // give hand to the user
+    // give the hand to the user
     Mixer::manager().setCurrentSource(sessiongroup);
     Log::Notify(info.str().c_str());
 }
