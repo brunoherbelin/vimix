@@ -4,6 +4,8 @@
 #include "Visitor.h"
 #include "tinyxml2Toolkit.h"
 
+class Session;
+
 class SessionVisitor : public Visitor {
 
     bool recursive_;
@@ -15,8 +17,9 @@ public:
                    tinyxml2::XMLElement *root = nullptr,
                    bool recursive = false);
 
-    inline tinyxml2::XMLDocument *doc() const { return xmlDoc_; }
     inline void setRoot(tinyxml2::XMLElement *root) { xmlCurrent_ = root; }
+
+    static bool saveSession(const std::string& filename, Session *session);
 
     // Elements of Scene
     void visit(Scene& n) override;
@@ -52,6 +55,7 @@ public:
     void visit (NetworkSource& s) override;
     void visit (MixingGroup& s) override;
 
+protected:
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
 };
 

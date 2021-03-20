@@ -5,6 +5,7 @@
 #include <vector>
 #include <chrono>
 #include <future>
+#include <sstream>
 
 //  GStreamer
 #include <gst/gst.h>
@@ -46,53 +47,8 @@ static void saveSession(const std::string& filename, Session *session)
     // lock access while saving
     session->lock();
 
-    // creation of XML doc
-    XMLDocument xmlDoc;
-
-    XMLElement *rootnode = xmlDoc.NewElement(APP_NAME);
-    rootnode->SetAttribute("major", XML_VERSION_MAJOR);
-    rootnode->SetAttribute("minor", XML_VERSION_MINOR);
-    rootnode->SetAttribute("size", session->numSource());
-    rootnode->SetAttribute("date", SystemToolkit::date_time_string().c_str());
-    rootnode->SetAttribute("resolution", session->frame()->info().c_str());
-    xmlDoc.InsertEndChild(rootnode);
-
-    // 1. list of sources
-    XMLElement *sessionNode = xmlDoc.NewElement("Session");
-    xmlDoc.InsertEndChild(sessionNode);
-    SessionVisitor sv(&xmlDoc, sessionNode);
-    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
-        // source visitor
-        (*iter)->accept(sv);
-
-    // 2. config of views
-    XMLElement *views = xmlDoc.NewElement("Views");
-    xmlDoc.InsertEndChild(views);
-    {
-        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
-        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), &xmlDoc));
-        views->InsertEndChild(mixing);
-
-        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
-        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
-        views->InsertEndChild(geometry);
-
-        XMLElement *layer = xmlDoc.NewElement( "Layer" );
-        layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), &xmlDoc));
-        views->InsertEndChild(layer);
-
-        XMLElement *appearance = xmlDoc.NewElement( "Texture" );
-        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::TEXTURE), &xmlDoc));
-        views->InsertEndChild(appearance);
-
-        XMLElement *render = xmlDoc.NewElement( "Rendering" );
-        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
-        views->InsertEndChild(render);
-    }
-
-
     // save file to disk
-    if ( XMLSaveDoc(&xmlDoc, filename) ) {
+    if ( SessionVisitor::saveSession(filename, session) ) {
         // all ok
         // set session filename
         session->setFilename(filename);
@@ -170,10 +126,8 @@ void Mixer::update()
     if (!sessionSourceToImport_.empty()) {
         // get the session source to be imported
         SessionSource *source = sessionSourceToImport_.back();
-        // merge the session inside this session source
+        // merge (&delete) the session inside this session source
         merge( source );
-        // important: delete the sessionsource itself
-        deleteSource(source);
         // done with this session source
         sessionSourceToImport_.pop_back();
     }
@@ -419,7 +373,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(" inserted"));
+        Action::manager().store(s->name() + std::string(" source inserted"));
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -514,7 +468,6 @@ void Mixer::deleteSource(Source *s, bool withundo)
     {
         // keep name for log
         std::string name = s->name();
-        uint64_t id = s->id();
 
         // remove source Nodes from all views
         detach(s);
@@ -524,7 +477,7 @@ void Mixer::deleteSource(Source *s, bool withundo)
 
         // store new state in history manager
         if (withundo)
-            Action::manager().store(name + std::string(" deleted"));
+            Action::manager().store(name + std::string(" source deleted"));
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
@@ -685,9 +638,14 @@ void Mixer::groupSelection()
     // avoid name duplicates
     renameSource(sessiongroup, "group");
 
-    Mixer::manager().setCurrentSource(sessiongroup);
+    // store in action manager
+    std::ostringstream info;
+    info << sessiongroup->name() << " source inserted, " << sessiongroup->session()->numSource() << " sources flatten.";
+    Action::manager().store(info.str());
 
-    Log::Notify("Session 'group' created. %d source(s) flatten.", sessiongroup->session()->numSource());
+    // give hand to the user
+    Mixer::manager().setCurrentSource(sessiongroup);
+    Log::Notify(info.str().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -1027,7 +985,9 @@ void Mixer::merge(Session *session)
     }
 
     // new state in history manager
-    Action::manager().store( std::to_string(session->numSource()) + std::string(" sources imported."));
+    std::ostringstream info;
+    info << session->numSource() << " sources imported from " << session->filename();
+    Action::manager().store(info.str());
 
     // import every sources
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
@@ -1062,11 +1022,12 @@ void Mixer::merge(SessionSource *source)
         return;
     }
 
-    // new state in history manager
-    Action::manager().store( source->name().c_str() + std::string(" imported."));
-
     // detach session from SessionSource (source will fail and be deleted later)
     Session *session = source->detach();
+
+    // prepare Action manager info
+    std::ostringstream info;
+    info << source->name().c_str() << " source deleted, " << session->numSource() << " sources imported";
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
@@ -1134,6 +1095,13 @@ void Mixer::merge(SessionSource *source)
         View::need_deep_update_++;
 
     }
+
+    // imported source itself should be removed
+    detach(source);
+    session_->deleteSource(source);
+
+    // new state in history manager
+    Action::manager().store(info.str());
 
     // avoid display issues
     current_view_->update(0.f);

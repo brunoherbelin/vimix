@@ -63,16 +63,12 @@ public:
     // import a source
     bool import(Source *source);
 
-    // TODO import session entirely : bool import();
-
     glm::ivec2 icon() const override { return glm::ivec2(10, 6); }
 
 protected:
 
     void init() override;
-
     glm::vec3 resolution_;
-
 };
 
 

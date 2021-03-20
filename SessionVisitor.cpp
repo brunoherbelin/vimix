@@ -1,6 +1,7 @@
 #include "SessionVisitor.h"
 
 #include "Log.h"
+#include "defines.h"
 #include "Scene.h"
 #include "Decorations.h"
 #include "Source.h"
@@ -14,12 +15,63 @@
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
+#include "SystemToolkit.h"
 
 #include <iostream>
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
+
+bool SessionVisitor::saveSession(const std::string& filename, Session *session)
+{
+    // creation of XML doc
+    XMLDocument xmlDoc;
+
+    XMLElement *rootnode = xmlDoc.NewElement(APP_NAME);
+    rootnode->SetAttribute("major", XML_VERSION_MAJOR);
+    rootnode->SetAttribute("minor", XML_VERSION_MINOR);
+    rootnode->SetAttribute("size", session->numSource());
+    rootnode->SetAttribute("date", SystemToolkit::date_time_string().c_str());
+    rootnode->SetAttribute("resolution", session->frame()->info().c_str());
+    xmlDoc.InsertEndChild(rootnode);
+
+    // 1. list of sources
+    XMLElement *sessionNode = xmlDoc.NewElement("Session");
+    xmlDoc.InsertEndChild(sessionNode);
+    SessionVisitor sv(&xmlDoc, sessionNode);
+    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
+        // source visitor
+        (*iter)->accept(sv);
+
+    // 2. config of views
+    XMLElement *views = xmlDoc.NewElement("Views");
+    xmlDoc.InsertEndChild(views);
+    {
+        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
+        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), &xmlDoc));
+        views->InsertEndChild(mixing);
+
+        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
+        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
+        views->InsertEndChild(geometry);
+
+        XMLElement *layer = xmlDoc.NewElement( "Layer" );
+        layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), &xmlDoc));
+        views->InsertEndChild(layer);
+
+        XMLElement *appearance = xmlDoc.NewElement( "Texture" );
+        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::TEXTURE), &xmlDoc));
+        views->InsertEndChild(appearance);
+
+        XMLElement *render = xmlDoc.NewElement( "Rendering" );
+        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
+        views->InsertEndChild(render);
+    }
+
+    // save file to disk
+    return ( XMLSaveDoc(&xmlDoc, filename) );
+}
 
 SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
                                tinyxml2::XMLElement *root,

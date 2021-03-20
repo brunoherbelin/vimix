@@ -104,7 +104,6 @@ void LayerView::draw()
         if (candidate_flatten_group){
             if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
                 Mixer::manager().groupSelection();
-                Action::manager().store(std::string("Selection Flatten."));
             }
         }
         else {
