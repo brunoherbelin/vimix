@@ -111,6 +111,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
 
 void MixingView::draw()
 {
+    // set texture
     if (mixingCircle_->texture() == 0)
         mixingCircle_->setTexture(textureMixingQuadratic());
 
