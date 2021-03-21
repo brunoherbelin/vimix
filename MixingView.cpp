@@ -360,7 +360,10 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             }
             // pick on the mixing group rotation icon
             else if ( pick.first == s->rotation_mixingroup_ ) {
-                s->mixinggroup_->setAction( MixingGroup::ACTION_ROTATE_ALL );
+                if (UserInterface::manager().shiftModifier())
+                    s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ONE );
+                else
+                    s->mixinggroup_->setAction( MixingGroup::ACTION_ROTATE_ALL );
             }
             // pick source of a mixing group
             else if ( s->mixinggroup_ != nullptr ) {
@@ -431,6 +434,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
         // inform mixing groups to follow the current source
         if (Source::isCurrent(s) && s->mixinggroup_->action() > MixingGroup::ACTION_UPDATE) {
             s->mixinggroup_->follow(s);
+            // special cursor for rotation
             if (s->mixinggroup_->action() == MixingGroup::ACTION_ROTATE_ALL)
                 ret.type = Cursor_Hand;
         }
