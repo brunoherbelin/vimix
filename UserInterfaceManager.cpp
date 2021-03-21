@@ -2156,10 +2156,12 @@ void Navigator::Render()
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SOURCE"))
                         {
                             if ( payload->DataSize == sizeof(int) ) {
+                                bool status_current_index = selected_button[Mixer::manager().indexCurrentSource()];
                                 // drop means move index and reorder
                                 int payload_index = *(const int*)payload->Data;
                                 Mixer::manager().moveIndex(payload_index, index);
                                 // index of current source changed
+                                selected_button[Mixer::manager().indexCurrentSource()] = status_current_index;
                                 applyButtonSelection(Mixer::manager().indexCurrentSource());
                             }
                         }
