@@ -16,6 +16,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
+#include "SystemToolkit.h"
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
@@ -26,27 +27,30 @@ std::string SessionCreator::info(const std::string& filename)
 {
     std::string ret = "";
 
-    XMLDocument doc;
-    XMLError eResult = doc.LoadFile(filename.c_str());
-    if ( XMLResultError(eResult)) {
-        Log::Warning("%s could not be openned.", filename.c_str());
-        return ret;
-    }
+    // if the file exists
+    if (SystemToolkit::file_exists(filename)) {
+        // try to load the file
+        XMLDocument doc;
+        XMLError eResult = doc.LoadFile(filename.c_str());
+        // silently ignore on error
+        if ( !XMLResultError(eResult, false)) {
 
-    XMLElement *header = doc.FirstChildElement(APP_NAME);
-    if (header != nullptr && header->Attribute("date") != 0) {
-        int s = header->IntAttribute("size");
-        ret = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
-        const char *att_string = header->Attribute("resolution");
-        if (att_string)
-            ret += std::string( att_string ) + "\n";
-        att_string = header->Attribute("date");
-        if (att_string) {
-            std::string date( att_string );
-            ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
-            ret += date.substr(8,2) + ":" + date.substr(10,2);
+            XMLElement *header = doc.FirstChildElement(APP_NAME);
+            if (header != nullptr && header->Attribute("date") != 0) {
+                int s = header->IntAttribute("size");
+                ret = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
+                const char *att_string = header->Attribute("resolution");
+                if (att_string)
+                    ret += std::string( att_string ) + "\n";
+                att_string = header->Attribute("date");
+                if (att_string) {
+                    std::string date( att_string );
+                    ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
+                    ret += date.substr(8,2) + ":" + date.substr(10,2);
+                }
+
+            }
         }
-
     }
 
     return ret;

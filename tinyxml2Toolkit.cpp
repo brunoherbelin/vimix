@@ -237,12 +237,13 @@ bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
     return !XMLResultError(eResult);
 }
 
-bool tinyxml2::XMLResultError(int result)
+bool tinyxml2::XMLResultError(int result, bool verbose)
 {
     XMLError xmlresult = (XMLError) result;
     if ( xmlresult != XML_SUCCESS)
     {
-        Log::Info("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
+        if (verbose)
+            Log::Info("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
         return true;
     }
     return false;

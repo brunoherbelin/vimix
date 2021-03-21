@@ -772,6 +772,19 @@ void Mixer::setCurrentIndex(int index)
     setCurrentSource( session_->at(index) );
 }
 
+void Mixer::moveIndex (int current_index, int target_index)
+{
+    // remember ptr to current source
+    Source *previous_current_source_ = currentSource();
+
+    // change order
+    session_->move(current_index, target_index);
+
+    // restore current
+    unsetCurrentSource();
+    setCurrentSource(previous_current_source_);
+}
+
 void Mixer::setCurrentNext()
 {
     if (session_->numSource() > 0) {
@@ -831,11 +844,10 @@ int Mixer::indexCurrentSource()
 
 Source *Mixer::currentSource()
 {
-    if ( current_source_ == session_->end() )
+    if ( current_source_ != session_->end() )
+        return (*current_source_);
+    else
         return nullptr;
-    else {
-        return *(current_source_);
-    }
 }
 
 // management of view

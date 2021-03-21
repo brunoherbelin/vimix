@@ -29,7 +29,7 @@ XMLElement *XMLElementEncodeArray(XMLDocument *doc, const void *array, uint arra
 bool XMLElementDecodeArray(XMLElement *elem, void *array, uint arraysize);
 
 bool XMLSaveDoc(tinyxml2::XMLDocument * const doc, std::string filename);
-bool XMLResultError(int result);
+bool XMLResultError(int result, bool verbose = true);
 
 }
 

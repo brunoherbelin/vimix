@@ -73,6 +73,7 @@ public:
     void unsetCurrentSource ();
 
     void setCurrentIndex (int index);
+    void moveIndex (int current_index, int target_index);
     int  indexCurrentSource ();
 
     // browsing into sources

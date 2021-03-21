@@ -1582,18 +1582,21 @@ void MediaController::setMediaPlayer(MediaPlayer *mp)
 void MediaController::followCurrentSource()
 {
     Source *s = Mixer::manager().currentSource();
-    if ( s != nullptr) {
-        MediaSource *ms = dynamic_cast<MediaSource *>(s);
-        if (ms) {
-            // update the internal mediaplayer if changed
-            if (mp_ != ms->mediaplayer()) {
-                mp_ = ms->mediaplayer();
-                media_playing_mode_ = mp_->isPlaying();
-            }
-        } else {
-            mp_ = nullptr;
-            media_playing_mode_ = false;
+    MediaSource *ms = nullptr;
+
+    if ( s != nullptr)
+        ms = dynamic_cast<MediaSource *>(s);
+
+    if ( ms != nullptr) {
+        // update the internal mediaplayer if changed
+        if (mp_ != ms->mediaplayer()) {
+            mp_ = ms->mediaplayer();
+            media_playing_mode_ = mp_->isPlaying();
         }
+    }
+    else {
+        mp_ = nullptr;
+        media_playing_mode_ = false;
     }
 }
 
@@ -2153,11 +2156,11 @@ void Navigator::Render()
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SOURCE"))
                         {
                             if ( payload->DataSize == sizeof(int) ) {
+                                // drop means move index and reorder
                                 int payload_index = *(const int*)payload->Data;
-                                int current_source_index = Mixer::manager().indexCurrentSource();
-                                Mixer::manager().session()->move(payload_index, index);
-                                if (payload_index == current_source_index)
-                                    applyButtonSelection(index);
+                                Mixer::manager().moveIndex(payload_index, index);
+                                // index of current source changed
+                                applyButtonSelection(Mixer::manager().indexCurrentSource());
                             }
                         }
                         ImGui::EndDragDropTarget();
@@ -2831,7 +2834,7 @@ void Navigator::RenderMainPannel()
         for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
             std::string sessionfilename(*it);
             if (sessionfilename.empty())
-                break;
+                continue;
             std::string shortname = SystemToolkit::filename(*it);
             if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
@@ -2857,7 +2860,7 @@ void Navigator::RenderMainPannel()
                     file_info.clear();
                     file_selected = sessions_list.end();
                 }
-                if (!file_info.empty()) {
+                else if (!file_info.empty()) {
                     ImGui::BeginTooltip();
                     ImGui::Text("%s", file_info.c_str());
                     ImGui::EndTooltip();
