@@ -169,6 +169,10 @@ public:
      * Set the loop mode
      * */
     void setLoop(LoopMode mode);
+
+    bool gpuDisabled();
+    void setGpuDisabled(bool on);
+
     /**
      * Seek to next frame when paused
      * (aka next frame)
@@ -274,6 +278,7 @@ private:
     std::atomic<bool> failed_;
     bool seeking_;
     bool enabled_;
+    bool gpu_disabled_;
 
     // fps counter
     struct TimeCounter {

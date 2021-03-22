@@ -139,34 +139,37 @@ string GstToolkit::gst_version()
 
 std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
 {
-    static list<string> pluginslist;
-    static GstRegistry* plugins_register = nullptr;
+    list<string> plugins_list_;
 
-    if ( plugins_register == nullptr ) {
+    static GstRegistry* plugins_register = nullptr;
+    if ( plugins_register == nullptr )
         plugins_register = gst_registry_get();
 
 #if GST_GL_HAVE_PLATFORM_GLX
-        // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
-        const char *plugins[6] = { "nvh264dec", "nvh265dec", "nvmpeg2videodec",
-                                   "nvmpeg4videodec", "nvvp8dec", "nvvp9dec" };
-        const int N = 6;
+    // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
+    const char *plugins[6] = { "nvh264dec", "nvh265dec", "nvmpeg2videodec",
+                               "nvmpeg4videodec", "nvvp8dec", "nvvp9dec" };
+    const int N = 6;
 #elif GST_GL_HAVE_PLATFORM_CGL
-        const char *plugins[1] = { "vtdec_hw" };
-        const int N = 1;
+    const char *plugins[1] = { "vtdec_hw" };
+    const int N = 1;
 #else
-        const char *plugins[0] = { };
-        const int N = 0;
+    const char *plugins[0] = { };
+    const int N = 0;
 #endif
 
+    static bool enabled_ = false;
+    if (enabled_ != enable) {
+        enabled_ = enable;
         for (int i = 0; i < N; i++) {
             GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
             if(feature != NULL) {
-                pluginslist.push_front( string( plugins[i] ) );
+                plugins_list_.push_front( string( plugins[i] ) );
                 gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + 1 : GST_RANK_MARGINAL);
                 gst_object_unref(feature);
             }
         }
     }
 
-    return pluginslist;
+    return plugins_list_;
 }

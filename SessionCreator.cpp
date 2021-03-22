@@ -417,6 +417,10 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryIntAttribute("loop", &loop);
             n.setLoop( (MediaPlayer::LoopMode) loop);
 
+            bool gpudisable = false;
+            mediaplayerNode->QueryBoolAttribute("gpudisabled", &gpudisable);
+            n.setGpuDisabled(gpudisable);
+
             bool play = true;
             mediaplayerNode->QueryBoolAttribute("play", &play);
             n.play(play);

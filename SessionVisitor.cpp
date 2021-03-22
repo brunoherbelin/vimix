@@ -210,6 +210,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
+        newelement->SetAttribute("gpudisabled", n.gpuDisabled());
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");

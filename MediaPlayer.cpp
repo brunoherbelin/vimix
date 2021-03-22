@@ -37,6 +37,7 @@ MediaPlayer::MediaPlayer()
     failed_ = false;
     seeking_ = false;
     enabled_ = true;
+    gpu_disabled_ = false;
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
@@ -207,7 +208,7 @@ void MediaPlayer::execute_open()
     // Create gstreamer pipeline :
     //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
-    string description = "uridecodebin uri=" + uri_ + " ! ";
+    string description = "uridecodebin name=decoder uri=" + uri_ + " ! ";
 
     // video deinterlacing method
     //      tomsmocomp (0) – Motion Adaptive: Motion Search
@@ -255,6 +256,11 @@ void MediaPlayer::execute_open()
         Log::Warning("MediaPlayer %s Could not configure video frame info", std::to_string(id_).c_str());
         failed_ = true;
         return;
+    }
+
+    // setup uridecodebin
+    if (gpu_disabled_) {
+        g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
     }
 
     // setup appsink
@@ -455,6 +461,26 @@ bool MediaPlayer::isEnabled() const
 bool MediaPlayer::isImage() const
 {
     return media_.isimage;
+}
+
+
+bool MediaPlayer::gpuDisabled()
+{
+    return gpu_disabled_;
+}
+
+void MediaPlayer::setGpuDisabled(bool on)
+{
+    bool need_reload = gpu_disabled_ != on;
+
+    // set parameter
+    gpu_disabled_ = on;
+
+    // pipeline already running and changing state requires reload
+    if (pipeline_!= nullptr && need_reload) {
+
+        // TODO reload with gpu_disabled
+    }
 }
 
 void MediaPlayer::play(bool on)

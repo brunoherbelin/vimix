@@ -1777,11 +1777,32 @@ void MediaController::Render()
             static int current_loop = 0;
             static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
             current_loop = (int) mp_->loop();
-            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
+            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) ) {
                 mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
+//#if GST_GL_HAVE_PLATFORM_GLX
+//                if (Settings::application.render.gpu_decoding && !mp_->gpuDisabled() &&
+//                        mp_->loop() == MediaPlayer::LOOP_BIDIRECTIONAL )
+//                    Log::Warning("Bi-directional Play might not be compatible with Hardware decoding.\n"
+//                                 "You can disable it for this media if you encounter problems.");
+
+//#endif
+            }
+
+//            // if global GPU decoding is enabled
+//            if (Settings::application.render.gpu_decoding) {
+
+//                // icon GPU disabled?
+//                bool gpudisabled = mp_->gpuDisabled();
+
+//                ImGui::SameLine(0, spacing);
+//                const char *tooltip[2] = {"Hardware decoding enabled", "Hardware decoding disabled"};
+//                if (ImGuiToolkit::IconToggle(13,2,14,2, &gpudisabled, tooltip)) {
+//                    mp_->setGpuDisabled(gpudisabled);
+//                }
+//            }
 
             // speed slider
-            ImGui::SameLine(0, MAX(spacing * 4.f, width - 400.f) );
+            ImGui::SameLine(0, MAX(spacing * 2.f, width - 500.f) );
             float speed = static_cast<float>(mp_->playSpeed());
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
