@@ -3146,7 +3146,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::Separator();
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2020 Bruno Herbelin.");
+    ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2021 Bruno Herbelin.");
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -3155,10 +3155,13 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Spacing();
     ImGui::Text("\nvimix is built using the following libraries:");
 
+    tinyfd_inputBox("tinyfd_query", NULL, NULL);
+    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
+
     ImGui::Columns(3, "abouts");
     ImGui::Separator();
 
-    ImGui::Text("Dear ImGui");
+    ImGui::Text("- Dear ImGui");
     ImGui::PushID("dearimguiabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_imgui_about = true;
@@ -3166,7 +3169,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::NextColumn();
 
-    ImGui::Text("GStreamer");
+    ImGui::Text("- GStreamer");
     ImGui::PushID("gstreamerabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_gst_about = true;
@@ -3174,7 +3177,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::NextColumn();
 
-    ImGui::Text("OpenGL");
+    ImGui::Text("- OpenGL");
     ImGui::PushID("openglabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_opengl_about = true;
