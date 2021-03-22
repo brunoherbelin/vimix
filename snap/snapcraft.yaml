@@ -69,9 +69,10 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
+  zenity-integration:
+    plugin: nil
     stage-snaps:
     -  zenity-integration
-    
 
 
       
