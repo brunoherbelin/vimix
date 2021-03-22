@@ -2509,9 +2509,13 @@ void Navigator::RenderNewPannel()
                     fileImportFileDialogs.pop_back();
                     fileDialogPending_ = false;
                     // create a source with this file
-                    std::string label = SystemToolkit::transliterate( open_filename );
-                    label = label.substr( label.size() - MIN( 35, label.size()) );
-                    new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+                    if (open_filename.empty()) {
+                        Log::Notify("No file selected.");
+                    } else {
+                        std::string label = SystemToolkit::transliterate( open_filename );
+                        label = label.substr( label.size() - MIN( 35, label.size()) );
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+                    }
                 }
             }
 
