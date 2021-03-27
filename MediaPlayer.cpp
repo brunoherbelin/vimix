@@ -21,8 +21,6 @@ using namespace std;
 #define MEDIA_PLAYER_DEBUG
 #endif
 
-#define USE_GST_APPSINK_CALLBACKS
-
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
 MediaPlayer::MediaPlayer()

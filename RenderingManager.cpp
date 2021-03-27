@@ -272,8 +272,10 @@ void Rendering::draw()
     main_.toggleFullscreen_();
     output_.toggleFullscreen_();
 
+#ifndef USE_GST_APPSINK_CALLBACKS
     // no g_main_loop_run(loop) : update global GMainContext
     g_main_context_iteration(NULL, FALSE);
+#endif
 
     // software framerate limiter 60FPS if not v-sync
     if ( Settings::application.render.vsync < 1 ) {

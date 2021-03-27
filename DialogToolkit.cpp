@@ -111,6 +111,7 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 
     // done
     gtk_widget_destroy(dialog);
+    wait_for_event();
 #endif
 
     std::string extension = filename.substr(filename.find_last_of(".") + 1);
@@ -170,6 +171,7 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
 
     // done
     gtk_widget_destroy(dialog);
+    wait_for_event();
 #endif
 
     return filename;
@@ -230,6 +232,7 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
 
     // done
     gtk_widget_destroy(dialog);
+    wait_for_event();
 #endif
 
     return filename;
@@ -280,6 +283,7 @@ std::string DialogToolkit::FolderDialog(const std::string &path)
 
     // done
     gtk_widget_destroy(dialog);
+    wait_for_event();
 #endif
 
     return foldername;
@@ -312,6 +316,7 @@ void DialogToolkit::ErrorDialog(const char* message)
 
     // done
     gtk_widget_destroy( dialog );
+    wait_for_event();
 #endif
 }
 

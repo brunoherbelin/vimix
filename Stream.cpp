@@ -20,8 +20,6 @@ using namespace std;
 #define STREAM_DEBUG
 #endif
 
-#define USE_GST_APPSINK_CALLBACKS_
-
 
 Stream::Stream()
 {
@@ -137,7 +135,7 @@ void Stream::execute_open()
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 30);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
-#ifdef USE_GST_APPSINK_CALLBACKS_
+#ifdef USE_GST_APPSINK_CALLBACKS
     // set the callbacks
     GstAppSinkCallbacks callbacks;
     if (single_frame_) {
