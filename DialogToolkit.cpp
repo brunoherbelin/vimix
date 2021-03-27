@@ -12,18 +12,18 @@
 #define USE_TINYFILEDIALOG 1
 #endif
 
-#if USE_TINYFILEDIALOG
-#include <tinyfiledialogs.h>
-#else
-#include <stdio.h>
-#include <gtk/gtk.h>
-#endif
-
 #include "defines.h"
 #include "SystemToolkit.h"
 #include "DialogToolkit.h"
 
-bool gtk_init_ok = false;
+#if USE_TINYFILEDIALOG
+#include "tinyfiledialogs.h"
+#else
+#include <stdio.h>
+#include <gtk/gtk.h>
+
+static bool gtk_init_ok = false;
+static int window_x = -1, window_y = -1;
 
 void add_filter_any_file_dialog( GtkWidget *dialog)
 {
@@ -59,6 +59,7 @@ bool gtk_init()
     }
     return gtk_init_ok;
 }
+#endif
 
 std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 {
@@ -97,9 +98,8 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 
     // ensure front and centered
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
-    static int x = 0, y = 0;
-    if (x != 0)
-        gtk_window_move( GTK_WINDOW(dialog), x, y);
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
 
     // display and get filename
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
@@ -111,11 +111,10 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
     }
 
     // remember position
-    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
 
     // done
     gtk_widget_destroy(dialog);
-//    wait_for_event();
 #endif
 
     return filename;
@@ -154,9 +153,8 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
 
     // ensure front and centered
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
-    static int x = 0, y = 0;
-    if (x != 0)
-        gtk_window_move( GTK_WINDOW(dialog), x, y);
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
 
     // display and get filename
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
@@ -168,11 +166,10 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
     }
 
     // remember position
-    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
 
     // done
     gtk_widget_destroy(dialog);
-//    wait_for_event();
 #endif
 
     return filename;
@@ -216,9 +213,8 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
 
     // ensure front and centered
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
-    static int x = 0, y = 0;
-    if (x != 0)
-        gtk_window_move( GTK_WINDOW(dialog), x, y);
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
 
     // display and get filename
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
@@ -230,11 +226,10 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
     }
 
     // remember position
-    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
 
     // done
     gtk_widget_destroy(dialog);
-    //    wait_for_event();
 #endif
 
     return filename;
@@ -268,9 +263,8 @@ std::string DialogToolkit::FolderDialog(const std::string &path)
 
     // ensure front and centered
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
-    static int x = 0, y = 0;
-    if (x != 0)
-        gtk_window_move( GTK_WINDOW(dialog), x, y);
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
 
     // display and get filename
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
@@ -282,11 +276,10 @@ std::string DialogToolkit::FolderDialog(const std::string &path)
     }
 
     // remember position
-    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
 
     // done
     gtk_widget_destroy(dialog);
-//    wait_for_event();
 #endif
 
     return foldername;
@@ -319,7 +312,6 @@ void DialogToolkit::ErrorDialog(const char* message)
 
     // done
     gtk_widget_destroy( dialog );
-//    wait_for_event();
 #endif
 }
 
