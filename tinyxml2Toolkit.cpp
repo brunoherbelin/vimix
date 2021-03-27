@@ -25,27 +25,27 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector)
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec2 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec2" );
-    newelement->SetAttribute("x", vector.x);
-    newelement->SetAttribute("y", vector.y);
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
     return newelement;
 }
 
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec3" );
-    newelement->SetAttribute("x", vector.x);
-    newelement->SetAttribute("y", vector.y);
-    newelement->SetAttribute("z", vector.z);
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
+    newelement->SetAttribute("z", (float) vector.z);
     return newelement;
 }
 
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec4 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec4" );
-    newelement->SetAttribute("x", vector.x);
-    newelement->SetAttribute("y", vector.y);
-    newelement->SetAttribute("z", vector.z);
-    newelement->SetAttribute("w", vector.w);
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
+    newelement->SetAttribute("z", (float) vector.z);
+    newelement->SetAttribute("w", (float) vector.w);
     return newelement;
 }
 

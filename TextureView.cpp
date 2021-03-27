@@ -28,12 +28,12 @@
 
 TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_update_(true)
 {
+    scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
+    scene.root()->translation_ = glm::vec3(0.8f, 0.f, 0.0f);
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Texture";
-        scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
-        scene.root()->translation_ = glm::vec3(0.8f, 0.f, 0.0f);
         saveSettings();
     }
     else

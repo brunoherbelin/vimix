@@ -343,10 +343,10 @@ void Settings::Load()
 
     // bloc views
     {
-        application.views.clear(); // trash existing list
         XMLElement * pElement = pRoot->FirstChildElement("Views");
         if (pElement)
         {
+            application.views.clear(); // trash existing list
             pElement->QueryIntAttribute("current", &application.current_view);
             pElement->QueryIntAttribute("workspace", &application.current_workspace);
 

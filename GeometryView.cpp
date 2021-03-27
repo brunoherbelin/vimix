@@ -29,11 +29,11 @@
 
 GeometryView::GeometryView() : View(GEOMETRY)
 {
+    scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         Settings::application.views[mode_].name = "Geometry";
-        scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
         saveSettings();
     }
     else
