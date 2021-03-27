@@ -19,7 +19,7 @@ static string settingsFilename = "";
 void Settings::Save()
 {
     // impose C locale for all app
-    std::setlocale(LC_ALL, "C");
+    setlocale(LC_ALL, "C");
 
     XMLDocument xmlDoc;
     XMLDeclaration *pDec = xmlDoc.NewDeclaration();
@@ -221,7 +221,7 @@ void Settings::Save()
 void Settings::Load()
 {
     // impose C locale for all app
-    std::setlocale(LC_ALL, "C");
+    setlocale(LC_ALL, "C");
 
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
