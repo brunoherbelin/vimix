@@ -1,4 +1,7 @@
-#include "Log.h"
+#include <string>
+#include <list>
+#include <mutex>
+using namespace std;
 
 #include "imgui.h"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -6,16 +9,11 @@
 #endif
 #include "imgui_internal.h"
 
-#include "ImGuiToolkit.h"
 #include "defines.h"
+#include "ImGuiToolkit.h"
+#include "DialogToolkit.h"
+#include "Log.h"
 
-// multiplatform
-#include <tinyfiledialogs.h>
-
-#include <string>
-#include <list>
-#include <mutex>
-using namespace std;
 
 static std::mutex mtx;
 
@@ -296,7 +294,8 @@ void Log::Error(const char* fmt, ...)
     buf.appendfv(fmt, args);
     va_end(args);
 
-    tinyfd_messageBox( APP_TITLE, buf.c_str(), "ok", "error", 0);
+    DialogToolkit::ErrorDialog(buf.c_str());
+
     Log::Info("Error - %s\n", buf.c_str());
 }
 

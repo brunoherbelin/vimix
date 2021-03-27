@@ -10,9 +10,6 @@
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
-// multiplatform message box
-#include <tinyfiledialogs.h>
-
 // standalone image loader
 #include "stb_image.h"
 

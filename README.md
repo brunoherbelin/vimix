@@ -63,3 +63,11 @@ and (recursively) clone all the internal git Dependencies.
 **OSX with Brew**
 
     brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
+
+
+#### Generate snap
+
+From vimix root directory
+    snapcraft --debug
+    snap install --dangerous vimix_0.5_amd64.snap
+    

@@ -20,9 +20,6 @@ using namespace std;
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
 
-// multiplatform
-#include <tinyfiledialogs.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -38,17 +35,17 @@ using namespace std;
 #include "defines.h"
 #include "Log.h"
 #include "SystemToolkit.h"
+#include "DialogToolkit.h"
+#include "GlmToolkit.h"
+#include "GstToolkit.h"
+#include "ImGuiToolkit.h"
+#include "ImGuiVisitor.h"
 #include "RenderingManager.h"
 #include "Connection.h"
 #include "ActionManager.h"
 #include "Resource.h"
-#include "FileDialog.h"
 #include "Settings.h"
 #include "SessionCreator.h"
-#include "ImGuiToolkit.h"
-#include "ImGuiVisitor.h"
-#include "GlmToolkit.h"
-#include "GstToolkit.h"
 #include "Mixer.h"
 #include "Recorder.h"
 #include "Streamer.h"
@@ -78,79 +75,12 @@ void ShowSandbox(bool* p_open);
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
 static std::atomic<bool> fileDialogPending_ = false;
 
-
 static std::vector< std::future<std::string> > saveSessionFileDialogs;
-static std::string saveSessionFileDialog(const std::string &path)
-{
-    std::string filename = "";
-    char const * save_file_name;
-    char const * save_pattern[1] = { "*.mix" };
-
-    save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
-
-    if (save_file_name) {
-        filename = std::string(save_file_name);
-        std::string extension = filename.substr(filename.find_last_of(".") + 1);
-        if (extension != "mix")
-            filename += ".mix";
-    }
-
-    return filename;
-}
-
 static std::vector< std::future<std::string> > openSessionFileDialogs;
 static std::vector< std::future<std::string> > importSessionFileDialogs;
-static std::string openSessionFileDialog(const std::string &path)
-{
-    std::string filename = "";
-    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-
-    char const * open_pattern[18] = { "*.mix" };
-    char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 1, open_pattern, "vimix session", 0);
-
-    if (open_file_name)
-        filename = std::string(open_file_name);
-
-    return filename;
-}
-
 static std::vector< std::future<std::string> > fileImportFileDialogs;
-static std::string ImportFileDialog(const std::string &path)
-{
-    std::string filename = "";
-    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-
-    char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg",
-                                      "*.avi", "*.mov", "*.mkv",
-                                      "*.webm", "*.mod", "*.wmv",
-                                      "*.mxf", "*.ogg", "*.flv",
-                                      "*.asf", "*.jpg", "*.png",
-                                      "*.gif", "*.tif", "*.svg" };
-    char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 18, open_pattern, "All supported formats", 0);
-
-    if (open_file_name)
-        filename = std::string(open_file_name);
-
-    return filename;
-}
-
 static std::vector< std::future<std::string> > recentFolderFileDialogs;
 static std::vector< std::future<std::string> > recordFolderFileDialogs;
-static std::string FolderDialog(const std::string &path)
-{
-    std::string foldername = "";
-    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-
-    char const * open_folder_name;
-    open_folder_name = tinyfd_selectFolderDialog("Select a folder", startpath.c_str());
-
-    if (open_folder_name)
-        foldername = std::string(open_folder_name);
-
-    return foldername;
-}
 
 
 UserInterface::UserInterface()
@@ -700,7 +630,7 @@ void UserInterface::selectSaveFilename()
 {
     // launch file dialog to select a session filename to save
     if ( saveSessionFileDialogs.empty()) {
-        saveSessionFileDialogs.emplace_back( std::async(std::launch::async, saveSessionFileDialog, Settings::application.recentSessions.path) );
+        saveSessionFileDialogs.emplace_back( std::async(std::launch::async, DialogToolkit::saveSessionFileDialog, Settings::application.recentSessions.path) );
         fileDialogPending_ = true;
     }
     navigator.hidePannel();
@@ -710,7 +640,7 @@ void UserInterface::selectOpenFilename()
 {
     // launch file dialog to select a session filename to open
     if ( openSessionFileDialogs.empty()) {
-        openSessionFileDialogs.emplace_back( std::async(std::launch::async, openSessionFileDialog, Settings::application.recentSessions.path) );
+        openSessionFileDialogs.emplace_back( std::async(std::launch::async, DialogToolkit::openSessionFileDialog, Settings::application.recentSessions.path) );
         fileDialogPending_ = true;
     }
     navigator.hidePannel();
@@ -906,7 +836,7 @@ void UserInterface::showMenuFile()
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
         // launch file dialog to open a session file
         if ( importSessionFileDialogs.empty()) {
-            importSessionFileDialogs.emplace_back( std::async(std::launch::async, openSessionFileDialog, Settings::application.recentSessions.path) );
+            importSessionFileDialogs.emplace_back( std::async(std::launch::async, DialogToolkit::openSessionFileDialog, Settings::application.recentSessions.path) );
             fileDialogPending_ = true;
         }
         navigator.hidePannel();
@@ -1288,7 +1218,7 @@ void UserInterface::RenderPreview()
                     ImGui::Combo("Path", &selected_path, name_path, 4);
                     if (selected_path > 2) {
                         if (recordFolderFileDialogs.empty()) {
-                            recordFolderFileDialogs.emplace_back(  std::async(std::launch::async, FolderDialog, Settings::application.record.path) );
+                            recordFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.record.path) );
                             fileDialogPending_ = true;
                         }
                     }
@@ -2490,7 +2420,7 @@ void Navigator::RenderNewPannel()
             if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // launch async call to file dialog and get its future.
                 if (fileImportFileDialogs.empty()) {
-                    fileImportFileDialogs.emplace_back(  std::async(std::launch::async, ImportFileDialog, Settings::application.recentImport.path) );
+                    fileImportFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::ImportFileDialog, Settings::application.recentImport.path) );
                     fileDialogPending_ = true;
                 }
             }
@@ -2776,7 +2706,7 @@ void Navigator::RenderMainPannel()
             // Option 2 : add a folder
             if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
                 if (recentFolderFileDialogs.empty()) {
-                    recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, FolderDialog, Settings::application.recentFolders.path) );
+                    recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.recentFolders.path) );
                     fileDialogPending_ = true;
                 }
             }
@@ -3023,6 +2953,8 @@ int hover(const char *label)
 
 #define SEGMENT_ARRAY_MAX 1000
 
+#define MAXSIZE 65535
+
 
 void ShowSandbox(bool* p_open)
 {
@@ -3035,6 +2967,16 @@ void ShowSandbox(bool* p_open)
     }
 
     ImGui::Text("Testing sandox");
+
+    if (ImGui::Button("Message test")) {
+        Log::Error("Testing dialog");
+    }
+
+    static char str[128] = "";
+    ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
+    if ( ImGui::Button("Execute") )
+        SystemToolkit::execute(str);
+
 
 //    const guint64 duration = GST_SECOND * 6;
 //    const guint64 step = GST_MSECOND * 20;
@@ -3121,8 +3063,9 @@ void ShowSandbox(bool* p_open)
 
 //    ImGui::EndChild();
 
+
     static char str0[128] = "àöäüèáû вторая строчка";
-    ImGui::InputText("input text", str0, IM_ARRAYSIZE(str0));
+    ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));
     std::string tra = SystemToolkit::transliterate(std::string(str0));
     ImGui::Text("Transliteration: '%s'", tra.c_str());
 
@@ -3159,8 +3102,8 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Spacing();
     ImGui::Text("\nvimix is built using the following libraries:");
 
-    tinyfd_inputBox("tinyfd_query", NULL, NULL);
-    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
+//    tinyfd_inputBox("tinyfd_query", NULL, NULL);
+//    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
 
     ImGui::Columns(3, "abouts");
     ImGui::Separator();

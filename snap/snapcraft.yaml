@@ -37,15 +37,18 @@ apps:
        GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
        GST_PLUGIN_SCANNER: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
 
+
 parts:
   vimix-binary:
     plugin: cmake
     source: .
     configflags: 
-    -  -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DCMAKE_INSTALL_PREFIX=/
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
     build-packages:
     -  g++
     -  make
+    -  git
     -  libpng-dev
     -  libxrandr-dev
     -  libglfw3-dev
@@ -53,7 +56,6 @@ parts:
     -  libgstreamer-plugins-base1.0-dev
     -  libicu-dev
     stage-packages:
-    -  zenity
     -  libpng16-16
     -  libglu1-mesa
     -  freeglut3
@@ -69,11 +71,6 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
-    stage-snaps:
-    -  zenity-integration
-
-
-      
 
     
     
