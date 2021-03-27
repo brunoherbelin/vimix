@@ -71,12 +71,8 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 
     save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
 
-    if (save_file_name) {
+    if (save_file_name)
         filename = std::string(save_file_name);
-        std::string extension = filename.substr(filename.find_last_of(".") + 1);
-        if (extension != "mix")
-            filename += ".mix";
-    }
 #else
     if (!gtk_init()) {
         ErrorDialog("Could not initialize GTK+ for dialog");
@@ -116,6 +112,10 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
     // done
     gtk_widget_destroy(dialog);
 #endif
+
+    std::string extension = filename.substr(filename.find_last_of(".") + 1);
+    if (extension != "mix")
+        filename += ".mix";
 
     return filename;
 }
