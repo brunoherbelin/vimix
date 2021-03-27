@@ -18,6 +18,7 @@
 #include "SystemToolkit.h"
 
 #include <iostream>
+#include <locale>
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
@@ -25,6 +26,9 @@ using namespace tinyxml2;
 
 bool SessionVisitor::saveSession(const std::string& filename, Session *session)
 {
+    // impose C locale
+    std::setlocale(LC_ALL, "C");
+
     // creation of XML doc
     XMLDocument xmlDoc;
 
@@ -77,6 +81,9 @@ SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
                                tinyxml2::XMLElement *root,
                                bool recursive) : Visitor(), recursive_(recursive), xmlCurrent_(root)
 {    
+    // impose C locale
+    std::setlocale(LC_ALL, "C");
+
     if (doc == nullptr)
         xmlDoc_ = new XMLDocument;
     else

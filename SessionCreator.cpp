@@ -120,7 +120,8 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
 SessionLoader::SessionLoader(Session *session, int recursion): Visitor(),
     session_(session), xmlCurrent_(nullptr), recursion_(recursion)
 {
-
+    // impose C locale
+    std::setlocale(LC_ALL, "C");
 }
 
 

@@ -11,7 +11,7 @@
 #include <glad/glad.h>
 
 // standalone image loader
-#include "stb_image.h"
+#include <stb_image.h>
 
 // CMake Ressource Compiler
 #include <cmrc/cmrc.hpp>

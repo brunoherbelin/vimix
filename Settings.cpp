@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <locale>
 using namespace std;
 
 #include <tinyxml2.h>
@@ -17,6 +18,9 @@ static string settingsFilename = "";
 
 void Settings::Save()
 {
+    // impose C locale for all app
+    std::setlocale(LC_ALL, "C");
+
     XMLDocument xmlDoc;
     XMLDeclaration *pDec = xmlDoc.NewDeclaration();
     xmlDoc.InsertFirstChild(pDec);
@@ -216,6 +220,9 @@ void Settings::Save()
 
 void Settings::Load()
 {
+    // impose C locale for all app
+    std::setlocale(LC_ALL, "C");
+
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
