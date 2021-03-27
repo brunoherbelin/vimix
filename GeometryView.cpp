@@ -144,6 +144,11 @@ void GeometryView::update(float dt)
             }
             output_surface_->setTextureIndex( output->texture() );
         }
+
+        // prevent invalid scaling
+        float s = CLAMP(scene.root()->scale_.x, GEOMETRY_MIN_SCALE, GEOMETRY_MAX_SCALE);
+        scene.root()->scale_.x = s;
+        scene.root()->scale_.y = s;
     }
 
     // the current view is the geometry view

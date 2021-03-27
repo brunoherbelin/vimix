@@ -169,6 +169,11 @@ void LayerView::update(float dt)
             persp_left_->translation_.x = -aspect_ratio;
             persp_right_->translation_.x = aspect_ratio + 0.06;
         }
+
+        // prevent invalid scaling
+        float s = CLAMP(scene.root()->scale_.x, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
+        scene.root()->scale_.x = s;
+        scene.root()->scale_.y = s;
     }
 
     if (Mixer::manager().view() == this )

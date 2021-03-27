@@ -280,6 +280,10 @@ void MixingView::update(float dt)
         f = 1.f - f;
         mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
+        // prevent invalid scaling
+        float s = CLAMP(scene.root()->scale_.x, MIXING_MIN_SCALE, MIXING_MAX_SCALE);
+        scene.root()->scale_.x = s;
+        scene.root()->scale_.y = s;
     }
 
     // the current view is the mixing view
