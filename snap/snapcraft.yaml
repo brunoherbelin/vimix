@@ -17,7 +17,7 @@ confinement: strict # use 'strict' once you have the right plugs and slots
     
 apps:
   vimix:
-    extensions: [gnome-3-34]
+    extensions: [gnome-3-28]
     command: bin/vimix
     adapter: full
     plugs:
