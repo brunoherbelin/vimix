@@ -9,7 +9,8 @@ monitor or a projector, but can be streamed or recorded live (no audio).
 
 ![screenshot](vimix_0.2_beta.jpg)
 
-Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) for more details or this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359).
+Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
+Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) to see what vimix can do.
 
 ## Install vimix
 
