@@ -35,7 +35,7 @@ MediaPlayer::MediaPlayer()
     failed_ = false;
     seeking_ = false;
     enabled_ = true;
-    gpu_disabled_ = false;
+    force_software_decoding_ = false;
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
@@ -207,6 +207,8 @@ void MediaPlayer::execute_open()
     //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
     string description = "uridecodebin name=decoder uri=" + uri_ + " ! ";
+//    string description = "uridecodebin name=decoder uri=" + uri_ + " decoder. ! ";
+//    description += "audioconvert ! autoaudiosink decoder. ! ";
 
     // video deinterlacing method
     //      tomsmocomp (0) – Motion Adaptive: Motion Search
@@ -257,7 +259,7 @@ void MediaPlayer::execute_open()
     }
 
     // setup uridecodebin
-    if (gpu_disabled_) {
+    if (force_software_decoding_) {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
     }
 
@@ -462,22 +464,22 @@ bool MediaPlayer::isImage() const
 }
 
 
-bool MediaPlayer::gpuDisabled()
+bool MediaPlayer::softwareDecodingForced()
 {
-    return gpu_disabled_;
+    return force_software_decoding_;
 }
 
-void MediaPlayer::setGpuDisabled(bool on)
+void MediaPlayer::setSoftwareDecodingForced(bool on)
 {
-    bool need_reload = gpu_disabled_ != on;
+    bool need_reload = force_software_decoding_ != on;
 
     // set parameter
-    gpu_disabled_ = on;
+    force_software_decoding_ = on;
 
     // pipeline already running and changing state requires reload
     if (pipeline_!= nullptr && need_reload) {
 
-        // TODO reload with gpu_disabled
+        // TODO reload with force_software_decoding_
     }
 }
 
