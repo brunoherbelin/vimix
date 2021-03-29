@@ -826,11 +826,11 @@ void UserInterface::showMenuFile()
 
     ImGui::Separator();
 
-    ImGui::MenuItem( ICON_FA_HISTORY " Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
+    ImGui::MenuItem( ICON_FA_LEVEL_UP_ALT "  Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
 
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
         selectOpenFilename();
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Reload", CTRL_MOD "Shift+O"))
+    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Re-open", CTRL_MOD "Shift+O"))
         Mixer::manager().load( Mixer::manager().session()->filename() );
 
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
@@ -849,10 +849,10 @@ void UserInterface::showMenuFile()
             navigator.hidePannel();
         }
     }
-    if (ImGui::MenuItem( ICON_FA_SAVE "  Save as", CTRL_MOD "Shift+S"))
+    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save as", CTRL_MOD "Shift+S"))
         selectSaveFilename();
 
-    ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
+    ImGui::MenuItem( ICON_FA_LEVEL_DOWN_ALT "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
     if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q"))
@@ -940,14 +940,6 @@ void ToolBox::Render()
         }
         ImGui::EndMenuBar();
     }
-
-    static char buf1[128] = "videotestsrc pattern=smpte";
-    ImGui::InputText("gstreamer pipeline", buf1, 128);
-    if (ImGui::Button("Create Generic Stream Source") )
-    {
-        Mixer::manager().addSource( Mixer::manager().createSourceStream(buf1) );
-    }
-
 
     //
     // display histogram of update time and plot framerate
@@ -2385,7 +2377,7 @@ void Navigator::RenderNewPannel()
         // TITLE
         ImGui::SetCursorPosY(10);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("New");
+        ImGui::Text("Insert");
         ImGui::PopFont();
 
         // Edit menu
@@ -2968,8 +2960,12 @@ void ShowSandbox(bool* p_open)
 
     ImGui::Text("Testing sandox");
 
-    if (ImGui::Button("Message test")) {
-        Log::Error("Testing dialog");
+
+    static char buf1[1280] = "videotestsrc pattern=smpte";
+    ImGui::InputText("gstreamer pipeline", buf1, 1280);
+    if (ImGui::Button("Create Generic Stream Source") )
+    {
+        Mixer::manager().addSource(Mixer::manager().createSourceStream(buf1));
     }
 
     static char str[128] = "";
@@ -2977,7 +2973,9 @@ void ShowSandbox(bool* p_open)
     if ( ImGui::Button("Execute") )
         SystemToolkit::execute(str);
 
-
+    if (ImGui::Button("Message test")) {
+        Log::Error("Testing dialog");
+    }
 //    const guint64 duration = GST_SECOND * 6;
 //    const guint64 step = GST_MSECOND * 20;
 //    static guint64 t = 0;
