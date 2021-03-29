@@ -89,11 +89,11 @@ void SessionCreator::load(const std::string& filename)
     // session file seems legit, create a session
     session_ = new Session;
 
+    // load views config (includes resolution of session rendering)
+    loadConfig( xmlDoc_.FirstChildElement("Views") );
+
     // ready to read sources
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
-
-    // load views config (includes resolution of session rendering: todo after load)
-    loadConfig( xmlDoc_.FirstChildElement("Views") );
 
     // create groups
     std::list< SourceList > groups = getMixingGroups();
