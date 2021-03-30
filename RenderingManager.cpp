@@ -281,7 +281,7 @@ void Rendering::draw()
     if ( Settings::application.render.vsync < 1 ) {
         static GTimer *timer = g_timer_new ();
         double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
-        if (elapsed < 16000)
+        if ( (elapsed < 16000.0) && (elapsed > 0.0) )
             g_usleep( 16000 - (gulong)elapsed  );
         g_timer_start(timer);
     }
