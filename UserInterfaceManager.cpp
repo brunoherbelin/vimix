@@ -2605,7 +2605,6 @@ void Navigator::RenderTransitionPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Behavior");
         ImGuiToolkit::ButtonSwitch( ICON_FA_RANDOM " Cross fading", &Settings::application.transition.cross_fade);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_CROSSHAIRS " Open on target", &Settings::application.transition.auto_open);
         ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
 
         // Transition options
@@ -2620,15 +2619,29 @@ void Navigator::RenderTransitionPannel()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
-        ImGui::Spacing();
-        if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+        // specific transition actions
+        ImGui::Text(" ");
+        if ( ImGui::Button( ICON_FA_PLAY_CIRCLE "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->play(false);
+        }
+        ImGui::SameLine();
+        ImGui::Text("Animation");
+        if ( ImGui::Button( ICON_FA_FILE_UPLOAD "  Open ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->open();
+        }
+        ImGui::SameLine();
+        ImGui::Text("Session");
+
+        // General transition actions
+        ImGui::Text(" ");
+        if ( ImGui::Button( ICON_FA_PLAY_CIRCLE "  Play &  " ICON_FA_FILE_UPLOAD " Open ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
         }
-        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().setView(View::MIXING);
-        ImGui::SameLine();
-        ImGuiToolkit::HelpMarker("Exit transition leaves the output 'as is',\nwith the newly openned session as a source\nif the transition is not finished.");
 
     }
     ImGui::End();

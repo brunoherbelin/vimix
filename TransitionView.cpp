@@ -22,6 +22,8 @@
 
 #include "TransitionView.h"
 
+#define POS_TARGET 0.4f
+
 
 TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
 {
@@ -69,7 +71,7 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     scene.bg()->attach(border);
 
     scene.bg()->scale_ = glm::vec3(0.1f, 0.1f, 1.f);
-    scene.bg()->translation_ = glm::vec3(0.4f, 0.f, 0.0f);
+    scene.bg()->translation_ = glm::vec3(POS_TARGET, 0.f, 0.0f);
 
 }
 
@@ -136,7 +138,7 @@ void TransitionView::update(float dt)
         // request update
         transition_source_->touch();
 
-        if (d > 0.2f && Settings::application.transition.auto_open)
+        if (d > 0.2f)
             Mixer::manager().setView(View::MIXING);
 
     }
@@ -168,8 +170,11 @@ void TransitionView::draw()
     scene.accept(dv2);
 
     // display interface duration
-    glm::vec2 P = Rendering::manager().project(glm::vec3(-0.17f, -0.14f, 0.f), scene.root()->transform_, false);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+    glm::vec2 pos_window = Rendering::manager().project(glm::vec3(-0.2f, -0.14f, 0.f), scene.root()->transform_, false);
+    glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.14f, 0.f), scene.root()->transform_, false);
+    glm::vec2 pos_open = Rendering::manager().project(glm::vec3(POS_TARGET, -0.14f, 0.f), scene.root()->transform_, false);
+
+    ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
     if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
@@ -183,22 +188,31 @@ void TransitionView::draw()
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
-
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetNextItemWidth(180.f);
+
+        // Duration slider (adjusted width)
+        ImGui::SetNextItemWidth(pos_play.x - pos_window.x - 20.f);
         ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
                            TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
-        ImGui::SameLine();
-        if ( ImGui::Button(ICON_FA_STEP_FORWARD) )
+
+        // Play button just at the end of the timeline
+        ImGui::SetCursorScreenPos(ImVec2(pos_play.x, pos_play.y+2));
+        if ( ImGui::Button(ICON_FA_PLAY_CIRCLE) )
             play(false);
+
+        // centered "Open" button on the target frame
+        ImGui::SetCursorScreenPos(ImVec2(pos_open.x -80.f, pos_open.y +2.f));
+        ImGui::SetNextItemWidth(160.f);
+        if ( ImGui::Button(ICON_FA_FILE_UPLOAD " Open") )
+            open();
 
         ImGui::PopFont();
         ImGui::PopStyleColor(7);  // 7 colors
         ImGui::End();
     }
 
-    P = Rendering::manager().project(glm::vec3(-0.535f, -0.14f, 0.f), scene.root()->transform_, false);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+    pos_window = Rendering::manager().project(glm::vec3(-0.535f, -0.14f, 0.f), scene.root()->transform_, false);
+    ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
     if (ImGui::Begin("##TransitionType", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
@@ -309,6 +323,14 @@ std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 }
 
 
+void TransitionView::open()
+{
+    // quick jump over to target (and open)
+    transition_source_->group(View::TRANSITION)->clearCallbacks();
+    MoveToCallback *anim = new MoveToCallback(glm::vec3(POS_TARGET, 0.0, 0.0), 180.f);
+    transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
+}
+
 void TransitionView::play(bool open)
 {
     if (transition_source_ != nullptr) {
@@ -323,7 +345,7 @@ void TransitionView::play(bool open)
         transition_source_->group(View::TRANSITION)->clearCallbacks();
 
         // if want to open session after play, target  movement till end position, otherwise stop at 0
-        float target_x = open ? 0.4f : 0.f;
+        float target_x = open ? POS_TARGET : 0.f;
 
         // calculate how far to reach target
         float time = CLAMP(- transition_source_->group(View::TRANSITION)->translation_.x, 0.f, 1.f);
@@ -331,7 +353,6 @@ void TransitionView::play(bool open)
         time += open ? 0.2f : 0.f;
         // calculate remaining time on the total duration, in ms
         time *= Settings::application.transition.duration  * 1000.f;
-
 
         // if remaining time is more than 50ms
         if (time > 50.f) {

@@ -102,7 +102,6 @@ void Settings::Save()
 
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
-    TransitionNode->SetAttribute("auto_open", application.transition.auto_open);
     TransitionNode->SetAttribute("hide_windows", application.transition.hide_windows);
     TransitionNode->SetAttribute("cross_fade", application.transition.cross_fade);
     TransitionNode->SetAttribute("duration", application.transition.duration);
@@ -312,7 +311,6 @@ void Settings::Load()
     XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
     if (transitionnode != nullptr) {
         transitionnode->QueryBoolAttribute("hide_windows", &application.transition.hide_windows);
-        transitionnode->QueryBoolAttribute("auto_open", &application.transition.auto_open);
         transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
         transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
         transitionnode->QueryIntAttribute("profile", &application.transition.profile);

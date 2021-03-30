@@ -21,6 +21,7 @@ public:
     void attach(SessionFileSource *ts);
     Session *detach();
     void play(bool open);
+    void open();
 
 private:
     Surface *output_surface_;
