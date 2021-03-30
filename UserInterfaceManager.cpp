@@ -2771,12 +2771,13 @@ void Navigator::RenderMainPannel()
         // fill the session list depending on the mode
         static std::list<std::string> sessions_list;
         // change session list if changed
-        if (selection_session_mode_changed) {
+        if (selection_session_mode_changed || Settings::application.recentSessions.changed) {
 
             // selection MODE 0 ; RECENT sessions
             if ( selection_session_mode == 0) {
                 // show list of recent sessions
                 sessions_list = Settings::application.recentSessions.filenames;
+                Settings::application.recentSessions.changed = false;
             }
             // selection MODE 1 : LIST FOLDER
             else if ( selection_session_mode == 1) {

@@ -84,12 +84,14 @@ struct History
     bool front_is_valid;
     bool load_at_start;
     bool save_on_exit;
+    bool changed;
 
     History() {
         path = IMGUI_LABEL_RECENT_FILES;
         front_is_valid = false;
         load_at_start = false;
         save_on_exit = false;
+        changed = false;
     }
     void push(const std::string &filename) {
         if (filename.empty()) {
@@ -101,6 +103,7 @@ struct History
         if (filenames.size() > MAX_RECENT_HISTORY)
             filenames.pop_back();
         front_is_valid = true;
+        changed = true;
     }
     void remove(const std::string &filename) {
         if (filename.empty())
@@ -108,6 +111,7 @@ struct History
         if (filenames.front() == filename)
             front_is_valid = false;
         filenames.remove(filename);
+        changed = true;
     }
 };
 
