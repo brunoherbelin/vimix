@@ -46,6 +46,7 @@ public:
     inline bool enabled() const { return enabled_; }
     void removeStreams(const std::string &clientname);
     void removeStream(const std::string &sender, int port);
+    void removeStream(const VideoStreamer *vs);
 
     bool busy();
     std::vector<std::string> listStreams();
@@ -74,10 +75,12 @@ class VideoStreamer : public FrameGrabber
 
     // connection information
     NetworkToolkit::StreamConfig config_;
+    std::atomic<bool> stopped_;
 
 public:
 
     VideoStreamer(NetworkToolkit::StreamConfig conf);
+    virtual ~VideoStreamer() {}
     std::string info() const override;
 
 };
