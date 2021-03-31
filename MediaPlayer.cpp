@@ -36,6 +36,7 @@ MediaPlayer::MediaPlayer()
     seeking_ = false;
     enabled_ = true;
     force_software_decoding_ = false;
+    hardware_decoder_ = "";
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
     desired_state_ = GST_STATE_PAUSED;
@@ -473,6 +474,10 @@ bool MediaPlayer::isImage() const
     return media_.isimage;
 }
 
+std::string MediaPlayer::hardwareDecoderName()
+{
+    return hardware_decoder_;
+}
 
 bool MediaPlayer::softwareDecodingForced()
 {
@@ -707,6 +712,11 @@ void MediaPlayer::fill_texture(guint index)
     {
         // initialize texture
         init_texture(index);
+
+        // now that a frame is ready, and once only, browse into the decoder of the pipeline
+        // for possible hadrware decoding plugins used. Empty string means none.
+        GstElement *dec = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
+        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec);
 
     }
     else {

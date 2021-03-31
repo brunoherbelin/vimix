@@ -169,10 +169,6 @@ public:
      * Set the loop mode
      * */
     void setLoop(LoopMode mode);
-
-    bool softwareDecodingForced();
-    void setSoftwareDecodingForced(bool on);
-
     /**
      * Seek to next frame when paused
      * (aka next frame)
@@ -243,6 +239,17 @@ public:
      * */
     guint texture() const;
     /**
+     * Get the name of the hardware decoder used
+     * Empty string if none (i.e. software decoding)
+     * */
+    std::string hardwareDecoderName();
+    /**
+     * Forces open using software decoding
+     * (i.e. without hadrware decoding)
+     * */
+    void setSoftwareDecodingForced(bool on);
+    bool softwareDecodingForced();
+    /**
      * Accept visitors
      * Used for saving session file
      * */
@@ -279,6 +286,7 @@ private:
     bool seeking_;
     bool enabled_;
     bool force_software_decoding_;
+    std::string hardware_decoder_;
 
     // fps counter
     struct TimeCounter {
