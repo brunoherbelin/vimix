@@ -1639,8 +1639,14 @@ void MediaController::Render()
                                          ImVec2(tooltip_pos.x + width + 10.f, tooltip_pos.y + tooltip_height), IMGUI_COLOR_OVERLAY);
 
                 ImGui::SetCursorScreenPos(tooltip_pos);
+                // filename
                 ImGui::Text(" %s", mp_->filename().c_str());
-                ImGui::Text(" %s", mp_->media().codec_name.c_str());
+                // decoding info
+                if (Settings::application.render.gpu_decoding)
+                    ImGui::Text(" %s (%s hardware decoder)", mp_->media().codec_name.c_str(), mp_->hardwareDecoderName().c_str());
+                else
+                    ImGui::Text(" %s", mp_->media().codec_name.c_str());
+                // framerate
                 if ( mp_->frameRate() > 1.f )
                     ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
                 else
@@ -1710,19 +1716,6 @@ void MediaController::Render()
 //#endif
             }
 
-//            // if global GPU decoding is enabled
-//            if (Settings::application.render.gpu_decoding) {
-
-//                // icon GPU disabled?
-//                bool gpudisabled = mp_->gpuDisabled();
-
-//                ImGui::SameLine(0, spacing);
-//                const char *tooltip[2] = {"Hardware decoding enabled", "Hardware decoding disabled"};
-//                if (ImGuiToolkit::IconToggle(13,2,14,2, &gpudisabled, tooltip)) {
-//                    mp_->setGpuDisabled(gpudisabled);
-//                }
-//            }
-
             // speed slider
             ImGui::SameLine(0, MAX(spacing * 2.f, width - 500.f) );
             float speed = static_cast<float>(mp_->playSpeed());
@@ -1738,6 +1731,21 @@ void MediaController::Render()
             if (ImGuiToolkit::ButtonIcon(5, 8))
                 ImGui::OpenPopup( "MenuTimeline" );
             if (ImGui::BeginPopup( "MenuTimeline" )) {
+                // if global GPU decoding is enabled
+                if (Settings::application.render.gpu_decoding) {
+//                    std::string hwdec = mp_->hardwareDecoderName();
+//                    if (!hwdec.empty()) {
+//                        if (ImGui::Selectable( "Disable hardware decoder" )){
+
+//                        }
+//                    }
+//                    else {
+//                        if (ImGui::Selectable( "Try to find hardware decoder" )){
+
+//                        }
+//                    }
+                }
+
                 if (ImGui::Selectable( "Reset Speed" )){
                     speed = 1.f;
                     mp_->setPlaySpeed( static_cast<double>(speed) );
@@ -1749,13 +1757,13 @@ void MediaController::Render()
                     Action::manager().store("Timeline Reset");
                 }
                 ImGui::Separator();
-                ImGui::SetNextItemWidth(150);
+                ImGui::SetNextItemWidth(180);
                 int smoothcurve = 0;
                 if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
                     mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
                     Action::manager().store("Timeline Smooth curve");
                 }
-                ImGui::SetNextItemWidth(150);
+                ImGui::SetNextItemWidth(180);
                 int autofade = 0;
                 if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
                     mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );

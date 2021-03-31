@@ -134,22 +134,13 @@ string GstToolkit::gst_version()
     return oss.str();
 }
 
-
-// see https://developer.ridgerun.com/wiki/index.php?title=GStreamer_modify_the_elements_rank
-
-std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
-{
-    list<string> plugins_list_;
-
-    static GstRegistry* plugins_register = nullptr;
-    if ( plugins_register == nullptr )
-        plugins_register = gst_registry_get();
-
 #if GST_GL_HAVE_PLATFORM_GLX
     // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
-    const char *plugins[6] = { "nvh264dec", "nvh265dec", "nvmpeg2videodec",
-                               "nvmpeg4videodec", "nvvp8dec", "nvvp9dec" };
-    const int N = 6;
+    const char *plugins[10] = { "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
+                               "nvh264dec", "nvh265dec", "nvmpeg2videodec",
+                               "nvmpeg4videodec", "nvvp8dec", "nvvp9dec"
+                             };
+    const int N = 10;
 #elif GST_GL_HAVE_PLATFORM_CGL
     const char *plugins[1] = { "vtdec_hw" };
     const int N = 1;
@@ -157,6 +148,16 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
     const char *plugins[0] = { };
     const int N = 0;
 #endif
+
+
+// see https://developer.ridgerun.com/wiki/index.php?title=GStreamer_modify_the_elements_rank
+std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
+{
+    list<string> plugins_list_;
+
+    static GstRegistry* plugins_register = nullptr;
+    if ( plugins_register == nullptr )
+        plugins_register = gst_registry_get();
 
     static bool enabled_ = false;
     if (enabled_ != enable) {
@@ -172,4 +173,30 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
     }
 
     return plugins_list_;
+}
+
+std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
+{
+    std::string found = "";
+
+    auto it  = gst_bin_iterate_recurse(GST_BIN(gstbin));
+    GValue value = G_VALUE_INIT;
+    for(GstIteratorResult r = gst_iterator_next(it, &value); r != GST_ITERATOR_DONE; r = gst_iterator_next(it, &value))
+    {
+        if ( r == GST_ITERATOR_OK )
+        {
+            GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
+            if (e) {
+                std::string e_name = gst_element_get_name(e);
+                for (int i = 0; i < N; i++) {
+                    if (e_name.find(plugins[i]) != std::string::npos) {
+                        found = plugins[i];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return found;
 }
