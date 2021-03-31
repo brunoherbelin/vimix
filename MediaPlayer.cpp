@@ -204,13 +204,16 @@ void MediaPlayer::open(string path)
 void MediaPlayer::execute_open() 
 {   
     // Create gstreamer pipeline :
-    //         " uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
-    // equivalent to gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink
-    string description = "uridecodebin name=decoder uri=" + uri_ + " ! ";
+    //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
+    // equivalent to command line
+    //         "gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink"
+    string description = "uridecodebin name=decoder uri=" + uri_ + " ! queue max-size-time=0 ! ";
+    // NB: queue adds some control over the buffer, thereby limiting the frame delay. zero size means no buffering
+
 //    string description = "uridecodebin name=decoder uri=" + uri_ + " decoder. ! ";
 //    description += "audioconvert ! autoaudiosink decoder. ! ";
 
-    // video deinterlacing method
+    // video deinterlacing method (if media is interlaced)
     //      tomsmocomp (0) – Motion Adaptive: Motion Search
     //      greedyh (1) – Motion Adaptive: Advanced Detection
     //      greedyl (2) – Motion Adaptive: Simple Detection
@@ -220,12 +223,19 @@ void MediaPlayer::execute_open()
     if (media_.interlaced)
         description += "deinterlace method=2 ! ";
 
-    // video convertion chroma-resampler
+    // video convertion algorithm (should only do colorspace conversion, no scaling)
+    // chroma-resampler:
     //      Duplicates the samples when upsampling and drops when downsampling 0
     //      Uses linear interpolation 1 (default)
     //      Uses cubic interpolation 2
     //      Uses sinc interpolation 3
-    description += "videoconvert chroma-resampler=2 n-threads=2 ! ";
+    //  dither:
+    //      no dithering 0
+    //      propagate rounding errors downwards 1
+    //      Dither with floyd-steinberg error diffusion 2
+    //      Dither with Sierra Lite error diffusion 3
+    //      ordered dither using a bayer pattern 4 (default)
+    description += "videoconvert chroma-resampler=1 dither=0 ! "; // fast
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0){
