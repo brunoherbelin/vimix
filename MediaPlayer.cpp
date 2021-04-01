@@ -269,6 +269,21 @@ void MediaPlayer::execute_open()
         return;
     }
 
+
+//    GObject *dec = G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
+//    auto it  = gst_bin_iterate_elements(GST_BIN(pipeline_));
+//    GValue value = G_VALUE_INIT;
+//    for(GstIteratorResult r = gst_iterator_next(it, &value); r != GST_ITERATOR_DONE; r = gst_iterator_next(it, &value))
+//    {
+//        if ( r == GST_ITERATOR_OK )
+//        {
+//            GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
+//            GstState  current, pending;
+//            auto ret = gst_element_get_state(e, &current, &pending, 100000);
+//            g_print("%s(%s), status = %s, pending = %s\n", G_VALUE_TYPE_NAME(&value), gst_element_get_name(e), gst_element_state_get_name(current), gst_element_state_get_name(pending));
+//        }
+//    }
+
     // setup uridecodebin
     if (force_software_decoding_) {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
@@ -716,7 +731,7 @@ void MediaPlayer::fill_texture(guint index)
         // now that a frame is ready, and once only, browse into the decoder of the pipeline
         // for possible hadrware decoding plugins used. Empty string means none.
         GstElement *dec = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
-        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec);
+        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec).c_str();
 
     }
     else {
