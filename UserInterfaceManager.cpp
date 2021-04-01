@@ -1642,7 +1642,7 @@ void MediaController::Render()
                 // filename
                 ImGui::Text(" %s", mp_->filename().c_str());
                 // decoding info
-                if (Settings::application.render.gpu_decoding)
+                if (Settings::application.render.gpu_decoding && !mp_->hardwareDecoderName().empty() )
                     ImGui::Text(" %s (%s hardware decoder)", mp_->media().codec_name.c_str(), mp_->hardwareDecoderName().c_str());
                 else
                     ImGui::Text(" %s", mp_->media().codec_name.c_str());

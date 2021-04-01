@@ -142,8 +142,8 @@ string GstToolkit::gst_version()
                              };
     const int N = 10;
 #elif GST_GL_HAVE_PLATFORM_CGL
-    const char *plugins[1] = { "vtdec_hw" };
-    const int N = 1;
+    const char *plugins[2] = { "vtdec_hw", "vtdechw" };
+    const int N = 2;
 #else
     const char *plugins[0] = { };
     const int N = 0;
@@ -188,6 +188,7 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
                 std::string e_name = gst_element_get_name(e);
+//                g_print(" - %s", e_name.c_str());
                 for (int i = 0; i < N; i++) {
                     if (e_name.find(plugins[i]) != std::string::npos) {
                         found = plugins[i];
