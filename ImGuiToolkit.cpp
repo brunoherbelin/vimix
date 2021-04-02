@@ -394,9 +394,9 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         return false;
 
     // get style & id
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float fontsize = ImGui::GetFontSize();
     ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
     const ImGuiID id = window->GetID(label);
 
     //

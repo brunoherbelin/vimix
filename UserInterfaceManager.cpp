@@ -1525,12 +1525,31 @@ void MediaController::followCurrentSource()
 
 void MediaController::Render()
 {
-    float toolbar_height = 2.5 * ImGui::GetFrameHeightWithSpacing();
-    ImVec2 MinWindowSize = ImVec2(350.f, 1.2f * ImGui::GetFrameHeightWithSpacing() + toolbar_height * (Settings::application.widget.media_player_view? 2.f : 1.f));
-
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
+
+    // estimate window size
+    ImGuiContext& g = *GImGui;
+    const float _spacing = 6.0f;
+    const float _height  = g.FontSize + g.Style.FramePadding.y * 2.0f ;
+    const float _timeline_height = (g.FontSize + g.Style.FramePadding.y) * 2.0f ; // double line for each timeline
+    const float _scrollbar_height = g.Style.ScrollbarSize;
+    // all together: 1 title bar + spacing + 1 toolbar + spacing + 2 timelines + scrollbar
+    const float _toobar_height = _height + 2.f * _timeline_height + _scrollbar_height + 2.f * _spacing;
+
+    // window: 1 title bar + spacing + toolbar
+    ImVec2 MinWindowSize = ImVec2(350.f, _height + _spacing + _toobar_height);
+    if (Settings::application.widget.media_player_view) {
+        // + min 2 lines for player if visible
+        MinWindowSize.y += 2.f * _height;
+        // free window height
+        ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
+    }
+    else {
+        // fixed window height
+        ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, MinWindowSize.y));
+    }
+
     if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
         ImGui::End();
@@ -1550,6 +1569,7 @@ void MediaController::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
+//            ImGui::MenuItem( ICON_FA_QUESTION_CIRCLE " Help", nullptr, &media_player_help);
 
             if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
                 Settings::application.widget.media_player = false;
@@ -1607,19 +1627,15 @@ void MediaController::Render()
     {
         static float timeline_zoom = 1.f;
         const float width = ImGui::GetContentRegionAvail().x;
-        const float timeline_height = 2.f * (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y);
-        const float segments_height = timeline_height;
-        const float slider_zoom_width = segments_height / 2.f;
+        const float slider_zoom_width = _timeline_height / 2.f;
 
         if (Settings::application.widget.media_player_view)
         {
             // set an image height to fill the vertical space, minus the height of control bar
             float image_height = ImGui::GetContentRegionAvail().y;
             if ( !mp_->isImage() ) {
-                // leave space for buttons and timelines
-                image_height -= ImGui::GetFrameHeight() + timeline_height + segments_height ;
-                // leave space for scrollbar & spacing
-                image_height -= ImGui::GetStyle().ScrollbarSize + 3.f * ImGui::GetStyle().ItemSpacing.y;
+                // leave space for buttons and timelines + spacing
+                image_height -= _toobar_height;
             }
 
             // display media
@@ -1665,6 +1681,7 @@ void MediaController::Render()
             ImGui::SetCursorPos(return_to_pos);
         }
 
+        ImGui::Spacing();
         // Control bar
         if ( mp_->isEnabled() && !mp_->isImage()) {
 
@@ -1705,88 +1722,83 @@ void MediaController::Render()
             static int current_loop = 0;
             static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
             current_loop = (int) mp_->loop();
-            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) ) {
+            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
                 mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
-//#if GST_GL_HAVE_PLATFORM_GLX
-//                if (Settings::application.render.gpu_decoding && !mp_->gpuDisabled() &&
-//                        mp_->loop() == MediaPlayer::LOOP_BIDIRECTIONAL )
-//                    Log::Warning("Bi-directional Play might not be compatible with Hardware decoding.\n"
-//                                 "You can disable it for this media if you encounter problems.");
-
-//#endif
-            }
 
             // speed slider
-            ImGui::SameLine(0, MAX(spacing * 2.f, width - 500.f) );
+            ImGui::SameLine(0, MAX(spacing * 2.f, width - 450.f) );
             float speed = static_cast<float>(mp_->playSpeed());
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 40.0);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0);
             if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
                 mp_->setPlaySpeed( static_cast<double>(speed) );
-//            if (ImGui::IsItemDeactivatedAfterEdit())
-//                Action::manager().store("Play Speed");
-            // TODO: avoid seek every time speed is set
 
             // Timeline popup menu
-            ImGui::SameLine(0, spacing);
-            if (ImGuiToolkit::ButtonIcon(5, 8))
+            ImGui::SameLine(0, spacing * 0.5f);
+            bool l = true;
+            if (ImGuiToolkit::IconToggle(5,8,5,8, &l) )
                 ImGui::OpenPopup( "MenuTimeline" );
-            if (ImGui::BeginPopup( "MenuTimeline" )) {
-                // if global GPU decoding is enabled
-                if (Settings::application.render.gpu_decoding) {
-//                    std::string hwdec = mp_->hardwareDecoderName();
-//                    if (!hwdec.empty()) {
-//                        if (ImGui::Selectable( "Disable hardware decoder" )){
-
-//                        }
-//                    }
-//                    else {
-//                        if (ImGui::Selectable( "Try to find hardware decoder" )){
-
-//                        }
-//                    }
-                }
-
-                if (ImGui::Selectable( "Reset Speed" )){
+            if (ImGui::BeginPopup( "MenuTimeline" ))
+            {
+                if (ImGui::MenuItem("Reset Speed" )){
                     speed = 1.f;
                     mp_->setPlaySpeed( static_cast<double>(speed) );
                 }
-                if (ImGui::Selectable( "Reset Timeline" )){
+                if (ImGui::MenuItem( "Reset Timeline" )){
                     timeline_zoom = 1.f;
                     mp_->timeline()->clearFading();
                     mp_->timeline()->clearGaps();
                     Action::manager().store("Timeline Reset");
                 }
-                ImGui::Separator();
-                ImGui::SetNextItemWidth(180);
-                int smoothcurve = 0;
-                if (ImGui::Combo("##SmoothCurve", &smoothcurve, "Smooth curve\0Just a little\0A bit more\0Quite a lot\0") ){
-                    mp_->timeline()->smoothFading( 10 * (int) pow(4, smoothcurve-1) );
-                    Action::manager().store("Timeline Smooth curve");
+                if (ImGui::BeginMenu("Smooth curve"))
+                {
+                    const char* names[] = { "Just a little", "A bit more", "Quite a lot"};
+                    for (int i = 0; i < IM_ARRAYSIZE(names); i++) {
+                        if (ImGui::MenuItem(names[i])) {
+                            mp_->timeline()->smoothFading( 10 * (int) pow(4, i) );
+                            Action::manager().store("Timeline Smooth curve");
+                        }
+                    }
+                    ImGui::EndMenu();
                 }
-                ImGui::SetNextItemWidth(180);
-                int autofade = 0;
-                if (ImGui::Combo("##Autofade", &autofade, "Auto fading\0 250 ms\0 500 ms\0 1 second\0 2 seconds\0") ){
-                    mp_->timeline()->autoFading( 250 * (int ) pow(2, autofade-1) );
-                    mp_->timeline()->smoothFading( 10 * autofade );
-                    Action::manager().store("Timeline Auto fading");
+                if (ImGui::BeginMenu("Auto fading"))
+                {
+                    const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
+                    for (int i = 0; i < IM_ARRAYSIZE(names); i++) {
+                        if (ImGui::MenuItem(names[i])) {
+                            mp_->timeline()->autoFading( 250 * (int ) pow(2, i) );
+                            mp_->timeline()->smoothFading( 10 * (i + 1) );
+                            Action::manager().store("Timeline Auto fading");
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+                if (Settings::application.render.gpu_decoding && ImGui::BeginMenu("Hardware Decoding"))
+                {
+                    bool hwdec = !mp_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Auto", "", &hwdec ))
+                        mp_->setSoftwareDecodingForced(false);
+                    hwdec = mp_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                        mp_->setSoftwareDecodingForced(true);
+                    ImGui::EndMenu();
                 }
                 ImGui::EndPopup();
             }
 
+            ImGui::Spacing();
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.f, 3.f));
 
-            guint64 current_t = mp_->position();
-            guint64 seek_t = current_t;
+            guint64 seek_t = mp_->position();
 
             // scrolling sub-window
             ImGui::BeginChild("##scrolling",
                               ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
-                                     timeline_height + segments_height + ImGui::GetStyle().ScrollbarSize ),
+                                     2.f * _timeline_height + _scrollbar_height ),
                               false, ImGuiWindowFlags_HorizontalScrollbar);
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
-                ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), segments_height -1);
+                ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), _timeline_height -1);
                 size.x *= timeline_zoom;
 
                 bool released = false;
@@ -1810,7 +1822,7 @@ void MediaController::Render()
 
             // zoom slider
             ImGui::SameLine();
-            ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height + segments_height), &timeline_zoom, 1.0, 5.f, "");
+            ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, 2.f * _timeline_height), &timeline_zoom, 1.0, 5.f, "");
             ImGui::PopStyleVar();
 
             // request seek (ASYNC)
