@@ -403,6 +403,7 @@ void MediaPlayer::close()
     for(guint i = 0; i < N_VFRAME; i++){
         if ( frame_[i].full ) {
             gst_video_frame_unmap(&frame_[i].vframe);
+            frame_[i].full = false;
             frame_[i].status = INVALID;
         }
     }
@@ -416,6 +417,12 @@ void MediaPlayer::close()
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
     pbo_size_ = 0;
+
+    // reset indices
+    pbo_index_ = 0;
+    pbo_next_index_ = 0;
+    write_index_ = 0;
+    last_index_ = 0;
 
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
@@ -509,7 +516,9 @@ void MediaPlayer::setSoftwareDecodingForced(bool on)
     // pipeline already running and changing state requires reload
     if (pipeline_!= nullptr && need_reload) {
 
-        // TODO reload with force_software_decoding_
+        // reload : terminate pipeline and re-create it
+        close();
+        execute_open();
     }
 }
 
@@ -731,7 +740,7 @@ void MediaPlayer::fill_texture(guint index)
         // now that a frame is ready, and once only, browse into the decoder of the pipeline
         // for possible hadrware decoding plugins used. Empty string means none.
         GstElement *dec = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
-        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec).c_str();
+        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec);
 
     }
     else {
