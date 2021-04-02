@@ -393,6 +393,9 @@ std::string SystemToolkit::transliterate(std::string input)
                 "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
     secondTrans->transliterate(ucs);
 
+    delete secondTrans;
+    delete firstTrans;
+
     std::ostringstream output;
     output << ucs;
     return output.str();
