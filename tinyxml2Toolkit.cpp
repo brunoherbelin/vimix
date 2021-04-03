@@ -129,7 +129,7 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, const void *array,
     gchar *compressed_array = g_new(gchar, compressed_size);
 
     // encoded string will hold the base64 encoding of the array
-    const gchar *encoded_array = nullptr;
+    gchar *encoded_array = nullptr;
 
     // zlib  compress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
     if ( Z_OK == compress((Bytef *)compressed_array, &compressed_size,
@@ -153,6 +153,7 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, const void *array,
 
     // free temporary array
     g_free(compressed_array);
+    g_free(encoded_array);
 
     return newelement;
 }

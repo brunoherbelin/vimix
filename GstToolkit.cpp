@@ -142,13 +142,8 @@ string GstToolkit::gst_version()
                              };
     const int N = 10;
 #elif GST_GL_HAVE_PLATFORM_CGL
-<<<<<<< HEAD
-    const char *plugins[1] = { "vtdec_hw" };
-    const int N = 1;
-=======
     const char *plugins[2] = { "vtdec_hw", "vtdechw" };
     const int N = 2;
->>>>>>> 7344258b2f761d53d617e272473381625652d30a
 #else
     const char *plugins[0] = { };
     const int N = 0;
@@ -184,7 +179,7 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
 {
     std::string found = "";
 
-    auto it  = gst_bin_iterate_recurse(GST_BIN(gstbin));
+    GstIterator* it  = gst_bin_iterate_recurse(GST_BIN(gstbin));
     GValue value = G_VALUE_INIT;
     for(GstIteratorResult r = gst_iterator_next(it, &value); r != GST_ITERATOR_DONE; r = gst_iterator_next(it, &value))
     {
@@ -192,7 +187,9 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
         {
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
-                std::string e_name = gst_element_get_name(e);
+                gchar *name = gst_element_get_name(e);
+                std::string e_name(name);
+                g_free(name);
 //                g_print(" - %s", e_name.c_str());
                 for (int i = 0; i < N; i++) {
                     if (e_name.find(plugins[i]) != std::string::npos) {
@@ -203,6 +200,7 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
             }
         }
     }
+    gst_iterator_free(it);
 
     return found;
 }

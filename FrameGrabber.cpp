@@ -16,7 +16,7 @@
 
 
 
-FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0), width_(0), height_(0), use_alpha_(0), caps_(nullptr)
+FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0), width_(0), height_(0), use_alpha_(0), caps_(NULL)
 {
     pbo_[0] = 0;
     pbo_[1] = 0;
@@ -28,7 +28,7 @@ FrameGrabbing::~FrameGrabbing()
     clearAll();
 
     // cleanup
-    if (caps_!=nullptr)
+    if (caps_)
         gst_caps_unref (caps_);
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
@@ -73,7 +73,7 @@ FrameGrabber *FrameGrabbing::get(uint64_t id)
 void FrameGrabbing::stopAll()
 {
     std::list<FrameGrabber *>::iterator iter;
-    for (iter=grabbers_.begin(); iter != grabbers_.end(); iter++ )
+    for (iter=grabbers_.begin(); iter != grabbers_.end(); ++iter )
         (*iter)->stop();
 }
 
@@ -121,7 +121,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
         pbo_next_index_ = 0;
 
         // new caps
-        if (caps_!=nullptr)
+        if (caps_)
             gst_caps_unref (caps_);
         caps_ = gst_caps_new_simple ("video/x-raw",
                                      "format", G_TYPE_STRING, use_alpha_ ? "RGBA" : "RGB",
@@ -193,7 +193,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
                     delete rec;
                 }
                 else
-                    iter++;
+                    ++iter;
             }
 
             // unref / free the frame

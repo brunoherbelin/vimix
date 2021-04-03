@@ -26,6 +26,7 @@ Timeline::Timeline()
 
 Timeline::~Timeline()
 {
+    reset();
 }
 
 Timeline& Timeline::operator = (const Timeline& b)
@@ -176,8 +177,7 @@ TimeIntervalSet Timeline::sections() const
             ++it;
         }
 
-        for (; it != gaps_.end(); ++it)
-        {
+        for (; it != gaps_.end(); ++it) {
             sec.insert( TimeInterval(begin_sec, (*it).begin) );
             begin_sec = (*it).end;
         }
