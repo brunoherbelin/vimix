@@ -169,6 +169,7 @@ protected:
             status = INVALID;
             position = GST_CLOCK_TIME_NONE;
         }
+        void unmap();
     };
     Frame frame_[N_FRAME];
     guint write_index_;

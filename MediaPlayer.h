@@ -18,7 +18,7 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 3
+#define N_VFRAME 5
 
 struct MediaInfo {
 
@@ -90,6 +90,7 @@ public:
      * Open a media using gstreamer URI 
      * */
     void open( std::string path);
+    void reopen();
     /**
      * Get name of the media
      * */
@@ -204,7 +205,7 @@ public:
      * - frame duration : timeline.step()
      */
     Timeline *timeline();
-    void setTimeline(Timeline tl);
+    void setTimeline(const Timeline &tl);
 
     float currentTimelineFading();
     /**
@@ -324,6 +325,7 @@ private:
             status = INVALID;
             position = GST_CLOCK_TIME_NONE;
         }
+        void unmap();
     };
     Frame frame_[N_VFRAME];
     guint write_index_;

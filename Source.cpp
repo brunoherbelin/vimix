@@ -247,6 +247,8 @@ Source::~Source()
         delete maskbuffer_;
     if (maskimage_)
         delete maskimage_;
+    if (masksurface_)
+        delete masksurface_; // deletes maskshader_
 
     // all groups and their children are deleted in the scene
     // this includes rendersurface_, overlays, blendingshader_ and rendershader_

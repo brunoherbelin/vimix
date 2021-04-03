@@ -59,6 +59,11 @@ MediaPlayer::MediaPlayer()
 MediaPlayer::~MediaPlayer()
 {
     close();
+
+    // cleanup opengl texture
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
+
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -163,7 +168,8 @@ static MediaInfo UriDiscoverer_(std::string uri)
                         gchar *container = NULL;
                         if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
                              video_stream_info.codec_name += " " + std::string(container);
-                        g_free(container);
+                        if (container)
+                            g_free(container);
                     }
                     // exit loop
                     // inform that it succeeded
@@ -177,6 +183,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
             }
         }
 
+        gst_discoverer_info_unref (info);
         g_object_unref (discoverer);
     }
 
@@ -201,6 +208,16 @@ void MediaPlayer::open(string path)
     // wait for discoverer to finish in the future (test in update)
 }
 
+
+void MediaPlayer::reopen()
+{
+    // re-openning is meaningfull only if it was already open
+    if (pipeline_ != nullptr) {
+        // reload : terminate pipeline and re-create it
+        close();
+        execute_open();
+    }
+}
 
 void MediaPlayer::execute_open() 
 {   
@@ -257,7 +274,9 @@ void MediaPlayer::execute_open()
         failed_ = true;
         return;
     }
+    // setup pipeline
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
+    gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);    
     string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
@@ -268,21 +287,6 @@ void MediaPlayer::execute_open()
         failed_ = true;
         return;
     }
-
-
-//    GObject *dec = G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
-//    auto it  = gst_bin_iterate_elements(GST_BIN(pipeline_));
-//    GValue value = G_VALUE_INIT;
-//    for(GstIteratorResult r = gst_iterator_next(it, &value); r != GST_ITERATOR_DONE; r = gst_iterator_next(it, &value))
-//    {
-//        if ( r == GST_ITERATOR_OK )
-//        {
-//            GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
-//            GstState  current, pending;
-//            auto ret = gst_element_get_state(e, &current, &pending, 100000);
-//            g_print("%s(%s), status = %s, pending = %s\n", G_VALUE_TYPE_NAME(&value), gst_element_get_name(e), gst_element_state_get_name(current), gst_element_state_get_name(pending));
-//        }
-//    }
 
     // setup uridecodebin
     if (force_software_decoding_) {
@@ -375,12 +379,21 @@ bool MediaPlayer::failed() const
     return failed_;
 }
 
+void MediaPlayer::Frame::unmap()
+{
+    if ( full )  {
+        gst_video_frame_unmap(&vframe);
+        full = false;
+    }
+}
+
 void MediaPlayer::close()
 {
     // not openned?
-    if (!ready_  && discoverer_.valid()) {
+    if (!ready_) {
         // wait for loading to finish
-        discoverer_.wait();
+        if (discoverer_.valid())
+            discoverer_.wait();
         // nothing else to change
         return;
     }
@@ -390,9 +403,16 @@ void MediaPlayer::close()
 
     // clean up GST
     if (pipeline_ != nullptr) {
+
+        // force flush
+        GstState state;
+        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+                    GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+
+        // end pipeline
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
         if (ret == GST_STATE_CHANGE_ASYNC) {
-            GstState state;
             gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
         }
         gst_object_unref (pipeline_);
@@ -400,29 +420,20 @@ void MediaPlayer::close()
     }
 
     // cleanup eventual remaining frame memory
-    for(guint i = 0; i < N_VFRAME; i++){
-        if ( frame_[i].full ) {
-            gst_video_frame_unmap(&frame_[i].vframe);
-            frame_[i].full = false;
-            frame_[i].status = INVALID;
-        }
+    for(guint i = 0; i < N_VFRAME; i++) {
+        frame_[i].access.lock();
+        frame_[i].unmap();
+        frame_[i].access.unlock();
     }
-
-    // cleanup opengl texture
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-    textureindex_ = 0;
+    write_index_ = 0;
+    last_index_ = 0;
 
     // cleanup picture buffer
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
     pbo_size_ = 0;
-
-    // reset indices
     pbo_index_ = 0;
     pbo_next_index_ = 0;
-    write_index_ = 0;
-    last_index_ = 0;
 
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
@@ -513,13 +524,9 @@ void MediaPlayer::setSoftwareDecodingForced(bool on)
     // set parameter
     force_software_decoding_ = on;
 
-    // pipeline already running and changing state requires reload
-    if (pipeline_!= nullptr && need_reload) {
-
-        // reload : terminate pipeline and re-create it
-        close();
-        execute_open();
-    }
+    // changing state requires reload
+    if (need_reload)
+        reopen();
 }
 
 void MediaPlayer::play(bool on)
@@ -725,6 +732,10 @@ void MediaPlayer::init_texture(guint index)
 #ifdef MEDIA_PLAYER_DEBUG
         Log::Info("MediaPlayer %s Using Pixel Buffer Object texturing.", std::to_string(id_).c_str());
 #endif
+
+        // now that a frame is ready, and once only, browse into the pipeline
+        // for possible hadrware decoding plugins used. Empty string means none.
+        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
     }
 }
 
@@ -736,12 +747,6 @@ void MediaPlayer::fill_texture(guint index)
     {
         // initialize texture
         init_texture(index);
-
-        // now that a frame is ready, and once only, browse into the decoder of the pipeline
-        // for possible hadrware decoding plugins used. Empty string means none.
-        GstElement *dec = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (pipeline_), "decoder") );
-        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(dec);
-
     }
     else {
         glBindTexture(GL_TEXTURE_2D, textureindex_);
@@ -789,17 +794,19 @@ void MediaPlayer::update()
         return;
 
     // not ready yet
-    if (!ready_ && discoverer_.valid()) {
-        // try to get info from discoverer
-        if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
-        {
-            media_ = discoverer_.get();
-            // if its ok, open the media
-            if (media_.valid)
-                execute_open();
-            else {
-                Log::Warning("MediaPlayer %s Loading cancelled", std::to_string(id_).c_str());
-                failed_ = true;
+    if (!ready_) {
+        if (discoverer_.valid()) {
+            // try to get info from discoverer
+            if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+            {
+                media_ = discoverer_.get();
+                // if its ok, open the media
+                if (media_.valid)
+                    execute_open();
+                else {
+                    Log::Warning("MediaPlayer %s Loading cancelled", std::to_string(id_).c_str());
+                    failed_ = true;
+                }
             }
         }
         // wait next frame to display
@@ -834,7 +841,6 @@ void MediaPlayer::update()
     // do not fill a frame twice
     if (frame_[read_index].status != INVALID ) {
 
-
         // is this an End-of-Stream frame ?
         if (frame_[read_index].status == EOS )
         {
@@ -850,6 +856,9 @@ void MediaPlayer::update()
             // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
             if ( (frame_[read_index].status == PREROLL || seeking_ ) && pbo_size_ > 0)
                 fill_texture(read_index);
+
+            // free frame
+            frame_[read_index].unmap();
         }
 
         // we just displayed a vframe : set position time to frame PTS
@@ -857,11 +866,6 @@ void MediaPlayer::update()
 
         // avoid reading it again
         frame_[read_index].status = INVALID;
-
-//        // TODO : try to do something when the update is too slow :(
-//        if ( timecount_.dt() > frame_duration_  * 2) {
-//            Log::Info("frame late %d", 2 * frame_duration_);
-//        }
     }
 
     // unkock frame after reading it
@@ -993,7 +997,7 @@ float MediaPlayer::currentTimelineFading()
     return media_.timeline.fadingAt(position_);
 }
 
-void MediaPlayer::setTimeline(Timeline tl)
+void MediaPlayer::setTimeline(const Timeline &tl)
 {
     media_.timeline = tl;
 }
@@ -1041,10 +1045,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     frame_[write_index_].access.lock();
 
     // always empty frame before filling it again
-    if ( frame_[write_index_].full ) {
-        gst_video_frame_unmap(&frame_[write_index_].vframe);
-        frame_[write_index_].full = false;
-    }
+    frame_[write_index_].unmap();
 
     // accept status of frame received
     frame_[write_index_].status = status;
@@ -1078,8 +1079,14 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
         }
         // full but invalid frame : will be deleted next iteration
         // (should never happen)
-        else
+        else {
+#ifdef MEDIA_PLAYER_DEBUG
+            Log::Info("MediaPlayer %s Received an Invalid frame", std::to_string(id_).c_str());
+#endif
             frame_[write_index_].status = INVALID;
+            frame_[write_index_].access.unlock();
+            return false;
+        }
     }
     // else; null buffer for EOS: give a position
     else {
@@ -1108,7 +1115,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 
 void MediaPlayer::callback_end_of_stream (GstAppSink *, gpointer p)
 {
-    MediaPlayer *m = (MediaPlayer *)p;
+    MediaPlayer *m = static_cast<MediaPlayer *>(p);
     if (m && m->ready_) {
         m->fill_frame(NULL, MediaPlayer::EOS);
     }
@@ -1124,12 +1131,12 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL) {
 
-        // get buffer from sample
-        GstBuffer *buf = gst_sample_get_buffer (sample);
-
         // send frames to media player only if ready
-        MediaPlayer *m = (MediaPlayer *)p;
+        MediaPlayer *m = static_cast<MediaPlayer *>(p);
         if (m && m->ready_) {
+
+            // get buffer from sample
+            GstBuffer *buf = gst_sample_get_buffer (sample);
 
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
@@ -1159,12 +1166,13 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
-        // get buffer from sample (valid until sample is released)
-        GstBuffer *buf = gst_sample_get_buffer (sample) ;
-
         // send frames to media player only if ready
-        MediaPlayer *m = (MediaPlayer *)p;
+        MediaPlayer *m = static_cast<MediaPlayer *>(p);
         if (m && m->ready_) {
+
+            // get buffer from sample (valid until sample is released)
+            GstBuffer *buf = gst_sample_get_buffer (sample) ;
+
             // fill frame with buffer
             if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
                 ret = GST_FLOW_ERROR;
