@@ -162,13 +162,13 @@ void MixingView::draw()
         // manipulation of sources in Mixing view
         if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
             glm::vec2 center = glm::vec2(0.f, 0.f);
-            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                 // compute barycenter (1)
                 center += glm::vec2((*it)->group(View::MIXING)->translation_);
             }
             // compute barycenter (2)
             center /= Mixer::selection().size();
-            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                 (*it)->group(View::MIXING)->translation_ -= glm::vec3(center, 0.f);
                 (*it)->touch();
             }
@@ -177,7 +177,7 @@ void MixingView::draw()
         if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
-            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                 list.push_back(*it);
                 // compute barycenter (1)
                 center += glm::vec2((*it)->group(View::MIXING)->translation_);
@@ -188,13 +188,13 @@ void MixingView::draw()
             list = mixing_sorted( list, center);
             // average distance
             float d = 0.f;
-            for (SourceList::iterator it = list.begin(); it != list.end(); it++) {
+            for (SourceList::iterator it = list.begin(); it != list.end(); ++it) {
                 d += glm::distance(glm::vec2((*it)->group(View::MIXING)->translation_), center);
             }
             d /= list.size();
             // distribute with equal angle
             float angle = 0.f;
-            for (SourceList::iterator it = list.begin(); it != list.end(); it++) {
+            for (SourceList::iterator it = list.begin(); it != list.end(); ++it) {
                 glm::vec2 P = center + glm::rotate(glm::vec2(0.f, d), angle);
                 (*it)->group(View::MIXING)->translation_.x = P.x;
                 (*it)->group(View::MIXING)->translation_.y = P.y;
@@ -205,14 +205,14 @@ void MixingView::draw()
         }
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
-            for (; it != Mixer::selection().end(); it++) {
+            for (; it != Mixer::selection().end(); ++it) {
                 (*it)->setAlpha(0.f);
             }
             Action::manager().store(std::string("Selection Mixing Expand & hide."));
         }
         if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
             SourceList::iterator  it = Mixer::selection().begin();
-            for (; it != Mixer::selection().end(); it++) {
+            for (; it != Mixer::selection().end(); ++it) {
                 (*it)->setAlpha(0.99f);
             }
             Action::manager().store(std::string("Selection Mixing Compress & show."));
@@ -586,7 +586,7 @@ void MixingView::setAlpha(Source *s)
     Group *sourceNode = s->group(mode_);
     glm::vec2 mix_pos = glm::vec2(DEFAULT_MIXING_TRANSLATION);
 
-    for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); it++) {
+    for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); ++it) {
         // avoid superposing icons: distribute equally
         if ( glm::distance(glm::vec2((*it)->translation_), mix_pos) < DELTA_ALPHA) {
             mix_pos += glm::vec2(-0.03f, 0.03f);
@@ -635,25 +635,22 @@ uint textureMixingQuadratic()
     if (texid == 0) {
         // generate the texture with alpha exactly as computed for sources
         GLubyte matrix[CIRCLE_PIXELS*CIRCLE_PIXELS * 4];
-        GLfloat luminance = 1.f;
-        GLfloat alpha = 0.f;
-        GLfloat distance = 0.f;
-        int l = -CIRCLE_PIXELS / 2 + 1, c = 0;
+        int l = -CIRCLE_PIXELS / 2 + 1;
 
         for (int i = 0; i < CIRCLE_PIXELS ; ++i) {
-            c = -CIRCLE_PIXELS / 2 + 1;
+            int c = -CIRCLE_PIXELS / 2 + 1;
             for (int j = 0; j < CIRCLE_PIXELS ; ++j) {
                 // distance to the center
-                distance = sin_quad_texture( (float) c , (float) l  );
+                GLfloat distance = sin_quad_texture( (float) c , (float) l  );
 //                distance = 1.f - (GLfloat) ((c * c) + (l * l)) / CIRCLE_PIXEL_RADIUS;  // quadratic
 //                distance = 1.f - (GLfloat) sqrt( (GLfloat) ((c * c) + (l * l))) / (GLfloat) sqrt(CIRCLE_PIXEL_RADIUS); // linear
 
                 // transparency
-                alpha = 255.f * CLAMP( distance , 0.f, 1.f);
+                GLfloat alpha = 255.f * CLAMP( distance , 0.f, 1.f);
                 GLubyte A = static_cast<GLubyte>(alpha);
 
                 // luminance adjustment
-                luminance = 255.f * CLAMP( 0.2f + 0.75f * distance, 0.f, 1.f);
+                GLfloat luminance = 255.f * CLAMP( 0.2f + 0.75f * distance, 0.f, 1.f);
                 GLubyte L = static_cast<GLubyte>(luminance);
 
                 // fill pixel RGBA

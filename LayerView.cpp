@@ -80,7 +80,7 @@ void LayerView::draw()
         // start loop on selection
         SourceList::iterator  it = Mixer::selection().begin();
         float depth_first = (*it)->depth();
-        for (; it != Mixer::selection().end(); it++) {
+        for (; it != Mixer::selection().end(); ++it) {
             // test if selection is contiguous in layer (i.e. not interrupted)
             SourceList::iterator inter = Mixer::manager().session()->find(depth_first, (*it)->depth());
             if ( inter != Mixer::manager().session()->end() && !Mixer::selection().contains(*inter)){
@@ -118,7 +118,7 @@ void LayerView::draw()
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
             float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
-            for (it++; it != dsl.end(); it++) {
+            for (++it; it != dsl.end(); ++it) {
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
@@ -129,7 +129,7 @@ void LayerView::draw()
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
-            for (it++; it != dsl.end(); it++) {
+            for (++it; it != dsl.end(); ++it) {
                 depth += LAYER_STEP;
                 (*it)->setDepth(depth);
             }
@@ -140,7 +140,7 @@ void LayerView::draw()
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();
-            for (; it != dsl.end(); it++, rit++) {
+            for (; it != dsl.end(); ++it, ++rit) {
                 (*it)->setDepth((*rit)->depth());
             }
             Action::manager().store(std::string("Selection Layer Reverse order."));
@@ -268,7 +268,7 @@ float LayerView::setDepth(Source *s, float d)
         depth = LAYER_BACKGROUND + LAYER_STEP;
 
         // find the front-most souce in the workspace (behind FOREGROUND)
-        for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); node++) {
+        for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); ++node) {
             // place in front of previous sources
             depth = MAX(depth, (*node)->translation_.z + LAYER_STEP);
 

@@ -58,7 +58,7 @@ void GarbageVisitor::visit(Group &n)
 
     // loop over members of a group
     // and stop when found
-    for (NodeSet::iterator node = n.begin(); !found_ && node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); !found_ && node != n.end(); ++node) {
         // visit the child node
         (*node)->accept(*this);
         // un-stack recursive browsing

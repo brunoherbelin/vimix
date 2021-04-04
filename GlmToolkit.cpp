@@ -59,9 +59,9 @@ void GlmToolkit::inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec
 //        return angle;
 //}
 
-GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() {
-    mMin = glm::vec3(1.f);
-    mMax = glm::vec3(-1.f);
+GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() :
+    mMin(glm::vec3(1.f)), mMax(glm::vec3(-1.f))
+{
 }
 
 void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point)

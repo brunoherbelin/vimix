@@ -40,7 +40,7 @@ void MoveToCallback::update(Node *n, float dt)
 }
 
 RotateToCallback::RotateToCallback(float target, float duration) : UpdateCallback(),
-    duration_(duration), progress_(0.f), initialized_(false), target_(target)
+    duration_(duration), progress_(0.f), initialized_(false), startingangle_(0.f), target_(target)
 {
 
 }

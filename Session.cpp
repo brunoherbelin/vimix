@@ -11,10 +11,8 @@
 
 #include "Log.h"
 
-Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f)
+Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f), filename_("")
 {
-    filename_ = "";
-
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
 
@@ -77,7 +75,7 @@ void Session::update(float dt)
 
     // pre-render of all sources
     failedSource_ = nullptr;
-    for( SourceList::iterator it = sources_.begin(); it != sources_.end(); it++){
+    for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering this session
         RenderSource *s = dynamic_cast<RenderSource *>( *it );
@@ -125,13 +123,11 @@ void Session::update(float dt)
 
 SourceList::iterator Session::addSource(Source *s)
 {
-    SourceList::iterator its = sources_.end();
-
     // lock before change
     access_.lock();
 
     // find the source
-    its = find(s);
+    SourceList::iterator its = find(s);
 
     // ok, its NOT in the list !
     if (its == sources_.end()) {
@@ -297,7 +293,7 @@ SourceList::iterator Session::at(int index)
     SourceList::iterator it = sources_.begin();
     while ( i < index && it != sources_.end() ){
         i++;
-        it++;
+        ++it;
     }
     return it;
 }
@@ -325,7 +321,7 @@ void Session::move(int current_index, int target_index)
     SourceList::iterator from = at(current_index);
     SourceList::iterator to   = at(target_index);
     if ( target_index > current_index )
-        to++;
+        ++to;
 
     Source *s = (*from);
     sources_.erase(from);

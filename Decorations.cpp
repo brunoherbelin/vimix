@@ -240,7 +240,6 @@ void Handles::update( float dt )
 
 void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    static Mesh *handle_active   = new Mesh("mesh/border_handles_overlay_filled.ply");
 
     if ( !initialized() ) {
         if(handle_ && !handle_->initialized())
@@ -251,6 +250,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 
     if ( visible_ ) {
+        static Mesh *handle_active = new Mesh("mesh/border_handles_overlay_filled.ply");
 
         // set color
         handle_->shader()->color = color;

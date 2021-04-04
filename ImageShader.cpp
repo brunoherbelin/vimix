@@ -97,8 +97,8 @@ MaskShader::MaskShader(): Shader(), mode(0)
 void MaskShader::use()
 {
     // select program to use
-    mode = CLAMP(mode, 0, 2);
-    shape = CLAMP(shape, 0, 4);
+    mode = MINI(mode, 2);
+    shape = MINI(shape, 4);
     program_ = mode < 2 ? mask_programs[mode] : mask_programs[shape+2] ;
 
     // actual use of shader program

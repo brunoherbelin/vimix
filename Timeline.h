@@ -111,7 +111,7 @@ public:
     inline size_t numGaps() const { return gaps_.size(); }
     float *gapsArray();
     void clearGaps();
-    void setGaps(TimeIntervalSet g);
+    void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);

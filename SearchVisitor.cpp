@@ -25,7 +25,7 @@ void SearchVisitor::visit(Group &n)
     if (found_)
         return;
 
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
         (*node)->accept(*this);
         if (found_)
             break;
@@ -59,7 +59,7 @@ void SearchFileVisitor::visit(Node &n)
 
 void SearchFileVisitor::visit(Group &n)
 {
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
         (*node)->accept(*this);
     }
 }

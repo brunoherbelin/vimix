@@ -626,7 +626,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 
 void Stream::callback_end_of_stream (GstAppSink *, gpointer p)
 {
-    Stream *m = (Stream *)p;
+    Stream *m = static_cast<Stream *>(p);
     if (m && m->ready_) {
         m->fill_frame(NULL, Stream::EOS);
     }
@@ -642,7 +642,7 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL) {
         // send frames to media player only if ready
-        Stream *m = (Stream *)p;
+        Stream *m = static_cast<Stream *>(p);
         if (m && m->ready_) {
 
             // get buffer from sample
@@ -676,7 +676,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
         // send frames to media player only if ready
-        Stream *m = (Stream *)p;
+        Stream *m = static_cast<Stream *>(p);
         if (m && m->ready_) {
 
             // get buffer from sample (valid until sample is released)

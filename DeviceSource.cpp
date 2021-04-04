@@ -167,9 +167,9 @@ void Device::remove(const char *device)
             break;
         }
 
-        nameit++;
-        descit++;
-        coit++;
+        ++nameit;
+        ++descit;
+        ++coit;
     }
 }
 
@@ -257,7 +257,7 @@ struct hasDevice: public std::unary_function<DeviceSource*, bool>
     inline bool operator()(const DeviceSource* elem) const {
        return (elem && elem->device() == _d);
     }
-    hasDevice(std::string d) : _d(d) { }
+    explicit hasDevice(const std::string &d) : _d(d) { }
 private:
     std::string _d;
 };
@@ -360,7 +360,7 @@ void DeviceSource::setDevice(const std::string &devicename)
         DeviceConfigSet confs = Device::manager().config(index);        
 #ifdef DEVICE_DEBUG
         Log::Info("Device %s supported configs:", devicename.c_str());
-        for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); it++ ){
+        for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); ++it ){
             float fps = static_cast<float>((*it).fps_numerator) / static_cast<float>((*it).fps_denominator);
             Log::Info(" - %s %s %d x %d  %.1f fps", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
         }
@@ -431,11 +431,11 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
             // get the first pad and its content
             GstIterator *iter = gst_element_iterate_src_pads(elem);
             GValue vPad = G_VALUE_INIT;
-            GstPad* ret = NULL;
+            GstPad* pad_ret = NULL;
             if (gst_iterator_next(iter, &vPad) == GST_ITERATOR_OK)
             {
-                ret = GST_PAD(g_value_get_object(&vPad));
-                GstCaps *device_caps = gst_pad_query_caps (ret, NULL);
+                pad_ret = GST_PAD(g_value_get_object(&vPad));
+                GstCaps *device_caps = gst_pad_query_caps (pad_ret, NULL);
 
                 // loop over all caps offered by the pad
                 int C = gst_caps_get_size(device_caps);
@@ -508,8 +508,8 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                             gdouble fps_max = 1.0;
                             // loop over all fractions
                             int N = gst_value_list_get_size(val);
-                            for (int n = 0; n < N; n++ ){
-                                const GValue *frac = gst_value_list_get_value(val, n);
+                            for (int i = 0; i < N; ++i ){
+                                const GValue *frac = gst_value_list_get_value(val, i);
                                 // read one fraction in the list
                                 if ( GST_VALUE_HOLDS_FRACTION(frac)) {
                                     int n = gst_value_get_fraction_numerator(frac);

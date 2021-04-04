@@ -11,9 +11,8 @@
 
 #include "BoundingBoxVisitor.h"
 
-BoundingBoxVisitor::BoundingBoxVisitor(bool force): force_(force)
+BoundingBoxVisitor::BoundingBoxVisitor(bool force): force_(force), modelview_(glm::identity<glm::mat4>())
 {
-    modelview_ = glm::identity<glm::mat4>();
 
 }
 
@@ -39,7 +38,7 @@ void BoundingBoxVisitor::visit(Group &n)
     if (!n.visible_)
         return;
     glm::mat4 mv = modelview_;
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
         if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;

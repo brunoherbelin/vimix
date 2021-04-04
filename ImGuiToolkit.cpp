@@ -82,7 +82,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // animation
     ImGuiContext& g = *GImGui;
-    float ANIM_SPEED = 0.1f;
+    const float ANIM_SPEED = 0.1f;
     if (g.LastActiveId == g.CurrentWindow->GetID(label))// && g.LastActiveIdTimer < ANIM_SPEED)
     {
         float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
@@ -278,7 +278,7 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vect
     {
         std::vector<std::pair<int, int> >::iterator it_icon = icons.begin();
         std::vector<std::string>::iterator it_label = labels.begin();
-        for(int i = 0 ; it_icon != icons.end(); i++, it_icon++, it_label++) {
+        for(int i = 0 ; it_icon != icons.end(); i++, ++it_icon, ++it_label) {
             ImGui::PushID( id.sum + i + 1);
             ImVec2 pos = ImGui::GetCursorScreenPos();
             // combo selectable item
@@ -309,9 +309,7 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     if (textureicons == 0)
         textureicons = Resource::getTextureDDS("images/icons.dds");
 
-    ImGuiIO& io = ImGui::GetIO();
-    float my_tex_w = 640.0;
-    float my_tex_h = 640.0;
+    const ImGuiIO& io = ImGui::GetIO();
     
     ImGui::Begin("Icons", p_open);
 
@@ -319,6 +317,8 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
     if (ImGui::IsItemHovered())
     {
+        float my_tex_w = 640.0;
+        float my_tex_h = 640.0;
         float zoom = 4.0f;
         float region_sz = 32.0f; // 64 x 64 icons 
         float region_x = io.MousePos.x - pos.x - region_sz * 0.5f; 
@@ -394,7 +394,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         return false;
 
     // get style & id
-    ImGuiContext& g = *GImGui;
+    const ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const float fontsize = g.FontSize;
     const ImGuiID id = window->GetID(label);
@@ -499,16 +499,12 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
     pos = timeline_bbox.GetTL();
     guint64 tick = 0;
-    float tick_percent = 0.f;
     char overlay_buf[24];
-    ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImVec2 mini = ImVec2(0.f, 0.f);
-    ImVec2 maxi = ImVec2(0.f, 0.f);
 
     // render text duration
     ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                    GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
+    ImVec2 overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
@@ -526,8 +522,8 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
             ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                            GstToolkit::time_to_string(tick, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-            mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
-            maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
+            ImVec2 mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
+            ImVec2 maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
             // do not overlap with label for duration
             if (maxi.x < duration_label.x)
                 ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
@@ -538,7 +534,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
 
         // next tick
         tick += tick_step;
-        tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
+        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
     }
 
@@ -616,7 +612,6 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
 
 bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
-    static uint previous_index = UINT32_MAX;
     bool array_changed = false;
 
     // get window
@@ -661,12 +656,12 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
     // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
 
+        static uint previous_index = UINT32_MAX;
         bg_color = colors[ImGuiCol_FrameBgActive];
 
         // keep active area while mouse is pressed
         if (left_mouse_press)
         {
-
             float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
             uint index = CLAMP( (int) floor(x), 0, values_count-1);
 
@@ -710,8 +705,6 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
                                       int values_count, float values_min, float values_max, bool *released, const ImVec2 size)
 {
-    static bool active = false;
-    static uint previous_index = UINT32_MAX;
     bool array_changed = false;
 
     // get window
@@ -763,6 +756,8 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
         bg_color = colors[ImGuiCol_FrameBgActive];
 
         // keep active area while mouse is pressed
+        static bool active = false;
+        static uint previous_index = UINT32_MAX;
         if (mouse_press)
         {
 

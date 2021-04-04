@@ -114,10 +114,10 @@ ConnectionInfo Connection::info(int index)
 
 struct hasName: public std::unary_function<ConnectionInfo, bool>
 {
-    inline bool operator()(const ConnectionInfo elem) const {
+    inline bool operator()(const ConnectionInfo &elem) const {
        return (elem.name.compare(_a) == 0);
     }
-    hasName(std::string a) : _a(a) { }
+    explicit hasName(const std::string &a) : _a(a) { }
 private:
     std::string _a;
 };
@@ -185,7 +185,7 @@ void Connection::ask()
 
         // check the list of connections for non responding (disconnected)
         std::vector< ConnectionInfo >::iterator it = Connection::manager().connections_.begin();
-        for(it++; it!=Connection::manager().connections_.end(); ) {
+        for(++it; it!=Connection::manager().connections_.end(); ) {
             // decrease life score
             (*it).alive--;
             // erase connection if its life score is negative (not responding too many times)
@@ -201,7 +201,7 @@ void Connection::ask()
             }
             // loop
             else
-                it++;
+                ++it;
         }
     }
 

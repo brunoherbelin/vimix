@@ -79,7 +79,7 @@ class VideoStreamer : public FrameGrabber
 
 public:
 
-    VideoStreamer(NetworkToolkit::StreamConfig conf);
+    VideoStreamer(const NetworkToolkit::StreamConfig &conf);
     virtual ~VideoStreamer() {}
     std::string info() const override;
 

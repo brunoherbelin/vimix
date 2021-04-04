@@ -215,7 +215,7 @@ void View::select(glm::vec2 A, glm::vec2 B)
         // create a list of source matching the list of picked nodes
         SourceList selection;
         // loop over the nodes and add all sources found.
-         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); ++p){
             Source *s = Mixer::manager().findSource( p->first );
             if (canSelect(s))
                 selection.push_back( s );

@@ -18,6 +18,9 @@
 
 #include "Scene.h"
 
+#define DEBUG_SCENE 0
+static int num_nodes_ = 0;
+
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)
 {
@@ -29,11 +32,17 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
     crop_ = glm::vec3(1.f);
+#if DEBUG_SCENE
+    num_nodes_++;
+#endif
 }
 
 Node::~Node ()
 {
     clearCallbacks();
+#if DEBUG_SCENE
+    num_nodes_--;
+#endif
 }
 
 void Node::clearCallbacks()
@@ -73,7 +82,7 @@ void Node::update( float dt)
             delete callback;
         }
         else {
-            iter++;
+            ++iter;
         }
     }
 
@@ -274,7 +283,7 @@ void Group::update( float dt )
 
     // update every child node
     for (NodeSet::iterator node = children_.begin();
-         node != children_.end(); node++) {
+         node != children_.end(); ++node) {
         (*node)->update ( dt );
     }
 }
@@ -291,7 +300,7 @@ void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // draw every child node
         for (NodeSet::iterator node = children_.begin();
-             node != children_.end(); node++) {
+             node != children_.end(); ++node) {
             (*node)->draw ( ctm, projection );
         }
     }
@@ -385,13 +394,13 @@ void Switch::accept(Visitor& v)
 
 void Switch::setActive (uint index)
 {
-    active_ = CLAMP(index, 0, children_.size() - 1);
+    active_ = MINI(index, children_.size() - 1);
 }
 
 Node *Switch::child(uint index) const
 {
     if (!children_.empty()) {
-        uint i = CLAMP(index, 0, children_.size() - 1);
+        uint i = MINI(index, children_.size() - 1);
         return children_.at(i);
     }
     return nullptr;
@@ -448,6 +457,9 @@ Scene::~Scene()
     clear();
     // bg and fg are deleted as children of root
     delete root_;
+#if DEBUG_SCENE
+    Log::Info("Total scene nodes %d", num_nodes_);
+#endif
 }
 
 

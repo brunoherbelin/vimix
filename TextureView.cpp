@@ -258,7 +258,7 @@ void TextureView::select(glm::vec2 A, glm::vec2 B)
         // create a list of source matching the list of picked nodes
         SourceList selection;
         // loop over the nodes and add all sources found.
-         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); p++){
+         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); ++p){
             Source *s = Mixer::manager().findSource( p->first );
             if (canSelect(s))
                 selection.push_back( s );
@@ -1191,9 +1191,9 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             overlay_rotation_clock_->visible_ = false;
 
             // rotation center to center of source (disregarding scale)
-            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
-            source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
+            source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
+            source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
             // compute rotation angle
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
             // apply rotation on Z axis

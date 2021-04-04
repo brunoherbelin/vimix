@@ -53,7 +53,7 @@ struct fgId: public std::unary_function<FrameGrabber*, bool>
     inline bool operator()(const FrameGrabber* elem) const {
        return (elem && elem->id() == _id);
     }
-    fgId(uint64_t id) : _id(id) { }
+    explicit fgId(uint64_t id) : _id(id) { }
 private:
     uint64_t _id;
 };

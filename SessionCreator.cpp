@@ -573,10 +573,10 @@ void SessionLoader::visit (Source& s)
     xmlCurrent_ = sourceNode->FirstChildElement("MixingGroup");
     if (xmlCurrent_) {
         SourceIdList idlist;
-        XMLElement* sourceNode = xmlCurrent_->FirstChildElement("source");
-        for ( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement()) {
+        XMLElement* mixingSourceNode = xmlCurrent_->FirstChildElement("source");
+        for ( ; mixingSourceNode ; mixingSourceNode = mixingSourceNode->NextSiblingElement()) {
             uint64_t id__ = 0;
-            sourceNode->QueryUnsigned64Attribute("id", &id__);
+            mixingSourceNode->QueryUnsigned64Attribute("id", &id__);
             idlist.push_back(id__);
         }
         groups_sources_id_.push_back(idlist);

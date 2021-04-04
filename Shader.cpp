@@ -52,10 +52,9 @@ GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ONE,   // lighten only
                                            GL_ZERO};
 
-ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
+ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) :
+    vertex_id_(0), fragment_id_(0), id_(0), vertex_file_(vertex_file), fragment_file_(fragment_file)
 {
-    vertex_file_ = vertex_file;
-    fragment_file_ = fragment_file;
 }
 
 void ShadingProgram::init()
@@ -189,10 +188,10 @@ void ShadingProgram::checkCompileErr()
 
 void ShadingProgram::checkLinkingErr()
 {
-	int success;
-	char infoLog[1024];
+    int success;
 	glGetProgramiv(id_, GL_LINK_STATUS, &success);
 	if (!success) {
+        char infoLog[1024];
 		glGetProgramInfoLog(id_, 1024, NULL, infoLog);
         Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
 	}

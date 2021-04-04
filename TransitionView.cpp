@@ -87,7 +87,7 @@ void TransitionView::update(float dt)
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
             float aspect_ratio = output->aspectRatio();
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); ++node) {
                 (*node)->scale_.x = aspect_ratio;
             }
             output_surface_->setTextureIndex( output->texture() );

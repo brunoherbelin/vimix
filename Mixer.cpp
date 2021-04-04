@@ -736,7 +736,7 @@ SourceList Mixer::findSources (float depth_from, float depth_to)
     SourceList found;
     SourceList dsl = session_->getDepthSortedList();
     SourceList::iterator  it = dsl.begin();
-    for (; it != dsl.end(); it++) {
+    for (; it != dsl.end(); ++it) {
         if ( (*it)->depth() > depth_to )
             break;
         if ( (*it)->depth() >= depth_from )
@@ -790,7 +790,7 @@ void Mixer::setCurrentNext()
     if (session_->numSource() > 0) {
 
         SourceList::iterator it = current_source_;
-        it++;
+        ++it;
 
         if (it == session_->end())  {
             it = session_->begin();
@@ -810,7 +810,7 @@ void Mixer::setCurrentPrevious()
             it = session_->end();
         }
 
-        it--;
+        --it;
         setCurrentSource( it );
     }
 }
@@ -1063,7 +1063,7 @@ void Mixer::merge(SessionSource *source)
             float next_depth = to_be_moved.front()->depth();
             if ( next_depth < target_depth + need_depth) {
                 SourceList::iterator  it = to_be_moved.begin();
-                for (; it != to_be_moved.end(); it++) {
+                for (; it != to_be_moved.end(); ++it) {
                     float scale_depth = (MAX_DEPTH-(*it)->depth()) / (MAX_DEPTH-next_depth);
                     (*it)->setDepth( (*it)->depth() + scale_depth );
                 }

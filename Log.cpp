@@ -205,7 +205,7 @@ void Log::Render(bool *showWarnings)
     if (!show_notification && !show_warnings)
         return;
 
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     float width = io.DisplaySize.x * 0.4f;
     float pos = io.DisplaySize.x * 0.3f;
 

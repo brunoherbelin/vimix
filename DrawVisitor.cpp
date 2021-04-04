@@ -16,13 +16,11 @@ DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force): fo
     transform_duplicat_ = glm::identity<glm::mat4>();
 }
 
-DrawVisitor::DrawVisitor(std::vector<Node *> nodestodraw, glm::mat4 projection, bool force): force_(force)
+DrawVisitor::DrawVisitor(const std::vector<Node *> &nodestodraw, glm::mat4 projection, bool force):
+    force_(force), targets_(nodestodraw), modelview_(glm::identity<glm::mat4>()),
+    projection_(projection), num_duplicat_(1), transform_duplicat_(glm::identity<glm::mat4>())
 {
-    targets_ = nodestodraw;
-    modelview_ = glm::identity<glm::mat4>();
-    projection_ = projection;
-    num_duplicat_ = 1;
-    transform_duplicat_ = glm::identity<glm::mat4>();
+
 }
 
 void DrawVisitor::loop(int num, glm::mat4 transform)
@@ -70,7 +68,7 @@ void DrawVisitor::visit(Group &n)
 
     // traverse children
     glm::mat4 mv = modelview_;
-    for (NodeSet::iterator node = n.begin(); !targets_.empty() && node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); !targets_.empty() && node != n.end(); ++node) {
         if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;

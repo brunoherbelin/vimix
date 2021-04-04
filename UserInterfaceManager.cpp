@@ -168,7 +168,7 @@ bool UserInterface::Init()
 
 void UserInterface::handleKeyboard()
 {
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     alt_modifier_active = io.KeyAlt;
     shift_modifier_active = io.KeyShift;
     bool ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
@@ -1370,7 +1370,7 @@ int UserInterface::RenderViewNavigator(int *shift)
     int target_index = ( (Settings::application.current_view -1)+ (*shift -1) )%4 + 1;
 
     // prepare rendering of centered, fixed-size, semi-transparent window;
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     ImVec2 window_pos = ImVec2(io.DisplaySize.x / 2.f, io.DisplaySize.y / 2.f);
     ImVec2 window_pos_pivot = ImVec2(0.5f, 0.5f);
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
@@ -1529,7 +1529,7 @@ void MediaController::Render()
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
     // estimate window size
-    ImGuiContext& g = *GImGui;
+    const ImGuiContext& g = *GImGui;
     const float _spacing = 6.0f;
     const float _height  = g.FontSize + g.Style.FramePadding.y * 2.0f ;
     const float _timeline_height = (g.FontSize + g.Style.FramePadding.y) * 2.0f ; // double line for each timeline
@@ -1855,7 +1855,7 @@ void MediaController::Render()
     ImGui::End();
 }
 
-void UserInterface::fillShaderEditor(std::string text)
+void UserInterface::fillShaderEditor(const std::string &text)
 {
     static bool initialized = false;
     if (!initialized) {
@@ -1889,6 +1889,7 @@ void UserInterface::fillShaderEditor(std::string text)
         }
         // init editor
         editor.SetLanguageDefinition(lang);
+        initialized = true;
     }
 
     // remember text
@@ -2045,8 +2046,8 @@ void Navigator::Render()
     std::string tooltip_ = "";
     static uint timer_tooltip_ = 0;
 
-    ImGuiIO& io = ImGui::GetIO();
-    ImGuiStyle& style = ImGui::GetStyle();
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(COLOR_NAVIGATOR, 1.f));
@@ -2084,7 +2085,7 @@ void Navigator::Render()
                 // the list of INITIALS for sources
                 int index = 0;
                 SourceList::iterator iter;
-                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++, index++)
+                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
                 {
                     Source *s = (*iter);
                     // draw an indicator for current source
@@ -2325,7 +2326,7 @@ SourcePreview::SourcePreview() : source_(nullptr), label_("")
 
 }
 
-void SourcePreview::setSource(Source *s, std::string label)
+void SourcePreview::setSource(Source *s, const string &label)
 {
     if(source_)
         delete source_;
@@ -2466,7 +2467,7 @@ void Navigator::RenderNewPannel()
             if (ImGui::BeginCombo("##RecentImport", IMGUI_LABEL_RECENT_FILES))
             {
                 std::list<std::string> recent = Settings::application.recentImport.filenames;
-                for (std::list<std::string>::iterator path = recent.begin(); path != recent.end(); path++ )
+                for (std::list<std::string>::iterator path = recent.begin(); path != recent.end(); ++path )
                 {
                     std::string recentpath(*path);
                     if ( SystemToolkit::file_exists(recentpath)) {
@@ -2494,7 +2495,7 @@ void Navigator::RenderNewPannel()
                     new_source_preview_.setSource( Mixer::manager().createSourceRender(), label);
                 }
                 SourceList::iterator iter;
-                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); iter++)
+                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
                 {
                     label = std::string("Source ") + (*iter)->name();
                     if (ImGui::Selectable( label.c_str() )) {
@@ -2763,8 +2764,8 @@ void Navigator::RenderMainPannel()
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
         bool reset = false;
         if ( selection_session_mode == 1) {
-            const char *tooltip[2] = {"Discard folder", "Discard folder"};
-            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
+            const char *tooltip_[2] = {"Discard folder", "Discard folder"};
+            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip_)) {
                 Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
                 if (Settings::application.recentFolders.filenames.empty()) {
                     Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
@@ -2777,8 +2778,8 @@ void Navigator::RenderMainPannel()
             }
         }
         else {
-            const char *tooltip[2] = {"Clear history", "Clear history"};
-            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip)) {
+            const char *tooltip__[2] = {"Clear history", "Clear history"};
+            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip__)) {
                 Settings::application.recentSessions.filenames.clear();
                 Settings::application.recentSessions.front_is_valid = false;
                 // reload the list next time
@@ -2943,39 +2944,39 @@ void Navigator::RenderMainPannel()
 }
 
 
-namespace ImGui
-{
+//namespace ImGui
+//{
 
-int hover(const char *label)
-{
-    const ImGuiStyle& Style = GetStyle();
-    ImGuiWindow* Window = GetCurrentWindow();
-    if (Window->SkipItems)
-        return 0;
+//int hover(const char *label)
+//{
+//    const ImGuiStyle& Style = GetStyle();
+//    ImGuiWindow* Window = GetCurrentWindow();
+//    if (Window->SkipItems)
+//        return 0;
 
-    int hovered = IsItemActive() || IsItemHovered();
-    Dummy(ImVec2(0,3));
+//    int hovered = IsItemActive() || IsItemHovered();
+//    Dummy(ImVec2(0,3));
 
-    // prepare canvas
-    const float avail = GetContentRegionAvailWidth();
-    const float dim = ImMin(avail, 128.f);
-    ImVec2 Canvas(dim, dim);
+//    // prepare canvas
+//    const float avail = GetContentRegionAvailWidth();
+//    const float dim = ImMin(avail, 128.f);
+//    ImVec2 Canvas(dim, dim);
 
-    ImRect bb(Window->DC.CursorPos, Window->DC.CursorPos + Canvas);
-    const ImGuiID id = Window->GetID(label);
-    ItemSize(bb);
-    if (!ItemAdd(bb, id))
-        return 0;
+//    ImRect bb(Window->DC.CursorPos, Window->DC.CursorPos + Canvas);
+//    const ImGuiID id = Window->GetID(label);
+//    ItemSize(bb);
+//    if (!ItemAdd(bb, id))
+//        return 0;
 
-    hovered |= 0 != IsItemClicked();
+//    hovered |= 0 != IsItemClicked();
 
-    RenderFrame(bb.Min, bb.Max, GetColorU32(ImGuiCol_FrameBg, 1), true, Style.FrameRounding);
+//    RenderFrame(bb.Min, bb.Max, GetColorU32(ImGuiCol_FrameBg, 1), true, Style.FrameRounding);
 
 
-    return 1;
-}
+//    return 1;
+//}
 
-}
+//}
 
 #define SEGMENT_ARRAY_MAX 1000
 
@@ -3008,8 +3009,19 @@ void ShowSandbox(bool* p_open)
         SystemToolkit::execute(str);
 
     if (ImGui::Button("Message test")) {
-        Log::Error("Testing dialog");
+
+        for(int i=0; i<10; i++) {
+            Log::Notify("Testing notification %d", i);
+        }
+
+        for(int i=0; i<10; i++) {
+            Log::Warning("Testing Warning %d", i);
+        }
+
     }
+
+
+
 //    const guint64 duration = GST_SECOND * 6;
 //    const guint64 step = GST_MSECOND * 20;
 //    static guint64 t = 0;

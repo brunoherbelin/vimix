@@ -12,7 +12,7 @@ bool compare_depth (Source * first, Source * second)
   return ( first->depth() < second->depth() );
 }
 
-SourceList depth_sorted(SourceList list)
+SourceList depth_sorted(const SourceList &list)
 {
     SourceList sl = list;
     sl.sort(compare_depth);
@@ -23,7 +23,7 @@ SourceList depth_sorted(SourceList list)
 // utility to sort Sources in MixingView in a clockwise order
 // in reference to a center point
 struct clockwise_centered {
-    clockwise_centered(glm::vec2 c) : center(c) { }
+    explicit clockwise_centered(glm::vec2 c) : center(c) { }
     bool operator() (Source * first, Source * second) {
         glm::vec2 pos_first = glm::vec2(first->group(View::MIXING)->translation_)-center;
         float angle_first = glm::orientedAngle( glm::normalize(pos_first), glm::vec2(1.f, 0.f) );
@@ -34,7 +34,7 @@ struct clockwise_centered {
     glm::vec2 center;
 };
 
-SourceList mixing_sorted(SourceList list, glm::vec2 center)
+SourceList mixing_sorted(const SourceList &list, glm::vec2 center)
 {
     SourceList sl = list;
     sl.sort(clockwise_centered(center));
@@ -43,7 +43,7 @@ SourceList mixing_sorted(SourceList list, glm::vec2 center)
 }
 
 
-SourceIdList ids (SourceList list)
+SourceIdList ids (const SourceList &list)
 {
     SourceIdList idlist;
 
@@ -57,10 +57,10 @@ SourceIdList ids (SourceList list)
 }
 
 
-SourceListCompare compare (SourceList first, SourceList second)
+SourceListCompare compare (const SourceList &first, const SourceList &second)
 {
     SourceListCompare ret = SOURCELIST_DISTINCT;
-    if (first.empty() || first.empty())
+    if (first.empty() || second.empty())
         return ret;
 
     // a new test list: start with the second list and remove all commons with first list
@@ -93,7 +93,7 @@ SourceListCompare compare (SourceList first, SourceList second)
 }
 
 
-SourceList intersect (SourceList first, SourceList second)
+SourceList intersect (const SourceList &first, const SourceList &second)
 {
     // take second list and remove all elements also in first list
     // -> builds the list of what remains in second list
@@ -109,7 +109,7 @@ SourceList intersect (SourceList first, SourceList second)
 }
 
 
-SourceList join (SourceList first, SourceList second)
+SourceList join (const SourceList &first, const SourceList &second)
 {
     SourceList l = second;
     for (auto it = first.begin(); it != first.end(); it++)

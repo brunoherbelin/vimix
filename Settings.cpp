@@ -144,19 +144,19 @@ void Settings::Save()
         viewsNode->SetAttribute("workspace", application.current_workspace);
 
         map<int, Settings::ViewConfig>::iterator iter;
-        for (iter=application.views.begin(); iter != application.views.end(); iter++)
+        for (iter=application.views.begin(); iter != application.views.end(); ++iter)
         {
-            const Settings::ViewConfig& v = iter->second;
+            const Settings::ViewConfig& view_config = iter->second;
 
             XMLElement *view = xmlDoc.NewElement( "View" );
-            view->SetAttribute("name", v.name.c_str());
+            view->SetAttribute("name", view_config.name.c_str());
             view->SetAttribute("id", iter->first);
 
             XMLElement *scale = xmlDoc.NewElement("default_scale");
-            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_scale) );
+            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_scale) );
             view->InsertEndChild(scale);
             XMLElement *translation = xmlDoc.NewElement("default_translation");
-            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_translation) );
+            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_translation) );
             view->InsertEndChild(translation);
 
             viewsNode->InsertEndChild(view);

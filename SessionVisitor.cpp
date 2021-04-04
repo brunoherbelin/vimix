@@ -134,7 +134,7 @@ void SessionVisitor::visit(Group &n)
     if (recursive_) {
         // loop over members of a group
         XMLElement *group = xmlCurrent_;
-        for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+        for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
             (*node)->accept(*this);
             // revert to group as current
             xmlCurrent_ = group;

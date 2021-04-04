@@ -22,7 +22,7 @@ class SourcePreview {
 public:
     SourcePreview();
 
-    void setSource(Source *s = nullptr, std::string label = "");
+    void setSource(Source *s = nullptr, const std::string &label = "");
     Source *getSource();
 
     void Render(float width, bool controlbutton = false);
@@ -157,7 +157,7 @@ public:
 
     // TODO implement the shader editor
     std::string currentTextEdit;
-    void fillShaderEditor(std::string text);
+    void fillShaderEditor(const std::string &text);
 
 protected:
 

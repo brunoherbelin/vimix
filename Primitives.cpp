@@ -121,9 +121,8 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& p, Shader *s) : Surface(s)
+MediaSurface::MediaSurface(const std::string& p, Shader *s) : Surface(s), path_(p)
 {
-    path_ = p;
     mediaplayer_ = new MediaPlayer;
 }
 
@@ -419,9 +418,9 @@ void LineSquare::setColor(glm::vec4 c)
 }
 
 
-LineStrip::LineStrip(std::vector<glm::vec2> path, float linewidth) : Primitive(new Shader), arrayBuffer_(0)
+LineStrip::LineStrip(const std::vector<glm::vec2> &path, float linewidth) : Primitive(new Shader),
+    arrayBuffer_(0), path_(path)
 {
-    path_ = path;
     linewidth_ = 0.002f * linewidth;
 
     for(size_t i = 1; i < path_.size(); ++i)
@@ -574,7 +573,7 @@ void LineStrip::accept(Visitor& v)
 }
 
 
-LineLoop::LineLoop(std::vector<glm::vec2> path, float linewidth) : LineStrip(path, linewidth)
+LineLoop::LineLoop(const std::vector<glm::vec2> &path, float linewidth) : LineStrip(path, linewidth)
 {
     // close linestrip loop
     glm::vec3 begin = glm::vec3(path_[path_.size()-1], 0.f);

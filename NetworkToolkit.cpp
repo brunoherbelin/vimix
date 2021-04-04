@@ -95,10 +95,10 @@ std::vector<unsigned long> iplongs_;
 
 void add_interface(int fd, const char *name) {
     struct ifreq ifreq;
-    char host[128];
     memset(&ifreq, 0, sizeof ifreq);
     strncpy(ifreq.ifr_name, name, IFNAMSIZ);
     if(ioctl(fd, SIOCGIFADDR, &ifreq)==0) {
+        char host[128];
         int family;
         switch(family=ifreq.ifr_addr.sa_family) {
             case AF_INET:
@@ -122,14 +122,14 @@ void add_interface(int fd, const char *name) {
 
 void list_interfaces()
 {
-    struct ifreq *ifreq;
-    struct ifconf ifconf;
     char buf[16384];
     int fd=socket(PF_INET, SOCK_DGRAM, 0);
     if(fd > -1) {
+        struct ifconf ifconf;
         ifconf.ifc_len=sizeof buf;
         ifconf.ifc_buf=buf;
         if(ioctl(fd, SIOCGIFCONF, &ifconf)==0) {
+            struct ifreq *ifreq;
             ifreq=ifconf.ifc_req;
             for(int i=0;i<ifconf.ifc_len;) {
                 size_t len;

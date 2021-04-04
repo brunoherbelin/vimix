@@ -209,7 +209,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     // filtered image shader (with texturing and processing) for rendering
     processingshader_   = new ImageProcessingShader;
     // default rendering with image processing enabled
-    renderingshader_ = (Shader *) processingshader_;
+    renderingshader_ = static_cast<Shader *>(processingshader_);
 
     // for drawing in mixing view
     mixingshader_ = new ImageShader;
@@ -305,7 +305,7 @@ void Source::setMode(Source::Mode m)
     // show overlay if current
     bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); o++)
-        (*o).second->visible_ = current & !locked_;
+        (*o).second->visible_ = (current && !locked_);
 
     // the lock icon
     locker_->setActive( locked_ ? 0 : 1);
@@ -331,7 +331,7 @@ void Source::setImageProcessingEnabled (bool on)
     if (on) {
         // set the current rendering shader to be the
         // (previously prepared) processing shader
-        renderingshader_ = (Shader *) processingshader_;
+        renderingshader_ = static_cast<Shader *>(processingshader_);
     }
     else {
         // clone the current Image processing shader
@@ -343,7 +343,7 @@ void Source::setImageProcessingEnabled (bool on)
         // and keep it for later
         processingshader_ = tmp;
         // set the current rendering shader to a simple one
-        renderingshader_ = (Shader *) new ImageShader;
+        renderingshader_ = static_cast<Shader *>(new ImageShader);
     }
 
     // apply to nodes in subclasses
@@ -432,7 +432,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     for (int v = View::MIXING; v < View::INVALID; v++) {
         NodeSet::iterator node;
         for (node = groups_[(View::Mode) v]->begin();
-             node != groups_[(View::Mode) v]->end(); node++) {
+             node != groups_[(View::Mode) v]->end(); ++node) {
             (*node)->scale_.x = renderbuffer_->aspectRatio();
         }
     }

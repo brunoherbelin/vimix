@@ -11,15 +11,15 @@
 #include <glm/gtx/vector_angle.hpp>
 
 
-PickingVisitor::PickingVisitor(glm::vec3 coordinates, bool force) : Visitor(), force_(force)
+PickingVisitor::PickingVisitor(glm::vec3 coordinates, bool force) : Visitor(),
+    force_(force), modelview_(glm::mat4(1.f))
 {
-    modelview_ = glm::mat4(1.f);
     points_.push_back( coordinates );
 }
 
-PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force) : Visitor(), force_(force)
+PickingVisitor::PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force) : Visitor(),
+    force_(force), modelview_(glm::mat4(1.f))
 {
-    modelview_ = glm::mat4(1.f);
     points_.push_back( selectionstart );
     points_.push_back( selection_end );
 }
@@ -36,7 +36,7 @@ void PickingVisitor::visit(Group &n)
         return;
 
     glm::mat4 mv = modelview_;
-    for (NodeSet::iterator node = n.begin(); node != n.end(); node++) {
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
         if ( (*node)->visible_ || force_)
             (*node)->accept(*this);
         modelview_ = mv;

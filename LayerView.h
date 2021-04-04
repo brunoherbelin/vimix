@@ -24,7 +24,6 @@ private:
     void updateSelectionOverlay() override;
 
     float aspect_ratio;
-    Mesh *persp_layer_;
     Mesh *persp_left_, *persp_right_;
     Group *frame_;
 

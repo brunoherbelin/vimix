@@ -95,10 +95,9 @@ static void WindowEscapeFullscreen( GLFWwindow *w, int key, int, int action, int
 
 static void WindowToggleFullscreen( GLFWwindow *w, int button, int action, int)
 {
-    static double seconds = 0.f;
-
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
+        static double seconds = 0.f;
         // detect double clic
         if ( glfwGetTime() - seconds < 0.2f ) {
             // toggle fullscreen
@@ -242,7 +241,7 @@ void Rendering::draw()
 
     // Custom draw
     std::list<Rendering::RenderingCallback>::iterator iter;
-    for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); iter++)
+    for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); ++iter)
     {
         (*iter)();
     }

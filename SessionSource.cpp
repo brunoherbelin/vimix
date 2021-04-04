@@ -17,9 +17,8 @@
 #include "Mixer.h"
 
 
-SessionSource::SessionSource() : Source()
+SessionSource::SessionSource() : Source(), failed_(false)
 {
-    failed_ = false;
     session_ = new Session;
 }
 
@@ -174,7 +173,7 @@ void SessionFileSource::init()
 
             // check that every source is ready..
             bool ready = true;
-            for (SourceList::iterator iter = session_->begin(); iter != session_->end(); iter++)
+            for (SourceList::iterator iter = session_->begin(); iter != session_->end(); ++iter)
             {
                 // interrupt if any source is NOT ready
                 if ( !(*iter)->ready() ){

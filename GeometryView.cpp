@@ -136,10 +136,10 @@ void GeometryView::update(float dt)
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output){
             float aspect_ratio = output->aspectRatio();
-            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); node++) {
+            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); ++node) {
                 (*node)->scale_.x = aspect_ratio;
             }
-            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); node++) {
+            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); ++node) {
                 (*node)->scale_.x = aspect_ratio;
             }
             output_surface_->setTextureIndex( output->texture() );
@@ -271,7 +271,6 @@ void GeometryView::draw()
         show_context_menu_ = MENU_NONE;
     }
     if (ImGui::BeginPopup("GeometrySourceContextMenu")) {
-        Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
             if (ImGui::Selectable( ICON_FA_EXPAND "   Fit" )){
                 s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
@@ -599,8 +598,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 // cancel out scaling with SHIFT modifier key
                 if (UserInterface::manager().shiftModifier()) {
                     overlay_rotation_fix_->visible_ = true;
-                    float factor = glm::length( glm::vec2( overlay_selection_->scale_ ) ) / glm::length( glm::vec2( overlay_selection_stored_status_->scale_ ) );
-                    S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+                    float scale_factor = glm::length( glm::vec2( overlay_selection_->scale_ ) ) / glm::length( glm::vec2( overlay_selection_stored_status_->scale_ ) );
+                    S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale_factor, scale_factor, 1.f));
                 }
 
                 // compute rotation angle
@@ -908,9 +907,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_rotation_fix_->copyTransform(overlay_rotation_);
             overlay_rotation_clock_->visible_ = false;
             // rotation center to center of source (disregarding scale)
-            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            source_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
-            source_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
+            source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
+            source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
             // compute rotation angle
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
             // apply rotation on Z axis

@@ -134,7 +134,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
 PatternSource::PatternSource() : StreamSource()
 {
     // create stream
-    stream_ = (Stream *) new Pattern;
+    stream_ = static_cast<Stream *>( new Pattern );
 
     // set symbol
     symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.75f, 0.75f, 0.01f));

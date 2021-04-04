@@ -180,7 +180,7 @@ public:
 class LineStrip : public Primitive {
 
 public:
-    LineStrip(std::vector<glm::vec2> path, float linewidth = 1.f);
+    LineStrip(const std::vector<glm::vec2> &path, float linewidth = 1.f);
     virtual ~LineStrip();
 
     virtual void init () override;
@@ -207,7 +207,7 @@ protected:
 class LineLoop : public LineStrip {
 
 public:
-    LineLoop(std::vector<glm::vec2> path, float linewidth = 1.f);
+    LineLoop(const std::vector<glm::vec2> &path, float linewidth = 1.f);
 
 protected:
     void updatePath() override;

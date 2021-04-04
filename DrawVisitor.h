@@ -15,7 +15,7 @@ class DrawVisitor : public Visitor
 
 public:
     DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force = false);
-    DrawVisitor(std::vector<Node *> nodestodraw, glm::mat4 projection, bool force = false);
+    DrawVisitor(const std::vector<Node *> &nodestodraw, glm::mat4 projection, bool force = false);
 
     void loop(int num, glm::mat4 transform);
 
