@@ -1078,6 +1078,32 @@ void UserInterface::RenderHistory()
     ImGui::End();
 }
 
+void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 80.f)
+{
+    bool need_update = false;
+    ImVec2 pos_target = pos;
+    const ImGuiIO& io = ImGui::GetIO();
+
+    if ( pos_target.y > io.DisplaySize.y - margin  ){
+        pos_target.y -= margin;
+        need_update = true;
+    }
+    if ( pos_target.y + size.y < margin ){
+        pos_target.y += margin;
+        need_update = true;
+    }
+    if ( pos_target.x > io.DisplaySize.x - margin){
+        pos_target.x -= margin;
+        need_update = true;
+    }
+    if ( pos_target.x + size.x <margin ){
+        pos_target.x += margin;
+        need_update = true;
+    }
+    if (need_update)
+        ImGui::SetNextWindowPos(pos_target, ImGuiCond_Appearing);
+}
+
 void UserInterface::RenderPreview()
 {
 #if defined(LINUX)
@@ -1095,16 +1121,25 @@ void UserInterface::RenderPreview()
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
     {
-        float ar = output->aspectRatio();
         ImGui::SetNextWindowPos(ImVec2(1180, 20), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
+
+        // constraint position
+        static ImVec2 preview_window_pos = ImVec2(1180, 20);
+        static ImVec2 preview_window_size = ImVec2(400, 260);
+        SetNextWindowVisible(preview_window_pos, preview_window_size);
+
+        // constraint aspect ratio resizing
+        float ar = output->aspectRatio();
         ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
+
         if ( !ImGui::Begin("Preview", &Settings::application.widget.preview,  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
         {
             ImGui::End();
             return;
-
         }
+        preview_window_pos = ImGui::GetWindowPos();
+        preview_window_size = ImGui::GetWindowSize();
 
         FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
 #if defined(LINUX)
@@ -1528,6 +1563,11 @@ void MediaController::Render()
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
+    // constraint position
+    static ImVec2 media_window_pos = ImVec2(1180, 20);
+    static ImVec2 media_window_size = ImVec2(400, 260);
+    SetNextWindowVisible(media_window_pos, media_window_size);
+
     // estimate window size
     const ImGuiContext& g = *GImGui;
     const float _spacing = 6.0f;
@@ -1555,6 +1595,8 @@ void MediaController::Render()
         ImGui::End();
         return;
     }
+    media_window_pos = ImGui::GetWindowPos();
+    media_window_size = ImGui::GetWindowSize();
 
     // verify that mp is still registered
     if ( std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ ) == MediaPlayer::end() ) {
