@@ -347,27 +347,29 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
 
 void SystemToolkit::open(const string& url)
 {
+    int ignored __attribute__((unused));
 #ifdef WIN32
         ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
 #elif defined APPLE
         char buf[2048];
         sprintf( buf, "open '%s'", url.c_str() );
-        (void) system( buf );
+        ignored = system( buf );
 #else
         char buf[2048];
         sprintf( buf, "xdg-open '%s'", url.c_str() );
-        (void) system( buf );
+        ignored = system( buf );
 #endif
 }
 
 void SystemToolkit::execute(const string& command)
 {
+    int ignored __attribute__((unused));
 #ifdef WIN32
         ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
 #elif defined APPLE
     (void) system( command.c_str() );
 #else
-    (void) system( command.c_str() );
+    ignored = system( command.c_str() );
 #endif
 }
 // example :

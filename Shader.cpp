@@ -261,6 +261,7 @@ void Shader::reset()
     modelview  = glm::identity<glm::mat4>();
     iTransform = glm::identity<glm::mat4>();
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    blending = BLEND_OPACITY;
 }
 
 
