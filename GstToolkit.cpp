@@ -175,6 +175,7 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
     return plugins_list_;
 }
 
+
 std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
 {
     std::string found = "";
@@ -188,9 +189,9 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
                 gchar *name = gst_element_get_name(e);
+                // g_print(" - %s", name);
                 std::string e_name(name);
                 g_free(name);
-//                g_print(" - %s", e_name.c_str());
                 for (int i = 0; i < N; i++) {
                     if (e_name.find(plugins[i]) != std::string::npos) {
                         found = plugins[i];
@@ -199,8 +200,10 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
                 }
             }
         }
+        g_value_unset(&value);
     }
     gst_iterator_free(it);
 
     return found;
 }
+
