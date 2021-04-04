@@ -74,7 +74,6 @@ public:
 
     static const char* mask_names[3];
     static const char* mask_shapes[5];
-    static std::vector< ShadingProgram* > mask_programs;
 };
 
 #endif // IMAGESHADER_H

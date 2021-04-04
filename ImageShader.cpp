@@ -9,10 +9,18 @@
 
 ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
 ShadingProgram imageAlphaProgram  ("shaders/image.vs", "shaders/imageblending.fs");
+std::vector< ShadingProgram > maskPrograms = {
+    ShadingProgram("shaders/simple.vs", "shaders/simple.fs"),
+    ShadingProgram("shaders/image.vs",  "shaders/mask_draw.fs"),
+    ShadingProgram("shaders/simple.vs", "shaders/mask_elipse.fs"),
+    ShadingProgram("shaders/simple.vs", "shaders/mask_round.fs"),
+    ShadingProgram("shaders/simple.vs", "shaders/mask_box.fs"),
+    ShadingProgram("shaders/simple.vs", "shaders/mask_horizontal.fs"),
+    ShadingProgram("shaders/simple.vs", "shaders/mask_vertical.fs")
+};
 
 const char* MaskShader::mask_names[3]  = { ICON_FA_EXPAND, ICON_FA_EDIT, ICON_FA_SHAPES };
 const char* MaskShader::mask_shapes[5] = { "Elipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
-std::vector< ShadingProgram* > MaskShader::mask_programs;
 
 ImageShader::ImageShader(): Shader(), stipple(0.f), mask_texture(0)
 {
@@ -78,20 +86,10 @@ AlphaShader::AlphaShader(): ImageShader()
 
 MaskShader::MaskShader(): Shader(), mode(0)
 {
-    // first initialization
-    if ( mask_programs.empty() ) {
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/simple.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/image.vs", "shaders/mask_draw.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_elipse.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_round.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_box.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_horizontal.fs"));
-        mask_programs.push_back(new ShadingProgram("shaders/simple.vs", "shaders/mask_vertical.fs"));
-    }
     // reset instance
     reset();
     // static program shader
-    program_ = mask_programs[0];
+    program_ = &maskPrograms[0];
 }
 
 void MaskShader::use()
@@ -99,7 +97,7 @@ void MaskShader::use()
     // select program to use
     mode = MINI(mode, 2);
     shape = MINI(shape, 4);
-    program_ = mode < 2 ? mask_programs[mode] : mask_programs[shape+2] ;
+    program_ = mode < 2 ? &maskPrograms[mode] : &maskPrograms[shape+2] ;
 
     // actual use of shader program
     Shader::use();
