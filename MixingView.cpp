@@ -244,16 +244,22 @@ int  MixingView::size ()
 
 void MixingView::centerSource(Source *s)
 {
-    // setup view so that the center of the source ends at screen coordinates (650, 150)
-    // -> this is just next to the navigation pannel
-    glm::vec2 screenpoint = glm::vec2(500.f, 20.f) * Rendering::manager().mainWindow().dpiScale();
-    glm::vec3 pos_to = Rendering::manager().unProject(screenpoint, scene.root()->transform_);
-    glm::vec3 pos_from( - s->group(View::MIXING)->scale_.x, s->group(View::MIXING)->scale_.y, 0.f);
-    pos_from += s->group(View::MIXING)->translation_;
-    glm::vec4 pos_delta = glm::vec4(pos_to.x, pos_to.y, 0.f, 0.f) - glm::vec4(pos_from.x, pos_from.y, 0.f, 0.f);
-    pos_delta = scene.root()->transform_ * pos_delta;
-    scene.root()->translation_ += glm::vec3(pos_delta);
+    // calculate screen area visible in the default view
+    GlmToolkit::AxisAlignedBoundingBox view_box;
+    glm::mat4 modelview = GlmToolkit::transform(scene.root()->translation_, scene.root()->rotation_, scene.root()->scale_);
+    view_box.extend( Rendering::manager().unProject(glm::vec2(0.f, Rendering::manager().mainWindow().height()), modelview) );
+    view_box.extend( Rendering::manager().unProject(glm::vec2(Rendering::manager().mainWindow().width(), 0.f), modelview) );
 
+    // check if upper-left corner of source is in view box
+    glm::vec3 pos_source = s->group(mode_)->translation_ + glm::vec3( -s->group(mode_)->scale_.x, s->group(mode_)->scale_.y, 0.f);
+    if ( !view_box.contains(pos_source)) {
+        // not visible so shift view
+        glm::vec2 screenpoint = glm::vec2(500.f, 20.f) * Rendering::manager().mainWindow().dpiScale();
+        glm::vec3 pos_to = Rendering::manager().unProject(screenpoint, scene.root()->transform_);
+        glm::vec4 pos_delta = glm::vec4(pos_to.x, pos_to.y, 0.f, 0.f) - glm::vec4(pos_source.x, pos_source.y, 0.f, 0.f);
+        pos_delta = scene.root()->transform_ * pos_delta;
+        scene.root()->translation_ += glm::vec3(pos_delta);
+    }
 }
 
 void MixingView::update(float dt)
