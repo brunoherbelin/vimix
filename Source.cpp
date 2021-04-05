@@ -715,28 +715,6 @@ void Source::setMask(FrameBufferImage *img)
         mask_need_update_ = false;
 }
 
-
-std::string Source::xml(Source *s)
-{
-    std::string x = "";
-
-    tinyxml2::XMLDocument xmlDoc;
-    tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
-    selectionNode->SetAttribute("size", 1);
-    xmlDoc.InsertEndChild(selectionNode);
-
-    SessionVisitor sv(&xmlDoc, selectionNode);
-    s->accept(sv);
-
-    // get compact string
-    tinyxml2::XMLPrinter xmlPrint(0, true);
-    xmlDoc.Print( &xmlPrint );
-    x = xmlPrint.CStr();
-
-    return x;
-}
-
-
 bool Source::hasNode::operator()(const Source* elem) const
 {
     if (_n && elem)

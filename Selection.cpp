@@ -1,7 +1,5 @@
 #include <algorithm>
 
-#include <tinyxml2.h>
-
 #include "defines.h"
 #include "SessionVisitor.h"
 #include "Source.h"
@@ -159,41 +157,9 @@ SourceList::iterator Selection::end()
     return selection_.end();
 }
 
-std::string Selection::xml() const
+std::string Selection::clipboard() const
 {
-    std::string x = "";
-
-    if (!selection_.empty()) {
-
-        // create xml doc and root node
-        tinyxml2::XMLDocument xmlDoc;
-        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
-        selectionNode->SetAttribute("size", (int) selection_.size());
-        xmlDoc.InsertEndChild(selectionNode);
-
-        // fill doc
-        SourceList selection_clones_;
-        SessionVisitor sv(&xmlDoc, selectionNode);
-        for (auto iter = selection_.begin(); iter != selection_.end(); iter++, sv.setRoot(selectionNode) ){
-            // start with clones
-            CloneSource *clone = dynamic_cast<CloneSource *>(*iter);
-            if (clone)
-                (*iter)->accept(sv);
-            else
-                selection_clones_.push_back(*iter);
-        }
-        // add others in front
-        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); iter++, sv.setRoot(selectionNode) ){
-            (*iter)->accept(sv);
-        }
-
-        // get compact string
-        tinyxml2::XMLPrinter xmlPrint(0, true);
-        xmlDoc.Print( &xmlPrint );
-        x = xmlPrint.CStr();
-    }
-
-    return x;
+    return SessionVisitor::getClipboard(selection_);
 }
 
 SourceList Selection::getCopy() const

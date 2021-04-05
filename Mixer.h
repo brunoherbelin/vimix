@@ -107,7 +107,6 @@ public:
     void open   (const std::string& filename);
 
     // create sources if clipboard contains well-formed xml text
-    bool isClipboard (const std::string& text);
     void paste  (const std::string& clipboard);
 
 protected:

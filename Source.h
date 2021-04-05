@@ -198,9 +198,6 @@ public:
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
-    // get the xml description text of a source
-    static std::string xml(Source *s);
-
 protected:
     // name
     std::string name_;
@@ -273,6 +270,18 @@ protected:
 };
 
 
+
+class DummySource : public Source
+{
+public:
+    DummySource() : Source() {}
+    uint texture() const override { return 0; }
+    bool failed() const override  { return true; }
+    void accept (Visitor& v) override { Source::accept(v); }
+
+protected:
+    void init() override {}
+};
 
 class CloneSource : public Source
 {

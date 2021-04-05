@@ -12,7 +12,6 @@
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
-using namespace tinyxml2;
 
 #include "defines.h"
 #include "Settings.h"
@@ -431,19 +430,13 @@ bool Mixer::recreateSource(Source *s)
 
     // get the xml description from this source, and exit if not wellformed
     tinyxml2::XMLDocument xmlDoc;
-    tinyxml2::XMLError eResult = xmlDoc.Parse(Source::xml(s).c_str());
-    if ( XMLResultError(eResult))
-        return false;
-    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
-    if ( root == nullptr )
-        return false;
-    XMLElement* sourceNode = root->FirstChildElement("Source");
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(SessionVisitor::getClipboard(s), xmlDoc);
     if ( sourceNode == nullptr )
         return false;
 
     // actually create the source with SessionLoader using xml description
     SessionLoader loader( session_ );
-    Source *replacement = loader.createSource(sourceNode, false); // not clone
+    Source *replacement = loader.createSource(sourceNode, SessionLoader::DUPLICATE); // not clone
     if (replacement == nullptr)
         return false;
 
@@ -1228,40 +1221,23 @@ void Mixer::set(Session *s)
     sessionSwapRequested_ = true;
 }
 
-bool Mixer::isClipboard (const std::string& text)
-{
-    if (text.size() > 6 && text.substr(0, 6) == "<vimix")
-        return true;
-
-    return false;
-}
-
 void Mixer::paste(const std::string& clipboard)
 {
-    if (clipboard.empty())
-        return;
-
     tinyxml2::XMLDocument xmlDoc;
-    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
-    if ( XMLResultError(eResult))
-        return;
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clipboard, xmlDoc);
+    if (sourceNode) {
 
-    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
-    if ( root == nullptr )
-        return;
+        SessionLoader loader( session_ );
 
-    SessionLoader loader( session_ );
-
-    XMLElement* sourceNode = root->FirstChildElement("Source");
-    for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
-    {
-        Source *s = loader.createSource(sourceNode);
-        if (s) {
-            // Add source to Session
-            session_->addSource(s);
-            // Add source to Mixer
-            addSource(s);
+        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+        {
+            Source *s = loader.createSource(sourceNode);
+            if (s) {
+                // Add source to Session
+                session_->addSource(s);
+                // Add source to Mixer
+                addSource(s);
+            }
         }
     }
-
 }

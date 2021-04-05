@@ -33,7 +33,7 @@ public:
     uint size () const;
 
     // extract
-    std::string xml() const;
+    std::string clipboard() const;
     SourceList getCopy() const;
 
 protected:
