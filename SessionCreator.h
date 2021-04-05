@@ -12,6 +12,8 @@ class Session;
 
 class SessionLoader : public Visitor {
 
+    SessionLoader();
+
 public:
 
     SessionLoader(Session *session, int recursion = 0);
@@ -21,7 +23,16 @@ public:
     std::map< uint64_t, Source* > getSources() const;
     std::list< SourceList > getMixingGroups() const;
 
-    Source *createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates = true);
+    typedef enum {
+        CLONE,
+        DUPLICATE
+    } Mode;
+    Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
+
+    static bool isClipboard(std::string clipboard);
+    static tinyxml2::XMLElement* firstSourceElement(std::string clipboard, tinyxml2::XMLDocument &xmlDoc);
+    static void applyImageProcessing(const Source &s, std::string clipboard);
+    //TODO static void applyMask(const Source &s, std::string clipboard);
 
     // Elements of Scene
     void visit (Node& n) override;
@@ -60,6 +71,7 @@ protected:
     std::list< SourceIdList > groups_sources_id_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
+    static Source *createDummy(tinyxml2::XMLElement *sourceNode);
 };
 
 class SessionCreator : public SessionLoader {

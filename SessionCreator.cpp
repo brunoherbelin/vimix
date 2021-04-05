@@ -117,6 +117,13 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
     }
 }
 
+SessionLoader::SessionLoader(): Visitor(),
+    session_(nullptr), xmlCurrent_(nullptr), recursion_(0)
+{
+    // impose C locale
+    setlocale(LC_ALL, "C");
+}
+
 SessionLoader::SessionLoader(Session *session, int recursion): Visitor(),
     session_(session), xmlCurrent_(nullptr), recursion_(recursion)
 {
@@ -269,12 +276,10 @@ void SessionLoader::load(XMLElement *sessionNode)
                 }
             }
         }
-
     }
-
 }
 
-Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, bool clone_duplicates)
+Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 {
     xmlCurrent_ = sourceNode;
 
@@ -284,13 +289,13 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, bool clone
 
     SourceList::iterator sit = session_->end();
     // check if a source with the given id exists in the session
-    if (clone_duplicates) {
+    if (mode == CLONE) {
         uint64_t id__ = 0;
         xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
         sit = session_->find(id__);
     }
 
-    // no source with this id exists
+    // no source with this id exists or Mode DUPLICATE
     if ( sit == session_->end() ) {
         // create a new source depending on type
         const char *pType = xmlCurrent_->Attribute("type");
@@ -346,6 +351,109 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, bool clone
     return load_source;
 }
 
+Source *SessionLoader::createDummy(tinyxml2::XMLElement *sourceNode)
+{
+    SessionLoader loader;
+    loader.xmlCurrent_ = sourceNode;
+
+    DummySource *dum = new DummySource;
+    dum->accept(loader);
+
+    return dum;
+}
+
+bool SessionLoader::isClipboard(std::string clipboard)
+{
+    if (clipboard.size() > 6 && clipboard.substr(0, 6) == "<" APP_NAME )
+        return true;
+
+    return false;
+}
+
+tinyxml2::XMLElement* SessionLoader::firstSourceElement(std::string clipboard, XMLDocument &xmlDoc)
+{
+    tinyxml2::XMLElement* sourceNode = nullptr;
+
+    if ( !isClipboard(clipboard) )
+        return sourceNode;
+
+    // header
+    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+    if ( XMLResultError(eResult))
+        return sourceNode;
+
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return sourceNode;
+
+    // find node
+    sourceNode = root->FirstChildElement("Source");
+    return sourceNode;
+}
+
+void SessionLoader::applyImageProcessing(const Source &s, std::string clipboard)
+{
+    if ( !isClipboard(clipboard) )
+        return;
+
+    // header
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+    if ( XMLResultError(eResult))
+        return;
+
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return;
+
+    // find node
+    tinyxml2::XMLElement* imgprocNode = nullptr;
+    tinyxml2::XMLElement* sourceNode = root->FirstChildElement("Source");
+    if (sourceNode == nullptr)
+        imgprocNode = root->FirstChildElement("ImageProcessing");
+    else
+        imgprocNode = sourceNode->FirstChildElement("ImageProcessing");
+
+    if (imgprocNode == nullptr)
+        return;
+
+    // create session visitor and browse
+    SessionLoader loader;
+    loader.xmlCurrent_ = imgprocNode;
+    s.processingShader()->accept(loader);
+}
+
+//void SessionLoader::applyMask(const Source &s, std::string clipboard)
+//{
+//    if ( !isClipboard(clipboard) )
+//        return;
+
+//    // header
+//    tinyxml2::XMLDocument xmlDoc;
+//    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+//    if ( XMLResultError(eResult))
+//        return;
+
+//    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+//    if ( root == nullptr )
+//        return;
+
+//    // find node
+//    tinyxml2::XMLElement* naskNode = nullptr;
+//    tinyxml2::XMLElement* sourceNode = root->FirstChildElement("Source");
+//    if (sourceNode == nullptr)
+//        naskNode = root->FirstChildElement("Mask");
+//    else
+//        naskNode = sourceNode->FirstChildElement("ImageProcessing");
+
+//    if (naskNode == nullptr)
+//        return;
+
+//    // create session visitor and browse
+//    SessionLoader loader;
+//    loader.xmlCurrent_ = naskNode;
+////    s.processingShader()->accept(loader);
+//}
 
 void SessionLoader::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
 {

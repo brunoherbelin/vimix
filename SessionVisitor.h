@@ -3,6 +3,7 @@
 
 #include "Visitor.h"
 #include "tinyxml2Toolkit.h"
+#include "SourceList.h"
 
 class Session;
 
@@ -20,6 +21,10 @@ public:
     inline void setRoot(tinyxml2::XMLElement *root) { xmlCurrent_ = root; }
 
     static bool saveSession(const std::string& filename, Session *session);
+
+    static std::string getClipboard(SourceList list);
+    static std::string getClipboard(Source *s);
+    static std::string getClipboard(ImageProcessingShader *s);
 
     // Elements of Scene
     void visit(Scene& n) override;

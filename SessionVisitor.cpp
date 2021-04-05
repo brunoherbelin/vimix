@@ -540,3 +540,90 @@ void SessionVisitor::visit (MixingGroup& g)
         xmlCurrent_->InsertEndChild(sour);
     }
 }
+
+std::string SessionVisitor::getClipboard(SourceList list)
+{
+    std::string x = "";
+
+    if (!list.empty()) {
+
+        // create xml doc and root node
+        tinyxml2::XMLDocument xmlDoc;
+        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
+        selectionNode->SetAttribute("size", (int) list.size());
+        xmlDoc.InsertEndChild(selectionNode);
+
+        // fill doc by visiting sources
+        SourceList selection_clones_;
+        SessionVisitor sv(&xmlDoc, selectionNode);
+        for (auto iter = list.begin(); iter != list.end(); iter++, sv.setRoot(selectionNode) ){
+            // start with clones
+            CloneSource *clone = dynamic_cast<CloneSource *>(*iter);
+            if (clone)
+                (*iter)->accept(sv);
+            else
+                selection_clones_.push_back(*iter);
+        }
+        // add others in front
+        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); iter++, sv.setRoot(selectionNode) ){
+            (*iter)->accept(sv);
+        }
+
+        // get compact string
+        tinyxml2::XMLPrinter xmlPrint(0, true);
+        xmlDoc.Print( &xmlPrint );
+        x = xmlPrint.CStr();
+    }
+
+    return x;
+}
+
+std::string SessionVisitor::getClipboard(Source *s)
+{
+    std::string x = "";
+
+    if (s != nullptr) {
+        // create xml doc and root node
+        tinyxml2::XMLDocument xmlDoc;
+        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
+        selectionNode->SetAttribute("size", 1);
+        xmlDoc.InsertEndChild(selectionNode);
+
+        // visit source
+        SessionVisitor sv(&xmlDoc, selectionNode);
+        s->accept(sv);
+
+        // get compact string
+        tinyxml2::XMLPrinter xmlPrint(0, true);
+        xmlDoc.Print( &xmlPrint );
+        x = xmlPrint.CStr();
+    }
+
+    return x;
+}
+
+std::string SessionVisitor::getClipboard(ImageProcessingShader *s)
+{
+    std::string x = "";
+
+    if (s != nullptr) {
+        // create xml doc and root node
+        tinyxml2::XMLDocument xmlDoc;
+        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
+        xmlDoc.InsertEndChild(selectionNode);
+
+        tinyxml2::XMLElement *imgprocNode = xmlDoc.NewElement( "ImageProcessing" );
+        selectionNode->InsertEndChild(imgprocNode);
+
+        // visit source
+        SessionVisitor sv(&xmlDoc, imgprocNode);
+        s->accept(sv);
+
+        // get compact string
+        tinyxml2::XMLPrinter xmlPrint(0, true);
+        xmlDoc.Print( &xmlPrint );
+        x = xmlPrint.CStr();
+    }
+
+    return x;
+}
