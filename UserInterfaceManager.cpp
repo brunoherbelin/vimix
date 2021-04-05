@@ -258,12 +258,12 @@ void UserInterface::handleKeyboard()
                 Action::manager().undo();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_C )) {
-            std::string clipboard = Mixer::selection().xml();
+            std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty())
                 ImGui::SetClipboardText(clipboard.c_str());
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_X )) {
-            std::string clipboard = Mixer::selection().xml();
+            std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty()) {
                 ImGui::SetClipboardText(clipboard.c_str());
                 Mixer::manager().deleteSelection();
@@ -787,10 +787,10 @@ void UserInterface::showMenuEdit()
 {
     bool has_selection = !Mixer::selection().empty();
     const char *clipboard = ImGui::GetClipboardText();
-    bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && Mixer::manager().isClipboard(clipboard));
+    bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
     if (ImGui::MenuItem( ICON_FA_CUT "  Cut", CTRL_MOD "X", false, has_selection)) {
-        std::string copied_text = Mixer::selection().xml();
+        std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty()) {
             ImGui::SetClipboardText(copied_text.c_str());
             Mixer::manager().deleteSelection();
@@ -798,7 +798,7 @@ void UserInterface::showMenuEdit()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_COPY "  Copy", CTRL_MOD "C", false, has_selection)) {
-        std::string copied_text = Mixer::selection().xml();
+        std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty())
             ImGui::SetClipboardText(copied_text.c_str());
         navigator.hidePannel();

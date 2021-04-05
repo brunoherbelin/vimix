@@ -9,6 +9,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
 
+#include <tinyxml2.h>
+#include "tinyxml2Toolkit.h"
+
 #include "defines.h"
 #include "Log.h"
 #include "Scene.h"
@@ -21,6 +24,8 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SessionCreator.h"
+#include "SessionVisitor.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "ActionManager.h"
@@ -237,11 +242,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-    if (ImGuiToolkit::ButtonIcon(6, 2)) {
-        ImageProcessingShader defaultvalues;
-        n = defaultvalues;
-        Action::manager().store("Reset Filters");
-    }
+    ImGuiToolkit::Icon(6, 2);
     ImGui::SameLine(0, 10);
     ImGui::Text("Filters");
 
@@ -463,13 +464,45 @@ void ImGuiVisitor::visit (Source& s)
     }
     s.setImageProcessingEnabled(on);
 
-    ImGui::SetCursorPosY(pos.y + preview_height); // ...come back
-
     // image processing pannel
-    if (s.imageProcessingEnabled())
-        s.processingShader()->accept(*this);
+    if (s.imageProcessingEnabled()) {
 
-    // geometry direct control
+        // menu icon for image processing
+        ImGui::SetCursorPos( ImVec2( preview_width - ImGui::GetTextLineHeight(), pos.y + 4.5f * ImGui::GetFrameHeightWithSpacing())); // ...come back
+        if (ImGuiToolkit::IconButton(5, 8))
+            ImGui::OpenPopup( "MenuImageProcessing" );
+        if (ImGui::BeginPopup( "MenuImageProcessing" ))
+        {
+            if (ImGui::MenuItem("Reset" )){
+                ImageProcessingShader defaultvalues;
+                s.processingShader()->copy(defaultvalues);
+                std::ostringstream oss;
+                oss << s.name() << ": " << "Reset Filter";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::MenuItem("Copy" )){
+                std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
+                if (!clipboard.empty())
+                    ImGui::SetClipboardText(clipboard.c_str());
+            }
+            const char *clipboard = ImGui::GetClipboardText();
+            const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
+            if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
+                SessionLoader::applyImageProcessing(s, clipboard);
+                std::ostringstream oss;
+                oss << s.name() << ": " << "Change Filter";
+                Action::manager().store(oss.str());
+            }
+
+            ImGui::EndPopup();
+        }
+
+        // full panel for image processing
+        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height)); // ...come back
+        s.processingShader()->accept(*this);
+    }
+
+    // geometry direct control for DEBUG
 //    s.groupNode(View::GEOMETRY)->accept(*this);
 //    s.groupNode((View::Mode) Settings::application.current_view)->accept(*this);
 
