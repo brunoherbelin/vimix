@@ -71,7 +71,6 @@ protected:
     std::list< SourceIdList > groups_sources_id_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
-    static Source *createDummy(tinyxml2::XMLElement *sourceNode);
 };
 
 class SessionCreator : public SessionLoader {

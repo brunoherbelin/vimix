@@ -270,19 +270,6 @@ protected:
 };
 
 
-
-class DummySource : public Source
-{
-public:
-    DummySource() : Source() {}
-    uint texture() const override { return 0; }
-    bool failed() const override  { return true; }
-    void accept (Visitor& v) override { Source::accept(v); }
-
-protected:
-    void init() override {}
-};
-
 class CloneSource : public Source
 {
     friend class Source;

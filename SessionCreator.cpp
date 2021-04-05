@@ -351,16 +351,6 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     return load_source;
 }
 
-Source *SessionLoader::createDummy(tinyxml2::XMLElement *sourceNode)
-{
-    SessionLoader loader;
-    loader.xmlCurrent_ = sourceNode;
-
-    DummySource *dum = new DummySource;
-    dum->accept(loader);
-
-    return dum;
-}
 
 bool SessionLoader::isClipboard(std::string clipboard)
 {
@@ -781,5 +771,27 @@ void SessionLoader::visit (NetworkSource& s)
         s.setConnection(connect);
 }
 
+// dirty hack wich can be useful ?
+
+//class DummySource : public Source
+//{
+//    friend class SessionLoader;
+//public:
+//    uint texture() const override { return 0; }
+//    bool failed() const override  { return true; }
+//    void accept (Visitor& v) override { Source::accept(v); }
+//protected:
+//    DummySource() : Source() {}
+//    void init() override {}
+//};
+
+//Source *SessionLoader::createDummy(tinyxml2::XMLElement *sourceNode)
+//{
+//    SessionLoader loader;
+//    loader.xmlCurrent_ = sourceNode;
+//    DummySource *dum = new DummySource;
+//    dum->accept(loader);
+//    return dum;
+//}
 
 
