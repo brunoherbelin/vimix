@@ -25,6 +25,7 @@
 
 #include "TextureView.h"
 
+#define MASK_PAINT_ACTION_LABEL "Mask Paint"
 
 TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_update_(true)
 {
@@ -678,38 +679,37 @@ void TextureView::draw()
                         ImGui::EndPopup();
                     }
 
-                    ImGui::SameLine(0, 60);
+                    // store mask if changed, reset after applied
+                    if (edit_source_->maskShader()->effect > 0)
+                        edit_source_->storeMask();
                     edit_source_->maskShader()->effect = 0;
+
+                    // menu for effects
+                    ImGui::SameLine(0, 60);
                     if (ImGui::Button(ICON_FA_MAGIC ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup( "brush_menu_popup" );
                     if (ImGui::BeginPopup( "brush_menu_popup" ))
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        std::ostringstream oss;
+                        oss << edit_source_->name();
+                        int e = 0;
                         if (ImGui::Selectable( ICON_FA_BACKSPACE "\tClear")) {
-                            edit_source_->maskShader()->effect = 1;
-                            edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
-                            edit_source_->touch();
-                            // store action history
-                            std::ostringstream oss;
-                            oss << edit_source_->name() << ": Mask Paint Clear";
-                            Action::manager().store(oss.str());
+                            e = 1;
+                            oss << ": Clear " << MASK_PAINT_ACTION_LABEL;
                         }
                         if (ImGui::Selectable( ICON_FA_ADJUST "\tInvert")) {
-                            edit_source_->maskShader()->effect = 2;
-                            edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
-                            edit_source_->touch();
-                            // store action history
-                            std::ostringstream oss;
-                            oss << edit_source_->name() << ": Mask Paint Invert";
-                            Action::manager().store(oss.str());
+                            e = 2;
+                            oss << ": Invert " << MASK_PAINT_ACTION_LABEL;
                         }
                         if (ImGui::Selectable( ICON_FA_WAVE_SQUARE "\tEdge")) {
-                            edit_source_->maskShader()->effect = 3;
+                            e = 3;
+                            oss << ": Edge " << MASK_PAINT_ACTION_LABEL;
+                        }
+                        if (e>0) {
+                            edit_source_->maskShader()->effect = e;
                             edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
                             edit_source_->touch();
-                            // store action history
-                            std::ostringstream oss;
-                            oss << edit_source_->name() << ": Mask Paint Edge";
                             Action::manager().store(oss.str());
                         }
                         ImGui::PopFont();
@@ -885,7 +885,6 @@ void TextureView::draw()
     show_scale_ = false;
 }
 
-#define MASK_PAINT_ACTION_LABEL "Mask Paint Edit"
 
 View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
@@ -902,6 +901,8 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
         // work on the edited source
         if ( edit_source_ != nullptr ) {
 
+            info << edit_source_->name() << ": ";
+
             if ( pick.first == mask_cursor_circle_ ) {
 
                 // inform shader of a cursor action : coordinates and crop scaling
@@ -912,6 +913,8 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 info << MASK_PAINT_ACTION_LABEL;
                 // cursor indication - no info, just cursor
                 ret.type = Cursor_Hand;
+                // store action in history
+                current_action_ = info.str();
             }
             else if ( pick.first == mask_cursor_crop_ ) {
 
@@ -947,10 +950,9 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 info << " x "  << edit_source_->maskShader()->size.y;
                 // cursor indication - no info, just cursor
                 ret.type = Cursor_Hand;
+                // store action in history
+                current_action_ = info.str();
             }
-
-            // store action in history
-            current_action_ = edit_source_->name() + ": " + info.str();
 
         }
         return ret;
