@@ -15,7 +15,6 @@ class MaskShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
-class Session;
 class Frame;
 class Handles;
 class Symbol;
@@ -26,6 +25,7 @@ typedef std::list<CloneSource *> CloneList;
 
 class Source
 {
+    friend class SourceLink;
     friend class CloneSource;
     friend class View;
     friend class MixingView;
@@ -198,6 +198,8 @@ public:
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
+    SourceLink processingshader_link_;
+
 protected:
     // name
     std::string name_;
@@ -262,6 +264,9 @@ protected:
 
     // clones
     CloneList clones_;
+
+    // links
+    SourceLinkList links_;
 
     // Mixing
     MixingGroup *mixinggroup_;

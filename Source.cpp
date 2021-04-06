@@ -12,7 +12,6 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "SystemToolkit.h"
-#include "SessionVisitor.h"
 #include "Log.h"
 #include "MixingGroup.h"
 
@@ -234,6 +233,10 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
 
 Source::~Source()
 {
+    // inform links that they lost their target
+    while ( !links_.empty() )
+        links_.front()->disconnect();
+
     // inform clones that they lost their origin
     for (auto it = clones_.begin(); it != clones_.end(); it++)
         (*it)->detach();
@@ -649,6 +652,15 @@ void Source::update(float dt)
         need_update_ = false;
     }
 
+    if (processingshader_link_.connected() && imageProcessingEnabled()) {
+        Source *ref_source = processingshader_link_.source();
+        if (ref_source!=nullptr) {
+            if (ref_source->imageProcessingEnabled())
+                processingshader_->copy( *ref_source->processingShader() );
+            else
+                processingshader_link_.disconnect();
+        }
+    }
 }
 
 FrameBuffer *Source::frame() const
@@ -748,6 +760,7 @@ void Source::clearMixingGroup()
     mixinggroup_ = nullptr;
     overlay_mixinggroup_->visible_ = false;
 }
+
 
 CloneSource *Source::clone()
 {

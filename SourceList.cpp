@@ -4,6 +4,8 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 #include "Source.h"
+#include "Session.h"
+
 #include "SourceList.h"
 
 // utility to sort Sources by depth
@@ -116,5 +118,66 @@ SourceList join (const SourceList &first, const SourceList &second)
         l.push_back(*it);
     l.unique();
     return l;
+}
+
+
+void SourceLink::connect(uint64_t id, Session *se)
+{
+    if (connected())
+        disconnect();
+
+    id_ = id;
+    host_ = se;
+}
+
+void SourceLink::connect(Source *s)
+{
+    if (connected())
+        disconnect();
+
+    target_ = s;
+    id_ = s->id();
+    target_->links_.push_back(this);
+    // TODO veryfy circular dependency recursively ?
+}
+
+void SourceLink::disconnect()
+{
+    if (target_)
+        target_->links_.remove(this);
+
+    id_ = 0;
+    target_ = nullptr;
+    host_ = nullptr;
+}
+
+SourceLink::~SourceLink()
+{
+    disconnect();
+}
+
+Source *SourceLink::source()
+{
+    // no link to pointer yet?
+    if ( target_ == nullptr ) {
+        // to find a source, we need a host and an id
+        if ( id_ > 0 && host_ != nullptr) {
+            // find target in session
+            SourceList::iterator it = host_->find(id_);
+            // found: keep pointer
+            if (it != host_->end()) {
+                target_ = *it;
+                target_->links_.push_back(this);
+            }
+            // not found: invalidate link
+            else
+                disconnect();
+        }
+        // no host: invalidate link
+        else
+            disconnect();
+    }
+
+    return target_;
 }
 

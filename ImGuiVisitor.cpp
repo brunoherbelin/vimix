@@ -473,25 +473,51 @@ void ImGuiVisitor::visit (Source& s)
             ImGui::OpenPopup( "MenuImageProcessing" );
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
         {
-            if (ImGui::MenuItem("Reset" )){
-                ImageProcessingShader defaultvalues;
-                s.processingShader()->copy(defaultvalues);
-                std::ostringstream oss;
-                oss << s.name() << ": " << "Reset Filter";
-                Action::manager().store(oss.str());
+            if (s.processingshader_link_.connected()) {
+                if (ImGui::MenuItem( "Unfollow" )){
+                    s.processingshader_link_.disconnect();
+                }
             }
-            if (ImGui::MenuItem("Copy" )){
-                std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
-                if (!clipboard.empty())
-                    ImGui::SetClipboardText(clipboard.c_str());
-            }
-            const char *clipboard = ImGui::GetClipboardText();
-            const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
-            if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
-                SessionLoader::applyImageProcessing(s, clipboard);
-                std::ostringstream oss;
-                oss << s.name() << ": " << "Change Filter";
-                Action::manager().store(oss.str());
+            else {
+                if (ImGui::MenuItem("Reset" )){
+                    ImageProcessingShader defaultvalues;
+                    s.processingShader()->copy(defaultvalues);
+                    s.processingshader_link_.disconnect();
+                    std::ostringstream oss;
+                    oss << s.name() << ": " << "Reset Filter";
+                    Action::manager().store(oss.str());
+                }
+                if (ImGui::MenuItem("Copy" )){
+                    std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
+                    if (!clipboard.empty())
+                        ImGui::SetClipboardText(clipboard.c_str());
+                }
+                const char *clipboard = ImGui::GetClipboardText();
+                const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
+                if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
+                    SessionLoader::applyImageProcessing(s, clipboard);
+                    std::ostringstream oss;
+                    oss << s.name() << ": " << "Change Filter";
+                    Action::manager().store(oss.str());
+                }
+                ImGui::Separator();
+                if (ImGui::BeginMenu("Follow"))
+                {
+                    for (auto mpit = Mixer::manager().session()->begin();
+                         mpit != Mixer::manager().session()->end(); mpit++ )
+                    {
+                        std::string label = (*mpit)->name();
+                        if ( (*mpit)->id() != s.id() &&
+                             (*mpit)->imageProcessingEnabled() &&
+                             !(*mpit)->processingshader_link_.connected()) {
+                            if (ImGui::MenuItem( label.c_str() )){
+                                s.processingshader_link_.connect(*mpit);
+                                s.touch();
+                            }
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
             }
 
             ImGui::EndPopup();
@@ -499,7 +525,18 @@ void ImGuiVisitor::visit (Source& s)
 
         // full panel for image processing
         ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height)); // ...come back
-        s.processingShader()->accept(*this);
+
+        if (s.processingshader_link_.connected()) {
+            ImGuiToolkit::Icon(6, 2);
+            ImGui::SameLine(0, 10);
+            ImGui::Text("Filters");
+            Source *target = s.processingshader_link_.source();
+            ImGui::Text("Following");
+            if ( ImGui::Button(target->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                Mixer::manager().setCurrentSource(target);
+        }
+        else
+            s.processingShader()->accept(*this);
     }
 
     // geometry direct control for DEBUG
