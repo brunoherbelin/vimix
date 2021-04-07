@@ -20,7 +20,7 @@ Check the [Quick Installation Guide](https://github.com/brunoherbelin/vimix/wiki
 
 Download and install a release package from https://snapcraft.io/vimix
 
-    snap install vimix
+    $ snap install vimix
     
 NB: You'll need to setup the snap permissions.
 
@@ -31,21 +31,26 @@ NB: You'll need to accept the exception in OSX security preference.
 
 ## Clone
 
-    git clone --recursive https://github.com/brunoherbelin/vimix.git
+    $ git clone --recursive https://github.com/brunoherbelin/vimix.git
 
 This will create the directory 'vimix', download the latest version of vimix code,
 and (recursively) clone all the internal git dependencies.
 
-**To only update a cloned git copy:**
+To only update a cloned git copy:
 
-    git pull
+    $ git pull
 
 ## Compile
 
-    mkdir vimix-build
-    cd vimix-build
-    cmake -DCMAKE_BUILD_TYPE=Release ../vimix
-    cmake --build .
+First time after git clone:
+
+    $ mkdir vimix-build
+    $ cd vimix-build
+    $ cmake -DCMAKE_BUILD_TYPE=Release ../vimix
+    
+Compile (or re-compile after pull):
+    
+    $ cmake --build .
 
 ### Dependencies
 
@@ -67,21 +72,29 @@ and (recursively) clone all the internal git dependencies.
 
 **Ubuntu**
 
-    apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libicu-dev libgtk-3-dev 
+    $ apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libicu-dev libgtk-3-dev 
 
 **OSX with Brew**
 
-    brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
+    $ brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
 
 
 #### Generate snap
 
-From vimix root directory
-    snapcraft
-    snap install --dangerous vimix_0.5_amd64.snap
+To generate the snap (from vimix directory):
+
+    $ snapcraft
+    
+To install the locally created snap:
+    
+    $ snap install --dangerous vimix_0.5_amd64.snap
     
 ### Memcheck
 
-    G_SLICE=always-malloc valgrind --tool=massif ./vimix
+To generate memory usage plots in [massif format](https://valgrind.org/docs/manual/ms-manual.html):
+
+    $ G_SLICE=always-malloc valgrind --tool=massif ./vimix
     
-    G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
+To check for memory leaks:
+    
+    $ G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
