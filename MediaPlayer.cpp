@@ -304,7 +304,7 @@ void MediaPlayer::execute_open()
         gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
 
         // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 50);
+        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
         gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
 #ifdef USE_GST_APPSINK_CALLBACKS
@@ -407,7 +407,7 @@ void MediaPlayer::close()
         // force flush
         GstState state;
         gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                    GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
+                    GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
 
         // end pipeline
@@ -415,6 +415,7 @@ void MediaPlayer::close()
         if (ret == GST_STATE_CHANGE_ASYNC) {
             gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
         }
+
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
