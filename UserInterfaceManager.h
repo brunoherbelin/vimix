@@ -166,10 +166,11 @@ protected:
     void selectSaveFilename();
     void selectOpenFilename();
 
+    void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
     void RenderPreview();
     void RenderHistory();
     void RenderShaderEditor();
-    int   RenderViewNavigator(int* shift);
+    int  RenderViewNavigator(int* shift);
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();

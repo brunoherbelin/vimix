@@ -4,6 +4,7 @@
 #include <thread>
 #include <algorithm>
 #include <map>
+#include <iomanip>
 
 using namespace std;
 
@@ -755,9 +756,9 @@ void UserInterface::Render()
 
     // stats in the corner
     if (Settings::application.widget.stats)
-        ImGuiToolkit::ShowStats(&Settings::application.widget.stats,
-                                &Settings::application.widget.stats_corner,
-                                &Settings::application.widget.stats_timer);
+        RenderMetrics(&Settings::application.widget.stats,
+                  &Settings::application.widget.stats_corner,
+                  &Settings::application.widget.stats_mode);
 
     // management of video_recorder
     FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
@@ -2985,6 +2986,132 @@ void Navigator::RenderMainPannel()
     ImGui::End();
 }
 
+void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
+{
+    static guint64 start_time_1_ = gst_util_get_timestamp ();
+    static guint64 start_time_2_ = gst_util_get_timestamp ();
+
+    if (!p_corner || !p_open)
+        return;
+
+    const float DISTANCE = 10.0f;
+    int corner = *p_corner;
+    ImGuiIO& io = ImGui::GetIO();
+    if (corner != -1)
+    {
+        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
+        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    }
+
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+
+    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGui::SetNextItemWidth(200);
+        ImGui::Combo("##mode", p_mode,
+                     ICON_FA_TACHOMETER_ALT "  Performance\0"
+                     ICON_FA_HOURGLASS_HALF "  Timers\0"
+                     ICON_FA_VECTOR_SQUARE  "  Source\0");
+
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(5,8))
+            ImGui::OpenPopup("metrics_menu");
+        ImGui::Spacing();
+
+        if (*p_mode > 1) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            Source *s = Mixer::manager().currentSource();
+            if (s) {
+                float rightalign = -2.5f * ImGui::GetTextLineHeightWithSpacing();
+                std::ostringstream info;
+                info << s->name() << ": ";
+
+                float v = s->alpha();
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
+                    s->setAlpha(v);
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    Action::manager().store(info.str());
+                }
+
+                Group *n = s->group(View::GEOMETRY);
+                float translation[2] = { n->translation_.x, n->translation_.y};
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat2("Pos", translation, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )  {
+                    n->translation_.x = translation[0];
+                    n->translation_.y = translation[1];
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                float scale[2] = { n->scale_.x, n->scale_.y} ;
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat2("Scale", scale, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )
+                {
+                    n->scale_.x = CLAMP_SCALE(scale[0]);
+                    n->scale_.y = CLAMP_SCALE(scale[1]);
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::SliderAngle("Angle", &(n->rotation_.z), -180.f, 180.f) )
+                    s->touch();
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+            }
+            else
+                ImGui::Text("No source selected");
+            ImGui::PopFont();
+        }
+        else if (*p_mode > 0) {
+            guint64 time_ = gst_util_get_timestamp ();
+
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconButton(12, 14))
+                start_time_1_ = time_; // reset timer 1
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconButton(12, 14))
+                start_time_2_ = time_; // reset timer 2
+
+        }
+        else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
+            //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
+            ImGui::Text("Refresh %.1f FPS", io.Framerate);
+            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
+            ImGui::PopFont();
+
+        }
+
+        if (ImGui::BeginPopup("metrics_menu"))
+        {
+            if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
+            if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
+            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
+            if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close")) *p_open = false;
+            ImGui::EndPopup();
+        }
+        ImGui::End();
+    }
+}
+
 
 //namespace ImGui
 //{
@@ -3382,3 +3509,4 @@ void ShowAboutGStreamer(bool* p_open)
 
     ImGui::End();
 }
+

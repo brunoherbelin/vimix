@@ -15,7 +15,7 @@ struct WidgetsConfig
 {
     bool stats;
     int  stats_corner;
-    bool stats_timer;
+    int  stats_mode;
     bool logs;
     bool preview;
     bool history;
@@ -26,7 +26,7 @@ struct WidgetsConfig
 
     WidgetsConfig() {
         stats = false;
-        stats_timer = false;
+        stats_mode = 0;
         stats_corner = 1;
         logs = false;
         preview = false;
