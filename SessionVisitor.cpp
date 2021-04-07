@@ -441,6 +441,7 @@ void SessionVisitor::visit (Source& s)
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
     xmlCurrent_->SetAttribute("enabled", s.imageProcessingEnabled());
+    xmlCurrent_->SetAttribute("follow", s.processingshader_link_.id());
     sourceNode->InsertEndChild(xmlCurrent_);
     s.processingShader()->accept(*this);
 

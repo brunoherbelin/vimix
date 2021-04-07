@@ -276,6 +276,10 @@ void SessionLoader::load(XMLElement *sessionNode)
                 }
             }
         }
+
+        // loop over SourceLinks and resolve them
+        // NB: this could become the mechanism for clone sources too
+
     }
 }
 
@@ -664,8 +668,11 @@ void SessionLoader::visit (Source& s)
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
     if (xmlCurrent_) {
         bool on = xmlCurrent_->BoolAttribute("enabled", true);
+        uint64_t id__ = 0;
+        xmlCurrent_->QueryUnsigned64Attribute("follow", &id__);
         s.processingShader()->accept(*this);
         s.setImageProcessingEnabled(on);
+        s.processingshader_link_.connect(id__, session_);
     }
 
     xmlCurrent_ = sourceNode->FirstChildElement("MixingGroup");

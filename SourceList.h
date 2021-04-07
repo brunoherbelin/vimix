@@ -38,6 +38,7 @@ public:
     bool connected() { return id_ > 0; }
 
     Source *source();
+    inline uint64_t id() { return id_; }
 
 protected:
     Session *host_;

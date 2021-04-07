@@ -169,9 +169,9 @@ Source *SourceLink::source()
                 target_ = *it;
                 target_->links_.push_back(this);
             }
-            // not found: invalidate link
-            else
-                disconnect();
+//            // not found: invalidate link
+//            else
+//                disconnect();
         }
         // no host: invalidate link
         else
