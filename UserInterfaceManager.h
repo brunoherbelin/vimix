@@ -5,7 +5,8 @@
 #include <list>
 
 #define NAV_COUNT 68
-#define NAV_MAX 64
+#define NAV_MAX 63
+#define NAV_SES 64
 #define NAV_NEW 65
 #define NAV_MENU 66
 #define NAV_TRANS 67
@@ -36,7 +37,6 @@ class Navigator
     float width_;
     float height_;
     float pannel_width_;
-    float sourcelist_height_;
     float padding_width_;
 
     // behavior pannel
@@ -52,6 +52,7 @@ class Navigator
     void RenderMainPannel();
     void RenderTransitionPannel();
     void RenderNewPannel();
+    void RenderSessionPannel();
     void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
 
     SourcePreview new_source_preview_;

@@ -1033,7 +1033,7 @@ void ToolBox::Render()
 
     // save to file
     if ( record_ && csv_file_.is_open()) {
-            csv_file_ << megabyte << ", " << recorded_sum[0] / float(PLOT_ARRAY_SIZE) << std::endl;
+            csv_file_ << megabyte << ", " << ImGui::GetIO().Framerate << std::endl;
     }
 
     // About and other utility windows
@@ -2141,104 +2141,102 @@ void Navigator::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.50f, 0.50f));
 
     // calculate size of items based on text size and display dimensions
-    width_ = 2.f *  ImGui::GetTextLineHeightWithSpacing();          // dimension of left bar depends on FONT_LARGE
+    width_ = 2.f *  ImGui::GetTextLineHeightWithSpacing();           // dimension of left bar depends on FONT_LARGE
     pannel_width_ = 5.f * width_;                                    // pannel is 5x the bar
-    padding_width_ = 2.f * style.WindowPadding.x;                   // panning for alighment
-    height_ = io.DisplaySize.y;                                     // cover vertically
-    sourcelist_height_ = height_ - 8.f * ImGui::GetTextLineHeight(); // space for 4 icons of view
-    float icon_width = width_ - 2.f * style.WindowPadding.x;        // icons keep padding
+    padding_width_ = 2.f * style.WindowPadding.x;                    // panning for alighment
+    height_ = io.DisplaySize.y;                                      // cover vertically
+    float sourcelist_height_ = height_ - 8.f * ImGui::GetTextLineHeight(); // space for 4 icons of view
+    float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
 
-        // Left bar top
-        ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
-        ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
-        ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-        if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
-        {
-            if (Settings::application.current_view < View::TRANSITION) {
+    // Left bar top
+    ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
+    if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
+    {
+        if (Settings::application.current_view < View::TRANSITION) {
 
-                // the "=" icon for menu
-                if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
-                {
-                    //            Mixer::manager().unsetCurrentSource();
-                    applyButtonSelection(NAV_MENU);
+            // the "=" icon for menu
+            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
+                applyButtonSelection(NAV_MENU);
+            if (ImGui::IsItemHovered())
+                tooltip_ = "Main menu  HOME";
+
+//            if (ImGui::Selectable( ICON_FA_ELLIPSIS_V, &selected_button[NAV_SES], 0, iconsize))
+//                applyButtonSelection(NAV_SES);
+//            if (ImGui::IsItemHovered())
+//                tooltip_ = "Session      ";
+
+            // the list of INITIALS for sources
+            int index = 0;
+            SourceList::iterator iter;
+            for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
+            {
+                Source *s = (*iter);
+                // draw an indicator for current source
+                if ( s->mode() >= Source::SELECTED ){
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
+                    ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
+                    const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
+                    if ((*iter)->mode() == Source::CURRENT)  {
+                        p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
+                        p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
+                    }
+                    draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
                 }
-                if (ImGui::IsItemHovered())
-                    tooltip_ = "Main menu  HOME";
-
-                // the list of INITIALS for sources
-                int index = 0;
-                SourceList::iterator iter;
-                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
+                // draw select box
+                ImGui::PushID(std::to_string(s->group(View::RENDERING)->id()).c_str());
+                if (ImGui::Selectable(s->initials(), &selected_button[index], 0, iconsize))
                 {
-                    Source *s = (*iter);
-                    // draw an indicator for current source
-                    if ( s->mode() >= Source::SELECTED ){
-                        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                        ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
-                        ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
-                        const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-                        if ((*iter)->mode() == Source::CURRENT)  {
-                            p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
-                            p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
+                    applyButtonSelection(index);
+                    if (selected_button[index])
+                        Mixer::manager().setCurrentIndex(index);
+                }
+
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+                {
+                    ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
+                    ImGui::Text( ICON_FA_SORT " %s ", s->initials());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget())
+                {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SOURCE"))
+                    {
+                        if ( payload->DataSize == sizeof(int) ) {
+                            bool status_current_index = selected_button[Mixer::manager().indexCurrentSource()];
+                            // drop means move index and reorder
+                            int payload_index = *(const int*)payload->Data;
+                            Mixer::manager().moveIndex(payload_index, index);
+                            // index of current source changed
+                            selected_button[Mixer::manager().indexCurrentSource()] = status_current_index;
+                            applyButtonSelection(Mixer::manager().indexCurrentSource());
                         }
-                        draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
                     }
-                    // draw select box
-                    ImGui::PushID(std::to_string(s->group(View::RENDERING)->id()).c_str());
-                    if (ImGui::Selectable(s->initials(), &selected_button[index], 0, iconsize))
-                    {
-                        applyButtonSelection(index);
-                        if (selected_button[index])
-                            Mixer::manager().setCurrentIndex(index);
-                    }
-
-                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-                    {
-                        ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
-                        ImGui::Text( ICON_FA_SORT " %s ", s->initials());
-                        ImGui::EndDragDropSource();
-                    }
-                    if (ImGui::BeginDragDropTarget())
-                    {
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SOURCE"))
-                        {
-                            if ( payload->DataSize == sizeof(int) ) {
-                                bool status_current_index = selected_button[Mixer::manager().indexCurrentSource()];
-                                // drop means move index and reorder
-                                int payload_index = *(const int*)payload->Data;
-                                Mixer::manager().moveIndex(payload_index, index);
-                                // index of current source changed
-                                selected_button[Mixer::manager().indexCurrentSource()] = status_current_index;
-                                applyButtonSelection(Mixer::manager().indexCurrentSource());
-                            }
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
-
-                    ImGui::PopID();
+                    ImGui::EndDragDropTarget();
                 }
 
-                // the "+" icon for action of creating new source
-                if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
-                {
-//                    Mixer::manager().unsetCurrentSource();
-                    applyButtonSelection(NAV_NEW);
-                }
-                if (ImGui::IsItemHovered())
-                    tooltip_ = "New Source   INS";
-
+                ImGui::PopID();
             }
-            else {
-                // the ">" icon for transition menu
-                if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
-                {
-                    //            Mixer::manager().unsetCurrentSource();
-                    applyButtonSelection(NAV_TRANS);
-                }
+
+            // the "+" icon for action of creating new source
+            if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
+                applyButtonSelection(NAV_NEW);
+            if (ImGui::IsItemHovered())
+                tooltip_ = "New Source   INS";
+        }
+        else {
+            // the ">" icon for transition menu
+            if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
+            {
+                Mixer::manager().unsetCurrentSource();
+                applyButtonSelection(NAV_TRANS);
             }
         }
-        ImGui::End();
+    }
+    ImGui::End();
 
     // Left bar bottom
     ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height_), ImGuiCond_Always );
@@ -2298,7 +2296,7 @@ void Navigator::Render()
     ImGui::PopStyleVar();
     ImGui::PopFont();
 
-    if ( Settings::application.pannel_stick || pannel_visible_){
+    if ( pannel_visible_){
         // pannel menu
         if (selected_button[NAV_MENU])
         {
@@ -2313,6 +2311,11 @@ void Navigator::Render()
         else if (selected_button[NAV_NEW])
         {
             RenderNewPannel();
+        }
+        // pannel session
+        else if (selected_button[NAV_SES])
+        {
+            RenderSessionPannel();
         }
         // pannel to configure a selected source
         else
@@ -2379,9 +2382,9 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Text("Source");
         ImGui::PopFont();
 
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
-        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
-        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
+//        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+//        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
+//        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
 
         static char buf5[128];
         sprintf ( buf5, "%s", s->name().c_str() );
@@ -2682,10 +2685,45 @@ void Navigator::RenderNewPannel()
             }
         }
 
+        ImGui::End();
     }
-    ImGui::End();
 }
 
+
+void Navigator::RenderSessionPannel()
+{
+    // Next window is a side pannel
+    ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    if (ImGui::Begin("##navigatorSession", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // TITLE
+        ImGui::SetCursorPosY(10);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text("Session");
+        ImGui::PopFont();
+
+        // Edit menu
+        ImGui::SetCursorPosY(width_);
+        ImGui::Text("History");
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginMenu("Action"))
+        {
+            if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
+                Action::manager().undo();
+            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
+                Action::manager().redo();
+
+            ImGui::EndMenu();
+        }
+
+
+
+        ImGui::End();
+    }
+}
 
 void Navigator::RenderTransitionPannel()
 {
@@ -2775,7 +2813,7 @@ void Navigator::RenderMainPannel()
         }
         // Session menu
         ImGui::SetCursorPosY(width_);
-        ImGui::Text("Session");
+        ImGui::Text("Sessions");
         ImGui::SameLine();
         ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginMenu("File"))
