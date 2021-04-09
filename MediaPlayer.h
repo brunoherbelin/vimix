@@ -22,7 +22,6 @@ class Visitor;
 
 struct MediaInfo {
 
-    Timeline timeline;
     guint width;
     guint par_width;  // width to match pixel aspect ratio
     guint height;
@@ -34,6 +33,8 @@ struct MediaInfo {
     bool interlaced;
     bool seekable;
     bool valid;
+    GstClockTime dt;
+    GstClockTime end;
 
     MediaInfo() {
         width = par_width = 640;
@@ -46,14 +47,15 @@ struct MediaInfo {
         interlaced = false;
         seekable = false;
         valid = false;
+        dt  = GST_CLOCK_TIME_NONE;
+        end = GST_CLOCK_TIME_NONE;
     }
 
     inline MediaInfo& operator = (const MediaInfo& b)
     {
         if (this != &b) {
-            this->timeline.setEnd( b.timeline.end() );
-            this->timeline.setStep( b.timeline.step() );
-            this->timeline.setFirst( b.timeline.first() );
+            this->dt = b.dt;
+            this->end = b.end;
             this->width = b.width;
             this->par_width = b.par_width;
             this->height = b.height;
@@ -273,6 +275,7 @@ private:
 
     // general properties of media
     MediaInfo media_;
+    Timeline timeline_;
     std::future<MediaInfo> discoverer_;
 
     // GST & Play status
