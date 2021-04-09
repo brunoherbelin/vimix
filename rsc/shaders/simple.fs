@@ -7,11 +7,11 @@ in vec4 vertexColor;
 uniform vec3 iResolution;      // viewport resolution (in pixels)
 
 uniform vec4 color;            // drawing color
-uniform vec4 uv;
 
 void main()
 {
-    FragColor = color * vertexColor;
+    vec4 c = color * vertexColor;
+    FragColor = vec4( c.r * c.a, c.g * c.a, c.b * c.a, c.a);
 }
 
 // RGBA 2 YUVA converter

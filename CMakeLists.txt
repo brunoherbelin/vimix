@@ -1,6 +1,29 @@
 
-cmake_minimum_required(VERSION 3.8.0)
+cmake_minimum_required(VERSION 3.8.2)
 project(vimix VERSION 0.0.1 LANGUAGES CXX C)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# use git
+find_package (Git)
+if(GIT_EXECUTABLE)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --tags
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_DESCRIBE_VERSION
+    RESULT_VARIABLE GIT_DESCRIBE_ERROR_CODE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  if(NOT GIT_DESCRIBE_ERROR_CODE)
+      string(SUBSTRING ${GIT_DESCRIBE_VERSION} 0 1 VIMIX_VERSION_MAJOR)
+      string(SUBSTRING ${GIT_DESCRIBE_VERSION} 2 1 VIMIX_VERSION_MINOR)
+      string(SUBSTRING ${GIT_DESCRIBE_VERSION} 4 1 VIMIX_VERSION_PATCH)
+      add_definitions(-DVIMIX_VERSION_MAJOR=${VIMIX_VERSION_MAJOR})
+      add_definitions(-DVIMIX_VERSION_MINOR=${VIMIX_VERSION_MINOR})
+      add_definitions(-DVIMIX_VERSION_PATCH=${VIMIX_VERSION_PATCH})
+  endif()
+endif()
+
+message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}")
 
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 set(CMAKE_INCLUDE_CURRENTDIR ON)
@@ -23,6 +46,9 @@ if(UNIX)
 
         set(OpenGL_GL_PREFERENCE "GLVND")
 
+        find_package(GTK 3.0 REQUIRED)
+        macro_log_feature(GTK_FOUND "GTK" "GTK cross-platform widget toolkit" "http://www.gtk.org" TRUE)
+
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)
@@ -31,8 +57,21 @@ elseif(WIN32)
 endif()
 
 
-# Include the CMake RC module
-include(CMakeRC)
+# Basics
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads REQUIRED)
+
+find_package(GLIB2)
+macro_log_feature(GLIB2_FOUND "GLib" "GTK general-purpose utility library" "http://www.gtk.org" TRUE)
+
+find_package(GObject)
+macro_log_feature(GOBJECT_FOUND "GObject" "GTK object-oriented framework" "http://www.gtk.org" TRUE)
+
+find_package(PNG REQUIRED)
+macro_log_feature(PNG_FOUND "PNG" "Portable Network Graphics" "http://www.libpng.org" TRUE)
+
+find_package(ICU REQUIRED COMPONENTS i18n io uc)
+macro_log_feature(ICU_FOUND "ICU" "International Components for Unicode" "http://site.icu-project.org" TRUE)
 
 #
 # GSTREAMER
@@ -67,7 +106,6 @@ macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamer opengl library"
 "${GSTREAMER_GL_LIBRARY}"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-
 #find_package(GStreamerPluginsBad 1.0.0 COMPONENTS player)
 #macro_log_feature(GSTREAMER_PLAYER_LIBRARY_FOUND "GStreamer player library"
 #"${GSTREAMER_PLAYER_LIBRARY}"
@@ -77,29 +115,17 @@ macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamer opengl library"
 # Various preprocessor definitions for GST
 add_definitions(-DGST_DISABLE_XML -DGST_DISABLE_LOADSAVE)
 
-# Basics
-find_package(GLIB2)
-macro_log_feature(GLIB2_FOUND "GLib" "GTK general-purpose utility library" "http://www.gtk.org/" TRUE)
 
-find_package(GObject)
-macro_log_feature(GOBJECT_FOUND "GObject" "GTK object-oriented framework" "http://www.gtk.org/" TRUE)
-
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads REQUIRED)
-set(THREAD_LIBRARY Threads::Threads)
-
-find_package(PNG REQUIRED)
-set(PNG_LIBRARY PNG::PNG)
 
 #
 # GLFW3
 # NB: set glfw3_PATH to /usr/local/Cellar/glfw/3.3.2/lib/cmake/glfw3
 #
 find_package(glfw3 3.2 REQUIRED)
-macro_log_feature(glfw3_FOUND "GLFW3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org/" TRUE)
+macro_log_feature(glfw3_FOUND "GLFW3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org" TRUE)
 set(GLFW_LIBRARY glfw)
 
-#find_package(OpenGL REQUIRED)
+macro_display_feature_log()
 
 # static sub packages in ext
 set(BUILD_STATIC_LIBS ON)
@@ -108,14 +134,14 @@ set(BUILD_STATIC_LIBS ON)
 # GLM
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
-message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net.")
+message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net")
 
 #
 # GLAD
 #
 set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
 add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de/ -- ${GLAD_INCLUDE_DIR}.")
+message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}.")
 
 #
 # DEAR IMGUI
@@ -170,7 +196,6 @@ set(OSCPACK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack)
 add_library(OSCPACK "${OSCPACK_SRCS}")
 message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}.")
 
-
 #
 # STB
 #
@@ -187,21 +212,28 @@ if(WIN32)
 endif( WIN32 )
 
 #
-# TINY FILE DIALOG
+# FILE DIALOG: use tinyfiledialog for all except Linux
 #
-set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
-add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
-message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolkit/tinyfiledialogs.git -- ${TINYFD_INCLUDE_DIR}.")
+if(UNIX)
+    if (APPLE)
+        set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
+        add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
+        message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolkit/tinyfiledialogs.git -- ${TINYFD_INCLUDE_DIR}.")
+        set(TINYFD_LIBRARY TINYFD)
+    endif()
+else()
+    set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
+    add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
+    message(STATUS "Compiling 'TinyFileDialog' from https://github.com/native-toolkit/tinyfiledialogs.git -- ${TINYFD_INCLUDE_DIR}.")
+    set(TINYFD_LIBRARY TINYFD)
+endif()
 
 #
-# OBJ LOADER
+# OBJ LOADER - not used
 #
 #set(OBJLOADER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/obj)
 #add_library(OBJLOADER "${CMAKE_CURRENT_SOURCE_DIR}/ext/obj/ObjLoader.cpp")
 #message(STATUS "Compiling 'ObjLoader' from https://github.com/mortennobel/OpenGL_3_2_Utils -- ${OBJLOADER_INCLUDE_DIR}.")
-
-# find_package(PkgConfig REQUIRED)
-# pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 
 #
 #  Application
@@ -227,6 +259,7 @@ include_directories(
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
     ${OSCPACK_INCLUDE_DIR}
+    ${ICU_INCLUDE_DIRS}
 )
 
 
@@ -243,7 +276,15 @@ set(VMIX_SRCS
     Mesh.cpp
     Decorations.cpp
     View.cpp
+    RenderView.cpp
+    GeometryView.cpp
+    MixingView.cpp
+    MixingGroup.cpp
+    LayerView.cpp
+    TextureView.cpp
+    TransitionView.cpp
     Source.cpp
+    SourceList.cpp
     Session.cpp
     Selection.cpp
     SessionSource.cpp
@@ -279,6 +320,7 @@ set(VMIX_SRCS
     GstToolkit.cpp
     GlmToolkit.cpp
     SystemToolkit.cpp
+    DialogToolkit.cpp
     tinyxml2Toolkit.cpp
     NetworkToolkit.cpp
     Connection.cpp
@@ -290,8 +332,15 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/simple.fs
     ./rsc/shaders/simple.vs
     ./rsc/shaders/image.fs
+    ./rsc/shaders/mask_elipse.fs
+    ./rsc/shaders/mask_box.fs
+    ./rsc/shaders/mask_round.fs
+    ./rsc/shaders/mask_horizontal.fs
+    ./rsc/shaders/mask_vertical.fs
+    ./rsc/shaders/mask_draw.fs
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
+    ./rsc/shaders/imageblending.fs
     ./rsc/fonts/Hack-Regular.ttf
     ./rsc/fonts/Roboto-Regular.ttf
     ./rsc/fonts/Roboto-Bold.ttf
@@ -321,11 +370,17 @@ set(VMIX_RSC_FILES
     ./rsc/images/soft_shadow.dds
     ./rsc/mesh/disk.ply
     ./rsc/mesh/circle.ply
+    ./rsc/mesh/corner.ply
     ./rsc/mesh/shadow.ply
     ./rsc/mesh/glow.ply
+    ./rsc/mesh/border_round_left.ply
     ./rsc/mesh/border_round.ply
     ./rsc/mesh/border_top.ply
+    ./rsc/mesh/border_perspective_round_left.ply
+    ./rsc/mesh/border_perspective_round.ply
+    ./rsc/mesh/border_perspective_top.ply
     ./rsc/mesh/border_sharp.ply
+    ./rsc/mesh/border_large_round_left.ply
     ./rsc/mesh/border_large_round.ply
     ./rsc/mesh/border_large_top.ply
     ./rsc/mesh/border_handles_rotation.ply
@@ -334,10 +389,15 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_overlay_filled.ply
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_handles_menu.ply
+    ./rsc/mesh/border_handles_crop.ply
+    ./rsc/mesh/border_handles_lock.ply
+    ./rsc/mesh/border_handles_lock_open.ply
     ./rsc/mesh/border_handles_shadow.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
+    ./rsc/mesh/perspective_axis_left.ply
+    ./rsc/mesh/perspective_axis_right.ply
     ./rsc/mesh/shadow_perspective.ply
     ./rsc/mesh/point.ply
     ./rsc/mesh/square_point.ply
@@ -349,6 +409,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_share.ply
     ./rsc/mesh/icon_clone.ply
     ./rsc/mesh/icon_vimix.ply
+    ./rsc/mesh/icon_group_vimix.ply
     ./rsc/mesh/icon_circles.ply
     ./rsc/mesh/icon_dots.ply
     ./rsc/mesh/icon_empty.ply
@@ -361,9 +422,19 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
     ./rsc/mesh/icon_rightarrow.ply
+    ./rsc/mesh/icon_crop.ply
+    ./rsc/mesh/icon_eye.ply
+    ./rsc/mesh/icon_eye_slash.ply
+    ./rsc/mesh/icon_vector_square_slash.ply
+    ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )
+
+# Include the CMake RC module
+include(CMakeRC)
+cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})
+message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git -- ${CMAKE_MODULE_PATH}.")
 
 ### DEFINE THE TARGET (OS specific)
 
@@ -394,16 +465,18 @@ IF(APPLE)
 
 ELSE(APPLE)
 
+   link_directories (${GTK3_LIBRARY_DIRS})
+
     add_executable(${VMIX_BINARY}
         ${VMIX_SRCS}
         ${IMGUITEXTEDIT_SRC}
     )
 
-    set(PLATFORM_LIBS  ""
+    set(PLATFORM_LIBS
+        GTK::GTK
     )
 
 ENDIF(APPLE)
-
 
 ### COMPILE THE TARGET (all OS)
 
@@ -412,14 +485,12 @@ set_property(TARGET ${VMIX_BINARY} PROPERTY C_STANDARD 11)
 
 target_compile_definitions(${VMIX_BINARY} PUBLIC "IMGUI_IMPL_OPENGL_LOADER_GLAD")
 
-cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})
-message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git -- ${CMAKE_MODULE_PATH}.")
-
-
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
-    ${GLFW_LIBRARY}
     GLAD
-    glm::glm
+    TINYXML2
+    IMGUI
+    OSCPACK
+    ${GLFW_LIBRARY}
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
     ${GSTREAMER_LIBRARY}
@@ -430,29 +501,29 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${GSTREAMER_PBUTILS_LIBRARY}
     ${GSTREAMER_GL_LIBRARY}
     ${GSTREAMER_PLAYER_LIBRARY}
-    ${NFD_LIBRARY}
-    ${PNG_LIBRARY}
-    ${THREAD_LIBRARY}
-    TINYXML2
-    TINYFD
-    IMGUI
-    OSCPACK
+    ${TINYFD_LIBRARY}
+    Threads::Threads
+    PNG::PNG
+    glm::glm
+    ICU::i18n
+    ICU::io
+    ICU::uc
     vmix::rc
     ${PLATFORM_LIBS}
 )
 
-macro_display_feature_log()
 
 
 ### DEFINE THE PACKAGING (all OS)
 
 SET(CPACK_PACKAGE_NAME "vimix")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "vimix\n Real-time video mixing for live performance.")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "vimix\nReal-time video mixing for live performance.")
 SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
 SET(CPACK_PACKAGE_CONTACT "bruno.herbelin@gmail.com")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
-SET(CPACK_PACKAGE_VERSION_MAJOR "0")
-SET(CPACK_PACKAGE_VERSION_MINOR "4")
+SET(CPACK_PACKAGE_VERSION_MAJOR "${VIMIX_VERSION_MAJOR}")
+SET(CPACK_PACKAGE_VERSION_MINOR "${VIMIX_VERSION_MINOR}")
+SET(CPACK_PACKAGE_VERSION_PATCH "${VIMIX_VERSION_PATCH}")
 SET(CPACK_PACKAGE_VENDOR "Bruno Herbelin")
 SET(CPACK_SOURCE_IGNORE_FILES
     "/\\\\.git/"
@@ -540,7 +611,7 @@ ELSE(APPLE)
 ENDIF(APPLE)
 
 # Package full name
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}_${CPACK_SYSTEM_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CPACK_SYSTEM_NAME}")
 
 # To Create a package, run "cpack"
 include(CPack)

@@ -3,6 +3,9 @@
 
 #include "Visitor.h"
 #include "tinyxml2Toolkit.h"
+#include "SourceList.h"
+
+class Session;
 
 class SessionVisitor : public Visitor {
 
@@ -15,8 +18,13 @@ public:
                    tinyxml2::XMLElement *root = nullptr,
                    bool recursive = false);
 
-    inline tinyxml2::XMLDocument *doc() const { return xmlDoc_; }
     inline void setRoot(tinyxml2::XMLElement *root) { xmlCurrent_ = root; }
+
+    static bool saveSession(const std::string& filename, Session *session);
+
+    static std::string getClipboard(SourceList list);
+    static std::string getClipboard(Source *s);
+    static std::string getClipboard(ImageProcessingShader *s);
 
     // Elements of Scene
     void visit(Scene& n) override;
@@ -30,7 +38,6 @@ public:
     void visit(FrameBufferSurface&) override;
     void visit(LineStrip& n) override;
     void visit(LineSquare&) override;
-    void visit(LineCircle&) override;
     void visit(Mesh& n) override;
     void visit(Frame& n) override;
 
@@ -38,18 +45,22 @@ public:
     void visit(MediaPlayer& n) override;
     void visit(Shader& n) override;
     void visit(ImageShader& n) override;
+    void visit(MaskShader& n) override;
     void visit(ImageProcessingShader& n) override;
 
     // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
-    void visit (SessionSource& s) override;
+    void visit (SessionFileSource& s) override;
+    void visit (SessionGroupSource& s) override;
     void visit (RenderSource&) override;
     void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
+    void visit (MixingGroup& s) override;
 
+protected:
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
 };
 

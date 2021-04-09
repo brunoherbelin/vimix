@@ -25,16 +25,19 @@ class Stream;
 class MediaPlayer;
 class Shader;
 class ImageShader;
+class MaskShader;
 class ImageProcessingShader;
 class Source;
 class MediaSource;
 class PatternSource;
 class DeviceSource;
 class GenericStreamSource;
-class SessionSource;
+class SessionFileSource;
+class SessionGroupSource;
 class RenderSource;
 class CloneSource;
 class NetworkSource;
+class MixingGroup;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -54,7 +57,6 @@ public:
     virtual void visit (FrameBufferSurface&) {}
     virtual void visit (LineStrip&)  {}
     virtual void visit (LineSquare&) {}
-    virtual void visit (LineCircle&) {}
     virtual void visit (Mesh&) {}
     virtual void visit (Frame&) {}
     virtual void visit (Handles&) {}
@@ -64,16 +66,19 @@ public:
     virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
+    virtual void visit (MaskShader&) {}
     virtual void visit (ImageProcessingShader&) {}
 
     // utility
+    virtual void visit (MixingGroup&) {}
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
     virtual void visit (NetworkSource&) {}
     virtual void visit (GenericStreamSource&) {}
     virtual void visit (DeviceSource&) {}
     virtual void visit (PatternSource&) {}
-    virtual void visit (SessionSource&) {}
+    virtual void visit (SessionFileSource&) {}
+    virtual void visit (SessionGroupSource&) {}
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}
 

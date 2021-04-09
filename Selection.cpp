@@ -2,7 +2,7 @@
 
 #include "defines.h"
 #include "SessionVisitor.h"
-#include <tinyxml2.h>
+#include "Source.h"
 
 #include "Selection.h"
 
@@ -104,7 +104,7 @@ void Selection::clear()
     selection_.clear();
 }
 
-uint Selection::size()
+uint Selection::size() const
 {
     return selection_.size();
 }
@@ -117,7 +117,21 @@ Source *Selection::front()
     return selection_.front();
 }
 
-bool Selection::empty()
+Source *Selection::back()
+{
+    if (selection_.empty())
+        return nullptr;
+
+    return selection_.back();
+}
+
+void Selection::pop_front()
+{
+    if (!selection_.empty()) // TODO set mode ?
+        selection_.pop_front();
+}
+
+bool Selection::empty() const
 {
     return selection_.empty();
 }
@@ -143,29 +157,14 @@ SourceList::iterator Selection::end()
     return selection_.end();
 }
 
-std::string Selection::xml()
+std::string Selection::clipboard() const
 {
-    std::string x = "";
+    return SessionVisitor::getClipboard(selection_);
+}
 
-    if (!selection_.empty()) {
-
-        // create xml doc and root node
-        tinyxml2::XMLDocument xmlDoc;
-        tinyxml2::XMLElement *selectionNode = xmlDoc.NewElement(APP_NAME);
-        selectionNode->SetAttribute("size", (int) selection_.size());
-        xmlDoc.InsertEndChild(selectionNode);
-
-        // fill doc
-        SessionVisitor sv(&xmlDoc, selectionNode);
-        for (auto iter = selection_.begin(); iter != selection_.end(); iter++, sv.setRoot(selectionNode) )
-            (*iter)->accept(sv);
-
-        // get compact string
-        tinyxml2::XMLPrinter xmlPrint(0, true);
-        xmlDoc.Print( &xmlPrint );
-        x = xmlPrint.CStr();
-    }
-
-    return x;
+SourceList Selection::getCopy() const
+{
+    SourceList dsl = selection_;
+    return dsl;
 }
 

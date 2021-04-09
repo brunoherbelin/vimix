@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <locale>
 using namespace std;
 
 #include <tinyxml2.h>
@@ -17,14 +18,19 @@ static string settingsFilename = "";
 
 void Settings::Save()
 {
+    // impose C locale for all app
+    setlocale(LC_ALL, "C");
+
     XMLDocument xmlDoc;
     XMLDeclaration *pDec = xmlDoc.NewDeclaration();
     xmlDoc.InsertFirstChild(pDec);
 
     XMLElement *pRoot = xmlDoc.NewElement(application.name.c_str());
-    pRoot->SetAttribute("major", APP_VERSION_MAJOR);
-    pRoot->SetAttribute("minor", APP_VERSION_MINOR);
+#ifdef VIMIX_VERSION_MAJOR
+    pRoot->SetAttribute("major", VIMIX_VERSION_MAJOR);
+    pRoot->SetAttribute("minor", VIMIX_VERSION_MINOR);
     xmlDoc.InsertEndChild(pRoot);
+#endif
 
     string comment = "Settings for " + application.name;
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
@@ -71,7 +77,7 @@ void Settings::Save()
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
-    widgetsNode->SetAttribute("stats_timer", application.widget.stats_timer);
+    widgetsNode->SetAttribute("stats_mode", application.widget.stats_mode);
     widgetsNode->SetAttribute("stats_corner", application.widget.stats_corner);
     widgetsNode->SetAttribute("logs", application.widget.logs);
     widgetsNode->SetAttribute("toolbox", application.widget.toolbox);
@@ -82,6 +88,7 @@ void Settings::Save()
     RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
     RenderNode->SetAttribute("blit", application.render.blit);
+    RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
     pRoot->InsertEndChild(RenderNode);
@@ -95,7 +102,6 @@ void Settings::Save()
 
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
-    TransitionNode->SetAttribute("auto_open", application.transition.auto_open);
     TransitionNode->SetAttribute("hide_windows", application.transition.hide_windows);
     TransitionNode->SetAttribute("cross_fade", application.transition.cross_fade);
     TransitionNode->SetAttribute("duration", application.transition.duration);
@@ -108,6 +114,11 @@ void Settings::Save()
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
     pRoot->InsertEndChild(SourceConfNode);
+
+    // Brush
+    XMLElement *BrushNode = xmlDoc.NewElement( "Brush" );
+    BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
+    pRoot->InsertEndChild(BrushNode);
 
     // bloc connections
     {
@@ -127,24 +138,25 @@ void Settings::Save()
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // save current view only if [mixing, geometry or layers]
-        int v = application.current_view > 3 ? 1 : application.current_view;
+        // save current view only if [mixing, geometry, layers, appearance]
+        int v = application.current_view > 4 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
+        viewsNode->SetAttribute("workspace", application.current_workspace);
 
         map<int, Settings::ViewConfig>::iterator iter;
-        for (iter=application.views.begin(); iter != application.views.end(); iter++)
+        for (iter=application.views.begin(); iter != application.views.end(); ++iter)
         {
-            const Settings::ViewConfig& v = iter->second;
+            const Settings::ViewConfig& view_config = iter->second;
 
             XMLElement *view = xmlDoc.NewElement( "View" );
-            view->SetAttribute("name", v.name.c_str());
+            view->SetAttribute("name", view_config.name.c_str());
             view->SetAttribute("id", iter->first);
 
             XMLElement *scale = xmlDoc.NewElement("default_scale");
-            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_scale) );
+            scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_scale) );
             view->InsertEndChild(scale);
             XMLElement *translation = xmlDoc.NewElement("default_translation");
-            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, v.default_translation) );
+            translation->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_translation) );
             view->InsertEndChild(translation);
 
             viewsNode->InsertEndChild(view);
@@ -207,6 +219,9 @@ void Settings::Save()
 
 void Settings::Load()
 {
+    // impose C locale for all app
+    setlocale(LC_ALL, "C");
+
     XMLDocument xmlDoc;
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
@@ -226,12 +241,14 @@ void Settings::Load()
     if (application.name.compare( string( pRoot->Value() ) ) != 0 )
         return;
 
+#ifdef VIMIX_VERSION_MAJOR
     // cancel on different version
     int version_major = -1, version_minor = -1;
     pRoot->QueryIntAttribute("major", &version_major);
     pRoot->QueryIntAttribute("minor", &version_minor);
-    if (version_major != APP_VERSION_MAJOR || version_minor != APP_VERSION_MINOR)
+    if (version_major != VIMIX_VERSION_MAJOR || version_minor != VIMIX_VERSION_MINOR)
         return;
+#endif
 
     XMLElement * applicationNode = pRoot->FirstChildElement("Application");
     if (applicationNode != nullptr) {
@@ -252,7 +269,7 @@ void Settings::Load()
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
-        widgetsNode->QueryBoolAttribute("stats_timer", &application.widget.stats_timer);
+        widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
         widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
         widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
         widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
@@ -264,6 +281,7 @@ void Settings::Load()
         rendernode->QueryIntAttribute("vsync", &application.render.vsync);
         rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
         rendernode->QueryBoolAttribute("blit", &application.render.blit);
+        rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
         rendernode->QueryIntAttribute("ratio", &application.render.ratio);
         rendernode->QueryIntAttribute("res", &application.render.res);
     }
@@ -293,7 +311,6 @@ void Settings::Load()
     XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
     if (transitionnode != nullptr) {
         transitionnode->QueryBoolAttribute("hide_windows", &application.transition.hide_windows);
-        transitionnode->QueryBoolAttribute("auto_open", &application.transition.auto_open);
         transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
         transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
         transitionnode->QueryIntAttribute("profile", &application.transition.profile);
@@ -323,13 +340,20 @@ void Settings::Load()
         }
 	}
 
+    // Brush
+    XMLElement * brushnode = pRoot->FirstChildElement("Brush");
+    if (brushnode != nullptr) {
+        tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
+    }
+
     // bloc views
     {
-        application.views.clear(); // trash existing list
         XMLElement * pElement = pRoot->FirstChildElement("Views");
         if (pElement)
         {
+            application.views.clear(); // trash existing list
             pElement->QueryIntAttribute("current", &application.current_view);
+            pElement->QueryIntAttribute("workspace", &application.current_workspace);
 
             XMLElement* viewNode = pElement->FirstChildElement("View");
             for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

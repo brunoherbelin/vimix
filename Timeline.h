@@ -100,7 +100,7 @@ public:
     inline GstClockTime last() const { return timing_.end - step_; }
     inline GstClockTime step() const { return step_; }
     inline GstClockTime duration() const { return timing_.duration(); }
-    inline size_t numFrames() const { return duration() / step_; }
+    inline size_t numFrames() const { if (step_) return duration() / step_; else return 1; }
     inline TimeInterval interval() const { return timing_; }
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
@@ -111,7 +111,7 @@ public:
     inline size_t numGaps() const { return gaps_.size(); }
     float *gapsArray();
     void clearGaps();
-    void setGaps(TimeIntervalSet g);
+    void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
     bool removeGaptAt(GstClockTime t);

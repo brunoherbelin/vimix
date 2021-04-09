@@ -16,3 +16,5 @@ rules.ninja
 /vmix
 /vimix_*.snap
 /CMakeLists.txt.user.*
+
+rsc/shaders/paint.fs

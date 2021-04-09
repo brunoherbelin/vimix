@@ -12,7 +12,8 @@
 #include "Log.h"
 
 
-Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), side_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
+Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(),
+    right_(nullptr), left_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
 {
     static Mesh *shadows[3] = {nullptr};
     if (shadows[0] == nullptr)  {
@@ -20,32 +21,53 @@ Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(), 
         shadows[1] = new Mesh("mesh/shadow.ply", "images/shadow.dds");
         shadows[2] = new Mesh("mesh/shadow_perspective.ply", "images/shadow_perspective.dds");
     }
-    static Mesh *frames[4] = {nullptr};
+    static Mesh *frames[9] = {nullptr};
     if (frames[0] == nullptr)  {
         frames[0] = new Mesh("mesh/border_round.ply");
-        frames[1] = new Mesh("mesh/border_top.ply");
-        frames[2] = new Mesh("mesh/border_large_round.ply");
-        frames[3] = new Mesh("mesh/border_large_top.ply");
+        frames[1] = new Mesh("mesh/border_round_left.ply");
+        frames[2] = new Mesh("mesh/border_top.ply");
+        frames[3] = new Mesh("mesh/border_large_round.ply");
+        frames[4] = new Mesh("mesh/border_large_round_left.ply");
+        frames[5] = new Mesh("mesh/border_large_top.ply");
+        frames[6] = new Mesh("mesh/border_perspective_round.ply");
+        frames[7] = new Mesh("mesh/border_perspective_round_left.ply");
+        frames[8] = new Mesh("mesh/border_perspective_top.ply");
     }
-    static LineSquare *sharpframethin = new LineSquare( 3 );
-    static LineSquare *sharpframelarge = new LineSquare( 5 );
+    static LineSquare *sharpframethin = new LineSquare( 4.f );
+    static LineSquare *sharpframelarge = new LineSquare( 6.f );
 
-    if (corner == SHARP) {
+    // Round corners
+    if (corner == ROUND){
+        if (border == THIN) {
+            right_ = frames[0];
+            left_  = frames[1];
+            top_   = frames[2];
+        }
+        else{
+            right_ = frames[3];
+            left_  = frames[4];
+            top_   = frames[5];
+        }
+    }
+    // Group corners
+    else if (corner == GROUP){
+        if (border == THIN) {
+            right_ = frames[6];
+            left_  = frames[7];
+            top_   = frames[8];
+        }
+        else{
+            right_ = frames[6];
+            left_  = frames[7];
+            top_   = frames[8];
+        }
+    }
+    // Sharp corner
+    else {
         if (border == LARGE)
             square_ = sharpframelarge;
         else
             square_ = sharpframethin;
-    }
-    else {
-        // Round corners
-        if (border == THIN) {
-            side_  = frames[0];
-            top_   = frames[1];
-        }
-        else{
-            side_  = frames[2];
-            top_   = frames[3];
-        }
     }
 
     switch (shadow) {
@@ -76,8 +98,10 @@ void Frame::update( float dt )
     Node::update(dt);
     if(top_)
         top_->update(dt);
-    if(side_)
-        side_->update(dt);
+    if(right_)
+        right_->update(dt);
+    if(left_)
+        left_->update(dt);
     if(shadow_)
         shadow_->update(dt);
     if(square_)
@@ -87,9 +111,11 @@ void Frame::update( float dt )
 void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
-        if(side_  && !side_->initialized())
-            side_->init();
-        if(top_  && !top_->initialized())
+        if(right_ && !right_->initialized())
+            right_->init();
+        if(left_ && !left_->initialized())
+            left_->init();
+        if(top_ && !top_->initialized())
             top_->init();
         if(shadow_ && !shadow_->initialized())
             shadow_->init();
@@ -102,27 +128,28 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
 
         glm::mat4 ctm = modelview * transform_;
 
+        // sharp border (scaled)
+        if(square_) {
+            square_->setColor(color);
+            square_->draw( ctm, projection);
+        }
+
         // shadow (scaled)
         if(shadow_){
             shadow_->shader()->color.a = 0.98f;
             shadow_->draw( ctm, projection);
         }
 
-        // top (scaled)
+        // round top (scaled)
         if(top_) {
             top_->shader()->color = color;
             top_->draw( ctm, projection);
         }
 
-        // top (scaled)
-        if(square_) {
-            square_->shader()->color = color;
-            square_->draw( ctm, projection);
-        }
+        // round sides
+        if(right_) {
 
-        if(side_) {
-
-            side_->shader()->color = color;
+            right_->shader()->color = color;
 
             // get scale
             glm::vec4 scale = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
@@ -132,17 +159,26 @@ void Frame::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 vec = ctm * glm::vec4(1.f, 0.f, 0.f, 0.f);
             rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
 
-            if(side_) {
+            // right side
+            vec = ctm * glm::vec4(1.f, 0.f, 0.f, 1.f);
+            right_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
 
-                // left side
-                vec = ctm * glm::vec4(1.f, 0.f, 0.f, 1.f);
-                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
+        }
+        if(left_) {
 
-                // right side
-                vec = ctm * glm::vec4(-1.f, 0.f, 0.f, 1.f);
-                side_->draw( GlmToolkit::transform(vec, rot, glm::vec3(-scale.y, scale.y, 1.f)), projection );
+            left_->shader()->color = color;
 
-            }
+            // get scale
+            glm::vec4 scale = ctm * glm::vec4(1.f, 1.0f, 0.f, 0.f);
+
+            // get rotation
+            glm::vec3 rot(0.f);
+            glm::vec4 vec = ctm * glm::vec4(1.f, 0.f, 0.f, 0.f);
+            rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+
+            // right side
+            vec = ctm * glm::vec4(-1.f, 0.f, 0.f, 1.f);
+            left_->draw( GlmToolkit::transform(vec, rot, glm::vec3(scale.y, scale.y, 1.f)), projection );
         }
     }
 }
@@ -159,10 +195,12 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_rotation = new Mesh("mesh/border_handles_rotation.ply");
     static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
-    static Mesh *handle_restore  = new Mesh("mesh/border_handles_menu.ply");
+    static Mesh *handle_crop     = new Mesh("mesh/border_handles_crop.ply");
+    static Mesh *handle_menu     = new Mesh("mesh/border_handles_menu.ply");
+    static Mesh *handle_lock     = new Mesh("mesh/border_handles_lock.ply");
+    static Mesh *handle_unlock   = new Mesh("mesh/border_handles_lock_open.ply");
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
-    color   = glm::vec4( 1.f, 1.f, 0.f, 1.f);
     if ( type_ == Handles::ROTATE ) {
         handle_ = handle_rotation;
     }
@@ -170,14 +208,23 @@ Handles::Handles(Type type) : Node(), type_(type)
         handle_ = handle_scale;
     }
     else if ( type_ == Handles::MENU ) {
-        handle_ = handle_restore;
+        handle_ = handle_menu;
+    }
+    else if ( type_ == Handles::CROP ) {
+        handle_ = handle_crop;
+    }
+    else if ( type_ == Handles::LOCKED ) {
+        handle_ = handle_lock;
+    }
+    else if ( type_ == Handles::UNLOCKED ) {
+        handle_ = handle_unlock;
     }
     else {
         handle_ = handle_corner;
     }
 
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     corner_ = glm::vec2(0.f, 0.f);
-
     shadow_ = handle_shadow;
 }
 
@@ -193,7 +240,6 @@ void Handles::update( float dt )
 
 void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
 {
-    static Mesh *handle_active   = new Mesh("mesh/border_handles_overlay_filled.ply");
 
     if ( !initialized() ) {
         if(handle_ && !handle_->initialized())
@@ -204,20 +250,19 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
     }
 
     if ( visible_ ) {
+        static Mesh *handle_active = new Mesh("mesh/border_handles_overlay_filled.ply");
 
         // set color
         handle_->shader()->color = color;
+        handle_active->shader()->color = color;
 
-        // extract rotation from modelview
         glm::mat4 ctm;
-        glm::vec3 rot(0.f);
-        glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
-        rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+        glm::vec4 vec;
+        glm::vec3 tra, rot, sca;
 
-        // extract scaling and mirroring
-        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
-        vec = ctm *  glm::vec4(1.f, 1.f, 0.f, 0.f);
-        glm::vec4 mirror = glm::sign(vec);
+        // get rotation and mirroring from the modelview
+        GlmToolkit::inverse_transform(modelview, tra, rot, sca);
+        glm::vec3 mirror = glm::sign(sca);
 
         if ( type_ == Handles::RESIZE ) {
 
@@ -295,7 +340,19 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * -0.12f, 0.f, 1.f);
             // 2. ..from the bottom right corner (1,1)
             vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(mirror.x, mirror.y, 1.f));
+            ctm = GlmToolkit::transform(vec, rot, mirror);
+            // 3. draw
+            shadow_->draw( ctm, projection );
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::CROP ){
+            // one icon in bottom right corner
+            // 1. Fixed displacement by (0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * 0.12f, 0.f, 1.f);
+            // 2. ..from the bottom right corner (1,-1)
+            vec = ( modelview * glm::vec4(-1.f, -1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
@@ -307,7 +364,19 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
             // 2. ..from the top right corner (1,1)
             vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
-            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            ctm = GlmToolkit::transform(vec, rot, mirror);
+            // 3. draw
+            shadow_->draw( ctm, projection );
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::LOCKED || type_ == Handles::UNLOCKED ){
+            // one icon in top left corner
+            // 1. Fixed displacement by (-0.12,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
+            // 2. ..from the bottom right corner (1,-1)
+            vec = ( modelview * glm::vec4(1.f, -1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
@@ -325,36 +394,71 @@ void Handles::accept(Visitor& v)
 
 Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
 {
+    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
+    static Mesh *shadows[(int)EMPTY+1] = {nullptr};
     static Mesh *icons[(int)EMPTY+1] = {nullptr};
     if (icons[0] == nullptr)  {
         icons[CIRCLE_POINT]   = new Mesh("mesh/point.ply");
+        shadows[CIRCLE_POINT] = nullptr;
         icons[SQUARE_POINT]   = new Mesh("mesh/square_point.ply");
-        icons[IMAGE]   = new Mesh("mesh/icon_image.ply");
-        icons[VIDEO]   = new Mesh("mesh/icon_video.ply");
-        icons[SESSION] = new Mesh("mesh/icon_vimix.ply");
-        icons[CLONE]   = new Mesh("mesh/icon_clone.ply");
-        icons[RENDER]  = new Mesh("mesh/icon_render.ply");
-        icons[PATTERN] = new Mesh("mesh/icon_gear.ply");
-        icons[CAMERA]  = new Mesh("mesh/icon_camera.ply");
-        icons[SHARE]   = new Mesh("mesh/icon_share.ply");
-        icons[DOTS]    = new Mesh("mesh/icon_dots.ply");
-        icons[BUSY]    = new Mesh("mesh/icon_circles.ply");
-        icons[LOCK]    = new Mesh("mesh/icon_lock.ply");
-        icons[UNLOCK]  = new Mesh("mesh/icon_unlock.ply");
-        icons[CROP]    = new Mesh("mesh/icon_rightarrow.ply");
-        icons[CIRCLE]  = new Mesh("mesh/icon_circle.ply");
-        icons[CLOCK]   = new Mesh("mesh/icon_clock.ply");
-        icons[CLOCK_H] = new Mesh("mesh/icon_clock_hand.ply");
-        icons[SQUARE]  = new Mesh("mesh/icon_square.ply");
-        icons[CROSS]   = new Mesh("mesh/icon_cross.ply");
-        icons[GRID]    = new Mesh("mesh/icon_grid.ply");
-        icons[EMPTY]   = new Mesh("mesh/icon_empty.ply");
+        shadows[SQUARE_POINT] = nullptr;
+        icons[IMAGE]    = new Mesh("mesh/icon_image.ply");
+        shadows[IMAGE]  = shadow;
+        icons[VIDEO]    = new Mesh("mesh/icon_video.ply");
+        shadows[VIDEO]  = shadow;
+        icons[SESSION]  = new Mesh("mesh/icon_vimix.ply");
+        shadows[SESSION]= shadow;
+        icons[CLONE]    = new Mesh("mesh/icon_clone.ply");
+        shadows[CLONE]  = shadow;
+        icons[RENDER]   = new Mesh("mesh/icon_render.ply");
+        shadows[RENDER] = shadow;
+        icons[GROUP]    = new Mesh("mesh/icon_group_vimix.ply");
+        shadows[GROUP]  = shadow;
+        icons[PATTERN]  = new Mesh("mesh/icon_gear.ply");
+        shadows[PATTERN]= shadow;
+        icons[CAMERA]   = new Mesh("mesh/icon_camera.ply");
+        shadows[CAMERA] = shadow;
+        icons[CUBE]    = new Mesh("mesh/icon_cube.ply");
+        shadows[CUBE]  = shadow;
+        icons[SHARE]    = new Mesh("mesh/icon_share.ply");
+        shadows[SHARE]  = shadow;
+        icons[DOTS]     = new Mesh("mesh/icon_dots.ply");
+        shadows[DOTS]   = nullptr;
+        icons[BUSY]     = new Mesh("mesh/icon_circles.ply");
+        shadows[BUSY]   = nullptr;
+        icons[LOCK]     = new Mesh("mesh/icon_lock.ply");
+        shadows[LOCK]   = shadow;
+        icons[UNLOCK]   = new Mesh("mesh/icon_unlock.ply");
+        shadows[UNLOCK] = shadow;
+        icons[EYE]      = new Mesh("mesh/icon_eye.ply");
+        shadows[EYE]    = shadow;
+        icons[EYESLASH] = new Mesh("mesh/icon_eye_slash.ply");
+        shadows[EYESLASH] = shadow;
+        icons[VECTORSLASH] = new Mesh("mesh/icon_vector_square_slash.ply");
+        shadows[VECTORSLASH] = shadow;
+        icons[ARROWS]   = new Mesh("mesh/icon_rightarrow.ply");
+        shadows[ARROWS] = shadow;
+        icons[ROTATION]   = new Mesh("mesh/border_handles_rotation.ply");
+        shadows[ROTATION] = shadow;
+        icons[CIRCLE]   = new Mesh("mesh/icon_circle.ply");
+        shadows[CIRCLE] = nullptr;
+        icons[CLOCK]    = new Mesh("mesh/icon_clock.ply");
+        shadows[CLOCK]  = nullptr;
+        icons[CLOCK_H]  = new Mesh("mesh/icon_clock_hand.ply");
+        shadows[CLOCK_H]= nullptr;
+        icons[SQUARE]   = new Mesh("mesh/icon_square.ply");
+        shadows[SQUARE] = nullptr;
+        icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
+        shadows[CROSS]  = nullptr;
+        icons[GRID]     = new Mesh("mesh/icon_grid.ply");
+        shadows[GRID]   = nullptr;
+        icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
+        shadows[EMPTY]  = shadow;
     }
 
-    static Mesh *shadow= new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
 
     symbol_ = icons[type_];
-    shadow_ = shadow;
+    shadow_ = shadows[type_];
     translation_ = pos;
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
@@ -397,7 +501,8 @@ void Symbol::draw(glm::mat4 modelview, glm::mat4 projection)
         // generate matrix
         ctm = GlmToolkit::transform(tran, rot, sca);
 
-        shadow_->draw( ctm, projection );
+        if (shadow_)
+            shadow_->draw( ctm, projection );
         symbol_->draw( ctm, projection);
     }
 }

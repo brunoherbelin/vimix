@@ -11,25 +11,28 @@
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
 
 class ImageShader;
+class MaskShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
-class Session;
 class Frame;
 class Handles;
 class Symbol;
 class CloneSource;
+class MixingGroup;
 
 typedef std::list<CloneSource *> CloneList;
 
 class Source
 {
+    friend class SourceLink;
     friend class CloneSource;
     friend class View;
     friend class MixingView;
+    friend class MixingGroup;
     friend class GeometryView;
     friend class LayerView;
-    friend class AppearanceView;
+    friend class TextureView;
     friend class TransitionView;
 
 public:
@@ -51,8 +54,8 @@ public:
 
     // Display mode
     typedef enum {
-        UNINITIALIZED   = 0,
-        VISIBLE   = 1,
+        UNINITIALIZED = 0,
+        VISIBLE  = 1,
         SELECTED = 2,
         CURRENT  = 3
     } Mode;
@@ -66,12 +69,6 @@ public:
     // tests if a given node is part of the source
     bool contains (Node *node) const;
 
-    // a Source has a shader used to render in fbo
-    inline Shader *renderingShader () const { return renderingshader_; }
-
-    // a Source has a surface used to draw images
-    inline Surface *renderingSurface () const { return texturesurface_; }
-
     // the rendering shader always have an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
@@ -83,8 +80,14 @@ public:
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
 
+    // a Source has a shader used to render in fbo
+    inline Shader *renderingShader () const { return renderingshader_; }
+
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;
+
+    // a Source has a shader used to render mask
+    inline MaskShader *maskShader () const { return maskshader_; }
 
     // touch to request update
     inline void touch () { need_update_ = true; }
@@ -96,20 +99,51 @@ public:
     virtual void update (float dt);
 
     // update mode
+    inline  bool active () const { return active_; }
     virtual void setActive (bool on);
-    inline bool active () { return active_; }
+
+    // lock mode
+    inline  bool locked () const { return locked_; }
+    virtual void setLocked (bool on);
+
+    // Workspace
+    typedef enum {
+        BACKGROUND = 0,
+        STAGE      = 1,
+        FOREGROUND = 2
+    } Workspace;
+    inline Workspace workspace () const { return workspace_; }
 
     // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed () const = 0;
 
     // a Source shall define a way to get a texture
     virtual uint texture () const = 0;
+    void setTextureMirrored (bool on);
+    bool textureMirrored ();
 
     // a Source shall define how to render into the frame buffer
     virtual void render ();
 
     // accept all kind of visitors
     virtual void accept (Visitor& v);
+
+    // operations on mask
+    inline FrameBufferImage *getMask () const { return maskimage_; }
+    void setMask (FrameBufferImage *img);
+    void storeMask (FrameBufferImage *img = nullptr);
+
+    // operations on depth
+    float depth () const;
+    void  setDepth (float d);
+
+    // operations on alpha
+    float alpha () const;
+    void  setAlpha (float a);
+
+    // groups for mixing
+    MixingGroup *mixingGroup() const { return mixinggroup_; }
+    void clearMixingGroup();
 
     struct hasNode: public std::unary_function<Source*, bool>
     {
@@ -139,7 +173,32 @@ public:
         uint64_t _id;
     };
 
+    struct hasDepth: public std::unary_function<Source*, bool>
+    {
+        inline bool operator()(const Source* elem) const {
+           return (elem && elem->depth()>_from && elem->depth()<_to );
+        }
+        hasDepth(float d1, float d2) {
+            _from = MIN(d1, d2);
+            _to   = MAX(d1, d2);
+        }
+    private:
+        float _from;
+        float _to;
+    };
+
+    static bool isCurrent (const Source* elem)  {
+        return (elem && elem->mode_ == Source::CURRENT);
+    }
+
+    static bool isInitialized (const Source* elem)  {
+        return (elem && elem->mode_ > Source::UNINITIALIZED);
+    }
+
+    // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
+
+    SourceLink processingshader_link_;
 
 protected:
     // name
@@ -162,6 +221,7 @@ protected:
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
+    FrameBufferSurface *mixingsurface_;
 
     // image processing shaders
     ImageProcessingShader *processingshader_;
@@ -171,6 +231,14 @@ protected:
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
+    ImageShader *mixingshader_;
+
+    // shader and buffer to draw mask
+    MaskShader *maskshader_;
+    FrameBuffer *maskbuffer_;
+    Surface *masksurface_;
+    bool mask_need_update_;
+    FrameBufferImage *maskimage_;
 
     // surface to draw on
     Surface *texturesurface_;
@@ -181,19 +249,30 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    std::map<View::Mode, Handles*[6]> handles_;
+    std::map<View::Mode, Handles*[7]> handles_;
+    Handles *lock_, *unlock_;
+    Switch *locker_;
     Symbol *symbol_;
 
     // update
     bool  active_;
+    bool  locked_;
     bool  need_update_;
     float dt_;
     Group *stored_status_;
+    Workspace  workspace_;
 
     // clones
     CloneList clones_;
-};
 
+    // links
+    SourceLinkList links_;
+
+    // Mixing
+    MixingGroup *mixinggroup_;
+    Switch *overlay_mixinggroup_;
+    Symbol *rotation_mixingroup_;
+};
 
 
 class CloneSource : public Source

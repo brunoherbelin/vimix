@@ -13,7 +13,7 @@ struct includesTime: public std::unary_function<TimeInterval, bool>
        return s.includes(_t);
     }
 
-    includesTime(GstClockTime t) : _t(t) { }
+    explicit includesTime(GstClockTime t) : _t(t) { }
 
 private:
     GstClockTime _t;
@@ -26,6 +26,7 @@ Timeline::Timeline()
 
 Timeline::~Timeline()
 {
+    reset();
 }
 
 Timeline& Timeline::operator = (const Timeline& b)
@@ -142,7 +143,7 @@ bool Timeline::addGap(TimeInterval s)
     return false;
 }
 
-void Timeline::setGaps(TimeIntervalSet g)
+void Timeline::setGaps(const TimeIntervalSet &g)
 {
     gaps_array_need_update_ = true;
     gaps_ = g;
@@ -176,8 +177,7 @@ TimeIntervalSet Timeline::sections() const
             ++it;
         }
 
-        for (; it != gaps_.end(); ++it)
-        {
+        for (; it != gaps_.end(); ++it) {
             sec.insert( TimeInterval(begin_sec, (*it).begin) );
             begin_sec = (*it).end;
         }
@@ -205,8 +205,8 @@ float Timeline::fadingAt(const GstClockTime t)
     double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
     double previous_index = floor(true_index);
     float percent = static_cast<float>(true_index - previous_index);
-    size_t keyframe_index = CLAMP( static_cast<size_t>(previous_index), 0, MAX_TIMELINE_ARRAY-1);
-    size_t keyframe_next_index = CLAMP( keyframe_index+1, 0, MAX_TIMELINE_ARRAY-1);
+    size_t keyframe_index = MINI( static_cast<size_t>(previous_index), MAX_TIMELINE_ARRAY-1);
+    size_t keyframe_next_index = MINI( keyframe_index+1, MAX_TIMELINE_ARRAY-1);
     float v = fadingArray_[keyframe_index];
     v += percent * (fadingArray_[keyframe_next_index] - fadingArray_[keyframe_index]);
 

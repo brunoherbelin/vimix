@@ -11,7 +11,7 @@
 #include "Visitor.h"
 #include "Log.h"
 
-#define MAX_PATTERN 23
+#define MAX_PATTERN 24
 
 //    smpte (0) – SMPTE 100%% color bars
 //    snow (1) – Random (television snow)
@@ -38,59 +38,62 @@
 //    spokes (22) – Spokes
 //    gradient (23) – Gradient
 //    colors (24) – Colors
-const char* pattern_internal_[24] = { "videotestsrc pattern=black",
-                                      "videotestsrc pattern=white",
-                                      "videotestsrc pattern=gradient",
-                                      "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
-                                      "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert",
-                                      "videotestsrc pattern=circular",
-                                      "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
-                                      "videotestsrc pattern=pinwheel",
-                                      "videotestsrc pattern=spokes",
-                                      "videotestsrc pattern=red",
-                                      "videotestsrc pattern=green",
-                                      "videotestsrc pattern=blue",
-                                      "videotestsrc pattern=smpte100",
-                                      "videotestsrc pattern=colors",
-                                      "videotestsrc pattern=smpte",
-                                      "videotestsrc pattern=snow",
-                                      "videotestsrc pattern=blink",
-                                      "videotestsrc pattern=zone-plate",
-                                      "videotestsrc pattern=chroma-zone-plate",
-                                      "videotestsrc pattern=bar horizontal-speed=5",
-                                      "videotestsrc pattern=ball",
-                                      "frei0r-src-ising0r",
-                                      "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ",
-                                      "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
+const char* pattern_internal_[MAX_PATTERN] = { "videotestsrc pattern=black",
+                                    "videotestsrc pattern=white",
+                                    "videotestsrc pattern=gradient",
+                                    "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
+                                    "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert",
+                                    "videotestsrc pattern=circular",
+                                    "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
+                                    "videotestsrc pattern=pinwheel",
+                                    "videotestsrc pattern=spokes",
+                                    "videotestsrc pattern=red",
+                                    "videotestsrc pattern=green",
+                                    "videotestsrc pattern=blue",
+                                    "videotestsrc pattern=smpte100",
+                                    "videotestsrc pattern=colors",
+                                    "videotestsrc pattern=smpte",
+                                    "videotestsrc pattern=snow",
+                                    "videotestsrc pattern=blink",
+                                    "videotestsrc pattern=zone-plate",
+                                    "videotestsrc pattern=chroma-zone-plate",
+                                    "videotestsrc pattern=bar horizontal-speed=5",
+                                    "videotestsrc pattern=ball",
+                                    "frei0r-src-ising0r",
+                                    "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ",
+                                    "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
                                     };
 
 std::vector<std::string> Pattern::pattern_types = { "Black",
-                                         "White",
-                                         "Gradient",
-                                         "Checkers 1x1 px",
-                                         "Checkers 8x8 px",
-                                         "Circles",
-                                         "Lissajous",
-                                         "Pinwheel",
-                                         "Spokes",
-                                         "Red",
-                                         "Green",
-                                         "Blue",
-                                         "Color bars",
-                                         "RGB grid",
-                                         "SMPTE test pattern",
-                                         "Television snow",
-                                         "Blink",
-                                         "Fresnel zone plate",
-                                         "Chroma zone plate",
-                                         "Bar moving",
-                                         "Ball bouncing",
-                                         "Blob",
-                                         "Timer",
-                                         "Clock"
-                                       };
+                                                    "White",
+                                                    "Gradient",
+                                                    "Checkers 1x1 px",
+                                                    "Checkers 8x8 px",
+                                                    "Circles",
+                                                    "Lissajous",
+                                                    "Pinwheel",
+                                                    "Spokes",
+                                                    "Red",
+                                                    "Green",
+                                                    "Blue",
+                                                    "Color bars",
+                                                    "RGB grid",
+                                                    "SMPTE test pattern",
+                                                    "Television snow",
+                                                    "Blink",
+                                                    "Fresnel zone plate",
+                                                    "Chroma zone plate",
+                                                    "Bar moving",
+                                                    "Ball bouncing"
+                                                    #if GST_VERSION_MINOR > 17
+                                                    ,
+                                                    "Blob",
+                                                    "Timer",
+                                                    "Clock"
+                                                    #endif
+                                                  };
 
-Pattern::Pattern() : Stream(), type_(MAX_PATTERN+1) // invalid pattern
+Pattern::Pattern() : Stream(), type_(MAX_PATTERN) // invalid pattern
 {
 
 }
@@ -103,7 +106,7 @@ glm::ivec2 Pattern::resolution()
 
 void Pattern::open( uint pattern, glm::ivec2 res )
 {
-    type_ = MIN(pattern, MAX_PATTERN);
+    type_ = MIN(pattern, MAX_PATTERN-1);
     std::string gstreamer_pattern = pattern_internal_[type_];
 
     // there is always a special case...
@@ -131,10 +134,11 @@ void Pattern::open( uint pattern, glm::ivec2 res )
 PatternSource::PatternSource() : StreamSource()
 {
     // create stream
-    stream_ = (Stream *) new Pattern;
+    stream_ = static_cast<Stream *>( new Pattern );
 
     // set symbol
-    symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.8f, 0.8f, 0.01f));
+    symbol_ = new Symbol(Symbol::PATTERN, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 void PatternSource::setPattern(uint type, glm::ivec2 resolution)

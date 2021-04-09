@@ -45,7 +45,7 @@ MediaPlayer *MediaSource::mediaplayer() const
 glm::ivec2 MediaSource::icon() const
 {
     if (mediaplayer_->isImage())
-        return glm::ivec2(2, 9);
+        return glm::ivec2(4, 9);
     else
         return glm::ivec2(18, 13);
 }
@@ -79,20 +79,23 @@ void MediaSource::init()
 
             // icon in mixing view
             if (mediaplayer_->isImage())
-                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.8f, 0.8f, 0.01f));
+                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
             else
-                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.8f, 0.8f, 0.01f));
+                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
+            symbol_->scale_.y = 1.5f;
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
+            // force update of activation mode
+            active_ = true;
+
+            // deep update to reorder
+            View::need_deep_update_++;
+
             // done init
             initialized_ = true;
             Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
-
-            // force update of activation mode
-            active_ = true;
-            touch();
         }
     }
 

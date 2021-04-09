@@ -25,6 +25,7 @@
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
 
+
 unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
@@ -32,7 +33,9 @@ std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
 {
     char label[512];
-    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, url );
+
+    std::string str = SystemToolkit::transliterate( url );
+    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, str.c_str() );
 
     if ( ImGui::Button(label, size_arg) )
         SystemToolkit::open(url);
@@ -79,7 +82,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // animation
     ImGuiContext& g = *GImGui;
-    float ANIM_SPEED = 0.1f;
+    const float ANIM_SPEED = 0.1f;
     if (g.LastActiveId == g.CurrentWindow->GetID(label))// && g.LastActiveIdTimer < ANIM_SPEED)
     {
         float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
@@ -88,14 +91,14 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // hover
     ImU32 col_bg;
-    if (ImGui::IsItemHovered())
+    if (ImGui::IsItemHovered()) //
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
     else
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
 
     // draw help text if present
     if (help) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
         ImGui::RenderText(draw_pos, help);
         ImGui::PopStyleColor(1);
     }
@@ -113,7 +116,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 }
 
 
-void ImGuiToolkit::Icon(int i, int j)
+void ImGuiToolkit::Icon(int i, int j, bool enabled)
 {
     // icons.dds is a 20 x 20 grid of icons 
     if (textureicons == 0)
@@ -121,7 +124,11 @@ void ImGuiToolkit::Icon(int i, int j)
 
     ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1);
+
+    ImVec4 tint_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+    if (!enabled)
+        tint_color = ImVec4(0.6f, 0.6f, 0.6f, 0.8f);
+    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
 bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
@@ -137,12 +144,8 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
     bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
     ImGui::PopID();
 
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", tooltip);
-        ImGui::EndTooltip();
-    }
+    if (tooltip != nullptr)
+        ImGuiToolkit::ToolTip(tooltip);
 
     return ret;
 }
@@ -170,6 +173,34 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 }
 
 
+bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
+{
+    bool ret = false;
+    ImGui::PushID( i * 20 + j );
+
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = frame_height;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
+    if (ImGui::IsItemClicked())
+        ret = true;
+
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(i, j, !ret);
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
 bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
     bool ret = false;
@@ -188,10 +219,10 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 
     ImGui::SetCursorScreenPos(draw_pos);
     if (*toggle) {
-        Icon(i_toggle, j_toggle);
+        Icon(i_toggle, j_toggle, !ret);
     }
     else {
-        Icon(i, j);
+        Icon(i, j, !ret);
     }
 
     int tooltipid = *toggle ? 1 : 0;
@@ -234,15 +265,51 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     return ret;
 }
 
+bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state)
+{
+    bool ret = false;
+    Sum id = std::for_each(icons.begin(), icons.end(), Sum());
+    ImGui::PushID( id.sum );
+
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+    float w = ImGui::GetTextLineHeight();
+    ImGui::SetNextItemWidth(w * 2.6f);
+    if (ImGui::BeginCombo("##ComboIcon", "  ") )
+    {
+        std::vector<std::pair<int, int> >::iterator it_icon = icons.begin();
+        std::vector<std::string>::iterator it_label = labels.begin();
+        for(int i = 0 ; it_icon != icons.end(); i++, ++it_icon, ++it_label) {
+            ImGui::PushID( id.sum + i + 1);
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            // combo selectable item
+            std::string label = "   " + (*it_label);
+            if ( ImGui::Selectable(label.c_str(), i == *state )){
+                *state = i;
+                ret = true;
+            }
+            // draw item icon
+            ImGui::SetCursorScreenPos( pos + ImVec2(w/6.f,0) );
+            Icon( (*it_icon).first, (*it_icon).second );
+            ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+
+    // redraw current ad preview value
+    ImGui::SetCursorScreenPos(draw_pos + ImVec2(w/9.f,w/9.f));
+    Icon(icons[*state].first, icons[*state].second );
+
+    ImGui::PopID();
+    return ret;
+}
+
 
 void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 {
     if (textureicons == 0)
         textureicons = Resource::getTextureDDS("images/icons.dds");
 
-    ImGuiIO& io = ImGui::GetIO();
-    float my_tex_w = 640.0;
-    float my_tex_h = 640.0;
+    const ImGuiIO& io = ImGui::GetIO();
     
     ImGui::Begin("Icons", p_open);
 
@@ -250,6 +317,8 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
     if (ImGui::IsItemHovered())
     {
+        float my_tex_w = 640.0;
+        float my_tex_h = 640.0;
         float zoom = 4.0f;
         float region_sz = 32.0f; // 64 x 64 icons 
         float region_x = io.MousePos.x - pos.x - region_sz * 0.5f; 
@@ -271,19 +340,37 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     ImGui::End();
 }
 
-// Helper to display a little (?) mark which shows a tooltip when hovered.
-// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.txt)
-void ImGuiToolkit::HelpMarker(const char* desc)
+void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
-    ImGui::TextDisabled( ICON_FA_QUESTION_CIRCLE );
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::TextUnformatted(desc);
+    ImGui::PopTextWrapPos();
+
+    if (shortcut) {
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+        ImGui::Text(shortcut);
+        ImGui::PopStyleColor();
     }
+    ImGui::EndTooltip();
+    ImGui::PopFont();
+}
+
+// Helper to display a little (?) mark which shows a tooltip when hovered.
+void ImGuiToolkit::HelpMarker(const char* desc, const char* icon, const char* shortcut)
+{
+    ImGui::TextDisabled( icon );
+    if (ImGui::IsItemHovered())
+        ToolTip(desc, shortcut);
+}
+
+void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut)
+{
+    ImGuiToolkit::Icon(i, j, false);
+    if (ImGui::IsItemHovered())
+        ToolTip(desc, shortcut);
 }
 
 // Draws a timeline showing
@@ -307,9 +394,9 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         return false;
 
     // get style & id
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float fontsize = ImGui::GetFontSize();
-    ImGuiContext& g = *GImGui;
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
     const ImGuiID id = window->GetID(label);
 
     //
@@ -412,16 +499,12 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
     pos = timeline_bbox.GetTL();
     guint64 tick = 0;
-    float tick_percent = 0.f;
     char overlay_buf[24];
-    ImVec2 overlay_size = ImVec2(0.f, 0.f);
-    ImVec2 mini = ImVec2(0.f, 0.f);
-    ImVec2 maxi = ImVec2(0.f, 0.f);
 
     // render text duration
     ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                    GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
-    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
+    ImVec2 overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
     ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
@@ -439,8 +522,8 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
             ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                            GstToolkit::time_to_string(tick, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-            mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
-            maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
+            ImVec2 mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
+            ImVec2 maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
             // do not overlap with label for duration
             if (maxi.x < duration_label.x)
                 ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
@@ -451,7 +534,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
 
         // next tick
         tick += tick_step;
-        tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
+        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
     }
 
@@ -529,7 +612,6 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
 
 bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
-    static uint previous_index = UINT32_MAX;
     bool array_changed = false;
 
     // get window
@@ -574,12 +656,12 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
     // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
 
+        static uint previous_index = UINT32_MAX;
         bg_color = colors[ImGuiCol_FrameBgActive];
 
         // keep active area while mouse is pressed
         if (left_mouse_press)
         {
-
             float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
             uint index = CLAMP( (int) floor(x), 0, values_count-1);
 
@@ -623,8 +705,6 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
                                       int values_count, float values_min, float values_max, bool *released, const ImVec2 size)
 {
-    static bool active = false;
-    static uint previous_index = UINT32_MAX;
     bool array_changed = false;
 
     // get window
@@ -676,6 +756,8 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
         bg_color = colors[ImGuiCol_FrameBgActive];
 
         // keep active area while mouse is pressed
+        static bool active = false;
+        static uint previous_index = UINT32_MAX;
         if (mouse_press)
         {
 
@@ -805,74 +887,6 @@ void ImGuiToolkit::PushFont(ImGuiToolkit::font_style style)
 }
 
 
-void ImGuiToolkit::ShowStats(bool *p_open, int* p_corner, bool *p_timer)
-{
-    static guint64 start_time_1_ = gst_util_get_timestamp ();
-    static guint64 start_time_2_ = gst_util_get_timestamp ();
-
-    if (!p_corner || !p_open)
-        return;
-
-    const float DISTANCE = 10.0f;
-    int corner = *p_corner;
-    ImGuiIO& io = ImGui::GetIO();
-    if (corner != -1)
-    {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
-        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    }
-
-    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-
-    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-        int mode = (*p_timer) ? 1 : 0;
-        ImGui::SetNextItemWidth(250);
-        if (ImGui::Combo("##mode", &mode, ICON_FA_TACHOMETER_ALT "  Performance\0" ICON_FA_HOURGLASS_HALF "  Timers\0") ) {
-            (*p_timer) = mode > 0;
-        }
-
-        bool dumm = true;
-        if (*p_timer) {
-            guint64 time_ = gst_util_get_timestamp ();
-
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
-            ImGui::PopFont();
-            ImGui::SameLine(0, 10);
-            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
-                start_time_1_ = time_; // reset timer 1
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
-            ImGui::PopFont();
-            ImGui::SameLine(0, 10); dumm = true;
-            if (ImGuiToolkit::IconToggle(11, 14, 12, 14, &dumm))
-                start_time_1_ = time_; // reset timer 2
-
-        }
-        else {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-            //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
-            ImGui::Text("Refresh %.1f FPS", io.Framerate);
-            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
-            ImGui::PopFont();
-        }
-
-        if (ImGui::BeginPopupContextWindow())
-        {
-            if (ImGui::MenuItem("Free position", NULL, corner == -1)) *p_corner = -1;
-            if (ImGui::MenuItem("Top",    NULL, corner == 1)) *p_corner = 1;
-            if (ImGui::MenuItem("Bottom", NULL, corner == 3)) *p_corner = 3;
-            if (p_open && ImGui::MenuItem("Close")) *p_open = false;
-            ImGui::EndPopup();
-        }
-        ImGui::End();
-    }
-}
-
-
 void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
 {
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
@@ -924,10 +938,12 @@ void ImGuiToolkit::WindowDragFloat(const char* window_name, ImVec2 window_pos, f
     }
 }
 
-ImVec4 ImGuiToolkit::GetHighlightColor()
+ImVec4 ImGuiToolkit::HighlightColor(bool active)
 {
-    ImVec4* colors = ImGui::GetStyle().Colors;
-    return colors[ImGuiCol_CheckMark];
+    if (active)
+        return ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
+    else
+        return ImGui::GetStyle().Colors[ImGuiCol_TabUnfocusedActive];
 }
 
 void ImGuiToolkit::SetAccentColor(accent_color color)
@@ -989,7 +1005,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
-
+        colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
     else if (color == ImGuiToolkit::ACCENT_GREY) {
         colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
@@ -1040,6 +1056,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
+        colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
     else {
         // default BLUE
@@ -1069,7 +1086,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_ButtonActive]           = ImVec4(0.24f, 0.24f, 0.24f, 0.67f);
         colors[ImGuiCol_Header]                 = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);
         colors[ImGuiCol_HeaderHovered]          = ImVec4(0.26f, 0.59f, 0.98f, 0.51f);
-        colors[ImGuiCol_HeaderActive]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_HeaderActive]           = ImVec4(0.26f, 0.59f, 0.98f, 0.71f);
         colors[ImGuiCol_Separator]              = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
         colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.10f, 0.40f, 0.75f, 0.67f);
         colors[ImGuiCol_SeparatorActive]        = ImVec4(0.59f, 0.73f, 0.90f, 0.95f);
@@ -1091,7 +1108,9 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
+        colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
 
 }
+
 

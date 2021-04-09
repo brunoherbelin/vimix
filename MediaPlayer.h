@@ -18,11 +18,10 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 3
+#define N_VFRAME 5
 
 struct MediaInfo {
 
-    Timeline timeline;
     guint width;
     guint par_width;  // width to match pixel aspect ratio
     guint height;
@@ -34,6 +33,8 @@ struct MediaInfo {
     bool interlaced;
     bool seekable;
     bool valid;
+    GstClockTime dt;
+    GstClockTime end;
 
     MediaInfo() {
         width = par_width = 640;
@@ -46,14 +47,15 @@ struct MediaInfo {
         interlaced = false;
         seekable = false;
         valid = false;
+        dt  = GST_CLOCK_TIME_NONE;
+        end = GST_CLOCK_TIME_NONE;
     }
 
     inline MediaInfo& operator = (const MediaInfo& b)
     {
         if (this != &b) {
-            this->timeline.setEnd( b.timeline.end() );
-            this->timeline.setStep( b.timeline.step() );
-            this->timeline.setFirst( b.timeline.first() );
+            this->dt = b.dt;
+            this->end = b.end;
             this->width = b.width;
             this->par_width = b.par_width;
             this->height = b.height;
@@ -90,6 +92,7 @@ public:
      * Open a media using gstreamer URI 
      * */
     void open( std::string path);
+    void reopen();
     /**
      * Get name of the media
      * */
@@ -101,7 +104,7 @@ public:
     /**
      * Get name of Codec of the media
      * */
-    std::string codec() const;
+    MediaInfo media() const;
     /**
      * True if a media was oppenned
      * */
@@ -204,7 +207,7 @@ public:
      * - frame duration : timeline.step()
      */
     Timeline *timeline();
-    void setTimeline(Timeline tl);
+    void setTimeline(const Timeline &tl);
 
     float currentTimelineFading();
     /**
@@ -239,6 +242,17 @@ public:
      * */
     guint texture() const;
     /**
+     * Get the name of the hardware decoder used
+     * Empty string if none (i.e. software decoding)
+     * */
+    std::string hardwareDecoderName();
+    /**
+     * Forces open using software decoding
+     * (i.e. without hadrware decoding)
+     * */
+    void setSoftwareDecodingForced(bool on);
+    bool softwareDecodingForced();
+    /**
      * Accept visitors
      * Used for saving session file
      * */
@@ -261,6 +275,7 @@ private:
 
     // general properties of media
     MediaInfo media_;
+    Timeline timeline_;
     std::future<MediaInfo> discoverer_;
 
     // GST & Play status
@@ -274,6 +289,8 @@ private:
     std::atomic<bool> failed_;
     bool seeking_;
     bool enabled_;
+    bool force_software_decoding_;
+    std::string hardware_decoder_;
 
     // fps counter
     struct TimeCounter {
@@ -311,6 +328,7 @@ private:
             status = INVALID;
             position = GST_CLOCK_TIME_NONE;
         }
+        void unmap();
     };
     Frame frame_[N_VFRAME];
     guint write_index_;

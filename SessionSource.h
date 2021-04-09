@@ -9,47 +9,83 @@ class SessionSource : public Source
 {
 public:
     SessionSource();
-    ~SessionSource();
+    virtual ~SessionSource();
 
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
-    bool failed() const override;
-    uint texture() const override;
-    void accept (Visitor& v) override;
+    bool failed () const override;
+    uint texture () const override;
 
-    // Session Source specific interface
-    void load(const std::string &p = "");
     Session *detach();
-
-    inline std::string path() const { return path_; }
     inline Session *session() const { return session_; }
 
-    glm::ivec2 icon() const override { return glm::ivec2(3, 16); }
+protected:
+
+    Session *session_;
+    std::atomic<bool> failed_;
+};
+
+class SessionFileSource : public SessionSource
+{
+public:
+    SessionFileSource();
+
+    // implementation of source API
+    void accept (Visitor& v) override;
+
+    // SessionFile Source specific interface
+    void load(const std::string &p = "", uint recursion = 0);
+
+    inline std::string path() const { return path_; }
+    glm::ivec2 icon() const override { return glm::ivec2(19, 6); }
 
 protected:
 
     void init() override;
-    static void loadSession(const std::string& filename, SessionSource *source);
 
     std::string path_;
-    Session *session_;
-
-    std::atomic<bool> failed_;
     std::atomic<bool> wait_for_sources_;
     std::future<Session *> sessionLoader_;
+};
+
+class SessionGroupSource : public SessionSource
+{
+public:
+    SessionGroupSource();
+
+    // implementation of source API
+    void accept (Visitor& v) override;
+
+    // SessionGroup Source specific interface
+    inline void setResolution (glm::vec3 v) { resolution_ = v; }
+
+    // import a source
+    bool import(Source *source);
+
+    glm::ivec2 icon() const override { return glm::ivec2(10, 6); }
+
+protected:
+
+    void init() override;
+    glm::vec3 resolution_;
 };
 
 
 class RenderSource : public Source
 {
 public:
-    RenderSource(Session *session);
+    RenderSource();
 
     // implementation of source API
-    bool failed() const override;
+    bool failed () const override;
     uint texture() const override;
     void accept (Visitor& v) override;
+
+    inline Session *session () const { return session_; }
+    inline void setSession (Session *se) { session_ = se; }
+
+    glm::vec3 resolution() const;
 
     glm::ivec2 icon() const override { return glm::ivec2(0, 2); }
 

@@ -7,6 +7,7 @@
 
 // Forward declare classes referenced
 class Visitor;
+class FrameBuffer;
 
 class ShadingProgram
 {
@@ -22,13 +23,13 @@ public:
 	static void enduse();
 
 private:
-	void checkCompileErr();
-	void checkLinkingErr();
-	void compile();
-	void link();
-	unsigned int vertex_id_, fragment_id_, id_;
-	std::string vertex_code_;
-	std::string fragment_code_;
+    void checkCompileErr();
+    void checkLinkingErr();
+    void compile();
+    void link();
+    unsigned int vertex_id_, fragment_id_, id_;
+    std::string vertex_code_;
+    std::string fragment_code_;
     std::string vertex_file_;
     std::string fragment_file_;
 
@@ -59,11 +60,14 @@ public:
 
     typedef enum {
         BLEND_OPACITY = 0,
-        BLEND_ADD,
-        BLEND_SUBSTRACT,
-        BLEND_LAYER_ADD,
-        BLEND_LAYER_SUBSTRACT,
-        BLEND_CUSTOM
+        BLEND_SCREEN,
+        BLEND_SUBTRACT,
+        BLEND_MULTIPLY,
+        BLEND_SOFT_LIGHT,
+        BLEND_HARD_LIGHT,
+        BLEND_SOFT_SUBTRACT,
+        BLEND_LIGHTEN_ONLY,
+        BLEND_NONE
     } BlendMode;
     BlendMode blending;
 
@@ -71,8 +75,6 @@ public:
 
 protected:
     ShadingProgram *program_;
-    glm::vec3 iResolution;
-
 };
 
 

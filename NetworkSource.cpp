@@ -67,10 +67,10 @@ void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
 }
 
 
-NetworkStream::NetworkStream(): Stream(), receiver_(nullptr)
+NetworkStream::NetworkStream(): Stream(),
+    receiver_(nullptr), received_config_(false), connected_(false)
 {
-    received_config_ = false;
-    connected_ = false;
+
 }
 
 glm::ivec2 NetworkStream::resolution() const
@@ -271,11 +271,11 @@ void NetworkStream::update()
 NetworkSource::NetworkSource() : StreamSource()
 {
     // create stream
-    stream_ = (Stream *) new NetworkStream;
+    stream_ = static_cast<Stream *>( new NetworkStream );
 
     // set symbol
-    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.8f, 0.8f, 0.01f));
-
+    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 

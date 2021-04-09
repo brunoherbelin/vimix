@@ -10,6 +10,7 @@
 
 #include "Screenshot.h"
 
+//#define USE_GST_OPENGL_SYNC_HANDLER
 
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
@@ -143,6 +144,11 @@ public:
     // project from scene coordinate to window
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // for opengl pipeline in gstreamer
+    static void LinkPipeline( GstPipeline *pipeline );
+#endif
+
 private:
 
     std::string glsl_version;
@@ -162,8 +168,6 @@ private:
     Screenshot screenshot_;
     bool request_screenshot_;
 
-    // for opengl pipeline in gstreamer
-    void LinkPipeline( GstPipeline *pipeline );
 };
 
 

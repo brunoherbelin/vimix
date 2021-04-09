@@ -31,11 +31,8 @@ typedef struct prop {
     std::string name;
     bool is_float;
     bool is_list;
-    prop(std::string n, bool t, bool l = false){
-        name = n;
-        is_float = t;
-        is_list = l;
-    }
+    prop(const std::string &n, bool t, bool l = false) :
+        name(n), is_float(t), is_list(l) { }
 } plyProperty;
 
 typedef std::map<std::string, std::vector<plyProperty> > plyElementProperties;
@@ -45,9 +42,9 @@ template <typename T>
 T parseValue(std::istream& istream) {
 
     T v;
-    char space = ' ';
     istream >> v;
     if (!istream.eof()) {
+        char space = ' ';
         istream >> space >> std::ws;
     }
 

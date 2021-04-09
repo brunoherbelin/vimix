@@ -22,22 +22,30 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector)
     return newelement;
 }
 
+XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec2 vector)
+{
+    XMLElement *newelement = doc->NewElement( "vec2" );
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
+    return newelement;
+}
+
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec3" );
-    newelement->SetAttribute("x", vector.x);
-    newelement->SetAttribute("y", vector.y);
-    newelement->SetAttribute("z", vector.z);
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
+    newelement->SetAttribute("z", (float) vector.z);
     return newelement;
 }
 
 XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::vec4 vector)
 {
     XMLElement *newelement = doc->NewElement( "vec4" );
-    newelement->SetAttribute("x", vector.x);
-    newelement->SetAttribute("y", vector.y);
-    newelement->SetAttribute("z", vector.z);
-    newelement->SetAttribute("w", vector.w);
+    newelement->SetAttribute("x", (float) vector.x);
+    newelement->SetAttribute("y", (float) vector.y);
+    newelement->SetAttribute("z", (float) vector.z);
+    newelement->SetAttribute("w", (float) vector.w);
     return newelement;
 }
 
@@ -60,6 +68,14 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector)
         return;
     elem->QueryIntAttribute("x", &vector.x); // If this fails, original value is left as-is
     elem->QueryIntAttribute("y", &vector.y);
+}
+
+void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec2 &vector)
+{
+    if ( !elem || std::string(elem->Name()).find("vec2") == std::string::npos )
+        return;
+    elem->QueryFloatAttribute("x", &vector.x); // If this fails, original value is left as-is
+    elem->QueryFloatAttribute("y", &vector.y);
 }
 
 void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
@@ -102,7 +118,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
 }
 
 
-XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsigned int arraysize)
+XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, const void *array, uint arraysize)
 {
     // create <array> node
     XMLElement *newelement = doc->NewElement( "array" );
@@ -113,7 +129,7 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
     gchar *compressed_array = g_new(gchar, compressed_size);
 
     // encoded string will hold the base64 encoding of the array
-    const gchar *encoded_array = nullptr;
+    gchar *encoded_array = nullptr;
 
     // zlib  compress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
     if ( Z_OK == compress((Bytef *)compressed_array, &compressed_size,
@@ -137,67 +153,73 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, void *array, unsig
 
     // free temporary array
     g_free(compressed_array);
+    g_free(encoded_array);
 
     return newelement;
 }
 
-bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int arraysize)
+bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, uint arraysize)
 {
     bool ret = false;
+
+    // sanity check
+    if (array==nullptr || arraysize==0)
+        return ret;
 
     // make sure we have the good type of XML node
     if ( !elem || std::string(elem->Name()).compare("array") != 0 )
         return ret;
 
     // make sure the stored array is of the requested array size
-    unsigned int len = 0;
+    uint len = 0;
     elem->QueryUnsignedAttribute("len", &len);
-    if ( arraysize != len )
-        return ret;
+    if (len == arraysize)
+    {
+        // read and decode the text field in <array>
+        gsize   decoded_size = 0;
+        guchar *decoded_array = g_base64_decode(elem->GetText(), &decoded_size);
 
-    // read and decode the text field in <array>
-    gsize   decoded_size = 0;
-    guchar *decoded_array = g_base64_decode(elem->GetText(), &decoded_size);
+        // if data is z-compressed (zbytes size is indicated)
+        uint zbytes = 0;
+        elem->QueryUnsignedAttribute("zbytes", &zbytes);
+        if ( zbytes > 0) {
+            // sanity check 1: decoded data size must match the buffer size
+            if ( decoded_array && zbytes == (uint) decoded_size ) {
 
-    // if data is z-compressed (zbytes size is indicated)
-    uint zbytes = 0;
-    elem->QueryUnsignedAttribute("zbytes", &zbytes);
-    if ( zbytes > 0) {
-        // sanity check 1: decoded data size must match the buffer size
-        if ( decoded_array && zbytes == (uint) decoded_size ) {
+                // allocate a temporary array for decompressing data
+                uLong  uncompressed_size = len;
+                gchar *uncompressed_array = g_new(gchar, uncompressed_size);
 
-            // allocate a temporary array for decompressing data
-            uLong  uncompressed_size = arraysize;
-            gchar *uncompressed_array = g_new(gchar, uncompressed_size);
+                // zlib uncompress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
+                uncompress((Bytef *)uncompressed_array, &uncompressed_size,
+                           (Bytef *)decoded_array, (uLong) zbytes) ;
 
-            // zlib uncompress ((Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen));
-            uncompress((Bytef *)uncompressed_array, &uncompressed_size,
-                       (Bytef *)decoded_array, (uLong) zbytes) ;
+                // sanity check 2: decompressed data size must match array size
+                if ( uncompressed_array && len == uncompressed_size ){
+                    // copy to target array
+                    memcpy(array, uncompressed_array, len);
+                    // success
+                    ret = true;
+                }
 
-            // sanity check 2: decompressed data size must match array size
-            if ( uncompressed_array && arraysize == uncompressed_size ){
-
+                // free temp decompression buffer
+                g_free(uncompressed_array);
+            }
+        }
+        // data is not z-compressed
+        else {
+            // copy the decoded data
+            if ( decoded_array && len == decoded_size ) {
                 // copy to target array
-                memcpy(array, uncompressed_array, arraysize);
+                memcpy(array, decoded_array, len);
                 // success
                 ret = true;
             }
-
-            // free temp decompression buffer
-            g_free(uncompressed_array);
         }
-    }
-    // data is not z-compressed
-    else {
-        // copy the decoded data
-        if ( decoded_array && arraysize == decoded_size )
-            memcpy(array, decoded_array, arraysize);
-        // success
-        ret = true;
-    }
 
-    // free temporary array
-    g_free(decoded_array);
+        // free temporary array
+        g_free(decoded_array);
+    }
 
     return ret;
 }
@@ -216,12 +238,13 @@ bool tinyxml2::XMLSaveDoc(XMLDocument * const doc, std::string filename)
     return !XMLResultError(eResult);
 }
 
-bool tinyxml2::XMLResultError(int result)
+bool tinyxml2::XMLResultError(int result, bool verbose)
 {
     XMLError xmlresult = (XMLError) result;
     if ( xmlresult != XML_SUCCESS)
     {
-        Log::Info("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
+        if (verbose)
+            Log::Info("XML error %i: %s", result, tinyxml2::XMLDocument::ErrorIDToName(xmlresult));
         return true;
     }
     return false;

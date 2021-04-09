@@ -5,18 +5,19 @@
 #include <vector>
 #include <chrono>
 #include <future>
+#include <sstream>
 
 //  GStreamer
 #include <gst/gst.h>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
-using namespace tinyxml2;
 
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
 #include "View.h"
+#include "ImageShader.h"
 #include "SystemToolkit.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -27,6 +28,7 @@ using namespace tinyxml2;
 #include "StreamSource.h"
 #include "NetworkSource.h"
 #include "ActionManager.h"
+#include "MixingGroup.h"
 #include "Streamer.h"
 
 #include "Mixer.h"
@@ -34,6 +36,7 @@ using namespace tinyxml2;
 #define THREADED_LOADING
 static std::vector< std::future<Session *> > sessionLoaders_;
 static std::vector< std::future<Session *> > sessionImporters_;
+static std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
@@ -43,53 +46,8 @@ static void saveSession(const std::string& filename, Session *session)
     // lock access while saving
     session->lock();
 
-    // creation of XML doc
-    XMLDocument xmlDoc;
-
-    XMLElement *rootnode = xmlDoc.NewElement(APP_NAME);
-    rootnode->SetAttribute("major", XML_VERSION_MAJOR);
-    rootnode->SetAttribute("minor", XML_VERSION_MINOR);
-    rootnode->SetAttribute("size", session->numSource());
-    rootnode->SetAttribute("date", SystemToolkit::date_time_string().c_str());
-    rootnode->SetAttribute("resolution", session->frame()->info().c_str());
-    xmlDoc.InsertEndChild(rootnode);
-
-    // 1. list of sources
-    XMLElement *sessionNode = xmlDoc.NewElement("Session");
-    xmlDoc.InsertEndChild(sessionNode);
-    SessionVisitor sv(&xmlDoc, sessionNode);
-    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
-        // source visitor
-        (*iter)->accept(sv);
-
-    // 2. config of views
-    XMLElement *views = xmlDoc.NewElement("Views");
-    xmlDoc.InsertEndChild(views);
-    {
-        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
-        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), &xmlDoc));
-        views->InsertEndChild(mixing);
-
-        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
-        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
-        views->InsertEndChild(geometry);
-
-        XMLElement *layer = xmlDoc.NewElement( "Layer" );
-        layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), &xmlDoc));
-        views->InsertEndChild(layer);
-
-        XMLElement *appearance = xmlDoc.NewElement( "Appearance" );
-        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::APPEARANCE), &xmlDoc));
-        views->InsertEndChild(appearance);
-
-        XMLElement *render = xmlDoc.NewElement( "Rendering" );
-        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
-        views->InsertEndChild(render);
-    }
-
-
     // save file to disk
-    if ( XMLSaveDoc(&xmlDoc, filename) ) {
+    if ( SessionVisitor::saveSession(filename, session) ) {
         // all ok
         // set session filename
         session->setFilename(filename);
@@ -107,8 +65,7 @@ static void saveSession(const std::string& filename, Session *session)
     session->unlock();
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr),
-                 update_time_(GST_CLOCK_TIME_NONE), dt_(0.f)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), dt_(0.f), dt__(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -146,6 +103,7 @@ void Mixer::update()
         if (sessionImporters_.back().wait_for(timeout_) == std::future_status::ready ) {
             // get the session loaded by this loader
             merge( sessionImporters_.back().get() );
+            // FIXME: shouldn't we delete the imported session?
             // done with this session loader
             sessionImporters_.pop_back();
         }
@@ -163,6 +121,16 @@ void Mixer::update()
     }
 #endif
 
+    // if there is a session source to import
+    if (!sessionSourceToImport_.empty()) {
+        // get the session source to be imported
+        SessionSource *source = sessionSourceToImport_.back();
+        // merge (&delete) the session inside this session source
+        merge( source );
+        // done with this session source
+        sessionSourceToImport_.pop_back();
+    }
+
     // if a change of session is requested
     if (sessionSwapRequested_) {
         sessionSwapRequested_ = false;
@@ -170,6 +138,7 @@ void Mixer::update()
         if ( back_session_ ) {
             // swap front and back sessions
             swap();
+            View::need_deep_update_++;
             // set session filename
             Rendering::manager().mainWindow().setTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
@@ -184,23 +153,34 @@ void Mixer::update()
     }
 
     // compute dt
-    if (update_time_ == GST_CLOCK_TIME_NONE)
-        update_time_ = gst_util_get_timestamp ();
-    guint64 current_time = gst_util_get_timestamp ();
-    // dt is in milisecond, with fractional precision (from micro seconds)
-    dt_ = static_cast<float>( GST_TIME_AS_USECONDS(current_time - update_time_) * 0.001f);
-    update_time_ = current_time;
+    static GTimer *timer = g_timer_new ();
+    dt_ = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
+
+    // compute stabilized dt__
+    dt__ = 0.05f * dt_ + 0.95f * dt__;
 
     // update session and associated sources
     session_->update(dt_);
 
+    // grab frames to recorders & streamers
+    FrameGrabbing::manager().grabFrame(session_->frame(), dt_);
+
     // delete sources which failed update (one by one)
     Source *failure = session()->failedSource();
     if (failure != nullptr) {
-        MediaSource *failedFile = dynamic_cast<MediaSource *>(failure);
-        if (failedFile != nullptr) {
-            Settings::application.recentImport.remove( failedFile->path() );
+        // failed media: remove it from the list of imports
+        MediaSource *failedMedia = dynamic_cast<MediaSource *>(failure);
+        if (failedMedia != nullptr) {
+            Settings::application.recentImport.remove( failedMedia->path() );
         }
+        // failed Render loopback: replace it with one matching the current session
+        RenderSource *failedRender = dynamic_cast<RenderSource *>(failure);
+        if (failedRender != nullptr) {
+            if ( recreateSource(failedRender) )
+                failure = nullptr; // prevent delete (already done in recreateSource)
+        }
+        // delete the source
         deleteSource(failure, false);
     }
 
@@ -211,8 +191,9 @@ void Mixer::update()
     appearance_.update(dt_);
     transition_.update(dt_);
 
-    // deep updates shall be performed only 1 frame
-    View::need_deep_update_ = false;
+    // deep update was performed
+    if  (View::need_deep_update_ > 0)
+        View::need_deep_update_--;
 }
 
 void Mixer::draw()
@@ -236,7 +217,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         if ( ext == "mix" )
         {
             // create a session source
-            SessionSource *ss = new SessionSource();
+            SessionFileSource *ss = new SessionFileSource;
             ss->load(path);
             s = ss;
         }
@@ -266,7 +247,8 @@ Source * Mixer::createSourceFile(const std::string &path)
 Source * Mixer::createSourceRender()
 {
     // ready to create a source
-    RenderSource *s = new RenderSource(session_);
+    RenderSource *s = new RenderSource;
+    s->setSession(session_);
 
     // propose a new name based on session name
     s->setName(SystemToolkit::base_filename(session_->filename()));
@@ -326,6 +308,18 @@ Source * Mixer::createSourceNetwork(const std::string &nameconnection)
     return s;
 }
 
+
+Source * Mixer::createSourceGroup()
+{
+    SessionGroupSource *s = new SessionGroupSource;
+    s->setResolution( session_->frame()->resolution() );
+
+    // propose a new name
+    s->setName("Group");
+
+    return s;
+}
+
 Source * Mixer::createSourceClone(const std::string &namesource)
 {
     // ready to create a source
@@ -378,7 +372,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(" inserted"), s->id());
+        Action::manager().store(s->name() + std::string(" source inserted"));
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -395,13 +389,78 @@ void Mixer::insertSource(Source *s, View::Mode m)
     }
 }
 
+
+bool Mixer::replaceSource(Source *from, Source *to)
+{
+    if ( from == nullptr || to == nullptr)
+        return false;
+
+    // rename
+    renameSource(to, from->name());
+
+    // remove source Nodes from all views
+    detach(from);
+
+    // copy all transforms
+    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+    to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
+    to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
+    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+
+    // TODO copy all filters
+
+
+    // add source Nodes to all views
+    attach(to);
+
+    // add source
+    session_->addSource(to);
+
+    // delete source
+    session_->deleteSource(from);
+
+    return true;
+}
+
+
+bool Mixer::recreateSource(Source *s)
+{
+    if ( s == nullptr )
+        return false;
+
+    // get the xml description from this source, and exit if not wellformed
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(SessionVisitor::getClipboard(s), xmlDoc);
+    if ( sourceNode == nullptr )
+        return false;
+
+    // actually create the source with SessionLoader using xml description
+    SessionLoader loader( session_ );
+    Source *replacement = loader.createSource(sourceNode, SessionLoader::DUPLICATE); // not clone
+    if (replacement == nullptr)
+        return false;
+
+    // remove source Nodes from all views
+    detach(s);
+
+    // delete source
+    session_->deleteSource(s);
+
+    // add sources Nodes to all views
+    attach(replacement);
+
+    // add source
+    session_->addSource(replacement);
+
+    return true;
+}
+
 void Mixer::deleteSource(Source *s, bool withundo)
 {
     if ( s != nullptr )
     {
         // keep name for log
         std::string name = s->name();
-        uint64_t id = s->id();
 
         // remove source Nodes from all views
         detach(s);
@@ -411,7 +470,7 @@ void Mixer::deleteSource(Source *s, bool withundo)
 
         // store new state in history manager
         if (withundo)
-            Action::manager().store(name + std::string(" deleted"), id);
+            Action::manager().store(name + std::string(" source deleted"));
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
@@ -437,7 +496,7 @@ void Mixer::attach(Source *s)
         mixing_.scene.ws()->attach( s->group(View::MIXING) );
         geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->attach( s->group(View::LAYER) );
-        appearance_.scene.ws()->attach( s->group(View::APPEARANCE) );
+        appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
     }
 }
 
@@ -453,7 +512,7 @@ void Mixer::detach(Source *s)
         mixing_.scene.ws()->detach( s->group(View::MIXING) );
         geometry_.scene.ws()->detach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->detach( s->group(View::LAYER) );
-        appearance_.scene.ws()->detach( s->group(View::APPEARANCE) );
+        appearance_.scene.ws()->detach( s->group(View::TEXTURE) );
         transition_.scene.ws()->detach( s->group(View::TRANSITION) );
     }
 }
@@ -499,6 +558,16 @@ void Mixer::uncover(Source *s)
     }
 }
 
+
+void Mixer::deselect(Source *s)
+{
+    if ( s != nullptr ) {
+        if ( s == *current_source_)
+            unsetCurrentSource();
+        Mixer::selection().remove(s);
+    }
+}
+
 void Mixer::deleteSelection()
 {
     // get clones first : this way we store the history of deletion in the right order
@@ -515,8 +584,65 @@ void Mixer::deleteSelection()
     }
     // empty the selection
     while ( !selection().empty() )
-        deleteSource( selection().front()); // this also remove element from selection()
+        deleteSource( selection().front() ); // this also remove element from selection()
 
+}
+
+void Mixer::groupSelection()
+{
+    if (selection().empty())
+        return;
+
+    SessionGroupSource *sessiongroup = new SessionGroupSource;
+    sessiongroup->setResolution( session_->frame()->resolution() );
+
+    // prepare for new session group attributes
+    std::string name;
+    float d = selection().front()->depth();
+
+    // empty the selection
+    while ( !selection().empty() ) {
+
+        Source *s = selection().front();
+        d = MIN(s->depth(), d);
+
+        // import source into group
+        if ( sessiongroup->import(s) ) {
+            name += s->initials();
+            // detach & remove element from selection()
+            detach (s);
+            // remove source from session
+            session_->removeSource(s);
+        }
+        else
+            selection().pop_front();
+
+    }
+
+    // set depth at given location
+    sessiongroup->group(View::LAYER)->translation_.z = d;
+
+    // set alpha to full opacity
+    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
+    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+
+    // Add source to Session
+    session_->addSource(sessiongroup);
+
+    // Attach source to Mixer
+    attach(sessiongroup);
+
+    // rename and avoid name duplicates
+    renameSource(sessiongroup, name);
+
+    // store in action manager
+    std::ostringstream info;
+    info << sessiongroup->name() << " source inserted, " << sessiongroup->session()->numSource() << " sources flatten.";
+    Action::manager().store(info.str());
+
+    // give the hand to the user
+    Mixer::manager().setCurrentSource(sessiongroup);
+    Log::Notify(info.str().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -598,6 +724,19 @@ Source * Mixer::findSource (uint64_t id)
     return nullptr;
 }
 
+SourceList Mixer::findSources (float depth_from, float depth_to)
+{
+    SourceList found;
+    SourceList dsl = session_->getDepthSortedList();
+    SourceList::iterator  it = dsl.begin();
+    for (; it != dsl.end(); ++it) {
+        if ( (*it)->depth() > depth_to )
+            break;
+        if ( (*it)->depth() >= depth_from )
+            found.push_back(*it);
+    }
+    return found;
+}
 
 void Mixer::setCurrentSource(uint64_t id)
 {
@@ -626,17 +765,45 @@ void Mixer::setCurrentIndex(int index)
     setCurrentSource( session_->at(index) );
 }
 
+void Mixer::moveIndex (int current_index, int target_index)
+{
+    // remember ptr to current source
+    Source *previous_current_source_ = currentSource();
+
+    // change order
+    session_->move(current_index, target_index);
+
+    // restore current
+    unsetCurrentSource();
+    setCurrentSource(previous_current_source_);
+}
+
 void Mixer::setCurrentNext()
 {
     if (session_->numSource() > 0) {
 
         SourceList::iterator it = current_source_;
-        it++;
+        ++it;
 
         if (it == session_->end())  {
             it = session_->begin();
         }
 
+        setCurrentSource( it );
+    }
+}
+
+void Mixer::setCurrentPrevious()
+{
+    if (session_->numSource() > 0) {
+
+        SourceList::iterator it = current_source_;
+
+        if (it == session_->begin())  {
+            it = session_->end();
+        }
+
+        --it;
         setCurrentSource( it );
     }
 }
@@ -670,11 +837,10 @@ int Mixer::indexCurrentSource()
 
 Source *Mixer::currentSource()
 {
-    if ( current_source_ == session_->end() )
+    if ( current_source_ != session_->end() )
+        return (*current_source_);
+    else
         return nullptr;
-    else {
-        return *(current_source_);
-    }
 }
 
 // management of view
@@ -684,7 +850,11 @@ void Mixer::setView(View::Mode m)
     if ( current_view_ == &transition_ ) {
         // get the session detached from the transition view and set it as current session
         // NB: detatch() can return nullptr, which is then ignored.
-        set ( transition_.detach() );
+        Session *se = transition_.detach();
+        if ( se != nullptr )
+            set ( se );
+        else
+            Log::Info("Transition interrupted: Session source added.");
     }
 
     switch (m) {
@@ -697,7 +867,7 @@ void Mixer::setView(View::Mode m)
     case View::LAYER:
         current_view_ = &layer_;
         break;
-    case View::APPEARANCE:
+    case View::TEXTURE:
         current_view_ = &appearance_;
         break;
     case View::MIXING:
@@ -706,10 +876,17 @@ void Mixer::setView(View::Mode m)
         break;
     }
 
-    // need to deeply update view to apply eventual changes
-    View::need_deep_update_ = true;
-
+    // setttings
     Settings::application.current_view = (int) m;
+
+    // selection might have to change
+    for (auto sit = session_->begin(); sit != session_->end(); sit++) {
+        if ( !current_view_->canSelect(*sit) )
+            deselect( *sit );
+    }
+
+    // need to deeply update view to apply eventual changes
+    View::need_deep_update_++;
 }
 
 View *Mixer::view(View::Mode m)
@@ -721,7 +898,7 @@ View *Mixer::view(View::Mode m)
         return &geometry_;
     case View::LAYER:
         return &layer_;
-    case View::APPEARANCE:
+    case View::TEXTURE:
         return &appearance_;
     case View::MIXING:
         return &mixing_;
@@ -742,7 +919,7 @@ void Mixer::saveas(const std::string& filename)
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
     session_->config(View::LAYER)->copyTransform( layer_.scene.root() );
-    session_->config(View::APPEARANCE)->copyTransform( appearance_.scene.root() );
+    session_->config(View::TEXTURE)->copyTransform( appearance_.scene.root() );
 
     // launch a thread to save the session
     std::thread (saveSession, filename, session_).detach();
@@ -750,13 +927,15 @@ void Mixer::saveas(const std::string& filename)
 
 void Mixer::load(const std::string& filename)
 {
+    if (filename.empty())
+        return;
 
 #ifdef THREADED_LOADING
     // load only one at a time
     if (sessionLoaders_.empty()) {
         // Start async thread for loading the session
         // Will be obtained in the future in update()
-        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename) );
+        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );
     }
 #else
     set( Session::load(filename) );
@@ -770,7 +949,7 @@ void Mixer::open(const std::string& filename)
         Log::Info("\nStarting transition to session %s", filename.c_str());
 
         // create special SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource();
+        SessionFileSource *ts = new SessionFileSource;
         // open filename if specified
         if (!filename.empty())
             ts->load(filename);
@@ -794,12 +973,18 @@ void Mixer::import(const std::string& filename)
     if (sessionImporters_.empty()) {
         // Start async thread for loading the session
         // Will be obtained in the future in update()
-        sessionImporters_.emplace_back( std::async(std::launch::async, Session::load, filename) );
+        sessionImporters_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );
     }
 #else
     merge( Session::load(filename) );
 #endif
 }
+
+void Mixer::import(SessionSource *source)
+{
+    sessionSourceToImport_.push_back( source );
+}
+
 
 void Mixer::merge(Session *session)
 {
@@ -808,11 +993,128 @@ void Mixer::merge(Session *session)
         return;
     }
 
+    // new state in history manager
+    std::ostringstream info;
+    info << session->numSource() << " sources imported from " << session->filename();
+    Action::manager().store(info.str());
+
     // import every sources
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+        // avoid name duplicates
         renameSource(s, s->name());
-        insertSource(s);
+
+        // Add source to Session
+        session_->addSource(s);
+
+        // Attach source to Mixer
+        attach(s);
     }
+
+    // import and attach session's mixing groups
+    auto group_iter = session->beginMixingGroup();
+    while ( group_iter != session->endMixingGroup() ){
+        session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
+        group_iter = session->deleteMixingGroup(group_iter);
+    }
+
+    // needs to update !
+    View::need_deep_update_++;
+
+    // avoid display issues
+    current_view_->update(0.f);
+}
+
+void Mixer::merge(SessionSource *source)
+{
+    if ( source == nullptr ) {
+        Log::Warning("Failed to import Session Source.");
+        return;
+    }
+
+    // detach session from SessionSource (source will fail and be deleted later)
+    Session *session = source->detach();
+
+    // prepare Action manager info
+    std::ostringstream info;
+    info << source->name().c_str() << " source deleted, " << session->numSource() << " sources imported";
+
+    // import sources of the session (if not empty)
+    if ( !session->empty() ) {
+
+        // where to put the sources imported in depth?
+        float target_depth = source->depth();
+
+        // get how much space we need from there
+        SourceList dsl = session->getDepthSortedList();
+        float  start_depth = dsl.front()->depth();
+        float  end_depth = dsl.back()->depth();
+        float  need_depth = MAX( end_depth - start_depth, LAYER_STEP);
+
+        // make room if there is not enough space
+        SourceList to_be_moved = findSources(target_depth, MAX_DEPTH);
+        if (!to_be_moved.empty()){
+            float next_depth = to_be_moved.front()->depth();
+            if ( next_depth < target_depth + need_depth) {
+                SourceList::iterator  it = to_be_moved.begin();
+                for (; it != to_be_moved.end(); ++it) {
+                    float scale_depth = (MAX_DEPTH-(*it)->depth()) / (MAX_DEPTH-next_depth);
+                    (*it)->setDepth( (*it)->depth() + scale_depth );
+                }
+            }
+        }
+
+        // import every sources
+        for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
+
+            // avoid name duplicates
+            renameSource(s, s->name());
+
+            // scale alpha
+            s->setAlpha( s->alpha() * source->alpha() );
+
+            // set depth (proportional to depth of s, adjusted by needed space)
+            s->setDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) );
+
+            // set location
+            // a. transform of node to import
+            Group *sNode = s->group(View::GEOMETRY);
+            glm::mat4 sTransform  = GlmToolkit::transform(sNode->translation_, sNode->rotation_, sNode->scale_);
+            // b. transform of session source
+            Group *sourceNode = source->group(View::GEOMETRY);
+            glm::mat4 sourceTransform  = GlmToolkit::transform(sourceNode->translation_, sourceNode->rotation_, sourceNode->scale_);
+            // c. combined transform of source and session source
+            sourceTransform *= sTransform;
+            GlmToolkit::inverse_transform(sourceTransform, sNode->translation_, sNode->rotation_, sNode->scale_);
+
+            // Add source to Session
+            session_->addSource(s);
+
+            // Attach source to Mixer
+            attach(s);
+        }
+
+        // import and attach session's mixing groups
+        auto group_iter = session->beginMixingGroup();
+        while ( group_iter != session->endMixingGroup() ){
+            session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
+            group_iter = session->deleteMixingGroup(group_iter);
+        }
+
+        // needs to update !
+        View::need_deep_update_++;
+
+    }
+
+    // imported source itself should be removed
+    detach(source);
+    session_->deleteSource(source);
+
+    // new state in history manager
+    Action::manager().store(info.str());
+
+    // avoid display issues
+    current_view_->update(0.f);
+
 }
 
 void Mixer::swap()
@@ -841,7 +1143,11 @@ void Mixer::swap()
     mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );
     geometry_.scene.root()->copyTransform( session_->config(View::GEOMETRY) );
     layer_.scene.root()->copyTransform( session_->config(View::LAYER) );
-    appearance_.scene.root()->copyTransform( session_->config(View::APPEARANCE) );
+    appearance_.scene.root()->copyTransform( session_->config(View::TEXTURE) );
+
+    // attach new session's mixing group to mixingview
+    for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
+        (*group_iter)->attachTo( mixing_.scene.fg() );
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
@@ -849,15 +1155,9 @@ void Mixer::swap()
     // transfer fading
     session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
 
-    // request complete update for views
-    View::need_deep_update_ = true;
-
     // no current source
     current_source_ = session_->end();
     current_source_index_ = -1;
-
-    // reset timer
-    update_time_ = GST_CLOCK_TIME_NONE;
 
     // delete back (former front session)
     garbage_.push_back(back_session_);
@@ -875,8 +1175,7 @@ void Mixer::close()
     if (Settings::application.smooth_transition)
     {
         // create empty SessionSource to be used for the smooth transition
-        SessionSource *ts = new SessionSource();
-        ts->load();
+        SessionFileSource *ts = new SessionFileSource;
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);
@@ -900,15 +1199,16 @@ void Mixer::clear()
     // swap current with empty
     sessionSwapRequested_ = true;
 
+    // need to deeply update view to apply eventual changes
+    View::need_deep_update_++;
+
     Log::Info("New session ready.");
 }
 
 void Mixer::set(Session *s)
 {
-    if ( s == nullptr ) {
-        Log::Warning("Session loading cancelled.");
+    if ( s == nullptr )
         return;
-    }
 
     // delete previous back session if needed
     if (back_session_)
@@ -923,24 +1223,21 @@ void Mixer::set(Session *s)
 
 void Mixer::paste(const std::string& clipboard)
 {
-    if (clipboard.empty())
-        return;
-
     tinyxml2::XMLDocument xmlDoc;
-    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
-    if ( XMLResultError(eResult))
-        return;
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clipboard, xmlDoc);
+    if (sourceNode) {
 
-    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
-    if ( root == nullptr )
-        return;
+        SessionLoader loader( session_ );
 
-    SessionLoader loader( session_ );
-
-    XMLElement* sourceNode = root->FirstChildElement("Source");
-    for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
-    {
-        addSource(loader.cloneOrCreateSource(sourceNode));
+        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+        {
+            Source *s = loader.createSource(sourceNode);
+            if (s) {
+                // Add source to Session
+                session_->addSource(s);
+                // Add source to Mixer
+                addSource(s);
+            }
+        }
     }
-
 }

@@ -1,60 +1,74 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
-#include <list>
+#include <map>
+#include <tinyxml2.h>
 
 #include "Visitor.h"
-#include <tinyxml2.h>
+#include "SourceList.h"
 
 class Session;
 
 
 class SessionLoader : public Visitor {
 
+    SessionLoader();
+
 public:
 
-    SessionLoader(Session *session);
+    SessionLoader(Session *session, int recursion = 0);
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
-    inline std::list<uint64_t> getIdList() const { return sources_id_; }
+    std::map< uint64_t, Source* > getSources() const;
+    std::list< SourceList > getMixingGroups() const;
 
-    Source *cloneOrCreateSource(tinyxml2::XMLElement *sourceNode);
+    typedef enum {
+        CLONE,
+        DUPLICATE
+    } Mode;
+    Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
+
+    static bool isClipboard(std::string clipboard);
+    static tinyxml2::XMLElement* firstSourceElement(std::string clipboard, tinyxml2::XMLDocument &xmlDoc);
+    static void applyImageProcessing(const Source &s, std::string clipboard);
+    //TODO static void applyMask(const Source &s, std::string clipboard);
 
     // Elements of Scene
     void visit (Node& n) override;
-
     void visit (Scene&) override {}
     void visit (Group&) override {}
     void visit (Switch&) override {}
     void visit (Primitive&) override {}
-    void visit (Surface&) override {}
-    void visit (ImageSurface&) override {}
-    void visit (MediaSurface&) override {}
-    void visit (FrameBufferSurface&) override {}
-    void visit (LineStrip&) override {}
-    void visit (LineSquare&) override {}
-    void visit (LineCircle&) override {}
-    void visit (Mesh&) override {}
 
     // Elements with attributes
     void visit (MediaPlayer& n) override;
     void visit (Shader& n) override;
     void visit (ImageShader& n) override;
+    void visit (MaskShader& n) override;
     void visit (ImageProcessingShader& n) override;
 
     // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
-    void visit (SessionSource& s) override;
+    void visit (SessionFileSource& s) override;
+    void visit (SessionGroupSource& s) override;
+    void visit (RenderSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
 
 protected:
-    tinyxml2::XMLElement *xmlCurrent_;
+    // result created session
     Session *session_;
-    std::list<uint64_t> sources_id_;
+    // parsing current xml
+    tinyxml2::XMLElement *xmlCurrent_;
+    // level of loading recursion
+    int recursion_;
+    // map of correspondance from xml source id (key) to new source pointer (value)
+    std::map< uint64_t, Source* > sources_id_;
+    // list of groups (lists of xml source id)
+    std::list< SourceIdList > groups_sources_id_;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };
@@ -66,7 +80,7 @@ class SessionCreator : public SessionLoader {
     void loadConfig(tinyxml2::XMLElement *viewsNode);
 
 public:
-    SessionCreator();
+    SessionCreator(int recursion = 0);
 
     void load(const std::string& filename);
 

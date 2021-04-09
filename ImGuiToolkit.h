@@ -11,19 +11,25 @@
 namespace ImGuiToolkit
 {
     // Icons from resource icon.dds
-    void Icon(int i, int j);
+    void Icon (int i, int j, bool enabled = true);
+    bool IconButton (int i, int j, const char *tooltips = nullptr);
+    bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
 
-    // utility buttons
+    // icon buttons
     bool ButtonIcon (int i, int j, const char* tooltip = nullptr);
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state);
-    bool ButtonToggle(const char* label, bool* toggle);
-    void ButtonSwitch (const char* label, bool* toggle , const char *help = nullptr);
-    bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
+    bool ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state);
+
+    // utility buttons
+    bool ButtonToggle  (const char* label, bool* toggle);
+    void ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
     void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
-    void HelpMarker (const char* desc);
+    void ToolTip    (const char* desc, const char* shortcut = nullptr);
+    void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE, const char* shortcut = nullptr);
+    void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = nullptr);
 
     // utility sliders
     bool TimelineSlider (const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width);
@@ -54,9 +60,7 @@ namespace ImGuiToolkit
         ACCENT_GREY
     } accent_color;
     void SetAccentColor (accent_color color);
-    struct ImVec4 GetHighlightColor ();
-
-    void ShowStats (bool* p_open, int* p_corner, bool* p_timer);
+    struct ImVec4 HighlightColor (bool active = true);
 
 }
 

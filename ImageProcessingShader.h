@@ -11,13 +11,13 @@ class ImageProcessingShader : public Shader
 public:
 
     ImageProcessingShader();
-    ImageProcessingShader(const ImageProcessingShader &model);
 
     void use() override;
     void reset() override;
     void accept(Visitor& v) override;
 
     void operator = (const ImageProcessingShader &S);
+    void copy(const ImageProcessingShader &S);
 
     // color effects
     float brightness; // [-1 1]

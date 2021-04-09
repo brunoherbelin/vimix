@@ -3,16 +3,18 @@
 
 #include "GlmToolkit.h"
 #include "Visitor.h"
-
+#include "SourceList.h"
+class View;
 
 class BoundingBoxVisitor: public Visitor
 {
     glm::mat4 modelview_;
+    bool force_;
     GlmToolkit::AxisAlignedBoundingBox bbox_;
 
-public:
 
-    BoundingBoxVisitor();
+public:
+    BoundingBoxVisitor(bool force = false);
 
     void setModelview(glm::mat4 modelview);
     GlmToolkit::AxisAlignedBoundingBox bbox();
@@ -23,6 +25,9 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
+
+    static GlmToolkit::AxisAlignedBoundingBox AABB(SourceList l, View *view);
+    static GlmToolkit::OrientedBoundingBox OBB(SourceList l, View *view);
 };
 
 #endif // BOUNDINGBOXVISITOR_H

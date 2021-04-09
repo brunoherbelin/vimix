@@ -100,7 +100,7 @@ bool Streaming::busy()
 
     streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-    for (; sit != streamers_.end() && !b; sit++)
+    for (; sit != streamers_.end() && !b; ++sit)
         b = (*sit)->busy() ;
     streamers_lock_.unlock();
 
@@ -114,7 +114,7 @@ std::vector<std::string> Streaming::listStreams()
 
     streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-    for (; sit != streamers_.end(); sit++)
+    for (; sit != streamers_.end(); ++sit)
         ls.push_back( (*sit)->info() );
     streamers_lock_.unlock();
 
@@ -148,7 +148,7 @@ void Streaming::removeStream(const std::string &sender, int port)
     // parse the list for a streamers matching IP and port
     streamers_lock_.lock();
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-    for (; sit != streamers_.end(); sit++){
+    for (; sit != streamers_.end(); ++sit){
         NetworkToolkit::StreamConfig config = (*sit)->config_;
         if (config.client_address.compare(sender_ip) == 0 && config.port == port ) {
 #ifdef STREAMER_DEBUG
@@ -182,9 +182,31 @@ void Streaming::removeStreams(const std::string &clientname)
             sit = streamers_.erase(sit);
         }
         else
-            sit++;
+            ++sit;
     }
     streamers_lock_.unlock();
+}
+
+void Streaming::removeStream(const VideoStreamer *vs)
+{
+    if ( vs!= nullptr && streamers_lock_.try_lock()) {
+
+        std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+        while ( sit != streamers_.end() ){
+            if ( *(sit) == vs) {
+#ifdef STREAMER_DEBUG
+                NetworkToolkit::StreamConfig config = vs->config_;
+                Log::Info("Ending streaming to %s:%d", config.client_address.c_str(), config.port);
+#endif
+                // remove from list
+                streamers_.erase(sit);
+                break;
+            }
+            else
+                ++sit;
+        }
+        streamers_lock_.unlock();
+    }
 }
 
 void Streaming::refuseStream(const std::string &sender, int reply_to)
@@ -263,7 +285,7 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
 }
 
 
-VideoStreamer::VideoStreamer(NetworkToolkit::StreamConfig conf): FrameGrabber(), config_(conf)
+VideoStreamer::VideoStreamer(const NetworkToolkit::StreamConfig &conf): FrameGrabber(), config_(conf), stopped_(false)
 {
 }
 
@@ -385,6 +407,10 @@ void VideoStreamer::stop ()
 {
     // stop recording
     FrameGrabber::stop ();
+
+    // inform streaming manager to remove myself
+    // NB: will not be effective if called inside a locked streamers_lock_
+    Streaming::manager().removeStream(this);
 
     // force finished
     finished_ = true;

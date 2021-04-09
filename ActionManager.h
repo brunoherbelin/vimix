@@ -22,7 +22,7 @@ public:
         return _instance;
     }
 
-    void store(const std::string &label, uint64_t id = 0);
+    void store(const std::string &label);
 
     void clear();
     void undo();
@@ -36,8 +36,9 @@ public:
 
 private:
 
-    void restore(uint target, uint64_t id);
+    void restore(uint target);
     void replaceSourceId(uint64_t previousid, uint64_t newid);
+//    void replaceSourceId(tinyxml2::XMLElement* parentnode, uint64_t previousid, uint64_t newid);
 
     tinyxml2::XMLDocument xmlDoc_;
     uint step_;

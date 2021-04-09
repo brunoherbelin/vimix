@@ -2,6 +2,8 @@
 #include <iomanip>
 using namespace std;
 
+#include <gst/gl/gl.h>
+
 #include "GstToolkit.h"
 
 string GstToolkit::time_to_string(guint64 t, time_string_mode m)
@@ -53,6 +55,16 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
     return oss.str();
 }
 
+
+std::string GstToolkit::filename_to_uri(std::string path)
+{
+    // set uri to open
+    gchar *uritmp = gst_filename_to_uri(path.c_str(), NULL);
+    std::string uri( uritmp );
+    g_free(uritmp);
+
+    return uri;
+}
 
 list<string> GstToolkit::all_plugins()
 {
@@ -121,3 +133,77 @@ string GstToolkit::gst_version()
 
     return oss.str();
 }
+
+#if GST_GL_HAVE_PLATFORM_GLX
+    // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
+    const char *plugins[10] = { "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
+                               "nvh264dec", "nvh265dec", "nvmpeg2videodec",
+                               "nvmpeg4videodec", "nvvp8dec", "nvvp9dec"
+                             };
+    const int N = 10;
+#elif GST_GL_HAVE_PLATFORM_CGL
+    const char *plugins[2] = { "vtdec_hw", "vtdechw" };
+    const int N = 2;
+#else
+    const char *plugins[0] = { };
+    const int N = 0;
+#endif
+
+
+// see https://developer.ridgerun.com/wiki/index.php?title=GStreamer_modify_the_elements_rank
+std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
+{
+    list<string> plugins_list_;
+
+    static GstRegistry* plugins_register = nullptr;
+    if ( plugins_register == nullptr )
+        plugins_register = gst_registry_get();
+
+    static bool enabled_ = false;
+    if (enabled_ != enable) {
+        enabled_ = enable;
+        for (int i = 0; i < N; i++) {
+            GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
+            if(feature != NULL) {
+                plugins_list_.push_front( string( plugins[i] ) );
+                gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + 1 : GST_RANK_MARGINAL);
+                gst_object_unref(feature);
+            }
+        }
+    }
+
+    return plugins_list_;
+}
+
+
+std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
+{
+    std::string found = "";
+
+    GstIterator* it  = gst_bin_iterate_recurse(GST_BIN(gstbin));
+    GValue value = G_VALUE_INIT;
+    for(GstIteratorResult r = gst_iterator_next(it, &value); r != GST_ITERATOR_DONE; r = gst_iterator_next(it, &value))
+    {
+        if ( r == GST_ITERATOR_OK )
+        {
+            GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
+            if (e) {
+                gchar *name = gst_element_get_name(e);
+                // g_print(" - %s", name);
+                std::string e_name(name);
+                g_free(name);
+                for (int i = 0; i < N; i++) {
+                    if (e_name.find(plugins[i]) != std::string::npos) {
+                        found = plugins[i];
+                        break;
+                    }
+                }
+            }
+        }
+        g_value_unset(&value);
+    }
+    gst_iterator_free(it);
+
+    return found;
+}
+

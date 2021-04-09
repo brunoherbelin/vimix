@@ -12,7 +12,7 @@ class Frame : public Node
 {
 public:
 
-    typedef enum { ROUND = 0, SHARP } CornerType;
+    typedef enum { ROUND = 0, SHARP, GROUP } CornerType;
     typedef enum { THIN = 0, LARGE } BorderType;
     typedef enum { NONE = 0, GLOW, DROP, PERSPECTIVE } ShadowType;
 
@@ -23,11 +23,11 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    Mesh *border() const { return side_; }
     glm::vec4 color;
 
 protected:
-    Mesh *side_;
+    Mesh *right_;
+    Mesh *left_;
     Mesh *top_;
     Mesh *shadow_;
     LineSquare *square_;
@@ -36,7 +36,7 @@ protected:
 class Handles : public Node
 {
 public:
-    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, MENU } Type;
+    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, CROP, MENU, LOCKED, UNLOCKED } Type;
     Handles(Type type);
     ~Handles();
 
@@ -60,8 +60,8 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, PATTERN, CAMERA, SHARE,
-                   DOTS, BUSY, LOCK, UNLOCK, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
+    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, GROUP, PATTERN, CAMERA, CUBE, SHARE,
+                   DOTS, BUSY, LOCK, UNLOCK, EYE, EYESLASH, VECTORSLASH, ARROWS, ROTATION, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
     Symbol(Type t = CIRCLE_POINT, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 

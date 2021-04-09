@@ -7,6 +7,10 @@
 #include <ctime>
 #include <chrono>
 
+#include <locale>
+#include <unicode/ustream.h>
+#include <unicode/translit.h>
+
 using namespace std;
 
 #ifdef WIN32
@@ -51,11 +55,11 @@ long SystemToolkit::memory_usage()
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
         unsigned long m = 0;
-        int ret = 0;
+        int ret = 0, ret2 = 0;
         ret = fscanf (file, "%lu", &m);  // virtual mem program size,
-        ret = fscanf (file, "%lu", &m);  // resident set size,
+        ret2 = fscanf (file, "%lu", &m);  // resident set size,
         fclose (file);
-        if (ret>0)
+        if (ret>0 && ret2>0)
             size = (size_t)m * getpagesize();
     }
     return (long)size;
@@ -98,12 +102,30 @@ string SystemToolkit::byte_to_string(long b)
 
     while(numbytes >= 1024.0 && i != list.end())
     {
-        i++;
+        ++i;
         numbytes /= 1024.0;
     }
     oss << std::fixed << std::setprecision(2) << numbytes << *i;
     return oss.str();
 }
+
+string SystemToolkit::bits_to_string(long b)
+{
+    double numbytes = static_cast<double>(b);
+    ostringstream oss;
+
+    std::list<std::string> list = {" bit", " Kbit", " Mbit", " Gbit", " Tbit"};
+    std::list<std::string>::iterator i = list.begin();
+
+    while(numbytes >= 1000.0 && i != list.end())
+    {
+        ++i;
+        numbytes /= 1000.0;
+    }
+    oss << std::fixed << std::setprecision(2) << numbytes << *i;
+    return oss.str();
+}
+
 
 
 string SystemToolkit::date_time_string()
@@ -167,18 +189,17 @@ string SystemToolkit::extension_filename(const string& filename)
 
 std::string SystemToolkit::home_path()
 {
-    // 1. find home
-    char *mHomePath;
+    string homePath;
     // try the system user info
     // NB: avoids depending on changes of the $HOME env. variable
     struct passwd* pwd = getpwuid(getuid());
     if (pwd)
-        mHomePath = pwd->pw_dir;
+        homePath = std::string(pwd->pw_dir);
     else
         // try the $HOME environment variable
-        mHomePath = getenv("HOME");
+        homePath = std::string(getenv("HOME"));
 
-    return string(mHomePath) + PATH_SEP;
+    return homePath + PATH_SEP;
 }
 
 
@@ -194,17 +215,16 @@ std::string SystemToolkit::cwd_path()
 
 std::string SystemToolkit::username()
 {
-    // 1. find home
-    char *user;
+    string userName;
     // try the system user info
     struct passwd* pwd = getpwuid(getuid());
     if (pwd)
-        user = pwd->pw_name;
+        userName = std::string(pwd->pw_name);
     else
         // try the $USER environment variable
-        user = getenv("USER");
+        userName = std::string(getenv("USER"));
 
-    return string(user);
+    return userName;
 }
 
 bool SystemToolkit::create_directory(const string& path)
@@ -285,7 +305,7 @@ bool SystemToolkit::file_exists(const string& path)
 
     return access(path.c_str(), R_OK) == 0;
 
-    // TODO : WIN32 implementation
+    // TODO : WIN32 implementation (see tinyfd)
 }
 
 
@@ -308,18 +328,18 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
     list<string> ls;
 
     DIR *dir;
-    struct dirent *ent;
     if ((dir = opendir (path.c_str())) != NULL) {
-      // list all the files and directories within directory
-      while ((ent = readdir (dir)) != NULL) {
-          if ( ent->d_type == DT_REG)
-          {
-              string filename = string(ent->d_name);
-              if ( extension_filename(filename) == filter)
-                  ls.push_back( full_filename(path, filename) );
-          }
-      }
-      closedir (dir);
+        // list all the files and directories within directory
+        struct dirent *ent;
+        while ((ent = readdir (dir)) != NULL) {
+            if ( ent->d_type == DT_REG)
+            {
+                string filename = string(ent->d_name);
+                if ( extension_filename(filename) == filter)
+                    ls.push_back( full_filename(path, filename) );
+            }
+        }
+        closedir (dir);
     }
 
     return ls;
@@ -327,27 +347,29 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
 
 void SystemToolkit::open(const string& url)
 {
+    int ignored __attribute__((unused));
 #ifdef WIN32
         ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
 #elif defined APPLE
         char buf[2048];
         sprintf( buf, "open '%s'", url.c_str() );
-        system( buf );
+        ignored = system( buf );
 #else
         char buf[2048];
         sprintf( buf, "xdg-open '%s'", url.c_str() );
-        int r = system( buf );
+        ignored = system( buf );
 #endif
 }
 
 void SystemToolkit::execute(const string& command)
 {
+    int ignored __attribute__((unused));
 #ifdef WIN32
         ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
 #elif defined APPLE
-    int r = system( command.c_str() );
+    (void) system( command.c_str() );
 #else
-    int r = system( command.c_str() );
+    ignored = system( command.c_str() );
 #endif
 }
 // example :
@@ -355,4 +377,26 @@ void SystemToolkit::execute(const string& command)
 //                   "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
 
 
+// Using ICU transliteration :
+// https://unicode-org.github.io/icu/userguide/transforms/general/#icu-transliterators
 
+std::string SystemToolkit::transliterate(std::string input)
+{
+    auto ucs = icu::UnicodeString::fromUTF8(input);
+
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
+    firstTrans->transliterate(ucs);
+    delete firstTrans;
+
+    icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+    secondTrans->transliterate(ucs);
+    delete secondTrans;
+
+    std::ostringstream output;
+    output << ucs;
+
+    return output.str();
+}

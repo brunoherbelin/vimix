@@ -1,5 +1,6 @@
-#include "Shader.h"
+﻿#include "Shader.h"
 #include "Resource.h"
+#include "FrameBuffer.h"
 #include "Log.h"
 #include "Visitor.h"
 #include "RenderingManager.h"
@@ -22,17 +23,38 @@
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
 
-// Blending presets for matching with Shader::BlendMode
-GLenum blending_equation[6] = { GL_FUNC_ADD, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD};
-GLenum blending_source_function[6] = { GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA,GL_SRC_ALPHA};
-GLenum blending_destination_function[6] = {GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE, GL_DST_COLOR, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA};
+// Blending presets for matching with Shader::BlendModes:
+GLenum blending_equation[9] = { GL_FUNC_ADD,  // normal
+                                GL_FUNC_ADD,  // screen
+                                GL_FUNC_REVERSE_SUBTRACT, // subtract
+                                GL_FUNC_ADD,  // multiply
+                                GL_FUNC_ADD,  // soft light
+                                GL_FUNC_ADD,  // hard light
+                                GL_FUNC_REVERSE_SUBTRACT, // soft subtract
+                                GL_MAX,       // lighten only
+                                GL_FUNC_ADD};
+GLenum blending_source_function[9] = { GL_ONE,  // normal
+                                       GL_ONE,  // screen
+                                       GL_SRC_COLOR,  // subtract (can be GL_ONE)
+                                       GL_DST_COLOR,  // multiply : src x dst color
+                                       GL_DST_COLOR,  // soft light : src x dst color
+                                       GL_SRC_COLOR,  // hard light : src x src color
+                                       GL_DST_COLOR,  // soft subtract
+                                       GL_ONE,        //  lighten only
+                                       GL_ONE};
+GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
+                                           GL_ONE,   // screen
+                                           GL_ONE,   // subtract
+                                           GL_ONE_MINUS_SRC_ALPHA, // multiply
+                                           GL_ONE,   // soft light
+                                           GL_ONE,   // hard light
+                                           GL_ONE,   // soft subtract
+                                           GL_ONE,   // lighten only
+                                           GL_ZERO};
 
-
-
-ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) : vertex_id_(0), fragment_id_(0), id_(0)
+ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) :
+    vertex_id_(0), fragment_id_(0), id_(0), vertex_file_(vertex_file), fragment_file_(fragment_file)
 {
-    vertex_file_ = vertex_file;
-    fragment_file_ = fragment_file;
 }
 
 void ShadingProgram::init()
@@ -119,14 +141,20 @@ void ShadingProgram::setUniform<float>(const std::string& name, float val1, floa
 }
 
 template<>
-void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
-    glm::vec4 v(val);
-    glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+void ShadingProgram::setUniform<glm::vec2>(const std::string& name, glm::vec2 val) {
+    glm::vec2 v(val);
+    glUniform2fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
 }
 
 template<>
 void ShadingProgram::setUniform<glm::vec3>(const std::string& name, glm::vec3 val) {
     glm::vec3 v(val);
+    glUniform3fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+}
+
+template<>
+void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
+    glm::vec4 v(val);
     glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
 }
 
@@ -160,10 +188,10 @@ void ShadingProgram::checkCompileErr()
 
 void ShadingProgram::checkLinkingErr()
 {
-	int success;
-	char infoLog[1024];
+    int success;
 	glGetProgramiv(id_, GL_LINK_STATUS, &success);
 	if (!success) {
+        char infoLog[1024];
 		glGetProgramInfoLog(id_, 1024, NULL, infoLog);
         Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
 	}
@@ -199,7 +227,7 @@ void Shader::use()
     if (!program_->initialized())
         program_->init();
 
-    // Use program and set uniforms
+    // Use program
     program_->use();
 
     // set uniforms
@@ -208,25 +236,19 @@ void Shader::use()
     program_->setUniform("iTransform", iTransform);
     program_->setUniform("color", color);
 
-    iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
+    glm::vec3 iResolution = glm::vec3( Rendering::manager().currentAttrib().viewport, 0.f);
     program_->setUniform("iResolution", iResolution);
 
     // Blending Function
     if (force_blending_opacity) {
         glEnable(GL_BLEND);
-        glBlendEquation(blending_equation[BLEND_OPACITY]);
-        glBlendFunc(blending_source_function[BLEND_OPACITY], blending_destination_function[BLEND_OPACITY]);
-
+        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     }
-    else if ( blending != BLEND_CUSTOM ) {
+    else if ( blending < BLEND_NONE ) {
         glEnable(GL_BLEND);
-        glBlendEquation(blending_equation[blending]);
-        glBlendFunc(blending_source_function[blending], blending_destination_function[blending]);
-
-        // TODO different blending for alpha and color
-        //        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
-        //        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+        glBlendEquationSeparate(blending_equation[blending], GL_FUNC_ADD);
+        glBlendFuncSeparate(blending_source_function[blending], blending_destination_function[blending], GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     }
     else
         glDisable(GL_BLEND);
@@ -238,8 +260,8 @@ void Shader::reset()
     projection = glm::identity<glm::mat4>();
     modelview  = glm::identity<glm::mat4>();
     iTransform = glm::identity<glm::mat4>();
-    iResolution = glm::vec3(1280.f, 720.f, 0.f);
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+    blending = BLEND_OPACITY;
 }
 
 

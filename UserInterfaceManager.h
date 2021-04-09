@@ -22,7 +22,7 @@ class SourcePreview {
 public:
     SourcePreview();
 
-    void setSource(Source *s = nullptr, std::string label = "");
+    void setSource(Source *s = nullptr, const std::string &label = "");
     Source *getSource();
 
     void Render(float width, bool controlbutton = false);
@@ -109,10 +109,12 @@ class UserInterface
     bool ctrl_modifier_active;
     bool alt_modifier_active;
     bool shift_modifier_active;
-    bool show_vimix_config;
+    bool show_vimix_about;
     bool show_imgui_about;
     bool show_gst_about;
     bool show_opengl_about;
+    int  show_view_navigator;
+    int  target_view_navigator;
     unsigned int screenshot_step;
 
     // frame grabbers
@@ -150,24 +152,29 @@ public:
     void StartScreenshot();
     void showPannel(int id = 0);
 
+    void showSourceEditor(Source *s);
     void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;
-    void fillShaderEditor(std::string text);
+    void fillShaderEditor(const std::string &text);
 
 protected:
 
     void showMenuFile();
+    void showMenuEdit();
     void selectSaveFilename();
     void selectOpenFilename();
 
+    void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
     void RenderPreview();
     void RenderHistory();
     void RenderShaderEditor();
+    int  RenderViewNavigator(int* shift);
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();
+    void RenderAbout(bool* p_open);
 };
 
 #endif /* #define __UI_MANAGER_H_ */

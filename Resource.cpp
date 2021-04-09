@@ -10,11 +10,8 @@
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
-// multiplatform message box
-#include <tinyfiledialogs.h>
-
 // standalone image loader
-#include "stb_image.h"
+#include <stb_image.h>
 
 // CMake Ressource Compiler
 #include <cmrc/cmrc.hpp>
@@ -102,7 +99,7 @@ const char *Resource::getData(const std::string& path, size_t* out_file_size){
         cmrc::file::iterator it = file.begin();
         data = static_cast<const char *>(it);
     }
-    catch (std::system_error e) {
+    catch (const std::system_error &e) {
         Log::Error("Could not access ressource %s", std::string(path).c_str());
 	}
 
@@ -118,7 +115,7 @@ std::string Resource::getText(const std::string& path){
 		file = fs.open(path.c_str());
     	file_stream << std::string(file.begin(), file.end()) << std::endl;
     }
-	catch (std::system_error e) {
+    catch (const std::system_error &e) {
         Log::Error("Could not access ressource %s", std::string(path).c_str());
 	}
 
@@ -209,11 +206,11 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 	// load the mipmaps
     for (uint level = 0; level < mipMapCount && (width || height); ++level)
 	{
-        uint size = ((width+3)/4)*((height+3)/4)*blockSize;
-        glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height, 0, size, buffer + offset);
+        uint s = ((width+3)/4)*((height+3)/4)*blockSize;
+        glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height, 0, s, buffer + offset);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
-		offset += size;
+        offset += s;
 		width  /= 2;
 		height /= 2;
 

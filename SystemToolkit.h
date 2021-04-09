@@ -65,6 +65,7 @@ namespace SystemToolkit
 
     // try to open the file with system
     void open(const std::string& path);
+
     // try to execute a command
     void execute(const std::string& command);
 
@@ -74,6 +75,12 @@ namespace SystemToolkit
 
     // get a string to display memory size with unit KB, MB, GB, TB
     std::string byte_to_string(long b);
+
+    // get a string to display bit size with unit Kbit, MBit, Gbit, Tbit
+    std::string bits_to_string(long b);
+
+    // get a transliteration to Latin of any string
+    std::string transliterate(std::string input);
 }
 
 #endif // SYSTEMTOOLKIT_H

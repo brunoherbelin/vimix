@@ -1,4 +1,7 @@
-#include "Log.h"
+#include <string>
+#include <list>
+#include <mutex>
+using namespace std;
 
 #include "imgui.h"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -6,16 +9,11 @@
 #endif
 #include "imgui_internal.h"
 
-#include "ImGuiToolkit.h"
 #include "defines.h"
+#include "ImGuiToolkit.h"
+#include "DialogToolkit.h"
+#include "Log.h"
 
-// multiplatform
-#include <tinyfiledialogs.h>
-
-#include <string>
-#include <list>
-#include <mutex>
-using namespace std;
 
 static std::mutex mtx;
 
@@ -43,6 +41,7 @@ struct AppLog
     {
         mtx.lock();
         int old_size = Buf.size();
+        Buf.appendf("%04d  ", LineOffsets.size()); // this adds 6 characters to show line number
         Buf.appendfv(fmt, args);
         Buf.append("\n");
 
@@ -66,6 +65,9 @@ struct AppLog
 
         //  window
         ImGui::SameLine(0, 0);
+        static bool numbering = true;
+        ImGuiToolkit::ButtonToggle( ICON_FA_SORT_NUMERIC_DOWN, &numbering );
+        ImGui::SameLine();
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();
         bool copy = ImGui::Button( ICON_FA_COPY " Copy");
@@ -73,7 +75,7 @@ struct AppLog
         Filter.Draw("Filter", -60.0f);
 
         ImGui::Separator();
-        ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysHorizontalScrollbar);
 
         if (clear)
             Clear();
@@ -118,7 +120,7 @@ struct AppLog
             {
                 for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                 {
-                    const char* line_start = buf + LineOffsets[line_no];
+                    const char* line_start = buf + LineOffsets[line_no] + (numbering?0:6);
                     const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
                     ImGui::TextUnformatted(line_start, line_end);
                 }
@@ -195,15 +197,15 @@ void Log::Warning(const char* fmt, ...)
     Log::Info("Warning - %s\n", buf.c_str());
 }
 
-void Log::Render(bool showNofitications, bool showWarnings)
+void Log::Render(bool *showWarnings)
 {
-    bool show_warnings = !warnings.empty() & showWarnings;
-    bool show_notification = !notifications.empty() & showNofitications;
+    bool show_warnings = !warnings.empty();
+    bool show_notification = !notifications.empty();
 
     if (!show_notification && !show_warnings)
         return;
 
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     float width = io.DisplaySize.x * 0.4f;
     float pos = io.DisplaySize.x * 0.3f;
 
@@ -238,6 +240,7 @@ void Log::Render(bool showNofitications, bool showWarnings)
             notifications.clear();
     }
 
+
     if (show_warnings) {
         ImGui::OpenPopup("Warning");
         if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
@@ -255,8 +258,21 @@ void Log::Render(bool showNofitications, bool showWarnings)
             }
             ImGui::PopTextWrapPos();
 
-            ImGui::Dummy(ImVec2(width * 0.8f, 0)); ImGui::SameLine(); // right align
-            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))) {
+            bool close = false;
+            ImGui::Spacing();
+            if (ImGui::Button("Show logs", ImVec2(width * 0.2f, 0))) {
+                close = true;
+                if (showWarnings!= nullptr)
+                    *showWarnings = true;
+            }
+
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(width * 0.6f, 0)); // right align
+            ImGui::SameLine();
+            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0)))
+                close = true;
+
+            if (close) {
                 ImGui::CloseCurrentPopup();
                 // messages have been seen
                 warnings.clear();
@@ -266,7 +282,6 @@ void Log::Render(bool showNofitications, bool showWarnings)
             ImGui::EndPopup();
         }
     }
-
 
 }
 
@@ -279,7 +294,8 @@ void Log::Error(const char* fmt, ...)
     buf.appendfv(fmt, args);
     va_end(args);
 
-    tinyfd_messageBox( APP_TITLE, buf.c_str(), "ok", "error", 0);
+    DialogToolkit::ErrorDialog(buf.c_str());
+
     Log::Info("Error - %s\n", buf.c_str());
 }
 

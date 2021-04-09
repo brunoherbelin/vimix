@@ -39,7 +39,7 @@ void Screenshot::captureGL(int x, int y, int w, int h)
 {
     Width = w - x;
     Height = h - y;
-    unsigned int size = Width * Height * 4;
+    unsigned int size = Width * Height * 3;
 
     // create BPO
     if (Pbo == 0)
@@ -58,7 +58,7 @@ void Screenshot::captureGL(int x, int y, int w, int h)
 
     // screenshot to PBO (fast)
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, 0);
     Pbo_full = true;
 
     // done
@@ -85,6 +85,7 @@ void Screenshot::save(std::string filename)
 
         // ready for next
         Pbo_full = false;
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     }
 
 }
@@ -128,11 +129,9 @@ void Screenshot::storeToFile(Screenshot *s, std::string filename)
     ScreenshotSavePending_ = true;
     // got data to save ?
     if (s && s->Data) {
-        // make it usable
-        s->RemoveAlpha();
-        s->FlipVertical();
         // save file
-        stbi_write_png(filename.c_str(), s->Width, s->Height, 4, s->Data, s->Width * 4);
+        stbi_flip_vertically_on_write(true);
+        stbi_write_png(filename.c_str(), s->Width, s->Height, 3, s->Data, s->Width * 3);
     }
     ScreenshotSavePending_ = false;
 }

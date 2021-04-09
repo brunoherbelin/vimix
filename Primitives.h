@@ -30,8 +30,12 @@ public:
     inline void setTextureIndex(uint t) { textureindex_ = t; }
     inline uint textureIndex() const { return textureindex_; }
 
+    inline void setMirrorTexture(bool m) { mirror_ = m; }
+    inline bool mirrorTexture() { return mirror_; }
+
 protected:
     uint textureindex_;
+    bool mirror_;
 };
 
 
@@ -94,7 +98,6 @@ class FrameBufferSurface : public Surface {
 public:
     FrameBufferSurface(FrameBuffer *fb, Shader *s = new ImageShader);
 
-    void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
@@ -125,54 +128,100 @@ public:
 };
 
 
+class HLine : public Primitive {
+
+public:
+
+    HLine(float width = 1.f);
+    virtual ~HLine();
+
+    void init () override;
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
+
+    glm::vec4 color;
+    float width;
+};
+
+class VLine : public Primitive {
+
+public:
+
+    VLine(float width = 1.f);
+    virtual ~VLine();
+
+    void init () override;
+    void draw(glm::mat4 modelview, glm::mat4 projection) override;
+
+    glm::vec4 color;
+    float width;
+};
+
+/**
+ * @brief The LineSquare class is a group of 4 lines (width & height = 1.0)
+ */
+class LineSquare : public Group {
+
+    HLine *top_, *bottom_;
+    VLine *left_, *right_;
+
+public:
+    LineSquare(float linewidth = 1.f);
+
+    void setLineWidth(float v);
+    inline float lineWidth() const { return top_->width; }
+
+    void setColor(glm::vec4 c);
+    inline glm::vec4 color() const { return top_->color; }
+};
+
 /**
  * @brief The LineStrip class is a Primitive to draw lines
  */
 class LineStrip : public Primitive {
 
-    uint linewidth_;
-
 public:
-    LineStrip(std::vector<glm::vec3> points, std::vector<glm::vec4> colors, uint linewidth = 1);
+    LineStrip(const std::vector<glm::vec2> &path, float linewidth = 1.f);
+    virtual ~LineStrip();
 
-    virtual void draw(glm::mat4 modelview, glm::mat4 projection) override;
+    virtual void init () override;
     virtual void accept(Visitor& v) override;
 
-    std::vector<glm::vec3> getPoints() { return points_; }
-    std::vector<glm::vec4> getColors() { return colors_; }
+    inline std::vector<glm::vec2> path() { return path_; }
+    inline float lineWidth() const { return linewidth_ * 500.f; }
 
-    inline void setLineWidth(uint v) { linewidth_ = v; }
-    inline uint getLineWidth() const { return linewidth_; }
+    void changePath(std::vector<glm::vec2> path);
+    void editPath(uint index, glm::vec2 position);
+    void setLineWidth(float linewidth);
+
+protected:
+    float linewidth_;
+    uint arrayBuffer_;
+    std::vector<glm::vec2> path_;
+    virtual void updatePath();
+
+};
+
+/**
+ * @brief The LineLoop class is a LineStrip with closed path
+ */
+class LineLoop : public LineStrip {
+
+public:
+    LineLoop(const std::vector<glm::vec2> &path, float linewidth = 1.f);
+
+protected:
+    void updatePath() override;
 };
 
 
 /**
- * @brief The LineSquare class is a square LineStrip (width & height = 1.0)
+ * @brief The LineCircle class is a circular LineLoop (diameter = 1.0)
  */
-class LineSquare : public LineStrip {
+class LineCircle : public LineLoop {
 
 public:
-    LineSquare(uint linewidth = 1);
+    LineCircle(float linewidth = 1.f);
 
-    void init() override;
-    void accept(Visitor& v) override;
-
-    virtual ~LineSquare();
-};
-
-
-/**
- * @brief The LineCircle class is a circular LineStrip (diameter = 1.0)
- */
-class LineCircle : public LineStrip {
-
-public:
-    LineCircle(uint linewidth = 1);
-
-    void init() override;
-    void accept(Visitor& v) override;
-
-    virtual ~LineCircle();
 };
 
 

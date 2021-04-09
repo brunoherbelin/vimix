@@ -20,8 +20,6 @@ using namespace std;
 #define STREAM_DEBUG
 #endif
 
-#define USE_GST_APPSINK_CALLBACKS_
-
 
 Stream::Stream()
 {
@@ -137,7 +135,7 @@ void Stream::execute_open()
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 30);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
-#ifdef USE_GST_APPSINK_CALLBACKS_
+#ifdef USE_GST_APPSINK_CALLBACKS
     // set the callbacks
     GstAppSinkCallbacks callbacks;
     if (single_frame_) {
@@ -197,6 +195,14 @@ bool Stream::failed() const
     return failed_;
 }
 
+void Stream::Frame::unmap()
+{
+    if ( full )  {
+        gst_video_frame_unmap(&vframe);
+        full = false;
+    }
+}
+
 void Stream::close()
 {
     // not openned?
@@ -210,9 +216,14 @@ void Stream::close()
 
     // clean up GST
     if (pipeline_ != nullptr) {
+        // force flush
+        GstState state;
+        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+                    GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
         if (ret == GST_STATE_CHANGE_ASYNC) {
-            GstState state;
             gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
         }
         gst_object_unref (pipeline_);
@@ -222,10 +233,9 @@ void Stream::close()
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_FRAME; i++){
-        if ( frame_[i].full ) {
-            gst_video_frame_unmap(&frame_[i].vframe);
-            frame_[i].status = INVALID;
-        }
+        frame_[i].access.lock();
+        frame_[i].unmap();
+        frame_[i].access.unlock();
     }
     write_index_ = 0;
     last_index_ = 0;
@@ -512,6 +522,9 @@ void Stream::update()
             // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
             if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
                 fill_texture(read_index);
+
+            // free frame
+            frame_[read_index].unmap();
         }
 
         // avoid reading it again
@@ -547,11 +560,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
     frame_[write_index_].access.lock();
 
     // always empty frame before filling it again
-    if ( frame_[write_index_].full ) {
-        if ( GST_MINI_OBJECT_REFCOUNT_VALUE( &frame_[write_index_].vframe.buffer->mini_object ) > 0)
-            gst_video_frame_unmap(&frame_[write_index_].vframe);
-        frame_[write_index_].full = false;
-    }
+    frame_[write_index_].unmap();
 
     // accept status of frame received
     frame_[write_index_].status = status;
@@ -581,7 +590,9 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
         // full but invalid frame : will be deleted next iteration
         // (should never happen)
         else {
+#ifdef STREAM_DEBUG
             Log::Info("Stream %s Received an Invalid frame", std::to_string(id_).c_str());
+#endif
             frame_[write_index_].status = INVALID;            
             frame_[write_index_].access.unlock();
             return false;
@@ -615,7 +626,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 
 void Stream::callback_end_of_stream (GstAppSink *, gpointer p)
 {
-    Stream *m = (Stream *)p;
+    Stream *m = static_cast<Stream *>(p);
     if (m && m->ready_) {
         m->fill_frame(NULL, Stream::EOS);
     }
@@ -631,7 +642,7 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL) {
         // send frames to media player only if ready
-        Stream *m = (Stream *)p;
+        Stream *m = static_cast<Stream *>(p);
         if (m && m->ready_) {
 
             // get buffer from sample
@@ -665,7 +676,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
     if (sample != NULL && !gst_app_sink_is_eos (sink)) {
 
         // send frames to media player only if ready
-        Stream *m = (Stream *)p;
+        Stream *m = static_cast<Stream *>(p);
         if (m && m->ready_) {
 
             // get buffer from sample (valid until sample is released)

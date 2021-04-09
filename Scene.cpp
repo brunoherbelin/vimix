@@ -1,5 +1,13 @@
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_access.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/random.hpp>
+
+#include <glad/glad.h>
+
+#include <algorithm>
+
 #include "defines.h"
-#include "Scene.h"
 #include "Shader.h"
 #include "Primitives.h"
 #include "Visitor.h"
@@ -8,14 +16,10 @@
 #include "GlmToolkit.h"
 #include "SessionVisitor.h"
 
-#include <glad/glad.h>
+#include "Scene.h"
 
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/matrix_access.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/random.hpp>
-
-#include <algorithm>
+#define DEBUG_SCENE 0
+static int num_nodes_ = 0;
 
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)
@@ -27,11 +31,18 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
+    crop_ = glm::vec3(1.f);
+#if DEBUG_SCENE
+    num_nodes_++;
+#endif
 }
 
 Node::~Node ()
 {
     clearCallbacks();
+#if DEBUG_SCENE
+    num_nodes_--;
+#endif
 }
 
 void Node::clearCallbacks()
@@ -53,6 +64,7 @@ void Node::copyTransform(Node *other)
     scale_ = other->scale_;
     rotation_ = other->rotation_;
     translation_ = other->translation_;
+    crop_ = other->crop_;
 }
 
 void Node::update( float dt)
@@ -70,7 +82,7 @@ void Node::update( float dt)
             delete callback;
         }
         else {
-            iter++;
+            ++iter;
         }
     }
 
@@ -109,14 +121,14 @@ void Primitive::init()
     glGenBuffers( 1, &elementBuffer_);
     glBindVertexArray( vao_ );
 
-    // compute the memory needs for points normals and indicies
+    // compute the memory needs for points
     std::size_t sizeofPoints = sizeof(glm::vec3) * points_.size();
     std::size_t sizeofColors = sizeof(glm::vec4) * colors_.size();
     std::size_t sizeofTexCoords = sizeof(glm::vec2) * texCoords_.size();
 
     // setup the array buffers for vertices
     glBindBuffer( GL_ARRAY_BUFFER, arrayBuffer_ );
-    glBufferData(GL_ARRAY_BUFFER, sizeofPoints + sizeofColors + sizeofTexCoords, NULL, GL_STATIC_DRAW);
+    glBufferData( GL_ARRAY_BUFFER, sizeofPoints + sizeofColors + sizeofTexCoords, NULL, GL_STATIC_DRAW);
     glBufferSubData( GL_ARRAY_BUFFER, 0, sizeofPoints, &points_[0] );
     glBufferSubData( GL_ARRAY_BUFFER, sizeofPoints, sizeofColors, &colors_[0] );
     if ( sizeofTexCoords )
@@ -124,7 +136,7 @@ void Primitive::init()
 
     // setup the element array for the triangle indices
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer_);
-    int sizeofIndices = indices_.size()*sizeof(uint);
+    std::size_t sizeofIndices = indices_.size() * sizeof(uint);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeofIndices, &(indices_[0]), GL_STATIC_DRAW);
 
     // explain how to read attributes 0, 1 and 2 (for point, color and textcoord respectively)
@@ -271,7 +283,7 @@ void Group::update( float dt )
 
     // update every child node
     for (NodeSet::iterator node = children_.begin();
-         node != children_.end(); node++) {
+         node != children_.end(); ++node) {
         (*node)->update ( dt );
     }
 }
@@ -288,7 +300,7 @@ void Group::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // draw every child node
         for (NodeSet::iterator node = children_.begin();
-             node != children_.end(); node++) {
+             node != children_.end(); ++node) {
             (*node)->draw ( ctm, projection );
         }
     }
@@ -382,13 +394,13 @@ void Switch::accept(Visitor& v)
 
 void Switch::setActive (uint index)
 {
-    active_ = CLAMP(index, 0, children_.size() - 1);
+    active_ = MINI(index, children_.size() - 1);
 }
 
 Node *Switch::child(uint index) const
 {
     if (!children_.empty()) {
-        uint i = CLAMP(index, 0, children_.size() - 1);
+        uint i = MINI(index, children_.size() - 1);
         return children_.at(i);
     }
     return nullptr;
@@ -445,6 +457,9 @@ Scene::~Scene()
     clear();
     // bg and fg are deleted as children of root
     delete root_;
+#if DEBUG_SCENE
+    Log::Info("Total scene nodes %d", num_nodes_);
+#endif
 }
 
 

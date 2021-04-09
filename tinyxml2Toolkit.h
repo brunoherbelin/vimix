@@ -2,6 +2,10 @@
 #define TINYXML2TOOLKIT_H
 
 #include <string>
+#ifdef __APPLE__
+#include <sys/types.h>
+#endif
+
 #include <glm/glm.hpp>
 
 namespace tinyxml2 {
@@ -10,20 +14,22 @@ class XMLDocument;
 class XMLElement;
 
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::ivec2 vector);
+XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec2 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec3 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::vec4 vector);
 XMLElement *XMLElementFromGLM(XMLDocument *doc, glm::mat4 matrix);
 
 void XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector);
+void XMLElementToGLM(XMLElement *elem, glm::vec2 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec3 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::vec4 &vector);
 void XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix);
 
-XMLElement *XMLElementEncodeArray(XMLDocument *doc, void *array, unsigned int arraysize);
-bool XMLElementDecodeArray(XMLElement *elem, void *array, unsigned int arraysize);
+XMLElement *XMLElementEncodeArray(XMLDocument *doc, const void *array, uint arraysize);
+bool XMLElementDecodeArray(XMLElement *elem, void *array, uint arraysize);
 
 bool XMLSaveDoc(tinyxml2::XMLDocument * const doc, std::string filename);
-bool XMLResultError(int result);
+bool XMLResultError(int result, bool verbose = true);
 
 }
 

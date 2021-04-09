@@ -15,25 +15,6 @@ ImageProcessingShader::ImageProcessingShader(): Shader()
     reset();
 }
 
-ImageProcessingShader::ImageProcessingShader(const ImageProcessingShader &S): Shader()
-{
-    program_ = &imageProcessingShadingProgram;
-    reset();
-    brightness = S.brightness;
-    contrast = S.contrast;
-    saturation = S.saturation;
-    hueshift = S.hueshift;
-    threshold = S.threshold;
-    lumakey = S.lumakey;
-    nbColors = S.nbColors;
-    invert = S.invert;
-    filterid = S.filterid;
-    gamma = S.gamma;
-    levels = S.levels;
-    chromakey = S.chromakey;
-    chromadelta = S.chromadelta;
-}
-
 void ImageProcessingShader::use()
 {
     Shader::use();
@@ -56,7 +37,6 @@ void ImageProcessingShader::use()
 
 }
 
-
 void ImageProcessingShader::reset()
 {
     Shader::reset();
@@ -78,10 +58,8 @@ void ImageProcessingShader::reset()
 
 }
 
-void ImageProcessingShader::operator = (const ImageProcessingShader &S )
+void ImageProcessingShader::copy(const ImageProcessingShader &S)
 {
-    Shader::operator =(S);
-
     brightness = S.brightness;
     contrast = S.contrast;
     saturation = S.saturation;
@@ -95,6 +73,11 @@ void ImageProcessingShader::operator = (const ImageProcessingShader &S )
     levels = S.levels;
     chromakey = S.chromakey;
     chromadelta = S.chromadelta;
+}
+
+void ImageProcessingShader::operator = (const ImageProcessingShader &S )
+{
+    copy(S);
 }
 
 

@@ -1,9 +1,15 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-#include "View.h"
+#include "GeometryView.h"
+#include "MixingView.h"
+#include "LayerView.h"
+#include "TextureView.h"
+#include "TransitionView.h"
 #include "Session.h"
 #include "Selection.h"
+
+class SessionSource;
 
 class Mixer
 {
@@ -31,6 +37,7 @@ public:
     // update session and all views
     void update();
     inline float dt() const { return dt_;}
+    inline int fps() const { return int(roundf(1000.f/dt__));}
 
     // draw session and current view
     void draw();
@@ -43,6 +50,7 @@ public:
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
     Source * createSourceNetwork(const std::string &nameconnection);
+    Source * createSourceGroup  ();
 
     // operations on sources
     void addSource    (Source *s);
@@ -50,7 +58,9 @@ public:
     void renameSource (Source *s, const std::string &newname);
     void attach       (Source *s);
     void detach       (Source *s);
+    void deselect     (Source *s);
     void deleteSelection();
+    void groupSelection();
 
     // current source
     Source * currentSource ();
@@ -59,22 +69,25 @@ public:
     void setCurrentSource (Node *node);
     void setCurrentSource (uint64_t id);
     void setCurrentNext ();
+    void setCurrentPrevious ();
     void unsetCurrentSource ();
 
     void setCurrentIndex (int index);
+    void moveIndex (int current_index, int target_index);
     int  indexCurrentSource ();
 
     // browsing into sources
     Source * findSource (Node *node);
     Source * findSource (std::string name);
     Source * findSource (uint64_t id);
+    SourceList findSources (float depth_from, float depth_to);
 
     // management of view
     View *view   (View::Mode m = View::INVALID);
     void setView (View::Mode m);
 
-    void conceal(Source *s);
-    void uncover(Source *s);
+    void conceal  (Source *s);
+    void uncover  (Source *s);
     bool concealed(Source *s);
 
     // manipulate, load and save sessions
@@ -84,8 +97,10 @@ public:
     void saveas (const std::string& filename);
     void load   (const std::string& filename);
     void import (const std::string& filename);
-    void merge  (Session *s);
-    void set    (Session *s);
+    void import (SessionSource *source);
+    void merge  (Session *session);
+    void merge  (SessionSource *source);
+    void set    (Session *session);
 
     // operations depending on transition mode
     void close  ();
@@ -104,7 +119,9 @@ protected:
 
     SourceList candidate_sources_;
     SourceList stash_;
-    void insertSource(Source *s, View::Mode m = View::INVALID);
+    void insertSource  (Source *s, View::Mode m = View::INVALID);
+    bool replaceSource (Source *from, Source *to);
+    bool recreateSource(Source *s);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
@@ -114,11 +131,11 @@ protected:
     MixingView mixing_;
     GeometryView geometry_;
     LayerView layer_;
-    AppearanceView appearance_;
+    TextureView appearance_;
     TransitionView transition_;
 
-    guint64 update_time_;
     float dt_;
+    float dt__;
 };
 
 #endif // MIXER_H

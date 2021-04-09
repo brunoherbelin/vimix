@@ -9,26 +9,24 @@ monitor or a projector, but can be streamed or recorded live (no audio).
 
 ![screenshot](vimix_0.2_beta.jpg)
 
-Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) for more details.
+Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
+Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) to see what vimix can do.
 
 ## Install vimix
+
+[Quick installation guide](https://github.com/brunoherbelin/vimix/wiki/Quick-Installation-Guide)
 
 ### Linux
 
 [![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-white.svg)](https://snapcraft.io/vimix)
 
-    snap install vimix
-
 ### Mac OSX
 
-Download package from [Github Release](https://github.com/brunoherbelin/vimix/releases)
-
-*NB: You'll need to accept the exception in OSX security preference.*
+Download package from [Github Releases](https://github.com/brunoherbelin/vimix/releases) page.
 
 ### Windows
 
 *Please consider helping by compiling & providing packages for Windows.*
-
 
 
 ## About
@@ -41,7 +39,6 @@ from these 10 years of refinement of User-Experience design since its [first dra
 vimix is in its early infancy, open to [features requests and bugs reports](https://github.com/brunoherbelin/vimix/issues).
 
 vimix welcomes contributions and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info
-
 
 
 

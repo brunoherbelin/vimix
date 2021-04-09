@@ -80,7 +80,7 @@ protected:
  */
 class FrameGrabbing
 {
-    friend class Session;
+    friend class Mixer;
 
     // Private Constructor
     FrameGrabbing();

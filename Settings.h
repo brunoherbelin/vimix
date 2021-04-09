@@ -15,7 +15,7 @@ struct WidgetsConfig
 {
     bool stats;
     int  stats_corner;
-    bool stats_timer;
+    int  stats_mode;
     bool logs;
     bool preview;
     bool history;
@@ -26,7 +26,7 @@ struct WidgetsConfig
 
     WidgetsConfig() {
         stats = false;
-        stats_timer = false;
+        stats_mode = 0;
         stats_corner = 1;
         logs = false;
         preview = false;
@@ -84,12 +84,14 @@ struct History
     bool front_is_valid;
     bool load_at_start;
     bool save_on_exit;
+    bool changed;
 
     History() {
         path = IMGUI_LABEL_RECENT_FILES;
         front_is_valid = false;
         load_at_start = false;
         save_on_exit = false;
+        changed = false;
     }
     void push(const std::string &filename) {
         if (filename.empty()) {
@@ -101,6 +103,7 @@ struct History
         if (filenames.size() > MAX_RECENT_HISTORY)
             filenames.pop_back();
         front_is_valid = true;
+        changed = true;
     }
     void remove(const std::string &filename) {
         if (filename.empty())
@@ -108,20 +111,19 @@ struct History
         if (filenames.front() == filename)
             front_is_valid = false;
         filenames.remove(filename);
+        changed = true;
     }
 };
 
 struct TransitionConfig
 {
     bool cross_fade;
-    bool auto_open;
     bool hide_windows;
     float duration;
     int profile;
 
     TransitionConfig() {
         cross_fade = true;
-        auto_open = true;
         hide_windows = true;
         duration = 1.f;
         profile = 0;
@@ -136,14 +138,16 @@ struct RenderConfig
     int ratio;
     int res;
     float fading;
+    bool gpu_decoding;
 
     RenderConfig() {
         blit = false;
-        vsync = 1; // todo GUI selection
-        multisampling = 2; // todo GUI selection
+        vsync = 1;
+        multisampling = 2;
         ratio = 3;
         res = 1;
         fading = 0.0;
+        gpu_decoding = true;
     }
 };
 
@@ -188,7 +192,11 @@ struct Application
 
     // Settings of Views
     int current_view;
+    int current_workspace;
     std::map<int, ViewConfig> views;
+
+    // settings brush texture paint
+    glm::vec3 brush;
 
     // settings render
     RenderConfig render;
@@ -219,6 +227,8 @@ struct Application
         action_history_follow_view = false;
         accept_connections = false;
         current_view = 1;
+        current_workspace= 1;
+        brush = glm::vec3(0.5f, 0.1f, 0.f);
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_NAME APP_TITLE;
         windows[0].w = 1600;
