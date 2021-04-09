@@ -277,7 +277,7 @@ void GeometryView::draw()
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Fit."));
+                Action::manager().store(s->name() + std::string(": Geometry Fit"));
             }
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
@@ -285,23 +285,23 @@ void GeometryView::draw()
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset."));
+                Action::manager().store(s->name() + std::string(": Geometry Reset"));
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset position."));
+                Action::manager().store(s->name() + std::string(": Reset position"));
             }
             if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset rotation."));
+                Action::manager().store(s->name() + std::string(": Reset rotation"));
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
-                Action::manager().store(s->name() + std::string("Source Reset aspect ratio."));
+                Action::manager().store(s->name() + std::string(": Reset aspect ratio"));
             }
         }
         ImGui::EndPopup();
@@ -325,7 +325,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Fit all."));
+            Action::manager().store(std::string("Selection: Fit all."));
         }
         if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset all" )){
             // apply to every sources in selection
@@ -336,7 +336,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Reset all."));
+            Action::manager().store(std::string("Selection: Reset all."));
         }
 //        if (ImGui::Selectable( ICON_FA_TH "  Mosaic" )){ // TODO
 
@@ -347,7 +347,7 @@ void GeometryView::draw()
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
             initiate();
             applySelectionTransform(T);
-            Action::manager().store(std::string("Selection Center."));
+            Action::manager().store(std::string("Selection: Center."));
         }
         if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
             // apply to every sources in selection
@@ -355,7 +355,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection Align."));
+            Action::manager().store(std::string("Selection: Align."));
         }
         if (ImGui::Selectable( ICON_FA_COMPRESS "   Best Fit" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -373,7 +373,7 @@ void GeometryView::draw()
             glm::mat4 M = S * R * T;
             initiate();
             applySelectionTransform(M);
-            Action::manager().store(std::string("Selection Best Fit."));
+            Action::manager().store(std::string("Selection: Best Fit."));
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Mirror" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -381,7 +381,7 @@ void GeometryView::draw()
             glm::mat4 M = glm::inverse(T) * F * T;
             initiate();
             applySelectionTransform(M);
-            Action::manager().store(std::string("Selection Mirror."));
+            Action::manager().store(std::string("Selection: Mirror."));
         }
 
         ImGui::PopStyleColor(2);

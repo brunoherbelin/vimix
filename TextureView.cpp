@@ -843,12 +843,12 @@ void TextureView::draw()
             if (s->textureMirrored()) {
                 if (ImGui::Selectable( ICON_FA_TH "  Repeat " )){
                     s->setTextureMirrored(false);
-                    Action::manager().store(s->name() + std::string(": Texture Repeat."));
+                    Action::manager().store(s->name() + std::string(": Texture Repeat"));
                 }
             } else {
                 if (ImGui::Selectable( ICON_FA_TH "  Mirror " )){
                     s->setTextureMirrored(true);
-                    Action::manager().store(s->name() + std::string(": Texture Mirror."));
+                    Action::manager().store(s->name() + std::string(": Texture Mirror"));
                 }
             }
             ImGui::Separator();
@@ -859,23 +859,23 @@ void TextureView::draw()
                 s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset."));
+                Action::manager().store(s->name() + std::string(": Texture Reset"));
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset position."));
+                Action::manager().store(s->name() + std::string(": Texture Reset position"));
             }
             if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset rotation."));
+                Action::manager().store(s->name() + std::string(": Texture Reset rotation"));
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio."));
+                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio"));
             }
         }
         ImGui::PopStyleColor(2);

@@ -122,7 +122,7 @@ void LayerView::draw()
                 depth += depth_inc;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Layer Distribute."));
+            Action::manager().store(std::string("Selection: Layer Distribute"));
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
@@ -133,7 +133,7 @@ void LayerView::draw()
                 depth += LAYER_STEP;
                 (*it)->setDepth(depth);
             }
-            Action::manager().store(std::string("Selection Layer Compress."));
+            Action::manager().store(std::string("Selection: Layer Compress"));
             View::need_deep_update_++;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
@@ -143,7 +143,7 @@ void LayerView::draw()
             for (; it != dsl.end(); ++it, ++rit) {
                 (*it)->setDepth((*rit)->depth());
             }
-            Action::manager().store(std::string("Selection Layer Reverse order."));
+            Action::manager().store(std::string("Selection: Layer Reverse order"));
             View::need_deep_update_++;
         }
 
