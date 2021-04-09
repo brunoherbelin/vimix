@@ -14,6 +14,7 @@ using namespace std;
 #include "SystemToolkit.h"
 #include "GlmToolkit.h"
 #include "GstToolkit.h"
+#include "RenderingManager.h"
 
 #include "MediaPlayer.h"
 
@@ -78,12 +79,15 @@ guint MediaPlayer::texture() const
     return textureindex_;
 }
 
+#define LIMIT_DISCOVERER
+
 static MediaInfo UriDiscoverer_(std::string uri)
 {
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("Checking file '%s'", uri.c_str());
 #endif
 
+#ifdef LIMIT_DISCOVERER
     // Limiting the number of discoverer thread to TWO in parallel
     // Otherwise, a large number of discoverers are executed (when loading a file)
     // leading to a peak of memory and CPU usage : this causes slow down of FPS
@@ -95,7 +99,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
         use_primary = false;
         mtx_secondary.lock(); // blocking
     }
-
+#endif
     MediaInfo video_stream_info;
     GError *err = NULL;
     GstDiscoverer *discoverer = gst_discoverer_new (15 * GST_SECOND, &err);
@@ -203,11 +207,12 @@ static MediaInfo UriDiscoverer_(std::string uri)
 
     g_clear_error (&err);
 
+#ifdef LIMIT_DISCOVERER
     if (use_primary)
         mtx_primary.unlock();
     else
         mtx_secondary.unlock();
-
+#endif
     // return the info
     return video_stream_info;
 }
@@ -366,9 +371,11 @@ void MediaPlayer::execute_open()
         return;
     }
     gst_caps_unref (caps);
-    
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
     // capture bus signals to force a unique opengl context for all GST elements 
-    //Rendering::LinkPipeline(GST_PIPELINE (pipeline));
+    Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
+#endif
 
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
