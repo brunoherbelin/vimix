@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <map>
 #include <iomanip>
+#include <fstream>
 
 using namespace std;
 
@@ -908,9 +909,13 @@ void UserInterface::handleScreenshot()
     }
 }
 
+#define PLOT_ARRAY_SIZE 180
 
 void ToolBox::Render()
 {
+    static bool record_ = false;
+    static std::ofstream csv_file_;
+
     // first run
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
@@ -939,20 +944,32 @@ void ToolBox::Render()
 
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Stats"))
+        {
+            if (ImGui::MenuItem("Record", nullptr, &record_) )
+            {
+                if ( record_ )
+                    csv_file_.open( SystemToolkit::home_path() + std::to_string(GlmToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
+                else
+                    csv_file_.close();
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
     }
 
     //
     // display histogram of update time and plot framerate
     //
-    // keep array of 120 values, i.e. approx 2 seconds of recording
-    static float framerate_values[2][120] = {{}};
-    static float sum[2] = { 0.f, 0.f };
-    static int values_index = 0;
-
-    static float max_fps = 65.f;
-    static float min_fps = 40.f;
+    // keep array of 180 values, i.e. approx 3 seconds of recording
+    static float recorded_values[3][PLOT_ARRAY_SIZE] = {{}};
+    static float recorded_sum[3] = { 0.f, 0.f, 0.f };
+    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {0.f, 50.f}, {0.f, 50.f} };
     static float refresh_rate = -1.f;
+    static int   values_index = 0;
+    float megabyte = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1048576.0 );
+
+    // init
     if (refresh_rate < 0.f) {
 
         const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
@@ -961,46 +978,63 @@ void ToolBox::Render()
             refresh_rate /= Settings::application.render.vsync;
         else
             refresh_rate = 0.f;
-        max_fps = refresh_rate + 5.f;
-        min_fps = refresh_rate - 20.f;
+        recorded_bounds[0][0] = refresh_rate - 15.f; // min fps
+        recorded_bounds[0][1] = refresh_rate + 10.f;  // max
 
-        for(int i = 0; i<120; ++i) {
-            framerate_values[0][i] = refresh_rate;
-            sum[0] += refresh_rate;
+        for(int i = 0; i<PLOT_ARRAY_SIZE; ++i) {
+            recorded_values[0][i] = refresh_rate;
+            recorded_sum[0] += recorded_values[0][i];
+            recorded_values[1][i] = 1.f / refresh_rate;
+            recorded_sum[1] += recorded_values[1][i];
+            recorded_values[2][i] = megabyte;
+            recorded_sum[2] += recorded_values[2][i];
         }
     }
 
     // compute average step 1: remove previous value from the sum
-    sum[0] -= framerate_values[0][values_index];
-    sum[1] -= framerate_values[1][values_index];
+    recorded_sum[0] -= recorded_values[0][values_index];
+    recorded_sum[1] -= recorded_values[1][values_index];
+    recorded_sum[2] -= recorded_values[2][values_index];
 
-    // store values of FPS and of Mixing update dt
-    framerate_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
-    framerate_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
+    // store values
+    recorded_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
+    recorded_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
+    recorded_values[2][values_index] = megabyte;
 
     // compute average step 2: add current value to the sum
-    sum[0] += framerate_values[0][values_index];
-    sum[1] += framerate_values[1][values_index];
+    recorded_sum[0] += recorded_values[0][values_index];
+    recorded_sum[1] += recorded_values[1][values_index];
+    recorded_sum[2] += recorded_values[2][values_index];
 
     // move inside array
-    values_index = (values_index+1) % 120;
+    values_index = (values_index+1) % PLOT_ARRAY_SIZE;
 
     // non-vsync fixed FPS : have to calculate plot dimensions based on past values
     if (refresh_rate < 1.f) {
-        max_fps = sum[0] / 120.f + 5.f;
-        min_fps = sum[0] / 120.f - 20.f;
+        recorded_bounds[0][0] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) - 15.f;
+        recorded_bounds[0][1] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) + 10.f;
     }
+
+    recorded_bounds[2][0] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) - 400.f;
+    recorded_bounds[2][1] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) + 300.f;
 
     // plot values, with title overlay to display the average
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
-    plot_size.y *= 0.49;
+    plot_size.y *= 0.32;
     char overlay[128];
-    sprintf(overlay, "Rendering %.1f FPS", sum[0] / 120.f);
-    ImGui::PlotLines("LinesRender", framerate_values[0], 120, values_index, overlay, min_fps, max_fps, plot_size);
-    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", sum[1] / 120.f, 120000.f / sum[1]);
-    ImGui::PlotHistogram("LinesMixer", framerate_values[1], 120, values_index, overlay, 0.0f, 50.0f, plot_size);
+    sprintf(overlay, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
+    ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
+    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
+    ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
+    sprintf(overlay, "Memory %.1f MB", recorded_sum[2] / float(PLOT_ARRAY_SIZE));
+    ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();
+
+    // save to file
+    if ( record_ && csv_file_.is_open()) {
+            csv_file_ << megabyte << ", " << recorded_sum[0] / float(PLOT_ARRAY_SIZE) << std::endl;
+    }
 
     // About and other utility windows
     if (show_icons_window)
@@ -1613,6 +1647,13 @@ void MediaController::Render()
         {
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
 //            ImGui::MenuItem( ICON_FA_QUESTION_CIRCLE " Help", nullptr, &media_player_help);
+
+
+            if ( ImGui::MenuItem( "  RESET") ){
+                std::list<MediaPlayer*> lm = MediaPlayer::registered();
+                for( auto m=lm.begin(); m!=lm.end();++m)
+                    (*m)->reopen();
+            }
 
             if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
                 Settings::application.widget.media_player = false;
