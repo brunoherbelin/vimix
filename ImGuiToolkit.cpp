@@ -1,6 +1,8 @@
 
 #include <map>
 #include <algorithm>
+#include <string>
+#include <cctype>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -58,8 +60,10 @@ bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
 }
 
 
-void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
+bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
 {
+    bool ret = false;
+
     // utility style
     ImVec4* colors = ImGui::GetStyle().Colors;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -76,8 +80,10 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // toggle action : operate on the whole area
     ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
-    if (ImGui::IsItemClicked())
+    if (ImGui::IsItemClicked()) {
         *toggle = !*toggle;
+        ret = true;
+    }
     float t = *toggle ? 1.0f : 0.0f;
 
     // animation
@@ -113,6 +119,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 
+    return ret;
 }
 
 
@@ -1111,6 +1118,78 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
 
+}
+
+void word_wrap(std::string *str, unsigned per_line)
+{
+    unsigned line_begin = 0;
+    while (line_begin < str->size())
+    {
+        const unsigned ideal_end = line_begin + per_line ;
+        unsigned line_end = ideal_end < str->size() ? ideal_end : str->size()-1;
+
+        if (line_end == str->size() - 1)
+            ++line_end;
+        else if (std::isspace(str->at(line_end)))
+        {
+            str->replace(line_end, 1, 1, '\n' );
+            ++line_end;
+        }
+        else    // backtrack
+        {
+            unsigned end = line_end;
+            while ( end > line_begin && !std::isspace(str->at(end)))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                str->replace(line_end++, 1,  1, '\n' );
+            }
+            else {
+                str->insert(line_end++, 1, '\n' );
+            }
+        }
+
+        line_begin = line_end;
+    }
+}
+
+
+struct InputTextCallback_UserData
+{
+    std::string*      Str;
+    int               WordWrap;
+};
+
+static int InputTextCallback(ImGuiInputTextCallbackData* data)
+{
+    InputTextCallback_UserData* user_data = (InputTextCallback_UserData*)data->UserData;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+    {
+        if (user_data->WordWrap > 1)
+            word_wrap(user_data->Str, user_data->WordWrap );
+
+        // Resize string callback
+        std::string* str = user_data->Str;
+        IM_ASSERT(data->Buf == str->c_str());
+        str->resize(data->BufTextLen);
+        data->Buf = (char*)str->c_str();
+    }
+
+//    fprintf(stderr, "input %s\n", data->Buf);
+
+    return 0;
+}
+
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
+{
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+    cb_user_data.WordWrap = linesize;
+
+    return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
 }
 
 

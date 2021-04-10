@@ -813,6 +813,12 @@ void UserInterface::showMenuEdit()
         Mixer::manager().view()->selectAll();
         navigator.hidePannel();
     }
+    ImGui::Separator();
+    if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
+        Action::manager().undo();
+    if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
+        Action::manager().redo();
+
 }
 
 void UserInterface::showMenuFile()
@@ -1648,12 +1654,11 @@ void MediaController::Render()
             ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_view);
 //            ImGui::MenuItem( ICON_FA_QUESTION_CIRCLE " Help", nullptr, &media_player_help);
 
-
-            if ( ImGui::MenuItem( "  RESET") ){
-                std::list<MediaPlayer*> lm = MediaPlayer::registered();
-                for( auto m=lm.begin(); m!=lm.end();++m)
-                    (*m)->reopen();
-            }
+//            if ( ImGui::MenuItem( "  RESET") ){
+//                std::list<MediaPlayer*> lm = MediaPlayer::registered();
+//                for( auto m=lm.begin(); m!=lm.end();++m)
+//                    (*m)->reopen();
+//            }
 
             if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
                 Settings::application.widget.media_player = false;
@@ -2068,6 +2073,7 @@ Navigator::Navigator()
     padding_width_ = 100;
 
     // clean start
+    show_config_ = false;
     pannel_visible_ = false;
     view_pannel_visible = false;
     clearButtonSelection();
@@ -2082,6 +2088,8 @@ void Navigator::applyButtonSelection(int index)
 
     // set visible if button is active
     pannel_visible_ = status;
+
+    show_config_ = false;
 }
 
 void Navigator::clearButtonSelection()
@@ -2122,7 +2130,8 @@ void Navigator::hidePannel()
 {
     clearButtonSelection();
     pannel_visible_ = false;
-    view_pannel_visible = false;
+    view_pannel_visible = false;    
+    show_config_ = false;
 }
 
 void Navigator::Render()
@@ -2162,11 +2171,6 @@ void Navigator::Render()
                 applyButtonSelection(NAV_MENU);
             if (ImGui::IsItemHovered())
                 tooltip_ = "Main menu  HOME";
-
-//            if (ImGui::Selectable( ICON_FA_ELLIPSIS_V, &selected_button[NAV_SES], 0, iconsize))
-//                applyButtonSelection(NAV_SES);
-//            if (ImGui::IsItemHovered())
-//                tooltip_ = "Session      ";
 
             // the list of INITIALS for sources
             int index = 0;
@@ -2312,11 +2316,6 @@ void Navigator::Render()
         {
             RenderNewPannel();
         }
-        // pannel session
-        else if (selected_button[NAV_SES])
-        {
-            RenderSessionPannel();
-        }
         // pannel to configure a selected source
         else
         {
@@ -2377,7 +2376,7 @@ void Navigator::RenderSourcePannel(Source *s)
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
-        ImGui::SetCursorPosY(10);
+        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text("Source");
         ImGui::PopFont();
@@ -2491,13 +2490,14 @@ void Navigator::RenderNewPannel()
         // Edit menu
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Source");
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginMenu("Edit"))
-        {
-            UserInterface::manager().showMenuEdit();
-            ImGui::EndMenu();
-        }
+
+//        ImGui::SameLine();
+//        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
+//        if (ImGui::BeginMenu("Edit"))
+//        {
+//            UserInterface::manager().showMenuEdit();
+//            ImGui::EndMenu();
+//        }
 
         //
         // News Source selection pannel
@@ -2689,40 +2689,374 @@ void Navigator::RenderNewPannel()
     }
 }
 
-
-void Navigator::RenderSessionPannel()
+void Navigator::RenderMainPannelVimix()
 {
-    // Next window is a side pannel
-    ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
-    if (ImGui::Begin("##navigatorSession", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    // TITLE
+    ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::Text(APP_NAME);
+    ImGui::PopFont();
+
+    ImGui::SameLine();
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
+    if (ImGui::BeginMenu("File"))
     {
+        UserInterface::manager().showMenuFile();
+        ImGui::EndMenu();
+    }
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + ImGui::GetTextLineHeightWithSpacing()) );
+    if (ImGui::BeginMenu("Edit"))
+    {
+        UserInterface::manager().showMenuEdit();
+        ImGui::EndMenu();
+    }
+
+    // Session menu
+    ImGui::SetCursorPosY(width_);
+    ImGui::Text("Sessions");
+
+    static bool selection_session_mode_changed = true;
+    static int selection_session_mode = 0;
+
+    //
+    // Session quick selection pannel
+    //
+
+    // Show combo box of quick selection modes
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
+
+        // Option 0 : recent files
+        if (ImGui::Selectable( ICON_FA_HISTORY IMGUI_LABEL_RECENT_FILES) ) {
+             Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
+             selection_session_mode = 0;
+             selection_session_mode_changed = true;
+        }
+        // Options 1 : known folders
+        for(auto foldername = Settings::application.recentFolders.filenames.begin();
+            foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
+            std::string f = std::string(ICON_FA_FOLDER) + " " + SystemToolkit::trunc_filename( *foldername, 40);
+            if (ImGui::Selectable( f.c_str() )) {
+                // remember which path was selected
+                Settings::application.recentFolders.path.assign(*foldername);
+                // set mode
+                selection_session_mode = 1;
+                selection_session_mode_changed = true;
+            }
+        }
+        // Option 2 : add a folder
+        if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
+            if (recentFolderFileDialogs.empty()) {
+                recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.recentFolders.path) );
+                fileDialogPending_ = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    // return from thread for folder openning
+    if ( !recentFolderFileDialogs.empty() ) {
+        // check that file dialog thread finished
+        if (recentFolderFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::string foldername = recentFolderFileDialogs.back().get();
+            if (!foldername.empty()) {
+                Settings::application.recentFolders.push(foldername);
+                Settings::application.recentFolders.path.assign(foldername);
+                selection_session_mode = 1;
+                selection_session_mode_changed = true;
+            }
+            // done with this file dialog
+            recentFolderFileDialogs.pop_back();
+            fileDialogPending_ = false;
+
+        }
+    }
+
+    // icon to clear list
+    ImVec2 pos_top = ImGui::GetCursorPos();
+    ImGui::SameLine();
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+    bool reset = false;
+    if ( selection_session_mode == 1) {
+        const char *tooltip_[2] = {"Discard folder", "Discard folder"};
+        if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip_)) {
+            Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
+            if (Settings::application.recentFolders.filenames.empty()) {
+                Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
+                selection_session_mode = 0;
+            }
+            else
+                Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
+            // reload the list next time
+            selection_session_mode_changed = true;
+        }
+    }
+    else {
+        const char *tooltip__[2] = {"Clear history", "Clear history"};
+        if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip__)) {
+            Settings::application.recentSessions.filenames.clear();
+            Settings::application.recentSessions.front_is_valid = false;
+            // reload the list next time
+            selection_session_mode_changed = true;
+        }
+    }
+    ImGui::PopStyleVar();
+    ImGui::SetCursorPos(pos_top);
+
+    // fill the session list depending on the mode
+    static std::list<std::string> sessions_list;
+    // change session list if changed
+    if (selection_session_mode_changed || Settings::application.recentSessions.changed) {
+
+        // selection MODE 0 ; RECENT sessions
+        if ( selection_session_mode == 0) {
+            // show list of recent sessions
+            sessions_list = Settings::application.recentSessions.filenames;
+            Settings::application.recentSessions.changed = false;
+        }
+        // selection MODE 1 : LIST FOLDER
+        else if ( selection_session_mode == 1) {
+            // show list of vimix files in folder
+            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, "mix");
+        }
+        // indicate the list changed (do not change at every frame)
+        selection_session_mode_changed = false;
+    }
+
+    // display the sessions list and detect if one was selected (double clic)
+    bool session_selected = false;
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::ListBoxHeader("##Sessions", 6);
+    static std::string file_info = "";
+    static std::list<std::string>::iterator file_selected = sessions_list.end();
+    for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
+        std::string sessionfilename(*it);
+        if (sessionfilename.empty())
+            continue;
+        std::string shortname = SystemToolkit::filename(*it);
+        if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
+                Mixer::manager().open( sessionfilename );
+                session_selected = true;
+                file_info.clear();
+            }
+            else  {
+                file_info = SessionCreator::info(sessionfilename);
+                if (file_info.empty()) {
+                    // failed : remove from recent
+                    if ( selection_session_mode == 0) {
+                        Settings::application.recentSessions.filenames.remove(sessionfilename);
+                        selection_session_mode_changed = true;
+                    }
+                }
+                else
+                    file_selected = it;
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            if (file_selected != it) {
+                file_info.clear();
+                file_selected = sessions_list.end();
+            }
+            else if (!file_info.empty()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s", file_info.c_str());
+                ImGui::EndTooltip();
+            }
+        }
+    }
+    ImGui::ListBoxFooter();
+
+    // done the selection !
+    if (session_selected) {
+        // close pannel
+        file_info.clear();
+        hidePannel();
+        // reload the list next time
+        selection_session_mode_changed = true;
+    }
+
+    ImVec2 pos_bot = ImGui::GetCursorPos();
+
+    ImGui::SameLine();
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
+    ImGuiToolkit::HelpMarker("Quick access to Session files;\n\n"
+                             "Select the history of recently\n"
+                             "opened files or a folder, and\n"
+                             "double-clic a filename to open it.\n\n"
+                             ICON_FA_ARROW_CIRCLE_RIGHT " Enable smooth transition to\n"
+                             "perform smooth cross fading.");
+
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + 6 * ImGui::GetTextLineHeight()) );
+    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Smooth trantition");
+
+
+//    ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
+    ImGui::SetCursorPos(pos_bot);
+
+    //
+    // Notes
+    //
+    ImGui::Spacing();
+    ImGuiToolkit::Icon(15, 10);
+
+    static std::string notes;
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+
+    pos_bot = ImGui::GetCursorPos();
+    if (notes.empty()) {
+        ImGui::SetCursorPos( ImVec2(pos_bot.x + ImGui::GetStyle().ItemSpacing.x, pos_bot.y + ImGui::GetStyle().ItemSpacing.y) );
+        ImGui::Text("Session notes");
+        ImGui::SetCursorPos(pos_bot);
+    }
+    ImGuiToolkit::InputTextMultiline("##notes", &notes, ImVec2(IMGUI_RIGHT_ALIGN, ImGui::GetTextLineHeight() * 7));
+    ImGui::PopFont();
+
+    //
+    // Windows
+    //
+    ImGui::Spacing();
+//    ImGuiToolkit::Icon(3, 6);
+//    ImGui::SameLine(0, 10);
+    ImGui::Text("Windows");
+
+    ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
+    ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
+    bool fs = Rendering::manager().mainWindow().isFullscreen();
+    if (ImGuiToolkit::ButtonSwitch( ICON_FA_EXPAND "  Fullscreen", &fs, CTRL_MOD "Shift+F") )
+        Rendering::manager().mainWindow().toggleFullscreen();
+
+    //    std::string tooltip_ = "";
+    //    ImGuiToolkit::ButtonToggle(IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview);
+    //    if (ImGui::IsItemHovered())
+    //        tooltip_ = "Output    " CTRL_MOD "D";
+    //    ImGui::SameLine();
+    //    ImGuiToolkit::ButtonToggle(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player);
+    //    if (ImGui::IsItemHovered())
+    //        tooltip_ = "Player    " CTRL_MOD "P";
+    //    if (!tooltip_.empty()) {
+    //            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-6).c_str(), tooltip_.substr(tooltip_.size()-6, 6).c_str());
+    //    }
+
+
+}
+
+void Navigator::RenderMainPannelSettings()
+{
         // TITLE
-        ImGui::SetCursorPosY(10);
+        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("Session");
+        ImGui::Text("Settings");
         ImGui::PopFont();
 
-        // Edit menu
         ImGui::SetCursorPosY(width_);
-        ImGui::Text("History");
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginMenu("Action"))
-        {
-            if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
-                Action::manager().undo();
-            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
-                Action::manager().redo();
 
-            ImGui::EndMenu();
+        // options session
+
+//        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
+
+
+//        ImGuiToolkit::Icon(3, 2);
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("Appearance");
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
+        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
+        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
+        if (b || o || g)
+            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+
+        ImGui::Spacing();
+//        ImGuiToolkit::Icon(2, 2);
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("Options");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
+
+#ifndef NDEBUG
+        ImGui::Text("Windows");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
+#endif
+
+        ImGui::Spacing();
+#ifdef LINUX
+//        ImGuiToolkit::Icon(12, 6);
+#else
+//        ImGuiToolkit::Icon(6, 0);
+#endif
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("System");
+        static bool need_restart = false;
+        static bool vsync = (Settings::application.render.vsync > 0);
+        static bool blit = Settings::application.render.blit;
+        static bool multi = (Settings::application.render.multisampling > 0);
+        static bool gpu = Settings::application.render.gpu_decoding;
+        bool change = false;
+        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
+        change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
+        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+        change |= ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &gpu);
+
+        if (change) {
+            need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
+                 blit != Settings::application.render.blit ||
+                 multi != (Settings::application.render.multisampling > 0) ||
+                 gpu != Settings::application.render.gpu_decoding );
+        }
+        if (need_restart) {
+            ImGui::Spacing();
+            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
+                Settings::application.render.vsync = vsync ? 1 : 0;
+                Settings::application.render.blit = blit;
+                Settings::application.render.multisampling = multi ? 3 : 0;
+                Settings::application.render.gpu_decoding = gpu;
+                Rendering::manager().close();
+            }
         }
 
+        //            ImGui::Separator();
+        //            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
 
+//        ImGui::Text("Undo history");
+//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//        ImGui::ListBoxHeader("##UndoHistory", CLAMP(Action::manager().max(), 4, 8));
+//        for (uint i = Action::manager().max(); i > 0; i--) {
 
-        ImGui::End();
-    }
+//            std::string step_label_ = Action::manager().label(i);
+
+//            bool enable = i == Action::manager().current();
+//            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+
+//                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+
+//                    Action::manager().stepTo(i);
+//                }
+//            }
+//        }
+//        ImGui::ListBoxFooter();
+
+//        ImVec2 pos = ImGui::GetCursorPos();
+//        ImGui::SameLine();
+//        ImGuiToolkit::HelpMarker("Double clic on a timepoint to restore (undo/redo).");
+//        ImGui::SetCursorPos(pos);
+
+//        ImGui::Spacing();
+//        ImGui::Text("Notes");
+
+//        static std::string notes;
+//        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+//        ImGuiToolkit::InputTextMultiline("##notes", &notes, ImVec2(IMGUI_RIGHT_ALIGN, ImGui::GetTextLineHeight() * 7));
+//        ImGui::PopFont();
+
+//        ImGui::End();
+//    }
 }
 
 void Navigator::RenderTransitionPannel()
@@ -2739,7 +3073,7 @@ void Navigator::RenderTransitionPannel()
     if (ImGui::Begin("##navigatorTrans", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
-        ImGui::SetCursorPosY(10);
+        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text("Transition");
         ImGui::PopFont();
@@ -2798,257 +3132,20 @@ void Navigator::RenderMainPannel()
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
     if (ImGui::Begin("##navigatorMain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        // TITLE
-        ImGui::SetCursorPosY(10);
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text(APP_NAME);
-        ImGui::PopFont();
-
-        // Icon to switch fullscreen
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 40.f, 13.f));
-        const char *tooltip[2] = {"Enter Fullscreen (" CTRL_MOD "Shift+F)", "Exit Fullscreen (" CTRL_MOD "Shift+F)"};
-        bool fs = Rendering::manager().mainWindow().isFullscreen();
-        if ( ImGuiToolkit::IconToggle(4,15,3,15, &fs, tooltip ) ) {
-            Rendering::manager().mainWindow().toggleFullscreen();
-        }
-        // Session menu
-        ImGui::SetCursorPosY(width_);
-        ImGui::Text("Sessions");
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginMenu("File"))
-        {
-            UserInterface::manager().showMenuFile();
-            ImGui::EndMenu();
-        }
-
-        static bool selection_session_mode_changed = true;
-        static int selection_session_mode = 0;
-
         //
-        // Session quick selection pannel
+        // Panel content depends on show_config_
         //
-
-        // Show combo box of quick selection modes
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
-
-            // Option 0 : recent files
-            if (ImGui::Selectable( ICON_FA_HISTORY IMGUI_LABEL_RECENT_FILES) ) {
-                 Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
-                 selection_session_mode = 0;
-                 selection_session_mode_changed = true;
-            }
-            // Options 1 : known folders
-            for(auto foldername = Settings::application.recentFolders.filenames.begin();
-                foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
-                std::string f = std::string(ICON_FA_FOLDER) + " " + SystemToolkit::trunc_filename( *foldername, 40);
-                if (ImGui::Selectable( f.c_str() )) {
-                    // remember which path was selected
-                    Settings::application.recentFolders.path.assign(*foldername);
-                    // set mode
-                    selection_session_mode = 1;
-                    selection_session_mode_changed = true;
-                }
-            }
-            // Option 2 : add a folder
-            if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
-                if (recentFolderFileDialogs.empty()) {
-                    recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.recentFolders.path) );
-                    fileDialogPending_ = true;
-                }
-            }
-            ImGui::EndCombo();
-        }
-
-        // return from thread for folder openning
-        if ( !recentFolderFileDialogs.empty() ) {
-            // check that file dialog thread finished
-            if (recentFolderFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
-                // get the filename from this file dialog
-                std::string foldername = recentFolderFileDialogs.back().get();
-                if (!foldername.empty()) {
-                    Settings::application.recentFolders.push(foldername);
-                    Settings::application.recentFolders.path.assign(foldername);
-                    selection_session_mode = 1;
-                    selection_session_mode_changed = true;
-                }
-                // done with this file dialog
-                recentFolderFileDialogs.pop_back();
-                fileDialogPending_ = false;
-
-            }
-        }
-
-        // icon to clear list
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine();
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-        bool reset = false;
-        if ( selection_session_mode == 1) {
-            const char *tooltip_[2] = {"Discard folder", "Discard folder"};
-            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip_)) {
-                Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
-                if (Settings::application.recentFolders.filenames.empty()) {
-                    Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
-                    selection_session_mode = 0;
-                }
-                else
-                    Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
-                // reload the list next time
-                selection_session_mode_changed = true;
-            }
-        }
-        else {
-            const char *tooltip__[2] = {"Clear history", "Clear history"};
-            if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip__)) {
-                Settings::application.recentSessions.filenames.clear();
-                Settings::application.recentSessions.front_is_valid = false;
-                // reload the list next time
-                selection_session_mode_changed = true;
-            }
-        }
-        ImGui::PopStyleVar();
-        ImGui::SetCursorPos(pos);
-
-        // fill the session list depending on the mode
-        static std::list<std::string> sessions_list;
-        // change session list if changed
-        if (selection_session_mode_changed || Settings::application.recentSessions.changed) {
-
-            // selection MODE 0 ; RECENT sessions
-            if ( selection_session_mode == 0) {
-                // show list of recent sessions
-                sessions_list = Settings::application.recentSessions.filenames;
-                Settings::application.recentSessions.changed = false;
-            }
-            // selection MODE 1 : LIST FOLDER
-            else if ( selection_session_mode == 1) {
-                // show list of vimix files in folder
-                sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, "mix");
-            }
-            // indicate the list changed (do not change at every frame)
-            selection_session_mode_changed = false;
-        }
-
-        // display the sessions list and detect if one was selected (double clic)
-        bool session_selected = false;
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8));
-        static std::string file_info = "";
-        static std::list<std::string>::iterator file_selected = sessions_list.end();
-        for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
-            std::string sessionfilename(*it);
-            if (sessionfilename.empty())
-                continue;
-            std::string shortname = SystemToolkit::filename(*it);
-            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
-                    Mixer::manager().open( sessionfilename );
-                    session_selected = true;
-                    file_info.clear();
-                }
-                else  {
-                    file_info = SessionCreator::info(sessionfilename);
-                    if (file_info.empty()) {
-                        // failed : remove from recent
-                        if ( selection_session_mode == 0) {
-                            Settings::application.recentSessions.filenames.remove(sessionfilename);
-                            selection_session_mode_changed = true;
-                        }
-                    }
-                    else
-                        file_selected = it;
-                }
-            }
-            if (ImGui::IsItemHovered()) {
-                if (file_selected != it) {
-                    file_info.clear();
-                    file_selected = sessions_list.end();
-                }
-                else if (!file_info.empty()) {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("%s", file_info.c_str());
-                    ImGui::EndTooltip();
-                }
-            }
-        }
-        ImGui::ListBoxFooter();
-
-        pos = ImGui::GetCursorPos();
-        ImGui::SameLine();
-        ImGuiToolkit::HelpMarker("Quick access to Session files;\nSelect the history of recently\nopened files or a folder, and\ndouble-clic a filename to open.");
-        ImGui::SetCursorPos(pos);
-
-        // done the selection !
-        if (session_selected) {
-            // close pannel
-            file_info.clear();
-            hidePannel();
-            // reload the list next time
-            selection_session_mode_changed = true;
-        }
-
-        // options session
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::Text("Options");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
-
-
-        // Continue Main pannel
-        // WINDOWS
-        ImGui::Spacing();
-        ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
-#ifndef NDEBUG
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
-#endif
-        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
-
-        // Settings & application appearance
-        static bool show_config = false;
-
-        ImGui::Spacing();
-        if (show_config)
-        {
-            ImGui::Text("System");
-            bool vsync = (Settings::application.render.vsync > 0);
-            ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-            Settings::application.render.vsync = vsync ? 1 : 0;
-            ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &Settings::application.render.blit);
-            bool multi = (Settings::application.render.multisampling > 0);
-            ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-            Settings::application.render.multisampling = multi ? 3 : 0;
-            ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &Settings::application.render.gpu_decoding);
-            ImGui::Spacing();
-            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0)))
-                Rendering::manager().close();
-        }
-        else {
-            ImGui::Text("Appearance");
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
-                ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-            bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
-            bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
-            bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
-            if (b || o || g)
-                ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-
-        }
+        if (show_config_)
+            RenderMainPannelSettings();
+        else
+            RenderMainPannelVimix();
 
         // Bottom aligned Logo (if enougth room)
         static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
         static float height_about = 1.6f * ImGui::GetTextLineHeightWithSpacing();
         bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
         if ( show_icon ) {
-            ImGui::SetCursorPos(ImVec2(pannel_width_ / 2.f - 64.f, height_ -height_about - 128.f));
+            ImGui::SetCursorPos(ImVec2((pannel_width_ -1.5f * ImGui::GetTextLineHeightWithSpacing()) / 2.f - 64.f, height_ -height_about - 128.f));
             ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
         }
         else {
@@ -3056,10 +3153,11 @@ void Navigator::RenderMainPannel()
         }
 
         // About & System config toggle
-        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0)) )
+        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, 0)) )
             UserInterface::manager().show_vimix_about = true;
-        ImGui::SameLine();
-        ImGuiToolkit::IconToggle(13,5,12,5,&show_config);
+        ImGui::SameLine(0,  ImGui::GetTextLineHeightWithSpacing());
+        ImGuiToolkit::IconToggle(13,5,12,5,&show_config_);
+
 
     }
     ImGui::End();

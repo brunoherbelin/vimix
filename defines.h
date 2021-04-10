@@ -69,6 +69,7 @@
 #define IMGUI_TITLE_DELETE ICON_FA_BROOM " Delete?"
 #define IMGUI_LABEL_RECENT_FILES " Select recent"
 #define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()
+#define IMGUI_TOP_ALIGN 10
 #define IMGUI_COLOR_OVERLAY IM_COL32(5, 5, 5, 150)
 #define IMGUI_COLOR_RECORD 1.0, 0.05, 0.05
 #define IMGUI_COLOR_STREAM 0.05, 0.8, 1.0

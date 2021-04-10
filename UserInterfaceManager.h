@@ -5,8 +5,7 @@
 #include <list>
 
 #define NAV_COUNT 68
-#define NAV_MAX 63
-#define NAV_SES 64
+#define NAV_MAX 64
 #define NAV_NEW 65
 #define NAV_MENU 66
 #define NAV_TRANS 67
@@ -40,6 +39,7 @@ class Navigator
     float padding_width_;
 
     // behavior pannel
+    bool show_config_;
     bool pannel_visible_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
@@ -50,9 +50,10 @@ class Navigator
     // side pannels
     void RenderSourcePannel(Source *s);
     void RenderMainPannel();
+    void RenderMainPannelVimix();
+    void RenderMainPannelSettings();
     void RenderTransitionPannel();
     void RenderNewPannel();
-    void RenderSessionPannel();
     void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
 
     SourcePreview new_source_preview_;

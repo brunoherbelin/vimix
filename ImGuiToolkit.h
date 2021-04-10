@@ -24,7 +24,7 @@ namespace ImGuiToolkit
 
     // utility buttons
     bool ButtonToggle  (const char* label, bool* toggle);
-    void ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
+    bool ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
     void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
     void ToolTip    (const char* desc, const char* shortcut = nullptr);
@@ -62,6 +62,7 @@ namespace ImGuiToolkit
     void SetAccentColor (accent_color color);
     struct ImVec4 HighlightColor (bool active = true);
 
+    bool  InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int linesize = 0);
 }
 
 #endif // __IMGUI_TOOLKIT_H_
