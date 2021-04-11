@@ -151,15 +151,15 @@ public:
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
-    void StartScreenshot();
     void showPannel(int id = 0);
-
     void showSourceEditor(Source *s);
     void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;
     void fillShaderEditor(const std::string &text);
+
+    void StartScreenshot();
 
 protected:
 
@@ -173,10 +173,12 @@ protected:
     void RenderHistory();
     void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);
+    void RenderAbout(bool* p_open);
+    void RenderNotes();
+
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();
-    void RenderAbout(bool* p_open);
 };
 
 #endif /* #define __UI_MANAGER_H_ */

@@ -9,6 +9,18 @@
 class FrameGrabber;
 class MixingGroup;
 
+struct SessionNote
+{
+    std::string label;
+    std::string text;
+    bool large;
+    int stick;
+    glm::vec2 pos;
+    glm::vec2 size;
+
+    SessionNote(const std::string &t = "", bool l = false, int s = 0);
+};
+
 class Session
 {
 public:
@@ -76,6 +88,12 @@ public:
     void setFilename (const std::string &filename) { filename_ = filename; }
     std::string filename () const { return filename_; }
 
+    // get the list of notes
+    void addNote(SessionNote note = SessionNote());
+    std::list<SessionNote>::iterator beginNotes ();
+    std::list<SessionNote>::iterator endNotes ();
+    std::list<SessionNote>::iterator deleteNote (std::list<SessionNote>::iterator n);
+
     // get the list of sources in mixing groups
     std::list<SourceList> getMixingGroups () const;
     // returns true if something can be done to create a mixing group
@@ -101,7 +119,7 @@ protected:
     Source *failedSource_;
     SourceList sources_;
     void validate(SourceList &sources);
-
+    std::list<SessionNote> notes_;
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     bool active_;

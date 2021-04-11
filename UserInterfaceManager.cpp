@@ -32,8 +32,6 @@ using namespace std;
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#include "UserInterfaceManager.h"
-
 #include "defines.h"
 #include "Log.h"
 #include "SystemToolkit.h"
@@ -68,10 +66,16 @@ using namespace std;
 #include "TextEditor.h"
 static TextEditor editor;
 
+#include "UserInterfaceManager.h"
+#define PLOT_ARRAY_SIZE 180
+#define LABEL_AUTO_MEDIA_PLAYER "Active source"
+
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowSandbox(bool* p_open);
+void SetMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor());
+void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 80.f);
 
 // static objects for multithreaded file dialog
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
@@ -375,30 +379,6 @@ void UserInterface::handleKeyboard()
 
 }
 
-
-void setMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor())
-{
-    // Hack if GLFW does not have all cursors, ask IMGUI to redraw cursor
-#if GLFW_HAS_NEW_CURSORS == 0
-    ImGui::GetIO().MouseDrawCursor = (c.type > 0); // only redraw non-arrow cursor
-#endif
-    ImGui::SetMouseCursor(c.type);
-
-    if ( !c.info.empty()) {
-        float d = 0.5f * ImGui::GetFrameHeight() ;
-        ImVec2 window_pos = ImVec2( mousepos.x - d, mousepos.y - d );
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
-        if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-        {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-            ImGui::Text("   %s", c.info.c_str());
-            ImGui::PopFont();
-            ImGui::End();
-        }
-    }
-}
-
 void UserInterface::handleMouse()
 {
 
@@ -427,7 +407,7 @@ void UserInterface::handleMouse()
     {
         View::Cursor c = Mixer::manager().view()->over(mousepos);
         if (c.type > 0)
-            setMouseCursor(io.MousePos, c);
+            SetMouseCursor(io.MousePos, c);
     }
 
     // if not on any window
@@ -449,7 +429,7 @@ void UserInterface::handleMouse()
         {
             // right mouse drag => drag current view
             View::Cursor c = Mixer::manager().view()->drag( mouseclic[ImGuiMouseButton_Right], mousepos);
-            setMouseCursor(io.MousePos, c);
+            SetMouseCursor(io.MousePos, c);
         }
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right))
         {
@@ -581,13 +561,13 @@ void UserInterface::handleMouse()
                         }
                         // grab current sources
                         View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
-                        setMouseCursor(io.MousePos, c);
+                        SetMouseCursor(io.MousePos, c);
                     }
                     // action on other (non-source) elements in the view
                     else
                     {
                         View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
-                        setMouseCursor(io.MousePos, c);
+                        SetMouseCursor(io.MousePos, c);
                     }
                 }
                 // Selection area
@@ -619,14 +599,13 @@ void UserInterface::handleMouse()
         mousedown = false;
         picked = { nullptr, glm::vec2(0.f) };
         Mixer::manager().view()->terminate();
-        setMouseCursor(io.MousePos);
+        SetMouseCursor(io.MousePos);
 
         // special case of one single source in selection : make current after release
         if (Mixer::selection().size() == 1)
             Mixer::manager().setCurrentSource( Mixer::selection().front() );
     }
 }
-
 
 void UserInterface::selectSaveFilename()
 {
@@ -740,7 +719,8 @@ void UserInterface::Render()
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
         if (Settings::application.widget.logs)
-            Log::ShowLogWindow(&Settings::application.widget.logs);
+            Log::ShowLogWindow(&Settings::application.widget.logs);        
+        RenderNotes();
 
         // dialogs
         if (show_view_navigator > 0)
@@ -868,14 +848,6 @@ void UserInterface::showMenuFile()
 
 }
 
-
-ToolBox::ToolBox()
-{
-    show_demo_window = false;
-    show_icons_window = false;
-    show_sandbox = false;
-}
-
 void UserInterface::StartScreenshot()
 {
     screenshot_step = 1;
@@ -913,143 +885,6 @@ void UserInterface::handleScreenshot()
         }
 
     }
-}
-
-#define PLOT_ARRAY_SIZE 180
-
-void ToolBox::Render()
-{
-    static bool record_ = false;
-    static std::ofstream csv_file_;
-
-    // first run
-    ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar) )
-    {
-        ImGui::End();
-        return;
-    }
-
-    // Menu Bar
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("Render"))
-        {
-            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", "F12") )
-                UserInterface::manager().StartScreenshot();
-
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Gui"))
-        {
-            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
-            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
-            ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
-
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Stats"))
-        {
-            if (ImGui::MenuItem("Record", nullptr, &record_) )
-            {
-                if ( record_ )
-                    csv_file_.open( SystemToolkit::home_path() + std::to_string(GlmToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
-                else
-                    csv_file_.close();
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-    //
-    // display histogram of update time and plot framerate
-    //
-    // keep array of 180 values, i.e. approx 3 seconds of recording
-    static float recorded_values[3][PLOT_ARRAY_SIZE] = {{}};
-    static float recorded_sum[3] = { 0.f, 0.f, 0.f };
-    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {0.f, 50.f}, {0.f, 50.f} };
-    static float refresh_rate = -1.f;
-    static int   values_index = 0;
-    float megabyte = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1048576.0 );
-
-    // init
-    if (refresh_rate < 0.f) {
-
-        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
-        refresh_rate = float(mode->refreshRate);
-        if (Settings::application.render.vsync > 0)
-            refresh_rate /= Settings::application.render.vsync;
-        else
-            refresh_rate = 0.f;
-        recorded_bounds[0][0] = refresh_rate - 15.f; // min fps
-        recorded_bounds[0][1] = refresh_rate + 10.f;  // max
-
-        for(int i = 0; i<PLOT_ARRAY_SIZE; ++i) {
-            recorded_values[0][i] = refresh_rate;
-            recorded_sum[0] += recorded_values[0][i];
-            recorded_values[1][i] = 1.f / refresh_rate;
-            recorded_sum[1] += recorded_values[1][i];
-            recorded_values[2][i] = megabyte;
-            recorded_sum[2] += recorded_values[2][i];
-        }
-    }
-
-    // compute average step 1: remove previous value from the sum
-    recorded_sum[0] -= recorded_values[0][values_index];
-    recorded_sum[1] -= recorded_values[1][values_index];
-    recorded_sum[2] -= recorded_values[2][values_index];
-
-    // store values
-    recorded_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
-    recorded_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
-    recorded_values[2][values_index] = megabyte;
-
-    // compute average step 2: add current value to the sum
-    recorded_sum[0] += recorded_values[0][values_index];
-    recorded_sum[1] += recorded_values[1][values_index];
-    recorded_sum[2] += recorded_values[2][values_index];
-
-    // move inside array
-    values_index = (values_index+1) % PLOT_ARRAY_SIZE;
-
-    // non-vsync fixed FPS : have to calculate plot dimensions based on past values
-    if (refresh_rate < 1.f) {
-        recorded_bounds[0][0] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) - 15.f;
-        recorded_bounds[0][1] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) + 10.f;
-    }
-
-    recorded_bounds[2][0] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) - 400.f;
-    recorded_bounds[2][1] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) + 300.f;
-
-    // plot values, with title overlay to display the average
-    ImVec2 plot_size = ImGui::GetContentRegionAvail();
-    plot_size.y *= 0.32;
-    char overlay[128];
-    sprintf(overlay, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
-    ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
-    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
-    ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    sprintf(overlay, "Memory %.1f MB", recorded_sum[2] / float(PLOT_ARRAY_SIZE));
-    ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
-
-    ImGui::End();
-
-    // save to file
-    if ( record_ && csv_file_.is_open()) {
-            csv_file_ << megabyte << ", " << ImGui::GetIO().Framerate << std::endl;
-    }
-
-    // About and other utility windows
-    if (show_icons_window)
-        ImGuiToolkit::ShowIconsWindow(&show_icons_window);
-    if (show_sandbox)
-        ShowSandbox(&show_sandbox);
-    if (show_demo_window)
-        ImGui::ShowDemoWindow(&show_demo_window);
-
 }
 
 void UserInterface::RenderHistory()
@@ -1119,32 +954,6 @@ void UserInterface::RenderHistory()
     ImGui::End();
 }
 
-void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 80.f)
-{
-    bool need_update = false;
-    ImVec2 pos_target = pos;
-    const ImGuiIO& io = ImGui::GetIO();
-
-    if ( pos_target.y > io.DisplaySize.y - margin  ){
-        pos_target.y -= margin;
-        need_update = true;
-    }
-    if ( pos_target.y + size.y < margin ){
-        pos_target.y += margin;
-        need_update = true;
-    }
-    if ( pos_target.x > io.DisplaySize.x - margin){
-        pos_target.x -= margin;
-        need_update = true;
-    }
-    if ( pos_target.x + size.x <margin ){
-        pos_target.x += margin;
-        need_update = true;
-    }
-    if (need_update)
-        ImGui::SetNextWindowPos(pos_target, ImGuiCond_Appearing);
-}
-
 void UserInterface::RenderPreview()
 {
 #if defined(LINUX)
@@ -1174,7 +983,9 @@ void UserInterface::RenderPreview()
         float ar = output->aspectRatio();
         ImGui::SetNextWindowSizeConstraints(ImVec2(300, 200), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &ar);
 
-        if ( !ImGui::Begin("Preview", &Settings::application.widget.preview,  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
+        if ( !ImGui::Begin("Preview", &Settings::application.widget.preview,
+                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar |
+                           ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
         {
             ImGui::End();
             return;
@@ -1436,7 +1247,6 @@ void UserInterface::RenderPreview()
 #endif
 }
 
-
 int UserInterface::RenderViewNavigator(int *shift)
 {
     // calculate potential target view index :
@@ -1527,7 +1337,6 @@ int UserInterface::RenderViewNavigator(int *shift)
     return target_index;
 }
 
-
 void UserInterface::showSourceEditor(Source *s)
 {
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
@@ -1554,8 +1363,541 @@ void UserInterface::showMediaPlayer(MediaPlayer *mp)
     mediacontrol.setMediaPlayer(mp);
 }
 
-#define LABEL_AUTO_MEDIA_PLAYER "Active source"
+void UserInterface::fillShaderEditor(const std::string &text)
+{
+    static bool initialized = false;
+    if (!initialized) {
+        auto lang = TextEditor::LanguageDefinition::GLSL();
 
+        static const char* const keywords[] = {
+            "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
+            "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
+            "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
+            "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
+            "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
+        };
+        for (auto& k : keywords)
+            lang.mKeywords.insert(k);
+
+        static const char* const identifiers[] = {
+            "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
+            "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
+            "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
+            "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
+            "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
+            "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
+            "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
+            "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
+        };
+        for (auto& k : identifiers)
+        {
+            TextEditor::Identifier id;
+            id.mDeclaration = "Added function";
+            lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+        }
+        // init editor
+        editor.SetLanguageDefinition(lang);
+        initialized = true;
+    }
+
+    // remember text
+    currentTextEdit = text;
+    // fill editor
+    editor.SetText(currentTextEdit);
+}
+
+void UserInterface::RenderShaderEditor()
+{
+    static bool show_statusbar = true;
+
+    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Edit"))
+        {
+            bool ro = editor.IsReadOnly();
+            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+                editor.SetReadOnly(ro);
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
+                editor.Undo();
+            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
+                editor.Redo();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
+                editor.Copy();
+            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
+                editor.Cut();
+            if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
+                editor.Delete();
+            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                editor.Paste();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
+                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            bool ws = editor.IsShowingWhitespaces();
+            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
+                editor.SetShowWhitespaces(ws);
+            ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    if (show_statusbar) {
+        auto cpos = editor.GetCursorPosition();
+        ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+            editor.IsOverwrite() ? "Ovr" : "Ins",
+            editor.CanUndo() ? "*" : " ",
+            editor.GetLanguageDefinition().mName.c_str());
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    editor.Render("ShaderEditor");
+    ImGui::PopFont();
+
+    ImGui::End();
+
+}
+
+void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
+{
+    static guint64 start_time_1_ = gst_util_get_timestamp ();
+    static guint64 start_time_2_ = gst_util_get_timestamp ();
+
+    if (!p_corner || !p_open)
+        return;
+
+    const float DISTANCE = 10.0f;
+    int corner = *p_corner;
+    ImGuiIO& io = ImGui::GetIO();
+    if (corner != -1)
+    {
+        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
+        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    }
+
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+
+    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        ImGui::SetNextItemWidth(200);
+        ImGui::Combo("##mode", p_mode,
+                     ICON_FA_TACHOMETER_ALT "  Performance\0"
+                     ICON_FA_HOURGLASS_HALF "  Timers\0"
+                     ICON_FA_VECTOR_SQUARE  "  Source\0");
+
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(5,8))
+            ImGui::OpenPopup("metrics_menu");
+        ImGui::Spacing();
+
+        if (*p_mode > 1) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            Source *s = Mixer::manager().currentSource();
+            if (s) {
+                float rightalign = -2.5f * ImGui::GetTextLineHeightWithSpacing();
+                std::ostringstream info;
+                info << s->name() << ": ";
+
+                float v = s->alpha();
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
+                    s->setAlpha(v);
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    Action::manager().store(info.str());
+                }
+
+                Group *n = s->group(View::GEOMETRY);
+                float translation[2] = { n->translation_.x, n->translation_.y};
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat2("Pos", translation, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )  {
+                    n->translation_.x = translation[0];
+                    n->translation_.y = translation[1];
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                float scale[2] = { n->scale_.x, n->scale_.y} ;
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::DragFloat2("Scale", scale, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )
+                {
+                    n->scale_.x = CLAMP_SCALE(scale[0]);
+                    n->scale_.y = CLAMP_SCALE(scale[1]);
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SetNextItemWidth(rightalign);
+                if ( ImGui::SliderAngle("Angle", &(n->rotation_.z), -180.f, 180.f) )
+                    s->touch();
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+            }
+            else
+                ImGui::Text("No source selected");
+            ImGui::PopFont();
+        }
+        else if (*p_mode > 0) {
+            guint64 time_ = gst_util_get_timestamp ();
+
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconButton(12, 14))
+                start_time_1_ = time_; // reset timer 1
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
+            ImGui::PopFont();
+            ImGui::SameLine(0, 10);
+            if (ImGuiToolkit::IconButton(12, 14))
+                start_time_2_ = time_; // reset timer 2
+
+        }
+        else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
+            //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
+            ImGui::Text("Refresh %.1f FPS", io.Framerate);
+            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
+            ImGui::PopFont();
+
+        }
+
+        if (ImGui::BeginPopup("metrics_menu"))
+        {
+            if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
+            if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
+            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
+            if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close")) *p_open = false;
+            ImGui::EndPopup();
+        }
+        ImGui::End();
+    }
+}
+
+void UserInterface::RenderAbout(bool* p_open)
+{
+    ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("About " APP_NAME APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+#ifdef VIMIX_VERSION_MAJOR
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("%s %d.%d.%d", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
+    ImGui::PopFont();
+#else
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("%s", APP_NAME);
+    ImGui::PopFont();
+#endif
+
+    ImGui::Separator();
+    ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
+    ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2021 Bruno Herbelin.");
+
+    ImGui::Spacing();
+    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+
+    ImGui::Spacing();
+    ImGui::Text("\nvimix is built using the following libraries:");
+
+//    tinyfd_inputBox("tinyfd_query", NULL, NULL);
+//    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
+
+    ImGui::Columns(3, "abouts");
+    ImGui::Separator();
+
+    ImGui::Text("- Dear ImGui");
+    ImGui::PushID("dearimguiabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_imgui_about = true;
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::Text("- GStreamer");
+    ImGui::PushID("gstreamerabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_gst_about = true;
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::Text("- OpenGL");
+    ImGui::PushID("openglabout");
+    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_opengl_about = true;
+    ImGui::PopID();
+
+    ImGui::Columns(1);
+
+
+    ImGui::End();
+}
+
+void UserInterface::showPannel(int id)
+{
+    if (id == NAV_MENU)
+        navigator.togglePannelMenu();
+    else if (id == NAV_NEW)
+        navigator.togglePannelNew();
+    else
+        navigator.showPannelSource(id);
+}
+
+void UserInterface::RenderNotes()
+{
+    Session *se = Mixer::manager().session();
+    if (se!=nullptr) {
+
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ResizeGripHovered];
+    //    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
+        color.w = 0.35f;
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, color);
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, color);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, color);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, color);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4());
+
+        for (auto note = se->beginNotes(); note != se->endNotes(); ) {
+            // detect close clic
+            bool close = false;
+
+            if ( (*note).stick < 1 || (*note).stick == Settings::application.current_view)
+            {
+                // window
+                ImGui::SetNextWindowPos(ImVec2( (*note).pos.x, (*note).pos.y ), ImGuiCond_Once);
+                ImGui::SetNextWindowSize(ImVec2((*note).size.x, (*note).size.y), ImGuiCond_Once);
+                ImGui::SetNextWindowBgAlpha(color.w); // Transparent background
+
+                // draw
+                if (ImGui::Begin((*note).label.c_str(), NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing |
+                                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings))
+                {
+                    ImVec2 size = ImGui::GetContentRegionAvail();
+                    ImVec2 pos = ImGui::GetCursorPos();
+                    // close & delete
+                    if (ImGuiToolkit::IconButton(4,16)) close = true;
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Delete");
+
+                    if (ImGui::IsWindowFocused()) {
+                        // font size
+                        pos.x = size.x - 2.f * ImGui::GetTextLineHeightWithSpacing();
+                        ImGui::SetCursorPos( pos );
+                        if (ImGuiToolkit::IconButton(1, 13) )
+                            (*note).large = !(*note).large ;
+                        // stick to views icon
+                        pos.x = size.x - ImGui::GetTextLineHeightWithSpacing() + 8.f;
+                        ImGui::SetCursorPos( pos );
+                        bool s = (*note).stick > 0;
+                        if (ImGuiToolkit::IconToggle(5, 2, 4, 2, &s) )
+                            (*note).stick = s ? Settings::application.current_view : 0;
+                    }
+
+                    // Text area
+                    size.y -= ImGui::GetTextLineHeightWithSpacing() + 2.f;
+                    ImGuiToolkit::PushFont( (*note).large ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO );
+                    ImGuiToolkit::InputTextMultiline("##notes", &(*note).text, size);
+                    ImGui::PopFont();
+
+                    // TODO smart detect when window moves
+                    ImVec2 p = ImGui::GetWindowPos();
+                    (*note).pos = glm::vec2( p.x, p.y);
+                    p = ImGui::GetWindowSize();
+                    (*note).size = glm::vec2( p.x, p.y);
+
+                    ImGui::End();
+                }
+            }
+            // loop
+            if (close)
+                note = se->deleteNote(note);
+            else
+                ++note;
+        }
+
+
+        ImGui::PopStyleColor(5);
+    }
+
+}
+
+///
+/// TOOLBOX
+///
+ToolBox::ToolBox()
+{
+    show_demo_window = false;
+    show_icons_window = false;
+    show_sandbox = false;
+}
+
+void ToolBox::Render()
+{
+    static bool record_ = false;
+    static std::ofstream csv_file_;
+
+    // first run
+    ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
+    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar) )
+    {
+        ImGui::End();
+        return;
+    }
+
+    // Menu Bar
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Render"))
+        {
+            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", "F12") )
+                UserInterface::manager().StartScreenshot();
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Gui"))
+        {
+            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
+            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Stats"))
+        {
+            if (ImGui::MenuItem("Record", nullptr, &record_) )
+            {
+                if ( record_ )
+                    csv_file_.open( SystemToolkit::home_path() + std::to_string(GlmToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
+                else
+                    csv_file_.close();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    //
+    // display histogram of update time and plot framerate
+    //
+    // keep array of 180 values, i.e. approx 3 seconds of recording
+    static float recorded_values[3][PLOT_ARRAY_SIZE] = {{}};
+    static float recorded_sum[3] = { 0.f, 0.f, 0.f };
+    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {0.f, 50.f}, {0.f, 50.f} };
+    static float refresh_rate = -1.f;
+    static int   values_index = 0;
+    float megabyte = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1048576.0 );
+
+    // init
+    if (refresh_rate < 0.f) {
+
+        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
+        refresh_rate = float(mode->refreshRate);
+        if (Settings::application.render.vsync > 0)
+            refresh_rate /= Settings::application.render.vsync;
+        else
+            refresh_rate = 0.f;
+        recorded_bounds[0][0] = refresh_rate - 15.f; // min fps
+        recorded_bounds[0][1] = refresh_rate + 10.f;  // max
+
+        for(int i = 0; i<PLOT_ARRAY_SIZE; ++i) {
+            recorded_values[0][i] = refresh_rate;
+            recorded_sum[0] += recorded_values[0][i];
+            recorded_values[1][i] = 1.f / refresh_rate;
+            recorded_sum[1] += recorded_values[1][i];
+            recorded_values[2][i] = megabyte;
+            recorded_sum[2] += recorded_values[2][i];
+        }
+    }
+
+    // compute average step 1: remove previous value from the sum
+    recorded_sum[0] -= recorded_values[0][values_index];
+    recorded_sum[1] -= recorded_values[1][values_index];
+    recorded_sum[2] -= recorded_values[2][values_index];
+
+    // store values
+    recorded_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
+    recorded_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
+    recorded_values[2][values_index] = megabyte;
+
+    // compute average step 2: add current value to the sum
+    recorded_sum[0] += recorded_values[0][values_index];
+    recorded_sum[1] += recorded_values[1][values_index];
+    recorded_sum[2] += recorded_values[2][values_index];
+
+    // move inside array
+    values_index = (values_index+1) % PLOT_ARRAY_SIZE;
+
+    // non-vsync fixed FPS : have to calculate plot dimensions based on past values
+    if (refresh_rate < 1.f) {
+        recorded_bounds[0][0] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) - 15.f;
+        recorded_bounds[0][1] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) + 10.f;
+    }
+
+    recorded_bounds[2][0] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) - 400.f;
+    recorded_bounds[2][1] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) + 300.f;
+
+    // plot values, with title overlay to display the average
+    ImVec2 plot_size = ImGui::GetContentRegionAvail();
+    plot_size.y *= 0.32;
+    char overlay[128];
+    sprintf(overlay, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
+    ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
+    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
+    ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
+    sprintf(overlay, "Memory %.1f MB", recorded_sum[2] / float(PLOT_ARRAY_SIZE));
+    ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
+
+    ImGui::End();
+
+    // save to file
+    if ( record_ && csv_file_.is_open()) {
+            csv_file_ << megabyte << ", " << ImGui::GetIO().Framerate << std::endl;
+    }
+
+    // About and other utility windows
+    if (show_icons_window)
+        ImGuiToolkit::ShowIconsWindow(&show_icons_window);
+    if (show_sandbox)
+        ShowSandbox(&show_sandbox);
+    if (show_demo_window)
+        ImGui::ShowDemoWindow(&show_demo_window);
+
+}
+
+///
+/// MEDIA CONTROLLER
+///
 MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER),
     follow_active_source_(true), media_playing_mode_(false), slider_pressed_(false)
 {
@@ -1597,7 +1939,6 @@ void MediaController::followCurrentSource()
         media_playing_mode_ = false;
     }
 }
-
 
 void MediaController::Render()
 {
@@ -1944,126 +2285,9 @@ void MediaController::Render()
     ImGui::End();
 }
 
-void UserInterface::fillShaderEditor(const std::string &text)
-{
-    static bool initialized = false;
-    if (!initialized) {
-        auto lang = TextEditor::LanguageDefinition::GLSL();
-
-        static const char* const keywords[] = {
-            "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
-            "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
-            "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
-            "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
-            "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
-        };
-        for (auto& k : keywords)
-            lang.mKeywords.insert(k);
-
-        static const char* const identifiers[] = {
-            "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
-            "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
-            "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
-            "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
-            "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
-            "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
-            "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
-            "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
-        };
-        for (auto& k : identifiers)
-        {
-            TextEditor::Identifier id;
-            id.mDeclaration = "Added function";
-            lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
-        }
-        // init editor
-        editor.SetLanguageDefinition(lang);
-        initialized = true;
-    }
-
-    // remember text
-    currentTextEdit = text;
-    // fill editor
-    editor.SetText(currentTextEdit);
-}
-
-void UserInterface::RenderShaderEditor()
-{
-    static bool show_statusbar = true;
-
-    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
-    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("Edit"))
-        {
-            bool ro = editor.IsReadOnly();
-            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                editor.SetReadOnly(ro);
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
-                editor.Undo();
-            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
-                editor.Redo();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
-                editor.Copy();
-            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
-                editor.Cut();
-            if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
-                editor.Delete();
-            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                editor.Paste();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
-                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("View"))
-        {
-            bool ws = editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
-                editor.SetShowWhitespaces(ws);
-            ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-    if (show_statusbar) {
-        auto cpos = editor.GetCursorPosition();
-        ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-            editor.IsOverwrite() ? "Ovr" : "Ins",
-            editor.CanUndo() ? "*" : " ",
-            editor.GetLanguageDefinition().mName.c_str());
-    }
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-    editor.Render("ShaderEditor");
-    ImGui::PopFont();
-
-    ImGui::End();
-
-}
-
-
-void UserInterface::showPannel(int id)
-{
-    if (id == NAV_MENU)
-        navigator.togglePannelMenu();
-    else if (id == NAV_NEW)
-        navigator.togglePannelNew();
-    else
-        navigator.showPannelSource(id);
-}
-
+///
+/// NAVIGATOR
+///
 Navigator::Navigator()
 {
     // default geometry
@@ -2328,7 +2552,6 @@ void Navigator::Render()
 
 }
 
-
 void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
 {
     ImGui::SetNextWindowPos( draw_pos, ImGuiCond_Always );
@@ -2404,73 +2627,6 @@ void Navigator::RenderSourcePannel(Source *s)
             Mixer::manager().deleteSource(s);
     }
     ImGui::End();
-}
-
-
-SourcePreview::SourcePreview() : source_(nullptr), label_("")
-{
-
-}
-
-void SourcePreview::setSource(Source *s, const string &label)
-{
-    if(source_)
-        delete source_;
-
-    source_ = s;
-    label_ = label;
-}
-
-Source * SourcePreview::getSource()
-{
-    Source *s = source_;
-    source_ = nullptr;
-    return s;
-}
-
-void SourcePreview::Render(float width, bool controlbutton)
-{
-    if(source_) {
-        // cancel if failed
-        if (source_->failed()) {
-            // remove from list of recent import files if relevant
-            MediaSource *failedFile = dynamic_cast<MediaSource *>(source_);
-            if (failedFile != nullptr) {
-                Settings::application.recentImport.remove( failedFile->path() );
-            }
-            setSource();
-        }
-        else
-        {
-            bool active = source_->active();
-            // update source
-            source_->update( Mixer::manager().dt());
-            // render framebuffer
-            source_->render();
-
-            // draw preview
-            FrameBuffer *frame = source_->frame();
-            ImVec2 preview_size(width, width / frame->aspectRatio());
-            ImGui::Image((void*)(uintptr_t) frame->texture(), preview_size);
-
-            if (controlbutton && source_->ready()) {
-                ImVec2 pos = ImGui::GetCursorPos();
-                ImGui::SameLine();
-                if (ImGuiToolkit::IconToggle(12,7,1,8, &active))
-                    source_->setActive(active);
-                ImGui::SetCursorPos(pos);
-            }
-            ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
-            ImGui::SameLine(0, 10);
-            ImGui::Text("%s ", label_.c_str());
-            ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
-        }
-    }
-}
-
-bool SourcePreview::ready() const
-{
-    return source_ != nullptr && source_->ready();
 }
 
 void Navigator::RenderNewPannel()
@@ -2697,6 +2853,7 @@ void Navigator::RenderMainPannelVimix()
     ImGui::Text(APP_NAME);
     ImGui::PopFont();
 
+    // MENU
     ImGui::SameLine();
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
     if (ImGui::BeginMenu("File"))
@@ -2711,7 +2868,7 @@ void Navigator::RenderMainPannelVimix()
         ImGui::EndMenu();
     }
 
-    // Session menu
+    // Session panel
     ImGui::SetCursorPosY(width_);
     ImGui::Text("Sessions");
 
@@ -2719,7 +2876,7 @@ void Navigator::RenderMainPannelVimix()
     static int selection_session_mode = 0;
 
     //
-    // Session quick selection pannel
+    // Session quick selection & fading
     //
 
     // Show combo box of quick selection modes
@@ -2877,8 +3034,8 @@ void Navigator::RenderMainPannelVimix()
         selection_session_mode_changed = true;
     }
 
+    // Right side of the list: helper and options
     ImVec2 pos_bot = ImGui::GetCursorPos();
-
     ImGui::SameLine();
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
     ImGuiToolkit::HelpMarker("Quick access to Session files;\n\n"
@@ -2887,142 +3044,58 @@ void Navigator::RenderMainPannelVimix()
                              "double-clic a filename to open it.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT " Enable smooth transition to\n"
                              "perform smooth cross fading.");
-
+    // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + 6 * ImGui::GetTextLineHeight()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip("Smooth trantition");
-
-
-//    ImGuiToolkit::ButtonSwitch( ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition", &Settings::application.smooth_transition);
+    // come back...
     ImGui::SetCursorPos(pos_bot);
 
     //
-    // Notes
+    // Buttons to show WINDOWS
     //
     ImGui::Spacing();
-    ImGuiToolkit::Icon(15, 10);
-
-    static std::string notes;
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-
-    pos_bot = ImGui::GetCursorPos();
-    if (notes.empty()) {
-        ImGui::SetCursorPos( ImVec2(pos_bot.x + ImGui::GetStyle().ItemSpacing.x, pos_bot.y + ImGui::GetStyle().ItemSpacing.y) );
-        ImGui::Text("Session notes");
-        ImGui::SetCursorPos(pos_bot);
-    }
-    ImGuiToolkit::InputTextMultiline("##notes", &notes, ImVec2(IMGUI_RIGHT_ALIGN, ImGui::GetTextLineHeight() * 7));
-    ImGui::PopFont();
-
-    //
-    // Windows
-    //
-    ImGui::Spacing();
-//    ImGuiToolkit::Icon(3, 6);
-//    ImGui::SameLine(0, 10);
     ImGui::Text("Windows");
+    ImGui::Spacing();
 
-    ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview, CTRL_MOD "D");
-    ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, CTRL_MOD "P");
-    bool fs = Rendering::manager().mainWindow().isFullscreen();
-    if (ImGuiToolkit::ButtonSwitch( ICON_FA_EXPAND "  Fullscreen", &fs, CTRL_MOD "Shift+F") )
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    std::string tooltip_ = "";
+
+    if ( ImGuiToolkit::IconButton( ICON_FA_EXPAND ) )
         Rendering::manager().mainWindow().toggleFullscreen();
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
 
-    //    std::string tooltip_ = "";
-    //    ImGuiToolkit::ButtonToggle(IMGUI_TITLE_PREVIEW, &Settings::application.widget.preview);
-    //    if (ImGui::IsItemHovered())
-    //        tooltip_ = "Output    " CTRL_MOD "D";
-    //    ImGui::SameLine();
-    //    ImGuiToolkit::ButtonToggle(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player);
-    //    if (ImGui::IsItemHovered())
-    //        tooltip_ = "Player    " CTRL_MOD "P";
-    //    if (!tooltip_.empty()) {
-    //            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-6).c_str(), tooltip_.substr(tooltip_.size()-6, 6).c_str());
-    //    }
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
+        Mixer::manager().session()->addNote();
+    if (ImGui::IsItemHovered())
+        tooltip_ = "New note " CTRL_MOD "Shift+N";
 
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
+        Settings::application.widget.media_player = true;
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Player       " CTRL_MOD "P";
 
-}
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+        Settings::application.widget.preview = true;
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Output       " CTRL_MOD "D";
 
-void Navigator::RenderMainPannelSettings()
-{
-        // TITLE
-        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("Settings");
-        ImGui::PopFont();
+    ImGui::PopFont();
+    if (!tooltip_.empty()) {
+        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
+    }
 
-        ImGui::SetCursorPosY(width_);
+    //
+    // History
+    //
 
-        // options session
-
-//        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
-
-
-//        ImGuiToolkit::Icon(3, 2);
-//        ImGui::SameLine(0, 10);
-        ImGui::Text("Appearance");
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
-            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
-        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
-        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
-        if (b || o || g)
-            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-
-        ImGui::Spacing();
-//        ImGuiToolkit::Icon(2, 2);
-//        ImGui::SameLine(0, 10);
-        ImGui::Text("Options");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
-
-#ifndef NDEBUG
-        ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
-#endif
-
-        ImGui::Spacing();
-#ifdef LINUX
-//        ImGuiToolkit::Icon(12, 6);
-#else
-//        ImGuiToolkit::Icon(6, 0);
-#endif
-//        ImGui::SameLine(0, 10);
-        ImGui::Text("System");
-        static bool need_restart = false;
-        static bool vsync = (Settings::application.render.vsync > 0);
-        static bool blit = Settings::application.render.blit;
-        static bool multi = (Settings::application.render.multisampling > 0);
-        static bool gpu = Settings::application.render.gpu_decoding;
-        bool change = false;
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-        change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
-        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-        change |= ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &gpu);
-
-        if (change) {
-            need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
-                 blit != Settings::application.render.blit ||
-                 multi != (Settings::application.render.multisampling > 0) ||
-                 gpu != Settings::application.render.gpu_decoding );
-        }
-        if (need_restart) {
-            ImGui::Spacing();
-            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
-                Settings::application.render.vsync = vsync ? 1 : 0;
-                Settings::application.render.blit = blit;
-                Settings::application.render.multisampling = multi ? 3 : 0;
-                Settings::application.render.gpu_decoding = gpu;
-                Rendering::manager().close();
-            }
-        }
-
-        //            ImGui::Separator();
-        //            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
+    //            ImGui::Separator();
+    //            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
 
 //        ImGui::Text("Undo history");
 //        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -3055,8 +3128,84 @@ void Navigator::RenderMainPannelSettings()
 //        ImGuiToolkit::InputTextMultiline("##notes", &notes, ImVec2(IMGUI_RIGHT_ALIGN, ImGui::GetTextLineHeight() * 7));
 //        ImGui::PopFont();
 
-//        ImGui::End();
-//    }
+
+}
+
+void Navigator::RenderMainPannelSettings()
+{
+        // TITLE
+        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text("Settings");
+        ImGui::PopFont();
+        ImGui::SetCursorPosY(width_);
+
+        // Appearance
+//        ImGuiToolkit::Icon(3, 2);
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("Appearance");
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
+        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
+        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
+        if (b || o || g)
+            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+
+        // Options
+        ImGui::Spacing();
+//        ImGuiToolkit::Icon(2, 2);
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("Options");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
+        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
+
+#ifndef NDEBUG
+        ImGui::Text("Windows");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
+        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
+#endif
+
+        // system preferences
+        ImGui::Spacing();
+//#ifdef LINUX
+//        ImGuiToolkit::Icon(12, 6);
+//#else
+//        ImGuiToolkit::Icon(6, 0);
+//#endif
+//        ImGui::SameLine(0, 10);
+        ImGui::Text("System");
+        static bool need_restart = false;
+        static bool vsync = (Settings::application.render.vsync > 0);
+        static bool blit = Settings::application.render.blit;
+        static bool multi = (Settings::application.render.multisampling > 0);
+        static bool gpu = Settings::application.render.gpu_decoding;
+        bool change = false;
+        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
+        change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
+        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+        change |= ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &gpu);
+
+        if (change) {
+            need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
+                 blit != Settings::application.render.blit ||
+                 multi != (Settings::application.render.multisampling > 0) ||
+                 gpu != Settings::application.render.gpu_decoding );
+        }
+        if (need_restart) {
+            ImGui::Spacing();
+            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
+                Settings::application.render.vsync = vsync ? 1 : 0;
+                Settings::application.render.blit = blit;
+                Settings::application.render.multisampling = multi ? 3 : 0;
+                Settings::application.render.gpu_decoding = gpu;
+                Rendering::manager().close();
+            }
+        }
+
 }
 
 void Navigator::RenderTransitionPannel()
@@ -3163,171 +3312,82 @@ void Navigator::RenderMainPannel()
     ImGui::End();
 }
 
-void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
+///
+/// SOURCE PREVIEW
+///
+
+SourcePreview::SourcePreview() : source_(nullptr), label_("")
 {
-    static guint64 start_time_1_ = gst_util_get_timestamp ();
-    static guint64 start_time_2_ = gst_util_get_timestamp ();
 
-    if (!p_corner || !p_open)
-        return;
+}
 
-    const float DISTANCE = 10.0f;
-    int corner = *p_corner;
-    ImGuiIO& io = ImGui::GetIO();
-    if (corner != -1)
-    {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
-        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    }
+void SourcePreview::setSource(Source *s, const string &label)
+{
+    if(source_)
+        delete source_;
 
-    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+    source_ = s;
+    label_ = label;
+}
 
-    if (ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-        ImGui::SetNextItemWidth(200);
-        ImGui::Combo("##mode", p_mode,
-                     ICON_FA_TACHOMETER_ALT "  Performance\0"
-                     ICON_FA_HOURGLASS_HALF "  Timers\0"
-                     ICON_FA_VECTOR_SQUARE  "  Source\0");
+Source * SourcePreview::getSource()
+{
+    Source *s = source_;
+    source_ = nullptr;
+    return s;
+}
 
-        ImGui::SameLine();
-        if (ImGuiToolkit::IconButton(5,8))
-            ImGui::OpenPopup("metrics_menu");
-        ImGui::Spacing();
-
-        if (*p_mode > 1) {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-            Source *s = Mixer::manager().currentSource();
-            if (s) {
-                float rightalign = -2.5f * ImGui::GetTextLineHeightWithSpacing();
-                std::ostringstream info;
-                info << s->name() << ": ";
-
-                float v = s->alpha();
-                ImGui::SetNextItemWidth(rightalign);
-                if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
-                    s->setAlpha(v);
-                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
-                    Action::manager().store(info.str());
-                }
-
-                Group *n = s->group(View::GEOMETRY);
-                float translation[2] = { n->translation_.x, n->translation_.y};
-                ImGui::SetNextItemWidth(rightalign);
-                if ( ImGui::DragFloat2("Pos", translation, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )  {
-                    n->translation_.x = translation[0];
-                    n->translation_.y = translation[1];
-                    s->touch();
-                }
-                if ( ImGui::IsItemDeactivatedAfterEdit() ){
-                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
-                    Action::manager().store(info.str());
-                }
-                float scale[2] = { n->scale_.x, n->scale_.y} ;
-                ImGui::SetNextItemWidth(rightalign);
-                if ( ImGui::DragFloat2("Scale", scale, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )
-                {
-                    n->scale_.x = CLAMP_SCALE(scale[0]);
-                    n->scale_.y = CLAMP_SCALE(scale[1]);
-                    s->touch();
-                }
-                if ( ImGui::IsItemDeactivatedAfterEdit() ){
-                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
-                    Action::manager().store(info.str());
-                }
-
-                ImGui::SetNextItemWidth(rightalign);
-                if ( ImGui::SliderAngle("Angle", &(n->rotation_.z), -180.f, 180.f) )
-                    s->touch();
-                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
-                    Action::manager().store(info.str());
-                }
+void SourcePreview::Render(float width, bool controlbutton)
+{
+    if(source_) {
+        // cancel if failed
+        if (source_->failed()) {
+            // remove from list of recent import files if relevant
+            MediaSource *failedFile = dynamic_cast<MediaSource *>(source_);
+            if (failedFile != nullptr) {
+                Settings::application.recentImport.remove( failedFile->path() );
             }
-            else
-                ImGui::Text("No source selected");
-            ImGui::PopFont();
+            setSource();
         }
-        else if (*p_mode > 0) {
-            guint64 time_ = gst_util_get_timestamp ();
-
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
-            ImGui::PopFont();
-            ImGui::SameLine(0, 10);
-            if (ImGuiToolkit::IconButton(12, 14))
-                start_time_1_ = time_; // reset timer 1
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
-            ImGui::PopFont();
-            ImGui::SameLine(0, 10);
-            if (ImGuiToolkit::IconButton(12, 14))
-                start_time_2_ = time_; // reset timer 2
-
-        }
-        else {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-            //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
-            ImGui::Text("Refresh %.1f FPS", io.Framerate);
-            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
-            ImGui::PopFont();
-
-        }
-
-        if (ImGui::BeginPopup("metrics_menu"))
+        else
         {
-            if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
-            if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
-            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
-            if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close")) *p_open = false;
-            ImGui::EndPopup();
+            bool active = source_->active();
+            // update source
+            source_->update( Mixer::manager().dt());
+            // render framebuffer
+            source_->render();
+
+            // draw preview
+            FrameBuffer *frame = source_->frame();
+            ImVec2 preview_size(width, width / frame->aspectRatio());
+            ImGui::Image((void*)(uintptr_t) frame->texture(), preview_size);
+
+            if (controlbutton && source_->ready()) {
+                ImVec2 pos = ImGui::GetCursorPos();
+                ImGui::SameLine();
+                if (ImGuiToolkit::IconToggle(12,7,1,8, &active))
+                    source_->setActive(active);
+                ImGui::SetCursorPos(pos);
+            }
+            ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
+            ImGui::SameLine(0, 10);
+            ImGui::Text("%s ", label_.c_str());
+            ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
         }
-        ImGui::End();
     }
 }
 
+bool SourcePreview::ready() const
+{
+    return source_ != nullptr && source_->ready();
+}
 
-//namespace ImGui
-//{
-
-//int hover(const char *label)
-//{
-//    const ImGuiStyle& Style = GetStyle();
-//    ImGuiWindow* Window = GetCurrentWindow();
-//    if (Window->SkipItems)
-//        return 0;
-
-//    int hovered = IsItemActive() || IsItemHovered();
-//    Dummy(ImVec2(0,3));
-
-//    // prepare canvas
-//    const float avail = GetContentRegionAvailWidth();
-//    const float dim = ImMin(avail, 128.f);
-//    ImVec2 Canvas(dim, dim);
-
-//    ImRect bb(Window->DC.CursorPos, Window->DC.CursorPos + Canvas);
-//    const ImGuiID id = Window->GetID(label);
-//    ItemSize(bb);
-//    if (!ItemAdd(bb, id))
-//        return 0;
-
-//    hovered |= 0 != IsItemClicked();
-
-//    RenderFrame(bb.Min, bb.Max, GetColorU32(ImGuiCol_FrameBg, 1), true, Style.FrameRounding);
-
-
-//    return 1;
-//}
-
-//}
+///
+/// UTILITY
+///
 
 #define SEGMENT_ARRAY_MAX 1000
-
 #define MAXSIZE 65535
-
 
 void ShowSandbox(bool* p_open)
 {
@@ -3462,70 +3522,6 @@ void ShowSandbox(bool* p_open)
     ImGui::End();
 }
 
-void UserInterface::RenderAbout(bool* p_open)
-{
-    ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("About " APP_NAME APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::End();
-        return;
-    }
-
-#ifdef VIMIX_VERSION_MAJOR
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("%s %d.%d.%d", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
-    ImGui::PopFont();
-#else
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("%s", APP_NAME);
-    ImGui::PopFont();
-#endif
-
-    ImGui::Separator();
-    ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2021 Bruno Herbelin.");
-
-    ImGui::Spacing();
-    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-
-
-    ImGui::Spacing();
-    ImGui::Text("\nvimix is built using the following libraries:");
-
-//    tinyfd_inputBox("tinyfd_query", NULL, NULL);
-//    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
-
-    ImGui::Columns(3, "abouts");
-    ImGui::Separator();
-
-    ImGui::Text("- Dear ImGui");
-    ImGui::PushID("dearimguiabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_imgui_about = true;
-    ImGui::PopID();
-
-    ImGui::NextColumn();
-
-    ImGui::Text("- GStreamer");
-    ImGui::PushID("gstreamerabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_gst_about = true;
-    ImGui::PopID();
-
-    ImGui::NextColumn();
-
-    ImGui::Text("- OpenGL");
-    ImGui::PushID("openglabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_opengl_about = true;
-    ImGui::PopID();
-
-    ImGui::Columns(1);
-
-
-    ImGui::End();
-}
-
 void ShowAboutOpengl(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(430, 640), ImGuiCond_FirstUseEver);
@@ -3591,8 +3587,6 @@ void ShowAboutOpengl(bool* p_open)
     }
     ImGui::End();
 }
-
-
 
 void ShowAboutGStreamer(bool* p_open)
 {
@@ -3685,5 +3679,54 @@ void ShowAboutGStreamer(bool* p_open)
     }
 
     ImGui::End();
+}
+
+void SetMouseCursor(ImVec2 mousepos, View::Cursor c)
+{
+    // Hack if GLFW does not have all cursors, ask IMGUI to redraw cursor
+#if GLFW_HAS_NEW_CURSORS == 0
+    ImGui::GetIO().MouseDrawCursor = (c.type > 0); // only redraw non-arrow cursor
+#endif
+    ImGui::SetMouseCursor(c.type);
+
+    if ( !c.info.empty()) {
+        float d = 0.5f * ImGui::GetFrameHeight() ;
+        ImVec2 window_pos = ImVec2( mousepos.x - d, mousepos.y - d );
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
+        if (ImGui::Begin("MouseInfoContext", NULL, ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+        {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("   %s", c.info.c_str());
+            ImGui::PopFont();
+            ImGui::End();
+        }
+    }
+}
+
+void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin)
+{
+    bool need_update = false;
+    ImVec2 pos_target = pos;
+    const ImGuiIO& io = ImGui::GetIO();
+
+    if ( pos_target.y > io.DisplaySize.y - margin  ){
+        pos_target.y -= margin;
+        need_update = true;
+    }
+    if ( pos_target.y + size.y < margin ){
+        pos_target.y += margin;
+        need_update = true;
+    }
+    if ( pos_target.x > io.DisplaySize.x - margin){
+        pos_target.x -= margin;
+        need_update = true;
+    }
+    if ( pos_target.x + size.x <margin ){
+        pos_target.x += margin;
+        need_update = true;
+    }
+    if (need_update)
+        ImGui::SetNextWindowPos(pos_target, ImGuiCond_Appearing);
 }
 

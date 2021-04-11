@@ -13,6 +13,7 @@ namespace ImGuiToolkit
     // Icons from resource icon.dds
     void Icon (int i, int j, bool enabled = true);
     bool IconButton (int i, int j, const char *tooltips = nullptr);
+    bool IconButton (const char* icon = ICON_FA_EXCLAMATION_CIRCLE, const char *tooltips = nullptr);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
 

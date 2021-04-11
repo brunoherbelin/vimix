@@ -208,6 +208,36 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
     return ret;
 }
 
+
+bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
+{
+    bool ret = false;
+    ImGui::PushID( icon );
+
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = frame_height;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
+    if (ImGui::IsItemClicked())
+        ret = true;
+
+    ImGui::SetCursorScreenPos(draw_pos);
+    ImGui::Text(icon);
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
+
 bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
     bool ret = false;

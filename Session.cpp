@@ -11,6 +11,11 @@
 
 #include "Log.h"
 
+SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_string(GlmToolkit::uniqueId())),
+    text(t), large(l), stick(s), pos(glm::vec2(520.f, 30.f)), size(glm::vec2(220.f, 220.f))
+{
+}
+
 Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f), filename_("")
 {
     config_[View::RENDERING] = new Group;
@@ -377,6 +382,30 @@ void Session::unlink (SourceList sources)
             (*it)->mixingGroup()->detach(*it);
         }
     }
+}
+
+
+void Session::addNote(SessionNote note)
+{
+    notes_.push_back( note );
+}
+
+std::list<SessionNote>::iterator Session::beginNotes ()
+{
+    return notes_.begin();
+}
+
+std::list<SessionNote>::iterator Session::endNotes ()
+{
+    return notes_.end();
+}
+
+std::list<SessionNote>::iterator Session::deleteNote (std::list<SessionNote>::iterator n)
+{
+    if (n != notes_.end())
+        return notes_.erase(n);
+
+    return notes_.end();
 }
 
 std::list<SourceList> Session::getMixingGroups () const

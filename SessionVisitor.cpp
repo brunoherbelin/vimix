@@ -73,6 +73,27 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         views->InsertEndChild(render);
     }
 
+    // 3. optional notes
+    XMLElement *notes = xmlDoc.NewElement("Notes");
+    xmlDoc.InsertEndChild(notes);
+    for (auto nit = session->beginNotes(); nit != session->endNotes(); ++nit) {
+        XMLElement *note = xmlDoc.NewElement( "Note" );
+        note->SetAttribute("large", (*nit).large );
+        note->SetAttribute("stick", (*nit).stick );
+        XMLElement *pos = xmlDoc.NewElement("pos");
+        pos->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).pos) );
+        note->InsertEndChild(pos);
+        XMLElement *size = xmlDoc.NewElement("size");
+        size->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).size) );
+        note->InsertEndChild(size);
+        XMLElement *content = xmlDoc.NewElement("text");
+        XMLText *text = xmlDoc.NewText( (*nit).text.c_str() );
+        content->InsertEndChild( text );
+        note->InsertEndChild(content);
+
+        notes->InsertEndChild(note);
+    }
+
     // save file to disk
     return ( XMLSaveDoc(&xmlDoc, filename) );
 }

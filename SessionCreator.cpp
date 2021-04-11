@@ -100,6 +100,8 @@ void SessionCreator::load(const std::string& filename)
     for (auto group_it = groups.begin(); group_it != groups.end(); group_it++)
          session_->link( *group_it );
 
+    loadNotes( xmlDoc_.FirstChildElement("Notes") );
+
     // all good
     session_->setFilename(filename);
 }
@@ -107,13 +109,37 @@ void SessionCreator::load(const std::string& filename)
 
 void SessionCreator::loadConfig(XMLElement *viewsNode)
 {
-    if (viewsNode != nullptr) {
+    if (viewsNode != nullptr && session_ != nullptr) {
         // ok, ready to read views
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Texture"), *session_->config(View::TEXTURE));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
+    }
+}
+
+void SessionCreator::loadNotes(XMLElement *notesNode)
+{
+    if (notesNode != nullptr && session_ != nullptr) {
+
+        XMLElement* note = notesNode->FirstChildElement("Note");
+        for( ; note ; note = note->NextSiblingElement())
+        {
+            SessionNote N;
+
+            note->QueryBoolAttribute("large", &N.large);
+            note->QueryIntAttribute("stick", &N.stick);
+            XMLElement *posNode = note->FirstChildElement("pos");
+            if (posNode)  tinyxml2::XMLElementToGLM( posNode->FirstChildElement("vec2"), N.pos);
+            XMLElement *sizeNode = note->FirstChildElement("size");
+            if (sizeNode)  tinyxml2::XMLElementToGLM( sizeNode->FirstChildElement("vec2"), N.size);
+            XMLElement* contentNode = note->FirstChildElement("text");
+            if (contentNode)  N.text = std::string ( contentNode->GetText() );
+
+            session_->addNote(N);
+        }
+
     }
 }
 
@@ -777,28 +803,5 @@ void SessionLoader::visit (NetworkSource& s)
     if ( connect != s.connection() )
         s.setConnection(connect);
 }
-
-// dirty hack wich can be useful ?
-
-//class DummySource : public Source
-//{
-//    friend class SessionLoader;
-//public:
-//    uint texture() const override { return 0; }
-//    bool failed() const override  { return true; }
-//    void accept (Visitor& v) override { Source::accept(v); }
-//protected:
-//    DummySource() : Source() {}
-//    void init() override {}
-//};
-
-//Source *SessionLoader::createDummy(tinyxml2::XMLElement *sourceNode)
-//{
-//    SessionLoader loader;
-//    loader.xmlCurrent_ = sourceNode;
-//    DummySource *dum = new DummySource;
-//    dum->accept(loader);
-//    return dum;
-//}
 
 
