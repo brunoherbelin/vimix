@@ -268,7 +268,7 @@ void NetworkStream::update()
 }
 
 
-NetworkSource::NetworkSource() : StreamSource()
+NetworkSource::NetworkSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = static_cast<Stream *>( new NetworkStream );

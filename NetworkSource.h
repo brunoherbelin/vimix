@@ -59,7 +59,7 @@ class NetworkSource : public StreamSource
     std::string connection_name_;
 
 public:
-    NetworkSource();
+    NetworkSource(uint64_t id = 0);
     ~NetworkSource();
 
     // Source interface

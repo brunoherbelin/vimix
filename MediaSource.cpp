@@ -11,7 +11,7 @@
 #include "Visitor.h"
 #include "Log.h"
 
-MediaSource::MediaSource() : Source(), path_("")
+MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;

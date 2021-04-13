@@ -10,7 +10,7 @@
 class DeviceSource : public StreamSource
 {
 public:
-    DeviceSource();
+    DeviceSource(uint64_t id = 0);
     ~DeviceSource();
 
     // Source interface

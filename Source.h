@@ -38,7 +38,7 @@ class Source
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source ();
+    Source (uint64_t id = 0);
     virtual ~Source ();
 
     // Get unique id
@@ -50,7 +50,7 @@ public:
     inline const char *initials () const { return initials_; }
 
     // cloning mechanism
-    virtual CloneSource *clone ();
+    virtual CloneSource *clone (uint64_t id = 0);
 
     // Display mode
     typedef enum {
@@ -288,7 +288,7 @@ public:
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 
-    CloneSource *clone() override;
+    CloneSource *clone(uint64_t id = 0) override;
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
@@ -296,7 +296,7 @@ public:
 
 protected:
     // only Source class can create new CloneSource via clone();
-    CloneSource(Source *origin);
+    CloneSource(Source *origin, uint64_t id = 0);
 
     void init() override;
     Source *origin_;

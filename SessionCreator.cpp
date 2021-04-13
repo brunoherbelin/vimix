@@ -220,25 +220,25 @@ void SessionLoader::load(XMLElement *sessionNode)
                 if (!pType)
                     continue;
                 if ( std::string(pType) == "MediaSource") {
-                    load_source = new MediaSource;
+                    load_source = new MediaSource(id_xml_);
                 }
                 else if ( std::string(pType) == "SessionSource") {
-                    load_source = new SessionFileSource;
+                    load_source = new SessionFileSource(id_xml_);
                 }
                 else if ( std::string(pType) == "GroupSource") {
-                    load_source = new SessionGroupSource;
+                    load_source = new SessionGroupSource(id_xml_);
                 }
                 else if ( std::string(pType) == "RenderSource") {
-                    load_source = new RenderSource;
+                    load_source = new RenderSource(id_xml_);
                 }
                 else if ( std::string(pType) == "PatternSource") {
-                    load_source = new PatternSource;
+                    load_source = new PatternSource(id_xml_);
                 }
                 else if ( std::string(pType) == "DeviceSource") {
-                    load_source = new DeviceSource;
+                    load_source = new DeviceSource(id_xml_);
                 }
                 else if ( std::string(pType) == "NetworkSource") {
-                    load_source = new NetworkSource;
+                    load_source = new NetworkSource(id_xml_);
                 }
 
                 // skip failed (including clones)
@@ -286,7 +286,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                         // found the orign source
                         if (origin != session_->end()) {
                             // create a new source of type Clone
-                            Source *clone_source = (*origin)->clone();
+                            Source *clone_source = (*origin)->clone(id_xml_);
 
                             // add source to session
                             session_->addSource(clone_source);
@@ -317,11 +317,12 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     Source *load_source = nullptr;
     bool is_clone = false;
 
-    SourceList::iterator sit = session_->end();
+    uint64_t id__ = 0;
+    xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
+
     // check if a source with the given id exists in the session
+    SourceList::iterator sit = session_->end();
     if (mode == CLONE) {
-        uint64_t id__ = 0;
-        xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
         sit = session_->find(id__);
     }
 
@@ -331,25 +332,25 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
         const char *pType = xmlCurrent_->Attribute("type");
         if (pType) {
             if ( std::string(pType) == "MediaSource") {
-                load_source = new MediaSource;
+                load_source = new MediaSource(id__);
             }
             else if ( std::string(pType) == "SessionSource") {
-                load_source = new SessionFileSource;
+                load_source = new SessionFileSource(id__);
             }
             else if ( std::string(pType) == "GroupSource") {
-                load_source = new SessionGroupSource;
+                load_source = new SessionGroupSource(id__);
             }
             else if ( std::string(pType) == "RenderSource") {
-                load_source = new RenderSource;
+                load_source = new RenderSource(id__);
             }
             else if ( std::string(pType) == "PatternSource") {
-                load_source = new PatternSource;
+                load_source = new PatternSource(id__);
             }
             else if ( std::string(pType) == "DeviceSource") {
-                load_source = new DeviceSource;
+                load_source = new DeviceSource(id__);
             }
             else if ( std::string(pType) == "NetworkSource") {
-                load_source = new NetworkSource;
+                load_source = new NetworkSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -359,7 +360,7 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
                     SourceList::iterator origin = session_->find(sourcename);
                     // found the orign source
                     if (origin != session_->end())
-                        load_source = (*origin)->clone();
+                        load_source = (*origin)->clone(id__);
                 }
             }
         }

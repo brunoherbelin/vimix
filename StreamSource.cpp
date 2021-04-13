@@ -37,7 +37,7 @@ void GenericStreamSource::accept(Visitor& v)
         v.visit(*this);
 }
 
-StreamSource::StreamSource() : Source(), stream_(nullptr)
+StreamSource::StreamSource(uint64_t id) : Source(id), stream_(nullptr)
 {
 }
 

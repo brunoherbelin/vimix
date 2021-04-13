@@ -8,7 +8,7 @@
 class SessionSource : public Source
 {
 public:
-    SessionSource();
+    SessionSource(uint64_t id = 0);
     virtual ~SessionSource();
 
     // implementation of source API
@@ -29,7 +29,7 @@ protected:
 class SessionFileSource : public SessionSource
 {
 public:
-    SessionFileSource();
+    SessionFileSource(uint64_t id = 0);
 
     // implementation of source API
     void accept (Visitor& v) override;
@@ -52,7 +52,7 @@ protected:
 class SessionGroupSource : public SessionSource
 {
 public:
-    SessionGroupSource();
+    SessionGroupSource(uint64_t id = 0);
 
     // implementation of source API
     void accept (Visitor& v) override;
@@ -75,7 +75,7 @@ protected:
 class RenderSource : public Source
 {
 public:
-    RenderSource();
+    RenderSource(uint64_t id = 0);
 
     // implementation of source API
     bool failed () const override;

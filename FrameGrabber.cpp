@@ -30,8 +30,8 @@ FrameGrabbing::~FrameGrabbing()
     // cleanup
     if (caps_)
         gst_caps_unref (caps_);
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
+//    if (pbo_[0] > 0) // automatically deleted at shutdown
+//        glDeleteBuffers(2, pbo_);
 }
 
 void FrameGrabbing::add(FrameGrabber *rec)

@@ -325,7 +325,7 @@ int  Device::index(const std::string &device) const
     return i;
 }
 
-DeviceSource::DeviceSource() : StreamSource()
+DeviceSource::DeviceSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = new Stream;

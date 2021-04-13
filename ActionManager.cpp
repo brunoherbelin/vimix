@@ -197,8 +197,6 @@ void Action::restore(uint target)
         // attach created source
         Mixer::manager().attach( (*lsit).second );
 
-        // change the history to match the new id
-        replaceSourceId( (*lsit).first, (*lsit).second->id());
     }
 
     //
@@ -224,24 +222,3 @@ void Action::restore(uint target)
 
 }
 
-
-void Action::replaceSourceId(uint64_t previousid, uint64_t newid)
-{
-    // loop over every session history step
-    XMLElement* historyNode = xmlDoc_.FirstChildElement("H1");
-    for( ; historyNode ; historyNode = historyNode->NextSiblingElement())
-    {
-        // loop over every source in session history
-        XMLElement* sourceNode = historyNode->FirstChildElement("Source");
-        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
-        {
-            // check if this source node has this id
-            uint64_t id_source_ = 0;
-            sourceNode->QueryUnsigned64Attribute("id", &id_source_);
-            if ( id_source_ == previousid )
-                // change to new id
-                sourceNode->SetAttribute("id", newid);
-        }
-    }
-
-}

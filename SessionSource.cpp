@@ -17,7 +17,7 @@
 #include "Mixer.h"
 
 
-SessionSource::SessionSource() : Source(), failed_(false)
+SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false)
 {
     session_ = new Session;
 }
@@ -90,7 +90,7 @@ void SessionSource::update(float dt)
 }
 
 
-SessionFileSource::SessionFileSource() : SessionSource(), path_("")
+SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
 {
     // specific node for transition view
     groups_[View::TRANSITION]->visible_ = false;
@@ -235,7 +235,7 @@ void SessionFileSource::accept(Visitor& v)
 }
 
 
-SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec3(0.f))
+SessionGroupSource::SessionGroupSource(uint64_t id) : SessionSource(id), resolution_(glm::vec3(0.f))
 {
 //    // redo frame for layers view
 //    frames_[View::LAYER]->clear();
@@ -316,15 +316,12 @@ void SessionGroupSource::accept(Visitor& v)
         v.visit(*this);
 }
 
-
-
-RenderSource::RenderSource() : Source(), session_(nullptr)
+RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 }
-
 
 bool RenderSource::failed() const
 {

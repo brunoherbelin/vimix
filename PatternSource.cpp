@@ -131,7 +131,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     Stream::open(gstreamer_pattern, res.x, res.y);
 }
 
-PatternSource::PatternSource() : StreamSource()
+PatternSource::PatternSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = static_cast<Stream *>( new Pattern );

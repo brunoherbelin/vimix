@@ -3475,7 +3475,16 @@ void ShowSandbox(bool* p_open)
     }
 
     ImGui::Text("Testing sandox");
+    ImGui::Separator();
 
+    ImGui::Text("Source list");
+    Session *se = Mixer::manager().session();
+    for (auto sit = se->begin(); sit != se->end(); ++sit) {
+
+        ImGui::Text("[%s] %s ", std::to_string((*sit)->id()).c_str(), (*sit)->name().c_str());
+    }
+
+    ImGui::Separator();
 
     static char buf1[1280] = "videotestsrc pattern=smpte";
     ImGui::InputText("gstreamer pipeline", buf1, 1280);
@@ -3488,106 +3497,6 @@ void ShowSandbox(bool* p_open)
     ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
     if ( ImGui::Button("Execute") )
         SystemToolkit::execute(str);
-
-    if (ImGui::Button("Message test")) {
-
-        for(int i=0; i<10; i++) {
-            Log::Notify("Testing notification %d", i);
-        }
-
-        for(int i=0; i<10; i++) {
-            Log::Warning("Testing Warning %d", i);
-        }
-
-    }
-
-
-
-//    const guint64 duration = GST_SECOND * 6;
-//    const guint64 step = GST_MSECOND * 20;
-//    static guint64 t = 0;
-
-//    static float *arr_lines = nullptr;
-//    static float *arr_histo = nullptr;
-//    static uint array_size = 200;
-
-//    if (arr_lines == nullptr) {
-
-//        arr_lines = (float *) malloc(array_size * sizeof(float));
-//        arr_histo = (float *) malloc(array_size * sizeof(float));
-
-//        for (int i = 0; i < array_size; ++i) {
-//            arr_lines[i] = 1.f;
-//            arr_histo[i] = 0.f;
-//        }
-//    }
-
-//    // scrolling sub-window
-//    ImGui::BeginChild("##scrolling",
-//                      ImVec2(ImGui::GetContentRegionAvail().x, 250),
-//                      false, ImGuiWindowFlags_HorizontalScrollbar);
-
-
-//    if (arr_lines != nullptr)
-//    {
-
-//        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
-//        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
-
-//        ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), 40);
-//        size.x *= 1.f;
-
-////        // draw position when entering
-////        ImVec2 draw_pos = ImGui::GetCursorPos();
-
-//////        // capture user input
-//////        uint press_index = array_size-1;
-//////        float val = 0.f;
-//////        bool pressed = false;
-
-//////        uint starting_index = press_index;
-//////        pressed = ImGuiToolkit::InvisibleDoubleSliderFloat("test", &press_index, &val, 0, array_size-1, size);
-//////        if (pressed)
-//////        {
-//////            for (int i = MIN(starting_index, press_index); i < MAX(starting_index, press_index); ++i)
-//////                arr[i] = val;
-
-////////            starting_index = press_index;
-//////        }
-
-////        float x = -1.f;
-////        float y = -1.f;
-////        bool clicked = ImGuiToolkit::InvisibleCoordinatesFloat("test", &x, &y, size);
-////        if (clicked) {
-////            Log::Info("clic %f %f  in [%f  %f]", x, y, size.x, size.y);
-////        }
-
-
-////        // back to
-////        ImGui::SetCursorPos(draw_pos);
-////        // plot lines
-////        ImGui::PlotLines("Lines", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
-
-//////        size.y = 20;
-//////        ImGui::PlotHistogram("Hisfd", arr, array_size-1, 0, NULL, 0.0f, 1.0f, size);
-//        bool r = false;
-//        ImGuiToolkit::EditPlotHistoLines("Alpha", arr_histo, arr_lines, array_size, 0.f, 1.f, &r, size);
-
-//        bool slider_pressed = ImGuiToolkit::TimelineSlider("timeline", &t, 0, duration, step, size.x);
-
-//        ImGui::PopStyleVar(2);
-
-//        ImGui::Text("Timeline t %" GST_STIME_FORMAT "\n", GST_STIME_ARGS(t));
-//        ImGui::Text("Timeline Pressed %s", slider_pressed ? "on" : "off");
-
-//        static int w = 0;
-//        ImGui::SetNextItemWidth(size.x);
-//        ImGui::SliderInt("##int", &w, 0, array_size-1);
-
-//    }
-
-//    ImGui::EndChild();
-
 
     static char str0[128] = "àöäüèáû вторая строчка";
     ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));

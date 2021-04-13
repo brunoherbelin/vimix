@@ -17,10 +17,11 @@
 
 #include "Source.h"
 
-Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
+Source::Source(uint64_t id) : id_(id), initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    if (id_ == 0)
+        id_ = GlmToolkit::uniqueId();
 
     sprintf(initials_, "__");
     name_ = "Source";
@@ -762,9 +763,9 @@ void Source::clearMixingGroup()
 }
 
 
-CloneSource *Source::clone()
+CloneSource *Source::clone(uint64_t id)
 {
-    CloneSource *s = new CloneSource(this);
+    CloneSource *s = new CloneSource(this, id);
 
     clones_.push_back(s);
 
@@ -772,7 +773,7 @@ CloneSource *Source::clone()
 }
 
 
-CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
+CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -785,11 +786,11 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 }
 
-CloneSource *CloneSource::clone()
+CloneSource *CloneSource::clone(uint64_t id)
 {
     // do not clone a clone : clone the original instead
     if (origin_)
-        return origin_->clone();
+        return origin_->clone(id);
     else
         return nullptr;
 }
