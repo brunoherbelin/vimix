@@ -283,6 +283,9 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F ) && shift_modifier_active) {
             Rendering::manager().mainWindow().toggleFullscreen();
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
+            Mixer::manager().session()->addNote();
+        }
     }
     // No CTRL modifier
     else {
@@ -798,7 +801,8 @@ void UserInterface::showMenuEdit()
         Action::manager().undo();
     if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
         Action::manager().redo();
-
+    if ( ImGui::MenuItem( ICON_FA_STAR "+ Snapshot", CTRL_MOD "Y") )
+        Action::manager().redo();
 }
 
 void UserInterface::showMenuFile()
@@ -921,14 +925,10 @@ void UserInterface::RenderHistory()
 
             ImGui::EndMenu();
         }
-        if ( ImGui::Selectable(ICON_FA_UNDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0))) {
-
+        if ( ImGui::Selectable(ICON_FA_UNDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0)))
             Action::manager().undo();
-        }
-        if ( ImGui::Selectable(ICON_FA_REDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0))) {
-
+        if ( ImGui::Selectable(ICON_FA_REDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0)))
             Action::manager().redo();
-        }
 
         ImGui::EndMenuBar();
     }
@@ -942,10 +942,8 @@ void UserInterface::RenderHistory()
             bool enable = i == Action::manager().current();
             if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
 
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     Action::manager().stepTo(i);
-                }
             }
         }
         ImGui::ListBoxFooter();
@@ -1693,6 +1691,7 @@ void UserInterface::RenderNotes()
             if ( (*note).stick < 1 || (*note).stick == Settings::application.current_view)
             {
                 // window
+                ImGui::SetNextWindowSizeConstraints(ImVec2(150, 150), ImVec2(500, 500));
                 ImGui::SetNextWindowPos(ImVec2( (*note).pos.x, (*note).pos.y ), ImGuiCond_Once);
                 ImGui::SetNextWindowSize(ImVec2((*note).size.x, (*note).size.y), ImGuiCond_Once);
                 ImGui::SetNextWindowBgAlpha(color.w); // Transparent background
@@ -2934,10 +2933,8 @@ void Navigator::RenderMainPannelVimix()
     ImVec2 pos_top = ImGui::GetCursorPos();
     ImGui::SameLine();
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-    bool reset = false;
     if ( selection_session_mode == 1) {
-        const char *tooltip_[2] = {"Discard folder", "Discard folder"};
-        if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip_)) {
+        if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_MINUS, "Discard folder")) {
             Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
             if (Settings::application.recentFolders.filenames.empty()) {
                 Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
@@ -2950,8 +2947,7 @@ void Navigator::RenderMainPannelVimix()
         }
     }
     else {
-        const char *tooltip__[2] = {"Clear history", "Clear history"};
-        if (ImGuiToolkit::IconToggle(12,14,11,14, &reset, tooltip__)) {
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear history")) {
             Settings::application.recentSessions.filenames.clear();
             Settings::application.recentSessions.front_is_valid = false;
             // reload the list next time
@@ -2984,17 +2980,17 @@ void Navigator::RenderMainPannelVimix()
     // display the sessions list and detect if one was selected (double clic)
     bool session_selected = false;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::ListBoxHeader("##Sessions", 6);
+    ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8));
     static std::string file_info = "";
     static std::list<std::string>::iterator file_selected = sessions_list.end();
-    for(auto it = sessions_list.begin(); it != sessions_list.end(); it++) {
+    for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
         std::string sessionfilename(*it);
         if (sessionfilename.empty())
             continue;
         std::string shortname = SystemToolkit::filename(*it);
         if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
-                Mixer::manager().open( sessionfilename );
+                Mixer::manager().open( sessionfilename, Settings::application.smooth_transition );
                 session_selected = true;
                 file_info.clear();
             }
@@ -3024,6 +3020,7 @@ void Navigator::RenderMainPannelVimix()
         }
     }
     ImGui::ListBoxFooter();
+    ImVec2 pos_bot = ImGui::GetCursorPos();
 
     // done the selection !
     if (session_selected) {
@@ -3035,8 +3032,6 @@ void Navigator::RenderMainPannelVimix()
     }
 
     // Right side of the list: helper and options
-    ImVec2 pos_bot = ImGui::GetCursorPos();
-    ImGui::SameLine();
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
     ImGuiToolkit::HelpMarker("Quick access to Session files;\n\n"
                              "Select the history of recently\n"
@@ -3045,10 +3040,10 @@ void Navigator::RenderMainPannelVimix()
                              ICON_FA_ARROW_CIRCLE_RIGHT " Enable smooth transition to\n"
                              "perform smooth cross fading.");
     // toggle button for smooth transition
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + 6 * ImGui::GetTextLineHeight()) );
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
     if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Smooth trantition");
+        ImGuiToolkit::ToolTip("Smooth transition");
     // come back...
     ImGui::SetCursorPos(pos_bot);
 
@@ -3093,40 +3088,120 @@ void Navigator::RenderMainPannelVimix()
     //
     // History
     //
+    ImGui::Spacing();
+    ImGui::Text("Actions");
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode, "Snapshots\0Undo history\0");
 
-    //            ImGui::Separator();
-    //            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
+    if (Settings::application.pannel_history_mode > 0) {
 
-//        ImGui::Text("Undo history");
-//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//        ImGui::ListBoxHeader("##UndoHistory", CLAMP(Action::manager().max(), 4, 8));
-//        for (uint i = Action::manager().max(); i > 0; i--) {
+        pos_top = ImGui::GetCursorPos();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::ListBoxHeader("##UndoHistory", CLAMP(Action::manager().max(), 4, 8));
+        for (uint i = Action::manager().max(); i > 0; --i) {
 
-//            std::string step_label_ = Action::manager().label(i);
+            std::string step_label_ = Action::manager().label(i);
+            bool enable = i == Action::manager().current();
+            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    Action::manager().stepTo(i);
+            }
+        }
+        ImGui::ListBoxFooter();
+        pos_bot = ImGui::GetCursorPos();
 
-//            bool enable = i == Action::manager().current();
-//            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+        // right buttons
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
+        if ( Action::manager().current() > 1 ) {
+            if ( ImGuiToolkit::IconButton( ICON_FA_UNDO ) )
+                Action::manager().undo();
+        } else
+            ImGui::TextDisabled( ICON_FA_UNDO );
 
-//                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetTextLineHeightWithSpacing() + 4));
+        if ( Action::manager().current() < Action::manager().max() ) {
+            if ( ImGuiToolkit::IconButton( ICON_FA_REDO ))
+                Action::manager().redo();
+        } else
+            ImGui::TextDisabled( ICON_FA_REDO );
 
-//                    Action::manager().stepTo(i);
-//                }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(ICON_FA_ELLIPSIS_H, &Settings::application.action_history_follow_view);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Go to view of action");
+    }
+    else {
+
+        static std::list<std::string> snapshots;
+        static std::list<std::string>::iterator current_snapshot = snapshots.end();
+
+        pos_top = ImGui::GetCursorPos();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::ListBoxHeader("##Snapshots", CLAMP(snapshots.size(), 4, 8));
+
+        ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+        for (auto ait = snapshots.begin(); ait != snapshots.end(); ++ait)
+        {
+            // size of items
+            ImVec2 s = size;
+            if ( current_snapshot == ait )
+                s.x -= ImGui::GetTextLineHeightWithSpacing();
+            // entry
+            if (ImGui::Selectable( ait->c_str(), current_snapshot == ait, ImGuiSelectableFlags_AllowDoubleClick, s )) {
+                // current list item
+                current_snapshot = ait;
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    // trigger snapshot
+//                    current_snapshot = snapshots.end();
+                }
+            }
+            // context menu
+            if ( current_snapshot == ait ) {
+                ImGui::SameLine();
+                if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
+                    ImGui::OpenPopup( "MenuSnapshot" );
+            }
+        }
+
+        // context menu
+        if (ImGui::BeginPopup( "MenuSnapshot" ))
+        {
+            if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size )) {
+//                current_snapshot = snapshots.end();
+            }
+            if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
+                snapshots.erase(current_snapshot);
+                current_snapshot = snapshots.end();
+            }
+            ImGui::TextDisabled("Rename");
+            ImGui::SetNextItemWidth(size.x);
+            if ( current_snapshot != snapshots.end() ) {
+                ImGuiToolkit::InputText("##Rename", &(*current_snapshot) );
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::ListBoxFooter();
+        pos_bot = ImGui::GetCursorPos();
+
+        // right buttons
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
+        if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+")) {
+            snapshots.push_back( SystemToolkit::date_time_string() );
+        }
+//        // active list element : delete snapshot button
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
+//        if (current_snapshot != snapshots.end()) {
+//            if ( ImGuiToolkit::IconButton( ICON_FA_STAR "_" )) {
+//                snapshots.erase(current_snapshot);
+//                current_snapshot = snapshots.end();
 //            }
 //        }
-//        ImGui::ListBoxFooter();
+//        // inactive
+//        else
+//            ImGui::TextDisabled( ICON_FA_STAR "_" );
 
-//        ImVec2 pos = ImGui::GetCursorPos();
-//        ImGui::SameLine();
-//        ImGuiToolkit::HelpMarker("Double clic on a timepoint to restore (undo/redo).");
-//        ImGui::SetCursorPos(pos);
-
-//        ImGui::Spacing();
-//        ImGui::Text("Notes");
-
-//        static std::string notes;
-//        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-//        ImGuiToolkit::InputTextMultiline("##notes", &notes, ImVec2(IMGUI_RIGHT_ALIGN, ImGui::GetTextLineHeight() * 7));
-//        ImGui::PopFont();
+    }
 
 
 }
@@ -3162,11 +3237,11 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
 #ifndef NDEBUG
-        ImGui::Text("Windows");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_HISTORY " History", &Settings::application.widget.history);
+        ImGui::Text("Expert");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_HISTORY, &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_LIST " Logs", &Settings::application.widget.logs, CTRL_MOD "L");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
 
         // system preferences

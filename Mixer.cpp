@@ -942,9 +942,9 @@ void Mixer::load(const std::string& filename)
 #endif
 }
 
-void Mixer::open(const std::string& filename)
+void Mixer::open(const std::string& filename, bool smooth)
 {
-    if (Settings::application.smooth_transition)
+    if (smooth)
     {
         Log::Info("\nStarting transition to session %s", filename.c_str());
 
@@ -1170,9 +1170,9 @@ void Mixer::swap()
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());
 }
 
-void Mixer::close()
+void Mixer::close(bool smooth)
 {
-    if (Settings::application.smooth_transition)
+    if (smooth)
     {
         // create empty SessionSource to be used for the smooth transition
         SessionFileSource *ts = new SessionFileSource;

@@ -103,8 +103,8 @@ public:
     void set    (Session *session);
 
     // operations depending on transition mode
-    void close  ();
-    void open   (const std::string& filename);
+    void close  (bool smooth = false);
+    void open   (const std::string& filename, bool smooth = false);
 
     // create sources if clipboard contains well-formed xml text
     void paste  (const std::string& clipboard);
