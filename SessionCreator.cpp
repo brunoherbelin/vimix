@@ -281,8 +281,13 @@ void SessionLoader::load(XMLElement *sessionNode)
                     // clone from given origin
                     XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
                     if (originNode) {
-                        std::string sourcename = std::string ( originNode->GetText() );
-                        SourceList::iterator origin = session_->find(sourcename);
+                        uint64_t id_origin_ = 0;
+                        originNode->QueryUnsigned64Attribute("id", &id_origin_);
+                        SourceList::iterator origin;
+                        if (id_origin_ > 0)
+                            origin = session_->find(id_origin_);
+                        else
+                            origin = session_->find( std::string ( originNode->GetText() ) );
                         // found the orign source
                         if (origin != session_->end()) {
                             // create a new source of type Clone
@@ -356,8 +361,13 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
                 // clone from given origin
                 XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
                 if (originNode) {
-                    std::string sourcename = std::string ( originNode->GetText() );
-                    SourceList::iterator origin = session_->find(sourcename);
+                    uint64_t id_origin_ = 0;
+                    originNode->QueryUnsigned64Attribute("id", &id_origin_);
+                    SourceList::iterator origin;
+                    if (id_origin_ > 0)
+                        origin = session_->find(id_origin_);
+                    else
+                        origin = session_->find( std::string ( originNode->GetText() ) );
                     // found the orign source
                     if (origin != session_->end())
                         load_source = (*origin)->clone(id__);

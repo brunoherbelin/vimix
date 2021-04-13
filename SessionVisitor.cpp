@@ -525,6 +525,7 @@ void SessionVisitor::visit (CloneSource& s)
     xmlCurrent_->SetAttribute("type", "CloneSource");
 
     XMLElement *origin = xmlDoc_->NewElement("origin");
+    origin->SetAttribute("id", s.origin()->id());
     xmlCurrent_->InsertEndChild(origin);
     XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
     origin->InsertEndChild( text );

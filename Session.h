@@ -109,6 +109,9 @@ public:
     std::list<MixingGroup *>::iterator endMixingGroup ();
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
 
+    // snapshots
+
+
     // lock and unlock access (e.g. while saving)
     void lock ();
     void unlock ();
