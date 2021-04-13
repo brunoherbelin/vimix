@@ -1197,8 +1197,8 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
     InputTextCallback_UserData* user_data = (InputTextCallback_UserData*)data->UserData;
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
     {
-        if (user_data->WordWrap > 1)
-            word_wrap(user_data->Str, user_data->WordWrap );
+//        if (user_data->WordWrap > 1)
+//            word_wrap(user_data->Str, user_data->WordWrap );
 
         // Resize string callback
         std::string* str = user_data->Str;
@@ -1207,9 +1207,16 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
         data->Buf = (char*)str->c_str();
     }
 
-//    fprintf(stderr, "input %s\n", data->Buf);
-
     return 0;
+}
+
+bool ImGuiToolkit::InputText(const char* label, std::string* str)
+{
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+
+    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1,  flags, InputTextCallback, &cb_user_data);
 }
 
 bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
