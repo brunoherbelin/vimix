@@ -63,6 +63,7 @@ namespace ImGuiToolkit
     void SetAccentColor (accent_color color);
     struct ImVec4 HighlightColor (bool active = true);
 
+    bool  InputText(const char* label, std::string* str);
     bool  InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int linesize = 0);
 }
 
