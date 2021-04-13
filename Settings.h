@@ -178,14 +178,14 @@ struct Application
     // Global settings Application interface
     float scale;
     int  accent_color;
-    bool pannel_stick;
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
 
+    int  pannel_history_mode;
+
     // connection settings
     bool accept_connections;
-//    std::map<int, std::string> instance_names;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -221,11 +221,11 @@ struct Application
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
         accent_color = 0;
-        pannel_stick = false;
         smooth_transition = true;
         smooth_cursor = false;
         action_history_follow_view = false;
         accept_connections = false;
+        pannel_history_mode = 0;
         current_view = 1;
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
