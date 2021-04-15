@@ -1241,3 +1241,81 @@ void Mixer::paste(const std::string& clipboard)
         }
     }
 }
+
+
+void Mixer::restore(tinyxml2::XMLElement *sessionNode)
+{
+    //
+    // source lists
+    //
+
+    // sessionsources contains list of ids of all sources currently in the session (before loading)
+    SourceIdList session_sources = session_->getIdList();
+//    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)
+//        Log::Info("sessionsources  id %s", std::to_string(*it).c_str());
+
+    // load history status:
+    // - if a source exists, its attributes are updated, and that's all
+    // - if a source does not exists (in current session), it is created inside the session
+    SessionLoader loader( session_ );
+    loader.load( sessionNode );
+
+    // loaded_sources contains map of xml ids of all sources treated by loader
+    std::map< uint64_t, Source* > loaded_sources = loader.getSources();
+
+    // remove intersect of both lists (sources were updated by SessionLoader)
+    for( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); ){
+        auto ssit = std::find(session_sources.begin(), session_sources.end(), (*lsit).first);
+        if ( ssit != session_sources.end() ) {
+            lsit = loaded_sources.erase(lsit);
+            session_sources.erase(ssit);
+        }
+        else
+            lsit++;
+    }
+
+    // remaining ids in list sessionsources : to remove
+    while ( !session_sources.empty() ){
+        Source *s = Mixer::manager().findSource( session_sources.front() );
+        if (s!=nullptr) {
+#ifdef ACTION_DEBUG
+            Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
+#endif
+            // remove the source from the mixer
+            detach( s );
+            // delete source from session
+            session_->deleteSource( s );
+        }
+        session_sources.pop_front();
+    }
+
+    // remaining sources in list loaded_sources : to add
+    for ( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); lsit++)
+    {
+#ifdef ACTION_DEBUG
+        Log::Info("Recreate id %s to %s\n", std::to_string((*lsit).first).c_str(), std::to_string((*lsit).second->id()).c_str());
+#endif
+        // attach created source
+        attach( (*lsit).second );
+    }
+
+    //
+    // mixing groups
+    //
+
+    // Get the list of mixing groups in the xml loader
+    std::list< SourceList > loadergroups = loader.getMixingGroups();
+
+    // clear all session groups
+    auto group_iter = session_->beginMixingGroup();
+    while ( group_iter != session_->endMixingGroup() )
+        group_iter = session_->deleteMixingGroup(group_iter);
+
+    // apply all changes creating or modifying groups in the session
+    // (after this, new groups are created and existing groups are adjusted)
+    for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++)
+        session_->link( *group_loader_it, view(View::MIXING)->scene.fg() );
+
+
+}
+

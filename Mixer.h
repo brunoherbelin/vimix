@@ -9,6 +9,10 @@
 #include "Session.h"
 #include "Selection.h"
 
+namespace tinyxml2 {
+class XMLElement;
+}
+
 class SessionSource;
 
 class Mixer
@@ -108,6 +112,7 @@ public:
 
     // create sources if clipboard contains well-formed xml text
     void paste  (const std::string& clipboard);
+    void restore(tinyxml2::XMLElement *sessionNode);
 
 protected:
 

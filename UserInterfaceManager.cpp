@@ -3099,10 +3099,7 @@ void Navigator::RenderMainPannelVimix()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::ListBoxHeader("##UndoHistory", CLAMP(Action::manager().max(), 4, 8));
         for (uint i = Action::manager().max(); i > 0; --i) {
-
-            std::string step_label_ = Action::manager().label(i);
-            bool enable = i == Action::manager().current();
-            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+            if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick )) {
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     Action::manager().stepTo(i);
             }
@@ -3132,31 +3129,32 @@ void Navigator::RenderMainPannelVimix()
     }
     else {
 
-        static std::list<std::string> snapshots;
-        static std::list<std::string>::iterator current_snapshot = snapshots.end();
+        std::list<uint64_t> snapshots = Action::manager().snapshots();
+        static uint64_t current_snapshot = 0;
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::ListBoxHeader("##Snapshots", CLAMP(snapshots.size(), 4, 8));
 
         ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-        for (auto ait = snapshots.begin(); ait != snapshots.end(); ++ait)
+        for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
         {
             // size of items
             ImVec2 s = size;
-            if ( current_snapshot == ait )
+            if ( current_snapshot == *snapit )
                 s.x -= ImGui::GetTextLineHeightWithSpacing();
             // entry
-            if (ImGui::Selectable( ait->c_str(), current_snapshot == ait, ImGuiSelectableFlags_AllowDoubleClick, s )) {
+            if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), current_snapshot == *snapit, ImGuiSelectableFlags_AllowDoubleClick, s )) {
                 // current list item
-                current_snapshot = ait;
+                current_snapshot = *snapit;
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     // trigger snapshot
 //                    current_snapshot = snapshots.end();
+                    Action::manager().restore(current_snapshot);
                 }
             }
             // context menu
-            if ( current_snapshot == ait ) {
+            if ( current_snapshot == *snapit ) {
                 ImGui::SameLine();
                 if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
                     ImGui::OpenPopup( "MenuSnapshot" );
@@ -3167,16 +3165,22 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::BeginPopup( "MenuSnapshot" ))
         {
             if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size )) {
-//                current_snapshot = snapshots.end();
+                Action::manager().restore(current_snapshot);
+                current_snapshot = 0;
             }
             if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
-                snapshots.erase(current_snapshot);
-                current_snapshot = snapshots.end();
+
+
+                Action::manager().remove(current_snapshot);
+                current_snapshot = 0;
             }
             ImGui::TextDisabled("Rename");
             ImGui::SetNextItemWidth(size.x);
-            if ( current_snapshot != snapshots.end() ) {
-                ImGuiToolkit::InputText("##Rename", &(*current_snapshot) );
+            if ( current_snapshot > 0 ) {
+                static std::string label;
+                label = Action::manager().label(current_snapshot);
+                if ( ImGuiToolkit::InputText("##Rename", &label ) )
+                    Action::manager().setLabel(current_snapshot, label);
             }
             ImGui::EndPopup();
         }
@@ -3187,7 +3191,8 @@ void Navigator::RenderMainPannelVimix()
         // right buttons
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
         if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+")) {
-            snapshots.push_back( SystemToolkit::date_time_string() );
+//            snapshots.push_back( SystemToolkit::date_time_string() );
+            Action::manager().snapshot( SystemToolkit::date_time_string() );
         }
 //        // active list element : delete snapshot button
 //        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
