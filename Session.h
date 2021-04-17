@@ -138,7 +138,6 @@ protected:
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     std::string snapshots_;
-    std::list<FrameGrabber *> grabbers_;
     float fading_target_;
     std::mutex access_;
 };
