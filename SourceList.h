@@ -42,9 +42,11 @@ public:
 
 protected:
     Session *host_;
-    Source *target_;
+    Source  *target_;
     uint64_t id_;
 };
+
 typedef std::list<SourceLink*> SourceLinkList;
+SourceList validate (const SourceLinkList &list);
 
 #endif // SOURCELIST_H

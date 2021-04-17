@@ -121,6 +121,8 @@ SourceList join (const SourceList &first, const SourceList &second)
 }
 
 
+
+
 void SourceLink::connect(uint64_t id, Session *se)
 {
     if (connected())
@@ -136,8 +138,9 @@ void SourceLink::connect(Source *s)
         disconnect();
 
     target_ = s;
-    id_ = s->id();
     target_->links_.push_back(this);
+
+    id_ = s->id();
     // TODO veryfy circular dependency recursively ?
 }
 
@@ -145,9 +148,9 @@ void SourceLink::disconnect()
 {
     if (target_)
         target_->links_.remove(this);
+    target_ = nullptr;
 
     id_ = 0;
-    target_ = nullptr;
     host_ = nullptr;
 }
 
@@ -181,3 +184,21 @@ Source *SourceLink::source()
     return target_;
 }
 
+
+SourceList validate (const SourceLinkList &list)
+{
+    SourceList sourcelist;
+
+    for( auto sit = list.begin(); sit != list.end(); ++sit) {
+
+        Source *s = (*sit)->source();
+        if (s)
+            sourcelist.push_back( s );
+
+    }
+
+    // make sure no duplicate
+    sourcelist.unique();
+
+    return sourcelist;
+}
