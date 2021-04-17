@@ -17,7 +17,12 @@
 
 #include "Source.h"
 
-Source::Source(uint64_t id) : id_(id), initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
+SourceCore::SourceCore() : processingshader_(nullptr)
+{
+
+}
+
+Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
 {
     // create unique id
     if (id_ == 0)

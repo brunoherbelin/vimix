@@ -23,7 +23,20 @@ class MixingGroup;
 
 typedef std::list<CloneSource *> CloneList;
 
-class Source
+class SourceCore
+{
+public:
+    SourceCore();
+
+protected:
+    // nodes
+    std::map<View::Mode, Group*> groups_;
+    // image processing shaders
+    ImageProcessingShader *processingshader_;
+
+};
+
+class Source : public SourceCore
 {
     friend class SourceLink;
     friend class CloneSource;
@@ -210,8 +223,6 @@ protected:
     bool initialized_;
     virtual void init() = 0;
 
-    // nodes
-    std::map<View::Mode, Group*> groups_;
 
     // render() fills in the renderbuffer at every frame
     // NB: rendershader_ is applied at render()
@@ -223,8 +234,6 @@ protected:
     FrameBufferSurface *rendersurface_;
     FrameBufferSurface *mixingsurface_;
 
-    // image processing shaders
-    ImageProcessingShader *processingshader_;
     // pointer to the currently attached shader
     // (will be processingshader_ if image processing is enabled)
     Shader *renderingshader_;

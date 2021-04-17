@@ -395,7 +395,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::Spacing();
 }
 
-
 void ImGuiVisitor::visit (Source& s)
 {
     ImGui::PushID(std::to_string(s.id()).c_str());
@@ -538,10 +537,6 @@ void ImGuiVisitor::visit (Source& s)
         else
             s.processingShader()->accept(*this);
     }
-
-    // geometry direct control for DEBUG
-//    s.groupNode(View::GEOMETRY)->accept(*this);
-//    s.groupNode((View::Mode) Settings::application.current_view)->accept(*this);
 
     ImGui::PopID();
 }
