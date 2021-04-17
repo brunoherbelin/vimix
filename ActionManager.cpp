@@ -258,5 +258,8 @@ void Action::restore(uint64_t snapshotid)
 
     // free
     locked_ = false;
+
+    store("Snapshot " + label(snapshotid));
+
 }
 
