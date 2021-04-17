@@ -3,8 +3,8 @@
 
 #include <mutex>
 
+#include "SourceList.h"
 #include "RenderView.h"
-#include "Source.h"
 
 class FrameGrabber;
 class MixingGroup;
@@ -20,6 +20,16 @@ struct SessionNote
 
     SessionNote(const std::string &t = "", bool l = false, int s = 0);
 };
+
+struct SessionSnapshot
+{
+    uint64_t id;
+    std::string label;
+    std::string xml;
+
+    SessionSnapshot(const std::string &l, const std::string &desc);
+};
+
 
 class Session
 {
@@ -110,13 +120,15 @@ public:
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
 
     // snapshots
-
+    void setSnapshots (const std::string &xml) { snapshots_ = xml; }
+    std::string snapshots () const { return snapshots_; }
 
     // lock and unlock access (e.g. while saving)
     void lock ();
     void unlock ();
 
 protected:
+    bool active_;
     RenderView render_;
     std::string filename_;
     Source *failedSource_;
@@ -125,7 +137,7 @@ protected:
     std::list<SessionNote> notes_;
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
-    bool active_;
+    std::string snapshots_;
     std::list<FrameGrabber *> grabbers_;
     float fading_target_;
     std::mutex access_;

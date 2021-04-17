@@ -257,6 +257,9 @@ void UserInterface::handleKeyboard()
                 FrameGrabbing::manager().add(fg);
             }
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_Y )) {
+            Action::manager().snapshot( SystemToolkit::date_time_string() );
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
                 Action::manager().redo();
@@ -286,6 +289,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
         }
+
     }
     // No CTRL modifier
     else {
@@ -802,7 +806,7 @@ void UserInterface::showMenuEdit()
     if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
         Action::manager().redo();
     if ( ImGui::MenuItem( ICON_FA_STAR "+ Snapshot", CTRL_MOD "Y") )
-        Action::manager().redo();
+        Action::manager().snapshot( SystemToolkit::date_time_string() );
 }
 
 void UserInterface::showMenuFile()
@@ -3191,7 +3195,6 @@ void Navigator::RenderMainPannelVimix()
         // right buttons
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
         if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+")) {
-//            snapshots.push_back( SystemToolkit::date_time_string() );
             Action::manager().snapshot( SystemToolkit::date_time_string() );
         }
 //        // active list element : delete snapshot button

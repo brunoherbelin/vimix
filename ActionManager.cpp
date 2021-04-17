@@ -1,5 +1,6 @@
 #include <string>
 #include <algorithm>
+#include <sstream>
 
 #include "Log.h"
 #include "View.h"
@@ -18,25 +19,45 @@
 #define ACTION_DEBUG
 #endif
 
+#define HISTORY_NODE(i) std::to_string(i).insert(0, "H").c_str()
+#define SNAPSHOT_NODE(i) std::to_string(i).insert(0, "S").c_str()
+
 using namespace tinyxml2;
 
 Action::Action(): history_step_(0), history_max_step_(0)
 {
 }
 
-void Action::clear()
+void Action::init(const std::string &xml)
 {
     // clean the history
     history_doc_.Clear();
     history_step_ = 0;
     history_max_step_ = 0;
+    // start fresh
+    store("Session start");
 
     // clean the snapshots
     snapshots_doc_.Clear();
     snapshots_.clear();
 
-    // start fresh
-    store("Session start");
+    if ( !xml.empty() ) {
+        if ( XMLResultError( snapshots_doc_.Parse( xml.c_str() ) ))
+            Log::Info("Failed to load snapshots");
+        else
+        {
+            const XMLElement* N = snapshots_doc_.RootElement();
+            for( ; N ; N=N->NextSiblingElement()) {
+
+                char c;
+                u_int64_t id = 0;
+                std::istringstream nodename( N->Name() );
+                nodename >> c >> id;
+                snapshots_.push_back(id);
+            }
+        }
+    }
+
 }
 
 void Action::store(const std::string &label)
@@ -47,19 +68,17 @@ void Action::store(const std::string &label)
 
     // incremental naming of history nodes
     history_step_++;
-    std::string nodename = "H" + std::to_string(history_step_);
 
     // erase future
     for (uint e = history_step_; e <= history_max_step_; e++) {
-        std::string name = "H" + std::to_string(e);
-        XMLElement *node = history_doc_.FirstChildElement( name.c_str() );
+        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(e) );
         if ( node )
             history_doc_.DeleteChild(node);
     }
     history_max_step_ = history_step_;
 
     // create history node
-    XMLElement *sessionNode = history_doc_.NewElement( nodename.c_str() );
+    XMLElement *sessionNode = history_doc_.NewElement( HISTORY_NODE(history_step_) );
     history_doc_.InsertEndChild(sessionNode);
     // label describes the action
     sessionNode->SetAttribute("label", label.c_str());
@@ -76,7 +95,7 @@ void Action::store(const std::string &label)
 
     // debug
 #ifdef ACTION_DEBUG
-    Log::Info("Action stored %s '%s'", nodename.c_str(), label.c_str());
+    Log::Info("Action stored %d '%s'", history_step_, label.c_str());
 //        XMLSaveDoc(&xmlDoc_, "/home/bhbn/history.xml");
 #endif
 }
@@ -117,8 +136,7 @@ std::string Action::label(uint s) const
     std::string l = "";
 
     if (s > 0 && s <= history_max_step_) {
-        std::string nodename = "H" + std::to_string(s);
-        const XMLElement *sessionNode = history_doc_.FirstChildElement( nodename.c_str() );
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s));
         l = sessionNode->Attribute("label");
     }
     return l;
@@ -131,8 +149,7 @@ void Action::restore(uint target)
 
     // get history node of target step
     history_step_ = CLAMP(target, 1, history_max_step_);
-    std::string nodename = "H" + std::to_string(history_step_);
-    XMLElement *sessionNode = history_doc_.FirstChildElement( nodename.c_str() );
+    XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(history_step_) );
 
     if (sessionNode) {
 
@@ -156,13 +173,15 @@ void Action::snapshot(const std::string &label)
     if (locked_ || label.empty())
         return;
 
+    // create snapshot id
     u_int64_t id = GlmToolkit::uniqueId();
     snapshots_.push_back(id);
 
-    // create history node
-    XMLElement *sessionNode = snapshots_doc_.NewElement( std::to_string(id).c_str() );
+    // create snapshot node
+    XMLElement *sessionNode = snapshots_doc_.NewElement( SNAPSHOT_NODE(id) );
     snapshots_doc_.InsertEndChild(sessionNode);
-    // label describes the action
+
+    // label describes the snapshot
     sessionNode->SetAttribute("label", label.c_str());
 
     // get session to operate on
@@ -173,17 +192,29 @@ void Action::snapshot(const std::string &label)
     for (auto iter = se->begin(); iter != se->end(); iter++, sv.setRoot(sessionNode) )
         (*iter)->accept(sv);
 
+    // TODO: copy action history instead?
+
     // debug
 #ifdef ACTION_DEBUG
-    Log::Info("Snapshot stored %s '%s'", std::to_string(id).c_str(), label.c_str());
+    Log::Info("Snapshot stored %d '%s'", id, label.c_str());
 //        XMLSaveDoc(&xmlDoc_, "/home/bhbn/history.xml");
 #endif
 }
 
-std::string Action::label(uint64_t s) const
+const char *Action::snapshotsDescription()
+{
+    // get compact string
+    XMLPrinter xmlPrint;
+    snapshots_doc_.Print( &xmlPrint );
+
+    return xmlPrint.CStr();
+}
+
+
+std::string Action::label(uint64_t snapshotid) const
 {
     std::string l = "";
-    const XMLElement *sessionNode = snapshots_doc_.FirstChildElement( std::to_string(s).c_str() );
+    const XMLElement *sessionNode = snapshots_doc_.FirstChildElement( SNAPSHOT_NODE(snapshotid) );
 
     if (sessionNode) {
         l = sessionNode->Attribute("label");
@@ -194,7 +225,7 @@ std::string Action::label(uint64_t s) const
 void Action::setLabel (uint64_t snapshotid, const std::string &label)
 {
     // get history node of target
-    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( std::to_string(snapshotid).c_str() );
+    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( SNAPSHOT_NODE(snapshotid) );
 
     if (sessionNode) {
         sessionNode->SetAttribute("label", label.c_str());
@@ -204,7 +235,7 @@ void Action::setLabel (uint64_t snapshotid, const std::string &label)
 void Action::remove(uint64_t snapshotid)
 {
     // get history node of target
-    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( std::to_string(snapshotid).c_str() );
+    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( SNAPSHOT_NODE(snapshotid) );
 
     if (sessionNode) {
         snapshots_doc_.DeleteChild( sessionNode );
@@ -218,7 +249,7 @@ void Action::restore(uint64_t snapshotid)
     locked_ = true;
 
     // get history node of target
-    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( std::to_string(snapshotid).c_str() );
+    XMLElement *sessionNode = snapshots_doc_.FirstChildElement( SNAPSHOT_NODE(snapshotid) );
 
     if (sessionNode) {
         // actually restore

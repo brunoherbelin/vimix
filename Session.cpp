@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "defines.h"
+#include "Source.h"
 #include "Settings.h"
 #include "FrameBuffer.h"
 #include "Session.h"
@@ -16,7 +17,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 {
 }
 
-Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f), filename_("")
+Session::Session() : active_(true), filename_(""), failedSource_(nullptr), snapshots_(""), fading_target_(0.f)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);

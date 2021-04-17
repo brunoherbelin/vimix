@@ -100,6 +100,10 @@ void SessionCreator::load(const std::string& filename)
     for (auto group_it = groups.begin(); group_it != groups.end(); group_it++)
          session_->link( *group_it );
 
+    // load snapshots
+    loadSnapshots( xmlDoc_.FirstChildElement("Snapshots") );
+
+    // load notes
     loadNotes( xmlDoc_.FirstChildElement("Notes") );
 
     // all good
@@ -116,6 +120,15 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Texture"), *session_->config(View::TEXTURE));
         SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
+    }
+}
+
+void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
+{
+    if (snapshotsNode != nullptr && session_ != nullptr) {
+
+        std::string text = std::string ( snapshotsNode->GetText() );
+        session_->setSnapshots( text );
     }
 }
 

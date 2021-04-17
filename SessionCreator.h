@@ -79,6 +79,7 @@ class SessionCreator : public SessionLoader {
 
     void loadConfig(tinyxml2::XMLElement *viewsNode);
     void loadNotes(tinyxml2::XMLElement *notesNode);
+    void loadSnapshots(tinyxml2::XMLElement *snapshotNode);
 
 public:
     SessionCreator(int recursion = 0);

@@ -14,6 +14,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "Source.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
