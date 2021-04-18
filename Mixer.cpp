@@ -1164,7 +1164,7 @@ void Mixer::swap()
     back_session_ = nullptr;
 
     // reset History manager
-    Action::manager().init( session_->snapshots() );
+    Action::manager().init();
 
     // notification
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());

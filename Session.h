@@ -6,6 +6,9 @@
 #include "SourceList.h"
 #include "RenderView.h"
 
+namespace tinyxml2 {
+class XMLDocument;
+}
 class FrameGrabber;
 class MixingGroup;
 
@@ -21,15 +24,11 @@ struct SessionNote
     SessionNote(const std::string &t = "", bool l = false, int s = 0);
 };
 
-struct SessionSnapshot
-{
-    uint64_t id;
-    std::string label;
-    std::string xml;
+struct SessionSnapshots {
 
-    SessionSnapshot(const std::string &l, const std::string &desc);
+    tinyxml2::XMLDocument *xmlDoc_;
+    std::list<uint64_t> keys_;
 };
-
 
 class Session
 {
@@ -120,8 +119,7 @@ public:
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
 
     // snapshots
-    void setSnapshots (const std::string &xml) { snapshots_ = xml; }
-    std::string snapshots () const { return snapshots_; }
+    SessionSnapshots * const snapshots () { return &snapshots_; }
 
     // lock and unlock access (e.g. while saving)
     void lock ();
@@ -137,7 +135,7 @@ protected:
     std::list<SessionNote> notes_;
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
-    std::string snapshots_;
+    SessionSnapshots snapshots_;
     float fading_target_;
     std::mutex access_;
 };

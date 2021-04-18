@@ -1,4 +1,4 @@
-#include "SessionCreator.h"
+#include <sstream>
 
 #include "Log.h"
 #include "defines.h"
@@ -18,10 +18,10 @@
 #include "MediaPlayer.h"
 #include "SystemToolkit.h"
 
-#include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
+#include "SessionCreator.h"
 
 std::string SessionCreator::info(const std::string& filename)
 {
@@ -127,8 +127,17 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 {
     if (snapshotsNode != nullptr && session_ != nullptr) {
 
-        std::string text = std::string ( snapshotsNode->GetText() );
-        session_->setSnapshots( text );
+        const XMLElement* N = snapshotsNode->FirstChildElement();
+        for( ; N ; N = N->NextSiblingElement()) {
+
+            char c;
+            u_int64_t id = 0;
+            std::istringstream nodename( N->Name() );
+            nodename >> c >> id;
+
+            session_->snapshots()->keys_.push_back(id);
+            session_->snapshots()->xmlDoc_->InsertEndChild( N->DeepClone(session_->snapshots()->xmlDoc_) );
+        }
     }
 }
 
@@ -406,7 +415,7 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 }
 
 
-bool SessionLoader::isClipboard(std::string clipboard)
+bool SessionLoader::isClipboard(const std::string &clipboard)
 {
     if (clipboard.size() > 6 && clipboard.substr(0, 6) == "<" APP_NAME )
         return true;
@@ -414,7 +423,7 @@ bool SessionLoader::isClipboard(std::string clipboard)
     return false;
 }
 
-tinyxml2::XMLElement* SessionLoader::firstSourceElement(std::string clipboard, XMLDocument &xmlDoc)
+tinyxml2::XMLElement* SessionLoader::firstSourceElement(const std::string &clipboard, XMLDocument &xmlDoc)
 {
     tinyxml2::XMLElement* sourceNode = nullptr;
 
@@ -435,7 +444,7 @@ tinyxml2::XMLElement* SessionLoader::firstSourceElement(std::string clipboard, X
     return sourceNode;
 }
 
-void SessionLoader::applyImageProcessing(const Source &s, std::string clipboard)
+void SessionLoader::applyImageProcessing(const Source &s, const std::string &clipboard)
 {
     if ( !isClipboard(clipboard) )
         return;

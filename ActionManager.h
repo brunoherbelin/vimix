@@ -23,7 +23,7 @@ public:
         static Action _instance;
         return _instance;
     }
-    void init(const std::string &xml = "");
+    void init();
 
     // UNDO History
     void store(const std::string &label);
@@ -38,16 +38,12 @@ public:
     // Snapshots
     void snapshot(const std::string &label);
 
-    inline std::list<uint64_t> snapshots() const { return snapshots_; }
+    std::list<uint64_t> snapshots() const;
     void restore(uint64_t snapshotid);
     void remove (uint64_t snapshotid);
 
     std::string label(uint64_t snapshotid) const;
     void setLabel (uint64_t snapshotid, const std::string &label);
-
-    const char *snapshotsDescription();
-
-//    inline const tinyxml2::XMLElement *snapshotsRoot() const { return snapshots_doc_.RootElement(); }
 
 private:
 
@@ -56,9 +52,6 @@ private:
     uint history_max_step_;
     std::atomic<bool> locked_;
     void restore(uint target);
-
-    tinyxml2::XMLDocument snapshots_doc_;
-    std::list<uint64_t> snapshots_;
 
 };
 

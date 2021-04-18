@@ -29,9 +29,9 @@ public:
     } Mode;
     Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
 
-    static bool isClipboard(std::string clipboard);
-    static tinyxml2::XMLElement* firstSourceElement(std::string clipboard, tinyxml2::XMLDocument &xmlDoc);
-    static void applyImageProcessing(const Source &s, std::string clipboard);
+    static bool isClipboard(const std::string &clipboard);
+    static tinyxml2::XMLElement* firstSourceElement(const std::string &clipboard, tinyxml2::XMLDocument &xmlDoc);
+    static void applyImageProcessing(const Source &s, const std::string &clipboard);
     //TODO static void applyMask(const Source &s, std::string clipboard);
 
     // Elements of Scene

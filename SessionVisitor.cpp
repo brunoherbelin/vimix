@@ -76,12 +76,9 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
 
     // 3. snapshots
     XMLElement *snapshots = xmlDoc.NewElement("Snapshots");
-//    const XMLElement* N = Action::manager().snapshotsRoot();
-//    for( ; N ; N=N->NextSiblingElement())
-//        snapshots->InsertEndChild( N->DeepClone( &xmlDoc ));
-
-    XMLText *desc = xmlDoc.NewText( Action::manager().snapshotsDescription() );
-    snapshots->InsertEndChild( desc );
+    const XMLElement* N = session->snapshots()->xmlDoc_->FirstChildElement();
+    for( ; N ; N=N->NextSiblingElement())
+        snapshots->InsertEndChild( N->DeepClone( &xmlDoc ));
     xmlDoc.InsertEndChild(snapshots);
 
     // 4. optional notes

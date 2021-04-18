@@ -17,7 +17,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 {
 }
 
-Session::Session() : active_(true), filename_(""), failedSource_(nullptr), snapshots_(""), fading_target_(0.f)
+Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fading_target_(0.f)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
@@ -37,6 +37,8 @@ Session::Session() : active_(true), filename_(""), failedSource_(nullptr), snaps
     config_[View::TEXTURE] = new Group;
     config_[View::TEXTURE]->scale_ = Settings::application.views[View::TEXTURE].default_scale;
     config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
+
+    snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
 }
 
 
@@ -60,6 +62,9 @@ Session::~Session()
     delete config_[View::LAYER];
     delete config_[View::MIXING];
     delete config_[View::TEXTURE];
+
+    snapshots_.keys_.clear();
+    delete snapshots_.xmlDoc_;
 }
 
 void Session::setActive (bool on)
@@ -126,7 +131,6 @@ void Session::update(float dt)
 
 }
 
-
 SourceList::iterator Session::addSource(Source *s)
 {
     // lock before change
@@ -178,7 +182,6 @@ SourceList::iterator Session::deleteSource(Source *s)
     return its;
 }
 
-
 void Session::removeSource(Source *s)
 {
     // lock before change
@@ -200,7 +203,6 @@ void Session::removeSource(Source *s)
     // unlock access
     access_.unlock();
 }
-
 
 Source *Session::popSource()
 {
@@ -385,7 +387,6 @@ void Session::unlink (SourceList sources)
     }
 }
 
-
 void Session::addNote(SessionNote note)
 {
     notes_.push_back( note );
@@ -419,7 +420,6 @@ std::list<SourceList> Session::getMixingGroups () const
     return lmg;
 }
 
-
 std::list<MixingGroup *>::iterator Session::deleteMixingGroup (std::list<MixingGroup *>::iterator g)
 {
     if (g != mixing_groups_.end()) {
@@ -448,7 +448,6 @@ void Session::unlock()
 {
     access_.unlock();
 }
-
 
 void Session::validate (SourceList &sources)
 {
