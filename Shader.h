@@ -50,8 +50,7 @@ public:
     virtual void use();
     virtual void reset();
     virtual void accept(Visitor& v);
-
-    void operator = (const Shader &D );
+    void copy(Shader const& S);
 
     glm::mat4 projection;
     glm::mat4 modelview;

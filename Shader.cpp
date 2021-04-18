@@ -210,7 +210,7 @@ Shader::Shader() : blending(BLEND_OPACITY)
 }
 
 
-void Shader::operator = (const Shader &S )
+void Shader::copy(Shader const& S)
 {
     color = S.color;
     blending = S.blending;
