@@ -71,8 +71,8 @@ public:
 protected:
 
 	FileDialog(); // Prevent construction
-    FileDialog(const FileDialog&) {} // Prevent construction by copying
-    FileDialog& operator =(const FileDialog&) { return *this; } // Prevent assignment
+    FileDialog(const FileDialog&) = delete; // Prevent construction by copying
+    FileDialog& operator =(const FileDialog&) = delete; // Prevent assignment
 	~FileDialog(); // Prevent unwanted destruction
 
 public:
@@ -95,8 +95,8 @@ public:
 	std::string GetCurrentFilter();
 	std::string GetUserString();
 
-	void SetFilterColor(std::string vFilter, ImVec4 vColor);
-    bool GetFilterColor(std::string vFilter, ImVec4 *vColor);
+    void SetFilterColor(const std::string &vFilter, ImVec4 vColor);
+    bool GetFilterColor(const std::string &vFilter, ImVec4 *vColor);
     void ClearFilterColor();
 
 private:

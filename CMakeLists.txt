@@ -299,7 +299,6 @@ set(VMIX_SRCS
     Settings.cpp
     Screenshot.cpp
     Resource.cpp
-    FileDialog.cpp
     Timeline.cpp
     Stream.cpp
     MediaPlayer.cpp
