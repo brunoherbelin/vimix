@@ -80,8 +80,8 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
 //    for( ; N ; N=N->NextSiblingElement())
 //        snapshots->InsertEndChild( N->DeepClone( &xmlDoc ));
 
-    XMLText *text = xmlDoc.NewText( Action::manager().snapshotsDescription() );
-    snapshots->InsertEndChild( text );
+    XMLText *desc = xmlDoc.NewText( Action::manager().snapshotsDescription() );
+    snapshots->InsertEndChild( desc );
     xmlDoc.InsertEndChild(snapshots);
 
     // 4. optional notes

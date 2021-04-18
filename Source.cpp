@@ -17,7 +17,7 @@
 
 #include "Source.h"
 
-SourceCore::SourceCore() : processingshader_(nullptr)
+SourceCore::SourceCore()
 {
     // default nodes
     groups_[View::RENDERING] = new Group;
@@ -38,6 +38,11 @@ SourceCore::SourceCore() : processingshader_(nullptr)
     processingshader_ = new ImageProcessingShader;
     // default rendering with image processing disabled
     renderingshader_ = static_cast<Shader *>(new ImageShader);
+}
+
+SourceCore::SourceCore(SourceCore const& other) : SourceCore()
+{
+    copy(other);
 }
 
 SourceCore::~SourceCore()
@@ -61,6 +66,22 @@ SourceCore::~SourceCore()
     groups_.clear();
 }
 
+void SourceCore::copy(SourceCore const& other)
+{
+    // copy groups properties
+    groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
+    groups_[View::MIXING]->copyTransform( other.group(View::MIXING) );
+    groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
+    groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
+    groups_[View::TEXTURE]->copyTransform( other.group(View::TEXTURE) );
+    groups_[View::TRANSITION]->copyTransform( other.group(View::TRANSITION) );
+    stored_status_->copyTransform( other.stored_status_ );
+
+    // copy shader properties
+    processingshader_->copy(*other.processingshader_);
+    renderingshader_->copy(*other.renderingshader_);
+}
+
 void SourceCore::store (View::Mode m)
 {
    stored_status_->copyTransform(groups_[m]);
@@ -69,18 +90,7 @@ void SourceCore::store (View::Mode m)
 SourceCore& SourceCore::operator= (SourceCore const& other)
 {
     if (this != &other) {  // no self assignment
-        // copy groups properties
-        groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
-        groups_[View::MIXING]->copyTransform( other.group(View::MIXING) );
-        groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
-        groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
-        groups_[View::TEXTURE]->copyTransform( other.group(View::TEXTURE) );
-        groups_[View::TRANSITION]->copyTransform( other.group(View::TRANSITION) );
-        stored_status_->copyTransform( other.stored_status_ );
-
-        // copy shader properties
-        processingshader_->copy(*other.processingshader_);
-        renderingshader_->copy(*other.renderingshader_);
+        copy(other);
     }
     return *this;
 }

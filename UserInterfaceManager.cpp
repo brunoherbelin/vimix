@@ -100,7 +100,7 @@ UserInterface::UserInterface()
     show_opengl_about = false;
     show_view_navigator  = 0;
     target_view_navigator = 1;
-    currentTextEdit = "";
+    currentTextEdit.clear();
     screenshot_step = 0;
 
     // keep hold on frame grabbers

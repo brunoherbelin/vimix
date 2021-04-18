@@ -7,6 +7,9 @@ class GeometryView : public View
 {
 public:
     GeometryView();
+    // non assignable class
+    GeometryView(GeometryView const&) = delete;
+    GeometryView& operator=(GeometryView const&) = delete;
 
     void draw () override;
     void update (float dt) override;

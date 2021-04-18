@@ -239,6 +239,9 @@ class Scene  {
 
 public:
     Scene();
+    // non assignable class
+    Scene(Scene const&) = delete;
+    Scene& operator=(Scene const&) = delete;
     ~Scene();
 
     void accept (Visitor& v);

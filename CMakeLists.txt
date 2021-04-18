@@ -289,7 +289,7 @@ set(VMIX_SRCS
     Selection.cpp
     SessionSource.cpp
     SessionVisitor.cpp
-    GarbageVisitor.cpp
+    Interpolator.cpp
     SessionCreator.cpp
     Mixer.cpp
     FrameGrabber.cpp

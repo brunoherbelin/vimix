@@ -27,6 +27,8 @@ class SourceCore
 {
 public:
     SourceCore();
+    SourceCore(SourceCore const&);
+    SourceCore& operator= (SourceCore const& other);
     virtual ~SourceCore();
 
     // get handle on the nodes used to manipulate the source in a view
@@ -39,8 +41,6 @@ public:
     // a Source always has an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
-    SourceCore& operator= (SourceCore const& other);
-
 protected:
     // nodes
     std::map<View::Mode, Group*> groups_;
@@ -51,6 +51,8 @@ protected:
     // pointer to the currently attached shader
     // (will be processingshader_ if image processing is enabled)
     Shader *renderingshader_;
+
+    void copy(SourceCore const& other);
 };
 
 class Source : public SourceCore
@@ -69,6 +71,9 @@ public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
     Source (uint64_t id = 0);
+    // non assignable class
+    Source(Source const&) = delete;
+    Source& operator=(Source const&) = delete;
     virtual ~Source ();
 
     // Get unique id

@@ -20,6 +20,7 @@ protected:
                                  const IpEndpointName& remoteEndpoint );
 public:
     inline void setParent(NetworkStream *s) { parent_ = s; }
+    StreamerResponseListener() : parent_(nullptr) {}
 };
 
 

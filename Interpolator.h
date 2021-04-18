@@ -16,6 +16,7 @@ public:
 
     float cursor_;
 
+    void apply(float percent);
 
 };
 
