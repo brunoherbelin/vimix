@@ -19,8 +19,66 @@
 
 SourceCore::SourceCore() : processingshader_(nullptr)
 {
+    // default nodes
+    groups_[View::RENDERING] = new Group;
+    groups_[View::RENDERING]->visible_ = false;
+    groups_[View::MIXING] = new Group;
+    groups_[View::MIXING]->visible_ = false;
+    groups_[View::GEOMETRY] = new Group;
+    groups_[View::GEOMETRY]->visible_ = false;
+    groups_[View::LAYER] = new Group;
+    groups_[View::LAYER]->visible_ = false;
+    groups_[View::TEXTURE] = new Group;
+    groups_[View::TEXTURE]->visible_ = false;
+    groups_[View::TRANSITION] = new Group;
+    // temp node
+    stored_status_  = new Group;
 
+    // filtered image shader (with texturing and processing) for rendering
+    processingshader_ = new ImageProcessingShader;
+    // default rendering with image processing disabled
+    renderingshader_ = static_cast<Shader *>(new ImageShader);
 }
+
+SourceCore::~SourceCore()
+{
+    // all groups and their children are deleted in the scene
+    // this deletes renderingshader_ (and all source-attached nodes
+    // e.g. rendersurface_, overlays, blendingshader_, etc.)
+    delete groups_[View::RENDERING];
+    delete groups_[View::MIXING];
+    delete groups_[View::GEOMETRY];
+    delete groups_[View::LAYER];
+    delete groups_[View::TEXTURE];
+    delete groups_[View::TRANSITION];
+    delete stored_status_;
+
+    // don't forget that the processing shader
+    // could be created but not used and not deleted above
+    if ( renderingshader_ != processingshader_ )
+        delete processingshader_;
+
+    groups_.clear();
+}
+
+SourceCore& SourceCore::operator= (SourceCore const& other)
+{
+    if (this != &other) {  // no self assignment
+        // copy groups properties
+        groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
+        groups_[View::MIXING]->copyTransform( other.group(View::MIXING) );
+        groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
+        groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
+        groups_[View::TEXTURE]->copyTransform( other.group(View::TEXTURE) );
+        stored_status_->copyTransform( other.stored_status_ );
+
+        // copy shader properties
+        processingshader_->copy(*other.processingshader_);
+        renderingshader_->copy(*other.renderingshader_);
+    }
+    return *this;
+}
+
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
 {
@@ -34,13 +92,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
 
     // create groups and overlays for each view
 
-    // default rendering node
-    groups_[View::RENDERING] = new Group;
-    groups_[View::RENDERING]->visible_ = false;
-
     // default mixing nodes
-    groups_[View::MIXING] = new Group;
-    groups_[View::MIXING]->visible_ = false;
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
     groups_[View::MIXING]->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
 
@@ -75,9 +127,6 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
     groups_[View::MIXING]->attach(overlay_mixinggroup_);
 
     // default geometry nodes
-    groups_[View::GEOMETRY] = new Group;
-    groups_[View::GEOMETRY]->visible_ = false;
-
     frames_[View::GEOMETRY] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -128,8 +177,6 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default layer nodes
-    groups_[View::LAYER] = new Group;
-    groups_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->translation_.z = -1.f;
 
     frames_[View::LAYER] = new Switch;
@@ -149,9 +196,6 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // default appearance node
-    groups_[View::TEXTURE] = new Group;
-    groups_[View::TEXTURE]->visible_ = false;
-
     frames_[View::TEXTURE] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -192,9 +236,6 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
     overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::MENU]);
     groups_[View::TEXTURE]->attach(overlays_[View::TEXTURE]);
 
-    // empty transition node
-    groups_[View::TRANSITION] = new Group;
-
     // locker switch button : locked / unlocked icons
     locker_  = new Switch;
     lock_ = new Handles(Handles::LOCKED);
@@ -202,19 +243,11 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
     unlock_ = new Handles(Handles::UNLOCKED);
     locker_->attach(unlock_);
 
-    // create objects
-    stored_status_  = new Group;
-
     // simple image shader (with texturing) for blending
     blendingshader_ = new ImageShader;
     // mask produced by dedicated shader
     maskshader_ = new MaskShader;
     masksurface_ = new Surface(maskshader_);
-
-    // filtered image shader (with texturing and processing) for rendering
-    processingshader_   = new ImageProcessingShader;
-    // default rendering with image processing enabled
-    renderingshader_ = static_cast<Shader *>(processingshader_);
 
     // for drawing in mixing view
     mixingshader_ = new ImageShader;
@@ -249,7 +282,6 @@ Source::~Source()
     clones_.clear();
 
     // delete objects
-    delete stored_status_;
     if (renderbuffer_)
         delete renderbuffer_;
     if (maskbuffer_)
@@ -259,25 +291,11 @@ Source::~Source()
     if (masksurface_)
         delete masksurface_; // deletes maskshader_
 
-    // all groups and their children are deleted in the scene
-    // this includes rendersurface_, overlays, blendingshader_ and rendershader_
-    delete groups_[View::RENDERING];
-    delete groups_[View::MIXING];
-    delete groups_[View::GEOMETRY];
-    delete groups_[View::LAYER];
-    delete groups_[View::TEXTURE];
-    delete groups_[View::TRANSITION];
-
-    groups_.clear();
-    frames_.clear();
-    overlays_.clear();
-
-    // don't forget that the processing shader
-    // could be created but not used
-    if ( renderingshader_ != processingshader_ )
-        delete processingshader_;
-
     delete texturesurface_;
+
+    overlays_.clear();
+    frames_.clear();
+    handles_.clear();
 }
 
 void Source::setName (const std::string &name)

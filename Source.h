@@ -27,13 +27,29 @@ class SourceCore
 {
 public:
     SourceCore();
+    virtual ~SourceCore();
+
+    // get handle on the nodes used to manipulate the source in a view
+    inline Group *group (View::Mode m) const { return groups_.at(m); }
+    inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+
+    // a Source has a shader used to render in fbo
+    inline Shader *renderingShader () const { return renderingshader_; }
+    // a Source always has an image processing shader
+    inline ImageProcessingShader *processingShader () const { return processingshader_; }
+
+    SourceCore& operator= (SourceCore const& other);
 
 protected:
     // nodes
     std::map<View::Mode, Group*> groups_;
+    // temporary copy for interaction
+    Group *stored_status_;
     // image processing shaders
     ImageProcessingShader *processingshader_;
-
+    // pointer to the currently attached shader
+    // (will be processingshader_ if image processing is enabled)
+    Shader *renderingshader_;
 };
 
 class Source : public SourceCore
@@ -75,15 +91,8 @@ public:
     Mode mode () const;
     void setMode (Mode m);
 
-    // get handle on the nodes used to manipulate the source in a view
-    inline Group *group (View::Mode m) const { return groups_.at(m); }
-    inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
-
     // tests if a given node is part of the source
     bool contains (Node *node) const;
-
-    // the rendering shader always have an image processing shader
-    inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
     // the image processing shader can be enabled or disabled
     // (NB: when disabled, a simple ImageShader is applied)
@@ -92,9 +101,6 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
-
-    // a Source has a shader used to render in fbo
-    inline Shader *renderingShader () const { return renderingshader_; }
 
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;
@@ -234,10 +240,6 @@ protected:
     FrameBufferSurface *rendersurface_;
     FrameBufferSurface *mixingsurface_;
 
-    // pointer to the currently attached shader
-    // (will be processingshader_ if image processing is enabled)
-    Shader *renderingshader_;
-
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
     ImageShader *mixingshader_;
@@ -268,7 +270,6 @@ protected:
     bool  locked_;
     bool  need_update_;
     float dt_;
-    Group *stored_status_;
     Workspace  workspace_;
 
     // clones

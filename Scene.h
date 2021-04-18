@@ -64,7 +64,7 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    void copyTransform (Node *other);
+    void copyTransform (const Node *other);
 
     // public members, to manipulate with care
     bool      visible_;

@@ -56,7 +56,7 @@ void Node::clearCallbacks()
     }
 }
 
-void Node::copyTransform(Node *other)
+void Node::copyTransform(const Node *other)
 {
     if (!other)
         return;
