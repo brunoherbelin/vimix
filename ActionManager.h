@@ -12,8 +12,8 @@ class Action
 {
     // Private Constructor
     Action();
-    Action(Action const& copy);            // Not Implemented
-    Action& operator=(Action const& copy); // Not Implemented
+    Action(Action const& copy) = delete;
+    Action& operator=(Action const& copy) = delete;
 
 public:
 

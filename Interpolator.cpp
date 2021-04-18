@@ -22,6 +22,14 @@ void Interpolator::apply(float percent)
     cursor_ = CLAMP( percent, 0.f, 1.f);
 
 
+    if (cursor_ < EPSILON)
+        current_ = from_;
+    else if (cursor_ > 1.f - EPSILON)
+        current_ = to_;
+    else {
+//        current_ =
+    }
 
+    subject_->copy(current_);
 
 }

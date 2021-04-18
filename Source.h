@@ -41,6 +41,8 @@ public:
     // a Source always has an image processing shader
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
+    void copy(SourceCore const& other);
+
 protected:
     // nodes
     std::map<View::Mode, Group*> groups_;
@@ -51,8 +53,6 @@ protected:
     // pointer to the currently attached shader
     // (will be processingshader_ if image processing is enabled)
     Shader *renderingshader_;
-
-    void copy(SourceCore const& other);
 };
 
 class Source : public SourceCore

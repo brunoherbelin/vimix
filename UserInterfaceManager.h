@@ -125,8 +125,8 @@ class UserInterface
 
     // Private Constructor
     UserInterface();
-    UserInterface(UserInterface const& copy);            // Not Implemented
-    UserInterface& operator=(UserInterface const& copy); // Not Implemented
+    UserInterface(UserInterface const& copy) = delete;
+    UserInterface& operator=(UserInterface const& copy) = delete;
 
 public:
 

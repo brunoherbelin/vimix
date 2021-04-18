@@ -29,8 +29,8 @@ class Streaming
 
     // Private Constructor
     Streaming();
-    Streaming(Streaming const& copy);            // Not Implemented
-    Streaming& operator=(Streaming const& copy); // Not Implemented
+    Streaming(Streaming const& copy) = delete;
+    Streaming& operator=(Streaming const& copy) = delete;
 
 public:
 

@@ -19,8 +19,8 @@ class Mixer
 {
     // Private Constructor
     Mixer();
-    Mixer(Mixer const& copy);            // Not Implemented
-    Mixer& operator=(Mixer const& copy); // Not Implemented
+    Mixer(Mixer const& copy) = delete;
+    Mixer& operator=(Mixer const& copy) = delete;
 
 public:
 

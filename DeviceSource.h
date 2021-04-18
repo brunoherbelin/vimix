@@ -87,8 +87,8 @@ class Device
     friend class DeviceSource;
 
     Device();
-    Device(Device const& copy);            // Not Implemented
-    Device& operator=(Device const& copy); // Not Implemented
+    Device(Device const& copy) = delete;
+    Device& operator=(Device const& copy) = delete;
 
 public:
 
