@@ -97,7 +97,7 @@ void SessionCreator::load(const std::string& filename)
 
     // create groups
     std::list< SourceList > groups = getMixingGroups();
-    for (auto group_it = groups.begin(); group_it != groups.end(); group_it++)
+    for (auto group_it = groups.begin(); group_it != groups.end(); ++group_it)
          session_->link( *group_it );
 
     // load snapshots
@@ -185,10 +185,10 @@ std::list< SourceList > SessionLoader::getMixingGroups() const
     std::list< SourceList > groups_new_sources_id;
 
     // perform conversion from xml id to new id
-    for (auto git = groups_sources_id_.begin(); git != groups_sources_id_.end(); git++)
+    for (auto git = groups_sources_id_.begin(); git != groups_sources_id_.end(); ++git)
     {
         SourceList new_sources;
-        for (auto sit = (*git).begin(); sit != (*git).end(); sit++  ) {
+        for (auto sit = (*git).begin(); sit != (*git).end(); ++sit ) {
             if (sources_id_.count(*sit) > 0)
                 new_sources.push_back( sources_id_.at(*sit) );
         }

@@ -6,9 +6,9 @@
 class Interpolator
 {
 public:
-    Interpolator();
+    Interpolator(Source *subject, const SourceCore &target);
 
-    Source *target_;
+    Source *subject_;
 
     SourceCore from_;
     SourceCore to_;

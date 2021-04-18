@@ -561,7 +561,7 @@ void UserInterface::handleMouse()
                     {
                         if (!shift_modifier_active) {
                             // grab others from selection
-                            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+                            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                                 if ( *it != current )
                                     Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
                             }
@@ -1152,7 +1152,7 @@ void UserInterface::RenderPreview()
                     if (ls.size()>0) {
                         ImGui::Separator();
                         ImGui::MenuItem("Active streams", nullptr, false, false);
-                        for (auto it = ls.begin(); it != ls.end(); it++)
+                        for (auto it = ls.begin(); it != ls.end(); ++it)
                             ImGui::Text(" %s", (*it).c_str() );
                     }
 
@@ -2037,7 +2037,7 @@ void MediaController::Render()
                 setMediaPlayer();
 
             // display list of available media
-            for (auto mpit = MediaPlayer::begin(); mpit != MediaPlayer::end(); mpit++ )
+            for (auto mpit = MediaPlayer::begin(); mpit != MediaPlayer::end(); ++mpit )
             {
                 std::string label = (*mpit)->filename();
                 if (ImGui::MenuItem( label.c_str() ))
@@ -2185,7 +2185,7 @@ void MediaController::Render()
                 if (ImGui::BeginMenu("Smooth curve"))
                 {
                     const char* names[] = { "Just a little", "A bit more", "Quite a lot"};
-                    for (int i = 0; i < IM_ARRAYSIZE(names); i++) {
+                    for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
                         if (ImGui::MenuItem(names[i])) {
                             mp_->timeline()->smoothFading( 10 * (int) pow(4, i) );
                             Action::manager().store("Timeline Smooth curve");
@@ -2196,7 +2196,7 @@ void MediaController::Render()
                 if (ImGui::BeginMenu("Auto fading"))
                 {
                     const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
-                    for (int i = 0; i < IM_ARRAYSIZE(names); i++) {
+                    for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
                         if (ImGui::MenuItem(names[i])) {
                             mp_->timeline()->autoFading( 250 * (int ) pow(2, i) );
                             mp_->timeline()->smoothFading( 10 * (i + 1) );

@@ -61,6 +61,11 @@ SourceCore::~SourceCore()
     groups_.clear();
 }
 
+void SourceCore::store (View::Mode m)
+{
+   stored_status_->copyTransform(groups_[m]);
+}
+
 SourceCore& SourceCore::operator= (SourceCore const& other)
 {
     if (this != &other) {  // no self assignment
@@ -70,6 +75,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
         groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
         groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
         groups_[View::TEXTURE]->copyTransform( other.group(View::TEXTURE) );
+        groups_[View::TRANSITION]->copyTransform( other.group(View::TRANSITION) );
         stored_status_->copyTransform( other.stored_status_ );
 
         // copy shader properties
@@ -277,7 +283,7 @@ Source::~Source()
         links_.front()->disconnect();
 
     // inform clones that they lost their origin
-    for (auto it = clones_.begin(); it != clones_.end(); it++)
+    for (auto it = clones_.begin(); it != clones_.end(); ++it)
         (*it)->detach();
     clones_.clear();
 
@@ -320,18 +326,18 @@ void Source::setMode(Source::Mode m)
 {
     // make visible on first time
     if ( mode_ == Source::UNINITIALIZED ) {
-        for (auto g = groups_.begin(); g != groups_.end(); g++)
+        for (auto g = groups_.begin(); g != groups_.end(); ++g)
             (*g).second->visible_ = true;
     }
 
     // choose frame 0 if visible, 1 if selected
     uint index_frame = m == Source::VISIBLE ? 0 : 1;
-    for (auto f = frames_.begin(); f != frames_.end(); f++)
+    for (auto f = frames_.begin(); f != frames_.end(); ++f)
         (*f).second->setActive(index_frame);
 
     // show overlay if current
     bool current = m >= Source::CURRENT;
-    for (auto o = overlays_.begin(); o != overlays_.end(); o++)
+    for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
 
     // the lock icon
@@ -483,7 +489,7 @@ void Source::setActive (bool on)
     active_ = on;
 
     // do not disactivate if a clone depends on it
-    for(auto clone = clones_.begin(); clone != clones_.end(); clone++) {
+    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
         if ( (*clone)->active() )
             active_ = true;
     }
@@ -762,13 +768,13 @@ bool Source::hasNode::operator()(const Source* elem) const
         // general case: traverse tree of all Groups recursively using a SearchVisitor
         SearchVisitor sv(_n);
         // search in groups for all views
-        for (auto g = elem->groups_.begin(); g != elem->groups_.end(); g++) {
+        for (auto g = elem->groups_.begin(); g != elem->groups_.end(); ++g) {
             (*g).second->accept(sv);
             if (sv.found())
                 return true;
         }
         // search in overlays for all views
-        for (auto g = elem->overlays_.begin(); g != elem->overlays_.end(); g++) {
+        for (auto g = elem->overlays_.begin(); g != elem->overlays_.end(); ++g) {
             (*g).second->accept(sv);
             if (sv.found())
                 return true;

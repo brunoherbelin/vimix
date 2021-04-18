@@ -66,7 +66,7 @@ void Session::setActive (bool on)
 {
     if (active_ != on) {
         active_ = on;
-        for(auto it = sources_.begin(); it != sources_.end(); it++) {
+        for(auto it = sources_.begin(); it != sources_.end(); ++it) {
             (*it)->setActive(active_);
         }
     }
@@ -308,7 +308,7 @@ int Session::index(SourceList::iterator it) const
 {
     int index = -1;
     int count = 0;
-    for(auto i = sources_.begin(); i != sources_.end(); i++, count++) {
+    for(auto i = sources_.begin(); i != sources_.end(); ++i, ++count) {
         if ( i == it ) {
             index = count;
             break;
@@ -341,7 +341,7 @@ bool Session::canlink (SourceList sources)
     // verify that all sources given are valid in the sesion
     validate(sources);
 
-    for (auto it = sources.begin(); it != sources.end(); it++) {
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
         // this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
             // askt its group to detach it
@@ -376,7 +376,7 @@ void Session::unlink (SourceList sources)
     validate(sources);
 
     // brute force : detach all given sources
-    for (auto it = sources.begin(); it != sources.end(); it++) {
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
         // this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
             // askt its group to detach it
@@ -413,7 +413,7 @@ std::list<SourceList> Session::getMixingGroups () const
 {
     std::list<SourceList> lmg;
 
-    for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++)
+    for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); ++group_it)
         lmg.push_back( (*group_it)->getCopy() );
 
     return lmg;

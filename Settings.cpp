@@ -175,7 +175,7 @@ void Settings::Save()
         recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
         recentsession->SetAttribute("valid", application.recentSessions.front_is_valid);
         for(auto it = application.recentSessions.filenames.begin();
-            it != application.recentSessions.filenames.end(); it++) {
+            it != application.recentSessions.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -185,7 +185,7 @@ void Settings::Save()
 
         XMLElement *recentfolder = xmlDoc.NewElement( "Folder" );
         for(auto it = application.recentFolders.filenames.begin();
-            it != application.recentFolders.filenames.end(); it++) {
+            it != application.recentFolders.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -196,7 +196,7 @@ void Settings::Save()
         XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
         recentmedia->SetAttribute("path", application.recentImport.path.c_str());
         for(auto it = application.recentImport.filenames.begin();
-            it != application.recentImport.filenames.end(); it++) {
+            it != application.recentImport.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );

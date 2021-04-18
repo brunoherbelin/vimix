@@ -32,6 +32,7 @@ public:
     // get handle on the nodes used to manipulate the source in a view
     inline Group *group (View::Mode m) const { return groups_.at(m); }
     inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+    void store (View::Mode m);
 
     // a Source has a shader used to render in fbo
     inline Shader *renderingShader () const { return renderingshader_; }

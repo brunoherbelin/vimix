@@ -45,7 +45,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     XMLElement *sessionNode = xmlDoc.NewElement("Session");
     xmlDoc.InsertEndChild(sessionNode);
     SessionVisitor sv(&xmlDoc, sessionNode);
-    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
+    for (auto iter = session->begin(); iter != session->end(); ++iter, sv.setRoot(sessionNode) )
         // source visitor
         (*iter)->accept(sv);
 
@@ -184,7 +184,7 @@ void SessionVisitor::visit(Switch &n)
     if (recursive_) {
         // loop over members of the group
         XMLElement *group = xmlCurrent_;
-        for(uint i = 0; i < n.numChildren(); i++) {
+        for(uint i = 0; i < n.numChildren(); ++i) {
             n.child(i)->accept(*this);
             // revert to group as current
             xmlCurrent_ = group;
@@ -258,7 +258,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         // gaps in timeline
         XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
         TimeIntervalSet gaps = n.timeline()->gaps();
-        for( auto it = gaps.begin(); it!= gaps.end(); it++) {
+        for( auto it = gaps.begin(); it!= gaps.end(); ++it) {
             XMLElement *g = xmlDoc_->NewElement("Interval");
             g->SetAttribute("begin", (*it).begin);
             g->SetAttribute("end", (*it).end);
@@ -520,7 +520,7 @@ void SessionVisitor::visit (SessionGroupSource& s)
     XMLElement *sessionNode = xmlDoc_->NewElement("Session");
     xmlCurrent_->InsertEndChild(sessionNode);
 
-    for (auto iter = se->begin(); iter != se->end(); iter++){
+    for (auto iter = se->begin(); iter != se->end(); ++iter){
         setRoot(sessionNode);
         (*iter)->accept(*this);
     }
@@ -569,7 +569,7 @@ void SessionVisitor::visit (MixingGroup& g)
 {
     xmlCurrent_->SetAttribute("size", g.size());
 
-    for (auto it = g.begin(); it != g.end(); it++) {
+    for (auto it = g.begin(); it != g.end(); ++it) {
         XMLElement *sour = xmlDoc_->NewElement("source");
         sour->SetAttribute("id", (*it)->id());
         xmlCurrent_->InsertEndChild(sour);
@@ -591,7 +591,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
         // fill doc by visiting sources
         SourceList selection_clones_;
         SessionVisitor sv(&xmlDoc, selectionNode);
-        for (auto iter = list.begin(); iter != list.end(); iter++, sv.setRoot(selectionNode) ){
+        for (auto iter = list.begin(); iter != list.end(); ++iter, sv.setRoot(selectionNode) ){
             // start with clones
             CloneSource *clone = dynamic_cast<CloneSource *>(*iter);
             if (clone)
@@ -600,7 +600,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
                 selection_clones_.push_back(*iter);
         }
         // add others in front
-        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); iter++, sv.setRoot(selectionNode) ){
+        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); ++iter, sv.setRoot(selectionNode) ){
             (*iter)->accept(sv);
         }
 

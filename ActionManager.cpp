@@ -90,7 +90,7 @@ void Action::store(const std::string &label)
 
     // save all sources using source visitor
     SessionVisitor sv(&history_doc_, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); iter++, sv.setRoot(sessionNode) )
+    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
         (*iter)->accept(sv);
 
     // debug
@@ -189,7 +189,7 @@ void Action::snapshot(const std::string &label)
 
     // save all sources using source visitor
     SessionVisitor sv(&snapshots_doc_, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); iter++, sv.setRoot(sessionNode) )
+    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
         (*iter)->accept(sv);
 
     // TODO: copy action history instead?

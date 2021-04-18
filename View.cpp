@@ -114,11 +114,8 @@ void View::initiate()
 {
     current_action_ = "";
     for (auto sit = Mixer::manager().session()->begin();
-         sit != Mixer::manager().session()->end(); sit++){
-
-        (*sit)->stored_status_->copyTransform((*sit)->group(mode_));
-    }
-
+         sit != Mixer::manager().session()->end(); ++sit)
+        (*sit)->store(mode_);
 }
 
 void View::terminate()
@@ -190,7 +187,7 @@ void View::selectAll()
 {
     Mixer::selection().clear();
     for(auto sit = Mixer::manager().session()->begin();
-        sit != Mixer::manager().session()->end(); sit++) {
+        sit != Mixer::manager().session()->end(); ++sit) {
         if (canSelect(*sit))
             Mixer::selection().add(*sit);
     }

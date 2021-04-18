@@ -495,7 +495,7 @@ void MixingView::terminate()
 
     // terminate all mixing group actions
     for (auto g = Mixer::manager().session()->beginMixingGroup();
-         g != Mixer::manager().session()->endMixingGroup(); g++)
+         g != Mixer::manager().session()->endMixingGroup(); ++g)
         (*g)->setAction( MixingGroup::ACTION_FINISH );
 
 }
@@ -528,7 +528,7 @@ void MixingView::arrow (glm::vec2 movement)
 
     bool first = true;
     glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
 
         // individual move with SHIFT
         if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )

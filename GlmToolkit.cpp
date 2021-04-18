@@ -79,7 +79,7 @@ void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point)
 
 void GlmToolkit::AxisAlignedBoundingBox::extend(std::vector<glm::vec3> points)
 {
-    for (auto p = points.begin(); p != points.end(); p++)
+    for (auto p = points.begin(); p != points.end(); ++p)
         extend(*p);
 }
 

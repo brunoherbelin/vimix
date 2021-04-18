@@ -232,7 +232,7 @@ void Stream::close()
     desired_state_ = GST_STATE_PAUSED;
 
     // cleanup eventual remaining frame memory
-    for(guint i = 0; i < N_FRAME; i++){
+    for(guint i = 0; i < N_FRAME; ++i){
         frame_[i].access.lock();
         frame_[i].unmap();
         frame_[i].access.unlock();
@@ -710,7 +710,7 @@ void Stream::TimeCounter::tic ()
     GstClockTime dt = t - last_time;
 
     // one more frame since last time
-    nbFrames++;
+    ++nbFrames;
 
     // calculate instantaneous framerate
     // Exponential moving averate with previous framerate to filter jitter (50/50)
