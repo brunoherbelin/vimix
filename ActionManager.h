@@ -39,7 +39,9 @@ public:
     void snapshot(const std::string &label);
 
     std::list<uint64_t> snapshots() const;
+    void replace(uint64_t snapshotid);
     void restore(uint64_t snapshotid);
+    void interpolate(uint64_t snapshotid, float val);
     void remove (uint64_t snapshotid);
 
     std::string label(uint64_t snapshotid) const;

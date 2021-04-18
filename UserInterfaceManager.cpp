@@ -3153,8 +3153,8 @@ void Navigator::RenderMainPannelVimix()
                 current_snapshot = *snapit;
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     // trigger snapshot
-//                    current_snapshot = snapshots.end();
                     Action::manager().restore(current_snapshot);
+                    current_snapshot = 0;
                 }
             }
             // context menu
@@ -3173,9 +3173,11 @@ void Navigator::RenderMainPannelVimix()
                 current_snapshot = 0;
             }
             if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
-
-
                 Action::manager().remove(current_snapshot);
+                current_snapshot = 0;
+            }
+            if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size )) {
+                Action::manager().replace(current_snapshot);
                 current_snapshot = 0;
             }
             ImGui::TextDisabled("Rename");
@@ -3196,7 +3198,11 @@ void Navigator::RenderMainPannelVimix()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
         if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+")) {
             Action::manager().snapshot( SystemToolkit::date_time_string() );
+            current_snapshot = 0;
         }
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
+
 //        // active list element : delete snapshot button
 //        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
 //        if (current_snapshot != snapshots.end()) {
@@ -3209,6 +3215,14 @@ void Navigator::RenderMainPannelVimix()
 //        else
 //            ImGui::TextDisabled( ICON_FA_STAR "_" );
 
+        if (current_snapshot > 0) {
+            ImGui::SetCursorPos( pos_bot );
+            static float interpolation = 0.f;
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::SliderFloat("Animate", &interpolation, 0.f, 1.f) ) {
+
+            }
+        }
     }
 
 

@@ -177,6 +177,40 @@ void Action::snapshot(const std::string &label)
 #endif
 }
 
+void Action::replace(uint64_t snapshotid)
+{
+    // ignore if locked or if no label is given
+    if (locked_)
+        return;
+
+    // get snapshot node of target in current session
+    Session *se = Mixer::manager().session();
+    XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+
+    if (sessionNode) {
+        std::string l = sessionNode->Attribute("label");
+
+        se->snapshots()->xmlDoc_->DeleteChild( sessionNode );
+
+        // create snapshot node
+        sessionNode = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshotid) );
+        se->snapshots()->xmlDoc_->InsertEndChild(sessionNode);
+
+        // label describes the snapshot
+        sessionNode->SetAttribute("label", l.c_str());
+
+        // save all sources using source visitor
+        SessionVisitor sv(se->snapshots()->xmlDoc_, sessionNode);
+        for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
+            (*iter)->accept(sv);
+
+        // debug
+#ifdef ACTION_DEBUG
+        Log::Info("Snapshot replaced %d '%s'", id, label.c_str());
+#endif
+    }
+}
+
 
 std::list<uint64_t> Action::snapshots() const
 {
@@ -241,3 +275,8 @@ void Action::restore(uint64_t snapshotid)
     store("Snapshot " + label(snapshotid));
 }
 
+
+void Action::interpolate(uint64_t snapshotid, float val)
+{
+
+}

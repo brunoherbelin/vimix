@@ -1211,11 +1211,11 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
 
 bool ImGuiToolkit::InputText(const char* label, std::string* str)
 {
-    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsNoBlank;
     InputTextCallback_UserData cb_user_data;
     cb_user_data.Str = str;
 
-    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1,  flags, InputTextCallback, &cb_user_data);
+    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
 }
 
 bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
