@@ -75,7 +75,7 @@ void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowSandbox(bool* p_open);
 void SetMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor());
-void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 80.f);
+void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 180.f);
 
 // static objects for multithreaded file dialog
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
@@ -2984,56 +2984,58 @@ void Navigator::RenderMainPannelVimix()
     // display the sessions list and detect if one was selected (double clic)
     bool session_selected = false;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8));
-    static std::string file_info = "";
-    static std::list<std::string>::iterator file_selected = sessions_list.end();
-    for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
-        std::string sessionfilename(*it);
-        if (sessionfilename.empty())
-            continue;
-        std::string shortname = SystemToolkit::filename(*it);
-        if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
-                Mixer::manager().open( sessionfilename, Settings::application.smooth_transition );
-                session_selected = true;
-                file_info.clear();
-            }
-            else  {
-                file_info = SessionCreator::info(sessionfilename);
-                if (file_info.empty()) {
-                    // failed : remove from recent
-                    if ( selection_session_mode == 0) {
-                        Settings::application.recentSessions.filenames.remove(sessionfilename);
-                        selection_session_mode_changed = true;
-                    }
+    if (ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8)) ) {
+        static std::string file_info = "";
+        static std::list<std::string>::iterator file_selected = sessions_list.end();
+        for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
+            std::string sessionfilename(*it);
+            if (sessionfilename.empty())
+                continue;
+            std::string shortname = SystemToolkit::filename(*it);
+            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
+                    Mixer::manager().open( sessionfilename, Settings::application.smooth_transition );
+                    session_selected = true;
+                    file_info.clear();
                 }
-                else
-                    file_selected = it;
+                else  {
+                    file_info = SessionCreator::info(sessionfilename);
+                    if (file_info.empty()) {
+                        // failed : remove from recent
+                        if ( selection_session_mode == 0) {
+                            Settings::application.recentSessions.filenames.remove(sessionfilename);
+                            selection_session_mode_changed = true;
+                        }
+                    }
+                    else
+                        file_selected = it;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                if (file_selected != it) {
+                    file_info.clear();
+                    file_selected = sessions_list.end();
+                }
+                else if (!file_info.empty()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%s", file_info.c_str());
+                    ImGui::EndTooltip();
+                }
             }
         }
-        if (ImGui::IsItemHovered()) {
-            if (file_selected != it) {
-                file_info.clear();
-                file_selected = sessions_list.end();
-            }
-            else if (!file_info.empty()) {
-                ImGui::BeginTooltip();
-                ImGui::Text("%s", file_info.c_str());
-                ImGui::EndTooltip();
-            }
+        ImGui::ListBoxFooter();
+
+        // done the selection !
+        if (session_selected) {
+            // close pannel
+            file_info.clear();
+            hidePannel();
+            // reload the list next time
+            selection_session_mode_changed = true;
         }
     }
-    ImGui::ListBoxFooter();
     ImVec2 pos_bot = ImGui::GetCursorPos();
 
-    // done the selection !
-    if (session_selected) {
-        // close pannel
-        file_info.clear();
-        hidePannel();
-        // reload the list next time
-        selection_session_mode_changed = true;
-    }
 
     // Right side of the list: helper and options
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
@@ -3061,7 +3063,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     std::string tooltip_ = "";
 
-    if ( ImGuiToolkit::IconButton( ICON_FA_EXPAND ) )
+    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
         Rendering::manager().mainWindow().toggleFullscreen();
     if (ImGui::IsItemHovered())
         tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
@@ -3138,60 +3140,61 @@ void Navigator::RenderMainPannelVimix()
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##Snapshots", CLAMP(snapshots.size(), 4, 8));
+        if ( ImGui::ListBoxHeader("##Snapshots", CLAMP(snapshots.size(), 4, 8)) ) {
 
-        ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-        for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
-        {
-            // size of items
-            ImVec2 s = size;
-            if ( current_snapshot == *snapit )
-                s.x -= ImGui::GetTextLineHeightWithSpacing();
-            // entry
-            if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), current_snapshot == *snapit, ImGuiSelectableFlags_AllowDoubleClick, s )) {
-                // current list item
-                current_snapshot = *snapit;
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                    // trigger snapshot
+            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+            for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
+            {
+                // size of items
+                ImVec2 s = size;
+                if ( current_snapshot == *snapit )
+                    s.x -= ImGui::GetTextLineHeightWithSpacing();
+                // entry
+                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), current_snapshot == *snapit, ImGuiSelectableFlags_AllowDoubleClick, s )) {
+                    // current list item
+                    current_snapshot = *snapit;
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        // trigger snapshot
+                        Action::manager().restore(current_snapshot);
+                        current_snapshot = 0;
+                    }
+                }
+                // context menu
+                if ( current_snapshot == *snapit ) {
+                    ImGui::SameLine();
+                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
+                        ImGui::OpenPopup( "MenuSnapshot" );
+                }
+            }
+
+            // context menu
+            if (ImGui::BeginPopup( "MenuSnapshot" ))
+            {
+                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size )) {
                     Action::manager().restore(current_snapshot);
                     current_snapshot = 0;
                 }
+                if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
+                    Action::manager().remove(current_snapshot);
+                    current_snapshot = 0;
+                }
+                if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size )) {
+                    Action::manager().replace(current_snapshot);
+                    current_snapshot = 0;
+                }
+                ImGui::TextDisabled("Rename");
+                ImGui::SetNextItemWidth(size.x);
+                if ( current_snapshot > 0 ) {
+                    static std::string label;
+                    label = Action::manager().label(current_snapshot);
+                    if ( ImGuiToolkit::InputText("##Rename", &label ) )
+                        Action::manager().setLabel(current_snapshot, label);
+                }
+                ImGui::EndPopup();
             }
-            // context menu
-            if ( current_snapshot == *snapit ) {
-                ImGui::SameLine();
-                if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
-                    ImGui::OpenPopup( "MenuSnapshot" );
-            }
-        }
 
-        // context menu
-        if (ImGui::BeginPopup( "MenuSnapshot" ))
-        {
-            if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size )) {
-                Action::manager().restore(current_snapshot);
-                current_snapshot = 0;
-            }
-            if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
-                Action::manager().remove(current_snapshot);
-                current_snapshot = 0;
-            }
-            if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size )) {
-                Action::manager().replace(current_snapshot);
-                current_snapshot = 0;
-            }
-            ImGui::TextDisabled("Rename");
-            ImGui::SetNextItemWidth(size.x);
-            if ( current_snapshot > 0 ) {
-                static std::string label;
-                label = Action::manager().label(current_snapshot);
-                if ( ImGuiToolkit::InputText("##Rename", &label ) )
-                    Action::manager().setLabel(current_snapshot, label);
-            }
-            ImGui::EndPopup();
+            ImGui::ListBoxFooter();
         }
-
-        ImGui::ListBoxFooter();
         pos_bot = ImGui::GetCursorPos();
 
         // right buttons
@@ -3717,22 +3720,22 @@ void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin)
     const ImGuiIO& io = ImGui::GetIO();
 
     if ( pos_target.y > io.DisplaySize.y - margin  ){
-        pos_target.y -= margin;
+        pos_target.y = io.DisplaySize.y - margin;
         need_update = true;
     }
     if ( pos_target.y + size.y < margin ){
-        pos_target.y += margin;
+        pos_target.y = margin - size.y;
         need_update = true;
     }
     if ( pos_target.x > io.DisplaySize.x - margin){
-        pos_target.x -= margin;
+        pos_target.x = io.DisplaySize.x - margin;
         need_update = true;
     }
-    if ( pos_target.x + size.x <margin ){
-        pos_target.x += margin;
+    if ( pos_target.x + size.x < margin ){
+        pos_target.x = margin - size.x;
         need_update = true;
     }
     if (need_update)
-        ImGui::SetNextWindowPos(pos_target, ImGuiCond_Appearing);
+        ImGui::SetNextWindowPos(pos_target, ImGuiCond_Always);
 }
 

@@ -188,6 +188,7 @@ bool Rendering::init()
     // additional window callbacks for main window
     glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
+    glfwSetWindowSizeLimits( main_.window(), 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     //
     // Gstreamer setup
