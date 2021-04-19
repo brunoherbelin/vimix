@@ -91,7 +91,7 @@ void MediaSource::init()
             active_ = true;
 
             // deep update to reorder
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
 
             // done init
             initialized_ = true;

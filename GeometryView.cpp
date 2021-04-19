@@ -258,7 +258,7 @@ void GeometryView::draw()
         static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
         static std::vector< std::string > labels_ws = { "Background", "Workspace", "Foreground" };
         if ( ImGuiToolkit::ComboIcon (icons_ws, labels_ws, &Settings::application.current_workspace) ){
-             View::need_deep_update_++;
+             ++View::need_deep_update_;
         }
 
         ImGui::PopStyleColor(8);  // 14 colors

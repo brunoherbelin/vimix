@@ -82,7 +82,7 @@ void StreamSource::init()
             attach(renderbuffer);
 
             // deep update to reorder
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
 
             // force update of activation mode
             active_ = true;

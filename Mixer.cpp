@@ -138,7 +138,7 @@ void Mixer::update()
         if ( back_session_ ) {
             // swap front and back sessions
             swap();
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
             // set session filename
             Rendering::manager().mainWindow().setTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
@@ -193,7 +193,7 @@ void Mixer::update()
 
     // deep update was performed
     if  (View::need_deep_update_ > 0)
-        View::need_deep_update_--;
+        --View::need_deep_update_;
 }
 
 void Mixer::draw()
@@ -886,7 +886,7 @@ void Mixer::setView(View::Mode m)
     }
 
     // need to deeply update view to apply eventual changes
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 }
 
 View *Mixer::view(View::Mode m)
@@ -1018,7 +1018,7 @@ void Mixer::merge(Session *session)
     }
 
     // needs to update !
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 
     // avoid display issues
     current_view_->update(0.f);
@@ -1101,7 +1101,7 @@ void Mixer::merge(SessionSource *source)
         }
 
         // needs to update !
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
     }
 
@@ -1200,7 +1200,7 @@ void Mixer::clear()
     sessionSwapRequested_ = true;
 
     // need to deeply update view to apply eventual changes
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 
     Log::Info("New session ready.");
 }
@@ -1317,5 +1317,6 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
         session_->link( *group_loader_it, view(View::MIXING)->scene.fg() );
 
 
+    ++View::need_deep_update_;
 }
 

@@ -223,7 +223,7 @@ void SessionFileSource::init()
         overlays_[View::TRANSITION]->detach(loader);
         delete loader;
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
     }
 }
 
@@ -287,7 +287,7 @@ void SessionGroupSource::init()
         attach(renderbuffer);
 
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
         // done init
         initialized_ = true;
@@ -355,7 +355,7 @@ void RenderSource::init()
         attach(renderbuffer);
 
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
         // done init
         initialized_ = true;
