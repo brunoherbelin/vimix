@@ -60,7 +60,7 @@ void Node::copyTransform(const Node *other)
 {
     if (!other)
         return;
-    transform_ = other->transform_;
+//    transform_ = other->transform_;
     scale_ = other->scale_;
     rotation_ = other->rotation_;
     translation_ = other->translation_;

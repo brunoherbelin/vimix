@@ -178,6 +178,7 @@ struct Application
     // Global settings Application interface
     float scale;
     int  accent_color;
+    bool smooth_snapshot;
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
@@ -221,7 +222,8 @@ struct Application
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
         accent_color = 0;
-        smooth_transition = true;
+        smooth_transition = false;
+        smooth_snapshot = false;
         smooth_cursor = false;
         action_history_follow_view = false;
         accept_connections = false;

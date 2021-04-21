@@ -69,7 +69,7 @@ SourceCore::~SourceCore()
 void SourceCore::copy(SourceCore const& other)
 {
     // copy groups properties
-    groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
+//    groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
     groups_[View::MIXING]->copyTransform( other.group(View::MIXING) );
     groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
     groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
@@ -84,14 +84,13 @@ void SourceCore::copy(SourceCore const& other)
 
 void SourceCore::store (View::Mode m)
 {
-   stored_status_->copyTransform(groups_[m]);
+    stored_status_->copyTransform(groups_[m]);
 }
 
 SourceCore& SourceCore::operator= (SourceCore const& other)
 {
-    if (this != &other) {  // no self assignment
+    if (this != &other)   // no self assignment
         copy(other);
-    }
     return *this;
 }
 

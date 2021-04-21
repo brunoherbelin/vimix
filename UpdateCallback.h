@@ -22,6 +22,15 @@ protected:
     bool finished_;
 };
 
+class CopyCallback : public UpdateCallback
+{
+    Node *target_;
+
+public:
+    CopyCallback(Node *target);
+    void update(Node *n, float dt);
+};
+
 class MoveToCallback : public UpdateCallback
 {
     float duration_;

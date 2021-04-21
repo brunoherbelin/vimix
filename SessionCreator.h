@@ -58,6 +58,9 @@ public:
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
 
+    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);    
+    static void XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s);
+
 protected:
     // result created session
     Session *session_;
@@ -70,7 +73,6 @@ protected:
     // list of groups (lists of xml source id)
     std::list< SourceIdList > groups_sources_id_;
 
-    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
 };
 
 class SessionCreator : public SessionLoader {

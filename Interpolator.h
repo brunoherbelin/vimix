@@ -2,21 +2,41 @@
 #define INTERPOLATOR_H
 
 #include "Source.h"
+#include "SourceList.h"
 
-class Interpolator
+class SourceInterpolator
 {
 public:
-    Interpolator(Source *subject, const SourceCore &target);
+    SourceInterpolator(Source *subject, const SourceCore &target);
 
+    void apply (float percent);
+    float current() const;
+
+protected:
     Source *subject_;
 
     SourceCore from_;
     SourceCore to_;
-    SourceCore current_;
+    SourceCore current_state_;
+    float current_cursor_;
 
-    float cursor_;
+    void interpolateGroup (View::Mode m);
+    void interpolateImageProcessing ();
+};
 
-    void apply(float percent);
+class Interpolator
+{
+public:
+    Interpolator();
+    ~Interpolator();
+
+    void add (Source *s, const SourceCore &target );
+
+    void apply (float percent);
+    float current() const;
+
+protected:
+    std::list<SourceInterpolator *> interpolators_;
 
 };
 

@@ -5,9 +5,11 @@
 #include <glm/glm.hpp>
 
 class Source;
+class SourceCore;
 class Session;
 
 typedef std::list<Source *> SourceList;
+typedef std::list<SourceCore *> SourceCoreList;
 
 SourceList depth_sorted  (const SourceList &list);
 SourceList mixing_sorted (const SourceList &list, glm::vec2 center = glm::vec2(0.f, 0.f));

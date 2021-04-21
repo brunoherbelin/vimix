@@ -530,6 +530,20 @@ void SessionLoader::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
     }
 }
 
+void SessionLoader::XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s)
+{
+    SessionLoader::XMLToNode(xml->FirstChildElement("Mixing"),  *s.group(View::MIXING) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Geometry"),*s.group(View::GEOMETRY) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Layer"),   *s.group(View::LAYER) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Texture"), *s.group(View::TEXTURE) );
+
+    SessionLoader v(nullptr);
+    v.xmlCurrent_ = xml->FirstChildElement("ImageProcessing");
+    if (v.xmlCurrent_)
+        s.processingShader()->accept(v);
+
+}
+
 void SessionLoader::visit(Node &n)
 {
     XMLToNode(xmlCurrent_, n);

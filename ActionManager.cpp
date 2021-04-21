@@ -6,11 +6,13 @@
 #include "Mixer.h"
 #include "MixingGroup.h"
 #include "tinyxml2Toolkit.h"
-#include "SessionSource.h"
+//#include "SessionSource.h"
+#include "ImageProcessingShader.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
 #include "Settings.h"
 #include "GlmToolkit.h"
+#include "Interpolator.h"
 
 #include "ActionManager.h"
 
@@ -23,8 +25,10 @@
 
 using namespace tinyxml2;
 
-Action::Action(): history_step_(0), history_max_step_(0)
+Action::Action(): history_step_(0), history_max_step_(0), locked_(false),
+    snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
 {
+
 }
 
 void Action::init()
@@ -33,7 +37,11 @@ void Action::init()
     history_doc_.Clear();
     history_step_ = 0;
     history_max_step_ = 0;
-    // start fresh
+
+    // reset snapshot
+    snapshot_id_ = 0;
+    snapshot_node_ = nullptr;
+
     store("Session start");
 }
 
@@ -177,40 +185,60 @@ void Action::snapshot(const std::string &label)
 #endif
 }
 
+void Action::open(uint64_t snapshotid)
+{
+    if ( snapshot_id_ != snapshotid )
+    {
+        // get snapshot node of target in current session
+        Session *se = Mixer::manager().session();
+        snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+
+        if (snapshot_node_)
+            snapshot_id_ = snapshotid;
+        else
+            snapshot_id_ = 0;
+
+        interpolator_node_ = nullptr;
+    }
+}
+
 void Action::replace(uint64_t snapshotid)
 {
     // ignore if locked or if no label is given
     if (locked_)
         return;
 
-    // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
-    XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    if (snapshotid > 0)
+        open(snapshotid);
 
-    if (sessionNode) {
-        std::string l = sessionNode->Attribute("label");
+    if (snapshot_node_) {
+        // remember label
+        std::string label = snapshot_node_->Attribute("label");
 
-        se->snapshots()->xmlDoc_->DeleteChild( sessionNode );
+        // remove previous node
+        Session *se = Mixer::manager().session();
+        se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
 
         // create snapshot node
-        sessionNode = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshotid) );
-        se->snapshots()->xmlDoc_->InsertEndChild(sessionNode);
-
-        // label describes the snapshot
-        sessionNode->SetAttribute("label", l.c_str());
+        snapshot_node_ = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshot_id_) );
+        se->snapshots()->xmlDoc_->InsertEndChild(snapshot_node_);
 
         // save all sources using source visitor
-        SessionVisitor sv(se->snapshots()->xmlDoc_, sessionNode);
-        for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
+        SessionVisitor sv(se->snapshots()->xmlDoc_, snapshot_node_);
+        for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(snapshot_node_) )
             (*iter)->accept(sv);
+
+        // restore label
+        snapshot_node_->SetAttribute("label", label.c_str());
 
         // debug
 #ifdef ACTION_DEBUG
-        Log::Info("Snapshot replaced %d '%s'", id, label.c_str());
+        Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
 #endif
     }
+    else
+        snapshot_id_ = 0;
 }
-
 
 std::list<uint64_t> Action::snapshots() const
 {
@@ -220,39 +248,40 @@ std::list<uint64_t> Action::snapshots() const
 
 std::string Action::label(uint64_t snapshotid) const
 {
-    std::string l = "";
+    std::string label = "";
 
     // get snapshot node of target in current session
     Session *se = Mixer::manager().session();
-    const XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
 
-    if (sessionNode) {
-        l = sessionNode->Attribute("label");
-    }
-    return l;
+    if (snap)
+        label = snap->Attribute("label");
+
+    return label;
 }
 
 void Action::setLabel (uint64_t snapshotid, const std::string &label)
 {
-    // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
-    XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    open(snapshotid);
 
-    if (sessionNode) {
-        sessionNode->SetAttribute("label", label.c_str());
-    }
+    if (snapshot_node_)
+        snapshot_node_->SetAttribute("label", label.c_str());
 }
 
 void Action::remove(uint64_t snapshotid)
 {
-    // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
-    XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    if (snapshotid > 0)
+        open(snapshotid);
 
-    if (sessionNode) {
-        se->snapshots()->xmlDoc_->DeleteChild( sessionNode );
-        se->snapshots()->keys_.remove(snapshotid);
+    if (snapshot_node_) {
+        // remove
+        Session *se = Mixer::manager().session();
+        se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
+        se->snapshots()->keys_.remove( snapshot_id_ );
     }
+
+    snapshot_node_ = nullptr;
+    snapshot_id_ = 0;
 }
 
 void Action::restore(uint64_t snapshotid)
@@ -260,23 +289,75 @@ void Action::restore(uint64_t snapshotid)
     // lock
     locked_ = true;
 
-    // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
-    XMLElement *sessionNode = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    if (snapshotid > 0)
+        open(snapshotid);
 
-    if (sessionNode) {
+    if (snapshot_node_)
         // actually restore
-        Mixer::manager().restore(sessionNode);
-    }
+        Mixer::manager().restore(snapshot_node_);
 
     // free
     locked_ = false;
 
-    store("Snapshot " + label(snapshotid));
+    store("Snapshot " + label(snapshot_id_));
 }
 
-
-void Action::interpolate(uint64_t snapshotid, float val)
+float Action::interpolation()
 {
+    float ret = 0.f;
+    if ( interpolator_node_ == snapshot_node_  && interpolator_)
+        ret = interpolator_->current();
+
+    return ret;
+}
+
+void Action::interpolate(float val, uint64_t snapshotid)
+{
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_) {
+
+        if ( interpolator_node_ != snapshot_node_ ) {
+
+            // change interpolator
+            if (interpolator_)
+                delete interpolator_;
+
+            // create new interpolator
+            interpolator_ = new Interpolator;
+
+            // current session
+            Session *se = Mixer::manager().session();
+
+            XMLElement* N = snapshot_node_->FirstChildElement("Source");
+            for( ; N ; N = N->NextSiblingElement()) {
+
+                // check if a source with the given id exists in the session
+                uint64_t id_xml_ = 0;
+                N->QueryUnsigned64Attribute("id", &id_xml_);
+                SourceList::iterator sit = se->find(id_xml_);
+
+                // a source with this id exists
+                if ( sit != se->end() ) {
+                    // read target in the snapshot xml
+                    SourceCore target;
+                    SessionLoader::XMLToSourcecore(N, target);
+
+                    // add an interpolator for this source
+                    interpolator_->add(*sit, target);
+                }
+            }
+
+            // operate interpolation on opened snapshot
+            interpolator_node_ = snapshot_node_;
+        }
+
+        if (interpolator_) {
+//            Log::Info("Action::interpolate %f", val);
+            interpolator_->apply( val );
+        }
+    }
 
 }
+

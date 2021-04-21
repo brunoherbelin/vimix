@@ -3129,14 +3129,14 @@ void Navigator::RenderMainPannelVimix()
             ImGui::TextDisabled( ICON_FA_REDO );
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_ELLIPSIS_H, &Settings::application.action_history_follow_view);
+        ImGuiToolkit::ButtonToggle(ICON_FA_LOCATION_ARROW, &Settings::application.action_history_follow_view);
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Go to view of action");
+            ImGuiToolkit::ToolTip("Show in view");
     }
     else {
 
         std::list<uint64_t> snapshots = Action::manager().snapshots();
-        static uint64_t current_snapshot = 0;
+//        static uint64_t current_snapshot = Action::manager().currentSnapshot();
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -3147,20 +3147,20 @@ void Navigator::RenderMainPannelVimix()
             {
                 // size of items
                 ImVec2 s = size;
-                if ( current_snapshot == *snapit )
+                bool selected = ( *snapit == Action::manager().currentSnapshot() );
+                if ( selected )
                     s.x -= ImGui::GetTextLineHeightWithSpacing();
                 // entry
-                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), current_snapshot == *snapit, ImGuiSelectableFlags_AllowDoubleClick, s )) {
+                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick, s )) {
                     // current list item
-                    current_snapshot = *snapit;
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        // trigger snapshot
-                        Action::manager().restore(current_snapshot);
-                        current_snapshot = 0;
-                    }
+                    Action::manager().open(*snapit);
+
+                    // trigger snapshot
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                        Action::manager().restore();
                 }
                 // context menu
-                if ( current_snapshot == *snapit ) {
+                if ( selected ) {
                     ImGui::SameLine();
                     if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
                         ImGui::OpenPopup( "MenuSnapshot" );
@@ -3170,25 +3170,19 @@ void Navigator::RenderMainPannelVimix()
             // context menu
             if (ImGui::BeginPopup( "MenuSnapshot" ))
             {
-                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size )) {
-                    Action::manager().restore(current_snapshot);
-                    current_snapshot = 0;
-                }
-                if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size )) {
-                    Action::manager().remove(current_snapshot);
-                    current_snapshot = 0;
-                }
-                if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size )) {
-                    Action::manager().replace(current_snapshot);
-                    current_snapshot = 0;
-                }
+                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size ))
+                    Action::manager().restore();
+                if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size ))
+                    Action::manager().remove();
+                if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size ))
+                    Action::manager().replace();
                 ImGui::TextDisabled("Rename");
                 ImGui::SetNextItemWidth(size.x);
-                if ( current_snapshot > 0 ) {
+                if ( Action::manager().currentSnapshot() > 0 ) {
                     static std::string label;
-                    label = Action::manager().label(current_snapshot);
+                    label = Action::manager().label( Action::manager().currentSnapshot() );
                     if ( ImGuiToolkit::InputText("##Rename", &label ) )
-                        Action::manager().setLabel(current_snapshot, label);
+                        Action::manager().setLabel( Action::manager().currentSnapshot(), label);
                 }
                 ImGui::EndPopup();
             }
@@ -3199,12 +3193,17 @@ void Navigator::RenderMainPannelVimix()
 
         // right buttons
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+")) {
+        if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+"))
             Action::manager().snapshot( SystemToolkit::date_time_string() );
-            current_snapshot = 0;
-        }
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
+
+        // toggle button for smooth transition
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Interpolation");
+
 
 //        // active list element : delete snapshot button
 //        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
@@ -3218,13 +3217,13 @@ void Navigator::RenderMainPannelVimix()
 //        else
 //            ImGui::TextDisabled( ICON_FA_STAR "_" );
 
-        if (current_snapshot > 0) {
+        if (Action::manager().currentSnapshot() > 0) {
             ImGui::SetCursorPos( pos_bot );
-            static float interpolation = 0.f;
+            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if ( ImGui::SliderFloat("Animate", &interpolation, 0.f, 1.f) ) {
+            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
+                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
 
-            }
         }
     }
 

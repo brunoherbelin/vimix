@@ -11,6 +11,18 @@ UpdateCallback::UpdateCallback() : enabled_(true), finished_(false)
 
 }
 
+CopyCallback::CopyCallback(Node *target) : UpdateCallback(), target_(target)
+{
+
+}
+
+void CopyCallback::update(Node *n, float dt)
+{
+    n->copyTransform(target_);
+    finished_ = true;
+}
+
+
 MoveToCallback::MoveToCallback(glm::vec3 target, float duration) : UpdateCallback(),
     duration_(duration), progress_(0.f), initialized_(false), target_(target)
 {

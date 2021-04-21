@@ -64,6 +64,7 @@ void Settings::Save()
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
+    applicationNode->SetAttribute("smooth_snapshot", application.smooth_snapshot);
     applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
@@ -255,6 +256,7 @@ void Settings::Load()
         applicationNode->QueryFloatAttribute("scale", &application.scale);
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+        applicationNode->QueryBoolAttribute("smooth_snapshot", &application.smooth_snapshot);
         applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
