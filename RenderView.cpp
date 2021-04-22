@@ -82,3 +82,25 @@ void RenderView::draw()
         frame_buffer_->end();
     }
 }
+
+
+FrameBufferImage *RenderView::thumbnail () const
+{
+    FrameBufferImage *thumbnail = nullptr;
+
+    if (frame_buffer_) {
+        FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
+        FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
+
+        frame_thumbnail->begin();
+        thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
+        frame_thumbnail->end();
+
+        thumbnail = frame_thumbnail->image();
+
+        delete thumb;
+        delete frame_thumbnail;
+    }
+
+    return thumbnail;
+}

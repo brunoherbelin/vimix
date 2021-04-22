@@ -22,6 +22,8 @@ public:
     float fading() const;
 
     inline FrameBuffer *frame () const { return frame_buffer_; }
+
+    FrameBufferImage *thumbnail () const;
 };
 
 #endif // RENDERVIEW_H
