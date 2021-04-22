@@ -120,7 +120,7 @@ SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
         xmlDoc_ = doc;
 }
 
-tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *doc)
+XMLElement *SessionVisitor::NodeToXML(Node &n, XMLDocument *doc)
 {
     XMLElement *newelement = doc->NewElement("Node");
     newelement->SetAttribute("visible", n.visible_);
@@ -143,6 +143,29 @@ tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *
     newelement->InsertEndChild(crop);
 
     return newelement;
+}
+
+
+XMLElement *SessionVisitor::ImageToXML(FrameBufferImage *img, XMLDocument *doc)
+{
+    XMLElement *imageelement = nullptr;
+    if (img != nullptr) {
+        // get the jpeg encoded buffer
+        FrameBufferImage::jpegBuffer jpgimg = img->getJpeg();
+        if (jpgimg.buffer != nullptr) {
+            // fill the xml array with jpeg buffer
+            XMLElement *array = XMLElementEncodeArray(doc, jpgimg.buffer, jpgimg.len);
+            // free the buffer
+            free(jpgimg.buffer);
+            // if we could create the array
+            if (array) {
+                // create an Image node to store the mask image
+                imageelement = doc->NewElement("Image");
+                imageelement->InsertEndChild(array);
+            }
+        }
+    }
+    return imageelement;
 }
 
 void SessionVisitor::visit(Node &n)
@@ -449,24 +472,9 @@ void SessionVisitor::visit (Source& s)
     // if we are saving a pain mask
     if (s.maskShader()->mode == MaskShader::PAINT) {
         // get the mask previously stored
-        FrameBufferImage *img = s.getMask();
-        if (img != nullptr) {
-            // get the jpeg encoded buffer
-            FrameBufferImage::jpegBuffer jpgimg = img->getJpeg();
-            if (jpgimg.buffer != nullptr) {
-                // fill the xml array with jpeg buffer
-                XMLElement *array = XMLElementEncodeArray(xmlDoc_, jpgimg.buffer, jpgimg.len);
-                // free the buffer
-                free(jpgimg.buffer);
-                // if we could create the array
-                if (array) {
-                    // create an Image node to store the mask image
-                    XMLElement *imageelement = xmlDoc_->NewElement("Image");
-                    imageelement->InsertEndChild(array);
-                    xmlCurrent_->InsertEndChild(imageelement);
-                }
-            }
-        }
+        XMLElement *imageelement = SessionVisitor::ImageToXML(s.getMask(), xmlDoc_);
+        if (imageelement)
+            xmlCurrent_->InsertEndChild(imageelement);
     }
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );

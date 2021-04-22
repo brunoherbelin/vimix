@@ -8,7 +8,7 @@
 #include "SourceList.h"
 
 class Session;
-
+class FrameBufferImage;
 
 class SessionLoader : public Visitor {
 
@@ -59,7 +59,8 @@ public:
     void visit (NetworkSource& s) override;
 
     static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);    
-    static void XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s);
+    static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);
+    static FrameBufferImage *XMLToImage(tinyxml2::XMLElement *xml);
 
 protected:
     // result created session

@@ -544,6 +544,40 @@ void SessionLoader::XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s)
 
 }
 
+FrameBufferImage *SessionLoader::XMLToImage(tinyxml2::XMLElement *xml)
+{
+    FrameBufferImage *i = nullptr;
+
+    if (xml != nullptr){
+        // if there is an Image mask stored
+        XMLElement* imageNode = xml->FirstChildElement("Image");
+        if (imageNode) {
+            // if there is an internal array of data
+            XMLElement* array = imageNode->FirstChildElement("array");
+            if (array) {
+                // create a temporary jpeg with size of the array
+                FrameBufferImage::jpegBuffer jpgimg;
+                array->QueryUnsignedAttribute("len", &jpgimg.len);
+                // ok, we got a size of data to load
+                if (jpgimg.len>0) {
+                    // allocate jpeg buffer
+                    jpgimg.buffer = (unsigned char*) malloc(jpgimg.len);
+                    // actual decoding of array
+                    if (XMLElementDecodeArray(array, jpgimg.buffer, jpgimg.len) ) {
+                        // create and set the image from jpeg
+                        i = new FrameBufferImage(jpgimg);
+                    }
+                    // free temporary buffer
+                    if (jpgimg.buffer)
+                        free(jpgimg.buffer);
+                }
+            }
+        }
+    }
+
+    return i;
+}
+
 void SessionLoader::visit(Node &n)
 {
     XMLToNode(xmlCurrent_, n);
@@ -713,29 +747,8 @@ void SessionLoader::visit (Source& s)
     if (xmlCurrent_)  {
         // read the mask shader attributes
         s.maskShader()->accept(*this);
-        // if there is an Image mask stored
-        XMLElement* imageNode = xmlCurrent_->FirstChildElement("Image");
-        if (imageNode) {
-            // if there is an internal array of data
-            XMLElement* array = imageNode->FirstChildElement("array");
-            if (array) {
-                // create a temporary jpeg with size of the array
-                FrameBufferImage::jpegBuffer jpgimg;
-                array->QueryUnsignedAttribute("len", &jpgimg.len);
-                // ok, we got a size of data to load
-                if (jpgimg.len>0) {
-                    // allocate jpeg buffer
-                    jpgimg.buffer = (unsigned char*) malloc(jpgimg.len);
-                    // actual decoding of array
-                    if (XMLElementDecodeArray(array, jpgimg.buffer, jpgimg.len) )
-                        // create and set the image from jpeg
-                        s.setMask(new FrameBufferImage(jpgimg));
-                    // free temporary buffer
-                    if (jpgimg.buffer)
-                        free(jpgimg.buffer);
-                }
-            }
-        }
+        // set the mask from jpeg
+        s.setMask( SessionLoader::XMLToImage(xmlCurrent_) );
     }
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");

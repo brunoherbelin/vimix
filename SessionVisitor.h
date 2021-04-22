@@ -6,6 +6,7 @@
 #include "SourceList.h"
 
 class Session;
+class FrameBufferImage;
 
 class SessionVisitor : public Visitor {
 
@@ -62,6 +63,7 @@ public:
 
 protected:
     static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
+    static tinyxml2::XMLElement *ImageToXML(FrameBufferImage *img, tinyxml2::XMLDocument *doc);
 };
 
 #endif // XMLVISITOR_H
