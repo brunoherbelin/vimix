@@ -20,10 +20,40 @@
 #define ACTION_DEBUG
 #endif
 
-#define HISTORY_NODE(i) std::to_string(i).insert(0, "H").c_str()
-#define SNAPSHOT_NODE(i) std::to_string(i).insert(0, "S").c_str()
+#define HISTORY_NODE(i) std::to_string(i).insert(0, "H")
+#define SNAPSHOT_NODE(i) std::to_string(i).insert(0, "S")
 
 using namespace tinyxml2;
+
+void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::string label)
+{
+    // get session to operate on
+    Session *se = Mixer::manager().session();
+    se->lock();
+
+    // create node
+    XMLElement *sessionNode = doc->NewElement( node.c_str() );
+    doc->InsertEndChild(sessionNode);
+    // label describes the action
+    sessionNode->SetAttribute("label", label.c_str() );
+    // view indicates the view when this action occured
+    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+
+    // get the thumbnail (requires one opengl update to render)
+    FrameBufferImage *thumbnail = se->thumbnail();
+    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
+    if (imageelement)
+        sessionNode->InsertEndChild(imageelement);
+    delete thumbnail;
+
+    // save all sources using source visitor
+    SessionVisitor sv(doc, sessionNode);
+    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
+        (*iter)->accept(sv);
+
+    se->unlock();
+}
+
 
 Action::Action(): history_step_(0), history_max_step_(0), locked_(false),
     snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
@@ -56,32 +86,18 @@ void Action::store(const std::string &label)
 
     // erase future
     for (uint e = history_step_; e <= history_max_step_; e++) {
-        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(e) );
+        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(e).c_str() );
         if ( node )
             history_doc_.DeleteChild(node);
     }
     history_max_step_ = history_step_;
 
-    // create history node
-    XMLElement *sessionNode = history_doc_.NewElement( HISTORY_NODE(history_step_) );
-    history_doc_.InsertEndChild(sessionNode);
-    // label describes the action
-    sessionNode->SetAttribute("label", label.c_str());
-    // view indicates the view when this action occured
-    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+    // threaded capturing state of current session
+    std::thread(captureMixerSession, &history_doc_, HISTORY_NODE(history_step_), label).detach();
 
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-
-    // save all sources using source visitor
-    SessionVisitor sv(&history_doc_, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
-        (*iter)->accept(sv);
-
-    // debug
 #ifdef ACTION_DEBUG
     Log::Info("Action stored %d '%s'", history_step_, label.c_str());
-//        XMLSaveDoc(&xmlDoc_, "/home/bhbn/history.xml");
+        XMLSaveDoc(&history_doc_, "/home/bhbn/history.xml");
 #endif
 }
 
@@ -121,10 +137,24 @@ std::string Action::label(uint s) const
     std::string l = "";
 
     if (s > 0 && s <= history_max_step_) {
-        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s));
-        l = sessionNode->Attribute("label");
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode)
+            l = sessionNode->Attribute("label");
     }
     return l;
+}
+
+FrameBufferImage *Action::thumbnail(uint s) const
+{
+    FrameBufferImage *img = nullptr;
+
+    if (s > 0 && s <= history_max_step_) {
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode)
+            img = SessionLoader::XMLToImage(sessionNode);
+    }
+
+    return img;
 }
 
 void Action::restore(uint target)
@@ -134,7 +164,7 @@ void Action::restore(uint target)
 
     // get history node of target step
     history_step_ = CLAMP(target, 1, history_max_step_);
-    XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(history_step_) );
+    XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(history_step_).c_str() );
 
     if (sessionNode) {
 
@@ -152,34 +182,24 @@ void Action::restore(uint target)
     locked_ = false;
 }
 
+
+
 void Action::snapshot(const std::string &label)
 {
     // ignore if locked or if no label is given
     if (locked_ || label.empty())
         return;
 
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-
     // create snapshot id
     u_int64_t id = GlmToolkit::uniqueId();
+
+    // get session to operate on
+    Session *se = Mixer::manager().session();
     se->snapshots()->keys_.push_back(id);
 
-    // create snapshot node
-    XMLElement *sessionNode = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(id) );
-    se->snapshots()->xmlDoc_->InsertEndChild(sessionNode);
+    // threaded capture state of current session
+    std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label).detach();
 
-    // label describes the snapshot
-    sessionNode->SetAttribute("label", label.c_str());
-
-    // save all sources using source visitor
-    SessionVisitor sv(se->snapshots()->xmlDoc_, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
-        (*iter)->accept(sv);
-
-    // TODO: copy current action history instead?
-
-    // debug
 #ifdef ACTION_DEBUG
     Log::Info("Snapshot stored %d '%s'", id, label.c_str());
 #endif
@@ -191,7 +211,7 @@ void Action::open(uint64_t snapshotid)
     {
         // get snapshot node of target in current session
         Session *se = Mixer::manager().session();
-        snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+        snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
 
         if (snapshot_node_)
             snapshot_id_ = snapshotid;
@@ -220,7 +240,7 @@ void Action::replace(uint64_t snapshotid)
         se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
 
         // create snapshot node
-        snapshot_node_ = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshot_id_) );
+        snapshot_node_ = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshot_id_).c_str() );
         se->snapshots()->xmlDoc_->InsertEndChild(snapshot_node_);
 
         // save all sources using source visitor
@@ -242,8 +262,7 @@ void Action::replace(uint64_t snapshotid)
 
 std::list<uint64_t> Action::snapshots() const
 {
-    Session *se = Mixer::manager().session();
-    return se->snapshots()->keys_;
+    return Mixer::manager().session()->snapshots()->keys_;
 }
 
 std::string Action::label(uint64_t snapshotid) const
@@ -252,7 +271,7 @@ std::string Action::label(uint64_t snapshotid) const
 
     // get snapshot node of target in current session
     Session *se = Mixer::manager().session();
-    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid) );
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
 
     if (snap)
         label = snap->Attribute("label");
@@ -266,6 +285,21 @@ void Action::setLabel (uint64_t snapshotid, const std::string &label)
 
     if (snapshot_node_)
         snapshot_node_->SetAttribute("label", label.c_str());
+}
+
+FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
+{
+    FrameBufferImage *img = nullptr;
+
+    // get snapshot node of target in current session
+    Session *se = Mixer::manager().session();
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+
+    if (snap){
+        img = SessionLoader::XMLToImage(snap);
+    }
+
+    return img;
 }
 
 void Action::remove(uint64_t snapshotid)

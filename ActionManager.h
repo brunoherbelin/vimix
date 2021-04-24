@@ -7,6 +7,7 @@
 #include <tinyxml2.h>
 
 class Interpolator;
+class FrameBufferImage;
 
 class Action
 {
@@ -25,7 +26,7 @@ public:
     }
     void init ();
 
-    // UNDO History
+    // Undo History
     void store (const std::string &label);
     void undo ();
     void redo ();
@@ -34,6 +35,7 @@ public:
     inline uint current () const { return history_step_; }
     inline uint max () const { return history_max_step_; }
     std::string label (uint s) const;
+    FrameBufferImage *thumbnail (uint s) const;
 
     // Snapshots
     void snapshot (const std::string &label);
@@ -48,6 +50,7 @@ public:
 
     std::string label (uint64_t snapshotid) const;
     void setLabel (uint64_t snapshotid, const std::string &label);
+    FrameBufferImage *thumbnail (uint64_t snapshotid) const;
 
     float interpolation ();
     void interpolate (float val, uint64_t snapshotid = 0);
@@ -65,6 +68,7 @@ private:
 
     Interpolator *interpolator_;
     tinyxml2::XMLElement *interpolator_node_;
+
 };
 
 
