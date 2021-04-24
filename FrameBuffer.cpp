@@ -318,7 +318,7 @@ FrameBufferImage::~FrameBufferImage() {
         delete rgb;
 }
 
-FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg()
+FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg() const
 {
     jpegBuffer jpgimg;
 

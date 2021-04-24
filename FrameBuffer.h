@@ -12,7 +12,7 @@
 class FrameBufferImage
 {
 public:
-    uint8_t *rgb = nullptr;
+    uint8_t *rgb;
     int width;
     int height;
 
@@ -20,7 +20,7 @@ public:
         unsigned char *buffer = nullptr;
         uint len = 0;
     };
-    jpegBuffer getJpeg();
+    jpegBuffer getJpeg() const;
 
     FrameBufferImage(int w, int h);
     FrameBufferImage(jpegBuffer jpgimg);
