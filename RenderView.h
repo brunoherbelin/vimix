@@ -1,12 +1,18 @@
 #ifndef RENDERVIEW_H
 #define RENDERVIEW_H
 
+#include <mutex>
+#include <future>
+
 #include "View.h"
 
 class RenderView : public View
 {
     FrameBuffer *frame_buffer_;
     Surface *fading_overlay_;
+
+    std::promise<FrameBufferImage *> thumbnail_;
+    std::future<FrameBufferImage *> thumbnailer_;
 
 public:
     RenderView ();
@@ -23,7 +29,7 @@ public:
 
     inline FrameBuffer *frame () const { return frame_buffer_; }
 
-    FrameBufferImage *thumbnail () const;
+    FrameBufferImage *thumbnail ();
 };
 
 #endif // RENDERVIEW_H

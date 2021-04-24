@@ -13,6 +13,7 @@
 
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr)
+//  ,thumbnail_(nullptr), thumbnail_ready_(false)
 {
 }
 
@@ -81,26 +82,32 @@ void RenderView::draw()
         fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
         frame_buffer_->end();
     }
+
+    if (thumbnailer_.valid()) {
+
+        if (frame_buffer_) {
+            FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
+
+            FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
+            frame_thumbnail->begin();
+            thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
+            frame_thumbnail->end();
+            delete thumb;
+
+    //        frame_buffer_->blit(frame_thumbnail); // a tester...
+
+            thumbnail_.set_value( frame_thumbnail->image() );
+
+            delete frame_thumbnail;
+        }
+    }
+
 }
 
 
-FrameBufferImage *RenderView::thumbnail () const
+FrameBufferImage *RenderView::thumbnail ()
 {
-    FrameBufferImage *thumbnail = nullptr;
+    thumbnailer_ = thumbnail_.get_future();
 
-    if (frame_buffer_) {
-        FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
-        FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
-
-        frame_thumbnail->begin();
-        thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
-        frame_thumbnail->end();
-
-        thumbnail = frame_thumbnail->image();
-
-        delete thumb;
-        delete frame_thumbnail;
-    }
-
-    return thumbnail;
+    return thumbnailer_.get();
 }

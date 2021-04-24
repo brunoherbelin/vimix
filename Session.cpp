@@ -128,7 +128,6 @@ void Session::update(float dt)
 
     // draw render view in Frame Buffer
     render_.draw();
-
 }
 
 SourceList::iterator Session::addSource(Source *s)

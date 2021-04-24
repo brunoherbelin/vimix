@@ -83,6 +83,9 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
+    // get thumbnail image
+    inline FrameBufferImage *thumbnail () { return render_.thumbnail(); }
+
     // configure rendering resolution
     void setResolution (glm::vec3 resolution, bool useAlpha = false);
 
@@ -138,6 +141,7 @@ protected:
     SessionSnapshots snapshots_;
     float fading_target_;
     std::mutex access_;
+
 };
 
 
