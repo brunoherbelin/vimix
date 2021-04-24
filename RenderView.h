@@ -1,25 +1,26 @@
 #ifndef RENDERVIEW_H
 #define RENDERVIEW_H
 
-#include <mutex>
+#include <vector>
 #include <future>
 
 #include "View.h"
 
 class RenderView : public View
 {
+    // rendering FBO
     FrameBuffer *frame_buffer_;
     Surface *fading_overlay_;
 
-    std::promise<FrameBufferImage *> thumbnail_;
-    std::future<FrameBufferImage *> thumbnailer_;
+    // promises of returning thumbnails after an update
+    std::vector< std::promise<FrameBufferImage *> > thumbnailer_;
 
 public:
     RenderView ();
     ~RenderView ();
 
     void draw () override;
-    bool canSelect(Source *) override;
+    bool canSelect(Source *) override { return false; }
 
     void setResolution (glm::vec3 resolution = glm::vec3(0.f), bool useAlpha = false);
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
@@ -29,6 +30,7 @@ public:
 
     inline FrameBuffer *frame () const { return frame_buffer_; }
 
+    // get a thumbnail; wait for a promise to be fullfiled
     FrameBufferImage *thumbnail ();
 };
 

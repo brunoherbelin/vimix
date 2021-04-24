@@ -25,11 +25,6 @@ RenderView::~RenderView()
         delete fading_overlay_;
 }
 
-bool RenderView::canSelect(Source *s) {
-
-    return false;
-}
-
 void RenderView::setFading(float f)
 {
     if (fading_overlay_ == nullptr)
@@ -83,11 +78,18 @@ void RenderView::draw()
         frame_buffer_->end();
     }
 
-    if (thumbnailer_.valid()) {
+    // if a thumbnailer is pending
+    if (thumbnailer_.size() > 0) {
 
-        if (frame_buffer_) {
+        try {
+            // promise will fail if no framebuffer
+            if ( frame_buffer_ == nullptr )
+                throw std::runtime_error("no frame");
+
+            // new thumbnailing framebuffer
             FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
 
+            // render
             FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
             frame_thumbnail->begin();
             thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
@@ -96,10 +98,19 @@ void RenderView::draw()
 
     //        frame_buffer_->blit(frame_thumbnail); // a tester...
 
-            thumbnail_.set_value( frame_thumbnail->image() );
+            // return valid thumbnail promise
+            thumbnailer_.back().set_value( frame_thumbnail->image() );
 
+            // done with thumbnailing framebuffer
             delete frame_thumbnail;
         }
+        catch(...) {
+            // return failed thumbnail promise
+            thumbnailer_.back().set_exception(std::current_exception());
+        }
+
+        // done with this promise
+        thumbnailer_.pop_back();
     }
 
 }
@@ -107,7 +118,21 @@ void RenderView::draw()
 
 FrameBufferImage *RenderView::thumbnail ()
 {
-    thumbnailer_ = thumbnail_.get_future();
+    // by default null image
+    FrameBufferImage *img = nullptr;
 
-    return thumbnailer_.get();
+    // create and store a promise for a FrameBufferImage
+    thumbnailer_.emplace_back( std::promise<FrameBufferImage *>() );
+
+    // future will return the primised FrameBufferImage
+    std::future<FrameBufferImage *> t = thumbnailer_.back().get_future();
+
+    try {
+        // wait for valid return value from promise
+        img = t.get();
+    }
+    // catch any failed promise
+    catch (std::runtime_error&){  }
+
+    return img;
 }
