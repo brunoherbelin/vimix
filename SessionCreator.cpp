@@ -508,29 +508,29 @@ void SessionLoader::applyImageProcessing(const Source &s, const std::string &cli
 ////    s.processingShader()->accept(loader);
 //}
 
-void SessionLoader::XMLToNode(tinyxml2::XMLElement *xml, Node &n)
+void SessionLoader::XMLToNode(const tinyxml2::XMLElement *xml, Node &n)
 {
     if (xml != nullptr){
-        XMLElement *node = xml->FirstChildElement("Node");
+        const XMLElement *node = xml->FirstChildElement("Node");
         if ( !node || std::string(node->Name()).find("Node") == std::string::npos )
             return;
 
-        XMLElement *scaleNode = node->FirstChildElement("scale");
+        const XMLElement *scaleNode = node->FirstChildElement("scale");
         if (scaleNode)
             tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), n.scale_);
-        XMLElement *translationNode = node->FirstChildElement("translation");
+        const XMLElement *translationNode = node->FirstChildElement("translation");
         if (translationNode)
             tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"), n.translation_);
-        XMLElement *rotationNode = node->FirstChildElement("rotation");
+        const XMLElement *rotationNode = node->FirstChildElement("rotation");
         if (rotationNode)
             tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
-        XMLElement *cropNode = node->FirstChildElement("crop");
+        const XMLElement *cropNode = node->FirstChildElement("crop");
         if (cropNode)
             tinyxml2::XMLElementToGLM( cropNode->FirstChildElement("vec3"), n.crop_);
     }
 }
 
-void SessionLoader::XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s)
+void SessionLoader::XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s)
 {
     SessionLoader::XMLToNode(xml->FirstChildElement("Mixing"),  *s.group(View::MIXING) );
     SessionLoader::XMLToNode(xml->FirstChildElement("Geometry"),*s.group(View::GEOMETRY) );
@@ -544,20 +544,20 @@ void SessionLoader::XMLToSourcecore( tinyxml2::XMLElement *xml, SourceCore &s)
 
 }
 
-FrameBufferImage *SessionLoader::XMLToImage(tinyxml2::XMLElement *xml)
+FrameBufferImage *SessionLoader::XMLToImage(const XMLElement *xml)
 {
     FrameBufferImage *i = nullptr;
 
     if (xml != nullptr){
         // if there is an Image mask stored
-        XMLElement* imageNode = xml->FirstChildElement("Image");
+        const XMLElement* imageNode = xml->FirstChildElement("Image");
         if (imageNode) {
             // get theoretical image size
             int w = 0, h = 0;
             imageNode->QueryIntAttribute("width", &w);
             imageNode->QueryIntAttribute("height", &h);
             // if there is an internal array of data
-            XMLElement* array = imageNode->FirstChildElement("array");
+            const XMLElement* array = imageNode->FirstChildElement("array");
             if (array) {
                 // create a temporary jpeg with size of the array
                 FrameBufferImage::jpegBuffer jpgimg;

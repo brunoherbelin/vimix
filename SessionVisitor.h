@@ -23,9 +23,9 @@ public:
 
     static bool saveSession(const std::string& filename, Session *session);
 
-    static std::string getClipboard(SourceList list);
-    static std::string getClipboard(Source *s);
-    static std::string getClipboard(ImageProcessingShader *s);
+    static std::string getClipboard(const SourceList &list);
+    static std::string getClipboard(Source * const s);
+    static std::string getClipboard(ImageProcessingShader * const s);
 
     // Elements of Scene
     void visit(Scene& n) override;
@@ -61,9 +61,8 @@ public:
     void visit (NetworkSource& s) override;
     void visit (MixingGroup& s) override;
 
-protected:
-    static tinyxml2::XMLElement *NodeToXML(Node &n, tinyxml2::XMLDocument *doc);
-    static tinyxml2::XMLElement *ImageToXML(FrameBufferImage *img, tinyxml2::XMLDocument *doc);
+    static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
+    static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);
 };
 
 #endif // XMLVISITOR_H

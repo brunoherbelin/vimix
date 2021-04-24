@@ -127,7 +127,7 @@ SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
         xmlDoc_ = doc;
 }
 
-XMLElement *SessionVisitor::NodeToXML(Node &n, XMLDocument *doc)
+XMLElement *SessionVisitor::NodeToXML(const Node &n, XMLDocument *doc)
 {
     XMLElement *newelement = doc->NewElement("Node");
     newelement->SetAttribute("visible", n.visible_);
@@ -153,7 +153,7 @@ XMLElement *SessionVisitor::NodeToXML(Node &n, XMLDocument *doc)
 }
 
 
-XMLElement *SessionVisitor::ImageToXML(FrameBufferImage *img, XMLDocument *doc)
+XMLElement *SessionVisitor::ImageToXML(const FrameBufferImage *img, XMLDocument *doc)
 {
     XMLElement *imageelement = nullptr;
     if (img != nullptr) {
@@ -590,7 +590,7 @@ void SessionVisitor::visit (MixingGroup& g)
     }
 }
 
-std::string SessionVisitor::getClipboard(SourceList list)
+std::string SessionVisitor::getClipboard(const SourceList &list)
 {
     std::string x = "";
 
@@ -627,7 +627,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
     return x;
 }
 
-std::string SessionVisitor::getClipboard(Source *s)
+std::string SessionVisitor::getClipboard(Source * const s)
 {
     std::string x = "";
 
@@ -651,7 +651,7 @@ std::string SessionVisitor::getClipboard(Source *s)
     return x;
 }
 
-std::string SessionVisitor::getClipboard(ImageProcessingShader *s)
+std::string SessionVisitor::getClipboard(ImageProcessingShader * const s)
 {
     std::string x = "";
 

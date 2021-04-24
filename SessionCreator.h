@@ -58,9 +58,9 @@ public:
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
 
-    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);    
+    static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);
-    static FrameBufferImage *XMLToImage(tinyxml2::XMLElement *xml);
+    static FrameBufferImage *XMLToImage(const tinyxml2::XMLElement *xml);
 
 protected:
     // result created session
@@ -90,7 +90,6 @@ public:
     void load(const std::string& filename);
 
     static std::string info(const std::string& filename);
-//    static std::string thumbnail(const std::string& filename);
 };
 
 #endif // SESSIONCREATOR_H

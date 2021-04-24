@@ -62,7 +62,7 @@ XMLElement *tinyxml2::XMLElementFromGLM(XMLDocument *doc, glm::mat4 matrix)
     return newelement;
 }
 
-void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector)
+void tinyxml2::XMLElementToGLM(const XMLElement *elem, glm::ivec2 &vector)
 {
     if ( !elem || std::string(elem->Name()).find("ivec2") == std::string::npos )
         return;
@@ -70,7 +70,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::ivec2 &vector)
     elem->QueryIntAttribute("y", &vector.y);
 }
 
-void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec2 &vector)
+void tinyxml2::XMLElementToGLM(const XMLElement *elem, glm::vec2 &vector)
 {
     if ( !elem || std::string(elem->Name()).find("vec2") == std::string::npos )
         return;
@@ -78,7 +78,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec2 &vector)
     elem->QueryFloatAttribute("y", &vector.y);
 }
 
-void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
+void tinyxml2::XMLElementToGLM(const XMLElement *elem, glm::vec3 &vector)
 {
     if ( !elem || std::string(elem->Name()).find("vec3") == std::string::npos )
         return;
@@ -87,7 +87,7 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec3 &vector)
     elem->QueryFloatAttribute("z", &vector.z);
 }
 
-void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec4 &vector)
+void tinyxml2::XMLElementToGLM(const XMLElement *elem, glm::vec4 &vector)
 {
     if ( !elem || std::string(elem->Name()).find("vec4") == std::string::npos )
         return;
@@ -97,13 +97,13 @@ void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::vec4 &vector)
     elem->QueryFloatAttribute("w", &vector.w);
 }
 
-void tinyxml2::XMLElementToGLM(XMLElement *elem, glm::mat4 &matrix)
+void tinyxml2::XMLElementToGLM(const XMLElement *elem, glm::mat4 &matrix)
 {
     if ( !elem || std::string(elem->Name()).find("mat4") == std::string::npos )
         return;
 
     // loop over rows of vec4
-    XMLElement* row = elem->FirstChildElement("vec4");
+    const XMLElement* row = elem->FirstChildElement("vec4");
     for( ; row ; row = row->NextSiblingElement())
     {
         int r = 0;
@@ -157,7 +157,7 @@ XMLElement *tinyxml2::XMLElementEncodeArray(XMLDocument *doc, const void *array,
     return newelement;
 }
 
-bool tinyxml2::XMLElementDecodeArray(XMLElement *elem, void *array, uint arraysize)
+bool tinyxml2::XMLElementDecodeArray(const XMLElement *elem, void *array, uint arraysize)
 {
     bool ret = false;
 
