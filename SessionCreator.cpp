@@ -552,6 +552,10 @@ FrameBufferImage *SessionLoader::XMLToImage(tinyxml2::XMLElement *xml)
         // if there is an Image mask stored
         XMLElement* imageNode = xml->FirstChildElement("Image");
         if (imageNode) {
+            // get theoretical image size
+            int w = 0, h = 0;
+            imageNode->QueryIntAttribute("width", &w);
+            imageNode->QueryIntAttribute("height", &h);
             // if there is an internal array of data
             XMLElement* array = imageNode->FirstChildElement("array");
             if (array) {
@@ -566,6 +570,11 @@ FrameBufferImage *SessionLoader::XMLToImage(tinyxml2::XMLElement *xml)
                     if (XMLElementDecodeArray(array, jpgimg.buffer, jpgimg.len) ) {
                         // create and set the image from jpeg
                         i = new FrameBufferImage(jpgimg);
+                        // failed if wrong size
+                        if ( (w>0 && h>0) && (i->width != w || i->height != h) ) {
+                            delete i;
+                            i = nullptr;
+                        }
                     }
                     // free temporary buffer
                     if (jpgimg.buffer)
@@ -741,7 +750,8 @@ void SessionLoader::visit (Source& s)
     }
 
     xmlCurrent_ = sourceNode->FirstChildElement("Blending");
-    if (xmlCurrent_) s.blendingShader()->accept(*this);
+    if (xmlCurrent_)
+        s.blendingShader()->accept(*this);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mask");
     if (xmlCurrent_)  {

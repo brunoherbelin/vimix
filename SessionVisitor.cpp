@@ -49,6 +49,13 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         // source visitor
         (*iter)->accept(sv);
 
+    // get the thumbnail
+    FrameBufferImage *thumbnail = session->thumbnail();
+    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, &xmlDoc);
+    if (imageelement)
+        sessionNode->InsertEndChild(imageelement);
+    delete thumbnail;
+
     // 2. config of views
     XMLElement *views = xmlDoc.NewElement("Views");
     xmlDoc.InsertEndChild(views);
@@ -161,6 +168,8 @@ XMLElement *SessionVisitor::ImageToXML(FrameBufferImage *img, XMLDocument *doc)
             if (array) {
                 // create an Image node to store the mask image
                 imageelement = doc->NewElement("Image");
+                imageelement->SetAttribute("width", img->width);
+                imageelement->SetAttribute("height", img->height);
                 imageelement->InsertEndChild(array);
             }
         }

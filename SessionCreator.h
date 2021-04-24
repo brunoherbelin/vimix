@@ -32,7 +32,7 @@ public:
     static bool isClipboard(const std::string &clipboard);
     static tinyxml2::XMLElement* firstSourceElement(const std::string &clipboard, tinyxml2::XMLDocument &xmlDoc);
     static void applyImageProcessing(const Source &s, const std::string &clipboard);
-    //TODO static void applyMask(const Source &s, std::string clipboard);
+    //TODO static void applyMask(const Source &s, const std::string &clipboard);
 
     // Elements of Scene
     void visit (Node& n) override;
@@ -90,6 +90,7 @@ public:
     void load(const std::string& filename);
 
     static std::string info(const std::string& filename);
+//    static std::string thumbnail(const std::string& filename);
 };
 
 #endif // SESSIONCREATOR_H
