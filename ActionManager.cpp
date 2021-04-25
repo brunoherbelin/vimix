@@ -239,25 +239,13 @@ void Action::replace(uint64_t snapshotid)
         Session *se = Mixer::manager().session();
         se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
 
-        // create snapshot node
-        snapshot_node_ = se->snapshots()->xmlDoc_->NewElement( SNAPSHOT_NODE(snapshot_id_).c_str() );
-        se->snapshots()->xmlDoc_->InsertEndChild(snapshot_node_);
+        // threaded capture state of current session
+        std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(snapshot_id_), label).detach();
 
-        // save all sources using source visitor
-        SessionVisitor sv(se->snapshots()->xmlDoc_, snapshot_node_);
-        for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(snapshot_node_) )
-            (*iter)->accept(sv);
-
-        // restore label
-        snapshot_node_->SetAttribute("label", label.c_str());
-
-        // debug
 #ifdef ACTION_DEBUG
         Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
 #endif
     }
-    else
-        snapshot_id_ = 0;
 }
 
 std::list<uint64_t> Action::snapshots() const
