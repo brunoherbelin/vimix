@@ -25,6 +25,7 @@
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
+#include "BaseToolkit.h"
 
 
 unsigned int textureicons = 0;
@@ -35,7 +36,7 @@ void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
 {
     char label[512];
 
-    std::string str = SystemToolkit::transliterate( url );
+    std::string str = BaseToolkit::transliterate( url );
     sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, str.c_str() );
 
     if ( ImGui::Button(label, size_arg) )

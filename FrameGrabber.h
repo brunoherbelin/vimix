@@ -8,7 +8,6 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
-#include "GlmToolkit.h"
 
 // use glReadPixel or glGetTextImage
 // read pixels & pbo should be the fastest

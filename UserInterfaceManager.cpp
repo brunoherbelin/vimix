@@ -36,6 +36,7 @@ using namespace std;
 #include "Log.h"
 #include "SystemToolkit.h"
 #include "DialogToolkit.h"
+#include "BaseToolkit.h"
 #include "GlmToolkit.h"
 #include "GstToolkit.h"
 #include "ImGuiToolkit.h"
@@ -1583,7 +1584,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
             //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
             ImGui::Text("Refresh %.1f FPS", io.Framerate);
-            ImGui::Text("Memory  %s", SystemToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
+            ImGui::Text("Memory  %s", BaseToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
             ImGui::PopFont();
 
         }
@@ -1801,7 +1802,7 @@ void ToolBox::Render()
             if (ImGui::MenuItem("Record", nullptr, &record_) )
             {
                 if ( record_ )
-                    csv_file_.open( SystemToolkit::home_path() + std::to_string(GlmToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
+                    csv_file_.open( SystemToolkit::home_path() + std::to_string(BaseToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
                 else
                     csv_file_.close();
             }
@@ -2702,7 +2703,7 @@ void Navigator::RenderNewPannel()
                     if (open_filename.empty()) {
                         Log::Notify("No file selected.");
                     } else {
-                        std::string label = SystemToolkit::transliterate( open_filename );
+                        std::string label = BaseToolkit::transliterate( open_filename );
                         label = label.substr( label.size() - MIN( 35, label.size()) );
                         new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
                     }
@@ -2718,7 +2719,7 @@ void Navigator::RenderNewPannel()
                 {
                     std::string recentpath(*path);
                     if ( SystemToolkit::file_exists(recentpath)) {
-                        std::string label = SystemToolkit::transliterate( recentpath );
+                        std::string label = BaseToolkit::transliterate( recentpath );
                         label = SystemToolkit::trunc_filename(label, 35);
                         if (ImGui::Selectable( label.c_str() )) {
                             new_source_preview_.setSource( Mixer::manager().createSourceFile(recentpath.c_str()), label);
@@ -3581,7 +3582,7 @@ void ShowSandbox(bool* p_open)
 
     static char str0[128] = "àöäüèáû вторая строчка";
     ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));
-    std::string tra = SystemToolkit::transliterate(std::string(str0));
+    std::string tra = BaseToolkit::transliterate(std::string(str0));
     ImGui::Text("Transliteration: '%s'", tra.c_str());
 
     ImGui::End();

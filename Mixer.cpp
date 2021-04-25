@@ -339,7 +339,7 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         s = (*origin)->clone();
 
         // propose new name (this automatically increments name)
-        renameSource(s, (*origin)->name());
+        s->setName((*origin)->name());
     }
 
     return s;
@@ -357,7 +357,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
     if ( s != nullptr )
     {
         // avoid duplicate name
-        renameSource(s, s->name());
+        renameSource(s);
 
         // Add source to Session (ignored if source already in)
         SourceList::iterator sit = session_->addSource(s);
@@ -650,11 +650,11 @@ void Mixer::renameSource(Source *s, const std::string &newname)
     if ( s != nullptr )
     {
         // tentative new name
-        std::string tentativename = newname;
+        std::string tentativename = s->name();
 
         // refuse to rename to an empty name
-        if ( newname.empty() )
-            tentativename = "source";
+        if ( !newname.empty() )
+            tentativename = newname;
 
         // search for a source of the name 'tentativename'
         std::string basename = tentativename;
@@ -663,6 +663,9 @@ void Mixer::renameSource(Source *s, const std::string &newname)
             if ( s->id() != (*it)->id() && (*it)->name() == tentativename )
                 tentativename = basename + std::to_string( ++count );
         }
+
+//        std::list<std::string> names = session_->getNameList();
+
 
         // ok to rename
         s->setName(tentativename);
@@ -1001,7 +1004,7 @@ void Mixer::merge(Session *session)
     // import every sources
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
         // avoid name duplicates
-        renameSource(s, s->name());
+        renameSource(s);
 
         // Add source to Session
         session_->addSource(s);
@@ -1067,7 +1070,7 @@ void Mixer::merge(SessionSource *source)
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
             // avoid name duplicates
-            renameSource(s, s->name());
+            renameSource(s);
 
             // scale alpha
             s->setAlpha( s->alpha() * source->alpha() );

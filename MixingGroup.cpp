@@ -7,6 +7,7 @@
 #include "Source.h"
 #include "Decorations.h"
 #include "Visitor.h"
+#include "BaseToolkit.h"
 #include "Log.h"
 
 #include "MixingGroup.h"
@@ -16,7 +17,7 @@ MixingGroup::MixingGroup (SourceList sources) : parent_(nullptr), root_(nullptr)
     center_pos_(glm::vec2(0.f, 0.f)), active_(true), update_action_(ACTION_NONE), updated_source_(nullptr)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     // fill the vector of sources with the given list
     for (auto it = sources.begin(); it != sources.end(); ++it){

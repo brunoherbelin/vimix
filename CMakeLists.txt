@@ -268,6 +268,7 @@ set(VMIX_BINARY "vimix")
 set(VMIX_SRCS
     main.cpp
     Log.cpp
+    BaseToolkit.cpp
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp

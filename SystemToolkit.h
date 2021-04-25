@@ -73,14 +73,6 @@ namespace SystemToolkit
     long memory_usage();
     long memory_max_usage();
 
-    // get a string to display memory size with unit KB, MB, GB, TB
-    std::string byte_to_string(long b);
-
-    // get a string to display bit size with unit Kbit, MBit, Gbit, Tbit
-    std::string bits_to_string(long b);
-
-    // get a transliteration to Latin of any string
-    std::string transliterate(std::string input);
 }
 
 #endif // SYSTEMTOOLKIT_H

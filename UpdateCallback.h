@@ -1,7 +1,7 @@
 #ifndef UPDATECALLBACK_H
 #define UPDATECALLBACK_H
 
-#include "GlmToolkit.h"
+#include <glm/glm.hpp>
 
 class Node;
 

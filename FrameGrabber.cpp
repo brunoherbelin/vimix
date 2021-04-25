@@ -10,6 +10,7 @@
 #include "defines.h"
 #include "Log.h"
 #include "GstToolkit.h"
+#include "BaseToolkit.h"
 #include "FrameBuffer.h"
 
 #include "FrameGrabber.h"
@@ -210,7 +211,7 @@ FrameGrabber::FrameGrabber(): finished_(false), active_(false), accept_buffer_(f
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timestamp_(0)
 {
     // unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
     timeframe_ = 2 * frame_duration_;

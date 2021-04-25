@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "defines.h"
+#include "BaseToolkit.h"
 #include "Source.h"
 #include "Settings.h"
 #include "FrameBuffer.h"
@@ -12,7 +13,7 @@
 
 #include "Log.h"
 
-SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_string(GlmToolkit::uniqueId())),
+SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_string(BaseToolkit::uniqueId())),
     text(t), large(l), stick(s), pos(glm::vec2(520.f, 30.f)), size(glm::vec2(220.f, 220.f))
 {
 }
@@ -285,6 +286,17 @@ SourceIdList Session::getIdList() const
 {
     return ids(sources_);
 }
+
+std::list<std::string> Session::getNameList() const
+{
+    std::list<std::string> namelist;
+
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it)
+        namelist.push_back( (*it)->name() );
+
+    return namelist;
+}
+
 
 bool Session::empty() const
 {

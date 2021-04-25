@@ -12,7 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 
 #include "Stream.h"
 
@@ -24,7 +24,7 @@ using namespace std;
 Stream::Stream()
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     description_ = "undefined";
     pipeline_ = nullptr;

@@ -6,12 +6,11 @@
 #include "Mixer.h"
 #include "MixingGroup.h"
 #include "tinyxml2Toolkit.h"
-//#include "SessionSource.h"
 #include "ImageProcessingShader.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
 #include "Settings.h"
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 #include "Interpolator.h"
 
 #include "ActionManager.h"
@@ -191,7 +190,7 @@ void Action::snapshot(const std::string &label)
         return;
 
     // create snapshot id
-    u_int64_t id = GlmToolkit::uniqueId();
+    u_int64_t id = BaseToolkit::uniqueId();
 
     // get session to operate on
     Session *se = Mixer::manager().session();

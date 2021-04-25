@@ -1,4 +1,3 @@
-// Freely inspired from https://github.com/alter-rokuz/glm-aabb.git
 
 #include "GlmToolkit.h"
 
@@ -9,14 +8,6 @@
 
 #include <chrono>
 #include <ctime>
-
-
-uint64_t GlmToolkit::uniqueId()
-{
-    auto duration = std::chrono::high_resolution_clock::now().time_since_epoch();
-    // 64-bit int                                                                  18446744073709551615UL
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000000000000UL;
-}
 
 glm::mat4 GlmToolkit::transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
@@ -58,6 +49,8 @@ void GlmToolkit::inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec
 //    else
 //        return angle;
 //}
+
+// Freely inspired from https://github.com/alter-rokuz/glm-aabb.git
 
 GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() :
     mMin(glm::vec3(1.f)), mMax(glm::vec3(-1.f))

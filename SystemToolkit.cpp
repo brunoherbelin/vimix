@@ -1,15 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <ctime>
 #include <chrono>
-
-#include <locale>
-#include <unicode/ustream.h>
-#include <unicode/translit.h>
 
 using namespace std;
 
@@ -91,41 +85,6 @@ long SystemToolkit::memory_max_usage() {
     return r_usage.ru_maxrss;
 //    return r_usage.ru_isrss;
 }
-
-string SystemToolkit::byte_to_string(long b)
-{
-    double numbytes = static_cast<double>(b);
-    ostringstream oss;
-
-    std::list<std::string> list = {" Bytes", " KB", " MB", " GB", " TB"};
-    std::list<std::string>::iterator i = list.begin();
-
-    while(numbytes >= 1024.0 && i != list.end())
-    {
-        ++i;
-        numbytes /= 1024.0;
-    }
-    oss << std::fixed << std::setprecision(2) << numbytes << *i;
-    return oss.str();
-}
-
-string SystemToolkit::bits_to_string(long b)
-{
-    double numbytes = static_cast<double>(b);
-    ostringstream oss;
-
-    std::list<std::string> list = {" bit", " Kbit", " Mbit", " Gbit", " Tbit"};
-    std::list<std::string>::iterator i = list.begin();
-
-    while(numbytes >= 1000.0 && i != list.end())
-    {
-        ++i;
-        numbytes /= 1000.0;
-    }
-    oss << std::fixed << std::setprecision(2) << numbytes << *i;
-    return oss.str();
-}
-
 
 
 string SystemToolkit::date_time_string()
@@ -376,27 +335,3 @@ void SystemToolkit::execute(const string& command)
 //      std::thread (SystemToolkit::execute,
 //                   "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
 
-
-// Using ICU transliteration :
-// https://unicode-org.github.io/icu/userguide/transforms/general/#icu-transliterators
-
-std::string SystemToolkit::transliterate(std::string input)
-{
-    auto ucs = icu::UnicodeString::fromUTF8(input);
-
-    UErrorCode status = U_ZERO_ERROR;
-    icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
-    firstTrans->transliterate(ucs);
-    delete firstTrans;
-
-    icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
-    secondTrans->transliterate(ucs);
-    delete secondTrans;
-
-    std::ostringstream output;
-    output << ucs;
-
-    return output.str();
-}

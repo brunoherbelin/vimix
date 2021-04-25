@@ -13,6 +13,7 @@
 #include <map>
 
 #include "UpdateCallback.h"
+#include "GlmToolkit.h"
 
 // Forward declare classes referenced
 class Shader;

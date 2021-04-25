@@ -11,6 +11,7 @@
 #include "SearchVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "Log.h"
 #include "MixingGroup.h"
@@ -99,7 +100,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol
 {
     // create unique id
     if (id_ == 0)
-        id_ = GlmToolkit::uniqueId();
+        id_ = BaseToolkit::uniqueId();
 
     sprintf(initials_, "__");
     name_ = "Source";
@@ -315,7 +316,7 @@ Source::~Source()
 
 void Source::setName (const std::string &name)
 {
-    name_ = SystemToolkit::transliterate(name);
+    name_ = BaseToolkit::transliterate(name);
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );

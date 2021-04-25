@@ -12,7 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 #include "GstToolkit.h"
 #include "RenderingManager.h"
 
@@ -27,7 +27,7 @@ std::list<MediaPlayer*> MediaPlayer::registered_;
 MediaPlayer::MediaPlayer()
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     uri_ = "undefined";
     pipeline_ = nullptr;
@@ -220,7 +220,7 @@ static MediaInfo UriDiscoverer_(std::string uri)
 void MediaPlayer::open(string path)
 {
     // set path
-    filename_ = SystemToolkit::transliterate( path );
+    filename_ = BaseToolkit::transliterate( path );
 
     // set uri to open
     uri_ = GstToolkit::filename_to_uri(path);

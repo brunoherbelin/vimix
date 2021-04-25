@@ -1,15 +1,11 @@
 #ifndef GLMTOOLKIT_H
 #define GLMTOOLKIT_H
 
-
 #include <vector>
 #include <glm/glm.hpp>
 
 namespace GlmToolkit
 {
-
-// get integer with unique id
-uint64_t uniqueId();
 
 // get Matrix for these transformation components
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
