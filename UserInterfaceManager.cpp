@@ -2364,7 +2364,7 @@ void Navigator::hidePannel()
 void Navigator::Render()
 {
     std::string tooltip_ = "";
-    static uint timer_tooltip_ = 0;
+    static uint _timeout_tooltip = 0;
 
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -2513,13 +2513,14 @@ void Navigator::Render()
 
     // show tooltip
     if (!tooltip_.empty()) {
-        timer_tooltip_++;
         // pseudo timeout for showing tooltip
-        if (timer_tooltip_ > 80)
+        if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT)
             ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-6).c_str(), tooltip_.substr(tooltip_.size()-6, 6).c_str());
+        else
+            ++_timeout_tooltip;
     }
     else
-        timer_tooltip_ = 0;
+        _timeout_tooltip = 0;
 
     if ( view_pannel_visible && !pannel_visible_ )
         RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );
@@ -2982,11 +2983,12 @@ void Navigator::RenderMainPannelVimix()
     }
 
     // display the sessions list and detect if one was selected (double clic)
-    bool session_selected = false;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::ListBoxHeader("##Sessions", CLAMP(sessions_list.size(), 4, 8)) ) {
+    if (ImGui::ListBoxHeader("##Sessions", sessions_list.size(), CLAMP(sessions_list.size(), 4, 8)) ) {
         static std::string file_info = "";
         static std::list<std::string>::iterator file_selected = sessions_list.end();
+        bool session_selected = false;
+
         for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
             std::string sessionfilename(*it);
             if (sessionfilename.empty())
@@ -3103,7 +3105,7 @@ void Navigator::RenderMainPannelVimix()
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##UndoHistory", CLAMP(Action::manager().max(), 4, 8));
+        ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8));
         for (uint i = Action::manager().max(); i > 0; --i) {
             if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick )) {
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -3134,17 +3136,21 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Show in view");
     }
     else {
-
+        static uint _timeout_over = 0;
         std::list<uint64_t> snapshots = Action::manager().snapshots();
-//        static uint64_t current_snapshot = Action::manager().currentSnapshot();
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::ListBoxHeader("##Snapshots", CLAMP(snapshots.size(), 4, 8)) ) {
+        if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
 
+            static Thumbnail _snap_thumbnail;
+            static std::string _snap_label = "";
+
+            int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
             for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
             {
+                uint64_t over = 0;
                 // size of items
                 ImVec2 s = size;
                 bool selected = ( *snapit == Action::manager().currentSnapshot() );
@@ -3154,41 +3160,76 @@ void Navigator::RenderMainPannelVimix()
                 if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick, s )) {
                     // current list item
                     Action::manager().open(*snapit);
-
                     // trigger snapshot
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().restore();
                 }
+                // mouse over
+                if (ImGui::IsItemHovered()) over = *snapit;
                 // context menu
                 if ( selected ) {
                     ImGui::SameLine();
-                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) )
+                    // open context menu
+                    if ( ImGui::Selectable( ICON_FA_CHEVRON_DOWN , selected) ) {
+                        // force mouse over (fills thumbnail)
+                        _timeout_over = IMGUI_TOOLTIP_TIMEOUT + 1;
+                        // open menu
                         ImGui::OpenPopup( "MenuSnapshot" );
+                    }
+                    // mouse over
+                    if (ImGui::IsItemHovered()) over = *snapit;
+                }
+                // if mouse over (only once and after timeout)
+                if (over > 0 && count_over < 1 && ( _timeout_over > IMGUI_TOOLTIP_TIMEOUT) ) {
+                    static uint64_t current_over = 0;
+                    // load label and thumbnail only if current changed
+                    if (current_over != over) {
+                        _snap_label = Action::manager().label(over);
+                        FrameBufferImage *im = Action::manager().thumbnail(over);
+                        if (im) {
+                            // set image content to thumbnail display
+                            _snap_thumbnail.set( im );
+                            delete im;
+                        }
+                        current_over = over;
+                    }
+                    // draw thumbnail in tooltip
+                    ImGui::BeginTooltip();
+                    _snap_thumbnail.Render(size.x);
+                    ImGui::EndTooltip();
+                    ++count_over; // prevents display twice on item overlap
                 }
             }
 
-            // context menu
-            if (ImGui::BeginPopup( "MenuSnapshot" ))
+            // context menu on currently open snapshot
+            uint64_t current = Action::manager().currentSnapshot();
+            if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
             {
+                ImGui::TextDisabled("Edit snapshot");
+                // snapshot editable label
+                ImGui::SetNextItemWidth(size.x);
+                if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
+                    Action::manager().setLabel( current, _snap_label);
+                // snapshot thumbnail
+                _snap_thumbnail.Render(size.x);
+                // snapshot actions
                 if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size ))
                     Action::manager().restore();
                 if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size ))
                     Action::manager().remove();
                 if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size ))
                     Action::manager().replace();
-                ImGui::TextDisabled("Rename");
-                ImGui::SetNextItemWidth(size.x);
-                if ( Action::manager().currentSnapshot() > 0 ) {
-                    static std::string label;
-                    label = Action::manager().label( Action::manager().currentSnapshot() );
-                    if ( ImGuiToolkit::InputText("##Rename", &label ) )
-                        Action::manager().setLabel( Action::manager().currentSnapshot(), label);
-                }
                 ImGui::EndPopup();
             }
 
             ImGui::ListBoxFooter();
         }
+        if (ImGui::IsItemHovered())
+            _timeout_over++;
+        else
+            _timeout_over = 0;
+
+
         pos_bot = ImGui::GetCursorPos();
 
         // right buttons
@@ -3198,33 +3239,20 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
-        // toggle button for smooth transition
+        // toggle button for smooth interpolation
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Interpolation");
+            ImGuiToolkit::ToolTip("Snapshot interpolation");
 
+//        if (Action::manager().currentSnapshot() > 0) {
+//            ImGui::SetCursorPos( pos_bot );
+//            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
+//            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
+//                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
 
-//        // active list element : delete snapshot button
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
-//        if (current_snapshot != snapshots.end()) {
-//            if ( ImGuiToolkit::IconButton( ICON_FA_STAR "_" )) {
-//                snapshots.erase(current_snapshot);
-//                current_snapshot = snapshots.end();
-//            }
 //        }
-//        // inactive
-//        else
-//            ImGui::TextDisabled( ICON_FA_STAR "_" );
-
-        if (Action::manager().currentSnapshot() > 0) {
-            ImGui::SetCursorPos( pos_bot );
-            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
-                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
-
-        }
     }
 
 
@@ -3479,6 +3507,35 @@ void SourcePreview::Render(float width, bool controlbutton)
 bool SourcePreview::ready() const
 {
     return source_ != nullptr && source_->ready();
+}
+
+///
+/// THUMBNAIL
+///
+
+Thumbnail::Thumbnail() : texture_(0)
+{
+    aspect_ratio_ = 2.f;
+    glGenTextures(1, &texture_);
+    glBindTexture( GL_TEXTURE_2D, texture_);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 2, SESSION_THUMBNAIL_HEIGHT);
+}
+
+Thumbnail::~Thumbnail()
+{
+    glDeleteTextures(1, &texture_);
+}
+
+void Thumbnail::set(const FrameBufferImage *image)
+{
+    aspect_ratio_ = static_cast<float>(image->width) / static_cast<float>(image->height);
+    glBindTexture( GL_TEXTURE_2D, texture_);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+}
+
+void Thumbnail::Render(float width)
+{
+    ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5*aspect_ratio_, 1.f));
 }
 
 ///

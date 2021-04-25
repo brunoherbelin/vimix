@@ -13,6 +13,7 @@
 struct ImVec2;
 class Source;
 class MediaPlayer;
+class FrameBufferImage;
 
 class SourcePreview {
 
@@ -100,6 +101,20 @@ public:
 
     void Render();
 };
+
+class Thumbnail
+{
+    float aspect_ratio_;
+    uint texture_;
+
+public:
+    Thumbnail();
+    ~Thumbnail();
+
+    void set (const FrameBufferImage *image);
+    void Render(float width);
+};
+
 
 class UserInterface
 {
