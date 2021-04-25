@@ -38,7 +38,7 @@ public:
     FrameBufferImage *thumbnail (uint s) const;
 
     // Snapshots
-    void snapshot (const std::string &label);
+    void snapshot (const std::string &label = "");
 
     std::list<uint64_t> snapshots () const;
     uint64_t currentSnapshot () const { return snapshot_id_; }
@@ -49,6 +49,7 @@ public:
     void remove  (uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
+    std::list<std::string> labels () const;
     void setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;
 

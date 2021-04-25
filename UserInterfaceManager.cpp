@@ -259,7 +259,7 @@ void UserInterface::handleKeyboard()
             }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Y )) {
-            Action::manager().snapshot( SystemToolkit::date_time_string() );
+            Action::manager().snapshot( "Snap" );
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
@@ -807,7 +807,7 @@ void UserInterface::showMenuEdit()
     if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
         Action::manager().redo();
     if ( ImGui::MenuItem( ICON_FA_STAR "+ Snapshot", CTRL_MOD "Y") )
-        Action::manager().snapshot( SystemToolkit::date_time_string() );
+        Action::manager().snapshot( "Snap" );
 }
 
 void UserInterface::showMenuFile()
@@ -3236,7 +3236,7 @@ void Navigator::RenderMainPannelVimix()
         // right buttons
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
         if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+"))
-            Action::manager().snapshot( SystemToolkit::date_time_string() );
+            Action::manager().snapshot( "Snap" );
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 

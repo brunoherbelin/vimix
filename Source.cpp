@@ -316,7 +316,8 @@ Source::~Source()
 
 void Source::setName (const std::string &name)
 {
-    name_ = BaseToolkit::transliterate(name);
+    if (!name.empty())
+        name_ = BaseToolkit::transliterate(name);
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );
@@ -817,6 +818,7 @@ CloneSource *Source::clone(uint64_t id)
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin)
 {
+    name_ = origin->name();
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;

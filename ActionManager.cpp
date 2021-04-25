@@ -185,9 +185,11 @@ void Action::restore(uint target)
 
 void Action::snapshot(const std::string &label)
 {
-    // ignore if locked or if no label is given
-    if (locked_ || label.empty())
+    // ignore if locked
+    if (locked_)
         return;
+
+    std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
     // create snapshot id
     u_int64_t id = BaseToolkit::uniqueId();
@@ -197,10 +199,10 @@ void Action::snapshot(const std::string &label)
     se->snapshots()->keys_.push_back(id);
 
     // threaded capture state of current session
-    std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label).detach();
+    std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label).detach();
 
 #ifdef ACTION_DEBUG
-    Log::Info("Snapshot stored %d '%s'", id, label.c_str());
+    Log::Info("Snapshot stored %d '%s'", id, snap_label.c_str());
 #endif
 }
 
@@ -250,6 +252,17 @@ void Action::replace(uint64_t snapshotid)
 std::list<uint64_t> Action::snapshots() const
 {
     return Mixer::manager().session()->snapshots()->keys_;
+}
+
+std::list<std::string> Action::labels() const
+{
+    std::list<std::string> names;
+
+    tinyxml2::XMLDocument *doc = Mixer::manager().session()->snapshots()->xmlDoc_;
+    for ( XMLElement *snap = doc->FirstChildElement(); snap ; snap = snap->NextSiblingElement() )
+        names.push_back( snap->Attribute("label"));
+
+    return names;
 }
 
 std::string Action::label(uint64_t snapshotid) const

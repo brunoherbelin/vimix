@@ -18,6 +18,7 @@
 #include "Log.h"
 #include "View.h"
 #include "ImageShader.h"
+#include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -251,7 +252,10 @@ Source * Mixer::createSourceRender()
     s->setSession(session_);
 
     // propose a new name based on session name
-    s->setName(SystemToolkit::base_filename(session_->filename()));
+    if ( !session_->filename().empty() )
+        s->setName(SystemToolkit::base_filename(session_->filename()));
+    else
+        s->setName("Output");
 
     return s;
 }
@@ -263,8 +267,7 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
     s->setDescription(gstreamerpipeline);
 
     // propose a new name based on pattern name
-    std::string name = gstreamerpipeline.substr(0, gstreamerpipeline.find(" "));
-    s->setName(name);
+    s->setName( gstreamerpipeline.substr(0, gstreamerpipeline.find(" ")) );
 
     return s;
 }
@@ -289,8 +292,7 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
     Source *s = Device::manager().createSource(namedevice);
 
     // propose a new name based on pattern name
-    std::string name = namedevice.substr(0, namedevice.find(" "));
-    s->setName(name);
+    s->setName( namedevice.substr(0, namedevice.find(" ")) );
 
     return s;
 }
@@ -333,23 +335,17 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         origin = current_source_;
 
     // have an origin, can clone it
-    if (origin != session_->end()) {
-
+    if (origin != session_->end())
         // create a source
         s = (*origin)->clone();
-
-        // propose new name (this automatically increments name)
-        s->setName((*origin)->name());
-    }
 
     return s;
 }
 
 void Mixer::addSource(Source *s)
 {
-    if (s != nullptr) {
+    if (s != nullptr)
         candidate_sources_.push_back(s);
-    }
 }
 
 void Mixer::insertSource(Source *s, View::Mode m)
@@ -656,16 +652,7 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         if ( !newname.empty() )
             tentativename = newname;
 
-        // search for a source of the name 'tentativename'
-        std::string basename = tentativename;
-        int count = 1;
-        for( auto it = session_->begin(); it != session_->end(); it++){
-            if ( s->id() != (*it)->id() && (*it)->name() == tentativename )
-                tentativename = basename + std::to_string( ++count );
-        }
-
-//        std::list<std::string> names = session_->getNameList();
-
+        tentativename = BaseToolkit::uniqueName(tentativename, session_->getNameList());
 
         // ok to rename
         s->setName(tentativename);

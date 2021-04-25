@@ -5,6 +5,7 @@
 #include <sstream>
 #include <list>
 #include <iomanip>
+#include <algorithm>
 
 #include <locale>
 #include <unicode/ustream.h>
@@ -17,6 +18,33 @@ uint64_t BaseToolkit::uniqueId()
     return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() % 1000000000000000000UL;
 }
 
+
+
+std::string BaseToolkit::uniqueName(const std::string &basename, std::list<std::string> existingnames)
+{
+    std::string tentativename = basename;
+    int count = 1;
+    int max = 100;
+
+    // while tentativename can be found in the list of existingnames
+    while ( std::find( existingnames.begin(), existingnames.end(), tentativename ) != existingnames.end() )
+    {
+        for( auto it = existingnames.cbegin(); it != existingnames.cend(); ++it) {
+            if ( it->find(tentativename) != std::string::npos)
+                ++count;
+        }
+
+        if (count > 1)
+            tentativename = basename + "_" + std::to_string( count );
+        else
+            tentativename += "_";
+
+        if ( --max < 0 ) // for safety only, should never be needed
+            break;
+    }
+
+    return tentativename;
+}
 
 // Using ICU transliteration :
 // https://unicode-org.github.io/icu/userguide/transforms/general/#icu-transliterators
