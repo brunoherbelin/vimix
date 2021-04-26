@@ -2613,12 +2613,11 @@ void Navigator::RenderSourcePannel(Source *s)
 //        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
 //        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
 
-        static char buf5[128];
-        sprintf ( buf5, "%s", s->name().c_str() );
+        std::string sname = s->name();
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::InputText("Name", buf5, 64, ImGuiInputTextFlags_CharsNoBlank)){
-            Mixer::manager().renameSource(s, buf5);
+        if (ImGuiToolkit::InputText("Name", &sname) ){
+            Mixer::manager().renameSource(s, sname);
         }
         // Source pannel
         static ImGuiVisitor v;
@@ -2991,13 +2990,14 @@ void Navigator::RenderMainPannelVimix()
         static std::string file_info = "";
         static std::list<std::string>::iterator file_selected = sessions_list.end();
         bool session_selected = false;
+        ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
 
         for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
             std::string sessionfilename(*it);
             if (sessionfilename.empty())
                 continue;
             std::string shortname = SystemToolkit::filename(*it);
-            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick )) {
+            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, size )) {
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
                     Mixer::manager().open( sessionfilename, Settings::application.smooth_transition );
                     session_selected = true;
@@ -3022,7 +3022,17 @@ void Navigator::RenderMainPannelVimix()
                     file_selected = sessions_list.end();
                 }
                 else if (!file_info.empty()) {
+                    static Thumbnail _file_thumbnail;
+                    FrameBufferImage *im = SessionCreator::thumbnail(sessionfilename);
+                    if (im) {
+                        // set image content to thumbnail display
+                        _file_thumbnail.set( im );
+                        delete im;
+                    }
+                    else
+                        _file_thumbnail.reset();
                     ImGui::BeginTooltip();
+                    _file_thumbnail.Render(size.x);
                     ImGui::Text("%s", file_info.c_str());
                     ImGui::EndTooltip();
                 }
@@ -3096,26 +3106,76 @@ void Navigator::RenderMainPannelVimix()
         ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
     }
 
-    //
-    // History
-    //
     ImGui::Spacing();
     ImGui::Text("Actions");
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode, "Snapshots\0Undo history\0");
 
+    //
+    // UNDO History
+    //
     if (Settings::application.pannel_history_mode > 0) {
+
+        static uint _over = 0;
+        static bool _tooltip = 0;
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8));
-        for (uint i = Action::manager().max(); i > 0; --i) {
-            if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick )) {
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                    Action::manager().stepTo(i);
+        if ( ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8)) ) {
+
+            static Thumbnail _undo_thumbnail;
+            int count_over = 0;
+            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+
+            for (uint i = Action::manager().max(); i > 0; --i) {
+
+                if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                    // shot tooltip on clic
+                    _tooltip = true;
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                        Action::manager().stepTo(i);
+                }
+                // mouse over
+                if (ImGui::IsItemHovered()) {
+                    _over = i;
+                }
+
+                // if mouse over (only once)
+                if (_tooltip && _over > 0 && count_over < 1) {
+                    static std::string text = "";
+                    static uint64_t current_over = 0;
+                    // load label and thumbnail only if current changed
+                    if (current_over != _over) {
+                        text = Action::manager().label(_over);
+                        if (text.find_first_of(':') < text.size())
+                            text = text.insert( text.find_first_of(':') + 1, 1, '\n');
+                        FrameBufferImage *im = Action::manager().thumbnail(_over);
+                        if (im) {
+                            // set image content to thumbnail display
+                            _undo_thumbnail.set( im );
+                            delete im;
+                        }
+                        else
+                            _undo_thumbnail.reset();
+                        current_over = _over;
+                    }
+                    // draw thumbnail in tooltip
+                    ImGui::BeginTooltip();
+                    _undo_thumbnail.Render(size.x);
+                    ImGui::Text("%s", text.c_str());
+                    ImGui::EndTooltip();
+                    ++count_over; // prevents display twice on item overlap
+                }
+
             }
+            ImGui::ListBoxFooter();
         }
-        ImGui::ListBoxFooter();
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered()) {
+            _tooltip = false;
+            _over = 0;
+        }
+
         pos_bot = ImGui::GetCursorPos();
 
         // right buttons
@@ -3138,14 +3198,20 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Show in view");
     }
+    //
+    // SNAPSHOTS
+    //
     else {
-        static uint _timeout_over = 0;
-        std::list<uint64_t> snapshots = Action::manager().snapshots();
+        static uint64_t _over = 0;
+        static bool _tooltip = 0;
 
+        // list snapshots
+        std::list<uint64_t> snapshots = Action::manager().snapshots();
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
 
+            static uint64_t _selected = 0;
             static Thumbnail _snap_thumbnail;
             static std::string _snap_label = "";
 
@@ -3153,48 +3219,56 @@ void Navigator::RenderMainPannelVimix()
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
             for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
             {
-                uint64_t over = 0;
-                // size of items
-                ImVec2 s = size;
-                bool selected = ( *snapit == Action::manager().currentSnapshot() );
-                if ( selected )
-                    s.x -= ImGui::GetTextLineHeightWithSpacing();
                 // entry
-                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick, s )) {
-                    // current list item
-                    Action::manager().open(*snapit);
-                    // trigger snapshot
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                        Action::manager().restore();
-                }
-                // mouse over
-                if (ImGui::IsItemHovered()) over = *snapit;
-                // context menu
-                if ( selected ) {
-                    ImGui::SameLine();
+                ImVec2 pos = ImGui::GetCursorPos();
+
+                // context menu icon on currently hovered item
+                if ( _over == *snapit ) {
                     // open context menu
-                    if ( ImGui::Selectable( ICON_FA_CHEVRON_DOWN , selected) ) {
-                        // force mouse over (fills thumbnail)
-                        _timeout_over = IMGUI_TOOLTIP_TIMEOUT + 1;
+                    ImGui::SetCursorPos(ImVec2(size.x-ImGui::GetTextLineHeight()/2.f, pos.y));
+                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
+                        // current list item
+                        Action::manager().open(*snapit);
                         // open menu
                         ImGui::OpenPopup( "MenuSnapshot" );
                     }
-                    // mouse over
-                    if (ImGui::IsItemHovered()) over = *snapit;
+                    // show tooltip and select on mouse over menu icon
+                    if (ImGui::IsItemHovered()) {
+                        _selected = *snapit;
+                        _tooltip = true;
+                    }
+                    ImGui::SetCursorPos(pos);
                 }
-                // if mouse over (only once and after timeout)
-                if (over > 0 && count_over < 1 && ( _timeout_over > IMGUI_TOOLTIP_TIMEOUT) ) {
+
+                // snapshot item
+                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), (*snapit == _selected), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                    // shot tooltip on clic
+                    _tooltip = true;
+                    // trigger snapshot on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                        Action::manager().restore(*snapit);
+                }
+                // mouse over
+                if (ImGui::IsItemHovered()) {
+                    _over = *snapit;
+                    _selected = 0;
+                }
+
+                // if mouse over (only once)
+                if (_tooltip && _over > 0 && count_over < 1) {
                     static uint64_t current_over = 0;
                     // load label and thumbnail only if current changed
-                    if (current_over != over) {
-                        _snap_label = Action::manager().label(over);
-                        FrameBufferImage *im = Action::manager().thumbnail(over);
+                    if (current_over != _over) {
+                        _snap_label = Action::manager().label(_over);
+                        FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display
                             _snap_thumbnail.set( im );
                             delete im;
                         }
-                        current_over = over;
+                        else
+                            _snap_thumbnail.reset();
+                        current_over = _over;
                     }
                     // draw thumbnail in tooltip
                     ImGui::BeginTooltip();
@@ -3208,6 +3282,7 @@ void Navigator::RenderMainPannelVimix()
             uint64_t current = Action::manager().currentSnapshot();
             if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
             {
+                _selected = current;
                 ImGui::TextDisabled("Edit snapshot");
                 // snapshot editable label
                 ImGui::SetNextItemWidth(size.x);
@@ -3224,15 +3299,19 @@ void Navigator::RenderMainPannelVimix()
                     Action::manager().replace();
                 ImGui::EndPopup();
             }
+            else
+                _selected = 0;
 
+            // end list snapshots
             ImGui::ListBoxFooter();
         }
-        if (ImGui::IsItemHovered())
-            _timeout_over++;
-        else
-            _timeout_over = 0;
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered()) {
+            _tooltip = false;
+            _over = 0;
+        }
 
-
+        // Right panel buton
         pos_bot = ImGui::GetCursorPos();
 
         // right buttons
@@ -3516,9 +3595,8 @@ bool SourcePreview::ready() const
 /// THUMBNAIL
 ///
 
-Thumbnail::Thumbnail() : texture_(0)
+Thumbnail::Thumbnail() : aspect_ratio_(-1.f), texture_(0)
 {
-    aspect_ratio_ = 2.f;
     glGenTextures(1, &texture_);
     glBindTexture( GL_TEXTURE_2D, texture_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 2, SESSION_THUMBNAIL_HEIGHT);
@@ -3527,6 +3605,11 @@ Thumbnail::Thumbnail() : texture_(0)
 Thumbnail::~Thumbnail()
 {
     glDeleteTextures(1, &texture_);
+}
+
+void Thumbnail::reset()
+{
+    aspect_ratio_ = -1.f;
 }
 
 void Thumbnail::set(const FrameBufferImage *image)
@@ -3538,7 +3621,8 @@ void Thumbnail::set(const FrameBufferImage *image)
 
 void Thumbnail::Render(float width)
 {
-    ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5*aspect_ratio_, 1.f));
+    if (aspect_ratio_>0)
+        ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5*aspect_ratio_, 1.f));
 }
 
 ///

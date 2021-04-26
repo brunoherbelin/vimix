@@ -111,6 +111,7 @@ public:
     Thumbnail();
     ~Thumbnail();
 
+    void reset();
     void set (const FrameBufferImage *image);
     void Render(float width);
 };

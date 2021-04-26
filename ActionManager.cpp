@@ -19,8 +19,8 @@
 #define ACTION_DEBUG
 #endif
 
-#define HISTORY_NODE(i) std::to_string(i).insert(0, "H")
-#define SNAPSHOT_NODE(i) std::to_string(i).insert(0, "S")
+#define HISTORY_NODE(i) std::to_string(i).insert(0,1,'H')
+#define SNAPSHOT_NODE(i) std::to_string(i).insert(0,1,'S')
 
 using namespace tinyxml2;
 

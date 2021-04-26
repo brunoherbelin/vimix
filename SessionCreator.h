@@ -90,6 +90,7 @@ public:
     void load(const std::string& filename);
 
     static std::string info(const std::string& filename);
+    static FrameBufferImage *thumbnail(const std::string& filename);
 };
 
 #endif // SESSIONCREATOR_H

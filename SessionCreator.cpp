@@ -56,6 +56,28 @@ std::string SessionCreator::info(const std::string& filename)
     return ret;
 }
 
+FrameBufferImage *SessionCreator::thumbnail(const std::string& filename)
+{
+    FrameBufferImage *ret = nullptr;
+
+    // if the file exists
+    if (SystemToolkit::file_exists(filename)) {
+        // try to load the file
+        XMLDocument doc;
+        XMLError eResult = doc.LoadFile(filename.c_str());
+        // silently ignore on error
+        if ( !XMLResultError(eResult, false)) {
+
+            XMLElement *header = doc.FirstChildElement("Session");
+            if (header != nullptr ) {
+                ret = XMLToImage(header);
+            }
+        }
+    }
+
+    return ret;
+}
+
 SessionCreator::SessionCreator(int recursion): SessionLoader(nullptr, recursion)
 {
 
