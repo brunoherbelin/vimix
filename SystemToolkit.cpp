@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <chrono>
+#include <algorithm>
 
 using namespace std;
 
@@ -300,6 +301,8 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
         }
         closedir (dir);
     }
+
+    ls.sort();
 
     return ls;
 }
