@@ -26,7 +26,7 @@ namespace ImGuiToolkit
     // utility buttons
     bool ButtonToggle  (const char* label, bool* toggle);
     bool ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
-    void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
+    void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
     void ToolTip    (const char* desc, const char* shortcut = nullptr);
     void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE, const char* shortcut = nullptr);

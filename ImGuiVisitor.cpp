@@ -32,6 +32,7 @@
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
+#include "BaseToolkit.h"
 #include "UserInterfaceManager.h"
 #include "SystemToolkit.h"
 
@@ -552,7 +553,12 @@ void ImGuiVisitor::visit (MediaSource& s)
 
     if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().showMediaPlayer( s.mediaplayer());
-    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
+    std::string path = SystemToolkit::path_filename(s.path());
+    std::string label = SystemToolkit::trunc_filename(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
     ImGui::SameLine();
     ImGui::Text("Folder");
 }
@@ -583,7 +589,11 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::SameLine();
     ImGui::Text("File");
 
-    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    std::string path = SystemToolkit::path_filename(s.path());
+    std::string label = SystemToolkit::trunc_filename(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
     ImGui::SameLine();
     ImGui::Text("Folder");
 

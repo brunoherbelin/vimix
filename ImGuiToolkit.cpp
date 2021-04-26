@@ -25,21 +25,18 @@
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
-#include "BaseToolkit.h"
 
 
 unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
 
-void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
+void ImGuiToolkit::ButtonOpenUrl( const char* label, const char* url, const ImVec2& size_arg )
 {
-    char label[512];
+    char _label[512];
+    sprintf( _label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
 
-    std::string str = BaseToolkit::transliterate( url );
-    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, str.c_str() );
-
-    if ( ImGui::Button(label, size_arg) )
+    if ( ImGui::Button(_label, size_arg) )
         SystemToolkit::open(url);
 }
 

@@ -1625,7 +1625,7 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Text("\nvimix is licensed under the GNU GPL version 3.\nCopyright 2019-2021 Bruno Herbelin.");
 
     ImGui::Spacing();
-    ImGuiToolkit::ButtonOpenUrl("https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
 
     ImGui::Spacing();
@@ -3688,7 +3688,7 @@ void ShowAboutOpengl(bool* p_open)
     ImGui::PopFont();
     ImGui::Separator();
     ImGui::Text("OpenGL is the premier environment for developing portable, \ninteractive 2D and 3D graphics applications.");
-    ImGuiToolkit::ButtonOpenUrl("https://www.opengl.org");
+    ImGuiToolkit::ButtonOpenUrl("Visit website", "https://www.opengl.org");
     ImGui::SameLine();
 
     static bool show_opengl_info = false;
@@ -3752,7 +3752,7 @@ void ShowAboutGStreamer(bool* p_open)
     ImGui::Separator();
     ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
     ImGui::Text("GStreamer is licensed under the LGPL License.");
-    ImGuiToolkit::ButtonOpenUrl("https://gstreamer.freedesktop.org/");
+    ImGuiToolkit::ButtonOpenUrl("Visit website", "https://gstreamer.freedesktop.org/");
     ImGui::SameLine();
 
     static bool show_config_info = false;
