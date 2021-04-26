@@ -658,14 +658,11 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         // tentative new name
         std::string tentativename = s->name();
 
-        std::list<std::string> others = session_->getNameList();
-        others.remove(tentativename);
-
         // try the given new name if valid
         if ( !newname.empty() )
             tentativename = newname;
 
-        tentativename = BaseToolkit::uniqueName(tentativename, others);
+        tentativename = BaseToolkit::uniqueName(tentativename, session_->getNameList(s->id()));
 
         // ok to rename
         s->setName(tentativename);

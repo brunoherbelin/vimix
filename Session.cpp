@@ -287,12 +287,14 @@ SourceIdList Session::getIdList() const
     return ids(sources_);
 }
 
-std::list<std::string> Session::getNameList() const
+std::list<std::string> Session::getNameList(uint64_t exceptid) const
 {
     std::list<std::string> namelist;
 
-    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it)
-        namelist.push_back( (*it)->name() );
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        if ( (*it)->id() != exceptid )
+            namelist.push_back( (*it)->name() );
+    }
 
     return namelist;
 }

@@ -66,7 +66,7 @@ public:
     SourceList::iterator find (uint64_t id);
     SourceIdList getIdList() const;
 
-    std::list<std::string> getNameList() const;
+    std::list<std::string> getNameList(uint64_t exceptid=0) const;
 
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;    
