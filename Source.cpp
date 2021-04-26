@@ -764,11 +764,8 @@ void Source::setMask(FrameBufferImage *img)
         // ask to update the source
         touch();
     }
-    else {
-        // CANCEL mask if set to null
+    else
         mask_need_update_ = false;
-        maskshader_->mode = MaskShader::NONE;
-    }
 }
 
 bool Source::hasNode::operator()(const Source* elem) const

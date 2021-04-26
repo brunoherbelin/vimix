@@ -661,7 +661,7 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         std::list<std::string> others = session_->getNameList();
         others.remove(tentativename);
 
-        // refuse to rename to an empty name
+        // try the given new name if valid
         if ( !newname.empty() )
             tentativename = newname;
 
