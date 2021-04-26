@@ -182,7 +182,7 @@ void Mixer::update()
                 failure = nullptr; // prevent delete (already done in recreateSource)
         }
         // delete the source
-        deleteSource(failure, false);
+        deleteSource(failure);
     }
 
     // update views
@@ -451,7 +451,7 @@ bool Mixer::recreateSource(Source *s)
     return true;
 }
 
-void Mixer::deleteSource(Source *s, bool withundo)
+void Mixer::deleteSource(Source *s)
 {
     if ( s != nullptr )
     {
@@ -463,10 +463,6 @@ void Mixer::deleteSource(Source *s, bool withundo)
 
         // delete source
         session_->deleteSource(s);
-
-        // store new state in history manager
-        if (withundo)
-            Action::manager().store(name + std::string(" source deleted"));
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
@@ -571,12 +567,12 @@ void Mixer::deleteSelection()
     // ignore if selection empty
     if (N > 0) {
 
-        // adapt Action::manager undo action depending on case
-        std::string undomessage;
+        // adapt Action::manager undo info depending on case
+        std::ostringstream info;
         if (N > 1)
-            undomessage = std::to_string(N) + std::string(" sources deleted");
+            info << N << " sources deleted";
         else
-            undomessage = selection().front()->name() + std::string(" deleted");
+            info << selection().front()->name() << ": deleted";
 
         // get clones first : this way we store the history of deletion in the right order
         SourceList selection_clones_;
@@ -587,14 +583,14 @@ void Mixer::deleteSelection()
         }
         // delete all clones
         while ( !selection_clones_.empty() ) {
-            deleteSource( selection_clones_.front(), false);// this also removes element from selection()
+            deleteSource( selection_clones_.front());// this also removes element from selection()
             selection_clones_.pop_front();
         }
         // empty the selection
         while ( !selection().empty() )
-            deleteSource( selection().front(), false ); // this also removes element from selection()
+            deleteSource( selection().front() ); // this also removes element from selection()
 
-        Action::manager().store( undomessage );
+        Action::manager().store(info.str());
     }
 }
 
@@ -647,7 +643,7 @@ void Mixer::groupSelection()
 
     // store in action manager
     std::ostringstream info;
-    info << sessiongroup->name() << " source inserted, " << sessiongroup->session()->numSource() << " sources flatten.";
+    info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
     Action::manager().store(info.str());
 
     // give the hand to the user
@@ -662,11 +658,14 @@ void Mixer::renameSource(Source *s, const std::string &newname)
         // tentative new name
         std::string tentativename = s->name();
 
+        std::list<std::string> others = session_->getNameList();
+        others.remove(tentativename);
+
         // refuse to rename to an empty name
         if ( !newname.empty() )
             tentativename = newname;
 
-        tentativename = BaseToolkit::uniqueName(tentativename, session_->getNameList());
+        tentativename = BaseToolkit::uniqueName(tentativename, others);
 
         // ok to rename
         s->setName(tentativename);
