@@ -345,33 +345,34 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 
     const ImGuiIO& io = ImGui::GetIO();
     
-    ImGui::Begin("Icons", p_open);
+    if ( ImGui::Begin("Icons", p_open) ) {
 
-    ImVec2 pos = ImGui::GetCursorScreenPos();
-    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
-    if (ImGui::IsItemHovered())
-    {
-        float my_tex_w = 640.0;
-        float my_tex_h = 640.0;
-        float zoom = 4.0f;
-        float region_sz = 32.0f; // 64 x 64 icons 
-        float region_x = io.MousePos.x - pos.x - region_sz * 0.5f; 
-        if (region_x < 0.0f) region_x = 0.0f; else if (region_x > my_tex_w - region_sz) region_x = my_tex_w - region_sz;
-        float region_y = io.MousePos.y - pos.y - region_sz * 0.5f; 
-        if (region_y < 0.0f) region_y = 0.0f; else if (region_y > my_tex_h - region_sz) region_y = my_tex_h - region_sz;
-        ImGui::BeginTooltip();      
-        int i = (int) ( (region_x + region_sz * 0.5f) / region_sz);
-        int j = (int) ( (region_y + region_sz * 0.5f)/ region_sz);
-        ImGuiToolkit::Icon(i, j);
-        ImGui::SameLine();
-        ImGui::Text(" Icon (%d, %d)", i,  j);
-        ImVec2 uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h);
-        ImVec2 uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h);
-        ImGui::Image((void*)(intptr_t)textureicons, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
-        ImGui::EndTooltip();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
+        if (ImGui::IsItemHovered())
+        {
+            float my_tex_w = 640.0;
+            float my_tex_h = 640.0;
+            float zoom = 4.0f;
+            float region_sz = 32.0f; // 64 x 64 icons
+            float region_x = io.MousePos.x - pos.x - region_sz * 0.5f;
+            if (region_x < 0.0f) region_x = 0.0f; else if (region_x > my_tex_w - region_sz) region_x = my_tex_w - region_sz;
+            float region_y = io.MousePos.y - pos.y - region_sz * 0.5f;
+            if (region_y < 0.0f) region_y = 0.0f; else if (region_y > my_tex_h - region_sz) region_y = my_tex_h - region_sz;
+            ImGui::BeginTooltip();
+            int i = (int) ( (region_x + region_sz * 0.5f) / region_sz);
+            int j = (int) ( (region_y + region_sz * 0.5f)/ region_sz);
+            ImGuiToolkit::Icon(i, j);
+            ImGui::SameLine();
+            ImGui::Text(" Icon (%d, %d)", i,  j);
+            ImVec2 uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h);
+            ImVec2 uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h);
+            ImGui::Image((void*)(intptr_t)textureicons, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
+            ImGui::EndTooltip();
+        }
+
+        ImGui::End();
     }
-
-    ImGui::End();
 }
 
 void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
