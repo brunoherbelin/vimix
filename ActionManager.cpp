@@ -26,9 +26,6 @@ using namespace tinyxml2;
 
 void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::string label)
 {
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-    se->lock();
 
     // create node
     XMLElement *sessionNode = doc->NewElement( node.c_str() );
@@ -37,6 +34,10 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
     sessionNode->SetAttribute("label", label.c_str() );
     // view indicates the view when this action occured
     sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+
+    // get session to operate on
+    Session *se = Mixer::manager().session();
+    se->lock();
 
     // get the thumbnail (requires one opengl update to render)
     FrameBufferImage *thumbnail = se->thumbnail();
@@ -96,7 +97,7 @@ void Action::store(const std::string &label)
 
 #ifdef ACTION_DEBUG
     Log::Info("Action stored %d '%s'", history_step_, label.c_str());
-        XMLSaveDoc(&history_doc_, "/home/bhbn/history.xml");
+//        XMLSaveDoc(&history_doc_, "/home/bhbn/history.xml");
 #endif
 }
 
