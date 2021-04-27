@@ -455,6 +455,39 @@ void Settings::Load()
 
 }
 
+void Settings::History::push(const string &filename)
+{
+    if (filename.empty()) {
+        front_is_valid = false;
+        return;
+    }
+    filenames.remove(filename);
+    filenames.push_front(filename);
+    if (filenames.size() > MAX_RECENT_HISTORY)
+        filenames.pop_back();
+    front_is_valid = true;
+    changed = true;
+}
+
+void Settings::History::remove(const std::string &filename)
+{
+    if (filename.empty())
+        return;
+    if (filenames.front() == filename)
+        front_is_valid = false;
+    filenames.remove(filename);
+    changed = true;
+}
+
+void Settings::History::validate()
+{
+    for (auto fit = filenames.begin(); fit != filenames.end();) {
+        if ( SystemToolkit::file_exists( *fit ))
+            ++fit;
+        else
+            fit = filenames.erase(fit);
+    }
+}
 
 void Settings::Lock()
 {

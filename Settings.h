@@ -93,26 +93,9 @@ struct History
         save_on_exit = false;
         changed = false;
     }
-    void push(const std::string &filename) {
-        if (filename.empty()) {
-            front_is_valid = false;
-            return;
-        }
-        filenames.remove(filename);
-        filenames.push_front(filename);
-        if (filenames.size() > MAX_RECENT_HISTORY)
-            filenames.pop_back();
-        front_is_valid = true;
-        changed = true;
-    }
-    void remove(const std::string &filename) {
-        if (filename.empty())
-            return;
-        if (filenames.front() == filename)
-            front_is_valid = false;
-        filenames.remove(filename);
-        changed = true;
-    }
+    void push(const std::string &filename);
+    void remove(const std::string &filename);
+    void validate();
 };
 
 struct TransitionConfig
