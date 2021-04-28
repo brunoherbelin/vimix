@@ -81,7 +81,6 @@ void Stream::open(const std::string &gstreamer_description, int w, int h)
     if (isOpen())
         close();
 
-    execute_open();
 }
 
 
@@ -229,7 +228,6 @@ void Stream::close()
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
-    desired_state_ = GST_STATE_PAUSED;
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_FRAME; ++i){
@@ -312,7 +310,7 @@ bool Stream::live() const
 void Stream::play(bool on)
 {
     // ignore if disabled, and cannot play an image
-    if (!enabled_)
+    if (!enabled_ || single_frame_)
         return;
 
     // request state
@@ -353,6 +351,10 @@ void Stream::play(bool on)
 
 bool Stream::isPlaying(bool testpipeline) const
 {
+    // image cannot play
+    if (single_frame_)
+        return false;
+
     // if not ready yet, answer with requested state
     if ( !testpipeline || pipeline_ == nullptr || !enabled_)
         return desired_state_ == GST_STATE_PLAYING;
@@ -378,45 +380,48 @@ void Stream::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // set pbo image size
-    pbo_size_ = height_ * width_ * 4;
+    if (!single_frame_) {
+        // set pbo image size
+        pbo_size_ = height_ * width_ * 4;
 
-    // create pixel buffer objects,
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    glGenBuffers(2, pbo_);
-
-    for(int i = 0; i < 2; i++ ) {
-        // create 2 PBOs
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
-        // glBufferDataARB with NULL pointer reserves only memory space.
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-        // fill in with reset picture
-        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-        if (ptr)  {
-            // update data directly on the mapped buffer
-            memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-            // release pointer to mapping buffer
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-        }
-        else {
-            // did not work, disable PBO
+        // create pixel buffer objects,
+        if (pbo_[0])
             glDeleteBuffers(2, pbo_);
-            pbo_[0] = pbo_[1] = 0;
-            pbo_size_ = 0;
-            break;
+        glGenBuffers(2, pbo_);
+
+        for(int i = 0; i < 2; i++ ) {
+            // create 2 PBOs
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
+            // glBufferDataARB with NULL pointer reserves only memory space.
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+            // fill in with reset picture
+            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+            if (ptr)  {
+                // update data directly on the mapped buffer
+                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+                // release pointer to mapping buffer
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+            }
+            else {
+                // did not work, disable PBO
+                glDeleteBuffers(2, pbo_);
+                pbo_[0] = pbo_[1] = 0;
+                pbo_size_ = 0;
+                break;
+            }
+
         }
 
-    }
-
-    // should be good to go, wrap it up
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    pbo_index_ = 0;
-    pbo_next_index_ = 1;
+        // should be good to go, wrap it up
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        pbo_index_ = 0;
+        pbo_next_index_ = 1;
 
 #ifdef STREAM_DEBUG
         Log::Info("Stream %s Use Pixel Buffer Object texturing.", std::to_string(id_).c_str());
 #endif
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
 
 }
 
@@ -466,6 +471,7 @@ void Stream::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
                             GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
         }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
@@ -476,12 +482,16 @@ void Stream::update()
         return;
 
     // not ready yet
-    if (!ready_)
+    if (!ready_){
+        // open the stream
+        execute_open();
+        // wait next frame to display
         return;
+    }
 
-//    // prevent unnecessary updates: disabled or already filled image
-//    if (!enabled_)
-//        return;
+    // prevent unnecessary updates: already filled image
+    if (single_frame_ && textureindex_>0)
+        return;
 
     // local variables before trying to update
     guint read_index = 0;

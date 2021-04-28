@@ -81,11 +81,11 @@ void StreamSource::init()
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
-            // deep update to reorder
-            ++View::need_deep_update_;
-
             // force update of activation mode
             active_ = true;
+
+            // deep update to reorder
+            ++View::need_deep_update_;
 
             // done init
             initialized_ = true;
