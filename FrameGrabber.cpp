@@ -146,6 +146,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 #else
         glBindTexture(GL_TEXTURE_2D, frame_buffer->texture());
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 #endif
 
         // update case ; alternating indices

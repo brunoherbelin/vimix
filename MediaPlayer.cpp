@@ -225,8 +225,9 @@ void MediaPlayer::open(string path)
     // set uri to open
     uri_ = GstToolkit::filename_to_uri(path);
 
-    // reset
-    ready_ = false;
+    // close before re-openning
+    if (isOpen())
+        close();
 
     // start URI discovering thread:
     discoverer_ = std::async( UriDiscoverer_, uri_);
@@ -507,7 +508,7 @@ GstClockTime MediaPlayer::position()
 
 void MediaPlayer::enable(bool on)
 {
-    if ( !ready_ )
+    if ( !ready_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -772,6 +773,7 @@ void MediaPlayer::init_texture(guint index)
         // for possible hadrware decoding plugins used. Empty string means none.
         hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
     }
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 
@@ -819,6 +821,7 @@ void MediaPlayer::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
                             GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
         }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
