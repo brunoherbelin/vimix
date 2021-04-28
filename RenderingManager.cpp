@@ -727,6 +727,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     // DPI scaling (retina)
     dpi_scale_ = float(window_attributes_.viewport.y) / float(winset.h);
 
+    // We decide for byte aligned textures all over
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     // fast mipmaps (we are not really using mipmaps anyway)

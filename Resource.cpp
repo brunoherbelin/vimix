@@ -267,13 +267,13 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 	}
     if (h == 0){
         Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        stbi_image_free(img);
         return 0;
     }
     ar = static_cast<float>(w) / static_cast<float>(h);
 
     glGenTextures(1, &textureID);
-	glBindTexture( GL_TEXTURE_2D, textureID);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glBindTexture( GL_TEXTURE_2D, textureID);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

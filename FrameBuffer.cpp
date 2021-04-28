@@ -381,7 +381,9 @@ bool FrameBuffer::fill(FrameBufferImage *image)
     // fill texture with image
     glBindTexture(GL_TEXTURE_2D, textureid_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
-                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);    
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     return true;
 }
 
