@@ -132,10 +132,7 @@ void MediaSource::render()
 
         // render the media player into frame buffer
         renderbuffer_->begin();
-//        texturesurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.r = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.g = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.b = mediaplayer_->currentTimelineFading();
+        texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
     }
