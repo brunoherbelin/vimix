@@ -1413,66 +1413,67 @@ void UserInterface::RenderShaderEditor()
 {
     static bool show_statusbar = true;
 
-    ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
-    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGui::BeginMenuBar())
+    if ( ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar) )
     {
-        if (ImGui::BeginMenu("Edit"))
+        ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+        if (ImGui::BeginMenuBar())
         {
-            bool ro = editor.IsReadOnly();
-            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                editor.SetReadOnly(ro);
-            ImGui::Separator();
+            if (ImGui::BeginMenu("Edit"))
+            {
+                bool ro = editor.IsReadOnly();
+                if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+                    editor.SetReadOnly(ro);
+                ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
-                editor.Undo();
-            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
-                editor.Redo();
+                if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
+                    editor.Undo();
+                if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
+                    editor.Redo();
 
-            ImGui::Separator();
+                ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
-                editor.Copy();
-            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
-                editor.Cut();
-            if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
-                editor.Delete();
-            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                editor.Paste();
+                if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
+                    editor.Copy();
+                if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
+                    editor.Cut();
+                if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
+                    editor.Delete();
+                if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                    editor.Paste();
 
-            ImGui::Separator();
+                ImGui::Separator();
 
-            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
-                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+                if (ImGui::MenuItem( "Select all", nullptr, nullptr))
+                    editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
 
-            ImGui::EndMenu();
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("View"))
+            {
+                bool ws = editor.IsShowingWhitespaces();
+                if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
+                    editor.SetShowWhitespaces(ws);
+                ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
         }
 
-        if (ImGui::BeginMenu("View"))
-        {
-            bool ws = editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
-                editor.SetShowWhitespaces(ws);
-            ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
-            ImGui::EndMenu();
+        if (show_statusbar) {
+            auto cpos = editor.GetCursorPosition();
+            ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+                        editor.IsOverwrite() ? "Ovr" : "Ins",
+                        editor.CanUndo() ? "*" : " ",
+                        editor.GetLanguageDefinition().mName.c_str());
         }
-        ImGui::EndMenuBar();
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        editor.Render("ShaderEditor");
+        ImGui::PopFont();
+
+        ImGui::End();
     }
-
-    if (show_statusbar) {
-        auto cpos = editor.GetCursorPosition();
-        ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-            editor.IsOverwrite() ? "Ovr" : "Ins",
-            editor.CanUndo() ? "*" : " ",
-            editor.GetLanguageDefinition().mName.c_str());
-    }
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-    editor.Render("ShaderEditor");
-    ImGui::PopFont();
-
-    ImGui::End();
-
 }
 
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
@@ -2467,8 +2468,8 @@ void Navigator::Render()
                 applyButtonSelection(NAV_TRANS);
             }
         }
+        ImGui::End();
     }
-    ImGui::End();
 
     // Left bar bottom
     ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height_), ImGuiCond_Always );
@@ -2507,7 +2508,6 @@ void Navigator::Render()
         }
         if (ImGui::IsItemHovered())
             tooltip_ = "Texturing    F4";
-
 
         ImGui::End();
     }
@@ -2631,8 +2631,8 @@ void Navigator::RenderSourcePannel(Source *s)
             Mixer::manager().deleteSource(s);
             Action::manager().store(sname + std::string(": deleted"));
         }
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 void Navigator::RenderNewPannel()
@@ -2890,7 +2890,7 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
 
         // Option 0 : recent files
-        if (ImGui::Selectable( ICON_FA_HISTORY IMGUI_LABEL_RECENT_FILES) ) {
+        if (ImGui::Selectable( ICON_FA_CLOCK IMGUI_LABEL_RECENT_FILES) ) {
              Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
              selection_session_mode = 0;
              selection_session_mode_changed = true;
@@ -2972,6 +2972,7 @@ void Navigator::RenderMainPannelVimix()
         // selection MODE 0 ; RECENT sessions
         if ( selection_session_mode == 0) {
             // show list of recent sessions
+            Settings::application.recentSessions.validate();
             sessions_list = Settings::application.recentSessions.filenames;
             Settings::application.recentSessions.changed = false;
         }
@@ -2984,81 +2985,106 @@ void Navigator::RenderMainPannelVimix()
         selection_session_mode_changed = false;
     }
 
-    // display the sessions list and detect if one was selected (double clic)
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::ListBoxHeader("##Sessions", sessions_list.size(), CLAMP(sessions_list.size(), 4, 8)) ) {
-        static std::string file_info = "";
-        static std::list<std::string>::iterator file_selected = sessions_list.end();
-        bool session_selected = false;
-        ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+    {
+        static std::list<std::string>::iterator _file_over = sessions_list.end();
+        static bool _tooltip = 0;
 
-        for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
-            std::string sessionfilename(*it);
-            if (sessionfilename.empty())
-                continue;
-            std::string shortname = SystemToolkit::filename(*it);
-            if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || file_selected == it) {
-                    Mixer::manager().open( sessionfilename, Settings::application.smooth_transition );
-                    session_selected = true;
-                    file_info.clear();
+        // display the sessions list and detect if one was selected (double clic)
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::ListBoxHeader("##Sessions", sessions_list.size(), CLAMP(sessions_list.size(), 4, 8)) ) {
+
+            bool done = false;
+            int count_over = 0;
+            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+
+            for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
+
+                if (it->empty())
+                    continue;
+
+                std::string shortname = SystemToolkit::filename(*it);
+                if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                    // show tooltip on clic
+                    _tooltip = true;
+
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) /*|| file_selected == it*/) {
+                        Mixer::manager().open( *it, Settings::application.smooth_transition );
+                        done = true;
+                    }
                 }
-                else  {
-                    file_info = SessionCreator::info(sessionfilename);
-                    if (file_info.empty()) {
-                        // failed : remove from recent
-                        if ( selection_session_mode == 0) {
-                            Settings::application.recentSessions.filenames.remove(sessionfilename);
-                            selection_session_mode_changed = true;
-                        }
+                if (ImGui::IsItemHovered())
+                    _file_over = it;
+
+                if (_tooltip && _file_over != sessions_list.end() && count_over < 1) {
+
+                    static std::list<std::string>::iterator _displayed_over = sessions_list.end();
+                    static std::string _file_info = "";
+                    static Thumbnail _file_thumbnail;
+
+                    // load info only if current changed
+                    if (_displayed_over != _file_over) {
+                        _displayed_over = _file_over;
+
+                        _file_info = SessionCreator::info(*_displayed_over);
+
+                        FrameBufferImage *im = SessionCreator::thumbnail(*_displayed_over);
+                        if (im) {
+                            // set image content to thumbnail display
+                            _file_thumbnail.set( im );
+                            delete im;
+                        } else
+                            _file_thumbnail.reset();
+                    }
+
+                    if ( !_file_info.empty()) {
+
+                        ImGui::BeginTooltip();
+                        _file_thumbnail.Render(size.x);
+                        ImGui::Text("%s", _file_info.c_str());
+                        ImGui::EndTooltip();
+
                     }
                     else
-                        file_selected = it;
+                        selection_session_mode_changed = true;
+
+                    ++count_over; // prevents display twice on item overlap
                 }
             }
-            if (ImGui::IsItemHovered()) {
-                if (file_selected != it) {
-                    file_info.clear();
-                    file_selected = sessions_list.end();
-                }
-                else if (!file_info.empty()) {
-                    static Thumbnail _file_thumbnail;
-                    FrameBufferImage *im = SessionCreator::thumbnail(sessionfilename);
-                    if (im) {
-                        // set image content to thumbnail display
-                        _file_thumbnail.set( im );
-                        delete im;
-                    }
-                    else
-                        _file_thumbnail.reset();
-                    ImGui::BeginTooltip();
-                    _file_thumbnail.Render(size.x);
-                    ImGui::Text("%s", file_info.c_str());
-                    ImGui::EndTooltip();
-                }
+            ImGui::ListBoxFooter();
+
+            // done the selection !
+            if (done) {
+                hidePannel();
+                _tooltip = false;
+                _file_over = sessions_list.end();
+                // reload the list next time
+                selection_session_mode_changed = true;
             }
         }
-        ImGui::ListBoxFooter();
-
-        // done the selection !
-        if (session_selected) {
-            // close pannel
-            file_info.clear();
-            hidePannel();
-            // reload the list next time
-            selection_session_mode_changed = true;
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered()) {
+            _tooltip = false;
+            _file_over = sessions_list.end();
         }
     }
+
     ImVec2 pos_bot = ImGui::GetCursorPos();
 
 
     // Right side of the list: helper and options
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-    ImGuiToolkit::HelpMarker("Quick access to Session files;\n\n"
-                             "Select the history of recently\n"
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
+    if ( ImGuiToolkit::IconButton( ICON_FA_FILE )) {
+        Mixer::manager().open( "", Settings::application.smooth_transition );
+        hidePannel();
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("New session", CTRL_MOD "W");
+
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+    ImGuiToolkit::HelpMarker("Select the history of recently\n"
                              "opened files or a folder, and\n"
                              "double-clic a filename to open it.\n\n"
-                             ICON_FA_ARROW_CIRCLE_RIGHT " Enable smooth transition to\n"
+                             ICON_FA_ARROW_CIRCLE_RIGHT "  Enable smooth transition to\n"
                              "perform smooth cross fading.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
@@ -3107,9 +3133,9 @@ void Navigator::RenderMainPannelVimix()
     }
 
     ImGui::Spacing();
-    ImGui::Text("Actions");
+    ImGui::Text("Status");
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode, "Snapshots\0Undo history\0");
+    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode, ICON_FA_STAR " Snapshots\0" ICON_FA_HISTORY " Undo history\0");
 
     //
     // UNDO History
@@ -3123,14 +3149,13 @@ void Navigator::RenderMainPannelVimix()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8)) ) {
 
-            static Thumbnail _undo_thumbnail;
             int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
 
             for (uint i = Action::manager().max(); i > 0; --i) {
 
                 if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // shot tooltip on clic
+                    // show tooltip on clic
                     _tooltip = true;
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().stepTo(i);
@@ -3143,9 +3168,11 @@ void Navigator::RenderMainPannelVimix()
                 // if mouse over (only once)
                 if (_tooltip && _over > 0 && count_over < 1) {
                     static std::string text = "";
-                    static uint64_t current_over = 0;
+                    static uint64_t _displayed_over = 0;
+                    static Thumbnail _undo_thumbnail;
                     // load label and thumbnail only if current changed
-                    if (current_over != _over) {
+                    if (_displayed_over != _over) {
+                        _displayed_over = _over;
                         text = Action::manager().label(_over);
                         if (text.find_first_of(':') < text.size())
                             text = text.insert( text.find_first_of(':') + 1, 1, '\n');
@@ -3157,7 +3184,6 @@ void Navigator::RenderMainPannelVimix()
                         }
                         else
                             _undo_thumbnail.reset();
-                        current_over = _over;
                     }
                     // draw thumbnail in tooltip
                     ImGui::BeginTooltip();
@@ -3321,6 +3347,11 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
+                                 "Double-clic on a snapshot to restore it.\n\n"
+                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
+                                 "from current state to snapshot's state.");
         // toggle button for smooth interpolation
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
@@ -3478,8 +3509,8 @@ void Navigator::RenderTransitionPannel()
         if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().setView(View::MIXING);
 
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 void Navigator::RenderMainPannel()
@@ -3517,8 +3548,8 @@ void Navigator::RenderMainPannel()
         ImGuiToolkit::IconToggle(13,5,12,5,&show_config_);
 
 
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 ///
@@ -3597,14 +3628,12 @@ bool SourcePreview::ready() const
 
 Thumbnail::Thumbnail() : aspect_ratio_(-1.f), texture_(0)
 {
-    glGenTextures(1, &texture_);
-    glBindTexture( GL_TEXTURE_2D, texture_);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 2, SESSION_THUMBNAIL_HEIGHT);
 }
 
 Thumbnail::~Thumbnail()
 {
-    glDeleteTextures(1, &texture_);
+    if (texture_)
+        glDeleteTextures(1, &texture_);
 }
 
 void Thumbnail::reset()
@@ -3614,15 +3643,23 @@ void Thumbnail::reset()
 
 void Thumbnail::set(const FrameBufferImage *image)
 {
+    if (!texture_) {
+        glGenTextures(1, &texture_);
+        glBindTexture( GL_TEXTURE_2D, texture_);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 2, SESSION_THUMBNAIL_HEIGHT);
+    }
+
     aspect_ratio_ = static_cast<float>(image->width) / static_cast<float>(image->height);
     glBindTexture( GL_TEXTURE_2D, texture_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Thumbnail::Render(float width)
 {
-    if (aspect_ratio_>0)
-        ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5*aspect_ratio_, 1.f));
+    if (aspect_ratio_>0.f)
+        ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5f*aspect_ratio_, 1.f));
 }
 
 ///
@@ -3744,93 +3781,93 @@ void ShowAboutGStreamer(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(430, 20), ImGuiCond_Appearing);
     ImGui::SetNextWindowSize(ImVec2(600, 200), ImGuiCond_Appearing);
-    ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
-    ImGui::PopFont();
-    ImGui::Separator();
-    ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
-    ImGui::Text("GStreamer is licensed under the LGPL License.");
-    ImGuiToolkit::ButtonOpenUrl("Visit website", "https://gstreamer.freedesktop.org/");
-    ImGui::SameLine();
-
-    static bool show_config_info = false;
-    ImGui::SetNextItemWidth(-100.f);
-    ImGui::Text("          Details");
-    ImGui::SameLine();
-    ImGuiToolkit::IconToggle(10,0,11,0,&show_config_info);
-    if (show_config_info)
+    if (ImGui::Begin("About Gstreamer", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
     {
-        ImGui::Separator();
-        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
-        ImGui::SameLine(0.f, 60.f);
-        static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
-        ImGui::SameLine();
-        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
-            _filter[0] = '\0';
-        std::string filter(_filter);
-
-        ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
-        if (copy_to_clipboard)
-        {
-            ImGui::LogToClipboard();
-            ImGui::LogText("```\n");
-        }
-
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
-        ImGui::Text("Plugins & features (runtime) :");
+        ImGui::PopFont();
+        ImGui::Separator();
+        ImGui::Text("A flexible, fast and multiplatform multimedia framework.");
+        ImGui::Text("GStreamer is licensed under the LGPL License.");
+        ImGuiToolkit::ButtonOpenUrl("Visit website", "https://gstreamer.freedesktop.org/");
+        ImGui::SameLine();
 
-        std::list<std::string> filteredlist;
-        static std::list<std::string> pluginslist;
-        static std::map<std::string, std::list<std::string> > featureslist;
-        if (pluginslist.empty()) {
-            pluginslist = GstToolkit::all_plugins();
-            for (auto const& i: pluginslist) {
-                // list features
-                featureslist[i] = GstToolkit::all_plugin_features(i);
-            }
-        }
-
-        // filter list
-        if ( filter.empty() )
-            filteredlist = pluginslist;
-        else {
-            for (auto const& i: pluginslist) {
-                // add plugin if plugin name matches
-                if ( i.find(filter) != std::string::npos )
-                    filteredlist.push_back( i );
-                // check in features
-                for (auto const& j: featureslist[i]) {
-                    // add plugin if feature name matches
-                    if ( j.find(filter) != std::string::npos )
-                        filteredlist.push_back( i );
-                }
-            }
-            filteredlist.unique();
-        }
-
-        // display list
-        for (auto const& t: filteredlist) {
-            ImGui::Text("> %s", t.c_str());
-            for (auto const& j: featureslist[t]) {
-                if ( j.find(filter) != std::string::npos )
-                {
-                    ImGui::Text(" -   %s", j.c_str());
-                }
-            }
-        }
-
-        if (copy_to_clipboard)
+        static bool show_config_info = false;
+        ImGui::SetNextItemWidth(-100.f);
+        ImGui::Text("          Details");
+        ImGui::SameLine();
+        ImGuiToolkit::IconToggle(10,0,11,0,&show_config_info);
+        if (show_config_info)
         {
-            ImGui::LogText("\n```\n");
-            ImGui::LogFinish();
+            ImGui::Separator();
+            bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+            ImGui::SameLine(0.f, 60.f);
+            static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
+            ImGui::SameLine();
+            if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+                _filter[0] = '\0';
+            std::string filter(_filter);
+
+            ImGui::BeginChildFrame(ImGui::GetID("gstinfos"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 18), ImGuiWindowFlags_NoMove);
+            if (copy_to_clipboard)
+            {
+                ImGui::LogToClipboard();
+                ImGui::LogText("```\n");
+            }
+
+            ImGui::Text("GStreamer %s", GstToolkit::gst_version().c_str());
+            ImGui::Text("Plugins & features (runtime) :");
+
+            std::list<std::string> filteredlist;
+            static std::list<std::string> pluginslist;
+            static std::map<std::string, std::list<std::string> > featureslist;
+            if (pluginslist.empty()) {
+                pluginslist = GstToolkit::all_plugins();
+                for (auto const& i: pluginslist) {
+                    // list features
+                    featureslist[i] = GstToolkit::all_plugin_features(i);
+                }
+            }
+
+            // filter list
+            if ( filter.empty() )
+                filteredlist = pluginslist;
+            else {
+                for (auto const& i: pluginslist) {
+                    // add plugin if plugin name matches
+                    if ( i.find(filter) != std::string::npos )
+                        filteredlist.push_back( i );
+                    // check in features
+                    for (auto const& j: featureslist[i]) {
+                        // add plugin if feature name matches
+                        if ( j.find(filter) != std::string::npos )
+                            filteredlist.push_back( i );
+                    }
+                }
+                filteredlist.unique();
+            }
+
+            // display list
+            for (auto const& t: filteredlist) {
+                ImGui::Text("> %s", t.c_str());
+                for (auto const& j: featureslist[t]) {
+                    if ( j.find(filter) != std::string::npos )
+                    {
+                        ImGui::Text(" -   %s", j.c_str());
+                    }
+                }
+            }
+
+            if (copy_to_clipboard)
+            {
+                ImGui::LogText("\n```\n");
+                ImGui::LogFinish();
+            }
+
+            ImGui::EndChildFrame();
         }
-
-        ImGui::EndChildFrame();
+        ImGui::End();
     }
-
-    ImGui::End();
 }
 
 void SetMouseCursor(ImVec2 mousepos, View::Cursor c)

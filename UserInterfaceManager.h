@@ -31,6 +31,20 @@ public:
     inline bool filled() const { return source_ != nullptr; }
 };
 
+class Thumbnail
+{
+    float aspect_ratio_;
+    uint texture_;
+
+public:
+    Thumbnail();
+    ~Thumbnail();
+
+    void reset();
+    void set (const FrameBufferImage *image);
+    void Render(float width);
+};
+
 class Navigator
 {
     // geometry left bar & pannel
@@ -100,20 +114,6 @@ public:
     void followCurrentSource();
 
     void Render();
-};
-
-class Thumbnail
-{
-    float aspect_ratio_;
-    uint texture_;
-
-public:
-    Thumbnail();
-    ~Thumbnail();
-
-    void reset();
-    void set (const FrameBufferImage *image);
-    void Render(float width);
 };
 
 
