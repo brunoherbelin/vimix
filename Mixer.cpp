@@ -946,21 +946,24 @@ void Mixer::open(const std::string& filename, bool smooth)
 {
     if (smooth)
     {
-        Log::Info("\nStarting transition to session %s", filename.c_str());
-
         // create special SessionSource to be used for the smooth transition
         SessionFileSource *ts = new SessionFileSource;
+
         // open filename if specified
         if (!filename.empty())
+        {
+            Log::Info("\nStarting transition to session %s", filename.c_str());
             ts->load(filename);
-        // propose a new name based on uri
-        renameSource(ts, SystemToolkit::base_filename(filename));
+            // propose a new name based on uri
+            ts->setName(SystemToolkit::base_filename(filename));
+        }
+
+        // attach the SessionSource to the transition view
+        transition_.attach(ts);
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);
 
-        // attach the SessionSource to the transition view
-        transition_.attach(ts);
     }
     else
         load(filename);
