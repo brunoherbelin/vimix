@@ -76,47 +76,42 @@ void RenderView::draw()
         scene.root()->draw(glm::identity<glm::mat4>(), P);
         fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
         frame_buffer_->end();
-    }
 
-    // if a thumbnailer is pending
-    if (thumbnailer_.size() > 0) {
+        // if a thumbnailer is pending
+        if (thumbnailer_.size() > 0) {
 
-        try {
-            // promise will fail if no framebuffer
-            if ( frame_buffer_ == nullptr )
-                throw std::runtime_error("no frame");
+            try {
+                // new thumbnailing framebuffer
+                FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
 
-            // new thumbnailing framebuffer
-            FrameBuffer *frame_thumbnail = new FrameBuffer( glm::vec3(SESSION_THUMBNAIL_HEIGHT * frame_buffer_->aspectRatio(), SESSION_THUMBNAIL_HEIGHT, 1.f) );
+                // render
+                if (Settings::application.render.blit) {
+                    if ( !frame_buffer_->blit(frame_thumbnail) )
+                        throw std::runtime_error("no blit");
+                }
+                else {
+                    FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
+                    frame_thumbnail->begin();
+                    thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
+                    frame_thumbnail->end();
+                    delete thumb;
+                }
 
-            // render
-            if (Settings::application.render.blit) {
-                if ( !frame_buffer_->blit(frame_thumbnail) )
-                    throw std::runtime_error("no blit");
+                // return valid thumbnail promise
+                thumbnailer_.front().set_value( frame_thumbnail->image() );
+
+                // done with thumbnailing framebuffer
+                delete frame_thumbnail;
             }
-            else {
-                FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
-                frame_thumbnail->begin();
-                thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail->projection());
-                frame_thumbnail->end();
-                delete thumb;
+            catch(...) {
+                // return failed thumbnail promise
+                thumbnailer_.front().set_exception(std::current_exception());
             }
 
-            // return valid thumbnail promise
-            thumbnailer_.front().set_value( frame_thumbnail->image() );
-
-            // done with thumbnailing framebuffer
-            delete frame_thumbnail;
+            // done with this promise
+            thumbnailer_.pop_back();
         }
-        catch(...) {
-            // return failed thumbnail promise
-            thumbnailer_.front().set_exception(std::current_exception());
-        }
-
-        // done with this promise
-        thumbnailer_.pop_back();
     }
-
 }
 
 
@@ -136,7 +131,8 @@ FrameBufferImage *RenderView::thumbnail ()
         img = t.get();
     }
     // catch any failed promise
-    catch (std::runtime_error&){  }
+    catch (std::runtime_error&){
+    }
 
     return img;
 }
