@@ -343,7 +343,7 @@ void Rendering::terminate()
     // close window
     glfwDestroyWindow(output_.window());
     glfwDestroyWindow(main_.window());
-    glfwTerminate();
+//    glfwTerminate();
 }
 
 
