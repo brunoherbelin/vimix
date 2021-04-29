@@ -13,7 +13,6 @@
 
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr)
-//  ,thumbnail_(nullptr), thumbnail_ready_(false)
 {
 }
 
