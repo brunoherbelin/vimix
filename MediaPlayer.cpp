@@ -31,16 +31,16 @@ MediaPlayer::MediaPlayer()
 
     uri_ = "undefined";
     pipeline_ = nullptr;
-
     ready_ = false;
+    enabled_ = true;
+    desired_state_ = GST_STATE_PAUSED;
+
     failed_ = false;
     seeking_ = false;
-    enabled_ = true;
     force_software_decoding_ = false;
     hardware_decoder_ = "";
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
-    desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
 
     // start index in frame_ stack
@@ -330,47 +330,48 @@ void MediaPlayer::execute_open()
 
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
-    if (sink) {
-
-        // instruct the sink to send samples synched in time
-        gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
-
-        // instruct sink to use the required caps
-        gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
-
-        // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
-        gst_app_sink_set_drop (GST_APP_SINK(sink), true);
-
-#ifdef USE_GST_APPSINK_CALLBACKS
-        // set the callbacks
-        GstAppSinkCallbacks callbacks;
-        callbacks.new_preroll = callback_new_preroll;
-        if (media_.isimage) {
-            callbacks.eos = NULL;
-            callbacks.new_sample = NULL;
-        }
-        else {
-            callbacks.eos = callback_end_of_stream;
-            callbacks.new_sample = callback_new_sample;
-        }
-        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-#else
-        // connect signals callbacks
-        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
-        g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
-        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
-#endif
-        // done with ref to sink
-        gst_object_unref (sink);
-    } 
-    else {
+    if (!sink) {
         Log::Warning("MediaPlayer %s Could not configure  sink", std::to_string(id_).c_str());
         failed_ = true;
         return;
     }
+
+    // instruct the sink to send samples synched in time
+    gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
+
+    // instruct sink to use the required caps
+    gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+
+    // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
+    gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
+    gst_app_sink_set_drop (GST_APP_SINK(sink), true);
+
+#ifdef USE_GST_APPSINK_CALLBACKS
+    // set the callbacks
+    GstAppSinkCallbacks callbacks;
+    callbacks.new_preroll = callback_new_preroll;
+    if (media_.isimage) {
+        callbacks.eos = NULL;
+        callbacks.new_sample = NULL;
+    }
+    else {
+        callbacks.eos = callback_end_of_stream;
+        callbacks.new_sample = callback_new_sample;
+    }
+    gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+#else
+    // connect signals callbacks
+    g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
+    if (!media_.isimage) {
+        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
+        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+    }
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
+#endif
+
+    // done with ref to sink
+    gst_object_unref (sink);
     gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
@@ -418,10 +419,9 @@ bool MediaPlayer::failed() const
 
 void MediaPlayer::Frame::unmap()
 {
-    if ( full )  {
+    if ( full )
         gst_video_frame_unmap(&vframe);
-        full = false;
-    }
+    full = false;
 }
 
 void MediaPlayer::close()
