@@ -28,15 +28,15 @@ Stream::Stream()
 
     description_ = "undefined";
     pipeline_ = nullptr;
+    ready_ = false;
+    enabled_ = true;
+    desired_state_ = GST_STATE_PAUSED;
 
     width_ = -1;
     height_ = -1;
     single_frame_ = false;
     live_ = false;
-    ready_ = false;
     failed_ = false;
-    enabled_ = true;
-    desired_state_ = GST_STATE_PAUSED;
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -81,6 +81,8 @@ void Stream::open(const std::string &gstreamer_description, int w, int h)
     if (isOpen())
         close();
 
+    // open the stream
+    execute_open();
 }
 
 
@@ -108,6 +110,7 @@ void Stream::execute_open()
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
+    gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);
     string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) +
@@ -137,14 +140,13 @@ void Stream::execute_open()
 #ifdef USE_GST_APPSINK_CALLBACKS
     // set the callbacks
     GstAppSinkCallbacks callbacks;
+    callbacks.new_preroll = callback_new_preroll;
     if (single_frame_) {
-        callbacks.new_preroll = callback_new_preroll;
         callbacks.eos = NULL;
         callbacks.new_sample = NULL;
         Log::Info("Stream %s contains a single frame", std::to_string(id_).c_str());
     }
     else {
-        callbacks.new_preroll = callback_new_preroll;
         callbacks.eos = callback_end_of_stream;
         callbacks.new_sample = callback_new_sample;
     }
@@ -175,13 +177,13 @@ void Stream::execute_open()
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
-    // all good
-    Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
-    ready_ = true;
-
     // done with refs
     gst_object_unref (sink);
     gst_caps_unref (caps);
+
+    // all good
+    Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
+    ready_ = true;
 }
 
 bool Stream::isOpen() const
@@ -196,10 +198,9 @@ bool Stream::failed() const
 
 void Stream::Frame::unmap()
 {
-    if ( full )  {
+    if ( full )
         gst_video_frame_unmap(&vframe);
-        full = false;
-    }
+    full = false;
 }
 
 void Stream::close()
@@ -483,8 +484,6 @@ void Stream::update()
 
     // not ready yet
     if (!ready_){
-        // open the stream
-        execute_open();
         // wait next frame to display
         return;
     }
