@@ -23,54 +23,37 @@ using namespace tinyxml2;
 
 #include "SessionCreator.h"
 
-std::string SessionCreator::info(const std::string& filename)
+SessionInformation SessionCreator::info(const std::string& filename)
 {
-    std::string ret = "";
+    SessionInformation ret;
 
     // if the file exists
     if (SystemToolkit::file_exists(filename)) {
+        // impose C locale
+        setlocale(LC_ALL, "C");
         // try to load the file
         XMLDocument doc;
         XMLError eResult = doc.LoadFile(filename.c_str());
         // silently ignore on error
         if ( !XMLResultError(eResult, false)) {
 
-            XMLElement *header = doc.FirstChildElement(APP_NAME);
-            if (header != nullptr && header->Attribute("date") != 0) {
+            const XMLElement *header = doc.FirstChildElement(APP_NAME);
+            if (header != nullptr) {
                 int s = header->IntAttribute("size");
-                ret = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
+                ret.description = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
                 const char *att_string = header->Attribute("resolution");
                 if (att_string)
-                    ret += std::string( att_string ) + "\n";
+                    ret.description += std::string( att_string ) + "\n";
                 att_string = header->Attribute("date");
                 if (att_string) {
                     std::string date( att_string );
-                    ret += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
-                    ret += date.substr(8,2) + ":" + date.substr(10,2);
+                    ret.description += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
+                    ret.description += date.substr(8,2) + ":" + date.substr(10,2);
                 }
-
             }
-        }
-    }
-
-    return ret;
-}
-
-FrameBufferImage *SessionCreator::thumbnail(const std::string& filename)
-{
-    FrameBufferImage *ret = nullptr;
-
-    // if the file exists
-    if (SystemToolkit::file_exists(filename)) {
-        // try to load the file
-        XMLDocument doc;
-        XMLError eResult = doc.LoadFile(filename.c_str());
-        // silently ignore on error
-        if ( !XMLResultError(eResult, false)) {
-
-            XMLElement *header = doc.FirstChildElement("Session");
-            if (header != nullptr ) {
-                ret = XMLToImage(header);
+            const XMLElement *session = doc.FirstChildElement("Session");
+            if (session != nullptr ) {
+                ret.thumbnail = XMLToImage(session);
             }
         }
     }

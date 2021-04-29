@@ -10,6 +10,7 @@
 class Session;
 class FrameBufferImage;
 
+
 class SessionLoader : public Visitor {
 
     SessionLoader();
@@ -76,6 +77,15 @@ protected:
 
 };
 
+struct SessionInformation {
+    std::string description;
+    FrameBufferImage *thumbnail;
+    SessionInformation() {
+        description = "";
+        thumbnail = nullptr;
+    }
+};
+
 class SessionCreator : public SessionLoader {
 
     tinyxml2::XMLDocument xmlDoc_;
@@ -89,8 +99,7 @@ public:
 
     void load(const std::string& filename);
 
-    static std::string info(const std::string& filename);
-    static FrameBufferImage *thumbnail(const std::string& filename);
+    static SessionInformation info(const std::string& filename);
 };
 
 #endif // SESSIONCREATOR_H

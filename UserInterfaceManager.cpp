@@ -2987,6 +2987,7 @@ void Navigator::RenderMainPannelVimix()
 
     {
         static std::list<std::string>::iterator _file_over = sessions_list.end();
+        static std::list<std::string>::iterator _displayed_over = sessions_list.end();
         static bool _tooltip = 0;
 
         // display the sessions list and detect if one was selected (double clic)
@@ -3004,34 +3005,33 @@ void Navigator::RenderMainPannelVimix()
 
                 std::string shortname = SystemToolkit::filename(*it);
                 if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // show tooltip on clic
-                    _tooltip = true;
-
+                    // open on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) /*|| file_selected == it*/) {
                         Mixer::manager().open( *it, Settings::application.smooth_transition );
                         done = true;
                     }
+                    else
+                        // show tooltip on clic
+                        _tooltip = true;
+
                 }
                 if (ImGui::IsItemHovered())
                     _file_over = it;
 
                 if (_tooltip && _file_over != sessions_list.end() && count_over < 1) {
 
-                    static std::list<std::string>::iterator _displayed_over = sessions_list.end();
                     static std::string _file_info = "";
                     static Thumbnail _file_thumbnail;
 
-                    // load info only if current changed
+                    // load info only if changed from the one already displayed
                     if (_displayed_over != _file_over) {
                         _displayed_over = _file_over;
-
-                        _file_info = SessionCreator::info(*_displayed_over);
-
-                        FrameBufferImage *im = SessionCreator::thumbnail(*_displayed_over);
-                        if (im) {
+                        SessionInformation info = SessionCreator::info(*_displayed_over);
+                        _file_info = info.description;
+                        if (info.thumbnail) {
                             // set image content to thumbnail display
-                            _file_thumbnail.set( im );
-                            delete im;
+                            _file_thumbnail.set( info.thumbnail );
+                            delete info.thumbnail;
                         } else
                             _file_thumbnail.reset();
                     }
@@ -3056,7 +3056,7 @@ void Navigator::RenderMainPannelVimix()
             if (done) {
                 hidePannel();
                 _tooltip = false;
-                _file_over = sessions_list.end();
+                _displayed_over = _file_over = sessions_list.end();
                 // reload the list next time
                 selection_session_mode_changed = true;
             }
@@ -3064,7 +3064,7 @@ void Navigator::RenderMainPannelVimix()
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered()) {
             _tooltip = false;
-            _file_over = sessions_list.end();
+            _displayed_over = _file_over = sessions_list.end();
         }
     }
 
@@ -3074,7 +3074,7 @@ void Navigator::RenderMainPannelVimix()
     // Right side of the list: helper and options
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
     if ( ImGuiToolkit::IconButton( ICON_FA_FILE )) {
-        Mixer::manager().open( "", Settings::application.smooth_transition );
+        Mixer::manager().close(Settings::application.smooth_transition );
         hidePannel();
     }
     if (ImGui::IsItemHovered())
@@ -3143,6 +3143,7 @@ void Navigator::RenderMainPannelVimix()
     if (Settings::application.pannel_history_mode > 0) {
 
         static uint _over = 0;
+        static uint64_t _displayed_over = 0;
         static bool _tooltip = 0;
 
         pos_top = ImGui::GetCursorPos();
@@ -3155,20 +3156,20 @@ void Navigator::RenderMainPannelVimix()
             for (uint i = Action::manager().max(); i > 0; --i) {
 
                 if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // show tooltip on clic
-                    _tooltip = true;
+                    // go to on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().stepTo(i);
+                    else
+                        // show tooltip on clic
+                        _tooltip = true;
                 }
                 // mouse over
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered())
                     _over = i;
-                }
 
                 // if mouse over (only once)
                 if (_tooltip && _over > 0 && count_over < 1) {
                     static std::string text = "";
-                    static uint64_t _displayed_over = 0;
                     static Thumbnail _undo_thumbnail;
                     // load label and thumbnail only if current changed
                     if (_displayed_over != _over) {
@@ -3199,7 +3200,7 @@ void Navigator::RenderMainPannelVimix()
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered()) {
             _tooltip = false;
-            _over = 0;
+            _displayed_over = _over = 0;
         }
 
         pos_bot = ImGui::GetCursorPos();
@@ -3556,7 +3557,7 @@ void Navigator::RenderMainPannel()
 /// SOURCE PREVIEW
 ///
 
-SourcePreview::SourcePreview() : source_(nullptr), label_("")
+SourcePreview::SourcePreview() : source_(nullptr), label_(""), pre_frames_(0)
 {
 
 }
@@ -3568,6 +3569,7 @@ void SourcePreview::setSource(Source *s, const string &label)
 
     source_ = s;
     label_ = label;
+    pre_frames_ = 2;
 }
 
 Source * SourcePreview::getSource()
@@ -3591,11 +3593,20 @@ void SourcePreview::Render(float width, bool controlbutton)
         }
         else
         {
-            bool active = source_->active();
-            // update source
-            source_->update( Mixer::manager().dt());
             // render framebuffer
-            source_->render();
+            if ( pre_frames_ > 0 && source_->ready() ) {
+                // trick to ensure a minimum of 2 frames are rendered actively
+                source_->setActive(true);
+                source_->update( Mixer::manager().dt() );
+                source_->render();
+                source_->setActive(false);
+                --pre_frames_;
+            }
+            else {
+                // update source
+                source_->update( Mixer::manager().dt() );
+                source_->render();
+            }
 
             // draw preview
             FrameBuffer *frame = source_->frame();
@@ -3605,14 +3616,18 @@ void SourcePreview::Render(float width, bool controlbutton)
             if (controlbutton && source_->ready()) {
                 ImVec2 pos = ImGui::GetCursorPos();
                 ImGui::SameLine();
+                bool active = source_->active();
                 if (ImGuiToolkit::IconToggle(12,7,1,8, &active))
                     source_->setActive(active);
                 ImGui::SetCursorPos(pos);
             }
             ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
             ImGui::SameLine(0, 10);
-            ImGui::Text("%s ", label_.c_str());
-            ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
+            ImGui::Text("%s", label_.c_str());
+            if (source_->ready())
+                ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
+            else
+                ImGui::Text("loading...");
         }
     }
 }
