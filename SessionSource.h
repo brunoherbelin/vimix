@@ -45,7 +45,7 @@ protected:
     void init() override;
 
     std::string path_;
-    std::atomic<bool> wait_for_sources_;
+    bool wait_for_sources_;
     std::future<Session *> sessionLoader_;
 };
 

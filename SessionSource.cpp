@@ -1,6 +1,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #include "SessionSource.h"
 
@@ -163,26 +164,18 @@ void SessionFileSource::init()
     }
     else {
 
-        session_->update(dt_);
-
         if (wait_for_sources_) {
 
             // force update of of all sources
             active_ = true;
             touch();
 
-            // check that every source is ready..
-            bool ready = true;
-            for (SourceList::iterator iter = session_->begin(); iter != session_->end(); ++iter)
-            {
-                // interrupt if any source is NOT ready
-                if ( !(*iter)->ready() ){
-                    ready = false;
-                    break;
-                }
-            }
+            //  update to draw framebuffer
+            session_->update(dt_);
+
             // if all sources are ready, done with initialization!
-            if (ready) {
+            auto unintitializedsource = std::find_if_not(session_->begin(), session_->end(), Source::isInitialized);
+            if (unintitializedsource == session_->end()) {
                 // done init
                 wait_for_sources_ = false;
                 initialized_ = true;
