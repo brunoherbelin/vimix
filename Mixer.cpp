@@ -996,12 +996,9 @@ void Mixer::merge(Session *session)
         return;
     }
 
-    // new state in history manager
-    std::ostringstream info;
-    info << session->numSource() << " sources imported from " << session->filename();
-    Action::manager().store(info.str());
-
     // import every sources
+    std::ostringstream info;
+    info << session->numSource() << " sources imported from:" << session->filename();
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
         // avoid name duplicates
         renameSource(s);
@@ -1025,6 +1022,10 @@ void Mixer::merge(Session *session)
 
     // avoid display issues
     current_view_->update(0.f);
+
+    // new state in history manager
+    Action::manager().store(info.str());
+
 }
 
 void Mixer::merge(SessionSource *source)
@@ -1039,7 +1040,7 @@ void Mixer::merge(SessionSource *source)
 
     // prepare Action manager info
     std::ostringstream info;
-    info << source->name().c_str() << " source deleted, " << session->numSource() << " sources imported";
+    info << source->name().c_str() << " expanded:" << session->numSource() << " sources imported";
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
@@ -1112,12 +1113,11 @@ void Mixer::merge(SessionSource *source)
     detach(source);
     session_->deleteSource(source);
 
-    // new state in history manager
-    Action::manager().store(info.str());
-
     // avoid display issues
     current_view_->update(0.f);
 
+    // new state in history manager
+    Action::manager().store(info.str());
 }
 
 void Mixer::swap()
