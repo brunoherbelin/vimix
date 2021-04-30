@@ -87,6 +87,7 @@ void Session::update(float dt)
 
     // pre-render of all sources
     failedSource_ = nullptr;
+    bool ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering this session
@@ -98,6 +99,8 @@ void Session::update(float dt)
             failedSource_ = (*it);
         }
         else {
+            if ( !(*it)->ready() )
+                ready = false;
             // render the source
             (*it)->render();
             // update the source
@@ -129,6 +132,10 @@ void Session::update(float dt)
 
     // draw render view in Frame Buffer
     render_.draw();
+
+    // draw the thumbnail only after all sources are ready
+    if (ready)
+        render_.drawThumbnail();
 }
 
 SourceList::iterator Session::addSource(Source *s)

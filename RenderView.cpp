@@ -75,7 +75,12 @@ void RenderView::draw()
         scene.root()->draw(glm::identity<glm::mat4>(), P);
         fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
         frame_buffer_->end();
+    }
+}
 
+void RenderView::drawThumbnail()
+{
+    if (frame_buffer_) {
         // if a thumbnailer is pending
         if (thumbnailer_.size() > 0) {
 
@@ -97,14 +102,14 @@ void RenderView::draw()
                 }
 
                 // return valid thumbnail promise
-                thumbnailer_.front().set_value( frame_thumbnail->image() );
+                thumbnailer_.back().set_value( frame_thumbnail->image() );
 
                 // done with thumbnailing framebuffer
                 delete frame_thumbnail;
             }
             catch(...) {
                 // return failed thumbnail promise
-                thumbnailer_.front().set_exception(std::current_exception());
+                thumbnailer_.back().set_exception(std::current_exception());
             }
 
             // done with this promise
@@ -112,7 +117,6 @@ void RenderView::draw()
         }
     }
 }
-
 
 FrameBufferImage *RenderView::thumbnail ()
 {

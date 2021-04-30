@@ -19,6 +19,7 @@ public:
     RenderView ();
     ~RenderView ();
 
+    // render frame (in opengl context)
     void draw () override;
     bool canSelect(Source *) override { return false; }
 
@@ -28,9 +29,11 @@ public:
     void setFading(float f = 0.f);
     float fading() const;
 
+    // current frame
     inline FrameBuffer *frame () const { return frame_buffer_; }
 
-    // get a thumbnail; wait for a promise to be fullfiled
+    // get a thumbnail outside of opengl context; wait for a promise to be fullfiled after draw
+    void drawThumbnail();
     FrameBufferImage *thumbnail ();
 };
 
