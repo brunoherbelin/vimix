@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
