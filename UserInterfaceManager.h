@@ -19,7 +19,7 @@ class SourcePreview {
 
     Source *source_;
     std::string label_;
-    int pre_frames_;
+    bool reset_;
 
 public:
     SourcePreview();

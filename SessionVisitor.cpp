@@ -560,11 +560,14 @@ void SessionVisitor::visit (CloneSource& s)
 void SessionVisitor::visit (PatternSource& s)
 {
     xmlCurrent_->SetAttribute("type", "PatternSource");
-    xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
 
-    XMLElement *resolution = xmlDoc_->NewElement("resolution");
-    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
-    xmlCurrent_->InsertEndChild(resolution);
+    if (s.pattern()) {
+        xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
+
+        XMLElement *resolution = xmlDoc_->NewElement("resolution");
+        resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
+        xmlCurrent_->InsertEndChild(resolution);
+    }
 }
 
 void SessionVisitor::visit (DeviceSource& s)

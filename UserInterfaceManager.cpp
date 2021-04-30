@@ -3557,7 +3557,7 @@ void Navigator::RenderMainPannel()
 /// SOURCE PREVIEW
 ///
 
-SourcePreview::SourcePreview() : source_(nullptr), label_(""), pre_frames_(0)
+SourcePreview::SourcePreview() : source_(nullptr), label_(""), reset_(0)
 {
 
 }
@@ -3569,7 +3569,7 @@ void SourcePreview::setSource(Source *s, const string &label)
 
     source_ = s;
     label_ = label;
-    pre_frames_ = 2;
+    reset_ = true;
 }
 
 Source * SourcePreview::getSource()
@@ -3594,13 +3594,13 @@ void SourcePreview::Render(float width, bool controlbutton)
         else
         {
             // render framebuffer
-            if ( pre_frames_ > 0 && source_->ready() ) {
+            if ( reset_  && source_->ready() ) {
                 // trick to ensure a minimum of 2 frames are rendered actively
                 source_->setActive(true);
                 source_->update( Mixer::manager().dt() );
                 source_->render();
                 source_->setActive(false);
-                --pre_frames_;
+                reset_ = false;
             }
             else {
                 // update source

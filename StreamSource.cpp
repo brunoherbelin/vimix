@@ -26,8 +26,12 @@ void GenericStreamSource::setDescription(const std::string &desc)
 {
     Log::Notify("Creating Source with Stream description '%s'", desc.c_str());
 
+    // open gstreamer
     stream_->open(desc);
     stream_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 void GenericStreamSource::accept(Visitor& v)

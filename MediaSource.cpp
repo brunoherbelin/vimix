@@ -25,11 +25,15 @@ MediaSource::~MediaSource()
 
 void MediaSource::setPath(const std::string &p)
 {
-    Log::Notify("Creating Source with media '%s'", p.c_str());
-
     path_ = p;
+    Log::Notify("Creating Source with media '%s'", path_.c_str());
+
+    // open gstreamer
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 std::string MediaSource::path() const
@@ -126,15 +130,12 @@ void MediaSource::render()
     if (!initialized_)
         init();
     else {
-//        blendingshader_->color.r = mediaplayer_->currentTimelineFading();
-//        blendingshader_->color.g = mediaplayer_->currentTimelineFading();
-//        blendingshader_->color.b = mediaplayer_->currentTimelineFading();
-
         // render the media player into frame buffer
         renderbuffer_->begin();
         texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
+        ready_ = true;
     }
 }
 

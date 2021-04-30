@@ -96,7 +96,8 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 }
 
 
-Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
+Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), ready_(false), symbol_(nullptr),
+    active_(true), locked_(false), need_update_(true), dt_(0), workspace_(STAGE)
 {
     // create unique id
     if (id_ == 0)
@@ -420,6 +421,7 @@ void Source::render()
         renderbuffer_->begin();
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
+        ready_ = true;
     }
 }
 
@@ -838,7 +840,7 @@ CloneSource *CloneSource::clone(uint64_t id)
 
 void CloneSource::init()
 {
-    if (origin_ && origin_->ready()) {
+    if (origin_ && origin_->initialized_) {
 
         // get the texture index from framebuffer of view, apply it to the surface
         texturesurface_->setTextureIndex( origin_->texture() );

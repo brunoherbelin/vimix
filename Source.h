@@ -118,7 +118,7 @@ public:
     inline void touch () { need_update_ = true; }
 
     // informs if its ready (i.e. initialized)
-    inline bool ready () const  { return initialized_; }
+    inline bool ready () const  { return ready_; }
 
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
     virtual void update (float dt);
@@ -231,10 +231,10 @@ protected:
     char initials_[3];
     uint64_t id_;
 
-    // every Source shall be initialized on first draw
+    // every Source shall be initialized before first draw and ready after
     bool initialized_;
+    bool ready_;
     virtual void init() = 0;
-
 
     // render() fills in the renderbuffer at every frame
     // NB: rendershader_ is applied at render()

@@ -342,7 +342,7 @@ DeviceSource::~DeviceSource()
 }
 
 void DeviceSource::setDevice(const std::string &devicename)
-{   
+{
     device_ = devicename;
     Log::Notify("Creating Source with device '%s'", device_.c_str());
 
@@ -384,8 +384,12 @@ void DeviceSource::setDevice(const std::string &devicename)
 
         pipeline << " ! videoconvert";
 
+        // open gstreamer
         stream_->open( pipeline.str(), best.width, best.height);
         stream_->play(true);
+
+        // will be ready after init and one frame rendered
+        ready_ = false;
     }
     else
         Log::Warning("No such device '%s'", device_.c_str());

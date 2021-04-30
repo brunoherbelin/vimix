@@ -297,6 +297,9 @@ void NetworkSource::setConnection(const std::string &nameconnection)
     // open network stream
     networkStream()->connect( connection_name_ );
     stream_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 
