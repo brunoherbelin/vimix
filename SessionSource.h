@@ -33,6 +33,7 @@ public:
 
     // implementation of source API
     void accept (Visitor& v) override;
+    void render() override;
 
     // SessionFile Source specific interface
     void load(const std::string &p = "", uint recursion = 0);
@@ -45,6 +46,7 @@ protected:
     void init() override;
 
     std::string path_;
+    bool initialized_;
     bool wait_for_sources_;
     std::future<Session *> sessionLoader_;
 };

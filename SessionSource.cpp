@@ -38,8 +38,8 @@ Session *SessionSource::detach()
     // work on a new session
     session_ = new Session;
 
-    // make disabled
-    initialized_ = false;
+    // un-ready
+    ready_ = false;
 
     // ask to delete me
     failed_ = true;
@@ -91,7 +91,7 @@ void SessionSource::update(float dt)
 }
 
 
-SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
+SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_(""), initialized_(false), wait_for_sources_(false)
 {
     // specific node for transition view
     groups_[View::TRANSITION]->visible_ = false;
@@ -125,7 +125,6 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
     symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
-    wait_for_sources_ = false;
 }
 
 void SessionFileSource::load(const std::string &p, uint recursion)
@@ -149,6 +148,9 @@ void SessionFileSource::load(const std::string &p, uint recursion)
         sessionLoader_ = std::async(std::launch::async, Session::load, path_, recursion);
         Log::Notify("Opening %s", p.c_str());
     }
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 void SessionFileSource::init()
@@ -220,6 +222,19 @@ void SessionFileSource::init()
     }
 }
 
+void SessionFileSource::render()
+{
+    if ( !initialized_ )
+        init();
+    else {
+        // render the media player into frame buffer
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
+        ready_ = true;
+    }
+}
+
 void SessionFileSource::accept(Visitor& v)
 {
     Source::accept(v);
@@ -283,7 +298,6 @@ void SessionGroupSource::init()
         ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source Group (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
     }
 }
@@ -318,7 +332,7 @@ RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr)
 
 bool RenderSource::failed() const
 {
-    if (initialized_ && session_!=nullptr)
+    if ( mode_ > Source::UNINITIALIZED && session_!=nullptr )
         return renderbuffer_->resolution() != session_->frame()->resolution();
 
     return false;
@@ -351,7 +365,6 @@ void RenderSource::init()
         ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
     }
 }
@@ -359,7 +372,7 @@ void RenderSource::init()
 
 glm::vec3 RenderSource::resolution() const
 {
-    if (initialized_)
+    if (mode_ > Source::UNINITIALIZED)
         return renderbuffer_->resolution();
     else if (session_ && session_->frame())
         return session_->frame()->resolution();

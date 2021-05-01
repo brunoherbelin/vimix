@@ -231,10 +231,9 @@ protected:
     char initials_[3];
     uint64_t id_;
 
-    // every Source shall be initialized before first draw and ready after
-    bool initialized_;
-    bool ready_;
+    // every Source shall be initialized to be ready after first draw
     virtual void init() = 0;
+    bool ready_;
 
     // render() fills in the renderbuffer at every frame
     // NB: rendershader_ is applied at render()

@@ -98,7 +98,6 @@ void MediaSource::init()
             ++View::need_deep_update_;
 
             // done init
-            initialized_ = true;
             Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
         }
     }
@@ -127,11 +126,12 @@ void MediaSource::update(float dt)
 
 void MediaSource::render()
 {
-    if (!initialized_)
+    if ( mode_ < Source::VISIBLE )
         init();
     else {
         // render the media player into frame buffer
         renderbuffer_->begin();
+        // apply fading
         texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();

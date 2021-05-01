@@ -92,7 +92,6 @@ void StreamSource::init()
             ++View::need_deep_update_;
 
             // done init
-            initialized_ = true;
             Log::Info("Source '%s' linked to Stream %s", name().c_str(), std::to_string(stream_->id()).c_str());
         }
     }

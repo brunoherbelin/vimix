@@ -96,7 +96,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 }
 
 
-Source::Source(uint64_t id) : SourceCore(), id_(id), initialized_(false), ready_(false), symbol_(nullptr),
+Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
     active_(true), locked_(false), need_update_(true), dt_(0), workspace_(STAGE)
 {
     // create unique id
@@ -414,7 +414,7 @@ bool Source::imageProcessingEnabled()
 
 void Source::render()
 {
-    if (!initialized_)
+    if ( mode_ < Source::VISIBLE )
         init();
     else {
         // render the view into frame buffer
@@ -708,7 +708,7 @@ void Source::update(float dt)
 
 FrameBuffer *Source::frame() const
 {
-    if (initialized_ && renderbuffer_)
+    if ( mode_ > Source::UNINITIALIZED && renderbuffer_)
     {
         return renderbuffer_;
     }
@@ -840,7 +840,7 @@ CloneSource *CloneSource::clone(uint64_t id)
 
 void CloneSource::init()
 {
-    if (origin_ && origin_->initialized_) {
+    if (origin_ && origin_->mode_ > Source::UNINITIALIZED) {
 
         // get the texture index from framebuffer of view, apply it to the surface
         texturesurface_->setTextureIndex( origin_->texture() );
@@ -855,7 +855,6 @@ void CloneSource::init()
         ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
     }
 }
@@ -868,14 +867,14 @@ void CloneSource::setActive (bool on)
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
-    if (initialized_ && origin_ != nullptr)
+    if ( mode_ > Source::UNINITIALIZED && origin_ != nullptr)
         origin_->touch();
 }
 
 
 uint CloneSource::texture() const
 {
-    if (initialized_ && origin_ != nullptr)
+    if (origin_ != nullptr)
         return origin_->texture();
     else
         return Resource::getTextureBlack();
