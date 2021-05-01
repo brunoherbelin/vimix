@@ -69,7 +69,7 @@
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Code Editor"
 #define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Ouput"
 #define IMGUI_TITLE_DELETE ICON_FA_BROOM " Delete?"
-#define IMGUI_LABEL_RECENT_FILES " Select recent"
+#define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()
 #define IMGUI_TOP_ALIGN 10
 #define IMGUI_COLOR_OVERLAY IM_COL32(5, 5, 5, 150)

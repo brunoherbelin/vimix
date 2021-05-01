@@ -555,7 +555,7 @@ void ImGuiVisitor::visit (MediaSource& s)
         UserInterface::manager().showMediaPlayer( s.mediaplayer());
 
     std::string path = SystemToolkit::path_filename(s.path());
-    std::string label = SystemToolkit::trunc_filename(path, 25);
+    std::string label = BaseToolkit::trunc_string(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 
@@ -590,7 +590,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::Text("File");
 
     std::string path = SystemToolkit::path_filename(s.path());
-    std::string label = SystemToolkit::trunc_filename(path, 25);
+    std::string label = BaseToolkit::trunc_string(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 

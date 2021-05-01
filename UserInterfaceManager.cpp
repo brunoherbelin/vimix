@@ -1880,7 +1880,7 @@ void ToolBox::Render()
     ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
     sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
     ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    sprintf(overlay, "Memory %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
+    sprintf(overlay, "Memory %.1f MB / %s", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE], BaseToolkit::byte_to_string(SystemToolkit::memory_max_usage()).c_str() );
     ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();
@@ -2705,7 +2705,7 @@ void Navigator::RenderNewPannel()
                         Log::Notify("No file selected.");
                     } else {
                         std::string label = BaseToolkit::transliterate( open_filename );
-                        label = label.substr( label.size() - MIN( 35, label.size()) );
+                        label = BaseToolkit::trunc_string(label, 35);
                         new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
                     }
                 }
@@ -2721,7 +2721,7 @@ void Navigator::RenderNewPannel()
                     std::string recentpath(*path);
                     if ( SystemToolkit::file_exists(recentpath)) {
                         std::string label = BaseToolkit::transliterate( recentpath );
-                        label = SystemToolkit::trunc_filename(label, 35);
+                        label = BaseToolkit::trunc_string(label, 35);
                         if (ImGui::Selectable( label.c_str() )) {
                             new_source_preview_.setSource( Mixer::manager().createSourceFile(recentpath.c_str()), label);
                         }
@@ -2874,20 +2874,57 @@ void Navigator::RenderMainPannelVimix()
         ImGui::EndMenu();
     }
 
-    // Session panel
     ImGui::SetCursorPosY(width_);
-    ImGui::Text("Sessions");
 
+//    //
+//    // Buttons to show WINDOWS
+//    //
+//    ImGui::Spacing();
+//    ImGui::Text("Windows");
+//    ImGui::Spacing();
+
+//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+//    std::string tooltip_ = "";
+
+//    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
+//        Rendering::manager().mainWindow().toggleFullscreen();
+//    if (ImGui::IsItemHovered())
+//        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
+
+//    ImGui::SameLine(0, 40);
+//    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
+//        Mixer::manager().session()->addNote();
+//    if (ImGui::IsItemHovered())
+//        tooltip_ = "New note " CTRL_MOD "Shift+N";
+
+//    ImGui::SameLine(0, 40);
+//    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
+//        Settings::application.widget.media_player = true;
+//    if (ImGui::IsItemHovered())
+//        tooltip_ = "Player       " CTRL_MOD "P";
+
+//    ImGui::SameLine(0, 40);
+//    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+//        Settings::application.widget.preview = true;
+//    if (ImGui::IsItemHovered())
+//        tooltip_ = "Output       " CTRL_MOD "D";
+
+//    ImGui::PopFont();
+//    if (!tooltip_.empty()) {
+//        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
+//    }
+
+    //
+    // SESSION panel
+    //
+    ImGui::Spacing();
+    ImGui::Text("Sessions");
     static bool selection_session_mode_changed = true;
     static int selection_session_mode = 0;
 
-    //
-    // Session quick selection & fading
-    //
-
     // Show combo box of quick selection modes
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##SelectionSession", SystemToolkit::trunc_filename(Settings::application.recentFolders.path, 25).c_str() )) {
+    if (ImGui::BeginCombo("##SelectionSession", BaseToolkit::trunc_string(Settings::application.recentFolders.path, 25).c_str() )) {
 
         // Option 0 : recent files
         if (ImGui::Selectable( ICON_FA_CLOCK IMGUI_LABEL_RECENT_FILES) ) {
@@ -2898,7 +2935,7 @@ void Navigator::RenderMainPannelVimix()
         // Options 1 : known folders
         for(auto foldername = Settings::application.recentFolders.filenames.begin();
             foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
-            std::string f = std::string(ICON_FA_FOLDER) + " " + SystemToolkit::trunc_filename( *foldername, 40);
+            std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::trunc_string( *foldername, 40);
             if (ImGui::Selectable( f.c_str() )) {
                 // remember which path was selected
                 Settings::application.recentFolders.path.assign(*foldername);
@@ -3094,44 +3131,10 @@ void Navigator::RenderMainPannelVimix()
     // come back...
     ImGui::SetCursorPos(pos_bot);
 
+
     //
-    // Buttons to show WINDOWS
+    // Status
     //
-    ImGui::Spacing();
-    ImGui::Text("Windows");
-    ImGui::Spacing();
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    std::string tooltip_ = "";
-
-    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
-        Rendering::manager().mainWindow().toggleFullscreen();
-    if (ImGui::IsItemHovered())
-        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
-
-    ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
-        Mixer::manager().session()->addNote();
-    if (ImGui::IsItemHovered())
-        tooltip_ = "New note " CTRL_MOD "Shift+N";
-
-    ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
-        Settings::application.widget.media_player = true;
-    if (ImGui::IsItemHovered())
-        tooltip_ = "Player       " CTRL_MOD "P";
-
-    ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
-        Settings::application.widget.preview = true;
-    if (ImGui::IsItemHovered())
-        tooltip_ = "Output       " CTRL_MOD "D";
-
-    ImGui::PopFont();
-    if (!tooltip_.empty()) {
-        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
-    }
-
     ImGui::Spacing();
     ImGui::Text("Status");
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -3139,7 +3142,6 @@ void Navigator::RenderMainPannelVimix()
 
     //
     // UNDO History
-    //
     if (Settings::application.pannel_history_mode > 0) {
 
         static uint _over = 0;
@@ -3227,7 +3229,6 @@ void Navigator::RenderMainPannelVimix()
     }
     //
     // SNAPSHOTS
-    //
     else {
         static uint64_t _over = 0;
         static bool _tooltip = 0;
@@ -3369,6 +3370,43 @@ void Navigator::RenderMainPannelVimix()
 //        }
     }
 
+    //
+    // Buttons to show WINDOWS
+    //
+    ImGui::Spacing();
+    ImGui::Text("Windows");
+    ImGui::Spacing();
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    std::string tooltip_ = "";
+
+    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
+        Rendering::manager().mainWindow().toggleFullscreen();
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
+
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
+        Mixer::manager().session()->addNote();
+    if (ImGui::IsItemHovered())
+        tooltip_ = "New note " CTRL_MOD "Shift+N";
+
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
+        Settings::application.widget.media_player = true;
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Player       " CTRL_MOD "P";
+
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+        Settings::application.widget.preview = true;
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Output       " CTRL_MOD "D";
+
+    ImGui::PopFont();
+    if (!tooltip_.empty()) {
+        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
+    }
 
 }
 

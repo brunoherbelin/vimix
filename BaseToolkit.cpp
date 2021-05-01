@@ -49,7 +49,7 @@ std::string BaseToolkit::uniqueName(const std::string &basename, std::list<std::
 // Using ICU transliteration :
 // https://unicode-org.github.io/icu/userguide/transforms/general/#icu-transliterators
 
-std::string BaseToolkit::transliterate(std::string input)
+std::string BaseToolkit::transliterate(const std::string &input)
 {
     auto ucs = icu::UnicodeString::fromUTF8(input);
 
@@ -103,4 +103,15 @@ std::string BaseToolkit::bits_to_string(long b)
     }
     oss << std::fixed << std::setprecision(2) << numbytes << *i;
     return oss.str();
+}
+
+
+std::string BaseToolkit::trunc_string(const std::string& path, int N)
+{
+    std::string trunc = path;
+    int l = path.size();
+    if ( l > N ) {
+        trunc = std::string("...") + path.substr( l - N + 3 );
+    }
+    return trunc;
 }

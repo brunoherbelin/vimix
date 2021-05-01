@@ -84,7 +84,7 @@ long SystemToolkit::memory_max_usage() {
 
     struct rusage r_usage;
     getrusage(RUSAGE_SELF,&r_usage);
-    return r_usage.ru_maxrss;
+    return 1024 * r_usage.ru_maxrss;
 //    return r_usage.ru_isrss;
 }
 
@@ -130,16 +130,6 @@ string SystemToolkit::base_filename(const string& path)
 string SystemToolkit::path_filename(const string& path)
 {
     return path.substr(0, path.find_last_of(PATH_SEP) + 1);
-}
-
-string SystemToolkit::trunc_filename(const string& path, int lenght)
-{
-    string trunc = path;
-    int l = path.size();
-    if ( l > lenght ) {
-        trunc = string("...") + path.substr( l - lenght + 3 );
-    }
-    return trunc;
 }
 
 string SystemToolkit::extension_filename(const string& filename)

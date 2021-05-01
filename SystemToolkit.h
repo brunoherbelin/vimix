@@ -42,9 +42,6 @@ namespace SystemToolkit
     // extract the path of a filename from a full URI (e.g. file:://home/me/toto.mpg -> file:://home/me/)
     std::string path_filename(const std::string& path);
 
-    // Truncate a full filename to display the right part (e.g. file:://home/me/toto.mpg -> ...ome/me/toto.mpg)
-    std::string trunc_filename(const std::string& path, int lenght);
-
     // extract the extension of a filename
     std::string extension_filename(const std::string& filename);
 
@@ -69,8 +66,9 @@ namespace SystemToolkit
     // try to execute a command
     void execute(const std::string& command);
 
-    // return memory resident set size used (in bytes)
+    // return memory used (in bytes)
     long memory_usage();
+    // return maximum memory resident set size used (in bytes)
     long memory_max_usage();
 
 }
