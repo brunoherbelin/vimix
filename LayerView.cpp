@@ -227,12 +227,13 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
         Source *s = Mixer::manager().findSource(pick.first);
         if (s != nullptr) {
             // pick on the lock icon; unlock source
-            if ( pick.first == s->lock_) {
+            if ( UserInterface::manager().ctrlModifier() && pick.first == s->lock_) {
                 lock(s, false);
-                pick = { s->locker_, pick.second };
+//                pick = { s->locker_, pick.second };
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == s->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == s->unlock_ ) {
                 lock(s, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }

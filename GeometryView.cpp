@@ -432,34 +432,38 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 openContextMenu(MENU_SOURCE);
             }
             // pick on the lock icon; unlock source
-            else if ( pick.first == current->lock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
                 lock(current, false);
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == current->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
                 lock(current, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
-            // pick a locked source without CTRL key; cancel pick
-            else if ( current->locked() && !UserInterface::manager().ctrlModifier() ) {
+            // pick a locked source ; cancel pick
+            else if ( current->locked() ) {
                 pick = { nullptr, glm::vec2(0.f) };
             }
         }
         // the clicked source changed (not the current source)
         if (current == nullptr) {
 
-            // default to failed pick
-            pick = { nullptr, glm::vec2(0.f) };
+            if (UserInterface::manager().ctrlModifier()) {
 
-            // loop over all nodes picked to detect clic on locks
-            for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-                // get if a source was picked
-                Source *s = Mixer::manager().findSource((*itp).first);
-                // lock icon of a source (not current) is picked : unlock
-                if ( s!=nullptr && (*itp).first == s->lock_) {
-                    lock(s, false);
-                    pick = { s->locker_,  (*itp).second };
-                    break;
+                // default to failed pick
+                pick = { nullptr, glm::vec2(0.f) };
+
+                // loop over all nodes picked to detect clic on locks
+                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+                    // get if a source was picked
+                    Source *s = Mixer::manager().findSource((*itp).first);
+                    // lock icon of a source (not current) is picked : unlock
+                    if ( s!=nullptr && (*itp).first == s->lock_) {
+                        lock(s, false);
+                        pick = { s->locker_, (*itp).second };
+                        break;
+                    }
                 }
             }
             // no lock icon picked, find what else was picked
