@@ -28,7 +28,7 @@ Stream::Stream()
 
     description_ = "undefined";
     pipeline_ = nullptr;
-    ready_ = false;
+    opened_ = false;
     enabled_ = true;
     desired_state_ = GST_STATE_PAUSED;
 
@@ -55,6 +55,14 @@ Stream::Stream()
 Stream::~Stream()
 {
     close();
+
+    // cleanup opengl texture
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
+
+    // cleanup picture buffer
+    if (pbo_[0])
+        glDeleteBuffers(2, pbo_);
 }
 
 void Stream::accept(Visitor& v) {
@@ -94,7 +102,7 @@ std::string Stream::description() const
 void Stream::execute_open()
 {
     // reset
-    ready_ = false;
+    opened_ = false;
 
     // Add custom app sink to the gstreamer pipeline
     string description = description_;
@@ -183,12 +191,12 @@ void Stream::execute_open()
 
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
-    ready_ = true;
+    opened_ = true;
 }
 
 bool Stream::isOpen() const
 {
-    return ready_;
+    return opened_;
 }
 
 bool Stream::failed() const
@@ -206,13 +214,15 @@ void Stream::Frame::unmap()
 void Stream::close()
 {
     // not openned?
-    if (!ready_) {
+    if (!opened_) {
         // nothing else to change
         return;
     }
 
     // un-ready
-    ready_ = false;
+    opened_ = false;
+    single_frame_ = false;
+    live_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -239,15 +249,6 @@ void Stream::close()
     write_index_ = 0;
     last_index_ = 0;
 
-    // cleanup opengl texture
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-    textureindex_ = 0;
-
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    pbo_size_ = 0;
 }
 
 
@@ -268,7 +269,7 @@ float Stream::aspectRatio() const
 
 void Stream::enable(bool on)
 {
-    if ( !ready_ || pipeline_ == nullptr)
+    if ( !opened_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -483,7 +484,7 @@ void Stream::update()
         return;
 
     // not ready yet
-    if (!ready_){
+    if (!opened_){
         // wait next frame to display
         return;
     }
@@ -636,7 +637,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 void Stream::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     Stream *m = static_cast<Stream *>(p);
-    if (m && m->ready_) {
+    if (m && m->opened_) {
         m->fill_frame(NULL, Stream::EOS);
     }
 }
@@ -652,7 +653,7 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
     if (sample != NULL) {
         // send frames to media player only if ready
         Stream *m = static_cast<Stream *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample
             GstBuffer *buf = gst_sample_get_buffer (sample);
@@ -686,7 +687,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         Stream *m = static_cast<Stream *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample (valid until sample is released)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;

@@ -204,7 +204,7 @@ void NetworkStream::update()
 {
     Stream::update();
 
-    if ( !ready_ && !failed_ && received_config_)
+    if ( !opened_ && !failed_ && received_config_)
     {
         // only once
         received_config_ = false;

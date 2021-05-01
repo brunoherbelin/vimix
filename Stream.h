@@ -129,7 +129,7 @@ protected:
     GstState desired_state_;
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;
-    std::atomic<bool> ready_;
+    std::atomic<bool> opened_;
     std::atomic<bool> failed_;
     bool enabled_;
 

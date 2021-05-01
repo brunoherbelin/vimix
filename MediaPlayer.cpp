@@ -31,7 +31,7 @@ MediaPlayer::MediaPlayer()
 
     uri_ = "undefined";
     pipeline_ = nullptr;
-    ready_ = false;
+    opened_ = false;
     enabled_ = true;
     desired_state_ = GST_STATE_PAUSED;
 
@@ -65,6 +65,9 @@ MediaPlayer::~MediaPlayer()
     if (textureindex_)
         glDeleteTextures(1, &textureindex_);
 
+    // cleanup picture buffer
+    if (pbo_[0])
+        glDeleteBuffers(2, pbo_);
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -401,7 +404,7 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
               timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
-    ready_ = true;
+    opened_ = true;
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -409,7 +412,7 @@ void MediaPlayer::execute_open()
 
 bool MediaPlayer::isOpen() const
 {
-    return ready_;
+    return opened_;
 }
 
 bool MediaPlayer::failed() const
@@ -427,7 +430,7 @@ void MediaPlayer::Frame::unmap()
 void MediaPlayer::close()
 {
     // not openned?
-    if (!ready_) {
+    if (!opened_) {
         // wait for loading to finish
         if (discoverer_.valid())
             discoverer_.wait();
@@ -436,7 +439,7 @@ void MediaPlayer::close()
     }
 
     // un-ready the media player
-    ready_ = false;
+    opened_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -464,12 +467,6 @@ void MediaPlayer::close()
     write_index_ = 0;
     last_index_ = 0;
 
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    pbo_size_ = 0;
-    pbo_index_ = 0;
-    pbo_next_index_ = 0;
 
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
@@ -508,7 +505,7 @@ GstClockTime MediaPlayer::position()
 
 void MediaPlayer::enable(bool on)
 {
-    if ( !ready_ || pipeline_ == nullptr)
+    if ( !opened_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -832,7 +829,7 @@ void MediaPlayer::update()
         return;
 
     // not ready yet
-    if (!ready_) {
+    if (!opened_) {
         if (discoverer_.valid()) {
             // try to get info from discoverer
             if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
@@ -1156,7 +1153,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 void MediaPlayer::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     MediaPlayer *m = static_cast<MediaPlayer *>(p);
-    if (m && m->ready_) {
+    if (m && m->opened_) {
         m->fill_frame(NULL, MediaPlayer::EOS);
     }
 }
@@ -1173,7 +1170,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample
             GstBuffer *buf = gst_sample_get_buffer (sample);
@@ -1208,7 +1205,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample (valid until sample is released)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;
