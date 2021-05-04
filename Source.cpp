@@ -414,7 +414,7 @@ bool Source::imageProcessingEnabled()
 
 void Source::render()
 {
-    if ( mode_ < Source::VISIBLE )
+    if ( renderbuffer_ == nullptr )
         init();
     else {
         // render the view into frame buffer

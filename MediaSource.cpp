@@ -126,7 +126,7 @@ void MediaSource::update(float dt)
 
 void MediaSource::render()
 {
-    if ( mode_ < Source::VISIBLE )
+    if ( renderbuffer_ == nullptr )
         init();
     else {
         // render the media player into frame buffer
