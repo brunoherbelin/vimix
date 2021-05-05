@@ -30,6 +30,7 @@ public:
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
+    void visit (MultiFileSource& s) override;
 };
 
 #endif // IMGUIVISITOR_H

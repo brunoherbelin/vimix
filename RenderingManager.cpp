@@ -424,14 +424,15 @@ glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview, bo
 
 void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
 {
-    for (int i = 0; i < path_count; ++i) {
+    int i = 0;
+    for (; i < path_count; ++i) {
         std::string filename(paths[i]);
         if (filename.empty())
             break;
         // try to create a source
         Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
     }
-    if (path_count>0) {
+    if (i>0) {
         UserInterface::manager().showPannel();
         Rendering::manager().mainWindow().show();
     }

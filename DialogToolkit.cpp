@@ -178,7 +178,7 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
 }
 
 
-std::string DialogToolkit::ImportFileDialog(const std::string &path)
+std::string DialogToolkit::openMediaFileDialog(const std::string &path)
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
@@ -190,7 +190,7 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
                                       "*.gif", "*.tif", "*.svg" };
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 18, open_pattern, "All supported formats", 0);
+    open_file_name = tinyfd_openFileDialog( "Open Media File", startpath.c_str(), 18, open_pattern, "All supported formats", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
@@ -201,7 +201,7 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
         return filename;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Import Media File",  NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Open Media File",  NULL,
                                               GTK_FILE_CHOOSER_ACTION_OPEN,
                                               "_Cancel", GTK_RESPONSE_CANCEL,
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
@@ -238,7 +238,7 @@ std::string DialogToolkit::ImportFileDialog(const std::string &path)
     return filename;
 }
 
-std::string DialogToolkit::FolderDialog(const std::string &path)
+std::string DialogToolkit::openFolderDialog(const std::string &path)
 {
     std::string foldername = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
@@ -289,6 +289,73 @@ std::string DialogToolkit::FolderDialog(const std::string &path)
     return foldername;
 }
 
+
+std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &path)
+{
+    std::list<std::string> files;
+
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
+    char const * open_pattern[3] = { "*.tif", "*.jpg", "*.png" };
+
+#if USE_TINYFILEDIALOG
+    char const * open_file_names;
+    open_file_names = tinyfd_openFileDialog( "Select images", startpath.c_str(), 3, open_pattern, "Images", 1);
+
+    if (open_file_names)
+//        filename = std::string(open_file_name);
+     //   TODO
+#else
+
+    if (!gtk_init()) {
+        ErrorDialog("Could not initialize GTK+ for dialog");
+        return files;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Select images",  NULL,
+                                              GTK_FILE_CHOOSER_ACTION_OPEN,
+                                              "_Cancel", GTK_RESPONSE_CANCEL,
+                                              "_Open", GTK_RESPONSE_ACCEPT,  NULL );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 3, open_pattern, "All supported formats");
+    add_filter_any_file_dialog(dialog);
+
+    // multiple files
+    gtk_file_chooser_set_select_multiple( GTK_FILE_CHOOSER(dialog), true );
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
+
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+
+        GSList *open_file_names = gtk_file_chooser_get_filenames( GTK_FILE_CHOOSER(dialog) );
+
+        while (open_file_names) {
+            files.push_back( (char *) open_file_names->data );
+            open_file_names = open_file_names->next;
+//            g_free( open_file_names->data );
+        }
+
+        g_slist_free( open_file_names );
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+
+    return files;
+}
 
 void DialogToolkit::ErrorDialog(const char* message)
 {

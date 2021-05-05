@@ -134,7 +134,10 @@ string SystemToolkit::path_filename(const string& path)
 
 string SystemToolkit::extension_filename(const string& filename)
 {
-    string ext = filename.substr(filename.find_last_of(".") + 1);
+    string ext;
+    auto loc = filename.find_last_of(".");
+    if (loc != string::npos)
+        ext = filename.substr( loc + 1 );
     return ext;
 }
 
@@ -274,7 +277,7 @@ std::string SystemToolkit::path_directory(const std::string& path)
     return directorypath;
 }
 
-list<string> SystemToolkit::list_directory(const string& path, const string& filter)
+list<string> SystemToolkit::list_directory(const string& path, const list<string>& extensions)
 {
     list<string> ls;
 
@@ -286,7 +289,8 @@ list<string> SystemToolkit::list_directory(const string& path, const string& fil
             if ( ent->d_type == DT_REG)
             {
                 string filename = string(ent->d_name);
-                if ( extension_filename(filename) == filter)
+                string ext = extension_filename(filename);
+                if ( extensions.empty() || find(extensions.cbegin(), extensions.cend(), ext) != extensions.cend())
                     ls.push_back( full_filename(path, filename) );
             }
         }

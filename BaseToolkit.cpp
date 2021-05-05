@@ -6,6 +6,7 @@
 #include <list>
 #include <iomanip>
 #include <algorithm>
+#include <climits>
 
 #include <locale>
 #include <unicode/ustream.h>
@@ -114,4 +115,130 @@ std::string BaseToolkit::trunc_string(const std::string& path, int N)
         trunc = std::string("...") + path.substr( l - N + 3 );
     }
     return trunc;
+}
+
+
+std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )
+{
+    if (allStrings.empty())
+        return std::string();
+
+    const std::string &s0 = allStrings.front();
+    auto _end = s0.cend();
+    for (auto it=std::next(allStrings.cbegin()); it != allStrings.cend(); ++it)
+    {
+        auto _loc = std::mismatch(s0.cbegin(), s0.cend(), it->cbegin(), it->cend());
+        if (std::distance(_loc.first, _end) > 0)
+            _end = _loc.first;
+    }
+
+    return std::string(s0.cbegin(), _end);
+}
+
+
+std::string BaseToolkit::common_suffix(const std::list<std::string> & allStrings)
+{
+    if (allStrings.empty())
+        return std::string();
+
+    const std::string &s0 = allStrings.front();
+    auto r_end = s0.crend();
+    for (auto it=std::next(allStrings.cbegin()); it != allStrings.cend(); ++it)
+    {
+        auto r_loc = std::mismatch(s0.crbegin(), s0.crend(), it->crbegin(), it->crend());
+        if (std::distance(r_loc.first, r_end) > 0)
+            r_end = r_loc.first;
+    }
+
+    std::string suffix = std::string(s0.crbegin(), r_end);
+    std::reverse(suffix.begin(), suffix.end());
+    return suffix;
+}
+
+
+std::string BaseToolkit::common_pattern(const std::list<std::string> &allStrings)
+{
+    if (allStrings.empty())
+        return std::string();
+
+    // find common prefix and suffix
+    const std::string &s0 = allStrings.front();
+    auto _end = s0.cend();
+    auto r_end = s0.crend();
+    for (auto it=std::next(allStrings.cbegin()); it != allStrings.cend(); ++it)
+    {
+        auto _loc = std::mismatch(s0.cbegin(), s0.cend(), it->cbegin(), it->cend());
+        if (std::distance(_loc.first, _end) > 0)
+            _end = _loc.first;
+
+        auto r_loc = std::mismatch(s0.crbegin(), s0.crend(), it->crbegin(), it->crend());
+        if (std::distance(r_loc.first, r_end) > 0)
+            r_end = r_loc.first;
+    }
+
+    std::string suffix = std::string(s0.crbegin(), r_end);
+    std::reverse(suffix.begin(), suffix.end());
+
+    return std::string(s0.cbegin(), _end) + "*" + suffix;
+}
+
+std::string BaseToolkit::common_numbered_pattern(const std::list<std::string> &allStrings, int *min, int *max)
+{
+    if (allStrings.empty())
+        return std::string();
+
+    // find common prefix and suffix
+    const std::string &s0 = allStrings.front();
+    auto _end = s0.cend();
+    auto r_end = s0.crend();
+    for (auto it=std::next(allStrings.cbegin()); it != allStrings.cend(); ++it)
+    {
+        auto _loc = std::mismatch(s0.cbegin(), s0.cend(), it->cbegin(), it->cend());
+        if (std::distance(_loc.first, _end) > 0)
+            _end = _loc.first;
+
+        auto r_loc = std::mismatch(s0.crbegin(), s0.crend(), it->crbegin(), it->crend());
+        if (std::distance(r_loc.first, r_end) > 0)
+            r_end = r_loc.first;
+    }
+
+    // range of middle string, after prefix and before suffix
+    size_t pos_prefix = std::distance(s0.cbegin(), _end);
+    size_t pos_suffix = s0.size() - pos_prefix - std::distance(s0.crbegin(), r_end);
+
+    int n = -1;
+    *max = 0;
+    *min = INT_MAX;
+    // loop over all strings to verify there are numbers between prefix and suffix
+    for (auto it = allStrings.cbegin(); it != allStrings.cend(); ++it)
+    {
+        // get middle string, after prefix and before suffix
+        std::string s = it->substr(pos_prefix, pos_suffix);
+        // is this central string ONLY made of digits?
+        if (s.end() == std::find_if(s.begin(), s.end(), [](unsigned char c)->bool { return !isdigit(c); })) {
+            // yes, validate
+            *max = std::max(*max, std::atoi(s.c_str()) );
+            *min = std::min(*min, std::atoi(s.c_str()) );
+            if (n < 0)
+                n = s.size();
+            else if ( n != s.size() ) {
+                n = 0;
+                break;
+            }
+        }
+        else {
+            n = 0;
+            break;
+        }
+    }
+
+    if ( n < 1 )
+        return std::string();
+
+    std::string suffix = std::string(s0.crbegin(), r_end);
+    std::reverse(suffix.begin(), suffix.end());
+    std::string pattern = std::string(s0.cbegin(), _end);
+    pattern += "%0" + std::to_string(n) + "d";
+    pattern += suffix;
+    return pattern;
 }

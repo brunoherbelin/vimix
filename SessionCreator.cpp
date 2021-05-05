@@ -12,6 +12,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "MultiFileSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -267,6 +268,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "NetworkSource") {
                     load_source = new NetworkSource(id_xml_);
                 }
+                else if ( std::string(pType) == "MultiFileSource") {
+                    load_source = new MultiFileSource(id_xml_);
+                }
 
                 // skip failed (including clones)
                 if (!load_source)
@@ -383,6 +387,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "NetworkSource") {
                 load_source = new NetworkSource(id__);
+            }
+            else if ( std::string(pType) == "MultiFileSource") {
+                load_source = new MultiFileSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -877,6 +884,40 @@ void SessionLoader::visit (NetworkSource& s)
     // change only if different device
     if ( connect != s.connection() )
         s.setConnection(connect);
+}
+
+
+void SessionLoader::visit (MultiFileSource& s)
+{
+    XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
+
+    if (seq) {
+
+        MultiFileSequence sequence;
+        sequence.location = std::string ( seq->GetText() );
+        seq->QueryIntAttribute("min", &sequence.min);
+        seq->QueryIntAttribute("max", &sequence.max);
+        seq->QueryIntAttribute("loop", &sequence.loop);
+        seq->QueryUnsignedAttribute("width", &sequence.width);
+        seq->QueryUnsignedAttribute("height", &sequence.height);
+        const char *codec = seq->Attribute("codec");
+        if (codec)
+            sequence.codec = std::string(codec);
+        uint fps = 0;
+        seq->QueryUnsignedAttribute("fps", &fps);
+
+        // different sequence
+        if ( sequence != s.sequence() ) {
+            s.setSequence( sequence, fps);
+        }
+        // same sequence, different framerate
+        else if ( fps != s.framerate() ) {
+            s.setFramerate( fps );
+        }
+
+
+    }
+
 }
 
 

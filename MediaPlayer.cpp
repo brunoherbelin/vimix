@@ -84,7 +84,7 @@ guint MediaPlayer::texture() const
 
 #define LIMIT_DISCOVERER
 
-static MediaInfo UriDiscoverer_(std::string uri)
+MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 {
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("Checking file '%s'", uri.c_str());
@@ -220,24 +220,27 @@ static MediaInfo UriDiscoverer_(std::string uri)
     return video_stream_info;
 }
 
-void MediaPlayer::open(string path)
+void MediaPlayer::open (const std::string & filename, const string &uri)
 {
     // set path
-    filename_ = BaseToolkit::transliterate( path );
+    filename_ = BaseToolkit::transliterate( filename );
 
     // set uri to open
-    uri_ = GstToolkit::filename_to_uri(path);
+    if (uri.empty())
+        uri_ = GstToolkit::filename_to_uri( filename );
+    else
+        uri_ = uri;
 
     // close before re-openning
     if (isOpen())
         close();
 
     // start URI discovering thread:
-    discoverer_ = std::async( UriDiscoverer_, uri_);
+    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
     // wait for discoverer to finish in the future (test in update)
 
 //    // debug without thread
-//    media_ = UriDiscoverer_(uri_);
+//    media_ = MediaPlayer::UriDiscoverer(uri_);
 //    if (media_.valid) {
 //        timeline_.setEnd( media_.end );
 //        timeline_.setStep( media_.dt );

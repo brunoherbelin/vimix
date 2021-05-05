@@ -78,7 +78,7 @@ guint Stream::texture() const
 }
 
 
-void Stream::open(const std::string &gstreamer_description, int w, int h)
+void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
     // set gstreamer pipeline source
     description_ = gstreamer_description;

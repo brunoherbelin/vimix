@@ -516,7 +516,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( View::canSelect(s) && s->active() && s->workspace() == Settings::application.current_workspace);
+    return ( View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
 }
 
 

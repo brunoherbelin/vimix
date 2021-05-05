@@ -26,6 +26,7 @@
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "NetworkSource.h"
 #include "ActionManager.h"
@@ -240,6 +241,34 @@ Source * Mixer::createSourceFile(const std::string &path)
     else {
         Settings::application.recentImport.remove(path);
         Log::Notify("File %s does not exist.", path.c_str());
+    }
+
+    return s;
+}
+
+Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, uint fps)
+{
+    // ready to create a source
+    Source *s = nullptr;
+
+    if ( list_files.size() >0 ) {
+
+        // validate the creation of a sequence from the list
+        MultiFileSequence sequence(list_files);
+
+        if ( sequence.valid() ) {
+
+            // try to create a sequence
+            MultiFileSource *mfs = new MultiFileSource;
+            mfs->setSequence(sequence, fps);
+            s = mfs;
+
+            // remember in recent media
+            Settings::application.recentImport.path = SystemToolkit::path_filename(list_files.front());
+
+            // propose a new name
+            s->setName( SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) ) );
+        }
     }
 
     return s;
@@ -679,7 +708,7 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     unsetCurrentSource();
 
     // change current if 'it' is valid
-    if ( it != session_->end() ) {
+    if ( it != session_->end() /*&& (*it)->mode() > Source::UNINITIALIZED */) {
         current_source_ = it;
         current_source_index_ = session_->index(current_source_);
 

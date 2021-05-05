@@ -91,8 +91,8 @@ public:
     /** 
      * Open a media using gstreamer URI 
      * */
-    void open( std::string path);
-    void reopen();
+    void open ( const std::string &filename, const std::string &uri = "");
+    void reopen ();
     /**
      * Get name of the media
      * */
@@ -264,6 +264,8 @@ public:
     static std::list<MediaPlayer*> registered() { return registered_; }
     static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
     static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
+
+    static MediaInfo UriDiscoverer(const std::string &uri);
 
 private:
 

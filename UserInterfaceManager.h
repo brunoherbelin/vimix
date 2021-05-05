@@ -60,6 +60,7 @@ class Navigator
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
+    std::list<std::string> _selectedFiles;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 

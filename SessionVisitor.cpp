@@ -11,6 +11,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "MultiFileSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
@@ -591,6 +592,36 @@ void SessionVisitor::visit (MixingGroup& g)
         sour->SetAttribute("id", (*it)->id());
         xmlCurrent_->InsertEndChild(sour);
     }
+}
+
+void SessionVisitor::visit (MultiFileSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "MultiFileSource");
+
+    XMLElement *sequence = xmlDoc_->NewElement("Sequence");
+    sequence->SetAttribute("fps", s.framerate());
+    sequence->SetAttribute("min", s.sequence().min);
+    sequence->SetAttribute("max", s.sequence().max);
+    sequence->SetAttribute("loop", s.sequence().loop);
+    sequence->SetAttribute("width", s.sequence().width);
+    sequence->SetAttribute("height", s.sequence().height);
+    sequence->SetAttribute("codec", s.sequence().codec.c_str());
+    XMLText *location = xmlDoc_->NewText( s.sequence().location.c_str() );
+    sequence->InsertEndChild( location );
+
+    xmlCurrent_->InsertEndChild(sequence);
+
+//    XMLElement *sequence = xmlDoc_->NewElement("Sequence");
+//    sequence->SetAttribute("fps", s.fps());
+
+//    std::list<std::string> list = s.sequence ();
+//    for (auto it = list.cbegin(); it != list.cend(); ++it) {
+//        XMLElement *f = xmlDoc_->NewElement("file");
+//        XMLText *filename = xmlDoc_->NewText( it->c_str() );
+//        f->InsertEndChild( filename );
+//        sequence->InsertEndChild(f);
+//    }
+//    xmlCurrent_->InsertEndChild(sequence);
 }
 
 std::string SessionVisitor::getClipboard(const SourceList &list)

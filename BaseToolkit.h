@@ -25,6 +25,16 @@ std::string bits_to_string(long b);
 // Truncate a string to display the right most N characters (e.g. ./home/me/toto.mpg -> ...ome/me/toto.mpg)
 std::string trunc_string(const std::string& path, int N);
 
+// find common parts in a list of strings
+std::string common_prefix(const std::list<std::string> &allStrings);
+std::string common_suffix(const std::list<std::string> &allStrings);
+
+// form a pattern "prefix*suffix" (e.g. file list)
+std::string common_pattern(const std::list<std::string> &allStrings);
+
+// form a pattern "prefix%03dsuffix" (e.g. numbered file list)
+std::string common_numbered_pattern(const std::list<std::string> &allStrings, int *min, int *max);
+
 }
 
 

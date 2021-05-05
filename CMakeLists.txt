@@ -309,6 +309,7 @@ set(VMIX_SRCS
     PatternSource.cpp
     DeviceSource.cpp
     NetworkSource.cpp
+    MultiFileSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
@@ -326,6 +327,7 @@ set(VMIX_SRCS
     NetworkToolkit.cpp
     Connection.cpp
     ActionManager.cpp
+    Overlay.cpp
 )
 
 
@@ -428,6 +430,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_eye_slash.ply
     ./rsc/mesh/icon_vector_square_slash.ply
     ./rsc/mesh/icon_cube.ply
+    ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

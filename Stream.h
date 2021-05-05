@@ -33,7 +33,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, int w = 1024, int h = 576);
+    void open(const std::string &gstreamer_description, guint w = 1024, guint h = 576);
     /**
      * Get description string
      * */

@@ -28,26 +28,26 @@ public:
     static std::string getClipboard(ImageProcessingShader * const s);
 
     // Elements of Scene
-    void visit(Scene& n) override;
-    void visit(Node& n) override;
-    void visit(Group& n) override;
-    void visit(Switch& n) override;
-    void visit(Primitive& n) override;
-    void visit(Surface&) override;
-    void visit(ImageSurface& n) override;
-    void visit(MediaSurface& n) override;
-    void visit(FrameBufferSurface&) override;
-    void visit(LineStrip& n) override;
-    void visit(LineSquare&) override;
-    void visit(Mesh& n) override;
-    void visit(Frame& n) override;
+    void visit (Scene& n) override;
+    void visit (Node& n) override;
+    void visit (Group& n) override;
+    void visit (Switch& n) override;
+    void visit (Primitive& n) override;
+    void visit (Surface&) override;
+    void visit (ImageSurface& n) override;
+    void visit (MediaSurface& n) override;
+    void visit (FrameBufferSurface&) override;
+    void visit (LineStrip& n) override;
+    void visit (LineSquare&) override;
+    void visit (Mesh& n) override;
+    void visit (Frame& n) override;
 
     // Elements with attributes
-    void visit(MediaPlayer& n) override;
-    void visit(Shader& n) override;
-    void visit(ImageShader& n) override;
-    void visit(MaskShader& n) override;
-    void visit(ImageProcessingShader& n) override;
+    void visit (MediaPlayer& n) override;
+    void visit (Shader& n) override;
+    void visit (ImageShader& n) override;
+    void visit (MaskShader& n) override;
+    void visit (ImageProcessingShader& n) override;
 
     // Sources
     void visit (Source& s) override;
@@ -60,6 +60,7 @@ public:
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
     void visit (MixingGroup& s) override;
+    void visit (MultiFileSource& s) override;
 
     static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
     static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);

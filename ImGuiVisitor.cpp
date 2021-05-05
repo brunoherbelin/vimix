@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_access.hpp>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
@@ -24,6 +25,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "MultiFileSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
@@ -593,7 +595,6 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     std::string label = BaseToolkit::trunc_string(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-
     ImGui::SameLine();
     ImGui::Text("Folder");
 
@@ -711,3 +712,47 @@ void ImGuiVisitor::visit (NetworkSource& s)
 
 }
 
+
+void ImGuiVisitor::visit (MultiFileSource& s)
+{
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Images sequence");
+
+    // information text
+    std::ostringstream msg;
+    msg << "Sequence of " << s.sequence().max - s.sequence().min << " ";
+    msg << s.sequence().codec << " images";
+//    msg << "named " << SystemToolkit::base_filename( s.sequence().location );
+//    msg << " in range [" << s.sequence().min << " - " << s.sequence().max << "]";
+    ImGui::Text("%s", msg.str().c_str());
+
+    // change range
+    glm::ivec2 range = s.range();
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::DragIntRange2("Range", &range.x, &range.y, 1, s.sequence().min, s.sequence().max) ){
+        s.setRange( range );
+    }
+
+    // change framerate
+    int _fps = s.framerate();
+    static int _fps_changed = -1;
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps") ) {
+        _fps_changed = _fps;
+    }
+    // only call for setFramerate after mouse release to avoid repeating call to re-open the stream
+    else if (_fps_changed > 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
+        s.setFramerate(_fps_changed);
+        _fps_changed = -1;
+    }
+
+    // offer to open file browser at location
+    std::string path = SystemToolkit::path_filename(s.sequence().location);
+    std::string label = BaseToolkit::trunc_string(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    ImGui::SameLine();
+    ImGui::Text("Folder");
+
+}

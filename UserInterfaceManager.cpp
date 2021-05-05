@@ -1100,7 +1100,7 @@ void UserInterface::RenderPreview()
                     ImGui::Combo("Path", &selected_path, name_path, 4);
                     if (selected_path > 2) {
                         if (recordFolderFileDialogs.empty()) {
-                            recordFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.record.path) );
+                            recordFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::openFolderDialog, Settings::application.record.path) );
                             fileDialogPending_ = true;
                         }
                     }
@@ -1413,67 +1413,70 @@ void UserInterface::RenderShaderEditor()
 {
     static bool show_statusbar = true;
 
-    if ( ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar) )
+    if ( !ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar) )
     {
-        ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-        if (ImGui::BeginMenuBar())
-        {
-            if (ImGui::BeginMenu("Edit"))
-            {
-                bool ro = editor.IsReadOnly();
-                if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                    editor.SetReadOnly(ro);
-                ImGui::Separator();
-
-                if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
-                    editor.Undo();
-                if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
-                    editor.Redo();
-
-                ImGui::Separator();
-
-                if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
-                    editor.Copy();
-                if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
-                    editor.Cut();
-                if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
-                    editor.Delete();
-                if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                    editor.Paste();
-
-                ImGui::Separator();
-
-                if (ImGui::MenuItem( "Select all", nullptr, nullptr))
-                    editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-                ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("View"))
-            {
-                bool ws = editor.IsShowingWhitespaces();
-                if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
-                    editor.SetShowWhitespaces(ws);
-                ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-
-        if (show_statusbar) {
-            auto cpos = editor.GetCursorPosition();
-            ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-                        editor.IsOverwrite() ? "Ovr" : "Ins",
-                        editor.CanUndo() ? "*" : " ",
-                        editor.GetLanguageDefinition().mName.c_str());
-        }
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        editor.Render("ShaderEditor");
-        ImGui::PopFont();
-
         ImGui::End();
+        return;
     }
+
+    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Edit"))
+        {
+            bool ro = editor.IsReadOnly();
+            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+                editor.SetReadOnly(ro);
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
+                editor.Undo();
+            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
+                editor.Redo();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
+                editor.Copy();
+            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
+                editor.Cut();
+            if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
+                editor.Delete();
+            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                editor.Paste();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
+                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            bool ws = editor.IsShowingWhitespaces();
+            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
+                editor.SetShowWhitespaces(ws);
+            ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    if (show_statusbar) {
+        auto cpos = editor.GetCursorPosition();
+        ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+                    editor.IsOverwrite() ? "Ovr" : "Ins",
+                    editor.CanUndo() ? "*" : " ",
+                    editor.GetLanguageDefinition().mName.c_str());
+    }
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    editor.Render("ShaderEditor");
+    ImGui::PopFont();
+
+    ImGui::End();
 }
 
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
@@ -2330,6 +2333,7 @@ void Navigator::clearButtonSelection()
     // clear new source pannel
     new_source_preview_.setSource();
     pattern_type = -1;
+    _selectedFiles.clear();
 }
 
 void Navigator::showPannelSource(int index)
@@ -2653,18 +2657,11 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(width_);
         ImGui::Text("Source");
 
-//        ImGui::SameLine();
-//        ImGui::SetCursorPosX(pannel_width_ IMGUI_RIGHT_ALIGN);
-//        if (ImGui::BeginMenu("Edit"))
-//        {
-//            UserInterface::manager().showMenuEdit();
-//            ImGui::EndMenu();
-//        }
-
         //
         // News Source selection pannel
         //
-        static const char* origin_names[4] = { ICON_FA_PHOTO_VIDEO "  File",
+        static const char* origin_names[5] = { ICON_FA_PHOTO_VIDEO "  File",
+                                               ICON_FA_SORT_NUMERIC_DOWN "   Sequence",
                                                ICON_FA_SYNC "   Internal",
                                                ICON_FA_COG "   Generated",
                                                ICON_FA_PLUG "    Connected"
@@ -2673,16 +2670,16 @@ void Navigator::RenderNewPannel()
         if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
             new_source_preview_.setSource();
 
+        ImGui::SetCursorPosY(2.f * width_);
+
         // File Source creation
         if (Settings::application.source.new_type == 0) {
-
-            ImGui::SetCursorPosY(2.f * width_);
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // launch async call to file dialog and get its future.
                 if (fileImportFileDialogs.empty()) {
-                    fileImportFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::ImportFileDialog, Settings::application.recentImport.path) );
+                    fileImportFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::openMediaFileDialog, Settings::application.recentImport.path) );
                     fileDialogPending_ = true;
                 }
             }
@@ -2730,10 +2727,74 @@ void Navigator::RenderNewPannel()
                 ImGui::EndCombo();
             }
         }
-        // Internal Source creator
+        // Folder Source creator
         else if (Settings::application.source.new_type == 1){
 
-            ImGui::SetCursorPosY(2.f * width_);
+            bool update_new_source = false;
+            static std::vector< std::future< std::list<std::string> > > _selectedImagesFileDialogs;
+
+            // clic button to load file
+            if ( ImGui::Button( ICON_FA_IMAGES " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+                _selectedFiles.clear();
+                if (_selectedImagesFileDialogs.empty()) {
+                    _selectedImagesFileDialogs.emplace_back( std::async(std::launch::async, DialogToolkit::selectImagesFileDialog, Settings::application.recentImport.path) );
+                    fileDialogPending_ = true;
+                }
+            }
+
+            // Indication
+            ImGui::SameLine();
+            ImGuiToolkit::HelpMarker("Create a source from a sequence of numbered images.");
+
+            // return from thread for folder openning
+            if ( !_selectedImagesFileDialogs.empty() ) {
+                // check that file dialog thread finished
+                if (_selectedImagesFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
+                    // get the filenames from this file dialog
+                    _selectedFiles = _selectedImagesFileDialogs.back().get();
+                    // done with this file dialog
+                    _selectedImagesFileDialogs.pop_back();
+                    fileDialogPending_ = false;
+                    // ask to reload the preview
+                    update_new_source = true;
+                }
+            }
+
+            // a selection was made
+            if (!_selectedFiles.empty()) {
+
+                // set framerate
+                static int _fps = 30;
+                static bool _fps_changed = false;
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if ( ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps") ) {
+                    _fps_changed = true;
+                }
+                // only call for new source after mouse release to avoid repeating call to re-open the stream
+                else if (_fps_changed && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
+                    update_new_source = true;
+                    _fps_changed = false;
+                }
+
+                if (update_new_source) {
+                    // multiple files selected
+                    if (_selectedFiles.size() > 1) {
+                        std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
+                        label = BaseToolkit::trunc_string(label, 35);
+                        new_source_preview_.setSource( Mixer::manager().createSourceMultifile(_selectedFiles, _fps), label);
+                    }
+                    // single file selected
+                    else {
+                        std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
+                        label = BaseToolkit::trunc_string(label, 35);
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(_selectedFiles.front()), label);
+                    }
+                }
+            }
+
+        }
+        // Internal Source creator
+        else if (Settings::application.source.new_type == 2){
 
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -2760,9 +2821,7 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.");
         }
         // Generated Source creator
-        else if (Settings::application.source.new_type == 2){
-
-            ImGui::SetCursorPosY(2.f * width_);
+        else if (Settings::application.source.new_type == 3){
 
             bool update_new_source = false;
 
@@ -2804,9 +2863,7 @@ void Navigator::RenderNewPannel()
             }
         }
         // External source creator
-        else if (Settings::application.source.new_type == 3){
-
-            ImGui::SetCursorPosY(2.f * width_);
+        else if (Settings::application.source.new_type == 4){
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##External", "Select device"))
@@ -2838,7 +2895,7 @@ void Navigator::RenderNewPannel()
         // if a new source was added
         if (new_source_preview_.filled()) {
             // show preview
-            new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, Settings::application.source.new_type != 1);
+            new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, Settings::application.source.new_type != 2);
             // ask to import the source in the mixer
             ImGui::NewLine();
             if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
@@ -2876,44 +2933,6 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SetCursorPosY(width_);
 
-//    //
-//    // Buttons to show WINDOWS
-//    //
-//    ImGui::Spacing();
-//    ImGui::Text("Windows");
-//    ImGui::Spacing();
-
-//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//    std::string tooltip_ = "";
-
-//    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
-//        Rendering::manager().mainWindow().toggleFullscreen();
-//    if (ImGui::IsItemHovered())
-//        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
-
-//    ImGui::SameLine(0, 40);
-//    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
-//        Mixer::manager().session()->addNote();
-//    if (ImGui::IsItemHovered())
-//        tooltip_ = "New note " CTRL_MOD "Shift+N";
-
-//    ImGui::SameLine(0, 40);
-//    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
-//        Settings::application.widget.media_player = true;
-//    if (ImGui::IsItemHovered())
-//        tooltip_ = "Player       " CTRL_MOD "P";
-
-//    ImGui::SameLine(0, 40);
-//    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
-//        Settings::application.widget.preview = true;
-//    if (ImGui::IsItemHovered())
-//        tooltip_ = "Output       " CTRL_MOD "D";
-
-//    ImGui::PopFont();
-//    if (!tooltip_.empty()) {
-//        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
-//    }
-
     //
     // SESSION panel
     //
@@ -2947,7 +2966,7 @@ void Navigator::RenderMainPannelVimix()
         // Option 2 : add a folder
         if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ){
             if (recentFolderFileDialogs.empty()) {
-                recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::FolderDialog, Settings::application.recentFolders.path) );
+                recentFolderFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::openFolderDialog, Settings::application.recentFolders.path) );
                 fileDialogPending_ = true;
             }
         }
@@ -3016,7 +3035,7 @@ void Navigator::RenderMainPannelVimix()
         // selection MODE 1 : LIST FOLDER
         else if ( selection_session_mode == 1) {
             // show list of vimix files in folder
-            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, "mix");
+            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, {"mix", "MIX"});
         }
         // indicate the list changed (do not change at every frame)
         selection_session_mode_changed = false;
@@ -3119,8 +3138,8 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
     ImGuiToolkit::HelpMarker("Select the history of recently\n"
-                             "opened files or a folder, and\n"
-                             "double-clic a filename to open it.\n\n"
+                             "opened files or a folder.\n"
+                             "Double-clic a filename to open.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Enable smooth transition to\n"
                              "perform smooth cross fading.");
     // toggle button for smooth transition
@@ -3349,16 +3368,22 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
-                                 "Double-clic on a snapshot to restore it.\n\n"
-                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
-                                 "from current state to snapshot's state.");
-        // toggle button for smooth interpolation
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Snapshot interpolation");
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
+                                 "status of the current session.\n"
+                                 "Clic an item to preview or edit.\n"
+                                 "Double-clic to restore immediately.\n");
+
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+//        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
+//                                 "Double-clic on a snapshot to restore it.\n\n"
+//                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
+//                                 "from current state to snapshot's state.");
+//        // toggle button for smooth interpolation
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+//        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
+//        if (ImGui::IsItemHovered())
+//            ImGuiToolkit::ToolTip("Snapshot interpolation");
 
 //        if (Action::manager().currentSnapshot() > 0) {
 //            ImGui::SetCursorPos( pos_bot );
@@ -3368,6 +3393,8 @@ void Navigator::RenderMainPannelVimix()
 //                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
 
 //        }
+
+        ImGui::SetCursorPos( pos_bot );
     }
 
     //
@@ -3442,7 +3469,7 @@ void Navigator::RenderMainPannelSettings()
 
 #ifndef NDEBUG
         ImGui::Text("Expert");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_HISTORY, &Settings::application.widget.history);
+//        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_HISTORY, &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
