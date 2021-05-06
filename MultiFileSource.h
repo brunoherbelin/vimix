@@ -13,9 +13,6 @@ struct MultiFileSequence {
     uint height;
     int min;
     int max;
-    int begin;
-    int end;
-    int loop;
 
     MultiFileSequence ();
     MultiFileSequence (const std::list<std::string> &list_files);
@@ -29,6 +26,7 @@ class MultiFile : public Stream
 public:
     MultiFile ();
     void open (const MultiFileSequence &sequence, uint framerate = 30);
+    void close () override;
 
     // dynamic change of gstreamer multifile source properties
     void setProperties(int begin, int end, int loop);

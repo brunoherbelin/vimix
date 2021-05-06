@@ -49,7 +49,7 @@ public:
     /**
      * Close the Media
      * */
-    void close();
+    virtual void close();
     /**
      * Update texture with latest frame
      * Must be called in rendering update loop

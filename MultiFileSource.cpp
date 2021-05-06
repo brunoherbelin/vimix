@@ -26,11 +26,11 @@
 // splitfilesrc
 // gst-launch-1.0 splitfilesrc location="/home/bhbn/Videos/MOV01*.MOD" ! decodebin ! videoconvert ! autovideosink
 
-MultiFileSequence::MultiFileSequence() : width(0), height(0), min(0), max(0), loop(1)
+MultiFileSequence::MultiFileSequence() : width(0), height(0), min(0), max(0)
 {
 }
 
-MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files) : loop(1)
+MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
 {
     location = BaseToolkit::common_numbered_pattern(list_files, &min, &max);
 
@@ -64,7 +64,6 @@ inline MultiFileSequence& MultiFileSequence::operator = (const MultiFileSequence
         this->height = b.height;
         this->min = b.min;
         this->max = b.max;
-        this->loop = b.loop;
         this->location = b.location;
         this->codec = b.codec;
     }
@@ -75,7 +74,7 @@ inline MultiFileSequence& MultiFileSequence::operator = (const MultiFileSequence
 bool MultiFileSequence::operator != (const MultiFileSequence& b)
 {
     return ( location != b.location || codec != b.codec || width != b.width ||
-              height != b.height || min != b.min || max != b.max || loop != b.loop );
+              height != b.height || min != b.min || max != b.max );
 }
 
 MultiFile::MultiFile() : Stream(), src_(nullptr)
@@ -109,6 +108,14 @@ void MultiFile::open (const MultiFileSequence &sequence, uint framerate )
     src_ = gst_bin_get_by_name (GST_BIN (pipeline_), "src");
 }
 
+void MultiFile::close ()
+{
+    if (src_ != nullptr) {
+        gst_object_unref (src_);
+        src_ = nullptr;
+    }
+    Stream::close();
+}
 
 void MultiFile::setProperties (int begin, int end, int loop)
 {
