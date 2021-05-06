@@ -185,6 +185,7 @@ protected:
     virtual void execute_open();
 
     // gst frame filling
+    bool textureinitialized_;
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);

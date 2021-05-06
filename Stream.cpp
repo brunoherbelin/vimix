@@ -50,6 +50,7 @@ Stream::Stream()
 
     // OpenGL texture
     textureindex_ = 0;
+    textureinitialized_ = false;
 }
 
 Stream::~Stream()
@@ -80,6 +81,9 @@ guint Stream::texture() const
 
 void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
+    if (w != width_ || h != height_ )
+        textureinitialized_ = false;
+
     // set gstreamer pipeline source
     description_ = gstreamer_description;
     width_ = w;
@@ -372,6 +376,8 @@ bool Stream::isPlaying(bool testpipeline) const
 void Stream::init_texture(guint index)
 {
     glActiveTexture(GL_TEXTURE0);
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
@@ -383,6 +389,7 @@ void Stream::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     if (!single_frame_) {
+
         // set pbo image size
         pbo_size_ = height_ * width_ * 4;
 
@@ -425,13 +432,14 @@ void Stream::init_texture(guint index)
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    textureinitialized_ = true;
 }
 
 
 void Stream::fill_texture(guint index)
 {
     // is this the first frame ?
-    if (textureindex_ < 1)
+    if ( !textureinitialized_ || textureindex_ < 1)
     {
         // initialize texture
         init_texture(index);
