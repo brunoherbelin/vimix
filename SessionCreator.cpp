@@ -897,12 +897,12 @@ void SessionLoader::visit (MultiFileSource& s)
         sequence.location = std::string ( seq->GetText() );
         seq->QueryIntAttribute("min", &sequence.min);
         seq->QueryIntAttribute("max", &sequence.max);
-        seq->QueryIntAttribute("loop", &sequence.loop);
         seq->QueryUnsignedAttribute("width", &sequence.width);
         seq->QueryUnsignedAttribute("height", &sequence.height);
         const char *codec = seq->Attribute("codec");
         if (codec)
             sequence.codec = std::string(codec);
+
         uint fps = 0;
         seq->QueryUnsignedAttribute("fps", &fps);
 
@@ -911,11 +911,21 @@ void SessionLoader::visit (MultiFileSource& s)
             s.setSequence( sequence, fps);
         }
         // same sequence, different framerate
-        else if ( fps != s.framerate() ) {
+        else if ( fps != s.framerate() )  {
             s.setFramerate( fps );
         }
 
+        int begin = -1;
+        seq->QueryIntAttribute("begin", &begin);
+        int end = INT_MAX;
+        seq->QueryIntAttribute("end", &end);
+        if ( begin != s.begin() || end != s.end() )
+            s.setRange(begin, end);
 
+        bool loop = true;
+        seq->QueryBoolAttribute("loop", &loop);
+        if ( loop != s.loop() )
+            s.setLoop(loop);
     }
 
 }

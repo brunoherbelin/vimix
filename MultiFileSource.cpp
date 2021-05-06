@@ -83,7 +83,7 @@ MultiFile::MultiFile() : Stream(), src_(nullptr)
 
 }
 
-void MultiFile::open(const MultiFileSequence &sequence, uint framerate )
+void MultiFile::open (const MultiFileSequence &sequence, uint framerate )
 {
     if (sequence.location.empty())
         return;
@@ -95,8 +95,7 @@ void MultiFile::open(const MultiFileSequence &sequence, uint framerate )
     gstreamer_pipeline << sequence.codec;
     gstreamer_pipeline << ",framerate=(fraction)";
     gstreamer_pipeline << framerate;
-    gstreamer_pipeline << "/1\" loop=";
-    gstreamer_pipeline << sequence.loop;
+    gstreamer_pipeline << "/1\" loop=1";
     gstreamer_pipeline << " start-index=";
     gstreamer_pipeline << sequence.min;
     gstreamer_pipeline << " stop-index=";
@@ -106,28 +105,23 @@ void MultiFile::open(const MultiFileSequence &sequence, uint framerate )
     // (private) open stream
     Stream::open(gstreamer_pipeline.str(), sequence.width, sequence.height);
 
+    // keep multifile source for dynamic properties change
     src_ = gst_bin_get_by_name (GST_BIN (pipeline_), "src");
-
 }
 
-void MultiFile::setLoop (int on)
-{
-    if (src_) {
-        g_object_set (src_, "loop", on, NULL);
-    }
-}
 
-void MultiFile::setRange (int begin, int end)
+void MultiFile::setProperties (int begin, int end, int loop)
 {
     if (src_) {
         g_object_set (src_, "start-index", MAX(begin, 0), NULL);
         g_object_set (src_, "stop-index", MAX(end, 0), NULL);
+        g_object_set (src_, "loop", MIN(loop, 1), NULL);
     }
 }
 
 
 
-MultiFileSource::MultiFileSource(uint64_t id) : StreamSource(id), framerate_(0), range_(glm::ivec2(0))
+MultiFileSource::MultiFileSource (uint64_t id) : StreamSource(id), framerate_(0), begin_(-1), end_(INT_MAX), loop_(1)
 {
     // create stream
     stream_ = static_cast<Stream *>( new MultiFile );
@@ -154,8 +148,8 @@ void MultiFileSource::setSequence (const MultiFileSequence &sequence, uint frame
         multifile()->open( sequence_, framerate_ );
         stream_->play(true);
 
-        // init range
-        range_ = glm::ivec2(sequence_.min, sequence_.max);
+        // validate range and apply loop_
+        setRange(begin_, end_);
 
         // will be ready after init and one frame rendered
         ready_ = false;
@@ -172,30 +166,30 @@ void MultiFileSource::setFramerate (uint framerate)
 void MultiFileSource::setLoop (bool on)
 {
     if (multifile()) {
-        sequence_.loop = on ? 1 : 0;
-        multifile()->setLoop( sequence_.loop );
+        loop_ = on ? 1 : 0;
+        multifile()->setProperties (begin_, end_, loop_);
     }
 }
 
-void MultiFileSource::setRange (glm::ivec2 range)
+void MultiFileSource::setRange (int begin, int end)
 {
-    range_.x = glm::clamp( range.x, sequence_.min, sequence_.max );
-    range_.y = glm::clamp( range.y, sequence_.min, sequence_.max );
-    range_.x = glm::min( range_.x, range_.y );
-    range_.y = glm::max( range_.x, range_.y );
+    begin_ = glm::clamp( begin, sequence_.min, sequence_.max );
+    end_   = glm::clamp( end  , sequence_.min, sequence_.max );
+    begin_ = glm::min( begin_, end_ );
+    end_   = glm::max( begin_, end_ );
 
     if (multifile())
-        multifile()->setRange( range_.x, range_.y );
+        multifile()->setProperties (begin_, end_, loop_);
 }
 
-void MultiFileSource::accept(Visitor& v)
+void MultiFileSource::accept (Visitor& v)
 {
     Source::accept(v);
     if (!failed())
         v.visit(*this);
 }
 
-MultiFile *MultiFileSource::multifile() const
+MultiFile *MultiFileSource::multifile () const
 {
     return dynamic_cast<MultiFile *>(stream_);
 }

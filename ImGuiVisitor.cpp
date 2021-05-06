@@ -709,7 +709,6 @@ void ImGuiVisitor::visit (NetworkSource& s)
         s.setConnection(s.connection());
     }
 
-
 }
 
 
@@ -718,33 +717,43 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Images sequence");
+    static int64_t id = s.id();
 
     // information text
     std::ostringstream msg;
-    msg << "Sequence of " << s.sequence().max - s.sequence().min << " ";
+    msg << "Sequence of " << s.sequence().max - s.sequence().min + 1 << " ";
     msg << s.sequence().codec << " images";
-//    msg << "named " << SystemToolkit::base_filename( s.sequence().location );
-//    msg << " in range [" << s.sequence().min << " - " << s.sequence().max << "]";
     ImGui::Text("%s", msg.str().c_str());
 
     // change range
-    glm::ivec2 range = s.range();
+    static int _begin = -1;
+    if (_begin < 0 || id != s.id())
+        _begin = s.begin();
+    static int _end = -1;
+    if (_end < 0 || id != s.id())
+        _end = s.end();
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::DragIntRange2("Range", &range.x, &range.y, 1, s.sequence().min, s.sequence().max) ){
-        s.setRange( range );
+    ImGui::DragIntRange2("Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        s.setRange( _begin, _end );
+        std::ostringstream oss;
+        oss << s.name() << ": Range " << _begin << "-" << _end;
+        Action::manager().store(oss.str());
+        _begin = _end = -1;
     }
 
     // change framerate
-    int _fps = s.framerate();
-    static int _fps_changed = -1;
+    static int _fps = -1;
+    if (_fps < 0 || id != s.id())
+        _fps = s.framerate();
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps") ) {
-        _fps_changed = _fps;
-    }
-    // only call for setFramerate after mouse release to avoid repeating call to re-open the stream
-    else if (_fps_changed > 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
-        s.setFramerate(_fps_changed);
-        _fps_changed = -1;
+    ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        s.setFramerate(_fps);
+        std::ostringstream oss;
+        oss << s.name() << ": Framerate " << _fps << " fps";
+        Action::manager().store(oss.str());
+        _fps = -1;
     }
 
     // offer to open file browser at location
@@ -755,4 +764,5 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     ImGui::SameLine();
     ImGui::Text("Folder");
 
+    id = s.id();
 }

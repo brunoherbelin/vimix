@@ -13,6 +13,8 @@ struct MultiFileSequence {
     uint height;
     int min;
     int max;
+    int begin;
+    int end;
     int loop;
 
     MultiFileSequence ();
@@ -28,8 +30,8 @@ public:
     MultiFile ();
     void open (const MultiFileSequence &sequence, uint framerate = 30);
 
-    void setRange(int begin, int end);
-    void setLoop (int on);
+    // dynamic change of gstreamer multifile source properties
+    void setProperties(int begin, int end, int loop);
 
 protected:
     GstElement *src_ ;
@@ -57,17 +59,19 @@ public:
     inline uint framerate () const { return framerate_; }
 
     void setLoop (bool on);
-    inline bool loop () const { return sequence_.loop; }
+    inline bool loop () const { return loop_ > 0 ? true : false; }
 
-    void setRange (glm::ivec2 range);
-    glm::ivec2 range () const { return range_; }
+    void setRange (int begin, int end);
+    inline int begin() const { return begin_; }
+    inline int end  () const { return end_;   }
 
     MultiFile *multifile () const;
 
 private:
     MultiFileSequence sequence_;
     uint framerate_;
-    glm::ivec2 range_;
+    int  begin_, end_, loop_;
+
 };
 
 

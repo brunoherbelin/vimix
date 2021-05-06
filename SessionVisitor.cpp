@@ -599,10 +599,14 @@ void SessionVisitor::visit (MultiFileSource& s)
     xmlCurrent_->SetAttribute("type", "MultiFileSource");
 
     XMLElement *sequence = xmlDoc_->NewElement("Sequence");
+    // play properties
     sequence->SetAttribute("fps", s.framerate());
+    sequence->SetAttribute("begin", s.begin());
+    sequence->SetAttribute("end", s.end());
+    sequence->SetAttribute("loop", s.loop());
+    // file sequence description
     sequence->SetAttribute("min", s.sequence().min);
     sequence->SetAttribute("max", s.sequence().max);
-    sequence->SetAttribute("loop", s.sequence().loop);
     sequence->SetAttribute("width", s.sequence().width);
     sequence->SetAttribute("height", s.sequence().height);
     sequence->SetAttribute("codec", s.sequence().codec.c_str());
@@ -610,18 +614,6 @@ void SessionVisitor::visit (MultiFileSource& s)
     sequence->InsertEndChild( location );
 
     xmlCurrent_->InsertEndChild(sequence);
-
-//    XMLElement *sequence = xmlDoc_->NewElement("Sequence");
-//    sequence->SetAttribute("fps", s.fps());
-
-//    std::list<std::string> list = s.sequence ();
-//    for (auto it = list.cbegin(); it != list.cend(); ++it) {
-//        XMLElement *f = xmlDoc_->NewElement("file");
-//        XMLText *filename = xmlDoc_->NewText( it->c_str() );
-//        f->InsertEndChild( filename );
-//        sequence->InsertEndChild(f);
-//    }
-//    xmlCurrent_->InsertEndChild(sequence);
 }
 
 std::string SessionVisitor::getClipboard(const SourceList &list)
