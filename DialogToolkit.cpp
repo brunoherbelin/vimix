@@ -301,9 +301,27 @@ std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &
     char const * open_file_names;
     open_file_names = tinyfd_openFileDialog( "Select images", startpath.c_str(), 3, open_pattern, "Images", 1);
 
-    if (open_file_names)
-//        filename = std::string(open_file_name);
-     //   TODO
+    if (open_file_names) {
+
+        const std::string& str (open_file_names);
+        const std::string& delimiters = "|";
+        // Skip delimiters at beginning.
+        std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+
+        // Find first non-delimiter.
+        std::string::size_type pos = str.find_first_of(delimiters, lastPos);
+
+        while (std::string::npos != pos || std::string::npos != lastPos) {
+            // Found a token, add it to the vector.
+            files.push_back(str.substr(lastPos, pos - lastPos));
+
+            // Skip delimiters.
+            lastPos = str.find_first_not_of(delimiters, pos);
+
+            // Find next non-delimiter.
+            pos = str.find_first_of(delimiters, lastPos);
+        }
+    }
 #else
 
     if (!gtk_init()) {

@@ -269,6 +269,9 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
             // propose a new name
             s->setName( SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) ) );
         }
+        else {
+            Log::Notify("Could not find a sequence of consecutively numbered files.");
+        }
     }
 
     return s;

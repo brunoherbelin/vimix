@@ -2676,7 +2676,7 @@ void Navigator::RenderNewPannel()
         if (Settings::application.source.new_type == 0) {
 
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open file", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open media", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 // launch async call to file dialog and get its future.
                 if (fileImportFileDialogs.empty()) {
                     fileImportFileDialogs.emplace_back(  std::async(std::launch::async, DialogToolkit::openMediaFileDialog, Settings::application.recentImport.path) );
@@ -2752,6 +2752,9 @@ void Navigator::RenderNewPannel()
                 if (_selectedImagesFileDialogs.back().wait_for(timeout) == std::future_status::ready ) {
                     // get the filenames from this file dialog
                     _selectedFiles = _selectedImagesFileDialogs.back().get();
+                    if (_selectedFiles.empty()) {
+                        Log::Notify("No file selected.");
+                    } 
                     // done with this file dialog
                     _selectedImagesFileDialogs.pop_back();
                     fileDialogPending_ = false;
@@ -2760,8 +2763,8 @@ void Navigator::RenderNewPannel()
                 }
             }
 
-            // a selection was made
-            if (!_selectedFiles.empty()) {
+            // multiple files selected
+            if (_selectedFiles.size() > 1) {
 
                 // set framerate
                 static int _fps = 30;
@@ -2777,19 +2780,22 @@ void Navigator::RenderNewPannel()
                 }
 
                 if (update_new_source) {
-                    // multiple files selected
-                    if (_selectedFiles.size() > 1) {
-                        std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
-                        label = BaseToolkit::trunc_string(label, 35);
-                        new_source_preview_.setSource( Mixer::manager().createSourceMultifile(_selectedFiles, _fps), label);
-                    }
-                    // single file selected
-                    else {
-                        std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
-                        label = BaseToolkit::trunc_string(label, 35);
-                        new_source_preview_.setSource( Mixer::manager().createSourceFile(_selectedFiles.front()), label);
-                    }
+                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(_selectedFiles) );
+                    label = BaseToolkit::trunc_string(label, 35);
+                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(_selectedFiles, _fps), label);
                 }
+            }
+            // single file selected
+            else if (_selectedFiles.size() > 0) {
+
+                ImGui::Text("Single file selected");
+
+                if (update_new_source) {
+                    std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
+                    label = BaseToolkit::trunc_string(label, 35);
+                    new_source_preview_.setSource( Mixer::manager().createSourceFile(_selectedFiles.front()), label);
+                }
+
             }
 
         }
