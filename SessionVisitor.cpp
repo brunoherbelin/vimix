@@ -11,11 +11,13 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "MultiFileSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
 #include "SystemToolkit.h"
+#include "ActionManager.h"
 
 #include <iostream>
 #include <locale>
@@ -44,9 +46,16 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     XMLElement *sessionNode = xmlDoc.NewElement("Session");
     xmlDoc.InsertEndChild(sessionNode);
     SessionVisitor sv(&xmlDoc, sessionNode);
-    for (auto iter = session->begin(); iter != session->end(); iter++, sv.setRoot(sessionNode) )
+    for (auto iter = session->begin(); iter != session->end(); ++iter, sv.setRoot(sessionNode) )
         // source visitor
         (*iter)->accept(sv);
+
+    // get the thumbnail
+    FrameBufferImage *thumbnail = session->thumbnail();
+    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, &xmlDoc);
+    if (imageelement)
+        sessionNode->InsertEndChild(imageelement);
+    delete thumbnail;
 
     // 2. config of views
     XMLElement *views = xmlDoc.NewElement("Views");
@@ -73,6 +82,35 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         views->InsertEndChild(render);
     }
 
+    // 3. snapshots
+    XMLElement *snapshots = xmlDoc.NewElement("Snapshots");
+    const XMLElement* N = session->snapshots()->xmlDoc_->FirstChildElement();
+    for( ; N ; N=N->NextSiblingElement())
+        snapshots->InsertEndChild( N->DeepClone( &xmlDoc ));
+    xmlDoc.InsertEndChild(snapshots);
+
+    // 4. optional notes
+    XMLElement *notes = xmlDoc.NewElement("Notes");
+    xmlDoc.InsertEndChild(notes);
+    for (auto nit = session->beginNotes(); nit != session->endNotes(); ++nit) {
+        XMLElement *note = xmlDoc.NewElement( "Note" );
+        note->SetAttribute("large", (*nit).large );
+        note->SetAttribute("stick", (*nit).stick );
+        XMLElement *pos = xmlDoc.NewElement("pos");
+        pos->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).pos) );
+        note->InsertEndChild(pos);
+        XMLElement *size = xmlDoc.NewElement("size");
+        size->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).size) );
+        note->InsertEndChild(size);
+        XMLElement *content = xmlDoc.NewElement("text");
+        XMLText *text = xmlDoc.NewText( (*nit).text.c_str() );
+        content->InsertEndChild( text );
+        note->InsertEndChild(content);
+
+        notes->InsertEndChild(note);
+    }
+
+
     // save file to disk
     return ( XMLSaveDoc(&xmlDoc, filename) );
 }
@@ -90,7 +128,7 @@ SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
         xmlDoc_ = doc;
 }
 
-tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *doc)
+XMLElement *SessionVisitor::NodeToXML(const Node &n, XMLDocument *doc)
 {
     XMLElement *newelement = doc->NewElement("Node");
     newelement->SetAttribute("visible", n.visible_);
@@ -113,6 +151,31 @@ tinyxml2::XMLElement *SessionVisitor::NodeToXML(Node &n, tinyxml2::XMLDocument *
     newelement->InsertEndChild(crop);
 
     return newelement;
+}
+
+
+XMLElement *SessionVisitor::ImageToXML(const FrameBufferImage *img, XMLDocument *doc)
+{
+    XMLElement *imageelement = nullptr;
+    if (img != nullptr) {
+        // get the jpeg encoded buffer
+        FrameBufferImage::jpegBuffer jpgimg = img->getJpeg();
+        if (jpgimg.buffer != nullptr) {
+            // fill the xml array with jpeg buffer
+            XMLElement *array = XMLElementEncodeArray(doc, jpgimg.buffer, jpgimg.len);
+            // free the buffer
+            free(jpgimg.buffer);
+            // if we could create the array
+            if (array) {
+                // create an Image node to store the mask image
+                imageelement = doc->NewElement("Image");
+                imageelement->SetAttribute("width", img->width);
+                imageelement->SetAttribute("height", img->height);
+                imageelement->InsertEndChild(array);
+            }
+        }
+    }
+    return imageelement;
 }
 
 void SessionVisitor::visit(Node &n)
@@ -151,7 +214,7 @@ void SessionVisitor::visit(Switch &n)
     if (recursive_) {
         // loop over members of the group
         XMLElement *group = xmlCurrent_;
-        for(uint i = 0; i < n.numChildren(); i++) {
+        for(uint i = 0; i < n.numChildren(); ++i) {
             n.child(i)->accept(*this);
             // revert to group as current
             xmlCurrent_ = group;
@@ -225,7 +288,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         // gaps in timeline
         XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
         TimeIntervalSet gaps = n.timeline()->gaps();
-        for( auto it = gaps.begin(); it!= gaps.end(); it++) {
+        for( auto it = gaps.begin(); it!= gaps.end(); ++it) {
             XMLElement *g = xmlDoc_->NewElement("Interval");
             g->SetAttribute("begin", (*it).begin);
             g->SetAttribute("end", (*it).end);
@@ -419,24 +482,9 @@ void SessionVisitor::visit (Source& s)
     // if we are saving a pain mask
     if (s.maskShader()->mode == MaskShader::PAINT) {
         // get the mask previously stored
-        FrameBufferImage *img = s.getMask();
-        if (img != nullptr) {
-            // get the jpeg encoded buffer
-            FrameBufferImage::jpegBuffer jpgimg = img->getJpeg();
-            if (jpgimg.buffer != nullptr) {
-                // fill the xml array with jpeg buffer
-                XMLElement *array = XMLElementEncodeArray(xmlDoc_, jpgimg.buffer, jpgimg.len);
-                // free the buffer
-                free(jpgimg.buffer);
-                // if we could create the array
-                if (array) {
-                    // create an Image node to store the mask image
-                    XMLElement *imageelement = xmlDoc_->NewElement("Image");
-                    imageelement->InsertEndChild(array);
-                    xmlCurrent_->InsertEndChild(imageelement);
-                }
-            }
-        }
+        XMLElement *imageelement = SessionVisitor::ImageToXML(s.getMask(), xmlDoc_);
+        if (imageelement)
+            xmlCurrent_->InsertEndChild(imageelement);
     }
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );
@@ -487,7 +535,7 @@ void SessionVisitor::visit (SessionGroupSource& s)
     XMLElement *sessionNode = xmlDoc_->NewElement("Session");
     xmlCurrent_->InsertEndChild(sessionNode);
 
-    for (auto iter = se->begin(); iter != se->end(); iter++){
+    for (auto iter = se->begin(); iter != se->end(); ++iter){
         setRoot(sessionNode);
         (*iter)->accept(*this);
     }
@@ -504,6 +552,7 @@ void SessionVisitor::visit (CloneSource& s)
     xmlCurrent_->SetAttribute("type", "CloneSource");
 
     XMLElement *origin = xmlDoc_->NewElement("origin");
+    origin->SetAttribute("id", s.origin()->id());
     xmlCurrent_->InsertEndChild(origin);
     XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
     origin->InsertEndChild( text );
@@ -512,11 +561,14 @@ void SessionVisitor::visit (CloneSource& s)
 void SessionVisitor::visit (PatternSource& s)
 {
     xmlCurrent_->SetAttribute("type", "PatternSource");
-    xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
 
-    XMLElement *resolution = xmlDoc_->NewElement("resolution");
-    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
-    xmlCurrent_->InsertEndChild(resolution);
+    if (s.pattern()) {
+        xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
+
+        XMLElement *resolution = xmlDoc_->NewElement("resolution");
+        resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
+        xmlCurrent_->InsertEndChild(resolution);
+    }
 }
 
 void SessionVisitor::visit (DeviceSource& s)
@@ -535,14 +587,36 @@ void SessionVisitor::visit (MixingGroup& g)
 {
     xmlCurrent_->SetAttribute("size", g.size());
 
-    for (auto it = g.begin(); it != g.end(); it++) {
+    for (auto it = g.begin(); it != g.end(); ++it) {
         XMLElement *sour = xmlDoc_->NewElement("source");
         sour->SetAttribute("id", (*it)->id());
         xmlCurrent_->InsertEndChild(sour);
     }
 }
 
-std::string SessionVisitor::getClipboard(SourceList list)
+void SessionVisitor::visit (MultiFileSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "MultiFileSource");
+
+    XMLElement *sequence = xmlDoc_->NewElement("Sequence");
+    // play properties
+    sequence->SetAttribute("fps", s.framerate());
+    sequence->SetAttribute("begin", s.begin());
+    sequence->SetAttribute("end", s.end());
+    sequence->SetAttribute("loop", s.loop());
+    // file sequence description
+    sequence->SetAttribute("min", s.sequence().min);
+    sequence->SetAttribute("max", s.sequence().max);
+    sequence->SetAttribute("width", s.sequence().width);
+    sequence->SetAttribute("height", s.sequence().height);
+    sequence->SetAttribute("codec", s.sequence().codec.c_str());
+    XMLText *location = xmlDoc_->NewText( s.sequence().location.c_str() );
+    sequence->InsertEndChild( location );
+
+    xmlCurrent_->InsertEndChild(sequence);
+}
+
+std::string SessionVisitor::getClipboard(const SourceList &list)
 {
     std::string x = "";
 
@@ -557,7 +631,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
         // fill doc by visiting sources
         SourceList selection_clones_;
         SessionVisitor sv(&xmlDoc, selectionNode);
-        for (auto iter = list.begin(); iter != list.end(); iter++, sv.setRoot(selectionNode) ){
+        for (auto iter = list.begin(); iter != list.end(); ++iter, sv.setRoot(selectionNode) ){
             // start with clones
             CloneSource *clone = dynamic_cast<CloneSource *>(*iter);
             if (clone)
@@ -566,7 +640,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
                 selection_clones_.push_back(*iter);
         }
         // add others in front
-        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); iter++, sv.setRoot(selectionNode) ){
+        for (auto iter = selection_clones_.begin(); iter != selection_clones_.end(); ++iter, sv.setRoot(selectionNode) ){
             (*iter)->accept(sv);
         }
 
@@ -579,7 +653,7 @@ std::string SessionVisitor::getClipboard(SourceList list)
     return x;
 }
 
-std::string SessionVisitor::getClipboard(Source *s)
+std::string SessionVisitor::getClipboard(Source * const s)
 {
     std::string x = "";
 
@@ -603,7 +677,7 @@ std::string SessionVisitor::getClipboard(Source *s)
     return x;
 }
 
-std::string SessionVisitor::getClipboard(ImageProcessingShader *s)
+std::string SessionVisitor::getClipboard(ImageProcessingShader * const s)
 {
     std::string x = "";
 

@@ -11,16 +11,97 @@
 #include "SearchVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "Log.h"
 #include "MixingGroup.h"
 
 #include "Source.h"
 
-Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_(false), need_update_(true), workspace_(STAGE)
+SourceCore::SourceCore()
+{
+    // default nodes
+    groups_[View::RENDERING] = new Group;
+    groups_[View::RENDERING]->visible_ = false;
+    groups_[View::MIXING] = new Group;
+    groups_[View::MIXING]->visible_ = false;
+    groups_[View::GEOMETRY] = new Group;
+    groups_[View::GEOMETRY]->visible_ = false;
+    groups_[View::LAYER] = new Group;
+    groups_[View::LAYER]->visible_ = false;
+    groups_[View::TEXTURE] = new Group;
+    groups_[View::TEXTURE]->visible_ = false;
+    groups_[View::TRANSITION] = new Group;
+    // temp node
+    stored_status_  = new Group;
+
+    // filtered image shader (with texturing and processing) for rendering
+    processingshader_ = new ImageProcessingShader;
+    // default rendering with image processing disabled
+    renderingshader_ = static_cast<Shader *>(new ImageShader);
+}
+
+SourceCore::SourceCore(SourceCore const& other) : SourceCore()
+{
+    copy(other);
+}
+
+SourceCore::~SourceCore()
+{
+    // all groups and their children are deleted in the scene
+    // this deletes renderingshader_ (and all source-attached nodes
+    // e.g. rendersurface_, overlays, blendingshader_, etc.)
+    delete groups_[View::RENDERING];
+    delete groups_[View::MIXING];
+    delete groups_[View::GEOMETRY];
+    delete groups_[View::LAYER];
+    delete groups_[View::TEXTURE];
+    delete groups_[View::TRANSITION];
+    delete stored_status_;
+
+    // don't forget that the processing shader
+    // could be created but not used and not deleted above
+    if ( renderingshader_ != processingshader_ )
+        delete processingshader_;
+
+    groups_.clear();
+}
+
+void SourceCore::copy(SourceCore const& other)
+{
+    // copy groups properties
+//    groups_[View::RENDERING]->copyTransform( other.group(View::RENDERING) );
+    groups_[View::MIXING]->copyTransform( other.group(View::MIXING) );
+    groups_[View::GEOMETRY]->copyTransform( other.group(View::GEOMETRY) );
+    groups_[View::LAYER]->copyTransform( other.group(View::LAYER) );
+    groups_[View::TEXTURE]->copyTransform( other.group(View::TEXTURE) );
+    groups_[View::TRANSITION]->copyTransform( other.group(View::TRANSITION) );
+    stored_status_->copyTransform( other.stored_status_ );
+
+    // copy shader properties
+    processingshader_->copy(*other.processingshader_);
+    renderingshader_->copy(*other.renderingshader_);
+}
+
+void SourceCore::store (View::Mode m)
+{
+    stored_status_->copyTransform(groups_[m]);
+}
+
+SourceCore& SourceCore::operator= (SourceCore const& other)
+{
+    if (this != &other)   // no self assignment
+        copy(other);
+    return *this;
+}
+
+
+Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
+    active_(true), locked_(false), need_update_(true), dt_(0), workspace_(STAGE)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    if (id_ == 0)
+        id_ = BaseToolkit::uniqueId();
 
     sprintf(initials_, "__");
     name_ = "Source";
@@ -28,13 +109,7 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
 
     // create groups and overlays for each view
 
-    // default rendering node
-    groups_[View::RENDERING] = new Group;
-    groups_[View::RENDERING]->visible_ = false;
-
     // default mixing nodes
-    groups_[View::MIXING] = new Group;
-    groups_[View::MIXING]->visible_ = false;
     groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
     groups_[View::MIXING]->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
 
@@ -69,9 +144,6 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     groups_[View::MIXING]->attach(overlay_mixinggroup_);
 
     // default geometry nodes
-    groups_[View::GEOMETRY] = new Group;
-    groups_[View::GEOMETRY]->visible_ = false;
-
     frames_[View::GEOMETRY] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -122,8 +194,6 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     groups_[View::GEOMETRY]->attach(overlays_[View::GEOMETRY]);
 
     // default layer nodes
-    groups_[View::LAYER] = new Group;
-    groups_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->translation_.z = -1.f;
 
     frames_[View::LAYER] = new Switch;
@@ -143,9 +213,6 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
 
     // default appearance node
-    groups_[View::TEXTURE] = new Group;
-    groups_[View::TEXTURE]->visible_ = false;
-
     frames_[View::TEXTURE] = new Switch;
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -186,9 +253,6 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     overlays_[View::TEXTURE]->attach(handles_[View::TEXTURE][Handles::MENU]);
     groups_[View::TEXTURE]->attach(overlays_[View::TEXTURE]);
 
-    // empty transition node
-    groups_[View::TRANSITION] = new Group;
-
     // locker switch button : locked / unlocked icons
     locker_  = new Switch;
     lock_ = new Handles(Handles::LOCKED);
@@ -196,19 +260,11 @@ Source::Source() : initialized_(false), symbol_(nullptr), active_(true), locked_
     unlock_ = new Handles(Handles::UNLOCKED);
     locker_->attach(unlock_);
 
-    // create objects
-    stored_status_  = new Group;
-
     // simple image shader (with texturing) for blending
     blendingshader_ = new ImageShader;
     // mask produced by dedicated shader
     maskshader_ = new MaskShader;
     masksurface_ = new Surface(maskshader_);
-
-    // filtered image shader (with texturing and processing) for rendering
-    processingshader_   = new ImageProcessingShader;
-    // default rendering with image processing enabled
-    renderingshader_ = static_cast<Shader *>(processingshader_);
 
     // for drawing in mixing view
     mixingshader_ = new ImageShader;
@@ -238,12 +294,11 @@ Source::~Source()
         links_.front()->disconnect();
 
     // inform clones that they lost their origin
-    for (auto it = clones_.begin(); it != clones_.end(); it++)
+    for (auto it = clones_.begin(); it != clones_.end(); ++it)
         (*it)->detach();
     clones_.clear();
 
     // delete objects
-    delete stored_status_;
     if (renderbuffer_)
         delete renderbuffer_;
     if (maskbuffer_)
@@ -253,30 +308,17 @@ Source::~Source()
     if (masksurface_)
         delete masksurface_; // deletes maskshader_
 
-    // all groups and their children are deleted in the scene
-    // this includes rendersurface_, overlays, blendingshader_ and rendershader_
-    delete groups_[View::RENDERING];
-    delete groups_[View::MIXING];
-    delete groups_[View::GEOMETRY];
-    delete groups_[View::LAYER];
-    delete groups_[View::TEXTURE];
-    delete groups_[View::TRANSITION];
-
-    groups_.clear();
-    frames_.clear();
-    overlays_.clear();
-
-    // don't forget that the processing shader
-    // could be created but not used
-    if ( renderingshader_ != processingshader_ )
-        delete processingshader_;
-
     delete texturesurface_;
+
+    overlays_.clear();
+    frames_.clear();
+    handles_.clear();
 }
 
 void Source::setName (const std::string &name)
 {
-    name_ = SystemToolkit::transliterate(name);
+    if (!name.empty())
+        name_ = BaseToolkit::transliterate(name);
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );
@@ -296,18 +338,18 @@ void Source::setMode(Source::Mode m)
 {
     // make visible on first time
     if ( mode_ == Source::UNINITIALIZED ) {
-        for (auto g = groups_.begin(); g != groups_.end(); g++)
+        for (auto g = groups_.begin(); g != groups_.end(); ++g)
             (*g).second->visible_ = true;
     }
 
     // choose frame 0 if visible, 1 if selected
     uint index_frame = m == Source::VISIBLE ? 0 : 1;
-    for (auto f = frames_.begin(); f != frames_.end(); f++)
+    for (auto f = frames_.begin(); f != frames_.end(); ++f)
         (*f).second->setActive(index_frame);
 
     // show overlay if current
     bool current = m >= Source::CURRENT;
-    for (auto o = overlays_.begin(); o != overlays_.end(); o++)
+    for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
 
     // the lock icon
@@ -372,13 +414,14 @@ bool Source::imageProcessingEnabled()
 
 void Source::render()
 {
-    if (!initialized_)
+    if ( renderbuffer_ == nullptr )
         init();
     else {
         // render the view into frame buffer
         renderbuffer_->begin();
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
+        ready_ = true;
     }
 }
 
@@ -459,7 +502,7 @@ void Source::setActive (bool on)
     active_ = on;
 
     // do not disactivate if a clone depends on it
-    for(auto clone = clones_.begin(); clone != clones_.end(); clone++) {
+    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
         if ( (*clone)->active() )
             active_ = true;
     }
@@ -665,7 +708,7 @@ void Source::update(float dt)
 
 FrameBuffer *Source::frame() const
 {
-    if (initialized_ && renderbuffer_)
+    if ( mode_ > Source::UNINITIALIZED && renderbuffer_)
     {
         return renderbuffer_;
     }
@@ -738,13 +781,13 @@ bool Source::hasNode::operator()(const Source* elem) const
         // general case: traverse tree of all Groups recursively using a SearchVisitor
         SearchVisitor sv(_n);
         // search in groups for all views
-        for (auto g = elem->groups_.begin(); g != elem->groups_.end(); g++) {
+        for (auto g = elem->groups_.begin(); g != elem->groups_.end(); ++g) {
             (*g).second->accept(sv);
             if (sv.found())
                 return true;
         }
         // search in overlays for all views
-        for (auto g = elem->overlays_.begin(); g != elem->overlays_.end(); g++) {
+        for (auto g = elem->overlays_.begin(); g != elem->overlays_.end(); ++g) {
             (*g).second->accept(sv);
             if (sv.found())
                 return true;
@@ -762,9 +805,9 @@ void Source::clearMixingGroup()
 }
 
 
-CloneSource *Source::clone()
+CloneSource *Source::clone(uint64_t id)
 {
-    CloneSource *s = new CloneSource(this);
+    CloneSource *s = new CloneSource(this, id);
 
     clones_.push_back(s);
 
@@ -772,8 +815,9 @@ CloneSource *Source::clone()
 }
 
 
-CloneSource::CloneSource(Source *origin) : Source(), origin_(origin)
+CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin)
 {
+    name_ = origin->name();
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
@@ -785,18 +829,18 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 }
 
-CloneSource *CloneSource::clone()
+CloneSource *CloneSource::clone(uint64_t id)
 {
     // do not clone a clone : clone the original instead
     if (origin_)
-        return origin_->clone();
+        return origin_->clone(id);
     else
         return nullptr;
 }
 
 void CloneSource::init()
 {
-    if (origin_ && origin_->ready()) {
+    if (origin_ && origin_->mode_ > Source::UNINITIALIZED) {
 
         // get the texture index from framebuffer of view, apply it to the surface
         texturesurface_->setTextureIndex( origin_->texture() );
@@ -808,10 +852,9 @@ void CloneSource::init()
         attach(renderbuffer);
 
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
     }
 }
@@ -824,14 +867,14 @@ void CloneSource::setActive (bool on)
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
-    if (initialized_ && origin_ != nullptr)
+    if ( mode_ > Source::UNINITIALIZED && origin_ != nullptr)
         origin_->touch();
 }
 
 
 uint CloneSource::texture() const
 {
-    if (initialized_ && origin_ != nullptr)
+    if (origin_ != nullptr)
         return origin_->texture();
     else
         return Resource::getTextureBlack();

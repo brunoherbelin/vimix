@@ -24,23 +24,6 @@ public:
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
 
-    void visit(Surface& n) override;
-    void visit(ImageSurface& n) override;
-    void visit(MediaSurface& n) override;
-    void visit(FrameBufferSurface& n) override;
-    void visit(LineStrip& n) override;
-    void visit(LineSquare&) override;
-    void visit(Mesh& n) override;
-    void visit(Frame& n) override;
-
-    void visit(MediaPlayer& n) override;
-    void visit(Shader& n) override;
-    void visit(ImageShader& n) override;
-    void visit(ImageProcessingShader& n) override;
-
-    void visit (Source& s) override;
-    void visit (MediaSource& s) override;
-
 };
 
 #endif // GARBAGEVISITOR_H

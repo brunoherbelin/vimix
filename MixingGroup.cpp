@@ -7,6 +7,7 @@
 #include "Source.h"
 #include "Decorations.h"
 #include "Visitor.h"
+#include "BaseToolkit.h"
 #include "Log.h"
 
 #include "MixingGroup.h"
@@ -16,10 +17,10 @@ MixingGroup::MixingGroup (SourceList sources) : parent_(nullptr), root_(nullptr)
     center_pos_(glm::vec2(0.f, 0.f)), active_(true), update_action_(ACTION_NONE), updated_source_(nullptr)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     // fill the vector of sources with the given list
-    for (auto it = sources.begin(); it != sources.end(); it++){
+    for (auto it = sources.begin(); it != sources.end(); ++it){
         // add only if not linked already
         if ((*it)->mixinggroup_ == nullptr) {
             (*it)->mixinggroup_ = this;
@@ -43,7 +44,7 @@ MixingGroup::MixingGroup (SourceList sources) : parent_(nullptr), root_(nullptr)
 
 MixingGroup::~MixingGroup ()
 {
-    for (auto it = sources_.begin(); it != sources_.end(); it++)
+    for (auto it = sources_.begin(); it != sources_.end(); ++it)
         (*it)->clearMixingGroup();
 
     if (parent_)
@@ -71,7 +72,7 @@ void MixingGroup::recenter()
 {
     // compute barycenter (0)
     center_pos_ = glm::vec2(0.f, 0.f);
-    for (auto it = sources_.begin(); it != sources_.end(); it++){
+    for (auto it = sources_.begin(); it != sources_.end(); ++it){
         // compute barycenter (1)
         center_pos_ += glm::vec2((*it)->group(View::MIXING)->translation_);
     }
@@ -126,7 +127,7 @@ void MixingGroup::update (float)
         // compute barycenter (0)
         center_pos_ = glm::vec2(0.f, 0.f);
         auto it = sources_.begin();
-        for (; it != sources_.end(); it++){
+        for (; it != sources_.end(); ++it){
             // update point
             p[ index_points_[*it] ] = glm::vec2((*it)->group(View::MIXING)->translation_);
 
@@ -160,7 +161,7 @@ void MixingGroup::update (float)
             // compute barycenter (0)
             center_pos_ = glm::vec2(0.f, 0.f);
             auto it = sources_.begin();
-            for (; it != sources_.end(); it++){
+            for (; it != sources_.end(); ++it){
 
                 // modify all but the already updated source
                 if ( *it != updated_source_ && !(*it)->locked() ) {
@@ -196,7 +197,7 @@ void MixingGroup::update (float)
 
             int numactions = 0;
             auto it = sources_.begin();
-            for (; it != sources_.end(); it++){
+            for (; it != sources_.end(); ++it){
 
                 // modify all but the already updated source
                 if ( *it != updated_source_  && !(*it)->locked() ) {
@@ -256,7 +257,7 @@ void MixingGroup::detach (Source *s)
 
 void MixingGroup::detach (SourceList l)
 {
-    for (auto sit = l.begin(); sit !=  l.end(); sit++) {
+    for (auto sit = l.begin(); sit !=  l.end(); ++sit) {
         // find the source
         SourceList::iterator its = std::find(sources_.begin(), sources_.end(), *sit);
         // ok, its in the list !
@@ -291,7 +292,7 @@ void MixingGroup::attach (Source *s)
 
 void MixingGroup::attach (SourceList l)
 {
-    for (auto sit = l.begin(); sit !=  l.end(); sit++) {
+    for (auto sit = l.begin(); sit !=  l.end(); ++sit) {
         if ( (*sit)->mixinggroup_ == nullptr) {
             // tell the source
             (*sit)->mixinggroup_ = this;
@@ -359,7 +360,7 @@ void MixingGroup::createLineStrip()
 
         // path linking all sources
         std::vector<glm::vec2> path;
-        for (auto it = sources_.begin(); it != sources_.end(); it++){
+        for (auto it = sources_.begin(); it != sources_.end(); ++it){
             index_points_[*it] = path.size();
             path.push_back(glm::vec2((*it)->group(View::MIXING)->translation_));
         }

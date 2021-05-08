@@ -14,6 +14,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "Source.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
@@ -351,12 +352,13 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
         Source *s = Mixer::manager().findSource(pick.first);
         if (s != nullptr) {
             // pick on the lock icon; unlock source
-            if ( pick.first == s->lock_) {
+            if ( UserInterface::manager().ctrlModifier() && pick.first == s->lock_) {
                 lock(s, false);
-                pick = { s->locker_, pick.second };
+//                pick = { s->locker_, pick.second };
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == s->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == s->unlock_ ) {
                 lock(s, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
@@ -494,7 +496,7 @@ void MixingView::terminate()
 
     // terminate all mixing group actions
     for (auto g = Mixer::manager().session()->beginMixingGroup();
-         g != Mixer::manager().session()->endMixingGroup(); g++)
+         g != Mixer::manager().session()->endMixingGroup(); ++g)
         (*g)->setAction( MixingGroup::ACTION_FINISH );
 
 }
@@ -527,7 +529,7 @@ void MixingView::arrow (glm::vec2 movement)
 
     bool first = true;
     glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
 
         // individual move with SHIFT
         if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
@@ -678,7 +680,7 @@ uint textureMixingQuadratic()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
     return texid;
 }

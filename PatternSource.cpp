@@ -131,7 +131,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     Stream::open(gstreamer_pattern, res.x, res.y);
 }
 
-PatternSource::PatternSource() : StreamSource()
+PatternSource::PatternSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = static_cast<Stream *>( new Pattern );
@@ -145,8 +145,12 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 {
     Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[type].c_str());
 
+    // open gstreamer
     pattern()->open( (uint) type, resolution );
     stream_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 void PatternSource::accept(Visitor& v)

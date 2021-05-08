@@ -13,6 +13,7 @@ namespace ImGuiToolkit
     // Icons from resource icon.dds
     void Icon (int i, int j, bool enabled = true);
     bool IconButton (int i, int j, const char *tooltips = nullptr);
+    bool IconButton (const char* icon = ICON_FA_EXCLAMATION_CIRCLE, const char *tooltips = nullptr);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
 
@@ -24,8 +25,8 @@ namespace ImGuiToolkit
 
     // utility buttons
     bool ButtonToggle  (const char* label, bool* toggle);
-    void ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
-    void ButtonOpenUrl (const char* url, const ImVec2& size_arg = ImVec2(0,0));
+    bool ButtonSwitch  (const char* label, bool* toggle , const char *help = nullptr);
+    void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
 
     void ToolTip    (const char* desc, const char* shortcut = nullptr);
     void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE, const char* shortcut = nullptr);
@@ -62,6 +63,8 @@ namespace ImGuiToolkit
     void SetAccentColor (accent_color color);
     struct ImVec4 HighlightColor (bool active = true);
 
+    bool  InputText(const char* label, std::string* str);
+    bool  InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int linesize = 0);
 }
 
 #endif // __IMGUI_TOOLKIT_H_

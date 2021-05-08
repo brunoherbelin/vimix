@@ -7,6 +7,9 @@ class TransitionView : public View
 {
 public:
     TransitionView();
+    // non assignable class
+    TransitionView(TransitionView const&) = delete;
+    TransitionView& operator=(TransitionView const&) = delete;
 
     void draw () override;
     void update (float dt) override;

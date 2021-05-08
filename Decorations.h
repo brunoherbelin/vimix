@@ -60,9 +60,9 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, VIDEO, SESSION, CLONE, RENDER, GROUP, PATTERN, CAMERA, CUBE, SHARE,
+    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, SEQUENCE, VIDEO, SESSION, CLONE, RENDER, GROUP, PATTERN, CAMERA, CUBE, SHARE,
                    DOTS, BUSY, LOCK, UNLOCK, EYE, EYESLASH, VECTORSLASH, ARROWS, ROTATION, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
-    Symbol(Type t = CIRCLE_POINT, glm::vec3 pos = glm::vec3(0.f));
+    Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;

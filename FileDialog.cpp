@@ -178,7 +178,7 @@ inline PathStruct ParsePathFileName(const std::string& vPathFileName)
 	return res;
 }
 
-inline void AppendToBuffer(char* vBuffer, size_t vBufferLen, std::string vStr)
+inline void AppendToBuffer(char* vBuffer, size_t vBufferLen, const std::string &vStr)
 {
     std::string st = vStr;
     size_t len = vBufferLen - 1u;
@@ -253,8 +253,6 @@ static bool stringComparator(const FileInfoStruct& a, const FileInfoStruct& b)
 void FileDialog::ScanDir(const std::string& vPath)
 {
     struct dirent **files               = NULL;
-    int             i                   = 0;
-    int             n                   = 0;
 	std::string		path				= vPath;
 
 #if defined(LINUX) or defined(APPLE)
@@ -280,12 +278,12 @@ void FileDialog::ScanDir(const std::string& vPath)
 			path += PATH_SEP;
 		}
 #endif
-        n = scandir(path.c_str(), &files, NULL, alphaSort);
+        int n = scandir(path.c_str(), &files, NULL, alphaSort);
         if (n > 0)
         {
 			m_FileList.clear();
 
-			for (i = 0; i < n; i++)
+            for (int i = 0; i < n; ++i)
             {
                 struct dirent *ent = files[i];
 
@@ -328,7 +326,7 @@ void FileDialog::ScanDir(const std::string& vPath)
                 }
             }
 
-            for (i = 0; i < n; i++)
+            for (int i = 0; i < n; ++i)
             {
                 free(files[i]);
             }
@@ -434,7 +432,7 @@ void FileDialog::ComposeNewPath(std::vector<std::string>::iterator vIter)
             break;
         }
 
-        vIter--;
+        --vIter;
     }
 }
 
@@ -703,9 +701,9 @@ bool FileDialog::Render(const std::string& vKey, ImVec2 geometry)
 				SetPath("."); // Go Home
 			}
 
+#ifdef WIN32
 			bool drivesClick = false;
 
-#ifdef WIN32
 			ImGui::SameLine();
 
 			if (ImGui::Button("Drives"))
@@ -865,10 +863,12 @@ bool FileDialog::Render(const std::string& vKey, ImVec2 geometry)
 				SetPath(m_CurrentPath);
 			}
 
+#ifdef WIN32
 			if (drivesClick == true)
 			{
 				GetDrives();
 			}
+#endif
 
 			ImGui::EndChild();
 			ImGui::PopFont();
@@ -1013,12 +1013,12 @@ std::string FileDialog::GetUserString()
 	return dlg_userString;
 }
 
-void FileDialog::SetFilterColor(std::string vFilter, ImVec4 vColor)
+void FileDialog::SetFilterColor(const std::string &vFilter, ImVec4 vColor)
 {
     m_FilterColor[vFilter] = vColor;
 }
 
-bool FileDialog::GetFilterColor(std::string vFilter, ImVec4 *vColor)
+bool FileDialog::GetFilterColor(const std::string &vFilter, ImVec4 *vColor)
 {
     if (vColor)
     {
@@ -1054,7 +1054,7 @@ inline void InfosPane(std::string vFilter, bool *vCantContinue)
         *vCantContinue = canValidateDialog;
 }
 
-inline void TextInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
+inline void TextInfosPane(const std::string &vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
 {
     ImGui::TextColored(ImVec4(0, 1, 1, 1), "Text");
 
@@ -1091,7 +1091,7 @@ inline void TextInfosPane(std::string vFilter, bool *vCantContinue) // if vCantC
         *vCantContinue = text.size() > 0;
 }
 
-inline void ImageInfosPane(std::string vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
+inline void ImageInfosPane(const std::string &vFilter, bool *vCantContinue) // if vCantContinue is false, the user cant validate the dialog
 {
     // opengl texture
     static GLuint tex = 0;

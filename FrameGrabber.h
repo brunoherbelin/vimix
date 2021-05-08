@@ -8,7 +8,6 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
-#include "GlmToolkit.h"
 
 // use glReadPixel or glGetTextImage
 // read pixels & pbo should be the fastest
@@ -84,8 +83,8 @@ class FrameGrabbing
 
     // Private Constructor
     FrameGrabbing();
-    FrameGrabbing(FrameGrabbing const& copy);            // Not Implemented
-    FrameGrabbing& operator=(FrameGrabbing const& copy); // Not Implemented
+    FrameGrabbing(FrameGrabbing const& copy) = delete;
+    FrameGrabbing& operator=(FrameGrabbing const& copy) = delete;
 
 public:
 

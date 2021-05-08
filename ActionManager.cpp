@@ -6,10 +6,12 @@
 #include "Mixer.h"
 #include "MixingGroup.h"
 #include "tinyxml2Toolkit.h"
-#include "SessionSource.h"
+#include "ImageProcessingShader.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
 #include "Settings.h"
+#include "BaseToolkit.h"
+#include "Interpolator.h"
 
 #include "ActionManager.h"
 
@@ -17,20 +19,59 @@
 #define ACTION_DEBUG
 #endif
 
+#define HISTORY_NODE(i) std::to_string(i).insert(0,1,'H')
+#define SNAPSHOT_NODE(i) std::to_string(i).insert(0,1,'S')
+
 using namespace tinyxml2;
 
-Action::Action(): step_(0), max_step_(0)
+void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::string label)
 {
+
+    // create node
+    XMLElement *sessionNode = doc->NewElement( node.c_str() );
+    doc->InsertEndChild(sessionNode);
+    // label describes the action
+    sessionNode->SetAttribute("label", label.c_str() );
+    // view indicates the view when this action occured
+    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+
+    // get session to operate on
+    Session *se = Mixer::manager().session();
+    se->lock();
+
+    // get the thumbnail (requires one opengl update to render)
+    FrameBufferImage *thumbnail = se->thumbnail();
+    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
+    if (imageelement)
+        sessionNode->InsertEndChild(imageelement);
+    delete thumbnail;
+
+    // save all sources using source visitor
+    SessionVisitor sv(doc, sessionNode);
+    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
+        (*iter)->accept(sv);
+
+    se->unlock();
 }
 
-void Action::clear()
+
+Action::Action(): history_step_(0), history_max_step_(0), locked_(false),
+    snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
+{
+
+}
+
+void Action::init()
 {
     // clean the history
-    xmlDoc_.Clear();
-    step_ = 0;
-    max_step_ = 0;
+    history_doc_.Clear();
+    history_step_ = 0;
+    history_max_step_ = 0;
 
-    // start fresh
+    // reset snapshot
+    snapshot_id_ = 0;
+    snapshot_node_ = nullptr;
+
     store("Session start");
 }
 
@@ -41,69 +82,53 @@ void Action::store(const std::string &label)
         return;
 
     // incremental naming of history nodes
-    step_++;
-    std::string nodename = "H" + std::to_string(step_);
+    history_step_++;
 
     // erase future
-    for (uint e = step_; e <= max_step_; e++) {
-        std::string name = "H" + std::to_string(e);
-        XMLElement *node = xmlDoc_.FirstChildElement( name.c_str() );
+    for (uint e = history_step_; e <= history_max_step_; e++) {
+        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(e).c_str() );
         if ( node )
-            xmlDoc_.DeleteChild(node);
+            history_doc_.DeleteChild(node);
     }
-    max_step_ = step_;
+    history_max_step_ = history_step_;
 
-    // create history node
-    XMLElement *sessionNode = xmlDoc_.NewElement( nodename.c_str() );
-    xmlDoc_.InsertEndChild(sessionNode);
-    // label describes the action
-    sessionNode->SetAttribute("label", label.c_str());
-    // view indicates the view when this action occured
-    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+    // threaded capturing state of current session
+    std::thread(captureMixerSession, &history_doc_, HISTORY_NODE(history_step_), label).detach();
 
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-
-    // save all sources using source visitor
-    SessionVisitor sv(&xmlDoc_, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); iter++, sv.setRoot(sessionNode) )
-        (*iter)->accept(sv);
-
-    // debug
 #ifdef ACTION_DEBUG
-    Log::Info("Action stored %s '%s'", nodename.c_str(), label.c_str());
-//        XMLSaveDoc(&xmlDoc_, "/home/bhbn/history.xml");
+    Log::Info("Action stored %d '%s'", history_step_, label.c_str());
+//        XMLSaveDoc(&history_doc_, "/home/bhbn/history.xml");
 #endif
 }
 
 void Action::undo()
 {
     // not possible to go to 1 -1 = 0
-    if (step_ <= 1)
+    if (history_step_ <= 1)
         return;
 
     // restore always changes step_ to step_ - 1
-    restore( step_ - 1);
+    restore( history_step_ - 1);
 }
 
 void Action::redo()
 {
     // not possible to go to max_step_ + 1
-    if (step_ >= max_step_)
+    if (history_step_ >= history_max_step_)
         return;
 
     // restore always changes step_ to step_ + 1
-    restore( step_ + 1);
+    restore( history_step_ + 1);
 }
 
 
 void Action::stepTo(uint target)
 {
     // get reasonable target
-    uint t = CLAMP(target, 1, max_step_);
+    uint t = CLAMP(target, 1, history_max_step_);
 
     // ignore t == step_
-    if (t != step_)
+    if (t != history_step_)
         restore(t);
 }
 
@@ -111,12 +136,25 @@ std::string Action::label(uint s) const
 {
     std::string l = "";
 
-    if (s > 0 && s <= max_step_) {
-        std::string nodename = "H" + std::to_string(s);
-        const XMLElement *sessionNode = xmlDoc_.FirstChildElement( nodename.c_str() );
-        l = sessionNode->Attribute("label");
+    if (s > 0 && s <= history_max_step_) {
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode)
+            l = sessionNode->Attribute("label");
     }
     return l;
+}
+
+FrameBufferImage *Action::thumbnail(uint s) const
+{
+    FrameBufferImage *img = nullptr;
+
+    if (s > 0 && s <= history_max_step_) {
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode)
+            img = SessionLoader::XMLToImage(sessionNode);
+    }
+
+    return img;
 }
 
 void Action::restore(uint target)
@@ -125,123 +163,236 @@ void Action::restore(uint target)
     locked_ = true;
 
     // get history node of target step
-    step_ = CLAMP(target, 1, max_step_);
-    std::string nodename = "H" + std::to_string(step_);
-    XMLElement *sessionNode = xmlDoc_.FirstChildElement( nodename.c_str() );
+    history_step_ = CLAMP(target, 1, history_max_step_);
+    XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(history_step_).c_str() );
 
-    // ask view to refresh, and switch to action view if user prefers
-    int view = Settings::application.current_view ;
-    if (Settings::application.action_history_follow_view)
-        sessionNode->QueryIntAttribute("view", &view);
-    Mixer::manager().setView( (View::Mode) view);
+    if (sessionNode) {
 
-#ifdef ACTION_DEBUG
-    Log::Info("Restore %s '%s' ", nodename.c_str(), sessionNode->Attribute("label"));
-#endif
+        // ask view to refresh, and switch to action view if user prefers
+        int view = Settings::application.current_view ;
+        if (Settings::application.action_history_follow_view)
+            sessionNode->QueryIntAttribute("view", &view);
+        Mixer::manager().setView( (View::Mode) view);
 
-    //
-    // compare source lists
-    //
-
-    // we operate on the current session
-    Session *se = Mixer::manager().session();
-    if (se == nullptr)
-        return;
-
-    // sessionsources contains list of ids of all sources currently in the session (before loading)
-    SourceIdList session_sources = se->getIdList();
-//    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)
-//        Log::Info("sessionsources  id %s", std::to_string(*it).c_str());
-
-    // load history status:
-    // - if a source exists, its attributes are updated, and that's all
-    // - if a source does not exists (in current session), it is created inside the session
-    SessionLoader loader( se );
-    loader.load( sessionNode );
-
-    // loaded_sources contains map of xml ids of all sources treated by loader
-    std::map< uint64_t, Source* > loaded_sources = loader.getSources();
-
-    // remove intersect of both lists (sources were updated by SessionLoader)
-    for( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); ){
-        auto ssit = std::find(session_sources.begin(), session_sources.end(), (*lsit).first);
-        if ( ssit != session_sources.end() ) {
-            lsit = loaded_sources.erase(lsit);
-            session_sources.erase(ssit);
-        }
-        else
-            lsit++;
-    }
-
-    // remaining ids in list sessionsources : to remove
-    while ( !session_sources.empty() ){
-        Source *s = Mixer::manager().findSource( session_sources.front() );
-        if (s!=nullptr) {
-#ifdef ACTION_DEBUG
-            Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
-#endif
-            // remove the source from the mixer
-            Mixer::manager().detach( s );
-            // delete source from session
-            se->deleteSource( s );
-        }
-        session_sources.pop_front();
-    }
-
-    // remaining sources in list loaded_sources : to add
-    for ( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); lsit++)
-    {
-#ifdef ACTION_DEBUG
-        Log::Info("Recreate id %s to %s\n", std::to_string((*lsit).first).c_str(), std::to_string((*lsit).second->id()).c_str());
-#endif
-        // attach created source
-        Mixer::manager().attach( (*lsit).second );
-
-        // change the history to match the new id
-        replaceSourceId( (*lsit).first, (*lsit).second->id());
-    }
-
-    //
-    // compare mixing groups
-    //
-
-    // Get the list of mixing groups in the xml loader
-    std::list< SourceList > loadergroups = loader.getMixingGroups();
-
-    // clear all session groups
-    auto group_iter = se->beginMixingGroup();
-    while ( group_iter != se->endMixingGroup() )
-        group_iter = se->deleteMixingGroup(group_iter);
-
-    // apply all changes creating or modifying groups in the session
-    // (after this, new groups are created and existing groups are adjusted)
-    for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++) {
-        se->link( *group_loader_it, Mixer::manager().view(View::MIXING)->scene.fg() );
+        // actually restore
+        Mixer::manager().restore(sessionNode);
     }
 
     // free
     locked_ = false;
-
 }
 
 
-void Action::replaceSourceId(uint64_t previousid, uint64_t newid)
+
+void Action::snapshot(const std::string &label)
 {
-    // loop over every session history step
-    XMLElement* historyNode = xmlDoc_.FirstChildElement("H1");
-    for( ; historyNode ; historyNode = historyNode->NextSiblingElement())
+    // ignore if locked
+    if (locked_)
+        return;
+
+    std::string snap_label = BaseToolkit::uniqueName(label, labels());
+
+    // create snapshot id
+    u_int64_t id = BaseToolkit::uniqueId();
+
+    // get session to operate on
+    Session *se = Mixer::manager().session();
+    se->snapshots()->keys_.push_back(id);
+
+    // threaded capture state of current session
+    std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label).detach();
+
+#ifdef ACTION_DEBUG
+    Log::Info("Snapshot stored %d '%s'", id, snap_label.c_str());
+#endif
+}
+
+void Action::open(uint64_t snapshotid)
+{
+    if ( snapshot_id_ != snapshotid )
     {
-        // loop over every source in session history
-        XMLElement* sourceNode = historyNode->FirstChildElement("Source");
-        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
-        {
-            // check if this source node has this id
-            uint64_t id_source_ = 0;
-            sourceNode->QueryUnsigned64Attribute("id", &id_source_);
-            if ( id_source_ == previousid )
-                // change to new id
-                sourceNode->SetAttribute("id", newid);
+        // get snapshot node of target in current session
+        Session *se = Mixer::manager().session();
+        snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+
+        if (snapshot_node_)
+            snapshot_id_ = snapshotid;
+        else
+            snapshot_id_ = 0;
+
+        interpolator_node_ = nullptr;
+    }
+}
+
+void Action::replace(uint64_t snapshotid)
+{
+    // ignore if locked or if no label is given
+    if (locked_)
+        return;
+
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_) {
+        // remember label
+        std::string label = snapshot_node_->Attribute("label");
+
+        // remove previous node
+        Session *se = Mixer::manager().session();
+        se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
+
+        // threaded capture state of current session
+        std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(snapshot_id_), label).detach();
+
+#ifdef ACTION_DEBUG
+        Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
+#endif
+    }
+}
+
+std::list<uint64_t> Action::snapshots() const
+{
+    return Mixer::manager().session()->snapshots()->keys_;
+}
+
+std::list<std::string> Action::labels() const
+{
+    std::list<std::string> names;
+
+    tinyxml2::XMLDocument *doc = Mixer::manager().session()->snapshots()->xmlDoc_;
+    for ( XMLElement *snap = doc->FirstChildElement(); snap ; snap = snap->NextSiblingElement() )
+        names.push_back( snap->Attribute("label"));
+
+    return names;
+}
+
+std::string Action::label(uint64_t snapshotid) const
+{
+    std::string label = "";
+
+    // get snapshot node of target in current session
+    Session *se = Mixer::manager().session();
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+
+    if (snap)
+        label = snap->Attribute("label");
+
+    return label;
+}
+
+void Action::setLabel (uint64_t snapshotid, const std::string &label)
+{
+    open(snapshotid);
+
+    if (snapshot_node_)
+        snapshot_node_->SetAttribute("label", label.c_str());
+}
+
+FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
+{
+    FrameBufferImage *img = nullptr;
+
+    // get snapshot node of target in current session
+    Session *se = Mixer::manager().session();
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+
+    if (snap){
+        img = SessionLoader::XMLToImage(snap);
+    }
+
+    return img;
+}
+
+void Action::remove(uint64_t snapshotid)
+{
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_) {
+        // remove
+        Session *se = Mixer::manager().session();
+        se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
+        se->snapshots()->keys_.remove( snapshot_id_ );
+    }
+
+    snapshot_node_ = nullptr;
+    snapshot_id_ = 0;
+}
+
+void Action::restore(uint64_t snapshotid)
+{
+    // lock
+    locked_ = true;
+
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_)
+        // actually restore
+        Mixer::manager().restore(snapshot_node_);
+
+    // free
+    locked_ = false;
+
+    store("Snapshot " + label(snapshot_id_));
+}
+
+float Action::interpolation()
+{
+    float ret = 0.f;
+    if ( interpolator_node_ == snapshot_node_  && interpolator_)
+        ret = interpolator_->current();
+
+    return ret;
+}
+
+void Action::interpolate(float val, uint64_t snapshotid)
+{
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_) {
+
+        if ( interpolator_node_ != snapshot_node_ ) {
+
+            // change interpolator
+            if (interpolator_)
+                delete interpolator_;
+
+            // create new interpolator
+            interpolator_ = new Interpolator;
+
+            // current session
+            Session *se = Mixer::manager().session();
+
+            XMLElement* N = snapshot_node_->FirstChildElement("Source");
+            for( ; N ; N = N->NextSiblingElement()) {
+
+                // check if a source with the given id exists in the session
+                uint64_t id_xml_ = 0;
+                N->QueryUnsigned64Attribute("id", &id_xml_);
+                SourceList::iterator sit = se->find(id_xml_);
+
+                // a source with this id exists
+                if ( sit != se->end() ) {
+                    // read target in the snapshot xml
+                    SourceCore target;
+                    SessionLoader::XMLToSourcecore(N, target);
+
+                    // add an interpolator for this source
+                    interpolator_->add(*sit, target);
+                }
+            }
+
+            // operate interpolation on opened snapshot
+            interpolator_node_ = snapshot_node_;
+        }
+
+        if (interpolator_) {
+//            Log::Info("Action::interpolate %f", val);
+            interpolator_->apply( val );
         }
     }
 
 }
+

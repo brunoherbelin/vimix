@@ -38,6 +38,7 @@ class RenderSource;
 class CloneSource;
 class NetworkSource;
 class MixingGroup;
+class MultiFileSource;
 
 // Declares the interface for the visitors
 class Visitor {
@@ -81,6 +82,7 @@ public:
     virtual void visit (SessionGroupSource&) {}
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}
+    virtual void visit (MultiFileSource&) {}
 
 };
 

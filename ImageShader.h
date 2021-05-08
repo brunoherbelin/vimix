@@ -19,7 +19,7 @@ public:
     void use() override;
     void reset() override;
     void accept(Visitor& v) override;
-    void operator = (const ImageShader &S);
+    void copy(ImageShader const& S);
 
     uint mask_texture;
 
@@ -45,7 +45,7 @@ public:
     void use() override;
     void reset() override;
     void accept(Visitor& v) override;
-    void operator = (const MaskShader &S);
+    void copy(MaskShader const& S);
 
     enum Modes {
         NONE = 0,

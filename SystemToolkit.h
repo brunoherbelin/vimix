@@ -42,9 +42,6 @@ namespace SystemToolkit
     // extract the path of a filename from a full URI (e.g. file:://home/me/toto.mpg -> file:://home/me/)
     std::string path_filename(const std::string& path);
 
-    // Truncate a full filename to display the right part (e.g. file:://home/me/toto.mpg -> ...ome/me/toto.mpg)
-    std::string trunc_filename(const std::string& path, int lenght);
-
     // extract the extension of a filename
     std::string extension_filename(const std::string& filename);
 
@@ -52,7 +49,7 @@ namespace SystemToolkit
     std::string path_directory(const std::string& path);
 
     // list all files of a directory mathing the given filter extension (if any)
-    std::list<std::string> list_directory(const std::string& path, const std::string& filter = "");
+    std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &extensions);
 
     // true of file exists
     bool file_exists(const std::string& path);
@@ -69,18 +66,11 @@ namespace SystemToolkit
     // try to execute a command
     void execute(const std::string& command);
 
-    // return memory resident set size used (in bytes)
+    // return memory used (in bytes)
     long memory_usage();
+    // return maximum memory resident set size used (in bytes)
     long memory_max_usage();
 
-    // get a string to display memory size with unit KB, MB, GB, TB
-    std::string byte_to_string(long b);
-
-    // get a string to display bit size with unit Kbit, MBit, Gbit, Tbit
-    std::string bits_to_string(long b);
-
-    // get a transliteration to Latin of any string
-    std::string transliterate(std::string input);
 }
 
 #endif // SYSTEMTOOLKIT_H

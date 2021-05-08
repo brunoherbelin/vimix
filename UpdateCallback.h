@@ -1,7 +1,7 @@
 #ifndef UPDATECALLBACK_H
 #define UPDATECALLBACK_H
 
-#include "GlmToolkit.h"
+#include <glm/glm.hpp>
 
 class Node;
 
@@ -20,6 +20,15 @@ public:
 protected:
     bool enabled_;
     bool finished_;
+};
+
+class CopyCallback : public UpdateCallback
+{
+    Node *target_;
+
+public:
+    CopyCallback(Node *target);
+    void update(Node *n, float dt);
 };
 
 class MoveToCallback : public UpdateCallback

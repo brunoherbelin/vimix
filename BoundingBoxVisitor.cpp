@@ -72,7 +72,7 @@ GlmToolkit::AxisAlignedBoundingBox BoundingBoxVisitor::AABB(SourceList l, View *
 {
     // calculate bbox on selection
     BoundingBoxVisitor selection_visitor_bbox;
-    for (auto it = l.begin(); it != l.end(); it++) {
+    for (auto it = l.begin(); it != l.end(); ++it) {
         // calculate bounding box of area covered by selection
         selection_visitor_bbox.setModelview( view->scene.ws()->transform_ );
         (*it)->group( view->mode() )->accept(selection_visitor_bbox);
@@ -86,7 +86,7 @@ GlmToolkit::OrientedBoundingBox BoundingBoxVisitor::OBB(SourceList l, View *view
     GlmToolkit::OrientedBoundingBox obb_;
 
     // try the orientation of each source in the list
-    for (auto source_it = l.begin(); source_it != l.end(); source_it++) {
+    for (auto source_it = l.begin(); source_it != l.end(); ++source_it) {
 
         float angle = (*source_it)->group( view->mode() )->rotation_.z;
         glm::mat4 transform = view->scene.ws()->transform_;
@@ -94,7 +94,7 @@ GlmToolkit::OrientedBoundingBox BoundingBoxVisitor::OBB(SourceList l, View *view
 
         // calculate bbox of the list in this orientation
         BoundingBoxVisitor selection_visitor_bbox;
-        for (auto it = l.begin(); it != l.end(); it++) {
+        for (auto it = l.begin(); it != l.end(); ++it) {
             // calculate bounding box of area covered by sources' nodes
             selection_visitor_bbox.setModelview( transform );
             (*it)->group( view->mode() )->accept(selection_visitor_bbox);

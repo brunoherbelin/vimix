@@ -10,6 +10,7 @@
 #include "defines.h"
 #include "Log.h"
 #include "GstToolkit.h"
+#include "BaseToolkit.h"
 #include "FrameBuffer.h"
 
 #include "FrameGrabber.h"
@@ -30,8 +31,8 @@ FrameGrabbing::~FrameGrabbing()
     // cleanup
     if (caps_)
         gst_caps_unref (caps_);
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
+//    if (pbo_[0] > 0) // automatically deleted at shutdown
+//        glDeleteBuffers(2, pbo_);
 }
 
 void FrameGrabbing::add(FrameGrabber *rec)
@@ -145,6 +146,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 #else
         glBindTexture(GL_TEXTURE_2D, frame_buffer->texture());
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 #endif
 
         // update case ; alternating indices
@@ -210,7 +212,7 @@ FrameGrabber::FrameGrabber(): finished_(false), active_(false), accept_buffer_(f
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timestamp_(0)
 {
     // unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
     timeframe_ = 2 * frame_duration_;

@@ -14,6 +14,9 @@ class MixingGroup
 
 public:
     MixingGroup (SourceList sources);
+    // non assignable class
+    MixingGroup(MixingGroup const&) = delete;
+    MixingGroup& operator=(MixingGroup const&) = delete;
     ~MixingGroup ();
 
     // Get unique id

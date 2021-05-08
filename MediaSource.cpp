@@ -11,7 +11,7 @@
 #include "Visitor.h"
 #include "Log.h"
 
-MediaSource::MediaSource() : Source(), path_("")
+MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
@@ -25,11 +25,15 @@ MediaSource::~MediaSource()
 
 void MediaSource::setPath(const std::string &p)
 {
-    Log::Notify("Creating Source with media '%s'", p.c_str());
-
     path_ = p;
+    Log::Notify("Creating Source with media '%s'", path_.c_str());
+
+    // open gstreamer
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 std::string MediaSource::path() const
@@ -91,10 +95,9 @@ void MediaSource::init()
             active_ = true;
 
             // deep update to reorder
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
 
             // done init
-            initialized_ = true;
             Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
         }
     }
@@ -123,21 +126,16 @@ void MediaSource::update(float dt)
 
 void MediaSource::render()
 {
-    if (!initialized_)
+    if ( renderbuffer_ == nullptr )
         init();
     else {
-//        blendingshader_->color.r = mediaplayer_->currentTimelineFading();
-//        blendingshader_->color.g = mediaplayer_->currentTimelineFading();
-//        blendingshader_->color.b = mediaplayer_->currentTimelineFading();
-
         // render the media player into frame buffer
         renderbuffer_->begin();
-//        texturesurface_->shader()->color.a = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.r = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.g = mediaplayer_->currentTimelineFading();
-        texturesurface_->shader()->color.b = mediaplayer_->currentTimelineFading();
+        // apply fading
+        texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
+        ready_ = true;
     }
 }
 

@@ -1,6 +1,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #include "SessionSource.h"
 
@@ -17,7 +18,7 @@
 #include "Mixer.h"
 
 
-SessionSource::SessionSource() : Source(), failed_(false)
+SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false)
 {
     session_ = new Session;
 }
@@ -37,8 +38,8 @@ Session *SessionSource::detach()
     // work on a new session
     session_ = new Session;
 
-    // make disabled
-    initialized_ = false;
+    // un-ready
+    ready_ = false;
 
     // ask to delete me
     failed_ = true;
@@ -90,7 +91,7 @@ void SessionSource::update(float dt)
 }
 
 
-SessionFileSource::SessionFileSource() : SessionSource(), path_("")
+SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_(""), initialized_(false), wait_for_sources_(false)
 {
     // specific node for transition view
     groups_[View::TRANSITION]->visible_ = false;
@@ -124,7 +125,6 @@ SessionFileSource::SessionFileSource() : SessionSource(), path_("")
     symbol_ = new Symbol(Symbol::SESSION, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
-    wait_for_sources_ = false;
 }
 
 void SessionFileSource::load(const std::string &p, uint recursion)
@@ -148,6 +148,9 @@ void SessionFileSource::load(const std::string &p, uint recursion)
         sessionLoader_ = std::async(std::launch::async, Session::load, path_, recursion);
         Log::Notify("Opening %s", p.c_str());
     }
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 void SessionFileSource::init()
@@ -163,26 +166,18 @@ void SessionFileSource::init()
     }
     else {
 
-        session_->update(dt_);
-
         if (wait_for_sources_) {
 
             // force update of of all sources
             active_ = true;
             touch();
 
-            // check that every source is ready..
-            bool ready = true;
-            for (SourceList::iterator iter = session_->begin(); iter != session_->end(); ++iter)
-            {
-                // interrupt if any source is NOT ready
-                if ( !(*iter)->ready() ){
-                    ready = false;
-                    break;
-                }
-            }
+            //  update to draw framebuffer
+            session_->update(dt_);
+
             // if all sources are ready, done with initialization!
-            if (ready) {
+            auto unintitializedsource = std::find_if_not(session_->begin(), session_->end(), Source::isInitialized);
+            if (unintitializedsource == session_->end()) {
                 // done init
                 wait_for_sources_ = false;
                 initialized_ = true;
@@ -223,7 +218,20 @@ void SessionFileSource::init()
         overlays_[View::TRANSITION]->detach(loader);
         delete loader;
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
+    }
+}
+
+void SessionFileSource::render()
+{
+    if ( !initialized_ )
+        init();
+    else {
+        // render the media player into frame buffer
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
+        ready_ = true;
     }
 }
 
@@ -235,7 +243,7 @@ void SessionFileSource::accept(Visitor& v)
 }
 
 
-SessionGroupSource::SessionGroupSource() : SessionSource(), resolution_(glm::vec3(0.f))
+SessionGroupSource::SessionGroupSource(uint64_t id) : SessionSource(id), resolution_(glm::vec3(0.f))
 {
 //    // redo frame for layers view
 //    frames_[View::LAYER]->clear();
@@ -287,10 +295,9 @@ void SessionGroupSource::init()
         attach(renderbuffer);
 
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source Group (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
     }
 }
@@ -316,19 +323,16 @@ void SessionGroupSource::accept(Visitor& v)
         v.visit(*this);
 }
 
-
-
-RenderSource::RenderSource() : Source(), session_(nullptr)
+RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 }
 
-
 bool RenderSource::failed() const
 {
-    if (initialized_ && session_!=nullptr)
+    if ( mode_ > Source::UNINITIALIZED && session_!=nullptr )
         return renderbuffer_->resolution() != session_->frame()->resolution();
 
     return false;
@@ -358,10 +362,9 @@ void RenderSource::init()
         attach(renderbuffer);
 
         // deep update to reorder
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
         // done init
-        initialized_ = true;
         Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
     }
 }
@@ -369,7 +372,7 @@ void RenderSource::init()
 
 glm::vec3 RenderSource::resolution() const
 {
-    if (initialized_)
+    if (mode_ > Source::UNINITIALIZED)
         return renderbuffer_->resolution();
     else if (session_ && session_->frame())
         return session_->frame()->resolution();

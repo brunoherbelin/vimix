@@ -1,6 +1,8 @@
 #include <algorithm>
 
 #include "defines.h"
+#include "BaseToolkit.h"
+#include "Source.h"
 #include "Settings.h"
 #include "FrameBuffer.h"
 #include "Session.h"
@@ -11,7 +13,12 @@
 
 #include "Log.h"
 
-Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f), filename_("")
+SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_string(BaseToolkit::uniqueId())),
+    text(t), large(l), stick(s), pos(glm::vec2(520.f, 30.f)), size(glm::vec2(220.f, 220.f))
+{
+}
+
+Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fading_target_(0.f)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
@@ -31,6 +38,8 @@ Session::Session() : failedSource_(nullptr), active_(true), fading_target_(0.f),
     config_[View::TEXTURE] = new Group;
     config_[View::TEXTURE]->scale_ = Settings::application.views[View::TEXTURE].default_scale;
     config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
+
+    snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
 }
 
 
@@ -54,13 +63,16 @@ Session::~Session()
     delete config_[View::LAYER];
     delete config_[View::MIXING];
     delete config_[View::TEXTURE];
+
+    snapshots_.keys_.clear();
+    delete snapshots_.xmlDoc_;
 }
 
 void Session::setActive (bool on)
 {
     if (active_ != on) {
         active_ = on;
-        for(auto it = sources_.begin(); it != sources_.end(); it++) {
+        for(auto it = sources_.begin(); it != sources_.end(); ++it) {
             (*it)->setActive(active_);
         }
     }
@@ -75,6 +87,7 @@ void Session::update(float dt)
 
     // pre-render of all sources
     failedSource_ = nullptr;
+    bool ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering this session
@@ -86,6 +99,8 @@ void Session::update(float dt)
             failedSource_ = (*it);
         }
         else {
+            if ( !(*it)->ready() )
+                ready = false;
             // render the source
             (*it)->render();
             // update the source
@@ -118,8 +133,10 @@ void Session::update(float dt)
     // draw render view in Frame Buffer
     render_.draw();
 
+    // draw the thumbnail only after all sources are ready
+    if (ready)
+        render_.drawThumbnail();
 }
-
 
 SourceList::iterator Session::addSource(Source *s)
 {
@@ -172,7 +189,6 @@ SourceList::iterator Session::deleteSource(Source *s)
     return its;
 }
 
-
 void Session::removeSource(Source *s)
 {
     // lock before change
@@ -194,7 +210,6 @@ void Session::removeSource(Source *s)
     // unlock access
     access_.unlock();
 }
-
 
 Source *Session::popSource()
 {
@@ -279,6 +294,19 @@ SourceIdList Session::getIdList() const
     return ids(sources_);
 }
 
+std::list<std::string> Session::getNameList(uint64_t exceptid) const
+{
+    std::list<std::string> namelist;
+
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        if ( (*it)->id() != exceptid )
+            namelist.push_back( (*it)->name() );
+    }
+
+    return namelist;
+}
+
+
 bool Session::empty() const
 {
     return sources_.empty();
@@ -302,7 +330,7 @@ int Session::index(SourceList::iterator it) const
 {
     int index = -1;
     int count = 0;
-    for(auto i = sources_.begin(); i != sources_.end(); i++, count++) {
+    for(auto i = sources_.begin(); i != sources_.end(); ++i, ++count) {
         if ( i == it ) {
             index = count;
             break;
@@ -335,7 +363,7 @@ bool Session::canlink (SourceList sources)
     // verify that all sources given are valid in the sesion
     validate(sources);
 
-    for (auto it = sources.begin(); it != sources.end(); it++) {
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
         // this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
             // askt its group to detach it
@@ -370,7 +398,7 @@ void Session::unlink (SourceList sources)
     validate(sources);
 
     // brute force : detach all given sources
-    for (auto it = sources.begin(); it != sources.end(); it++) {
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
         // this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
             // askt its group to detach it
@@ -379,16 +407,38 @@ void Session::unlink (SourceList sources)
     }
 }
 
+void Session::addNote(SessionNote note)
+{
+    notes_.push_back( note );
+}
+
+std::list<SessionNote>::iterator Session::beginNotes ()
+{
+    return notes_.begin();
+}
+
+std::list<SessionNote>::iterator Session::endNotes ()
+{
+    return notes_.end();
+}
+
+std::list<SessionNote>::iterator Session::deleteNote (std::list<SessionNote>::iterator n)
+{
+    if (n != notes_.end())
+        return notes_.erase(n);
+
+    return notes_.end();
+}
+
 std::list<SourceList> Session::getMixingGroups () const
 {
     std::list<SourceList> lmg;
 
-    for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); group_it++)
+    for (auto group_it = mixing_groups_.begin(); group_it!= mixing_groups_.end(); ++group_it)
         lmg.push_back( (*group_it)->getCopy() );
 
     return lmg;
 }
-
 
 std::list<MixingGroup *>::iterator Session::deleteMixingGroup (std::list<MixingGroup *>::iterator g)
 {
@@ -418,7 +468,6 @@ void Session::unlock()
 {
     access_.unlock();
 }
-
 
 void Session::validate (SourceList &sources)
 {

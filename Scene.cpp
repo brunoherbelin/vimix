@@ -13,6 +13,7 @@
 #include "Visitor.h"
 #include "GarbageVisitor.h"
 #include "Log.h"
+#include "BaseToolkit.h"
 #include "GlmToolkit.h"
 #include "SessionVisitor.h"
 
@@ -25,7 +26,7 @@ static int num_nodes_ = 0;
 Node::Node() : initialized_(false), visible_(true), refcount_(0)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     transform_ = glm::identity<glm::mat4>();
     scale_ = glm::vec3(1.f);
@@ -56,7 +57,7 @@ void Node::clearCallbacks()
     }
 }
 
-void Node::copyTransform(Node *other)
+void Node::copyTransform(const Node *other)
 {
     if (!other)
         return;
