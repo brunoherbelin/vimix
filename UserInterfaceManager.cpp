@@ -2662,9 +2662,9 @@ void Navigator::RenderNewPannel()
         //
         static const char* origin_names[5] = { ICON_FA_PHOTO_VIDEO "  File",
                                                ICON_FA_SORT_NUMERIC_DOWN "   Sequence",
-                                               ICON_FA_SYNC "   Internal",
+                                               ICON_FA_PLUG "    Connected",
                                                ICON_FA_COG "   Generated",
-                                               ICON_FA_PLUG "    Connected"
+                                               ICON_FA_SYNC "   Internal"
                                              };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
@@ -2800,7 +2800,7 @@ void Navigator::RenderNewPannel()
 
         }
         // Internal Source creator
-        else if (Settings::application.source.new_type == 2){
+        else if (Settings::application.source.new_type == 4){
 
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -2869,7 +2869,7 @@ void Navigator::RenderNewPannel()
             }
         }
         // External source creator
-        else if (Settings::application.source.new_type == 4){
+        else if (Settings::application.source.new_type == 2){
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##External", "Select device"))

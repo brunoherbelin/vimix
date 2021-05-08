@@ -23,8 +23,6 @@
 // imagesequencesrc : sequence of numbered images (cannot loop)
 // gst-launch-1.0 imagesequencesrc location=frames%03d.png start-index=1 framerate=24/1 ! decodebin ! videoconvert ! autovideosink
 //
-// splitfilesrc
-// gst-launch-1.0 splitfilesrc location="/home/bhbn/Videos/MOV01*.MOD" ! decodebin ! videoconvert ! autovideosink
 
 MultiFileSequence::MultiFileSequence() : width(0), height(0), min(0), max(0)
 {
