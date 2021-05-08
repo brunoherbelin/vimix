@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_access.hpp>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
@@ -24,6 +25,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "MultiFileSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
@@ -32,6 +34,7 @@
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
+#include "BaseToolkit.h"
 #include "UserInterfaceManager.h"
 #include "SystemToolkit.h"
 
@@ -395,7 +398,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::Spacing();
 }
 
-
 void ImGuiVisitor::visit (Source& s)
 {
     ImGui::PushID(std::to_string(s.id()).c_str());
@@ -539,10 +541,6 @@ void ImGuiVisitor::visit (Source& s)
             s.processingShader()->accept(*this);
     }
 
-    // geometry direct control for DEBUG
-//    s.groupNode(View::GEOMETRY)->accept(*this);
-//    s.groupNode((View::Mode) Settings::application.current_view)->accept(*this);
-
     ImGui::PopID();
 }
 
@@ -557,7 +555,12 @@ void ImGuiVisitor::visit (MediaSource& s)
 
     if ( ImGui::Button(IMGUI_TITLE_MEDIAPLAYER, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().showMediaPlayer( s.mediaplayer());
-    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
+    std::string path = SystemToolkit::path_filename(s.path());
+    std::string label = BaseToolkit::trunc_string(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
     ImGui::SameLine();
     ImGui::Text("Folder");
 }
@@ -588,7 +591,10 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::SameLine();
     ImGui::Text("File");
 
-    ImGuiToolkit::ButtonOpenUrl( SystemToolkit::path_filename(s.path()).c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    std::string path = SystemToolkit::path_filename(s.path());
+    std::string label = BaseToolkit::trunc_string(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
     ImGui::SameLine();
     ImGui::Text("Folder");
 
@@ -703,6 +709,60 @@ void ImGuiVisitor::visit (NetworkSource& s)
         s.setConnection(s.connection());
     }
 
-
 }
 
+
+void ImGuiVisitor::visit (MultiFileSource& s)
+{
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, 10);
+    ImGui::Text("Images sequence");
+    static int64_t id = s.id();
+
+    // information text
+    std::ostringstream msg;
+    msg << "Sequence of " << s.sequence().max - s.sequence().min + 1 << " ";
+    msg << s.sequence().codec << " images";
+    ImGui::Text("%s", msg.str().c_str());
+
+    // change range
+    static int _begin = -1;
+    if (_begin < 0 || id != s.id())
+        _begin = s.begin();
+    static int _end = -1;
+    if (_end < 0 || id != s.id())
+        _end = s.end();
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::DragIntRange2("Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        s.setRange( _begin, _end );
+        std::ostringstream oss;
+        oss << s.name() << ": Range " << _begin << "-" << _end;
+        Action::manager().store(oss.str());
+        _begin = _end = -1;
+    }
+
+    // change framerate
+    static int _fps = -1;
+    if (_fps < 0 || id != s.id())
+        _fps = s.framerate();
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        s.setFramerate(_fps);
+        std::ostringstream oss;
+        oss << s.name() << ": Framerate " << _fps << " fps";
+        Action::manager().store(oss.str());
+        _fps = -1;
+    }
+
+    // offer to open file browser at location
+    std::string path = SystemToolkit::path_filename(s.sequence().location);
+    std::string label = BaseToolkit::trunc_string(path, 25);
+    label = BaseToolkit::transliterate(label);
+    ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+    ImGui::SameLine();
+    ImGui::Text("Folder");
+
+    id = s.id();
+}

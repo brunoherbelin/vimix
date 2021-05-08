@@ -8,7 +8,7 @@
 class SessionSource : public Source
 {
 public:
-    SessionSource();
+    SessionSource(uint64_t id = 0);
     virtual ~SessionSource();
 
     // implementation of source API
@@ -29,10 +29,11 @@ protected:
 class SessionFileSource : public SessionSource
 {
 public:
-    SessionFileSource();
+    SessionFileSource(uint64_t id = 0);
 
     // implementation of source API
     void accept (Visitor& v) override;
+    void render() override;
 
     // SessionFile Source specific interface
     void load(const std::string &p = "", uint recursion = 0);
@@ -45,14 +46,15 @@ protected:
     void init() override;
 
     std::string path_;
-    std::atomic<bool> wait_for_sources_;
+    bool initialized_;
+    bool wait_for_sources_;
     std::future<Session *> sessionLoader_;
 };
 
 class SessionGroupSource : public SessionSource
 {
 public:
-    SessionGroupSource();
+    SessionGroupSource(uint64_t id = 0);
 
     // implementation of source API
     void accept (Visitor& v) override;
@@ -75,7 +77,7 @@ protected:
 class RenderSource : public Source
 {
 public:
-    RenderSource();
+    RenderSource(uint64_t id = 0);
 
     // implementation of source API
     bool failed () const override;

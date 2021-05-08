@@ -7,6 +7,9 @@ class LayerView : public View
 {
 public:
     LayerView();
+    // non assignable class
+    LayerView(LayerView const&) = delete;
+    LayerView& operator=(LayerView const&) = delete;
 
     void draw () override;
     void update (float dt) override;

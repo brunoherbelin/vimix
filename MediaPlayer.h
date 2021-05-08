@@ -91,8 +91,8 @@ public:
     /** 
      * Open a media using gstreamer URI 
      * */
-    void open( std::string path);
-    void reopen();
+    void open ( const std::string &filename, const std::string &uri = "");
+    void reopen ();
     /**
      * Get name of the media
      * */
@@ -265,6 +265,8 @@ public:
     static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
     static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
 
+    static MediaInfo UriDiscoverer(const std::string &uri);
+
 private:
 
     // video player description
@@ -285,7 +287,7 @@ private:
     GstState desired_state_;
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;
-    std::atomic<bool> ready_;
+    std::atomic<bool> opened_;
     std::atomic<bool> failed_;
     bool seeking_;
     bool enabled_;

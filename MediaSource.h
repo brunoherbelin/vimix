@@ -8,7 +8,7 @@ class MediaPlayer;
 class MediaSource : public Source
 {
 public:
-    MediaSource();
+    MediaSource(uint64_t id = 0);
     ~MediaSource();
 
     // implementation of source API

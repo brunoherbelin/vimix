@@ -23,7 +23,7 @@ private:
 class PatternSource : public StreamSource
 {
 public:
-    PatternSource();
+    PatternSource(uint64_t id = 0);
 
     // Source interface
     void accept (Visitor& v) override;

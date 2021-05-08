@@ -58,10 +58,8 @@ void ImageShader::reset()
     stipple = 0.f;
 }
 
-void ImageShader::operator = (const ImageShader &S)
+void ImageShader::copy(ImageShader const& S)
 {
-    Shader::operator =(S);
-
     mask_texture = S.mask_texture;
     stipple = S.stipple;
 }
@@ -133,10 +131,8 @@ void MaskShader::reset()
     effect = 0;
 }
 
-void MaskShader::operator = (const MaskShader &S)
+void MaskShader::copy(MaskShader const& S)
 {
-    Shader::operator =(S);
-
     mode = S.mode;
     shape = S.shape;
     blur = S.blur;

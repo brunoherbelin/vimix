@@ -227,13 +227,17 @@ void FrameBuffer::readPixels(uint8_t *target_data)
 
 bool FrameBuffer::blit(FrameBuffer *destination)
 {
-    if (!framebufferid_ || !destination)
+    if (!framebufferid_ || !destination || (use_alpha_ != destination->use_alpha_) )
         return false;
 
     if (!destination->framebufferid_)
         destination->init();
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+    if (use_multi_sampling_)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, intermediate_framebufferid_);
+    else
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination->framebufferid_);
     // blit to the frame buffer object
     glBlitFramebuffer(0, 0, attrib_.viewport.x, attrib_.viewport.y,
@@ -318,7 +322,7 @@ FrameBufferImage::~FrameBufferImage() {
         delete rgb;
 }
 
-FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg()
+FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg() const
 {
     jpegBuffer jpgimg;
 
@@ -377,7 +381,9 @@ bool FrameBuffer::fill(FrameBufferImage *image)
     // fill texture with image
     glBindTexture(GL_TEXTURE_2D, textureid_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
-                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);    
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     return true;
 }
 

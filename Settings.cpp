@@ -63,11 +63,12 @@ void Settings::Save()
     XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
-    applicationNode->SetAttribute("pannel_stick", application.pannel_stick);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
+    applicationNode->SetAttribute("smooth_snapshot", application.smooth_snapshot);
     applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
+    applicationNode->SetAttribute("pannel_history_mode", application.pannel_history_mode);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -175,7 +176,7 @@ void Settings::Save()
         recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
         recentsession->SetAttribute("valid", application.recentSessions.front_is_valid);
         for(auto it = application.recentSessions.filenames.begin();
-            it != application.recentSessions.filenames.end(); it++) {
+            it != application.recentSessions.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -185,7 +186,7 @@ void Settings::Save()
 
         XMLElement *recentfolder = xmlDoc.NewElement( "Folder" );
         for(auto it = application.recentFolders.filenames.begin();
-            it != application.recentFolders.filenames.end(); it++) {
+            it != application.recentFolders.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -196,7 +197,7 @@ void Settings::Save()
         XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
         recentmedia->SetAttribute("path", application.recentImport.path.c_str());
         for(auto it = application.recentImport.filenames.begin();
-            it != application.recentImport.filenames.end(); it++) {
+            it != application.recentImport.filenames.end(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -254,11 +255,12 @@ void Settings::Load()
     if (applicationNode != nullptr) {
         applicationNode->QueryFloatAttribute("scale", &application.scale);
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
-        applicationNode->QueryBoolAttribute("pannel_stick", &application.pannel_stick);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+        applicationNode->QueryBoolAttribute("smooth_snapshot", &application.smooth_snapshot);
         applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
+        applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_history_mode);
     }
 
     // Widgets
@@ -453,6 +455,39 @@ void Settings::Load()
 
 }
 
+void Settings::History::push(const string &filename)
+{
+    if (filename.empty()) {
+        front_is_valid = false;
+        return;
+    }
+    filenames.remove(filename);
+    filenames.push_front(filename);
+    if (filenames.size() > MAX_RECENT_HISTORY)
+        filenames.pop_back();
+    front_is_valid = true;
+    changed = true;
+}
+
+void Settings::History::remove(const std::string &filename)
+{
+    if (filename.empty())
+        return;
+    if (filenames.front() == filename)
+        front_is_valid = false;
+    filenames.remove(filename);
+    changed = true;
+}
+
+void Settings::History::validate()
+{
+    for (auto fit = filenames.begin(); fit != filenames.end();) {
+        if ( SystemToolkit::file_exists( *fit ))
+            ++fit;
+        else
+            fit = filenames.erase(fit);
+    }
+}
 
 void Settings::Lock()
 {

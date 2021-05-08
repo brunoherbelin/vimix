@@ -80,7 +80,7 @@ public:
         return Cursor ();
     }
 
-    //TODO: test mouse over provided a point in screen coordinates
+    // test mouse over provided a point in screen coordinates
     virtual Cursor over (glm::vec2) {
         return Cursor ();
     }

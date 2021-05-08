@@ -26,8 +26,12 @@ void GenericStreamSource::setDescription(const std::string &desc)
 {
     Log::Notify("Creating Source with Stream description '%s'", desc.c_str());
 
+    // open gstreamer
     stream_->open(desc);
     stream_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 void GenericStreamSource::accept(Visitor& v)
@@ -37,7 +41,7 @@ void GenericStreamSource::accept(Visitor& v)
         v.visit(*this);
 }
 
-StreamSource::StreamSource() : Source(), stream_(nullptr)
+StreamSource::StreamSource(uint64_t id) : Source(id), stream_(nullptr)
 {
 }
 
@@ -81,14 +85,13 @@ void StreamSource::init()
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
 
-            // deep update to reorder
-            View::need_deep_update_++;
-
             // force update of activation mode
             active_ = true;
 
+            // deep update to reorder
+            ++View::need_deep_update_;
+
             // done init
-            initialized_ = true;
             Log::Info("Source '%s' linked to Stream %s", name().c_str(), std::to_string(stream_->id()).c_str());
         }
     }

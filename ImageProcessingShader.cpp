@@ -58,7 +58,7 @@ void ImageProcessingShader::reset()
 
 }
 
-void ImageProcessingShader::copy(const ImageProcessingShader &S)
+void ImageProcessingShader::copy(ImageProcessingShader const& S)
 {
     brightness = S.brightness;
     contrast = S.contrast;
@@ -73,11 +73,6 @@ void ImageProcessingShader::copy(const ImageProcessingShader &S)
     levels = S.levels;
     chromakey = S.chromakey;
     chromadelta = S.chromadelta;
-}
-
-void ImageProcessingShader::operator = (const ImageProcessingShader &S )
-{
-    copy(S);
 }
 
 

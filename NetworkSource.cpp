@@ -204,7 +204,7 @@ void NetworkStream::update()
 {
     Stream::update();
 
-    if ( !ready_ && !failed_ && received_config_)
+    if ( !opened_ && !failed_ && received_config_)
     {
         // only once
         received_config_ = false;
@@ -268,7 +268,7 @@ void NetworkStream::update()
 }
 
 
-NetworkSource::NetworkSource() : StreamSource()
+NetworkSource::NetworkSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = static_cast<Stream *>( new NetworkStream );
@@ -297,6 +297,9 @@ void NetworkSource::setConnection(const std::string &nameconnection)
     // open network stream
     networkStream()->connect( connection_name_ );
     stream_->play(true);
+
+    // will be ready after init and one frame rendered
+    ready_ = false;
 }
 
 

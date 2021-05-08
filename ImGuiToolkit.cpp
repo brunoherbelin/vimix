@@ -1,6 +1,8 @@
 
 #include <map>
 #include <algorithm>
+#include <string>
+#include <cctype>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -20,7 +22,6 @@
 #include <glad/glad.h>
 
 #include "Resource.h"
-#include "FileDialog.h"
 #include "ImGuiToolkit.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
@@ -30,14 +31,12 @@ unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
 
-void ImGuiToolkit::ButtonOpenUrl( const char* url, const ImVec2& size_arg )
+void ImGuiToolkit::ButtonOpenUrl( const char* label, const char* url, const ImVec2& size_arg )
 {
-    char label[512];
+    char _label[512];
+    sprintf( _label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
 
-    std::string str = SystemToolkit::transliterate( url );
-    sprintf( label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, str.c_str() );
-
-    if ( ImGui::Button(label, size_arg) )
+    if ( ImGui::Button(_label, size_arg) )
         SystemToolkit::open(url);
 }
 
@@ -58,8 +57,10 @@ bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
 }
 
 
-void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
+bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
 {
+    bool ret = false;
+
     // utility style
     ImVec4* colors = ImGui::GetStyle().Colors;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -76,8 +77,10 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
 
     // toggle action : operate on the whole area
     ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
-    if (ImGui::IsItemClicked())
+    if (ImGui::IsItemClicked()) {
         *toggle = !*toggle;
+        ret = true;
+    }
     float t = *toggle ? 1.0f : 0.0f;
 
     // animation
@@ -113,6 +116,7 @@ void ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 
+    return ret;
 }
 
 
@@ -200,6 +204,36 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
     ImGui::PopID();
     return ret;
 }
+
+
+bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
+{
+    bool ret = false;
+    ImGui::PushID( icon );
+
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = frame_height;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
+    if (ImGui::IsItemClicked())
+        ret = true;
+
+    ImGui::SetCursorScreenPos(draw_pos);
+    ImGui::Text(icon);
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
 
 bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
@@ -311,33 +345,34 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 
     const ImGuiIO& io = ImGui::GetIO();
     
-    ImGui::Begin("Icons", p_open);
+    if ( ImGui::Begin("Icons", p_open) ) {
 
-    ImVec2 pos = ImGui::GetCursorScreenPos();
-    ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
-    if (ImGui::IsItemHovered())
-    {
-        float my_tex_w = 640.0;
-        float my_tex_h = 640.0;
-        float zoom = 4.0f;
-        float region_sz = 32.0f; // 64 x 64 icons 
-        float region_x = io.MousePos.x - pos.x - region_sz * 0.5f; 
-        if (region_x < 0.0f) region_x = 0.0f; else if (region_x > my_tex_w - region_sz) region_x = my_tex_w - region_sz;
-        float region_y = io.MousePos.y - pos.y - region_sz * 0.5f; 
-        if (region_y < 0.0f) region_y = 0.0f; else if (region_y > my_tex_h - region_sz) region_y = my_tex_h - region_sz;
-        ImGui::BeginTooltip();      
-        int i = (int) ( (region_x + region_sz * 0.5f) / region_sz);
-        int j = (int) ( (region_y + region_sz * 0.5f)/ region_sz);
-        ImGuiToolkit::Icon(i, j);
-        ImGui::SameLine();
-        ImGui::Text(" Icon (%d, %d)", i,  j);
-        ImVec2 uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h);
-        ImVec2 uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h);
-        ImGui::Image((void*)(intptr_t)textureicons, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
-        ImGui::EndTooltip();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::Image((void*)(intptr_t)textureicons, ImVec2(640, 640));
+        if (ImGui::IsItemHovered())
+        {
+            float my_tex_w = 640.0;
+            float my_tex_h = 640.0;
+            float zoom = 4.0f;
+            float region_sz = 32.0f; // 64 x 64 icons
+            float region_x = io.MousePos.x - pos.x - region_sz * 0.5f;
+            if (region_x < 0.0f) region_x = 0.0f; else if (region_x > my_tex_w - region_sz) region_x = my_tex_w - region_sz;
+            float region_y = io.MousePos.y - pos.y - region_sz * 0.5f;
+            if (region_y < 0.0f) region_y = 0.0f; else if (region_y > my_tex_h - region_sz) region_y = my_tex_h - region_sz;
+            ImGui::BeginTooltip();
+            int i = (int) ( (region_x + region_sz * 0.5f) / region_sz);
+            int j = (int) ( (region_y + region_sz * 0.5f)/ region_sz);
+            ImGuiToolkit::Icon(i, j);
+            ImGui::SameLine();
+            ImGui::Text(" Icon (%d, %d)", i,  j);
+            ImVec2 uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h);
+            ImVec2 uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h);
+            ImGui::Image((void*)(intptr_t)textureicons, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
+            ImGui::EndTooltip();
+        }
+
+        ImGui::End();
     }
-
-    ImGui::End();
 }
 
 void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
@@ -1111,6 +1146,85 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
 
+}
+
+void word_wrap(std::string *str, unsigned per_line)
+{
+    unsigned line_begin = 0;
+    while (line_begin < str->size())
+    {
+        const unsigned ideal_end = line_begin + per_line ;
+        unsigned line_end = ideal_end < str->size() ? ideal_end : str->size()-1;
+
+        if (line_end == str->size() - 1)
+            ++line_end;
+        else if (std::isspace(str->at(line_end)))
+        {
+            str->replace(line_end, 1, 1, '\n' );
+            ++line_end;
+        }
+        else    // backtrack
+        {
+            unsigned end = line_end;
+            while ( end > line_begin && !std::isspace(str->at(end)))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                str->replace(line_end++, 1,  1, '\n' );
+            }
+            else {
+                str->insert(line_end++, 1, '\n' );
+            }
+        }
+
+        line_begin = line_end;
+    }
+}
+
+
+struct InputTextCallback_UserData
+{
+    std::string*      Str;
+    int               WordWrap;
+};
+
+static int InputTextCallback(ImGuiInputTextCallbackData* data)
+{
+    InputTextCallback_UserData* user_data = static_cast<InputTextCallback_UserData*>(data->UserData);
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+    {
+//        if (user_data->WordWrap > 1)
+//            word_wrap(user_data->Str, user_data->WordWrap );
+
+        // Resize string callback
+        std::string* str = user_data->Str;
+        IM_ASSERT(data->Buf == str->c_str());
+        str->resize(data->BufTextLen);
+        data->Buf = (char*)str->c_str();
+    }
+
+    return 0;
+}
+
+bool ImGuiToolkit::InputText(const char* label, std::string* str)
+{
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CharsNoBlank;
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+
+    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+}
+
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
+{
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+    cb_user_data.WordWrap = linesize;
+
+    return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
 }
 
 

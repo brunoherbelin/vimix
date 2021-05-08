@@ -33,7 +33,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, int w = 1024, int h = 576);
+    void open(const std::string &gstreamer_description, guint w = 1024, guint h = 576);
     /**
      * Get description string
      * */
@@ -49,7 +49,7 @@ public:
     /**
      * Close the Media
      * */
-    void close();
+    virtual void close();
     /**
      * Update texture with latest frame
      * Must be called in rendering update loop
@@ -129,7 +129,7 @@ protected:
     GstState desired_state_;
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;
-    std::atomic<bool> ready_;
+    std::atomic<bool> opened_;
     std::atomic<bool> failed_;
     bool enabled_;
 
@@ -185,6 +185,7 @@ protected:
     virtual void execute_open();
 
     // gst frame filling
+    bool textureinitialized_;
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);

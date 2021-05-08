@@ -38,6 +38,7 @@ uint Resource::getTextureBlack()
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     return tex_index_black;
@@ -59,6 +60,7 @@ uint Resource::getTextureWhite()
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     return tex_index_white;
@@ -80,6 +82,7 @@ uint Resource::getTextureTransparent()
         // texture with one black pixel
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearColor);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     return tex_index_transparent;
@@ -219,6 +222,7 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 		if(height < 1) height = 1;
 
 	}
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // remember to avoid openning the same resource twice
     textureIndex[path] = textureID;
@@ -263,19 +267,20 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 	}
     if (h == 0){
         Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        stbi_image_free(img);
         return 0;
     }
     ar = static_cast<float>(w) / static_cast<float>(h);
 
     glGenTextures(1, &textureID);
-	glBindTexture( GL_TEXTURE_2D, textureID);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glBindTexture( GL_TEXTURE_2D, textureID);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // free memory
 	stbi_image_free(img);

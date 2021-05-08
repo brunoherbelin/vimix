@@ -16,8 +16,7 @@ public:
     void reset() override;
     void accept(Visitor& v) override;
 
-    void operator = (const ImageProcessingShader &S);
-    void copy(const ImageProcessingShader &S);
+    void copy(ImageProcessingShader const& S);
 
     // color effects
     float brightness; // [-1 1]

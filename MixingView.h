@@ -9,6 +9,9 @@ class MixingView : public View
 {
 public:
     MixingView();
+    // non assignable class
+    MixingView(MixingView const&) = delete;
+    MixingView& operator=(MixingView const&) = delete;
 
     void draw () override;
     void update (float dt) override;
