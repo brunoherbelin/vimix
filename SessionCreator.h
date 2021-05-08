@@ -8,6 +8,7 @@
 #include "SourceList.h"
 
 class Session;
+class FrameBufferImage;
 
 
 class SessionLoader : public Visitor {
@@ -29,10 +30,10 @@ public:
     } Mode;
     Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
 
-    static bool isClipboard(std::string clipboard);
-    static tinyxml2::XMLElement* firstSourceElement(std::string clipboard, tinyxml2::XMLDocument &xmlDoc);
-    static void applyImageProcessing(const Source &s, std::string clipboard);
-    //TODO static void applyMask(const Source &s, std::string clipboard);
+    static bool isClipboard(const std::string &clipboard);
+    static tinyxml2::XMLElement* firstSourceElement(const std::string &clipboard, tinyxml2::XMLDocument &xmlDoc);
+    static void applyImageProcessing(const Source &s, const std::string &clipboard);
+    //TODO static void applyMask(const Source &s, const std::string &clipboard);
 
     // Elements of Scene
     void visit (Node& n) override;
@@ -57,6 +58,11 @@ public:
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
+    void visit (MultiFileSource& s) override;
+
+    static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
+    static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);
+    static FrameBufferImage *XMLToImage(const tinyxml2::XMLElement *xml);
 
 protected:
     // result created session
@@ -70,7 +76,15 @@ protected:
     // list of groups (lists of xml source id)
     std::list< SourceIdList > groups_sources_id_;
 
-    static void XMLToNode(tinyxml2::XMLElement *xml, Node &n);
+};
+
+struct SessionInformation {
+    std::string description;
+    FrameBufferImage *thumbnail;
+    SessionInformation() {
+        description = "";
+        thumbnail = nullptr;
+    }
 };
 
 class SessionCreator : public SessionLoader {
@@ -78,13 +92,15 @@ class SessionCreator : public SessionLoader {
     tinyxml2::XMLDocument xmlDoc_;
 
     void loadConfig(tinyxml2::XMLElement *viewsNode);
+    void loadNotes(tinyxml2::XMLElement *notesNode);
+    void loadSnapshots(tinyxml2::XMLElement *snapshotNode);
 
 public:
     SessionCreator(int recursion = 0);
 
     void load(const std::string& filename);
 
-    static std::string info(const std::string& filename);
+    static SessionInformation info(const std::string& filename);
 };
 
 #endif // SESSIONCREATOR_H

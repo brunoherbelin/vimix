@@ -188,6 +188,7 @@ bool Rendering::init()
     // additional window callbacks for main window
     glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
+    glfwSetWindowSizeLimits( main_.window(), 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     //
     // Gstreamer setup
@@ -342,7 +343,7 @@ void Rendering::terminate()
     // close window
     glfwDestroyWindow(output_.window());
     glfwDestroyWindow(main_.window());
-    glfwTerminate();
+//    glfwTerminate();
 }
 
 
@@ -423,14 +424,15 @@ glm::vec2 Rendering::project(glm::vec3 scene_coordinate, glm::mat4 modelview, bo
 
 void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
 {
-    for (int i = 0; i < path_count; ++i) {
+    int i = 0;
+    for (; i < path_count; ++i) {
         std::string filename(paths[i]);
         if (filename.empty())
             break;
         // try to create a source
         Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
     }
-    if (path_count>0) {
+    if (i>0) {
         UserInterface::manager().showPannel();
         Rendering::manager().mainWindow().show();
     }
@@ -726,6 +728,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     // DPI scaling (retina)
     dpi_scale_ = float(window_attributes_.viewport.y) / float(winset.h);
 
+    // We decide for byte aligned textures all over
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
     // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     // fast mipmaps (we are not really using mipmaps anyway)

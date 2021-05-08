@@ -12,7 +12,7 @@
 class FrameBufferImage
 {
 public:
-    uint8_t *rgb = nullptr;
+    uint8_t *rgb;
     int width;
     int height;
 
@@ -20,10 +20,13 @@ public:
         unsigned char *buffer = nullptr;
         uint len = 0;
     };
-    jpegBuffer getJpeg();
+    jpegBuffer getJpeg() const;
 
     FrameBufferImage(int w, int h);
     FrameBufferImage(jpegBuffer jpgimg);
+    // non assignable class
+    FrameBufferImage(FrameBufferImage const&) = delete;
+    FrameBufferImage& operator=(FrameBufferImage const&) = delete;
     ~FrameBufferImage();
 };
 
@@ -45,6 +48,7 @@ public:
 
     FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
     FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
+    FrameBuffer(FrameBuffer const&) = delete;
     ~FrameBuffer();
 
     // Bind & push attribs to prepare draw

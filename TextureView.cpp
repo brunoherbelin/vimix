@@ -14,6 +14,7 @@
 
 #include "defines.h"
 #include "Mixer.h"
+#include "Source.h"
 #include "Settings.h"
 #include "Resource.h"
 #include "PickingVisitor.h"

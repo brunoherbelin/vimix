@@ -3,11 +3,32 @@
 
 #include <mutex>
 
+#include "SourceList.h"
 #include "RenderView.h"
-#include "Source.h"
 
+namespace tinyxml2 {
+class XMLDocument;
+}
 class FrameGrabber;
 class MixingGroup;
+
+struct SessionNote
+{
+    std::string label;
+    std::string text;
+    bool large;
+    int stick;
+    glm::vec2 pos;
+    glm::vec2 size;
+
+    SessionNote(const std::string &t = "", bool l = false, int s = 0);
+};
+
+struct SessionSnapshots {
+
+    tinyxml2::XMLDocument *xmlDoc_;
+    std::list<uint64_t> keys_;
+};
 
 class Session
 {
@@ -45,6 +66,8 @@ public:
     SourceList::iterator find (uint64_t id);
     SourceIdList getIdList() const;
 
+    std::list<std::string> getNameList(uint64_t exceptid=0) const;
+
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;    
     void move (int current_index, int target_index);
@@ -62,6 +85,9 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
+    // get thumbnail image
+    inline FrameBufferImage *thumbnail () { return render_.thumbnail(); }
+
     // configure rendering resolution
     void setResolution (glm::vec3 resolution, bool useAlpha = false);
 
@@ -75,6 +101,12 @@ public:
     // name of file containing this session (for transfer)
     void setFilename (const std::string &filename) { filename_ = filename; }
     std::string filename () const { return filename_; }
+
+    // get the list of notes
+    void addNote(SessionNote note = SessionNote());
+    std::list<SessionNote>::iterator beginNotes ();
+    std::list<SessionNote>::iterator endNotes ();
+    std::list<SessionNote>::iterator deleteNote (std::list<SessionNote>::iterator n);
 
     // get the list of sources in mixing groups
     std::list<SourceList> getMixingGroups () const;
@@ -91,23 +123,27 @@ public:
     std::list<MixingGroup *>::iterator endMixingGroup ();
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
 
+    // snapshots
+    SessionSnapshots * const snapshots () { return &snapshots_; }
+
     // lock and unlock access (e.g. while saving)
     void lock ();
     void unlock ();
 
 protected:
+    bool active_;
     RenderView render_;
     std::string filename_;
     Source *failedSource_;
     SourceList sources_;
     void validate(SourceList &sources);
-
+    std::list<SessionNote> notes_;
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
-    bool active_;
-    std::list<FrameGrabber *> grabbers_;
+    SessionSnapshots snapshots_;
     float fading_target_;
     std::mutex access_;
+
 };
 
 

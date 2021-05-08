@@ -9,14 +9,18 @@
 #include "Session.h"
 #include "Selection.h"
 
+namespace tinyxml2 {
+class XMLElement;
+}
+
 class SessionSource;
 
 class Mixer
 {
     // Private Constructor
     Mixer();
-    Mixer(Mixer const& copy);            // Not Implemented
-    Mixer& operator=(Mixer const& copy); // Not Implemented
+    Mixer(Mixer const& copy) = delete;
+    Mixer& operator=(Mixer const& copy) = delete;
 
 public:
 
@@ -44,6 +48,7 @@ public:
 
     // creation of sources
     Source * createSourceFile   (const std::string &path);
+    Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
     Source * createSourceClone  (const std::string &namesource = "");
     Source * createSourceRender ();
     Source * createSourceStream (const std::string &gstreamerpipeline);
@@ -54,8 +59,8 @@ public:
 
     // operations on sources
     void addSource    (Source *s);
-    void deleteSource (Source *s, bool withundo=true);
-    void renameSource (Source *s, const std::string &newname);
+    void deleteSource (Source *s);
+    void renameSource (Source *s, const std::string &newname = "");
     void attach       (Source *s);
     void detach       (Source *s);
     void deselect     (Source *s);
@@ -103,11 +108,12 @@ public:
     void set    (Session *session);
 
     // operations depending on transition mode
-    void close  ();
-    void open   (const std::string& filename);
+    void close  (bool smooth = false);
+    void open   (const std::string& filename, bool smooth = false);
 
     // create sources if clipboard contains well-formed xml text
     void paste  (const std::string& clipboard);
+    void restore(tinyxml2::XMLElement *sessionNode);
 
 protected:
 

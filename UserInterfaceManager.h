@@ -13,11 +13,13 @@
 struct ImVec2;
 class Source;
 class MediaPlayer;
+class FrameBufferImage;
 
 class SourcePreview {
 
     Source *source_;
     std::string label_;
+    bool reset_;
 
 public:
     SourcePreview();
@@ -30,26 +32,43 @@ public:
     inline bool filled() const { return source_ != nullptr; }
 };
 
+class Thumbnail
+{
+    float aspect_ratio_;
+    uint texture_;
+
+public:
+    Thumbnail();
+    ~Thumbnail();
+
+    void reset();
+    void set (const FrameBufferImage *image);
+    void Render(float width);
+};
+
 class Navigator
 {
     // geometry left bar & pannel
     float width_;
     float height_;
     float pannel_width_;
-    float sourcelist_height_;
     float padding_width_;
 
     // behavior pannel
+    bool show_config_;
     bool pannel_visible_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
+    std::list<std::string> _selectedFiles;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 
     // side pannels
     void RenderSourcePannel(Source *s);
     void RenderMainPannel();
+    void RenderMainPannelVimix();
+    void RenderMainPannelSettings();
     void RenderTransitionPannel();
     void RenderNewPannel();
     void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
@@ -99,6 +118,7 @@ public:
     void Render();
 };
 
+
 class UserInterface
 {
     friend class Navigator;
@@ -123,8 +143,8 @@ class UserInterface
 
     // Private Constructor
     UserInterface();
-    UserInterface(UserInterface const& copy);            // Not Implemented
-    UserInterface& operator=(UserInterface const& copy); // Not Implemented
+    UserInterface(UserInterface const& copy) = delete;
+    UserInterface& operator=(UserInterface const& copy) = delete;
 
 public:
 
@@ -149,15 +169,15 @@ public:
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
-    void StartScreenshot();
     void showPannel(int id = 0);
-
     void showSourceEditor(Source *s);
     void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;
     void fillShaderEditor(const std::string &text);
+
+    void StartScreenshot();
 
 protected:
 
@@ -171,10 +191,12 @@ protected:
     void RenderHistory();
     void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);
+    void RenderAbout(bool* p_open);
+    void RenderNotes();
+
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();
-    void RenderAbout(bool* p_open);
 };
 
 #endif /* #define __UI_MANAGER_H_ */

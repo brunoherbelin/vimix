@@ -13,6 +13,7 @@
 #include <map>
 
 #include "UpdateCallback.h"
+#include "GlmToolkit.h"
 
 // Forward declare classes referenced
 class Shader;
@@ -64,7 +65,7 @@ public:
     // accept all kind of visitors
     virtual void accept (Visitor& v);
 
-    void copyTransform (Node *other);
+    void copyTransform (const Node *other);
 
     // public members, to manipulate with care
     bool      visible_;
@@ -239,6 +240,9 @@ class Scene  {
 
 public:
     Scene();
+    // non assignable class
+    Scene(Scene const&) = delete;
+    Scene& operator=(Scene const&) = delete;
     ~Scene();
 
     void accept (Visitor& v);

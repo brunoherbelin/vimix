@@ -92,8 +92,8 @@ class Rendering
 
     // Private Constructor
     Rendering();
-    Rendering(Rendering const& copy);            // Not Implemented
-    Rendering& operator=(Rendering const& copy); // Not Implemented
+    Rendering(Rendering const& copy) = delete;
+    Rendering& operator=(Rendering const& copy) = delete;
 
 public:
 

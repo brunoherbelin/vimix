@@ -18,6 +18,7 @@
 #include "Log.h"
 #include "View.h"
 #include "ImageShader.h"
+#include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -25,6 +26,7 @@
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "NetworkSource.h"
 #include "ActionManager.h"
@@ -138,7 +140,7 @@ void Mixer::update()
         if ( back_session_ ) {
             // swap front and back sessions
             swap();
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
             // set session filename
             Rendering::manager().mainWindow().setTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
@@ -181,7 +183,7 @@ void Mixer::update()
                 failure = nullptr; // prevent delete (already done in recreateSource)
         }
         // delete the source
-        deleteSource(failure, false);
+        deleteSource(failure);
     }
 
     // update views
@@ -193,7 +195,7 @@ void Mixer::update()
 
     // deep update was performed
     if  (View::need_deep_update_ > 0)
-        View::need_deep_update_--;
+        --View::need_deep_update_;
 }
 
 void Mixer::draw()
@@ -244,6 +246,37 @@ Source * Mixer::createSourceFile(const std::string &path)
     return s;
 }
 
+Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, uint fps)
+{
+    // ready to create a source
+    Source *s = nullptr;
+
+    if ( list_files.size() >0 ) {
+
+        // validate the creation of a sequence from the list
+        MultiFileSequence sequence(list_files);
+
+        if ( sequence.valid() ) {
+
+            // try to create a sequence
+            MultiFileSource *mfs = new MultiFileSource;
+            mfs->setSequence(sequence, fps);
+            s = mfs;
+
+            // remember in recent media
+            Settings::application.recentImport.path = SystemToolkit::path_filename(list_files.front());
+
+            // propose a new name
+            s->setName( SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) ) );
+        }
+        else {
+            Log::Notify("Could not find a sequence of consecutively numbered files.");
+        }
+    }
+
+    return s;
+}
+
 Source * Mixer::createSourceRender()
 {
     // ready to create a source
@@ -251,7 +284,10 @@ Source * Mixer::createSourceRender()
     s->setSession(session_);
 
     // propose a new name based on session name
-    s->setName(SystemToolkit::base_filename(session_->filename()));
+    if ( !session_->filename().empty() )
+        s->setName(SystemToolkit::base_filename(session_->filename()));
+    else
+        s->setName("Output");
 
     return s;
 }
@@ -263,8 +299,7 @@ Source * Mixer::createSourceStream(const std::string &gstreamerpipeline)
     s->setDescription(gstreamerpipeline);
 
     // propose a new name based on pattern name
-    std::string name = gstreamerpipeline.substr(0, gstreamerpipeline.find(" "));
-    s->setName(name);
+    s->setName( gstreamerpipeline.substr(0, gstreamerpipeline.find(" ")) );
 
     return s;
 }
@@ -289,8 +324,7 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
     Source *s = Device::manager().createSource(namedevice);
 
     // propose a new name based on pattern name
-    std::string name = namedevice.substr(0, namedevice.find(" "));
-    s->setName(name);
+    s->setName( namedevice.substr(0, namedevice.find(" ")) );
 
     return s;
 }
@@ -333,23 +367,17 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         origin = current_source_;
 
     // have an origin, can clone it
-    if (origin != session_->end()) {
-
+    if (origin != session_->end())
         // create a source
         s = (*origin)->clone();
-
-        // propose new name (this automatically increments name)
-        renameSource(s, (*origin)->name());
-    }
 
     return s;
 }
 
 void Mixer::addSource(Source *s)
 {
-    if (s != nullptr) {
+    if (s != nullptr)
         candidate_sources_.push_back(s);
-    }
 }
 
 void Mixer::insertSource(Source *s, View::Mode m)
@@ -357,7 +385,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
     if ( s != nullptr )
     {
         // avoid duplicate name
-        renameSource(s, s->name());
+        renameSource(s);
 
         // Add source to Session (ignored if source already in)
         SourceList::iterator sit = session_->addSource(s);
@@ -455,7 +483,7 @@ bool Mixer::recreateSource(Source *s)
     return true;
 }
 
-void Mixer::deleteSource(Source *s, bool withundo)
+void Mixer::deleteSource(Source *s)
 {
     if ( s != nullptr )
     {
@@ -467,10 +495,6 @@ void Mixer::deleteSource(Source *s, bool withundo)
 
         // delete source
         session_->deleteSource(s);
-
-        // store new state in history manager
-        if (withundo)
-            Action::manager().store(name + std::string(" source deleted"));
 
         // log
         Log::Notify("Source %s deleted.", name.c_str());
@@ -570,22 +594,36 @@ void Mixer::deselect(Source *s)
 
 void Mixer::deleteSelection()
 {
-    // get clones first : this way we store the history of deletion in the right order
-    SourceList selection_clones_;
-    for ( auto sit = selection().begin(); sit != selection().end(); sit++ ) {
-        CloneSource *clone = dynamic_cast<CloneSource *>(*sit);
-        if (clone)
-            selection_clones_.push_back(clone);
-    }
-    // delete all clones
-    while ( !selection_clones_.empty() ) {
-        deleteSource( selection_clones_.front());
-        selection_clones_.pop_front();
-    }
-    // empty the selection
-    while ( !selection().empty() )
-        deleteSource( selection().front() ); // this also remove element from selection()
+    // number of sources in selection
+    int N = selection().size();
+    // ignore if selection empty
+    if (N > 0) {
 
+        // adapt Action::manager undo info depending on case
+        std::ostringstream info;
+        if (N > 1)
+            info << N << " sources deleted";
+        else
+            info << selection().front()->name() << ": deleted";
+
+        // get clones first : this way we store the history of deletion in the right order
+        SourceList selection_clones_;
+        for ( auto sit = selection().begin(); sit != selection().end(); sit++ ) {
+            CloneSource *clone = dynamic_cast<CloneSource *>(*sit);
+            if (clone)
+                selection_clones_.push_back(clone);
+        }
+        // delete all clones
+        while ( !selection_clones_.empty() ) {
+            deleteSource( selection_clones_.front());// this also removes element from selection()
+            selection_clones_.pop_front();
+        }
+        // empty the selection
+        while ( !selection().empty() )
+            deleteSource( selection().front() ); // this also removes element from selection()
+
+        Action::manager().store(info.str());
+    }
 }
 
 void Mixer::groupSelection()
@@ -637,7 +675,7 @@ void Mixer::groupSelection()
 
     // store in action manager
     std::ostringstream info;
-    info << sessiongroup->name() << " source inserted, " << sessiongroup->session()->numSource() << " sources flatten.";
+    info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
     Action::manager().store(info.str());
 
     // give the hand to the user
@@ -650,19 +688,13 @@ void Mixer::renameSource(Source *s, const std::string &newname)
     if ( s != nullptr )
     {
         // tentative new name
-        std::string tentativename = newname;
+        std::string tentativename = s->name();
 
-        // refuse to rename to an empty name
-        if ( newname.empty() )
-            tentativename = "source";
+        // try the given new name if valid
+        if ( !newname.empty() )
+            tentativename = newname;
 
-        // search for a source of the name 'tentativename'
-        std::string basename = tentativename;
-        int count = 1;
-        for( auto it = session_->begin(); it != session_->end(); it++){
-            if ( s->id() != (*it)->id() && (*it)->name() == tentativename )
-                tentativename = basename + std::to_string( ++count );
-        }
+        tentativename = BaseToolkit::uniqueName(tentativename, session_->getNameList(s->id()));
 
         // ok to rename
         s->setName(tentativename);
@@ -679,7 +711,7 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     unsetCurrentSource();
 
     // change current if 'it' is valid
-    if ( it != session_->end() ) {
+    if ( it != session_->end() /*&& (*it)->mode() > Source::UNINITIALIZED */) {
         current_source_ = it;
         current_source_index_ = session_->index(current_source_);
 
@@ -886,7 +918,7 @@ void Mixer::setView(View::Mode m)
     }
 
     // need to deeply update view to apply eventual changes
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 }
 
 View *Mixer::view(View::Mode m)
@@ -942,25 +974,28 @@ void Mixer::load(const std::string& filename)
 #endif
 }
 
-void Mixer::open(const std::string& filename)
+void Mixer::open(const std::string& filename, bool smooth)
 {
-    if (Settings::application.smooth_transition)
+    if (smooth)
     {
-        Log::Info("\nStarting transition to session %s", filename.c_str());
-
         // create special SessionSource to be used for the smooth transition
         SessionFileSource *ts = new SessionFileSource;
+
         // open filename if specified
         if (!filename.empty())
+        {
+            Log::Info("\nStarting transition to session %s", filename.c_str());
             ts->load(filename);
-        // propose a new name based on uri
-        renameSource(ts, SystemToolkit::base_filename(filename));
+            // propose a new name based on uri
+            ts->setName(SystemToolkit::base_filename(filename));
+        }
+
+        // attach the SessionSource to the transition view
+        transition_.attach(ts);
 
         // insert source and switch to transition view
         insertSource(ts, View::TRANSITION);
 
-        // attach the SessionSource to the transition view
-        transition_.attach(ts);
     }
     else
         load(filename);
@@ -993,15 +1028,12 @@ void Mixer::merge(Session *session)
         return;
     }
 
-    // new state in history manager
-    std::ostringstream info;
-    info << session->numSource() << " sources imported from " << session->filename();
-    Action::manager().store(info.str());
-
     // import every sources
+    std::ostringstream info;
+    info << session->numSource() << " sources imported from:" << session->filename();
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
         // avoid name duplicates
-        renameSource(s, s->name());
+        renameSource(s);
 
         // Add source to Session
         session_->addSource(s);
@@ -1018,10 +1050,14 @@ void Mixer::merge(Session *session)
     }
 
     // needs to update !
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 
     // avoid display issues
     current_view_->update(0.f);
+
+    // new state in history manager
+    Action::manager().store(info.str());
+
 }
 
 void Mixer::merge(SessionSource *source)
@@ -1036,7 +1072,7 @@ void Mixer::merge(SessionSource *source)
 
     // prepare Action manager info
     std::ostringstream info;
-    info << source->name().c_str() << " source deleted, " << session->numSource() << " sources imported";
+    info << source->name().c_str() << " expanded:" << session->numSource() << " sources imported";
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
@@ -1067,7 +1103,7 @@ void Mixer::merge(SessionSource *source)
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
             // avoid name duplicates
-            renameSource(s, s->name());
+            renameSource(s);
 
             // scale alpha
             s->setAlpha( s->alpha() * source->alpha() );
@@ -1101,7 +1137,7 @@ void Mixer::merge(SessionSource *source)
         }
 
         // needs to update !
-        View::need_deep_update_++;
+        ++View::need_deep_update_;
 
     }
 
@@ -1109,12 +1145,11 @@ void Mixer::merge(SessionSource *source)
     detach(source);
     session_->deleteSource(source);
 
-    // new state in history manager
-    Action::manager().store(info.str());
-
     // avoid display issues
     current_view_->update(0.f);
 
+    // new state in history manager
+    Action::manager().store(info.str());
 }
 
 void Mixer::swap()
@@ -1164,15 +1199,15 @@ void Mixer::swap()
     back_session_ = nullptr;
 
     // reset History manager
-    Action::manager().clear();
+    Action::manager().init();
 
     // notification
     Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());
 }
 
-void Mixer::close()
+void Mixer::close(bool smooth)
 {
-    if (Settings::application.smooth_transition)
+    if (smooth)
     {
         // create empty SessionSource to be used for the smooth transition
         SessionFileSource *ts = new SessionFileSource;
@@ -1200,7 +1235,7 @@ void Mixer::clear()
     sessionSwapRequested_ = true;
 
     // need to deeply update view to apply eventual changes
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 
     Log::Info("New session ready.");
 }
@@ -1241,3 +1276,82 @@ void Mixer::paste(const std::string& clipboard)
         }
     }
 }
+
+
+void Mixer::restore(tinyxml2::XMLElement *sessionNode)
+{
+    //
+    // source lists
+    //
+
+    // sessionsources contains list of ids of all sources currently in the session (before loading)
+    SourceIdList session_sources = session_->getIdList();
+//    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)
+//        Log::Info("sessionsources  id %s", std::to_string(*it).c_str());
+
+    // load history status:
+    // - if a source exists, its attributes are updated, and that's all
+    // - if a source does not exists (in current session), it is created inside the session
+    SessionLoader loader( session_ );
+    loader.load( sessionNode );
+
+    // loaded_sources contains map of xml ids of all sources treated by loader
+    std::map< uint64_t, Source* > loaded_sources = loader.getSources();
+
+    // remove intersect of both lists (sources were updated by SessionLoader)
+    for( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); ){
+        auto ssit = std::find(session_sources.begin(), session_sources.end(), (*lsit).first);
+        if ( ssit != session_sources.end() ) {
+            lsit = loaded_sources.erase(lsit);
+            session_sources.erase(ssit);
+        }
+        else
+            lsit++;
+    }
+
+    // remaining ids in list sessionsources : to remove
+    while ( !session_sources.empty() ){
+        Source *s = Mixer::manager().findSource( session_sources.front() );
+        if (s!=nullptr) {
+#ifdef ACTION_DEBUG
+            Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
+#endif
+            // remove the source from the mixer
+            detach( s );
+            // delete source from session
+            session_->deleteSource( s );
+        }
+        session_sources.pop_front();
+    }
+
+    // remaining sources in list loaded_sources : to add
+    for ( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); lsit++)
+    {
+#ifdef ACTION_DEBUG
+        Log::Info("Recreate id %s to %s\n", std::to_string((*lsit).first).c_str(), std::to_string((*lsit).second->id()).c_str());
+#endif
+        // attach created source
+        attach( (*lsit).second );
+    }
+
+    //
+    // mixing groups
+    //
+
+    // Get the list of mixing groups in the xml loader
+    std::list< SourceList > loadergroups = loader.getMixingGroups();
+
+    // clear all session groups
+    auto group_iter = session_->beginMixingGroup();
+    while ( group_iter != session_->endMixingGroup() )
+        group_iter = session_->deleteMixingGroup(group_iter);
+
+    // apply all changes creating or modifying groups in the session
+    // (after this, new groups are created and existing groups are adjusted)
+    for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++)
+        session_->link( *group_loader_it, view(View::MIXING)->scene.fg() );
+
+
+    ++View::need_deep_update_;
+}
+

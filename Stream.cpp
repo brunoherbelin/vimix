@@ -12,7 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 
 #include "Stream.h"
 
@@ -24,19 +24,19 @@ using namespace std;
 Stream::Stream()
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     description_ = "undefined";
     pipeline_ = nullptr;
+    opened_ = false;
+    enabled_ = true;
+    desired_state_ = GST_STATE_PAUSED;
 
     width_ = -1;
     height_ = -1;
     single_frame_ = false;
     live_ = false;
-    ready_ = false;
     failed_ = false;
-    enabled_ = true;
-    desired_state_ = GST_STATE_PAUSED;
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -50,11 +50,20 @@ Stream::Stream()
 
     // OpenGL texture
     textureindex_ = 0;
+    textureinitialized_ = false;
 }
 
 Stream::~Stream()
 {
     close();
+
+    // cleanup opengl texture
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
+
+    // cleanup picture buffer
+    if (pbo_[0])
+        glDeleteBuffers(2, pbo_);
 }
 
 void Stream::accept(Visitor& v) {
@@ -70,8 +79,11 @@ guint Stream::texture() const
 }
 
 
-void Stream::open(const std::string &gstreamer_description, int w, int h)
+void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
+    if (w != width_ || h != height_ )
+        textureinitialized_ = false;
+
     // set gstreamer pipeline source
     description_ = gstreamer_description;
     width_ = w;
@@ -81,6 +93,7 @@ void Stream::open(const std::string &gstreamer_description, int w, int h)
     if (isOpen())
         close();
 
+    // open the stream
     execute_open();
 }
 
@@ -93,7 +106,7 @@ std::string Stream::description() const
 void Stream::execute_open()
 {
     // reset
-    ready_ = false;
+    opened_ = false;
 
     // Add custom app sink to the gstreamer pipeline
     string description = description_;
@@ -109,6 +122,7 @@ void Stream::execute_open()
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
+    gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);
     string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) +
@@ -138,14 +152,13 @@ void Stream::execute_open()
 #ifdef USE_GST_APPSINK_CALLBACKS
     // set the callbacks
     GstAppSinkCallbacks callbacks;
+    callbacks.new_preroll = callback_new_preroll;
     if (single_frame_) {
-        callbacks.new_preroll = callback_new_preroll;
         callbacks.eos = NULL;
         callbacks.new_sample = NULL;
         Log::Info("Stream %s contains a single frame", std::to_string(id_).c_str());
     }
     else {
-        callbacks.new_preroll = callback_new_preroll;
         callbacks.eos = callback_end_of_stream;
         callbacks.new_sample = callback_new_sample;
     }
@@ -176,18 +189,18 @@ void Stream::execute_open()
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
-    // all good
-    Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
-    ready_ = true;
-
     // done with refs
     gst_object_unref (sink);
     gst_caps_unref (caps);
+
+    // all good
+    Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
+    opened_ = true;
 }
 
 bool Stream::isOpen() const
 {
-    return ready_;
+    return opened_;
 }
 
 bool Stream::failed() const
@@ -197,22 +210,23 @@ bool Stream::failed() const
 
 void Stream::Frame::unmap()
 {
-    if ( full )  {
+    if ( full )
         gst_video_frame_unmap(&vframe);
-        full = false;
-    }
+    full = false;
 }
 
 void Stream::close()
 {
     // not openned?
-    if (!ready_) {
+    if (!opened_) {
         // nothing else to change
         return;
     }
 
     // un-ready
-    ready_ = false;
+    opened_ = false;
+    single_frame_ = false;
+    live_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -229,10 +243,9 @@ void Stream::close()
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
-    desired_state_ = GST_STATE_PAUSED;
 
     // cleanup eventual remaining frame memory
-    for(guint i = 0; i < N_FRAME; i++){
+    for(guint i = 0; i < N_FRAME; ++i){
         frame_[i].access.lock();
         frame_[i].unmap();
         frame_[i].access.unlock();
@@ -240,15 +253,6 @@ void Stream::close()
     write_index_ = 0;
     last_index_ = 0;
 
-    // cleanup opengl texture
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-    textureindex_ = 0;
-
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    pbo_size_ = 0;
 }
 
 
@@ -269,7 +273,7 @@ float Stream::aspectRatio() const
 
 void Stream::enable(bool on)
 {
-    if ( !ready_ || pipeline_ == nullptr)
+    if ( !opened_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -312,7 +316,7 @@ bool Stream::live() const
 void Stream::play(bool on)
 {
     // ignore if disabled, and cannot play an image
-    if (!enabled_)
+    if (!enabled_ || single_frame_)
         return;
 
     // request state
@@ -353,6 +357,10 @@ void Stream::play(bool on)
 
 bool Stream::isPlaying(bool testpipeline) const
 {
+    // image cannot play
+    if (single_frame_)
+        return false;
+
     // if not ready yet, answer with requested state
     if ( !testpipeline || pipeline_ == nullptr || !enabled_)
         return desired_state_ == GST_STATE_PLAYING;
@@ -368,6 +376,8 @@ bool Stream::isPlaying(bool testpipeline) const
 void Stream::init_texture(guint index)
 {
     glActiveTexture(GL_TEXTURE0);
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
@@ -378,53 +388,58 @@ void Stream::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // set pbo image size
-    pbo_size_ = height_ * width_ * 4;
+    if (!single_frame_) {
 
-    // create pixel buffer objects,
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    glGenBuffers(2, pbo_);
+        // set pbo image size
+        pbo_size_ = height_ * width_ * 4;
 
-    for(int i = 0; i < 2; i++ ) {
-        // create 2 PBOs
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
-        // glBufferDataARB with NULL pointer reserves only memory space.
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-        // fill in with reset picture
-        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-        if (ptr)  {
-            // update data directly on the mapped buffer
-            memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-            // release pointer to mapping buffer
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-        }
-        else {
-            // did not work, disable PBO
+        // create pixel buffer objects,
+        if (pbo_[0])
             glDeleteBuffers(2, pbo_);
-            pbo_[0] = pbo_[1] = 0;
-            pbo_size_ = 0;
-            break;
+        glGenBuffers(2, pbo_);
+
+        for(int i = 0; i < 2; i++ ) {
+            // create 2 PBOs
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
+            // glBufferDataARB with NULL pointer reserves only memory space.
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+            // fill in with reset picture
+            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+            if (ptr)  {
+                // update data directly on the mapped buffer
+                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+                // release pointer to mapping buffer
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+            }
+            else {
+                // did not work, disable PBO
+                glDeleteBuffers(2, pbo_);
+                pbo_[0] = pbo_[1] = 0;
+                pbo_size_ = 0;
+                break;
+            }
+
         }
 
-    }
-
-    // should be good to go, wrap it up
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    pbo_index_ = 0;
-    pbo_next_index_ = 1;
+        // should be good to go, wrap it up
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        pbo_index_ = 0;
+        pbo_next_index_ = 1;
 
 #ifdef STREAM_DEBUG
         Log::Info("Stream %s Use Pixel Buffer Object texturing.", std::to_string(id_).c_str());
 #endif
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
 
+    textureinitialized_ = true;
 }
 
 
 void Stream::fill_texture(guint index)
 {
     // is this the first frame ?
-    if (textureindex_ < 1)
+    if ( !textureinitialized_ || textureindex_ < 1)
     {
         // initialize texture
         init_texture(index);
@@ -466,6 +481,7 @@ void Stream::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
                             GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
         }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
@@ -476,12 +492,14 @@ void Stream::update()
         return;
 
     // not ready yet
-    if (!ready_)
+    if (!opened_){
+        // wait next frame to display
         return;
+    }
 
-//    // prevent unnecessary updates: disabled or already filled image
-//    if (!enabled_)
-//        return;
+    // prevent unnecessary updates: already filled image
+    if (single_frame_ && textureindex_>0)
+        return;
 
     // local variables before trying to update
     guint read_index = 0;
@@ -627,7 +645,7 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 void Stream::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     Stream *m = static_cast<Stream *>(p);
-    if (m && m->ready_) {
+    if (m && m->opened_) {
         m->fill_frame(NULL, Stream::EOS);
     }
 }
@@ -643,7 +661,7 @@ GstFlowReturn Stream::callback_new_preroll (GstAppSink *sink, gpointer p)
     if (sample != NULL) {
         // send frames to media player only if ready
         Stream *m = static_cast<Stream *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample
             GstBuffer *buf = gst_sample_get_buffer (sample);
@@ -677,7 +695,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         Stream *m = static_cast<Stream *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample (valid until sample is released)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;
@@ -710,7 +728,7 @@ void Stream::TimeCounter::tic ()
     GstClockTime dt = t - last_time;
 
     // one more frame since last time
-    nbFrames++;
+    ++nbFrames;
 
     // calculate instantaneous framerate
     // Exponential moving averate with previous framerate to filter jitter (50/50)

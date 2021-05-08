@@ -24,7 +24,7 @@
 class StreamSource: public Source
 {
 public:
-    StreamSource();
+    StreamSource(uint64_t id = 0);
     virtual ~StreamSource();
 
     // implementation of source API

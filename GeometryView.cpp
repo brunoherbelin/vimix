@@ -15,6 +15,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "Source.h"
 #include "Settings.h"
 #include "PickingVisitor.h"
 #include "DrawVisitor.h"
@@ -196,7 +197,7 @@ void GeometryView::draw()
     std::vector<Node *> surfaces;
     std::vector<Node *> overlays;
     for (auto source_iter = Mixer::manager().session()->begin();
-         source_iter != Mixer::manager().session()->end(); source_iter++) {
+         source_iter != Mixer::manager().session()->end(); ++source_iter) {
         // if it is in the current workspace
         if ((*source_iter)->workspace() == Settings::application.current_workspace) {
             // will draw its surface
@@ -257,7 +258,7 @@ void GeometryView::draw()
         static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
         static std::vector< std::string > labels_ws = { "Background", "Workspace", "Foreground" };
         if ( ImGuiToolkit::ComboIcon (icons_ws, labels_ws, &Settings::application.current_workspace) ){
-             View::need_deep_update_++;
+             ++View::need_deep_update_;
         }
 
         ImGui::PopStyleColor(8);  // 14 colors
@@ -319,7 +320,7 @@ void GeometryView::draw()
 
         // batch manipulation of sources in Geometry view
         if (ImGui::Selectable( ICON_FA_EXPAND "  Fit all" )){
-            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
                 (*sit)->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ (*sit)->frame()->aspectRatio(), 1.f, 1.f);
                 (*sit)->group(mode_)->rotation_.z = 0;
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
@@ -329,7 +330,7 @@ void GeometryView::draw()
         }
         if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset all" )){
             // apply to every sources in selection
-            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
                 (*sit)->group(mode_)->scale_ = glm::vec3(1.f);
                 (*sit)->group(mode_)->rotation_.z = 0;
                 (*sit)->group(mode_)->crop_ = glm::vec3(1.f);
@@ -351,7 +352,7 @@ void GeometryView::draw()
         }
         if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
             // apply to every sources in selection
-            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+            for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
                 (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
                 (*sit)->touch();
             }
@@ -413,7 +414,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
             // find if the current source was picked
             auto itp = pv.rbegin();
-            for (; itp != pv.rend(); itp++){
+            for (; itp != pv.rend(); ++itp){
                 // test if source contains this node
                 Source::hasNode is_in_source((*itp).first );
                 if ( is_in_source( current ) ){
@@ -431,41 +432,45 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 openContextMenu(MENU_SOURCE);
             }
             // pick on the lock icon; unlock source
-            else if ( pick.first == current->lock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
                 lock(current, false);
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == current->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
                 lock(current, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }
-            // pick a locked source without CTRL key; cancel pick
-            else if ( current->locked() && !UserInterface::manager().ctrlModifier() ) {
+            // pick a locked source ; cancel pick
+            else if ( current->locked() ) {
                 pick = { nullptr, glm::vec2(0.f) };
             }
         }
         // the clicked source changed (not the current source)
         if (current == nullptr) {
 
-            // default to failed pick
-            pick = { nullptr, glm::vec2(0.f) };
+            if (UserInterface::manager().ctrlModifier()) {
 
-            // loop over all nodes picked to detect clic on locks
-            for (auto itp = pv.rbegin(); itp != pv.rend(); itp++){
-                // get if a source was picked
-                Source *s = Mixer::manager().findSource((*itp).first);
-                // lock icon of a source (not current) is picked : unlock
-                if ( s!=nullptr && (*itp).first == s->lock_) {
-                    lock(s, false);
-                    pick = { s->locker_,  (*itp).second };
-                    break;
+                // default to failed pick
+                pick = { nullptr, glm::vec2(0.f) };
+
+                // loop over all nodes picked to detect clic on locks
+                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+                    // get if a source was picked
+                    Source *s = Mixer::manager().findSource((*itp).first);
+                    // lock icon of a source (not current) is picked : unlock
+                    if ( s!=nullptr && (*itp).first == s->lock_) {
+                        lock(s, false);
+                        pick = { s->locker_, (*itp).second };
+                        break;
+                    }
                 }
             }
             // no lock icon picked, find what else was picked
             if ( pick.first == nullptr) {
 
                 // loop over all nodes picked
-                for (auto itp = pv.rbegin(); itp != pv.rend(); itp++){
+                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
@@ -511,13 +516,13 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( View::canSelect(s) && s->active() && s->workspace() == Settings::application.current_workspace);
+    return ( View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
 }
 
 
 void GeometryView::applySelectionTransform(glm::mat4 M)
 {
-    for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); sit++){
+    for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
         // recompute all from matrix transform
         glm::mat4 transform = M * (*sit)->stored_status_->transform_;
         glm::vec3 tra, rot, sca;
@@ -1009,7 +1014,7 @@ void GeometryView::terminate()
     // restore of all handles overlays
     glm::vec2 c(0.f, 0.f);
     for (auto sit = Mixer::manager().session()->begin();
-         sit != Mixer::manager().session()->end(); sit++){
+         sit != Mixer::manager().session()->end(); ++sit){
 
         (*sit)->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(c);
         (*sit)->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(c);
@@ -1037,7 +1042,7 @@ void GeometryView::arrow (glm::vec2 movement)
 
     bool first = true;
     glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
 
         // individual move with SHIFT
         if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )

@@ -404,6 +404,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[SQUARE_POINT] = nullptr;
         icons[IMAGE]    = new Mesh("mesh/icon_image.ply");
         shadows[IMAGE]  = shadow;
+        icons[SEQUENCE] = new Mesh("mesh/icon_sequence.ply");
+        shadows[SEQUENCE]= shadow;
         icons[VIDEO]    = new Mesh("mesh/icon_video.ply");
         shadows[VIDEO]  = shadow;
         icons[SESSION]  = new Mesh("mesh/icon_vimix.ply");

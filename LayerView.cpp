@@ -14,6 +14,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "Source.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
@@ -123,7 +124,7 @@ void LayerView::draw()
                 (*it)->setDepth(depth);
             }
             Action::manager().store(std::string("Selection: Layer Distribute"));
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
@@ -134,7 +135,7 @@ void LayerView::draw()
                 (*it)->setDepth(depth);
             }
             Action::manager().store(std::string("Selection: Layer Compress"));
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
@@ -144,7 +145,7 @@ void LayerView::draw()
                 (*it)->setDepth((*rit)->depth());
             }
             Action::manager().store(std::string("Selection: Layer Reverse order"));
-            View::need_deep_update_++;
+            ++View::need_deep_update_;
         }
 
         ImGui::PopStyleColor(2);
@@ -226,12 +227,13 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
         Source *s = Mixer::manager().findSource(pick.first);
         if (s != nullptr) {
             // pick on the lock icon; unlock source
-            if ( pick.first == s->lock_) {
+            if ( UserInterface::manager().ctrlModifier() && pick.first == s->lock_) {
                 lock(s, false);
-                pick = { s->locker_, pick.second };
+//                pick = { s->locker_, pick.second };
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == s->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == s->unlock_ ) {
                 lock(s, true);
                 pick = { nullptr, glm::vec2(0.f) };
             }

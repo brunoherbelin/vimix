@@ -12,7 +12,7 @@ using namespace std;
 #include "Resource.h"
 #include "Visitor.h"
 #include "SystemToolkit.h"
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 #include "GstToolkit.h"
 #include "RenderingManager.h"
 
@@ -27,20 +27,20 @@ std::list<MediaPlayer*> MediaPlayer::registered_;
 MediaPlayer::MediaPlayer()
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     uri_ = "undefined";
     pipeline_ = nullptr;
+    opened_ = false;
+    enabled_ = true;
+    desired_state_ = GST_STATE_PAUSED;
 
-    ready_ = false;
     failed_ = false;
     seeking_ = false;
-    enabled_ = true;
     force_software_decoding_ = false;
     hardware_decoder_ = "";
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
-    desired_state_ = GST_STATE_PAUSED;
     loop_ = LoopMode::LOOP_REWIND;
 
     // start index in frame_ stack
@@ -65,6 +65,9 @@ MediaPlayer::~MediaPlayer()
     if (textureindex_)
         glDeleteTextures(1, &textureindex_);
 
+    // cleanup picture buffer
+    if (pbo_[0])
+        glDeleteBuffers(2, pbo_);
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -81,7 +84,7 @@ guint MediaPlayer::texture() const
 
 #define LIMIT_DISCOVERER
 
-static MediaInfo UriDiscoverer_(std::string uri)
+MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 {
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("Checking file '%s'", uri.c_str());
@@ -217,23 +220,27 @@ static MediaInfo UriDiscoverer_(std::string uri)
     return video_stream_info;
 }
 
-void MediaPlayer::open(string path)
+void MediaPlayer::open (const std::string & filename, const string &uri)
 {
     // set path
-    filename_ = SystemToolkit::transliterate( path );
+    filename_ = BaseToolkit::transliterate( filename );
 
     // set uri to open
-    uri_ = GstToolkit::filename_to_uri(path);
+    if (uri.empty())
+        uri_ = GstToolkit::filename_to_uri( filename );
+    else
+        uri_ = uri;
 
-    // reset
-    ready_ = false;
+    // close before re-openning
+    if (isOpen())
+        close();
 
     // start URI discovering thread:
-    discoverer_ = std::async( UriDiscoverer_, uri_);
+    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
     // wait for discoverer to finish in the future (test in update)
 
 //    // debug without thread
-//    media_ = UriDiscoverer_(uri_);
+//    media_ = MediaPlayer::UriDiscoverer(uri_);
 //    if (media_.valid) {
 //        timeline_.setEnd( media_.end );
 //        timeline_.setStep( media_.dt );
@@ -329,47 +336,48 @@ void MediaPlayer::execute_open()
 
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
-    if (sink) {
-
-        // instruct the sink to send samples synched in time
-        gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
-
-        // instruct sink to use the required caps
-        gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
-
-        // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
-        gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
-        gst_app_sink_set_drop (GST_APP_SINK(sink), true);
-
-#ifdef USE_GST_APPSINK_CALLBACKS
-        // set the callbacks
-        GstAppSinkCallbacks callbacks;
-        callbacks.new_preroll = callback_new_preroll;
-        if (media_.isimage) {
-            callbacks.eos = NULL;
-            callbacks.new_sample = NULL;
-        }
-        else {
-            callbacks.eos = callback_end_of_stream;
-            callbacks.new_sample = callback_new_sample;
-        }
-        gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-#else
-        // connect signals callbacks
-        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
-        g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
-        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
-        gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
-#endif
-        // done with ref to sink
-        gst_object_unref (sink);
-    } 
-    else {
+    if (!sink) {
         Log::Warning("MediaPlayer %s Could not configure  sink", std::to_string(id_).c_str());
         failed_ = true;
         return;
     }
+
+    // instruct the sink to send samples synched in time
+    gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
+
+    // instruct sink to use the required caps
+    gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+
+    // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
+    gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
+    gst_app_sink_set_drop (GST_APP_SINK(sink), true);
+
+#ifdef USE_GST_APPSINK_CALLBACKS
+    // set the callbacks
+    GstAppSinkCallbacks callbacks;
+    callbacks.new_preroll = callback_new_preroll;
+    if (media_.isimage) {
+        callbacks.eos = NULL;
+        callbacks.new_sample = NULL;
+    }
+    else {
+        callbacks.eos = callback_end_of_stream;
+        callbacks.new_sample = callback_new_sample;
+    }
+    gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
+#else
+    // connect signals callbacks
+    g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
+    if (!media_.isimage) {
+        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
+        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
+    }
+    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
+#endif
+
+    // done with ref to sink
+    gst_object_unref (sink);
     gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
@@ -399,7 +407,7 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
               timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
-    ready_ = true;
+    opened_ = true;
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -407,7 +415,7 @@ void MediaPlayer::execute_open()
 
 bool MediaPlayer::isOpen() const
 {
-    return ready_;
+    return opened_;
 }
 
 bool MediaPlayer::failed() const
@@ -417,16 +425,15 @@ bool MediaPlayer::failed() const
 
 void MediaPlayer::Frame::unmap()
 {
-    if ( full )  {
+    if ( full )
         gst_video_frame_unmap(&vframe);
-        full = false;
-    }
+    full = false;
 }
 
 void MediaPlayer::close()
 {
     // not openned?
-    if (!ready_) {
+    if (!opened_) {
         // wait for loading to finish
         if (discoverer_.valid())
             discoverer_.wait();
@@ -435,7 +442,7 @@ void MediaPlayer::close()
     }
 
     // un-ready the media player
-    ready_ = false;
+    opened_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -463,12 +470,6 @@ void MediaPlayer::close()
     write_index_ = 0;
     last_index_ = 0;
 
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-    pbo_size_ = 0;
-    pbo_index_ = 0;
-    pbo_next_index_ = 0;
 
 #ifdef MEDIA_PLAYER_DEBUG
     Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
@@ -507,7 +508,7 @@ GstClockTime MediaPlayer::position()
 
 void MediaPlayer::enable(bool on)
 {
-    if ( !ready_ )
+    if ( !opened_ || pipeline_ == nullptr)
         return;
 
     if ( enabled_ != on ) {
@@ -772,6 +773,7 @@ void MediaPlayer::init_texture(guint index)
         // for possible hadrware decoding plugins used. Empty string means none.
         hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
     }
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 
@@ -819,6 +821,7 @@ void MediaPlayer::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
                             GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
         }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
@@ -829,7 +832,7 @@ void MediaPlayer::update()
         return;
 
     // not ready yet
-    if (!ready_) {
+    if (!opened_) {
         if (discoverer_.valid()) {
             // try to get info from discoverer
             if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
@@ -1153,7 +1156,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 void MediaPlayer::callback_end_of_stream (GstAppSink *, gpointer p)
 {
     MediaPlayer *m = static_cast<MediaPlayer *>(p);
-    if (m && m->ready_) {
+    if (m && m->opened_) {
         m->fill_frame(NULL, MediaPlayer::EOS);
     }
 }
@@ -1170,7 +1173,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample
             GstBuffer *buf = gst_sample_get_buffer (sample);
@@ -1205,7 +1208,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
-        if (m && m->ready_) {
+        if (m && m->opened_) {
 
             // get buffer from sample (valid until sample is released)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;

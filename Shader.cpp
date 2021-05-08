@@ -14,7 +14,7 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 
-#include "GlmToolkit.h"
+#include "BaseToolkit.h"
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -203,14 +203,14 @@ bool Shader::force_blending_opacity = false;
 Shader::Shader() : blending(BLEND_OPACITY)
 {
     // create unique id
-    id_ = GlmToolkit::uniqueId();
+    id_ = BaseToolkit::uniqueId();
 
     program_ = &simpleShadingProgram;
     reset();
 }
 
 
-void Shader::operator = (const Shader &S )
+void Shader::copy(Shader const& S)
 {
     color = S.color;
     blending = S.blending;

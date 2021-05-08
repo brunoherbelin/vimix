@@ -8,6 +8,9 @@ class TextureView : public View
 {
 public:
     TextureView();
+    // non assignable class
+    TextureView(TextureView const&) = delete;
+    TextureView& operator=(TextureView const&) = delete;
 
     void draw () override;
     void update (float dt) override;

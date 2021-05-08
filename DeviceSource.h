@@ -10,7 +10,7 @@
 class DeviceSource : public StreamSource
 {
 public:
-    DeviceSource();
+    DeviceSource(uint64_t id = 0);
     ~DeviceSource();
 
     // Source interface
@@ -87,8 +87,8 @@ class Device
     friend class DeviceSource;
 
     Device();
-    Device(Device const& copy);            // Not Implemented
-    Device& operator=(Device const& copy); // Not Implemented
+    Device(Device const& copy) = delete;
+    Device& operator=(Device const& copy) = delete;
 
 public:
 

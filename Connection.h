@@ -62,8 +62,8 @@ class Connection
 
     // Private Constructor
     Connection();
-    Connection(Connection const& copy);            // Not Implemented
-    Connection& operator=(Connection const& copy); // Not Implemented
+    Connection(Connection const& copy) = delete;
+    Connection& operator=(Connection const& copy) = delete;
 
 public:
     static Connection& manager()

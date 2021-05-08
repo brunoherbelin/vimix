@@ -23,7 +23,39 @@ class MixingGroup;
 
 typedef std::list<CloneSource *> CloneList;
 
-class Source
+class SourceCore
+{
+public:
+    SourceCore();
+    SourceCore(SourceCore const&);
+    SourceCore& operator= (SourceCore const& other);
+    virtual ~SourceCore();
+
+    // get handle on the nodes used to manipulate the source in a view
+    inline Group *group (View::Mode m) const { return groups_.at(m); }
+    inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
+    void store (View::Mode m);
+
+    // a Source has a shader used to render in fbo
+    inline Shader *renderingShader () const { return renderingshader_; }
+    // a Source always has an image processing shader
+    inline ImageProcessingShader *processingShader () const { return processingshader_; }
+
+    void copy(SourceCore const& other);
+
+protected:
+    // nodes
+    std::map<View::Mode, Group*> groups_;
+    // temporary copy for interaction
+    Group *stored_status_;
+    // image processing shaders
+    ImageProcessingShader *processingshader_;
+    // pointer to the currently attached shader
+    // (will be processingshader_ if image processing is enabled)
+    Shader *renderingshader_;
+};
+
+class Source : public SourceCore
 {
     friend class SourceLink;
     friend class CloneSource;
@@ -38,7 +70,10 @@ class Source
 public:
     // create a source and add it to the list
     // only subclasses of sources can actually be instanciated
-    Source ();
+    Source (uint64_t id = 0);
+    // non assignable class
+    Source(Source const&) = delete;
+    Source& operator=(Source const&) = delete;
     virtual ~Source ();
 
     // Get unique id
@@ -50,7 +85,7 @@ public:
     inline const char *initials () const { return initials_; }
 
     // cloning mechanism
-    virtual CloneSource *clone ();
+    virtual CloneSource *clone (uint64_t id = 0);
 
     // Display mode
     typedef enum {
@@ -62,15 +97,8 @@ public:
     Mode mode () const;
     void setMode (Mode m);
 
-    // get handle on the nodes used to manipulate the source in a view
-    inline Group *group (View::Mode m) const { return groups_.at(m); }
-    inline Node  *groupNode (View::Mode m) const { return static_cast<Node*>(groups_.at(m)); }
-
     // tests if a given node is part of the source
     bool contains (Node *node) const;
-
-    // the rendering shader always have an image processing shader
-    inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
     // the image processing shader can be enabled or disabled
     // (NB: when disabled, a simple ImageShader is applied)
@@ -79,9 +107,6 @@ public:
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
-
-    // a Source has a shader used to render in fbo
-    inline Shader *renderingShader () const { return renderingshader_; }
 
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;
@@ -93,7 +118,7 @@ public:
     inline void touch () { need_update_ = true; }
 
     // informs if its ready (i.e. initialized)
-    inline bool ready () const  { return initialized_; }
+    inline bool ready () const  { return ready_; }
 
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
     virtual void update (float dt);
@@ -206,12 +231,9 @@ protected:
     char initials_[3];
     uint64_t id_;
 
-    // every Source shall be initialized on first draw
-    bool initialized_;
+    // every Source shall be initialized to be ready after first draw
     virtual void init() = 0;
-
-    // nodes
-    std::map<View::Mode, Group*> groups_;
+    bool ready_;
 
     // render() fills in the renderbuffer at every frame
     // NB: rendershader_ is applied at render()
@@ -222,12 +244,6 @@ protected:
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
     FrameBufferSurface *mixingsurface_;
-
-    // image processing shaders
-    ImageProcessingShader *processingshader_;
-    // pointer to the currently attached shader
-    // (will be processingshader_ if image processing is enabled)
-    Shader *renderingshader_;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;
@@ -259,7 +275,6 @@ protected:
     bool  locked_;
     bool  need_update_;
     float dt_;
-    Group *stored_status_;
     Workspace  workspace_;
 
     // clones
@@ -288,7 +303,7 @@ public:
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 
-    CloneSource *clone() override;
+    CloneSource *clone(uint64_t id = 0) override;
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
@@ -296,7 +311,7 @@ public:
 
 protected:
     // only Source class can create new CloneSource via clone();
-    CloneSource(Source *origin);
+    CloneSource(Source *origin, uint64_t id = 0);
 
     void init() override;
     Source *origin_;

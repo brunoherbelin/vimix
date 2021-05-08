@@ -49,7 +49,7 @@ SourceIdList ids (const SourceList &list)
 {
     SourceIdList idlist;
 
-    for( auto sit = list.begin(); sit != list.end(); sit++)
+    for( auto sit = list.begin(); sit != list.end(); ++sit)
         idlist.push_back( (*sit)->id() );
 
     // make sure no duplicate
@@ -67,7 +67,7 @@ SourceListCompare compare (const SourceList &first, const SourceList &second)
 
     // a new test list: start with the second list and remove all commons with first list
     SourceList test = second;
-    for (auto it = first.begin(); it != first.end(); it++){
+    for (auto it = first.begin(); it != first.end(); ++it){
         test.remove(*it);
     }
 
@@ -100,12 +100,12 @@ SourceList intersect (const SourceList &first, const SourceList &second)
     // take second list and remove all elements also in first list
     // -> builds the list of what remains in second list
     SourceList l1 = second;
-    for (auto it = first.begin(); it != first.end(); it++)
+    for (auto it = first.begin(); it != first.end(); ++it)
         l1.remove(*it);
     // take second list and remove all elements in the remainer list
     // -> builds the list of what is in second list and was part of the first list
     SourceList l2 = second;
-    for (auto it = l1.begin(); it != l1.end(); it++)
+    for (auto it = l1.begin(); it != l1.end(); ++it)
         l2.remove(*it);
     return l2;
 }
@@ -114,11 +114,13 @@ SourceList intersect (const SourceList &first, const SourceList &second)
 SourceList join (const SourceList &first, const SourceList &second)
 {
     SourceList l = second;
-    for (auto it = first.begin(); it != first.end(); it++)
+    for (auto it = first.begin(); it != first.end(); ++it)
         l.push_back(*it);
     l.unique();
     return l;
 }
+
+
 
 
 void SourceLink::connect(uint64_t id, Session *se)
@@ -136,8 +138,9 @@ void SourceLink::connect(Source *s)
         disconnect();
 
     target_ = s;
-    id_ = s->id();
     target_->links_.push_back(this);
+
+    id_ = s->id();
     // TODO veryfy circular dependency recursively ?
 }
 
@@ -145,9 +148,9 @@ void SourceLink::disconnect()
 {
     if (target_)
         target_->links_.remove(this);
+    target_ = nullptr;
 
     id_ = 0;
-    target_ = nullptr;
     host_ = nullptr;
 }
 
@@ -181,3 +184,21 @@ Source *SourceLink::source()
     return target_;
 }
 
+
+SourceList validate (const SourceLinkList &list)
+{
+    SourceList sourcelist;
+
+    for( auto sit = list.begin(); sit != list.end(); ++sit) {
+
+        Source *s = (*sit)->source();
+        if (s)
+            sourcelist.push_back( s );
+
+    }
+
+    // make sure no duplicate
+    sourcelist.unique();
+
+    return sourcelist;
+}

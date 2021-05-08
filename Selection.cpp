@@ -61,7 +61,7 @@ void Selection::set(SourceList l)
 {
     clear();
 
-    for(auto it = l.begin(); it != l.end(); it++)
+    for(auto it = l.begin(); it != l.end(); ++it)
         (*it)->setMode(Source::SELECTED);
 
     l.sort();
@@ -71,7 +71,7 @@ void Selection::set(SourceList l)
 
 void Selection::add(SourceList l)
 {
-    for(auto it = l.begin(); it != l.end(); it++)
+    for(auto it = l.begin(); it != l.end(); ++it)
         (*it)->setMode(Source::SELECTED);
 
     // generate new set as union of current selection and give list
@@ -86,7 +86,7 @@ void Selection::add(SourceList l)
 
 void Selection::remove(SourceList l)
 {
-    for(auto it = l.begin(); it != l.end(); it++)
+    for(auto it = l.begin(); it != l.end(); ++it)
         (*it)->setMode(Source::VISIBLE);
 
     // generate new set as difference of current selection and give list
@@ -98,7 +98,7 @@ void Selection::remove(SourceList l)
 
 void Selection::clear()
 {
-    for(auto it = selection_.begin(); it != selection_.end(); it++)
+    for(auto it = selection_.begin(); it != selection_.end(); ++it)
         (*it)->setMode(Source::VISIBLE);
 
     selection_.clear();

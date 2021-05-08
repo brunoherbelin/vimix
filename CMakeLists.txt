@@ -40,6 +40,7 @@ if(UNIX)
         set(CMAKE_OSX_ARCHITECTURES x86_64)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 #        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X version to target for deployment")
+        set (ICU_ROOT /usr/local/Cellar/icu4c/67.1)
 
     else()
         add_definitions(-DLINUX)
@@ -267,6 +268,7 @@ set(VMIX_BINARY "vimix")
 set(VMIX_SRCS
     main.cpp
     Log.cpp
+    BaseToolkit.cpp
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp
@@ -289,7 +291,7 @@ set(VMIX_SRCS
     Selection.cpp
     SessionSource.cpp
     SessionVisitor.cpp
-    GarbageVisitor.cpp
+    Interpolator.cpp
     SessionCreator.cpp
     Mixer.cpp
     FrameGrabber.cpp
@@ -299,7 +301,6 @@ set(VMIX_SRCS
     Settings.cpp
     Screenshot.cpp
     Resource.cpp
-    FileDialog.cpp
     Timeline.cpp
     Stream.cpp
     MediaPlayer.cpp
@@ -308,6 +309,7 @@ set(VMIX_SRCS
     PatternSource.cpp
     DeviceSource.cpp
     NetworkSource.cpp
+    MultiFileSource.cpp
     FrameBuffer.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
@@ -325,6 +327,7 @@ set(VMIX_SRCS
     NetworkToolkit.cpp
     Connection.cpp
     ActionManager.cpp
+    Overlay.cpp
 )
 
 
@@ -427,6 +430,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_eye_slash.ply
     ./rsc/mesh/icon_vector_square_slash.ply
     ./rsc/mesh/icon_cube.ply
+    ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )
