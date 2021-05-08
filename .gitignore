@@ -18,3 +18,9 @@ rules.ninja
 /CMakeLists.txt.user.*
 
 rsc/shaders/paint.fs
+
+osx/.DS_Store
+
+.DS_Store
+
+osx/runvimix
