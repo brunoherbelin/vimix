@@ -148,7 +148,7 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
     bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
     ImGui::PopID();
 
-    if (tooltip != nullptr)
+    if (tooltip != nullptr && ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip(tooltip);
 
     return ret;
