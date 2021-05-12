@@ -1225,7 +1225,7 @@ void UserInterface::RenderPreview()
         ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(358794);
-        if ( ImGuiToolkit::ButtonIcon(3,6, "Copy to clipboard") )
+        if ( ImGuiToolkit::ButtonIcon(11,2, "Copy to clipboard") )
             ImGui::SetClipboardText(dummy_str);
         ImGui::PopID();
 
@@ -1235,7 +1235,7 @@ void UserInterface::RenderPreview()
         ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(899872);
-        if ( ImGuiToolkit::ButtonIcon(3,6, "Copy to clipboard") )
+        if ( ImGuiToolkit::ButtonIcon(11,2, "Copy to clipboard") )
             ImGui::SetClipboardText(dummy_str);
         ImGui::PopID();
 
