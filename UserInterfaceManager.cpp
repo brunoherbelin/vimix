@@ -89,6 +89,12 @@ static std::vector< std::future<std::string> > fileImportFileDialogs;
 static std::vector< std::future<std::string> > recentFolderFileDialogs;
 static std::vector< std::future<std::string> > recordFolderFileDialogs;
 
+static std::vector< std::future<FrameGrabber *> > _video_recorders;
+FrameGrabber *delayTrigger(FrameGrabber *g, std::chrono::milliseconds delay) {
+    std::this_thread::sleep_for (delay);
+    return g;
+}
+
 
 UserInterface::UserInterface()
 {
@@ -105,8 +111,8 @@ UserInterface::UserInterface()
     screenshot_step = 0;
 
     // keep hold on frame grabbers
-    video_recorder_ = 0;
-    webcam_emulator_ = 0;
+    video_recorder_ = nullptr;
+    webcam_emulator_ = nullptr;
 }
 
 bool UserInterface::Init()
@@ -246,16 +252,18 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().view()->selectAll();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
-            // toggle recording
-            FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
-            if (rec) {
-                rec->stop();
-                video_recorder_ = 0;
+            if (shift_modifier_active) {
+                FrameGrabbing::manager().add(new PNGRecorder);
             }
             else {
-                FrameGrabber *fg = new VideoRecorder;
-                video_recorder_ = fg->id();
-                FrameGrabbing::manager().add(fg);
+                // toggle recording
+                if (video_recorder_) {
+                    video_recorder_->stop();
+                    video_recorder_ = nullptr;
+                }
+                else {
+                    _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder, std::chrono::seconds(Settings::application.record.delay)) );
+                }
             }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Y )) {
@@ -749,11 +757,21 @@ void UserInterface::Render()
                   &Settings::application.widget.stats_corner,
                   &Settings::application.widget.stats_mode);
 
-    // management of video_recorder
-    FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
-    if (rec && rec->duration() > Settings::application.record.timeout ){
-        rec->stop();
-        video_recorder_ = 0;
+    // management of video_recorders
+    if ( !_video_recorders.empty() ) {
+        // check that file dialog thread finished
+        if (_video_recorders.back().wait_for(timeout) == std::future_status::ready ) {
+
+            video_recorder_ = _video_recorders.back().get();
+            FrameGrabbing::manager().add(video_recorder_);
+
+            _video_recorders.pop_back();
+        }
+    }
+
+    if (video_recorder_ && video_recorder_->duration() > Settings::application.record.timeout ){
+        video_recorder_->stop();
+        video_recorder_ = nullptr;
     }
 
     // all IMGUI Rendering
@@ -996,10 +1014,6 @@ void UserInterface::RenderPreview()
         preview_window_pos = ImGui::GetWindowPos();
         preview_window_size = ImGui::GetWindowSize();
 
-        FrameGrabber *rec = FrameGrabbing::manager().get(video_recorder_);
-#if defined(LINUX)
-        FrameGrabber *cam = FrameGrabbing::manager().get(webcam_emulator_);
-#endif
         // return from thread for folder openning
         if ( !recordFolderFileDialogs.empty() ) {
             // check that file dialog thread finished
@@ -1026,7 +1040,7 @@ void UserInterface::RenderPreview()
                     info << "  " << FrameBuffer::aspect_ratio_name[p.x] ;
                 ImGui::MenuItem(info.str().c_str(), nullptr, false, false);
                 // cannot change resolution when recording
-                if (rec == nullptr && p.y > -1) {
+                if (video_recorder_ == nullptr && p.y > -1) {
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
                     {
@@ -1049,36 +1063,47 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)") )
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)", CTRL_MOD "Shitf+R") )
                     FrameGrabbing::manager().add(new PNGRecorder);
 
                 // Stop recording menu if main recorder already exists
-                if (rec) {
+
+                if (!_video_recorders.empty()) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
+                    ImGui::MenuItem( ICON_FA_SQUARE "  Record starting", CTRL_MOD "R", false, false);
+                    ImGui::PopStyleColor(1);
+                    static char dummy_str[512];
+                    sprintf(dummy_str, "%s", VideoRecorder::profile_name[Settings::application.record.profile]);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+                    ImGui::InputText("Codec", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleColor(1);
+                }
+                else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
-                        rec->stop();
-                        video_recorder_ = 0;
+                        video_recorder_->stop();
+                        video_recorder_ = nullptr;
                     }
+                    ImGui::PopStyleColor(1);
+                    static char dummy_str[512];
+                    sprintf(dummy_str, "%s", VideoRecorder::profile_name[Settings::application.record.profile]);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+                    ImGui::InputText("Codec", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
                 }
                 // start recording
                 else {
-                    // detecting the absence of video recorder but the variable is still not 0: fix this!
-                    if (video_recorder_ > 0)
-                        video_recorder_ = 0;
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        FrameGrabber *fg = new VideoRecorder;
-                        video_recorder_ = fg->id();
-                        FrameGrabbing::manager().add(fg);
+                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder, std::chrono::seconds(Settings::application.record.delay)) );
                     }
                     ImGui::PopStyleColor(1);
                     // select profile
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
-
-
                 // Options menu
                 ImGui::Separator();
                 ImGui::MenuItem("Options", nullptr, false, false);
@@ -1110,31 +1135,30 @@ void UserInterface::RenderPreview()
                         Settings::application.record.path = SystemToolkit::home_path();
 
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::SliderFloat("Timeout", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
-                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "None", 3.f);
+                    ImGui::SliderFloat("Duration", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
+                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "Until stopped", 3.f);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
+                                       Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
                 }
-
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Share stream"))
             {
 #if defined(LINUX)
-                bool on = cam != nullptr;
+                bool on = webcam_emulator_ != nullptr;
                 if ( ImGui::MenuItem( ICON_FA_CAMERA "  Emulate video camera", NULL, &on) ) {
-                    if (on && cam == nullptr) {
-                        if (webcam_emulator_ > 0)
-                            webcam_emulator_ = 0;
+                    if (on) {
                         if (Loopback::systemLoopbackInitialized()) {
-                            FrameGrabber *fg = new Loopback;
-                            webcam_emulator_ = fg->id();
-                            FrameGrabbing::manager().add(fg);
+                            webcam_emulator_ = new Loopback;
+                            FrameGrabbing::manager().add(webcam_emulator_);
                         }
                         else
                             openInitializeSystemLoopback = true;
                     }
-                    if (!on && cam != nullptr) {
-                        cam->stop();
-                        webcam_emulator_ = 0;
+                    else {
+                        webcam_emulator_->stop();
+                        webcam_emulator_ = nullptr;
                     }
                 }
 #endif
@@ -1179,13 +1203,25 @@ void UserInterface::RenderPreview()
             ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
         }
         // recording indicator overlay
-        if (rec)
+        if (video_recorder_)
         {
             float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-            ImGui::Text(ICON_FA_CIRCLE " %s", rec->info().c_str() );
+            ImGui::Text(ICON_FA_CIRCLE " %s", video_recorder_->info().c_str() );
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
+        else if (!_video_recorders.empty())
+        {
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            static double anim = 0.f;
+            double a = sin(anim+=0.104); // 2 * pi / 60fps
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, a));
+            ImGui::Text(ICON_FA_CIRCLE);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
@@ -1220,7 +1256,7 @@ void UserInterface::RenderPreview()
 
         static char dummy_str[512];
         sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
-        ImGui::Text("Install v4l2loopack:");
+        ImGui::Text("Install v4l2loopack (once):");
         ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
@@ -1230,7 +1266,7 @@ void UserInterface::RenderPreview()
         ImGui::PopID();
 
         sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\"");
-        ImGui::Text("Initialize v4l2loopack:");
+        ImGui::Text("Initialize v4l2loopack (after reboot):");
         ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
@@ -1241,7 +1277,7 @@ void UserInterface::RenderPreview()
 
         ImGui::Separator();
         ImGui::SetItemDefaultFocus();
-        if (ImGui::Button("Thank you, I'll do this and try again later.", ImVec2(w, 0)) ) {
+        if (ImGui::Button("Ok, I'll do this in a terminal and try again later.", ImVec2(w, 0)) ) {
             ImGui::CloseCurrentPopup();
         }
 
