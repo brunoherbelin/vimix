@@ -717,6 +717,27 @@ void UserInterface::NewFrame()
 
 void UserInterface::Render()
 {
+    // management of video_recorders
+    if ( !_video_recorders.empty() ) {
+        // check that file dialog thread finished
+        if (_video_recorders.back().wait_for(timeout) == std::future_status::ready ) {
+            video_recorder_ = _video_recorders.back().get();
+            FrameGrabbing::manager().add(video_recorder_);
+            _video_recorders.pop_back();
+        }
+    }
+    // verify the video recorder is valid
+    FrameGrabbing::manager().verify(&video_recorder_);
+    if (video_recorder_ && video_recorder_->duration() > Settings::application.record.timeout ){
+        video_recorder_->stop();
+        video_recorder_ = nullptr;
+    }
+
+#if defined(LINUX)
+    // verify the frame grabber for webcam emulator is valid
+    FrameGrabbing::manager().verify(&webcam_emulator_);
+#endif
+
     // warning modal dialog
     Log::Render(&Settings::application.widget.logs);
 
@@ -756,23 +777,6 @@ void UserInterface::Render()
         RenderMetrics(&Settings::application.widget.stats,
                   &Settings::application.widget.stats_corner,
                   &Settings::application.widget.stats_mode);
-
-    // management of video_recorders
-    if ( !_video_recorders.empty() ) {
-        // check that file dialog thread finished
-        if (_video_recorders.back().wait_for(timeout) == std::future_status::ready ) {
-
-            video_recorder_ = _video_recorders.back().get();
-            FrameGrabbing::manager().add(video_recorder_);
-
-            _video_recorders.pop_back();
-        }
-    }
-
-    if (video_recorder_ && video_recorder_->duration() > Settings::application.record.timeout ){
-        video_recorder_->stop();
-        video_recorder_ = nullptr;
-    }
 
     // all IMGUI Rendering
     ImGui::Render();
@@ -1239,7 +1243,17 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
-
+        // streaming indicator overlay
+        if (webcam_emulator_)
+        {
+            float r = ImGui::GetTextLineHeightWithSpacing();
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + imagesize.y - 2.f * r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 0.8f));
+            ImGui::Text(ICON_FA_CAMERA);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
 
         ImGui::End();
     }
