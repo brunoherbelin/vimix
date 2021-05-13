@@ -69,10 +69,12 @@ struct RecordConfig
     std::string path;
     int profile;
     float timeout;
+    int delay;
 
     RecordConfig() : path("") {
         profile = 0;
         timeout = RECORD_MAX_TIMEOUT;
+        delay = 0;
     }
 
 };
