@@ -14,6 +14,7 @@ struct ImVec2;
 class Source;
 class MediaPlayer;
 class FrameBufferImage;
+class FrameGrabber;
 
 class SourcePreview {
 
@@ -138,8 +139,11 @@ class UserInterface
     unsigned int screenshot_step;
 
     // frame grabbers
-    uint64_t video_recorder_;
-    uint64_t webcam_emulator_;
+    FrameGrabber *video_recorder_;
+
+#if defined(LINUX)
+    FrameGrabber *webcam_emulator_;
+#endif
 
     // Private Constructor
     UserInterface();

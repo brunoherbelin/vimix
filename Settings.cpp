@@ -99,6 +99,7 @@ void Settings::Save()
     RecordNode->SetAttribute("path", application.record.path.c_str());
     RecordNode->SetAttribute("profile", application.record.profile);
     RecordNode->SetAttribute("timeout", application.record.timeout);
+    RecordNode->SetAttribute("delay", application.record.delay);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -293,6 +294,7 @@ void Settings::Load()
     if (recordnode != nullptr) {
         recordnode->QueryIntAttribute("profile", &application.record.profile);
         recordnode->QueryFloatAttribute("timeout", &application.record.timeout);
+        recordnode->QueryIntAttribute("delay", &application.record.delay);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)
