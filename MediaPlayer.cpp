@@ -543,7 +543,7 @@ bool MediaPlayer::isImage() const
     return media_.isimage;
 }
 
-std::string MediaPlayer::hardwareDecoderName()
+std::string MediaPlayer::hardwareDecoderName() const
 {
     return hardware_decoder_;
 }

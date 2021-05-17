@@ -400,7 +400,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(" source inserted"));
+        Action::manager().store(s->name() + std::string(": source inserted"));
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
