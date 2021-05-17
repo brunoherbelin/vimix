@@ -40,7 +40,7 @@ public:
 
     // update session and all views
     void update();
-    inline float dt() const { return dt_;}
+    inline float dt() const { return dt_;} // in miliseconds
     inline int fps() const { return int(roundf(1000.f/dt__));}
 
     // draw session and current view
