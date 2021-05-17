@@ -189,6 +189,10 @@ public:
      * */
     void rewind();
     /**
+     * Get position time
+     * */
+    GstClockTime position();
+    /**
      * go to a valid position in media timeline
      * pos in nanoseconds.
      * return true if seek is performed
@@ -210,10 +214,6 @@ public:
     void setTimeline(const Timeline &tl);
 
     float currentTimelineFading();
-    /**
-     * Get position time
-     * */
-    GstClockTime position();
     /**
      * Get framerate of the media
      * */
@@ -245,7 +245,7 @@ public:
      * Get the name of the hardware decoder used
      * Empty string if none (i.e. software decoding)
      * */
-    std::string hardwareDecoderName();
+    std::string hardwareDecoderName() const;
     /**
      * Forces open using software decoding
      * (i.e. without hadrware decoding)
