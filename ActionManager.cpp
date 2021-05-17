@@ -26,7 +26,6 @@ using namespace tinyxml2;
 
 void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::string label)
 {
-
     // create node
     XMLElement *sessionNode = doc->NewElement( node.c_str() );
     doc->InsertEndChild(sessionNode);
@@ -37,7 +36,6 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
 
     // get session to operate on
     Session *se = Mixer::manager().session();
-    se->lock();
 
     // get the thumbnail (requires one opengl update to render)
     FrameBufferImage *thumbnail = se->thumbnail();
@@ -51,7 +49,6 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
     for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
         (*iter)->accept(sv);
 
-    se->unlock();
 }
 
 
