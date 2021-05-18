@@ -31,6 +31,10 @@ public:
     // dynamic change of gstreamer multifile source properties
     void setProperties(int begin, int end, int loop);
 
+    // image index
+    int index();
+    void setIndex(int val);
+
 protected:
     GstElement *src_ ;
 };
@@ -42,6 +46,8 @@ public:
 
     // Source interface
     void accept (Visitor& v) override;
+    void replay () override;
+    guint64 playtime () const override;
 
     // StreamSource interface
     Stream *stream () const override { return stream_; }

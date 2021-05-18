@@ -21,6 +21,7 @@ struct WidgetsConfig
     bool history;
     bool media_player;
     bool media_player_view;
+    bool timeline_editmode;
     bool shader_editor;
     bool toolbox;
 
@@ -33,6 +34,7 @@ struct WidgetsConfig
         history = false;
         media_player = false;
         media_player_view = true;
+        timeline_editmode = false;
         shader_editor = false;
         toolbox = false;
     }

@@ -126,6 +126,15 @@ public:
     // snapshots
     SessionSnapshots * const snapshots () { return &snapshots_; }
 
+    // playlists
+    void addPlayGroup(const SourceIdList &ids);
+    void deletePlayGroup(size_t i);
+    size_t numPlayGroups() const;
+    SourceList playGroup(size_t i) const;
+    void addToPlayGroup(size_t i, Source *s);
+    void removeFromPlayGroup(size_t i, Source *s);
+    std::vector<SourceIdList> getPlayGroups() { return play_groups_; }
+
     // lock and unlock access (e.g. while saving)
     void lock ();
     void unlock ();
@@ -141,6 +150,7 @@ protected:
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     SessionSnapshots snapshots_;
+    std::vector<SourceIdList> play_groups_;
     float fading_target_;
     std::mutex access_;
 

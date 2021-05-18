@@ -84,6 +84,14 @@ public:
      * */
     bool isPlaying(bool testpipeline = false) const;
     /**
+     * Attempt to restart
+     * */
+    virtual void rewind();
+    /**
+     * Get position time
+     * */
+    virtual GstClockTime position();
+    /**
      * Get rendering update framerate
      * measured during play
      * */
@@ -126,6 +134,7 @@ protected:
     bool live_;
 
     // GST & Play status
+    GstClockTime position_;
     GstState desired_state_;
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;

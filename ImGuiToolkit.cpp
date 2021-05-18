@@ -738,7 +738,7 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 }
 
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, bool *released, const ImVec2 size)
+                                      int values_count, float values_min, float values_max, bool cut, bool *released, const ImVec2 size)
 {
     bool array_changed = false;
 
@@ -764,9 +764,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     *released = false;
 
     // read user input and activate widget
-    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    const bool right_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Right) | (ImGui::GetIO().KeyAlt & left_mouse_press) ;
-    const bool mouse_press = left_mouse_press | right_mouse_press;
+    const bool mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
     const bool hovered = ImGui::ItemHoverable(bbox, id);
     bool temp_input_is_active = ImGui::TempInputIsActive(id);
     if (!temp_input_is_active)
@@ -805,7 +803,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             if (previous_index == UINT32_MAX)
                 previous_index = index;
 
-            if (right_mouse_press){
+            if (cut){
                 static float target_value = values_min;
 
                 // toggle value histo

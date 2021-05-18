@@ -459,6 +459,59 @@ std::list<MixingGroup *>::iterator Session::endMixingGroup()
     return mixing_groups_.end();
 }
 
+
+size_t Session::numPlayGroups() const
+{
+    return play_groups_.size();
+}
+
+void Session::addPlayGroup(const SourceIdList &ids)
+{
+    play_groups_.push_back( ids );
+}
+
+void Session::addToPlayGroup(size_t i, Source *s)
+{
+    if (i < play_groups_.size() )
+    {
+        if ( std::find(play_groups_[i].begin(), play_groups_[i].end(), s->id()) == play_groups_[i].end() )
+            play_groups_[i].push_back(s->id());
+    }
+}
+
+void Session::removeFromPlayGroup(size_t i, Source *s)
+{
+    if (i < play_groups_.size() )
+    {
+        if ( std::find(play_groups_[i].begin(), play_groups_[i].end(), s->id()) != play_groups_[i].end() )
+            play_groups_[i].remove( s->id() );
+    }
+}
+
+void Session::deletePlayGroup(size_t i)
+{
+    if (i < play_groups_.size() )
+        play_groups_.erase( play_groups_.begin() + i);
+}
+
+SourceList Session::playGroup(size_t i) const
+{
+    SourceList list;
+
+    if (i < play_groups_.size() )
+    {
+        for (auto sid = play_groups_[i].begin(); sid != play_groups_[i].end(); ++sid){
+
+            SourceList::const_iterator it = std::find_if(sources_.begin(), sources_.end(), Source::hasId( *sid));;
+            if ( it != sources_.end())
+                list.push_back( *it);
+
+        }
+    }
+
+    return list;
+}
+
 void Session::lock()
 {
     access_.lock();
