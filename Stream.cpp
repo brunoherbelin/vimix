@@ -31,6 +31,7 @@ Stream::Stream()
     opened_ = false;
     enabled_ = true;
     desired_state_ = GST_STATE_PAUSED;
+    position_ = GST_CLOCK_TIME_NONE;
 
     width_ = -1;
     height_ = -1;
@@ -371,7 +372,26 @@ bool Stream::isPlaying(bool testpipeline) const
     return state == GST_STATE_PLAYING;
 }
 
+void Stream::rewind()
+{
+    if ( pipeline_ == nullptr )
+        return;
 
+    GstEvent *seek_event = gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+                                               GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0);
+    gst_element_send_event(pipeline_, seek_event);
+}
+
+GstClockTime Stream::position()
+{
+    if (position_ == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
+        gint64 p = GST_CLOCK_TIME_NONE;
+        if ( gst_element_query_position (pipeline_, GST_FORMAT_TIME, &p) )
+            position_ = p;
+    }
+
+    return position_;
+}
 
 void Stream::init_texture(guint index)
 {
@@ -544,6 +564,9 @@ void Stream::update()
             // free frame
             frame_[read_index].unmap();
         }
+
+        // we just displayed a vframe : set position time to frame PTS
+        position_ = frame_[read_index].position;
 
         // avoid reading it again
         frame_[read_index].status = INVALID;

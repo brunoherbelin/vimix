@@ -10,8 +10,9 @@
 #define NAV_MENU 66
 #define NAV_TRANS 67
 
+#include "SourceList.h"
+
 struct ImVec2;
-class Source;
 class MediaPlayer;
 class FrameBufferImage;
 class FrameGrabber;
@@ -119,6 +120,36 @@ public:
     void Render();
 };
 
+class SourceController
+{
+    float _min_width;
+    float _h_space;
+    float _v_space;
+    float _buttons_height;
+    float _timeline_height;
+    float _scrollbar;
+    float _mediaplayer_height;
+
+    std::string active_label_;
+    int active_selection_;
+
+    SourceList selection_;
+    void DrawButtonBar(ImVec2 bottom, float width);
+
+    void RenderSelectedSources();
+    void RenderSelection(size_t i);
+    void RenderSingleSource(Source *s);
+
+    bool media_playing_mode_;
+    bool slider_pressed_;
+    void RenderMediaPlayer(MediaPlayer *mp);
+
+public:
+    SourceController();
+
+    void Render();
+};
+
 
 class UserInterface
 {
@@ -126,6 +157,7 @@ class UserInterface
     Navigator navigator;
     ToolBox toolbox;
     MediaController mediacontrol;
+    SourceController sourcecontrol;
 
     bool ctrl_modifier_active;
     bool alt_modifier_active;

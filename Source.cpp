@@ -871,7 +871,6 @@ void CloneSource::setActive (bool on)
         origin_->touch();
 }
 
-
 uint CloneSource::texture() const
 {
     if (origin_ != nullptr)
