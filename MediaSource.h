@@ -14,6 +14,11 @@ public:
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
+    bool playing () const override;
+    void play (bool) override;
+    bool playable () const  override;
+    void replay () override;
+    guint64 playtime () const override;
     void render() override;
     bool failed() const override;
     uint texture() const override;

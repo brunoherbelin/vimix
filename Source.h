@@ -139,6 +139,13 @@ public:
     } Workspace;
     inline Workspace workspace () const { return workspace_; }
 
+    // a Source shall define a way to play
+    virtual bool playable () const  = 0;
+    virtual bool playing () const = 0;
+    virtual void play (bool on) = 0;
+    virtual void replay () {}
+    virtual guint64 playtime () const { return 0; }
+
     // a Source shall informs if the source failed (i.e. shall be deleted)
     virtual bool failed () const = 0;
 
@@ -299,6 +306,10 @@ public:
 
     // implementation of source API
     void setActive (bool on) override;
+    bool playing () const override { return true; }
+    void play (bool) override {}
+    bool playable () const  override { return false; }
+    void replay () override {}
     uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;

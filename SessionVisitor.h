@@ -14,6 +14,11 @@ class SessionVisitor : public Visitor {
     tinyxml2::XMLDocument *xmlDoc_;
     tinyxml2::XMLElement *xmlCurrent_;
 
+    static void saveConfig(tinyxml2::XMLDocument *doc, Session *session);
+    static void saveSnapshots(tinyxml2::XMLDocument *doc, Session *session);
+    static void saveNotes(tinyxml2::XMLDocument *doc, Session *session);
+    static void savePlayGroups(tinyxml2::XMLDocument *doc, Session *session);
+
 public:
     SessionVisitor(tinyxml2::XMLDocument *doc = nullptr,
                    tinyxml2::XMLElement *root = nullptr,

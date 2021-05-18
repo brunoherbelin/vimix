@@ -102,13 +102,49 @@ void StreamSource::setActive (bool on)
 {
     bool was_active = active_;
 
+    // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    // change status of media player (only if status changed)
-    if ( active_ != was_active ) {
-        if (stream_)
-            stream_->enable(active_);
-    }
+    // change status of stream (only if status changed)
+    if ( stream_ && active_ != was_active )
+        stream_->enable(active_);
+
+}
+
+
+bool StreamSource::playing () const
+{
+    if ( stream_ )
+        return stream_->isPlaying();
+    return false;
+}
+
+void StreamSource::play (bool on)
+{
+    if ( stream_ )
+        stream_->play(on);
+}
+
+
+bool StreamSource::playable () const
+{
+    if ( stream_ )
+        return !stream_->singleFrame();
+    return false;
+}
+
+void StreamSource::replay ()
+{
+    if ( stream_ )
+        stream_->rewind();
+}
+
+guint64 StreamSource::playtime () const
+{
+    if ( stream_ )
+        return stream_->position();
+    else
+        return 0;
 }
 
 void StreamSource::update(float dt)

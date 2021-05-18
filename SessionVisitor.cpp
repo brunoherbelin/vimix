@@ -58,61 +58,107 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     delete thumbnail;
 
     // 2. config of views
-    XMLElement *views = xmlDoc.NewElement("Views");
-    xmlDoc.InsertEndChild(views);
-    {
-        XMLElement *mixing = xmlDoc.NewElement( "Mixing" );
-        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), &xmlDoc));
-        views->InsertEndChild(mixing);
-
-        XMLElement *geometry = xmlDoc.NewElement( "Geometry" );
-        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), &xmlDoc));
-        views->InsertEndChild(geometry);
-
-        XMLElement *layer = xmlDoc.NewElement( "Layer" );
-        layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), &xmlDoc));
-        views->InsertEndChild(layer);
-
-        XMLElement *appearance = xmlDoc.NewElement( "Texture" );
-        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::TEXTURE), &xmlDoc));
-        views->InsertEndChild(appearance);
-
-        XMLElement *render = xmlDoc.NewElement( "Rendering" );
-        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), &xmlDoc));
-        views->InsertEndChild(render);
-    }
+    saveConfig( &xmlDoc, session );
 
     // 3. snapshots
-    XMLElement *snapshots = xmlDoc.NewElement("Snapshots");
-    const XMLElement* N = session->snapshots()->xmlDoc_->FirstChildElement();
-    for( ; N ; N=N->NextSiblingElement())
-        snapshots->InsertEndChild( N->DeepClone( &xmlDoc ));
-    xmlDoc.InsertEndChild(snapshots);
+    saveSnapshots( &xmlDoc, session );
 
     // 4. optional notes
-    XMLElement *notes = xmlDoc.NewElement("Notes");
-    xmlDoc.InsertEndChild(notes);
-    for (auto nit = session->beginNotes(); nit != session->endNotes(); ++nit) {
-        XMLElement *note = xmlDoc.NewElement( "Note" );
-        note->SetAttribute("large", (*nit).large );
-        note->SetAttribute("stick", (*nit).stick );
-        XMLElement *pos = xmlDoc.NewElement("pos");
-        pos->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).pos) );
-        note->InsertEndChild(pos);
-        XMLElement *size = xmlDoc.NewElement("size");
-        size->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*nit).size) );
-        note->InsertEndChild(size);
-        XMLElement *content = xmlDoc.NewElement("text");
-        XMLText *text = xmlDoc.NewText( (*nit).text.c_str() );
-        content->InsertEndChild( text );
-        note->InsertEndChild(content);
+    saveNotes( &xmlDoc, session );
 
-        notes->InsertEndChild(note);
-    }
-
+    // 5. optional playlists
+    savePlayGroups( &xmlDoc, session );
 
     // save file to disk
     return ( XMLSaveDoc(&xmlDoc, filename) );
+}
+
+void SessionVisitor::saveConfig(tinyxml2::XMLDocument *doc, Session *session)
+{
+    if (doc != nullptr && session != nullptr)
+    {
+        XMLElement *views = doc->NewElement("Views");
+
+        XMLElement *mixing = doc->NewElement( "Mixing" );
+        mixing->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::MIXING), doc));
+        views->InsertEndChild(mixing);
+
+        XMLElement *geometry = doc->NewElement( "Geometry" );
+        geometry->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::GEOMETRY), doc));
+        views->InsertEndChild(geometry);
+
+        XMLElement *layer = doc->NewElement( "Layer" );
+        layer->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::LAYER), doc));
+        views->InsertEndChild(layer);
+
+        XMLElement *appearance = doc->NewElement( "Texture" );
+        appearance->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::TEXTURE), doc));
+        views->InsertEndChild(appearance);
+
+        XMLElement *render = doc->NewElement( "Rendering" );
+        render->InsertEndChild( SessionVisitor::NodeToXML(*session->config(View::RENDERING), doc));
+        views->InsertEndChild(render);
+
+        doc->InsertEndChild(views);
+    }
+}
+
+
+void SessionVisitor::saveSnapshots(tinyxml2::XMLDocument *doc, Session *session)
+{
+    if (doc != nullptr && session != nullptr)
+    {
+        XMLElement *snapshots = doc->NewElement("Snapshots");
+        const XMLElement* N = session->snapshots()->xmlDoc_->FirstChildElement();
+        for( ; N ; N=N->NextSiblingElement())
+            snapshots->InsertEndChild( N->DeepClone( doc ));
+        doc->InsertEndChild(snapshots);
+    }
+}
+
+void SessionVisitor::saveNotes(tinyxml2::XMLDocument *doc, Session *session)
+{
+    if (doc != nullptr && session != nullptr)
+    {
+        XMLElement *notes = doc->NewElement("Notes");
+        for (auto nit = session->beginNotes(); nit != session->endNotes(); ++nit) {
+            XMLElement *note = doc->NewElement( "Note" );
+            note->SetAttribute("large", (*nit).large );
+            note->SetAttribute("stick", (*nit).stick );
+            XMLElement *pos = doc->NewElement("pos");
+            pos->InsertEndChild( XMLElementFromGLM(doc, (*nit).pos) );
+            note->InsertEndChild(pos);
+            XMLElement *size = doc->NewElement("size");
+            size->InsertEndChild( XMLElementFromGLM(doc, (*nit).size) );
+            note->InsertEndChild(size);
+            XMLElement *content = doc->NewElement("text");
+            XMLText *text = doc->NewText( (*nit).text.c_str() );
+            content->InsertEndChild( text );
+            note->InsertEndChild(content);
+
+            notes->InsertEndChild(note);
+        }
+        doc->InsertEndChild(notes);
+    }
+}
+
+void SessionVisitor::savePlayGroups(tinyxml2::XMLDocument *doc, Session *session)
+{
+    if (doc != nullptr && session != nullptr)
+    {
+        XMLElement *playlistNode = doc->NewElement("PlayGroups");
+        std::vector<SourceIdList> pl = session->getPlayGroups();
+        for (auto plit = pl.begin(); plit != pl.end(); ++plit) {
+            XMLElement *list = doc->NewElement("PlayGroup");
+            playlistNode->InsertEndChild(list);
+            for (auto id = plit->begin(); id != plit->end(); ++id) {
+                XMLElement *sour = doc->NewElement("source");
+                sour->SetAttribute("id", *id);
+                list->InsertEndChild(sour);
+            }
+        }
+        doc->InsertEndChild(playlistNode);
+    }
 }
 
 SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,
