@@ -19,6 +19,8 @@ rules.ninja
 
 rsc/shaders/paint.fs
 
+.vscode/settings.json
+
 osx/.DS_Store
 
 .DS_Store

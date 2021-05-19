@@ -112,7 +112,10 @@ UserInterface::UserInterface()
 
     // keep hold on frame grabbers
     video_recorder_ = nullptr;
+
+#if defined(LINUX)
     webcam_emulator_ = nullptr;
+#endif
 }
 
 bool UserInterface::Init()
@@ -1243,6 +1246,8 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
+
+#if defined(LINUX)
         // streaming indicator overlay
         if (webcam_emulator_)
         {
@@ -1254,6 +1259,7 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
+#endif
 
         ImGui::End();
     }
