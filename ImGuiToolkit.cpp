@@ -738,7 +738,7 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 }
 
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, bool cut, bool *released, const ImVec2 size)
+                                      int values_count, float values_min, float values_max, bool edit_histogram, bool *released, const ImVec2 size)
 {
     bool array_changed = false;
 
@@ -761,6 +761,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     if (!ImGui::ItemAdd(bbox, id))
         return false;
 
+
     *released = false;
 
     // read user input and activate widget
@@ -780,13 +781,16 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     else
         return false;
 
-    static ImVec4* colors = ImGui::GetStyle().Colors;
-    ImVec4 bg_color = hovered ? colors[ImGuiCol_FrameBgHovered] : colors[ImGuiCol_FrameBg];
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float _h_space = g.Style.WindowPadding.x; 
+    const ImU32 fg_color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
+    ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
 
     // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
 
-        bg_color = colors[ImGuiCol_FrameBgActive];
+        bg_color = style.Colors[ImGuiCol_FrameBgActive];
 
         // keep active area while mouse is pressed
         static bool active = false;
@@ -794,7 +798,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
         if (mouse_press)
         {
 
-            float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
+            float x = (float) values_count * (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
             uint index = CLAMP( (int) floor(x), 0, values_count-1);
 
             float y = mouse_pos_in_canvas.y / bbox.GetHeight();
@@ -803,7 +807,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             if (previous_index == UINT32_MAX)
                 previous_index = index;
 
-            if (cut){
+            if (edit_histogram){
                 static float target_value = values_min;
 
                 // toggle value histo
@@ -812,17 +816,15 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
                     active = true;
                 }
 
-                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                for (uint i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
                     histogram_array[i] = target_value;
             }
             else  {
-                lines_array[index] = values_max - y;
-                for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                for (uint i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
                     lines_array[i] = values_max - y;
             }
 
             previous_index = index;
-
             array_changed = true;
         }
         // release active widget on mouse release
@@ -840,7 +842,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     // plot transparent histogram
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, colors[ImGuiCol_TitleBg]);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TitleBg]);
     char buf[128];
     sprintf(buf, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
@@ -854,6 +856,14 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
+    // draw the cursor bar
+    if (hovered) {
+        if (edit_histogram)
+            window->DrawList->AddLine( canvas_pos + ImVec2(mouse_pos_in_canvas.x, 4.f), canvas_pos + ImVec2(mouse_pos_in_canvas.x, size.y - 4.f), fg_color);
+        else {
+            window->DrawList->AddCircle( canvas_pos + mouse_pos_in_canvas, 2.f, fg_color, 6);
+        }
+    }
     return array_changed;
 }
 
