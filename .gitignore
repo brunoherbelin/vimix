@@ -19,8 +19,12 @@ rules.ninja
 
 rsc/shaders/paint.fs
 
+<<<<<<< master
 osx/.DS_Store
 
 .DS_Store
 
 osx/runvimix
+=======
+.vscode/settings.json
+>>>>>>> OSX compilation
