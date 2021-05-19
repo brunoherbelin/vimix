@@ -18,3 +18,5 @@ rules.ninja
 /CMakeLists.txt.user.*
 
 rsc/shaders/paint.fs
+
+.vscode/settings.json
