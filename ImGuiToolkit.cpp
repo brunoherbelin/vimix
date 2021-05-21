@@ -737,6 +737,28 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
     return array_changed;
 }
 
+// Function to create Gaussian filter
+void FilterCreation(float GKernel[], int N)
+{
+    // intialising standard deviation to 1.0
+    float sigma = N * 0.25f;
+    float s = 2.0 * sigma * sigma;
+
+    // sum is for normalization
+    float max = 0.0;
+
+    // generating 5x5 kernel
+    for (int x = 0 ; x < N; x++) {
+        float r = x;
+        GKernel[x] = (exp(-(r * r) / s)) / sqrt(M_PI * 2.0 * sigma);
+        max = MAX(max, GKernel[x]);
+    }
+
+    // normalising the Kernel
+    for (int i = 0; i < N; ++i)
+        GKernel[i] /= max;
+}
+
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
                                       int values_count, float values_min, float values_max, bool edit_histogram, bool *released, const ImVec2 size)
 {
@@ -760,7 +782,6 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     ImGui::ItemSize(size);
     if (!ImGui::ItemAdd(bbox, id))
         return false;
-
 
     *released = false;
 
@@ -807,6 +828,9 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             if (previous_index == UINT32_MAX)
                 previous_index = index;
 
+            const uint left = MIN(previous_index, index);
+            const uint right = MAX(previous_index, index);
+
             if (edit_histogram){
                 static float target_value = values_min;
 
@@ -816,12 +840,15 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
                     active = true;
                 }
 
-                for (uint i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
+                for (uint i = left; i < right; ++i)
                     histogram_array[i] = target_value;
             }
             else  {
-                for (uint i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
-                    lines_array[i] = values_max - y;
+                const float target_value =  values_max - y;
+
+                for (uint i = left; i < right; ++i)
+                    lines_array[i] = target_value;
+
             }
 
             previous_index = index;
@@ -858,12 +885,14 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     // draw the cursor bar
     if (hovered) {
+        mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
         if (edit_histogram)
             window->DrawList->AddLine( canvas_pos + ImVec2(mouse_pos_in_canvas.x, 4.f), canvas_pos + ImVec2(mouse_pos_in_canvas.x, size.y - 4.f), fg_color);
         else {
             window->DrawList->AddCircle( canvas_pos + mouse_pos_in_canvas, 2.f, fg_color, 6);
         }
     }
+
     return array_changed;
 }
 

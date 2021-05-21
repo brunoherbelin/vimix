@@ -6,6 +6,7 @@
 #include <map>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -2484,7 +2485,7 @@ void SourceController::RenderSelection(size_t i)
                 ImVec2 image_bottom = ImGui::GetCursorPos();
 
                 // Play icon lower left corner
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+                ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
                 ImGui::SetCursorPos(image_top + ImVec2( numcolumns > 1 ? 0.f : _h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
                 if ((*source)->active())
                     ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
@@ -2509,7 +2510,7 @@ void SourceController::RenderSelection(size_t i)
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.7f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
 
     ImGui::SetCursorScreenPos(bottom + ImVec2(rendersize.x * 0.6f, _v_space) );
     ImGui::SetNextItemWidth(-_h_space);
@@ -2520,11 +2521,11 @@ void SourceController::RenderSelection(size_t i)
             if ( (*s)->playable() ) {
 
                 if (std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
-                    if (ImGui::MenuItem( (*s)->name().c_str() ))
+                    if (ImGui::MenuItem( (*s)->name().c_str() , 0, false ))
                         Mixer::manager().session()->addToPlayGroup(i, *s);
                 }
                 else {
-                    if (ImGui::MenuItem( (*s)->name().c_str(), ICON_FA_CHECK ))
+                    if (ImGui::MenuItem( (*s)->name().c_str(), 0, true ))
                         Mixer::manager().session()->removeFromPlayGroup(i, *s);
                 }
             }
@@ -2533,84 +2534,6 @@ void SourceController::RenderSelection(size_t i)
     }
 
     ImGui::PopStyleColor(4);
-
-
-//    const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
-
-//    ImGui::Columns(2, NULL, true);
-
-//    //    selection_ = Mixer::manager().session()->getDepthSortedList();
-
-//    Source *_toremove = nullptr;
-//    for (auto source = selection_.begin(); source != selection_.end(); ++source) {
-
-//        FrameBuffer *frame = (*source)->frame();
-//        float width = ImGui::GetColumnWidth();
-//        float height = width / frame->aspectRatio();
-//        if (height > preview_height) {
-//            height = preview_height;
-//            width = height * frame->aspectRatio();
-//        }
-//        ImVec2 top = ImGui::GetCursorPos();
-//        ImGui::Image((void*)(uintptr_t) (*source)->texture(), ImVec2(width, height));
-//        ImVec2 bottom = ImGui::GetCursorPos();
-
-//        // Context menu button up-left corner
-//        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-//        {
-//            ImGui::SetCursorPos(top + ImVec2(_h_space, _v_space));
-//            if (ImGuiToolkit::ButtonIcon(5, 8))
-//                ImGui::OpenPopup( "MenuSourceControl" );
-//            if (ImGui::BeginPopup( "MenuSourceControl" ))
-//            {
-//                if (ImGui::MenuItem(ICON_FA_MINUS_SQUARE " Remove from selection" )){
-//                    _toremove = *source;
-//                }
-//                if (ImGui::MenuItem(ICON_FA_FILM " Open in Player" )){
-
-//                }
-//                ImGui::EndPopup();
-//            }
-//        }
-
-//        // Play icon lower left corner
-//        ImGui::SetCursorPos(top + ImVec2(_h_space, height - ImGui::GetTextLineHeightWithSpacing()));
-//        if ((*source)->active())
-//            ImGui::Text("%s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE );
-//        else
-//            ImGui::Text(ICON_FA_SNOWFLAKE);
-
-
-//        ImGui::SetCursorPos(bottom + ImVec2(0, _v_space));
-//        ImGui::NextColumn();
-
-//    }
-//    // apply source removal
-//    if (_toremove)
-//        selection_.remove(_toremove);
-
-//    // Add source in selection
-//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//    if (ImGuiToolkit::IconButton(ICON_FA_PLUS_SQUARE))
-//        ImGui::OpenPopup( "SelectionAddSourceList" );
-//    ImGui::PopFont();
-//    if (ImGui::BeginPopup( "SelectionAddSourceList" ))
-//    {
-//        uint count = 0;
-//        for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
-//            if ( (*s)->playable() && std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
-//                if (ImGui::MenuItem( (*s)->name().c_str() ))
-//                    selection_.push_back( *s );
-//                ++count;
-//            }
-//        }
-//        if (count<1)
-//            ImGui::MenuItem( "No playable source available ", 0, false, false);
-//        ImGui::EndPopup();
-//    }
-
-//    ImGui::Columns(1);
-
 
 }
 
@@ -2673,7 +2596,7 @@ void SourceController::RenderSelectedSources()
                 ImVec2 image_bottom = ImGui::GetCursorPos();
 
                 // Play icon lower left corner
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+                ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
                 ImGui::SetCursorPos(image_top + ImVec2( numcolumns > 1 ? 0.f : _h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
                 if ((*source)->active())
                     ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
@@ -2729,18 +2652,40 @@ void SourceController::RenderSingleSource(Source *s)
             framesize.x = tmp.x;
         }
 
-        ImGui::SetCursorScreenPos(top + corner);
+        top += corner;
+        ImGui::SetCursorScreenPos(top);
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
 
         // Play icon lower left corner
-        ImGuiToolkit::PushFont(framesize.x > 200.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-        ImGui::SetCursorScreenPos(top + corner + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
+        ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
+        ImGui::SetCursorScreenPos(top + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
         if (s->active())
             ImGui::Text("%s %s", s->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(s->playtime()).c_str() );
         else
             ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(s->playtime()).c_str() );
         ImGui::PopFont();
 
+        StreamSource *sts = dynamic_cast<StreamSource*>(s);
+        if (sts !=nullptr){
+            ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
+            ImGui::Text(ICON_FA_INFO_CIRCLE);
+            if (ImGui::IsItemHovered()){
+                std::ostringstream tooltip;
+                std::string desc = sts->stream()->description();
+                desc = desc.substr(0, desc.find_first_of('!'));
+                tooltip << desc << "\n ";
+                tooltip << sts->stream()->width() << " x " << sts->stream()->height() << " px,  ";
+                tooltip << std::fixed << std::setprecision(2) << sts->stream()->updateFrameRate() << " fps ";
+
+                float tooltip_height = 2.f * ImGui::GetTextLineHeightWithSpacing();
+
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
+
+                ImGui::SetCursorScreenPos(top + ImVec2(0, _v_space));
+                ImGui::Text(" %s", tooltip.str().c_str());
+            }
+        }
         ///
         /// Play source button bar
         ///
@@ -2773,17 +2718,40 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         framesize.x = tmp.x;
     }
 
-    ImGui::SetCursorScreenPos(top + corner);
+    top += corner;
+    ImGui::SetCursorScreenPos(top);
     ImGui::Image((void*)(uintptr_t) mp->texture(), framesize);
 
     // Play icon lower left corner
-    ImGuiToolkit::PushFont(framesize.x > 200.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-    ImGui::SetCursorScreenPos(top + corner + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
+    ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
+    ImGui::SetCursorScreenPos(top + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
     if (mp->isEnabled())
         ImGui::Text("%s %s", mp->isPlaying() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(mp->position()).c_str() );
     else
         ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(mp->position()).c_str() );
     ImGui::PopFont();
+
+    ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
+    ImGui::Text(ICON_FA_INFO_CIRCLE);
+    if (ImGui::IsItemHovered()){
+
+        std::ostringstream tooltip;
+        tooltip << mp->filename() << "\n ";
+        tooltip << mp->media().codec_name;
+        if (Settings::application.render.gpu_decoding && !mp->hardwareDecoderName().empty() )
+            tooltip << " (" << mp->hardwareDecoderName() << " hardware decoder)";
+        tooltip << " \n " << mp->width() << " x " << mp->height() << " px,  ";
+        if ( mp->frameRate() > 1.f )
+            tooltip << std::fixed << std::setprecision(2) << mp->updateFrameRate() << " / " << mp->frameRate() << " fps ";
+
+        float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
+
+        ImGui::SetCursorScreenPos(top + ImVec2(0, _v_space));
+        ImGui::Text(" %s", tooltip.str().c_str());
+    }
 
     ///
     /// media player buttons bar
@@ -2794,9 +2762,9 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     // buttons style
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.24f, 0.24f, 0.24f, 0.2f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.4f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
 
     ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
     if (ImGui::Button(mp->playSpeed() > 0 ? ICON_FA_FAST_BACKWARD :ICON_FA_FAST_FORWARD))
@@ -2906,7 +2874,8 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ///
     /// media player timelines
     ///
-    ImGui::SetCursorScreenPos(bottom + ImVec2(0, _buttons_height + _v_space) );
+    bottom += ImVec2(0, _buttons_height + _v_space);
+    ImGui::SetCursorScreenPos(bottom);
 
     // seek position
     guint64 seek_t = mp->position();
@@ -2915,7 +2884,6 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
 
-    ImVec2 top_scrollwindow = ImGui::GetCursorPos();
     ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * _timeline_height + _scrollbar );
 
@@ -2943,15 +2911,17 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     }
     ImGui::EndChild();
 
-    ImGui::PopStyleVar(2);
-
     // action mode
-    ImGui::SetCursorPos(top_scrollwindow + ImVec2(scrollwindow.x + 3.f, 0));
-    ImGuiToolkit::IconToggle(7,4,8,3,&Settings::application.widget.timeline_editmode);
+    bottom += ImVec2(scrollwindow.x, 0);
+    draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width+3.f, 0.5f * _timeline_height), ImGui::GetColorU32(ImGuiCol_FrameBg));
+    ImGui::SetCursorScreenPos(bottom + ImVec2(3.f, 0));
+    ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.timeline_editmode);
 
     // zoom slider
-    ImGui::SetCursorPos(top_scrollwindow + ImVec2(scrollwindow.x + 3.f, 0.5f * _timeline_height  + 3.f));
+    ImGui::SetCursorScreenPos(bottom + ImVec2(3.f, 0.5f * _timeline_height  + 3.f));
     ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, 1.5f * _timeline_height - 3.f), &timeline_zoom, 1.0, 5.f, "");
+
+    ImGui::PopStyleVar(2);
 
     ///
     /// media player actions
@@ -2985,7 +2955,7 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
     else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
     }
 
     ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
