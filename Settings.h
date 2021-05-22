@@ -20,7 +20,7 @@ struct WidgetsConfig
     bool preview;
     bool history;
     bool media_player;
-    bool media_player_view;
+    bool media_player_listview;
     bool timeline_editmode;
     bool shader_editor;
     bool toolbox;
@@ -33,7 +33,7 @@ struct WidgetsConfig
         preview = false;
         history = false;
         media_player = false;
-        media_player_view = true;
+        media_player_listview = false;
         timeline_editmode = false;
         shader_editor = false;
         toolbox = false;

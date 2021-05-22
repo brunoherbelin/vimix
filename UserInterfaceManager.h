@@ -136,6 +136,7 @@ class SourceController
     SourceList selection_;
     void DrawButtonBar(ImVec2 bottom, float width);
 
+    bool SourceButton(Source *s, ImVec2 framesize);
     void RenderSelectedSources();
     void RenderSelection(size_t i);
     void RenderSingleSource(Source *s);
