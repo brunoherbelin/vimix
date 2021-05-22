@@ -76,6 +76,7 @@ void Settings::Save()
     widgetsNode->SetAttribute("preview", application.widget.preview);
     widgetsNode->SetAttribute("history", application.widget.history);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
+    widgetsNode->SetAttribute("media_player_listview", application.widget.media_player_listview);
     widgetsNode->SetAttribute("timeline_editmode", application.widget.timeline_editmode);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
@@ -271,6 +272,7 @@ void Settings::Load()
         widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
         widgetsNode->QueryBoolAttribute("history", &application.widget.history);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
+        widgetsNode->QueryBoolAttribute("media_player_listview", &application.widget.media_player_listview);
         widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.timeline_editmode);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
