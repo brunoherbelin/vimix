@@ -179,30 +179,42 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 
 bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
 {
-    bool ret = false;
     ImGui::PushID( i * 20 + j );
 
-    float frame_height = ImGui::GetFrameHeight();
-    float frame_width = frame_height;
-    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
 
-    // toggle action : operate on the whole area
-    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
-    if (ImGui::IsItemClicked())
-        ret = true;
+    // duplicate of ImGui::InvisibleButton to handle ImGuiButtonFlags_Repeat
+    const ImGuiID id = window->GetID("##iconijbutton");
+    float h = ImGui::GetFrameHeight();
+    ImVec2 size = ImGui::CalcItemSize(ImVec2(h, h), 0.0f, 0.0f);
+    ImVec2 draw_pos = window->DC.CursorPos;
+    const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bb, id))
+        return false;
 
-    ImGui::SetCursorScreenPos(draw_pos);
-    Icon(i, j, !ret);
+    ImGuiButtonFlags flags = 0;
+    if (window->DC.ItemFlags & ImGuiItemFlags_ButtonRepeat)
+        flags |= ImGuiButtonFlags_Repeat;
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
 
-    if (tooltip != nullptr && ImGui::IsItemHovered())
+    // tooltip
+    if (tooltip != nullptr && hovered)
     {
         ImGui::BeginTooltip();
         ImGui::Text("%s", tooltip);
         ImGui::EndTooltip();
     }
 
+    // draw icon
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(i, j, !pressed);
+
     ImGui::PopID();
-    return ret;
+    return pressed;
 }
 
 
@@ -217,7 +229,7 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
     // toggle action : operate on the whole area
-    ImGui::InvisibleButton("##iconbutton", ImVec2(frame_width, frame_height));
+    ImGui::InvisibleButton("##iconcharbutton", ImVec2(frame_width, frame_height));
     if (ImGui::IsItemClicked())
         ret = true;
 
@@ -806,7 +818,6 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     const ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const float _h_space = g.Style.WindowPadding.x; 
-    const ImU32 fg_color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
     ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
 
     // enter edit if widget is active
@@ -886,11 +897,12 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     // draw the cursor bar
     if (hovered) {
+        const ImU32 cur_color = ImGui::GetColorU32( style.Colors[ImGuiCol_CheckMark] );
         mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
         if (edit_histogram)
-            window->DrawList->AddLine( canvas_pos + ImVec2(mouse_pos_in_canvas.x, 4.f), canvas_pos + ImVec2(mouse_pos_in_canvas.x, size.y - 4.f), fg_color);
+            window->DrawList->AddLine( canvas_pos + ImVec2(mouse_pos_in_canvas.x, 4.f), canvas_pos + ImVec2(mouse_pos_in_canvas.x, size.y - 4.f), cur_color);
         else {
-            window->DrawList->AddCircle( canvas_pos + mouse_pos_in_canvas, 2.f, fg_color, 6);
+            window->DrawList->AddCircleFilled(canvas_pos + mouse_pos_in_canvas, 3.f, cur_color, 8);
         }
     }
 
