@@ -246,7 +246,6 @@ void Timeline::smoothFading(uint N)
 
 void Timeline::autoFading(uint milisecond)
 {
-
     GstClockTime stepduration = timing_.end / MAX_TIMELINE_ARRAY;
     stepduration = GST_TIME_AS_MSECONDS(stepduration);
     uint N = milisecond / stepduration;
@@ -281,7 +280,23 @@ void Timeline::autoFading(uint milisecond)
         for (; i < e; ++i)
             fadingArray_[i] = static_cast<float>(e-i) / static_cast<float>(n);
     }
+}
 
+bool Timeline::autoCut()
+{
+    bool changed = false;
+    for (long i = 0; i < MAX_TIMELINE_ARRAY; ++i) {
+        if (fadingArray_[i] < EPSILON) {
+            if (gapsArray_[i] != 1.f)
+                changed = true;
+            gapsArray_[i] = 1.f;
+        }
+    }
+
+    updateGapsFromArray(gapsArray_, MAX_TIMELINE_ARRAY);
+    gaps_array_need_update_ = false;
+
+    return changed;
 }
 
 void Timeline::updateGapsFromArray(float *array, size_t array_size)
