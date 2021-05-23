@@ -103,23 +103,6 @@ public:
 };
 
 
-class MediaController
-{
-    MediaPlayer *mp_;
-    std::string current_;
-    bool follow_active_source_;
-    bool media_playing_mode_;
-    bool slider_pressed_;
-
-public:
-    MediaController();
-
-    void setMediaPlayer(MediaPlayer *mp = nullptr);
-    void followCurrentSource();
-
-    void Render();
-};
-
 class SourceController
 {
     float _min_width;
@@ -148,6 +131,7 @@ class SourceController
 public:
     SourceController();
 
+    void resetActiveSelection();
     void Render();
 };
 
@@ -157,7 +141,6 @@ class UserInterface
     friend class Navigator;
     Navigator navigator;
     ToolBox toolbox;
-    MediaController mediacontrol;
     SourceController sourcecontrol;
 
     bool ctrl_modifier_active;
@@ -208,7 +191,6 @@ public:
 
     void showPannel(int id = 0);
     void showSourceEditor(Source *s);
-    void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;

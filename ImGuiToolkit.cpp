@@ -213,6 +213,7 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
 
     float frame_height = ImGui::GetFrameHeight();
     float frame_width = frame_height;
+
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
     // toggle action : operate on the whole area

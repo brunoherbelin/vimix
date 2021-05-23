@@ -1399,28 +1399,28 @@ int UserInterface::RenderViewNavigator(int *shift)
 
 void UserInterface::showSourceEditor(Source *s)
 {
-    MediaSource *ms = dynamic_cast<MediaSource *>(s);
-    if (ms != nullptr) {
-        showMediaPlayer(ms->mediaplayer());
-        return;
-    }
-    CloneSource *cs = dynamic_cast<CloneSource *>(s);
-    if (cs != nullptr) {
-        Mixer::manager().setCurrentSource( cs->origin() );
-        return;
-    }
-    RenderSource *rs = dynamic_cast<RenderSource *>(s);
-    if (rs != nullptr) {
-        Settings::application.widget.preview = true;
-        return;
-    }
-    navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
-}
+    Mixer::manager().unsetCurrentSource();
+    Mixer::selection().clear();
 
-void UserInterface::showMediaPlayer(MediaPlayer *mp)
-{
-    Settings::application.widget.media_player = true;
-    mediacontrol.setMediaPlayer(mp);
+    if (s) {
+        Mixer::manager().setCurrentSource( s );
+        if (s->playable()) {
+            Settings::application.widget.media_player = true;
+            sourcecontrol.resetActiveSelection();
+            return;
+        }
+        CloneSource *cs = dynamic_cast<CloneSource *>(s);
+        if (cs != nullptr) {
+            Mixer::manager().setCurrentSource( cs->origin() );
+            return;
+        }
+        RenderSource *rs = dynamic_cast<RenderSource *>(s);
+        if (rs != nullptr) {
+            Settings::application.widget.preview = true;
+            return;
+        }
+        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+    }
 }
 
 void UserInterface::fillShaderEditor(const std::string &text)
@@ -1742,7 +1742,6 @@ void UserInterface::RenderNotes()
     if (se!=nullptr) {
 
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ResizeGripHovered];
-    //    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
         color.w = 0.35f;
         ImGui::PushStyleColor(ImGuiCol_WindowBg, color);
         ImGui::PushStyleColor(ImGuiCol_TitleBg, color);
@@ -1961,410 +1960,26 @@ void ToolBox::Render()
 }
 
 ///
-/// MEDIA CONTROLLER
-///
-MediaController::MediaController() : mp_(nullptr), current_(LABEL_AUTO_MEDIA_PLAYER),
-    follow_active_source_(true), media_playing_mode_(false), slider_pressed_(false)
-{
-}
-
-void MediaController::setMediaPlayer(MediaPlayer *mp)
-{
-    if (mp && mp->isOpen()) {
-        mp_ = mp;
-        current_ = SystemToolkit::base_filename(mp_->filename());
-        follow_active_source_ = false;
-        media_playing_mode_ = mp_->isPlaying();
-    }
-    else {
-        mp_ = nullptr;
-        current_ = LABEL_AUTO_MEDIA_PLAYER;
-        follow_active_source_ = true;
-        media_playing_mode_ = false;
-    }
-}
-
-void MediaController::followCurrentSource()
-{
-    Source *s = Mixer::manager().currentSource();
-    MediaSource *ms = nullptr;
-
-    if ( s != nullptr)
-        ms = dynamic_cast<MediaSource *>(s);
-
-    if ( ms != nullptr) {
-        // update the internal mediaplayer if changed
-        if (mp_ != ms->mediaplayer()) {
-            mp_ = ms->mediaplayer();
-            media_playing_mode_ = mp_->isPlaying();
-        }
-    }
-    else {
-        mp_ = nullptr;
-        media_playing_mode_ = false;
-    }
-}
-
-void MediaController::Render()
-{
-    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-
-    // constraint position
-    static ImVec2 media_window_pos = ImVec2(1180, 20);
-    static ImVec2 media_window_size = ImVec2(400, 260);
-    SetNextWindowVisible(media_window_pos, media_window_size);
-
-    // estimate window size
-    const ImGuiContext& g = *GImGui;
-    const float _spacing = 6.0f;
-    const float _height  = g.FontSize + g.Style.FramePadding.y * 2.0f ;
-    const float _timeline_height = (g.FontSize + g.Style.FramePadding.y) * 2.0f ; // double line for each timeline
-    const float _scrollbar_height = g.Style.ScrollbarSize;
-    // all together: 1 title bar + spacing + 1 toolbar + spacing + 2 timelines + scrollbar
-    const float _toobar_height = _height + 2.f * _timeline_height + _scrollbar_height + 2.f * _spacing;
-
-    // window: 1 title bar + spacing + toolbar
-    ImVec2 MinWindowSize = ImVec2(350.f, _height + _spacing + _toobar_height);
-    if (Settings::application.widget.media_player_listview) {
-        // + min 2 lines for player if visible
-        MinWindowSize.y += 2.f * _height;
-        // free window height
-        ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
-    }
-    else {
-        // fixed window height
-        ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, MinWindowSize.y));
-    }
-
-    if ( !ImGui::Begin(IMGUI_TITLE_MEDIAPLAYER, &Settings::application.widget.media_player, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
-    {
-        ImGui::End();
-        return;
-    }
-    media_window_pos = ImGui::GetWindowPos();
-    media_window_size = ImGui::GetWindowSize();
-
-    // verify that mp is still registered
-    if ( std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ ) == MediaPlayer::end() ) {
-        setMediaPlayer();
-    }
-
-    // menu (no title bar)
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGuiToolkit::IconButton(4,16))
-            Settings::application.widget.media_player = false;
-        if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
-        {
-            ImGui::MenuItem( ICON_FA_EYE " Preview", nullptr, &Settings::application.widget.media_player_listview);
-//            ImGui::MenuItem( ICON_FA_QUESTION_CIRCLE " Help", nullptr, &media_player_help);
-
-//            if ( ImGui::MenuItem( "  RESET") ){
-//                std::list<MediaPlayer*> lm = MediaPlayer::registered();
-//                for( auto m=lm.begin(); m!=lm.end();++m)
-//                    (*m)->reopen();
-//            }
-
-            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
-                Settings::application.widget.media_player = false;
-
-            ImGui::EndMenu();
-        }
-        if (mp_ && current_ != LABEL_AUTO_MEDIA_PLAYER && MediaPlayer::registered().size() > 1) {
-            bool tmp = false;
-            if ( ImGui::Selectable(ICON_FA_CHEVRON_LEFT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
-
-                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
-                if (mpit == MediaPlayer::begin()) {
-                    mpit = MediaPlayer::end();
-                }
-                mpit--;
-                setMediaPlayer(*mpit);
-
-            }
-            if ( ImGui::Selectable(ICON_FA_CHEVRON_RIGHT, &tmp, ImGuiSelectableFlags_None, ImVec2(10,0))) {
-
-                auto mpit = std::find(MediaPlayer::begin(),MediaPlayer::end(), mp_ );
-                mpit++;
-                if (mpit == MediaPlayer::end()) {
-                    mpit = MediaPlayer::begin();
-                }
-                setMediaPlayer(*mpit);
-            }
-        }
-        if (ImGui::BeginMenu(current_.c_str()))
-        {
-            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
-                setMediaPlayer();
-
-            // display list of available media
-            for (auto mpit = MediaPlayer::begin(); mpit != MediaPlayer::end(); ++mpit )
-            {
-                std::string label = (*mpit)->filename();
-                if (ImGui::MenuItem( label.c_str() ))
-                    setMediaPlayer(*mpit);
-            }
-
-            ImGui::EndMenu();
-        }
-
-
-        ImGui::EndMenuBar();
-    }
-
-    // mode auto : select the media player from active source
-    if (follow_active_source_)
-        followCurrentSource();
-
-    // Something to show ?
-    if (mp_ && mp_->isOpen())
-    {
-        static float timeline_zoom = 1.f;
-        const float width = ImGui::GetContentRegionAvail().x;
-        const float slider_zoom_width = _timeline_height / 2.f;
-
-        if (Settings::application.widget.media_player_listview)
-        {
-            // set an image height to fill the vertical space, minus the height of control bar
-            float image_height = ImGui::GetContentRegionAvail().y;
-            if ( !mp_->isImage() ) {
-                // leave space for buttons and timelines + spacing
-                image_height -= _toobar_height;
-            }
-
-            // display media
-            ImVec2 imagesize ( image_height * mp_->aspectRatio(), image_height);
-            ImVec2 tooltip_pos = ImGui::GetCursorScreenPos();
-            ImGui::SetCursorPosX(ImGui::GetCursorPos().x + (ImGui::GetContentRegionAvail().x - imagesize.x) / 2.0);
-            ImGui::Image((void*)(uintptr_t)mp_->texture(), imagesize);
-            ImVec2 return_to_pos = ImGui::GetCursorPos();
-
-            // display media information
-            if (ImGui::IsItemHovered()) {
-
-                float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-
-                ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                draw_list->AddRectFilled(ImVec2(tooltip_pos.x - 10.f, tooltip_pos.y),
-                                         ImVec2(tooltip_pos.x + width + 10.f, tooltip_pos.y + tooltip_height), IMGUI_COLOR_OVERLAY);
-
-                ImGui::SetCursorScreenPos(tooltip_pos);
-                // filename
-                ImGui::Text(" %s", mp_->filename().c_str());
-                // decoding info
-                if (Settings::application.render.gpu_decoding && !mp_->hardwareDecoderName().empty() )
-                    ImGui::Text(" %s (%s hardware decoder)", mp_->media().codec_name.c_str(), mp_->hardwareDecoderName().c_str());
-                else
-                    ImGui::Text(" %s", mp_->media().codec_name.c_str());
-                // framerate
-                if ( mp_->frameRate() > 1.f )
-                    ImGui::Text(" %d x %d px, %.2f / %.2f fps", mp_->width(), mp_->height(), mp_->updateFrameRate() , mp_->frameRate() );
-                else
-                    ImGui::Text(" %d x %d px", mp_->width(), mp_->height());
-
-            }
-
-            // display time
-            if ( !mp_->isImage() ) {
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-                ImGui::SetCursorPos( ImVec2(return_to_pos.x + 5, return_to_pos.y - ImGui::GetTextLineHeightWithSpacing()) );
-                ImGui::Text("%s", GstToolkit::time_to_string(mp_->position(), GstToolkit::TIME_STRING_FIXED).c_str());
-                ImGui::PopFont();
-            }
-
-            ImGui::SetCursorPos(return_to_pos);
-        }
-
-        ImGui::Spacing();
-        // Control bar
-        if ( mp_->isEnabled() && !mp_->isImage()) {
-
-            float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-
-            if (ImGui::Button(mp_->playSpeed() > 0 ? ICON_FA_FAST_BACKWARD :ICON_FA_FAST_FORWARD))
-                mp_->rewind();
-            ImGui::SameLine(0, spacing);
-
-            // ignore actual play status of mediaplayer when slider is pressed
-            if (!slider_pressed_)
-                media_playing_mode_ = mp_->isPlaying();
-
-            // display buttons Play/Stop depending on current playing mode
-            if (media_playing_mode_) {
-                if (ImGui::Button(ICON_FA_PAUSE "  Pause", ImVec2(100, 0)))
-                    media_playing_mode_ = false;
-                ImGui::SameLine(0, spacing);
-
-                ImGui::PushButtonRepeat(true);
-                if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD))
-                    mp_->jump ();
-                ImGui::PopButtonRepeat();
-            }
-            else {
-                if (ImGui::Button(mp_->playSpeed() < 0 ? ICON_FA_LESS_THAN "  Play": ICON_FA_GREATER_THAN "  Play", ImVec2(100, 0)))
-                    media_playing_mode_ = true;
-                ImGui::SameLine(0, spacing);
-
-                ImGui::PushButtonRepeat(true);
-                if (ImGui::Button( mp_->playSpeed() < 0 ? ICON_FA_STEP_BACKWARD : ICON_FA_STEP_FORWARD))
-                    mp_->step();
-                ImGui::PopButtonRepeat();
-            }
-
-            // loop modes button
-            ImGui::SameLine(0, spacing);
-            static int current_loop = 0;
-            static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
-            current_loop = (int) mp_->loop();
-            if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
-                mp_->setLoop( (MediaPlayer::LoopMode) current_loop );
-
-            // speed slider
-            ImGui::SameLine(0, MAX(spacing * 2.f, width - 450.f) );
-            float speed = static_cast<float>(mp_->playSpeed());
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0);
-            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed x %.1f", 2.f))
-                mp_->setPlaySpeed( static_cast<double>(speed) );
-
-            // Timeline popup menu
-            ImGui::SameLine(0, spacing * 0.5f);
-            bool l = true;
-            if (ImGuiToolkit::IconToggle(5,8,5,8, &l) )
-                ImGui::OpenPopup( "MenuTimeline" );
-            if (ImGui::BeginPopup( "MenuTimeline" ))
-            {
-                if (ImGui::MenuItem("Reset Speed" )){
-                    speed = 1.f;
-                    mp_->setPlaySpeed( static_cast<double>(speed) );
-                }
-                if (ImGui::MenuItem( "Reset Timeline" )){
-                    timeline_zoom = 1.f;
-                    mp_->timeline()->clearFading();
-                    mp_->timeline()->clearGaps();
-                    Action::manager().store("Timeline Reset");
-                }
-                if (ImGui::BeginMenu("Smooth curve"))
-                {
-                    const char* names[] = { "Just a little", "A bit more", "Quite a lot"};
-                    for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
-                        if (ImGui::MenuItem(names[i])) {
-                            mp_->timeline()->smoothFading( 10 * (int) pow(4, i) );
-                            Action::manager().store("Timeline Smooth curve");
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Auto fading"))
-                {
-                    const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
-                    for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
-                        if (ImGui::MenuItem(names[i])) {
-                            mp_->timeline()->autoFading( 250 * (int ) pow(2, i) );
-                            mp_->timeline()->smoothFading( 10 * (i + 1) );
-                            Action::manager().store("Timeline Auto fading");
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
-                if (Settings::application.render.gpu_decoding && ImGui::BeginMenu("Hardware Decoding"))
-                {
-                    bool hwdec = !mp_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Auto", "", &hwdec ))
-                        mp_->setSoftwareDecodingForced(false);
-                    hwdec = mp_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                        mp_->setSoftwareDecodingForced(true);
-                    ImGui::EndMenu();
-                }
-                ImGui::EndPopup();
-            }
-
-            ImGui::Spacing();
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.f, 3.f));
-
-            guint64 seek_t = mp_->position();
-
-            // scrolling sub-window
-            ImGui::BeginChild("##scrolling",
-                              ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
-                                     2.f * _timeline_height + _scrollbar_height ),
-                              false, ImGuiWindowFlags_HorizontalScrollbar);
-            {
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
-                ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), _timeline_height -1);
-                size.x *= timeline_zoom;
-
-                bool released = false;
-                if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray",
-                                                      mp_->timeline()->gapsArray(),
-                                                      mp_->timeline()->fadingArray(),
-                                                      MAX_TIMELINE_ARRAY, 0.f, 1.f, true, &released, size) ) {
-                    mp_->timeline()->update();
-                }
-                else if (released) {
-                    Action::manager().store("Timeline change");
-                }
-
-                // custom timeline slider
-                slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp_->timeline()->begin(),
-                                                               mp_->timeline()->end(), mp_->timeline()->step(), size.x);
-
-                ImGui::PopStyleVar(2);
-            }
-            ImGui::EndChild();
-
-            // zoom slider
-            ImGui::SameLine();
-            ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, 2.f * _timeline_height), &timeline_zoom, 1.0, 5.f, "");
-            ImGui::PopStyleVar();
-
-            // request seek (ASYNC)
-            if ( slider_pressed_ && mp_->go_to(seek_t) )
-                slider_pressed_ = false;
-
-            // play/stop command should be following the playing mode (buttons)
-            // AND force to stop when the slider is pressed
-            bool media_play = media_playing_mode_ & (!slider_pressed_);
-
-            // apply play action to media only if status should change
-            if ( mp_->isPlaying() != media_play ) {
-                mp_->play( media_play );
-            }
-
-        }
-    }
-    else {
-        ImVec2 center = ImGui::GetContentRegionAvail() * ImVec2(0.5f, 0.5f);
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.5f));
-        center.x -= ImGui::GetTextLineHeight() * 2.f;
-        center.y += ImGui::GetTextLineHeight() * 0.5f;
-        ImGui::SetCursorPos(center);
-        ImGui::Text("No media");
-        ImGui::PopFont();
-        ImGui::PopStyleColor(1);
-    }
-
-    ImGui::End();
-}
-
-
-///
 /// SOURCE CONTROLLER
 ///
-SourceController::SourceController() : active_label_(LABEL_AUTO_MEDIA_PLAYER),
-    active_selection_(-1), media_playing_mode_(false), slider_pressed_(false)
+SourceController::SourceController() : _min_width(0.f), _h_space(0.f), _v_space(0.f), _buttons_height(0.f),
+    _timeline_height(0.f), _scrollbar(0.f), _mediaplayer_height(0.f),
+    active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
+    media_playing_mode_(false), slider_pressed_(false)
 {
 }
 
 
+void SourceController::resetActiveSelection()
+{
+    active_selection_ = -1;
+    active_label_ = LABEL_AUTO_MEDIA_PLAYER;
+}
 
 void SourceController::Render()
 {
-//    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
-//    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
     // estimate window size
     const ImGuiContext& g = *GImGui;
@@ -2410,16 +2025,15 @@ void SourceController::Render()
 
         if (ImGui::BeginMenu(active_label_.c_str()))
         {
-            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER)) {
-                active_selection_ = -1;
-                active_label_ = LABEL_AUTO_MEDIA_PLAYER;
-            }
+            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
+                resetActiveSelection();
 
             // display list of available media
             for (size_t i = 0 ; i < Mixer::manager().session()->numPlayGroups(); ++i)
             {
                 std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
-                if (ImGui::MenuItem( label.c_str() )) {
+                if (ImGui::MenuItem( label.c_str() ))
+                {
                     active_selection_ = i;
                     active_label_ = label;
                 }
@@ -2471,7 +2085,7 @@ void SourceController::RenderSelection(size_t i)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
         center.x -= ImGui::GetTextLineHeight() * 2.f;
         ImGui::SetCursorScreenPos(top + center);
-        ImGui::Text("Empty");
+        ImGui::Text("Empty selection");
         ImGui::PopFont();
         ImGui::PopStyleColor(1);
     }
@@ -2495,11 +2109,8 @@ void SourceController::RenderSelection(size_t i)
                 framesize.x -= _h_space;
                 ImVec2 image_top = ImGui::GetCursorPos();
 
-                if (SourceButton(*source, framesize)){
-                    Mixer::selection().set(*source);
-                    active_selection_ = -1;
-                    active_label_ = LABEL_AUTO_MEDIA_PLAYER;
-                }
+                if (SourceButton(*source, framesize))
+                    UserInterface::manager().showSourceEditor(*source);
 
                 // Play icon lower left corner
                 ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
@@ -2567,8 +2178,7 @@ void SourceController::RenderSelection(size_t i)
         ImGui::SameLine(0, width_);
 
     if (ImGui::Button( ICON_FA_BACKSPACE )) {
-        active_selection_ = -1;
-        active_label_ = LABEL_AUTO_MEDIA_PLAYER;
+        resetActiveSelection();
         Mixer::manager().session()->deletePlayGroup(i);
     }
 
@@ -4178,7 +3788,7 @@ void Navigator::RenderMainPannelVimix()
         tooltip_ = "New note " CTRL_MOD "Shift+N";
 
     ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_FILM ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
         Settings::application.widget.media_player = true;
     if (ImGui::IsItemHovered())
         tooltip_ = "Player       " CTRL_MOD "P";
