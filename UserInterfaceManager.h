@@ -108,6 +108,7 @@ class SourceController
     float _min_width;
     float _h_space;
     float _v_space;
+    float _buttons_width;
     float _buttons_height;
     float _timeline_height;
     float _scrollbar;

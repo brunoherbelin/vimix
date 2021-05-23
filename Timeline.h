@@ -120,8 +120,10 @@ public:
     float fadingAt(const GstClockTime t);
     inline float *fadingArray() { return fadingArray_; }
     void clearFading();
+
     void smoothFading(uint N = 1);
     void autoFading(uint milisecond = 100);
+    bool autoCut();
 
 private:
 
