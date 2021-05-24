@@ -2404,26 +2404,17 @@ void SourceController::RenderSingleSource(Source *s)
             ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(s->playtime()).c_str() );
         ImGui::PopFont();
 
-        StreamSource *sts = dynamic_cast<StreamSource*>(s);
-        if (sts !=nullptr){
-            ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
-            ImGui::Text(ICON_FA_INFO_CIRCLE);
-            if (ImGui::IsItemHovered()){
-                std::ostringstream tooltip;
-                std::string desc = sts->stream()->description();
-                desc = desc.substr(0, desc.find_first_of('!'));
-                tooltip << desc << "\n ";
-                tooltip << sts->stream()->width() << " x " << sts->stream()->height() << " px,  ";
-                tooltip << std::fixed << std::setprecision(2) << sts->stream()->updateFrameRate() << " fps ";
+        ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
+        ImGui::Text(ICON_FA_INFO_CIRCLE);
+        if (ImGui::IsItemHovered()){
+            static InfoVisitor info(false);
+            s->accept(info);
 
-                float tooltip_height = 2.f * ImGui::GetTextLineHeightWithSpacing();
-
-                ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
-
-                ImGui::SetCursorScreenPos(top + ImVec2(0, _v_space));
-                ImGui::Text(" %s", tooltip.str().c_str());
-            }
+            float tooltip_height = 2.f * ImGui::GetTextLineHeightWithSpacing();
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
+            ImGui::Text("%s", info.str().c_str());
         }
 
         ///
@@ -2474,23 +2465,14 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
-
-        std::ostringstream tooltip;
-        tooltip << mp->filename() << "\n ";
-        tooltip << mp->media().codec_name;
-        if (Settings::application.render.gpu_decoding && !mp->hardwareDecoderName().empty() )
-            tooltip << " (" << mp->hardwareDecoderName() << " hardware decoder)";
-        tooltip << " \n " << mp->width() << " x " << mp->height() << " px,  ";
-        if ( mp->frameRate() > 1.f )
-            tooltip << std::fixed << std::setprecision(2) << mp->updateFrameRate() << " / " << mp->frameRate() << " fps ";
+        static InfoVisitor info(false);
+        mp->accept(info);
 
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
-
-        ImGui::SetCursorScreenPos(top + ImVec2(0, _v_space));
-        ImGui::Text(" %s", tooltip.str().c_str());
+        ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
+        ImGui::Text("%s", info.str().c_str());
     }
 
     ///

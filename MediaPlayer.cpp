@@ -186,7 +186,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                     if ( tags ) {
                         gchar *container = NULL;
                         if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
-                             video_stream_info.codec_name += " " + std::string(container);
+                             video_stream_info.codec_name += ", " + std::string(container);
                         if (container)
                             g_free(container);
                     }
