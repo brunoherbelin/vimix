@@ -12,6 +12,11 @@ monitor or a projector, but can be recorded live (no audio).
 
 vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 
+# License
+
+GPL-3.0-or-later
+See [LICENSE](https://github.com/brunoherbelin/vimix/blob/master/LICENSE)
+
 # Install
 
 Check the [Quick Installation Guide](https://github.com/brunoherbelin/vimix/wiki/Quick-Installation-Guide)
