@@ -319,6 +319,7 @@ set(VMIX_SRCS
     SearchVisitor.cpp
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
+    InfoVisitor.cpp
     GstToolkit.cpp
     GlmToolkit.cpp
     SystemToolkit.cpp

@@ -554,10 +554,9 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::Text("Video File");
 
     // Media info
-    MediaPlayer *mp = s.mediaplayer();
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    ImGui::Text("%s\n%d x %d px, %s", SystemToolkit::filename(s.path()).c_str(),
-                mp->width(), mp->height(), mp->media().codec_name.c_str());
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
@@ -591,8 +590,8 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    ImGui::Text("%d sources in %s\n%d x %d px, RGB", s.session()->numSource(), SystemToolkit::filename(s.path()).c_str(),
-                s.session()->frame()->width(), s.session()->frame()->height() );
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
@@ -646,7 +645,8 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    ImGui::Text("%d sources in group\n%d x %d px, RGB", s.session()->numSource(), s.session()->frame()->width(), s.session()->frame()->height() );
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
@@ -691,9 +691,9 @@ void ImGuiVisitor::visit (PatternSource& s)
     ImGui::Text("Pattern");
 
     // stream info
-    Pattern *mp = s.pattern();
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    ImGui::Text("%d x %d px, RGB", mp->width(), mp->height() );
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
@@ -729,15 +729,10 @@ void ImGuiVisitor::visit (DeviceSource& s)
     ImGui::SameLine(0, 10);
     ImGui::Text("Device");
 
-    // device info
-    DeviceConfigSet confs = Device::manager().config( Device::manager().index(s.device().c_str()));
-    if ( !confs.empty()) {
-        DeviceConfig best = *confs.rbegin();
-        float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        ImGui::Text("%d x %d px @%.1ffps, %s %s ", best.width, best.height, fps, best.stream.c_str(), best.format.c_str());
-        ImGui::PopTextWrapPos();
-    }
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
 
     // icon (>) to open player
     if ( s.playable() ) {
@@ -772,14 +767,14 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImGui::SameLine(0, 10);
     ImGui::Text("Network stream");
 
-    // network info
-    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
     ImGui::Text("%s", s.connection().c_str());
     ImGui::PopStyleColor(1);
-    NetworkStream *ns = s.networkStream();
-    ImGui::Text("%d x %d px, %s\nServer address %s", ns->resolution().x, ns->resolution().y,
-                NetworkToolkit::protocol_name[ns->protocol()], ns->serverAddress().c_str());
+
+    // network info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
@@ -809,8 +804,8 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // information text
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    ImGui::Text("%d numbered images [%d %d]\n%d x %d px, %s", s.sequence().max - s.sequence().min + 1,
-                s.sequence().min, s.sequence().max, s.sequence().width, s.sequence().height, s.sequence().codec.c_str());
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player

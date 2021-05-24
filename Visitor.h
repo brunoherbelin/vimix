@@ -63,14 +63,14 @@ public:
     virtual void visit (Handles&) {}
     virtual void visit (Symbol&) {}
     virtual void visit (Disk&) {}
-    virtual void visit (Stream&) {}
-    virtual void visit (MediaPlayer&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
     virtual void visit (MaskShader&) {}
     virtual void visit (ImageProcessingShader&) {}
 
     // utility
+    virtual void visit (Stream&) {}
+    virtual void visit (MediaPlayer&) {}
     virtual void visit (MixingGroup&) {}
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
