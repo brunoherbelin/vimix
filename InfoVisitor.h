@@ -1,15 +1,17 @@
-#ifndef IMGUIVISITOR_H
-#define IMGUIVISITOR_H
+#ifndef INFOVISITOR_H
+#define INFOVISITOR_H
 
 #include "Visitor.h"
-#include "InfoVisitor.h"
 
-class ImGuiVisitor: public Visitor
+class InfoVisitor : public Visitor
 {
-    InfoVisitor info;
+    std::string information_;
+    bool brief_;
+    uint64_t current_id_;
 
 public:
-    ImGuiVisitor();
+    InfoVisitor(bool brief = true);
+    inline std::string str() const { return information_; }
 
     // Elements of Scene
     void visit (Scene& n) override;
@@ -17,14 +19,10 @@ public:
     void visit (Group& n) override;
     void visit (Switch& n) override;
     void visit (Primitive& n) override;
-    void visit (MediaSurface& n) override;
-    void visit (FrameBufferSurface& n) override;
 
     // Elements with attributes
+    void visit (Stream& n) override;
     void visit (MediaPlayer& n) override;
-    void visit (Shader& n) override;
-    void visit (ImageProcessingShader& n) override;
-    void visit (Source& s) override;
     void visit (MediaSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
@@ -36,4 +34,4 @@ public:
     void visit (MultiFileSource& s) override;
 };
 
-#endif // IMGUIVISITOR_H
+#endif // INFOVISITOR_H
