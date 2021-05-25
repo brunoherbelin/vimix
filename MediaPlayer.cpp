@@ -1242,16 +1242,16 @@ void MediaPlayer::TimeCounter::tic ()
 {
     // how long since last time
     GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time;
+    GstClockTime dt = t - last_time -1;
 
     // one more frame since last time
     nbFrames++;
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (50/50)
+    // Exponential moving averate with previous framerate to filter jitter (70/30)
     // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
     // NB: factor 100 to get 0.01 precision
-    fps = 0.5 * fps + 0.005 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
+    fps = 0.7 * fps + 0.003 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
 
     // reset counter every second
     if ( dt >= GST_SECOND)

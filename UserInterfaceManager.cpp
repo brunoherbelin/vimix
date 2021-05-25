@@ -1963,15 +1963,17 @@ void ToolBox::Render()
 /// SOURCE CONTROLLER
 ///
 SourceController::SourceController() : _min_width(0.f), _h_space(0.f), _v_space(0.f), _buttons_height(0.f),
-    _timeline_height(0.f), _scrollbar(0.f), _mediaplayer_height(0.f),
+    _timeline_height(0.f), _scrollbar(0.f), _mediaplayer_height(0.f), _buttons_width(0.f),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     media_playing_mode_(false), slider_pressed_(false)
 {
+    info_.setExtendedStringMode();
 }
 
 
 void SourceController::resetActiveSelection()
 {
+    info_.reset();
     active_selection_ = -1;
     active_label_ = LABEL_AUTO_MEDIA_PLAYER;
 }
@@ -2008,7 +2010,6 @@ void SourceController::Render()
     source_window_pos = ImGui::GetWindowPos();
     source_window_size = ImGui::GetWindowSize();
 
-
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
@@ -2037,6 +2038,7 @@ void SourceController::Render()
                 {
                     active_selection_ = i;
                     active_label_ = label;
+                    info_.reset();
                 }
             }
 
@@ -2045,8 +2047,8 @@ void SourceController::Render()
                 active_selection_ = Mixer::manager().session()->numPlayGroups();
                 active_label_ = std::string("Selection #") + std::to_string(active_selection_);
                 Mixer::manager().session()->addPlayGroup( ids(playable_only(Mixer::selection().getCopy())) );
+                info_.reset();
             }
-
 
             ImGui::EndMenu();
         }
@@ -2100,9 +2102,7 @@ void SourceController::RenderSelection(size_t i)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
 
-
             for (auto source = selection_.begin(); source != selection_.end(); ++source) {
-
 
                 ImVec2 framesize(1.5f * _timeline_height * (*source)->frame()->aspectRatio(), 1.5f * _timeline_height);
 
@@ -2235,8 +2235,9 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
 
     ImGui::PushID(s->id());
     ImGui::InvisibleButton("##sourcebutton", framesize);
-    if (ImGui::IsItemClicked())
+    if (ImGui::IsItemClicked()) {
         ret = true;
+    }
     if (ImGui::IsItemHovered()){
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), ImGui::GetColorU32(ImGuiCol_Text), 0, 0, 3.f);
@@ -2305,9 +2306,8 @@ void SourceController::RenderSelectedSources()
                 framesize.x -= _h_space;
 
                 ImVec2 image_top = ImGui::GetCursorPos();
-                if (SourceButton(*source, framesize)){
-                    Mixer::selection().set(*source);
-                }
+                if (SourceButton(*source, framesize))
+                    UserInterface::manager().showSourceEditor(*source);
 
                 // Play icon lower left corner
                 ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
@@ -2407,14 +2407,20 @@ void SourceController::RenderSingleSource(Source *s)
         ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
         if (ImGui::IsItemHovered()){
-            static InfoVisitor info(false);
-            s->accept(info);
+            // fill info string
+            s->accept(info_);
 
             float tooltip_height = 2.f * ImGui::GetTextLineHeightWithSpacing();
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
-            ImGui::Text("%s", info.str().c_str());
+            ImGui::Text("%s", info_.str().c_str());
+
+            StreamSource *sts = dynamic_cast<StreamSource*>(s);
+            if (sts) {
+                ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.5f * tooltip_height));
+                ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
+            }
         }
 
         ///
@@ -2465,14 +2471,16 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
-        static InfoVisitor info(false);
-        mp->accept(info);
+        mp->accept(info_);
 
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
         ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
-        ImGui::Text("%s", info.str().c_str());
+        ImGui::Text("%s", info_.str().c_str());
+
+        ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.666f * tooltip_height));
+        ImGui::Text("%.1f Hz", mp->updateFrameRate());
     }
 
     ///

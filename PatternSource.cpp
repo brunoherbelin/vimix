@@ -126,6 +126,7 @@ void Pattern::open( uint pattern, glm::ivec2 res )
 
     // all patterns before 'SMPTE test pattern' are single frames (not animated)
     single_frame_ = type_ < 14;
+    Log::Info("Stream %d SingleFrame", single_frame_);
 
     // (private) open stream
     Stream::open(gstreamer_pattern, res.x, res.y);
