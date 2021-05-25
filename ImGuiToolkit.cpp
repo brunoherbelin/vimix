@@ -192,8 +192,11 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
     ImVec2 draw_pos = window->DC.CursorPos;
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
     ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bb, id))
+
+    if (!ImGui::ItemAdd(bb, id)){
+        ImGui::PopID();
         return false;
+    }
 
     ImGuiButtonFlags flags = 0;
     if (window->DC.ItemFlags & ImGuiItemFlags_ButtonRepeat)
