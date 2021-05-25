@@ -246,7 +246,6 @@ protected:
     // NB: rendershader_ is applied at render()
     FrameBuffer *renderbuffer_;
     void attach(FrameBuffer *renderbuffer);
-    void dettach() ;
 
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
