@@ -384,12 +384,13 @@ void DeviceSource::setDevice(const std::string &devicename)
 
         pipeline << " ! videoconvert";
 
-        dettach();
+        // resize render buffer
+        if (renderbuffer_)
+            renderbuffer_->resize(best.width, best.height);
 
         // open gstreamer
         stream_->open( pipeline.str(), best.width, best.height);
         stream_->play(true);
-
 
         // will be ready after init and one frame rendered
         ready_ = false;
