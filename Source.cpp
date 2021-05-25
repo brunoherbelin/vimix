@@ -425,6 +425,13 @@ void Source::render()
     }
 }
 
+void Source::dettach()
+{
+    // replace renderbuffer_
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
+}
 
 void Source::attach(FrameBuffer *renderbuffer)
 {
