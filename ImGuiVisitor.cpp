@@ -712,6 +712,7 @@ void ImGuiVisitor::visit (PatternSource& s)
         for (uint p = 0; p < Pattern::pattern_types.size(); ++p){
             if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
                 s.setPattern(p, s.pattern()->resolution());
+                info.reset();
                 std::ostringstream oss;
                 oss << s.name() << ": Pattern " << Pattern::pattern_types[p];
                 Action::manager().store(oss.str());
@@ -751,6 +752,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
             std::string namedev = Device::manager().name(d);
             if (ImGui::Selectable( namedev.c_str() )) {
                 s.setDevice(namedev);
+                info.reset();
                 std::ostringstream oss;
                 oss << s.name() << " Device " << namedev;
                 Action::manager().store(oss.str());
@@ -789,8 +791,8 @@ void ImGuiVisitor::visit (NetworkSource& s)
 
     if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
     {
-        // TODO : reload ?
         s.setConnection(s.connection());
+        info.reset();
     }
 }
 
@@ -800,7 +802,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, 10);
     ImGui::Text("Images sequence");
-    static int64_t id = s.id();
+    static int64_t id = 0;
 
     // information text
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -857,4 +859,6 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     ImGui::SameLine();
     ImGui::Text("Folder");
 
+    if (id != s.id())
+        id = s.id();
 }
