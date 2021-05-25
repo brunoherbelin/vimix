@@ -10,8 +10,11 @@ class InfoVisitor : public Visitor
     uint64_t current_id_;
 
 public:
-    InfoVisitor(bool brief = true);
-    inline std::string str() const { return information_; }
+    InfoVisitor();
+    inline void setBriefStringMode () { brief_ = true; current_id_ = 0; }
+    inline void setExtendedStringMode () { brief_ = false; current_id_ = 0; }
+    inline void reset () { current_id_ = 0; }
+    inline std::string str () const { return information_; }
 
     // Elements of Scene
     void visit (Scene& n) override;

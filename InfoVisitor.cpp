@@ -37,11 +37,9 @@
 #include "SystemToolkit.h"
 
 
-InfoVisitor::InfoVisitor(bool brief) : brief_(brief), current_id_(0)
+InfoVisitor::InfoVisitor() : brief_(true), current_id_(0)
 {
-
 }
-
 
 void InfoVisitor::visit(Node &n)
 {
@@ -64,9 +62,13 @@ void InfoVisitor::visit(Primitive &n)
 }
 
 
-
 void InfoVisitor::visit(MediaPlayer &mp)
 {
+    if (current_id_ == mp.id())
+        return;
+
+    Log::Info("Getting string info MediaPlayer %ld", current_id_);
+
     std::ostringstream oss;
     if (brief_) {
         oss << SystemToolkit::filename(mp.filename()) << std::endl;
@@ -82,7 +84,9 @@ void InfoVisitor::visit(MediaPlayer &mp)
         if (!mp.isImage())
             oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
     }
+
     information_ = oss.str();
+    current_id_ = mp.id();
 }
 
 void InfoVisitor::visit(Stream &n)
@@ -180,8 +184,7 @@ void InfoVisitor::visit (PatternSource& s)
         oss << ", RGB";
     }
     else {
-        std::string desc = s.stream()->description();
-        oss << desc.substr(0, desc.find_first_of('!')) << std::endl;
+        oss << Pattern::pattern_types[s.pattern()->type()] << std::endl;
         oss << s.pattern()->width() << " x " << s.pattern()->height();
         oss << ", RGB";
     }
@@ -256,11 +259,11 @@ void InfoVisitor::visit (MultiFileSource& s)
         oss << s.sequence().min << " - " << s.sequence().max << "]";
     }
     else {
-        oss << SystemToolkit::path_filename(s.sequence().location) ;
-        oss << "  " << s.sequence().max - s.sequence().min + 1 << " images [";
+        oss << s.sequence().location << " [";
         oss << s.sequence().min << " - " << s.sequence().max << "]" << std::endl;
         oss << s.sequence().width << " x " << s.sequence().height << ", ";
-        oss << s.sequence().codec;
+        oss << s.sequence().codec << " (";
+        oss << s.sequence().max - s.sequence().min + 1 << " images)";
     }
 
     information_ = oss.str();
