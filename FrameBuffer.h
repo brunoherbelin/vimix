@@ -69,6 +69,7 @@ public:
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
     glm::vec3 resolution() const;
+    void resize(int width, int height);
     float aspectRatio() const;
     std::string info() const;
 
