@@ -176,6 +176,7 @@ void Stream::execute_open()
 #endif
 
     // set to desired state (PLAY or PAUSE)
+    live_ = false;
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("Stream %s Could not open '%s'", std::to_string(id_).c_str(), description_.c_str());
@@ -219,15 +220,12 @@ void Stream::Frame::unmap()
 void Stream::close()
 {
     // not openned?
-    if (!opened_) {
-        // nothing else to change
+    if (!opened_)
         return;
-    }
 
     // un-ready
     opened_ = false;
-    single_frame_ = false;
-    live_ = false;
+    textureinitialized_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -463,46 +461,46 @@ void Stream::fill_texture(guint index)
     {
         // initialize texture
         init_texture(index);
+    }
 
+    glBindTexture(GL_TEXTURE_2D, textureindex_);
+
+    // use dual Pixel Buffer Object
+    if (pbo_size_ > 0) {
+        // In dual PBO mode, increment current index first then get the next index
+        pbo_index_ = (pbo_index_ + 1) % 2;
+        pbo_next_index_ = (pbo_index_ + 1) % 2;
+
+        // bind PBO to read pixels
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+        // copy pixels from PBO to texture object
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        // bind the next PBO to write pixels
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+        // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+        // map the buffer object into client's memory
+        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+        if (ptr) {
+            // update data directly on the mapped buffer
+            // NB : equivalent but faster (memmove instead of memcpy ?) than
+            // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
+            memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+        }
+        // done with PBO
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     }
     else {
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
-
-        // use dual Pixel Buffer Object
-        if (pbo_size_ > 0) {
-            // In dual PBO mode, increment current index first then get the next index
-            pbo_index_ = (pbo_index_ + 1) % 2;
-            pbo_next_index_ = (pbo_index_ + 1) % 2;
-
-            // bind PBO to read pixels
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
-            // copy pixels from PBO to texture object
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-            // bind the next PBO to write pixels
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
-            // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-            // map the buffer object into client's memory
-            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr) {
-                // update data directly on the mapped buffer
-                // NB : equivalent but faster (memmove instead of memcpy ?) than
-                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
-            // done with PBO
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-        }
-        else {
-            // without PBO, use standard opengl (slower)
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                            GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
-        }
-        glBindTexture(GL_TEXTURE_2D, 0);
+        // without PBO, use standard opengl (slower)
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                        GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 void Stream::update()
@@ -518,7 +516,7 @@ void Stream::update()
     }
 
     // prevent unnecessary updates: already filled image
-    if (single_frame_ && textureindex_>0)
+    if (single_frame_ && textureinitialized_)
         return;
 
     // local variables before trying to update
@@ -748,16 +746,16 @@ void Stream::TimeCounter::tic ()
 {
     // how long since last time
     GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time;
+    GstClockTime dt = t - last_time - 1;
 
     // one more frame since last time
     ++nbFrames;
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (50/50)
+    // Exponential moving averate with previous framerate to filter jitter (70/30)
     // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
     // NB: factor 100 to get 0.01 precision
-    fps = 0.5 * fps + 0.005 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
+    fps = 0.7 * fps + 0.003 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
 
     // reset counter every second
     if ( dt >= GST_SECOND)
