@@ -147,7 +147,7 @@ protected:
 
         GstClockTime last_time;
         GstClockTime tic_time;
-        int nbFrames;
+        long nbFrames;
         gdouble fps;
     public:
         TimeCounter();
