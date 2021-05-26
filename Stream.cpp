@@ -349,9 +349,6 @@ void Stream::play(bool on)
     if (live_)
         gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-    // reset time counter
-    timecount_.reset();
-
 }
 
 bool Stream::isPlaying(bool testpipeline) const
@@ -737,54 +734,23 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-Stream::TimeCounter::TimeCounter() {
+Stream::TimeCounter::TimeCounter()
+{
+    timer = g_timer_new ();
+}
 
-    reset();
+Stream::TimeCounter::~TimeCounter()
+{
+    g_free(timer);
 }
 
 void Stream::TimeCounter::tic ()
 {
-    // how long since last time
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time - 1;
-
-    // one more frame since last time
-    ++nbFrames;
+    double dt = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (70/30)
-    // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
-    // NB: factor 100 to get 0.01 precision
-    fps = 0.7 * fps + 0.003 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
-
-    // reset counter every second
-    if ( dt >= GST_SECOND)
-    {
-        last_time = t;
-        nbFrames = 0;
-    }
+    // Exponential moving averate with previous framerate to filter jitter
+    if (dt > 1.0)
+        fps = 0.5 * fps + 500.0 / dt ;
 }
-
-GstClockTime Stream::TimeCounter::dt ()
-{
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - tic_time;
-    tic_time = t;
-
-    // return the instantaneous delta t
-    return dt;
-}
-
-void Stream::TimeCounter::reset ()
-{
-    last_time = gst_util_get_timestamp ();;
-    tic_time = last_time;
-    nbFrames = 0;
-    fps = 0.0;
-}
-
-double Stream::TimeCounter::frameRate() const
-{
-    return fps;
-}
-
