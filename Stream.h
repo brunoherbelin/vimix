@@ -144,17 +144,13 @@ protected:
 
     // fps counter
     struct TimeCounter {
-
-        GstClockTime last_time;
-        GstClockTime tic_time;
-        long nbFrames;
+        GTimer *timer;
         gdouble fps;
     public:
         TimeCounter();
-        GstClockTime dt();
+        ~TimeCounter();
         void tic();
-        void reset();
-        gdouble frameRate() const;
+        inline gdouble frameRate() const { return fps; }
     };
     TimeCounter timecount_;
 

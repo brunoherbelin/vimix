@@ -605,9 +605,6 @@ void MediaPlayer::play(bool on)
         Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
 
-    // reset time counter
-    timecount_.reset();
-
 }
 
 bool MediaPlayer::isPlaying(bool testpipeline) const
@@ -944,6 +941,7 @@ void MediaPlayer::update()
     if (need_loop) {
         execute_loop_command();
     }
+
 }
 
 void MediaPlayer::execute_loop_command()
@@ -1233,54 +1231,24 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-MediaPlayer::TimeCounter::TimeCounter() {
+MediaPlayer::TimeCounter::TimeCounter()
+{
+    timer = g_timer_new ();
+}
 
-    reset();
+MediaPlayer::TimeCounter::~TimeCounter()
+{
+    g_free(timer);
 }
 
 void MediaPlayer::TimeCounter::tic ()
 {
-    // how long since last time
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time -1;
-
-    // one more frame since last time
-    nbFrames++;
+    double dt = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (70/30)
-    // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
-    // NB: factor 100 to get 0.01 precision
-    fps = 0.7 * fps + 0.003 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
-
-    // reset counter every second
-    if ( dt >= GST_SECOND)
-    {
-        last_time = t;
-        nbFrames = 0;
-    }
-}
-
-GstClockTime MediaPlayer::TimeCounter::dt ()
-{
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - tic_time;
-    tic_time = t;
-
-    // return the instantaneous delta t
-    return dt;
-}
-
-void MediaPlayer::TimeCounter::reset ()
-{
-    last_time = gst_util_get_timestamp ();;
-    tic_time = last_time;
-    nbFrames = 0;
-    fps = 0.0;
-}
-
-double MediaPlayer::TimeCounter::frameRate() const
-{
-    return fps;
+    // Exponential moving averate with previous framerate to filter jitter
+    if (dt > 1.0)
+        fps = 0.5 * fps + 500.0 / dt ;
 }
 
