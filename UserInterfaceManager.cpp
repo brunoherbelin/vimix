@@ -2421,7 +2421,7 @@ void SourceController::RenderSingleSource(Source *s)
             ImGui::Text("%s", info_.str().c_str());
 
             StreamSource *sts = dynamic_cast<StreamSource*>(s);
-            if (sts) {
+            if (sts && s->playing()) {
                 ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.5f * tooltip_height));
                 ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
             }
@@ -2483,8 +2483,10 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
         ImGui::Text("%s", info_.str().c_str());
 
-        ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.666f * tooltip_height));
-        ImGui::Text("%.1f Hz", mp->updateFrameRate());
+        if (mp->isPlaying()) {
+            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.666f * tooltip_height));
+            ImGui::Text("%.1f Hz", mp->updateFrameRate());
+        }
     }
 
     ///
@@ -2627,21 +2629,23 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         size.x *= timeline_zoom;
 
         bool released = false;
-        if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray",
-                                              mp->timeline()->gapsArray(),
-                                              mp->timeline()->fadingArray(),
-                                              MAX_TIMELINE_ARRAY, 0.f, 1.f,
-                                              Settings::application.widget.timeline_editmode, &released, size) ) {
-            mp->timeline()->update();
-        }
-        else if (released) {
-            Action::manager().store("Timeline change");
-        }
+        Timeline *tl = mp->timeline();
+        if (tl->is_valid())
+        {
+            if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", tl->gapsArray(), tl->fadingArray(),
+                                                  MAX_TIMELINE_ARRAY, 0.f, 1.f,
+                                                  Settings::application.widget.timeline_editmode, &released, size) ) {
+                tl->update();
+            }
+            else if (released) {
+                Action::manager().store("Timeline change");
+            }
 
-        // custom timeline slider
-        slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, mp->timeline()->begin(),
-                                                       mp->timeline()->end(), mp->timeline()->step(), size.x);
+            // custom timeline slider
+            slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
+                                                           tl->end(), tl->step(), size.x);
 
+        }
     }
     ImGui::EndChild();
 

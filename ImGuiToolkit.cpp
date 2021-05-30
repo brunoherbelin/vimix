@@ -532,7 +532,17 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     if (tick_step_pixels > 5.f)
     {
         large_tick_step = 10 * step;
-        label_tick_step = 30 * step;
+
+        if (step > 0) {
+            // try to put a label every second
+            if ( 1000000000 % step  < 1000)
+                label_tick_step = (1000000000 / step) * step;
+            // not a round framerate: probalby best to use 10 frames interval
+            else
+                label_tick_step = 10 * step;
+        }
+        else
+            label_tick_step = 30 * step;
     }
     else {
         // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
@@ -569,9 +579,9 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         // label tick mark
         if ( !(tick%label_tick_step) ) {
             tick_length = fontsize;
-
+            guint64 ticklabel = 100 * (guint64) round( (double)( tick ) / 100.0); // round value to avoid '0.99' and alike
             ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
-                           GstToolkit::time_to_string(tick, GstToolkit::TIME_STRING_MINIMAL).c_str());
+                           GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
             ImVec2 mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
             ImVec2 maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
