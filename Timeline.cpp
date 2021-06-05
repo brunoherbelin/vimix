@@ -6,6 +6,10 @@
 #include "Log.h"
 #include "Timeline.h"
 
+
+static float empty_gaps[MAX_TIMELINE_ARRAY] = {};
+static float empty_fade[MAX_TIMELINE_ARRAY] = {};
+
 struct includesTime: public std::unary_function<TimeInterval, bool>
 {
     inline bool operator()(const TimeInterval s) const
@@ -163,6 +167,88 @@ bool Timeline::removeGaptAt(GstClockTime t)
 }
 
 
+GstClockTime Timeline::sectionsDuration() const
+{
+    GstClockTime d = 0;
+
+    // compute the sum of durations of gaps
+    for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
+        d += (*it).end - (*it).begin;
+
+    return duration() - d;
+}
+
+size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
+{
+    size_t arraysize = MAX_TIMELINE_ARRAY;
+    float* gapsptr = gaps;
+    float* fadingptr = fading;
+
+    if (gaps_array_need_update_)
+        fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
+
+    if (gaps_.size() > 0) {
+
+        // indices to define [s e[] sections
+        size_t s = 0;
+        size_t e = MAX_TIMELINE_ARRAY;
+        arraysize = 0;
+
+        auto it = gaps_.begin();
+
+        // cut at the beginning
+        if ((*it).begin == timing_.begin) {
+            for (size_t i = 0; i < 5; ++i)
+                gapsptr[ MAX(i, 0) ] = 1.f;
+
+            s = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+            ++it;
+        }
+
+        // loop
+        for (; it != gaps_.end(); ++it) {
+
+            // [s e] section
+            e = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+            size_t n = e - s;
+            memcpy( gapsptr, gapsArray_ + s, n  * sizeof(float));
+            memcpy( fadingptr, fadingArray_ + s, n * sizeof(float));
+
+            for (size_t i = -5; i > 0; ++i)
+                gapsptr[ MAX(n+i, 0) ] = 1.f;
+
+            gapsptr += n;
+            fadingptr += n;
+            arraysize += n;
+
+            // next section
+            s = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+        }
+
+        // close last [s e] section
+        if (s != MAX_TIMELINE_ARRAY) {
+
+            // [s e] section
+            e = MAX_TIMELINE_ARRAY;
+
+            size_t n = e - s;
+            memcpy( gapsptr, gapsArray_ + s, n * sizeof(float));
+            memcpy( fadingptr, fadingArray_ + s, n * sizeof(float));
+            arraysize += n;
+        }
+
+    }
+    else {
+
+        memcpy( gaps, gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+        memcpy( fading, fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+    }
+
+    return arraysize;
+}
+
+
 TimeIntervalSet Timeline::sections() const
 {
     TimeIntervalSet sec;
@@ -200,7 +286,7 @@ void Timeline::clearGaps()
     gaps_array_need_update_ = true;
 }
 
-float Timeline::fadingAt(const GstClockTime t)
+float Timeline::fadingAt(const GstClockTime t) const
 {
     double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
     double previous_index = floor(true_index);
@@ -215,8 +301,13 @@ float Timeline::fadingAt(const GstClockTime t)
 
 void Timeline::clearFading()
 {
-    for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
-        fadingArray_[i] = 1.f;
+    // fill static with 1 (only once)
+    if (empty_fade[0] < 1.f){
+        for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
+            empty_fade[i] = 1.f;
+    }
+    // clear with static array
+    memcpy(fadingArray_, empty_fade, MAX_TIMELINE_ARRAY * sizeof(float));
 }
 
 void Timeline::smoothFading(uint N)
@@ -340,8 +431,8 @@ void Timeline::fillArrayFromGaps(float *array, size_t array_size)
     // fill the array from gaps
     if (array != nullptr && array_size > 0 && timing_.is_valid()) {
 
-        for(int i=0;i<array_size;++i)
-            gapsArray_[i] = 0.f;
+        // clear with static array
+        memcpy(gapsArray_, empty_gaps, MAX_TIMELINE_ARRAY * sizeof(float));
 
         // for each gap
         for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
