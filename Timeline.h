@@ -105,9 +105,8 @@ public:
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
 
-    // Manipulation of gaps in the timeline
+    // Manipulation of gaps
     inline TimeIntervalSet gaps() const { return gaps_; }
-    inline TimeIntervalSet sections() const;
     inline size_t numGaps() const { return gaps_.size(); }
     float *gapsArray();
     void clearGaps();
@@ -117,13 +116,19 @@ public:
     bool removeGaptAt(GstClockTime t);
     bool gapAt(const GstClockTime t, TimeInterval &gap) const;
 
-    float fadingAt(const GstClockTime t);
+    // Manipulation of Fading
+    float fadingAt(const GstClockTime t) const;
     inline float *fadingArray() { return fadingArray_; }
     void clearFading();
 
+    // Edit
     void smoothFading(uint N = 1);
     void autoFading(uint milisecond = 100);
     bool autoCut();
+    TimeIntervalSet sections() const;
+
+    GstClockTime sectionsDuration() const;
+    size_t fillSectionsArrays(float * const gaps, float * const fading);
 
 private:
 

@@ -2102,41 +2102,82 @@ void SourceController::RenderSelection(size_t i)
         ///
         ///
 
-        ImGui::BeginChild("##v_scroll", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        // get max duration
+        GstClockTime maxduration = 0;
+        for (auto source = selection_.begin(); source != selection_.end(); ++source) {
+            MediaSource *ms = dynamic_cast<MediaSource *>(*source);
+            if (ms != nullptr) {
+                GstClockTime d = ((double) ms->mediaplayer()->timeline()->sectionsDuration() / ms->mediaplayer()->playSpeed());
+                if ( d > maxduration )
+                    maxduration = d;
+            }
+        }
+
+
+        // draw list
+        ImGui::BeginChild("##v_scroll2", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         {
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
 
             for (auto source = selection_.begin(); source != selection_.end(); ++source) {
 
                 ImVec2 framesize(1.5f * _timeline_height * (*source)->frame()->aspectRatio(), 1.5f * _timeline_height);
-
                 ImVec2 image_top = ImGui::GetCursorPos();
+
+                // Thumbnail of source (clic to open)
                 if (SourceButton(*source, framesize))
                     UserInterface::manager().showSourceEditor(*source);
 
-//                ImGui::SetCursorPos(image_top + ImVec2( _h_space, framesize.y));
+                // text below thumbnail to show status
+                const char *icon = ICON_FA_SNOWFLAKE;
                 if ((*source)->active())
-                    ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
-                else
-                    ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
-
-                ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 0));
+                    icon = (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE;
+                ImGui::Text("%s %s", icon, GstToolkit::time_to_string((*source)->playtime()).c_str() );
 
                 MediaSource *ms = dynamic_cast<MediaSource *>(*source);
                 if (ms != nullptr) {
+                    ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 0));
                     MediaPlayer *mp = ms->mediaplayer();
-                    ImVec2 size(rendersize.x - framesize.x - _h_space - _scrollbar, 2.f * _timeline_height);
-                    bool released = false;
-                    ImGuiToolkit::EditPlotHistoLines("##TimelineArray",
-                                                     mp->timeline()->gapsArray(),
-                                                     mp->timeline()->fadingArray(),
-                                                     MAX_TIMELINE_ARRAY, 0.f, 1.f, true, &released, size);
+                    Timeline *tl = mp->timeline();
+
+                    // cut gaps
+//                    // timeline of MediaSource to the right
+//                    static float gaps[MAX_TIMELINE_ARRAY];
+//                    static float fade[MAX_TIMELINE_ARRAY];
+//                    size_t numsteps = tl->fillSectionsArrays(gaps, fade) - 1;
+
+                    ImVec2 size(rendersize.x - framesize.x - _h_space - _scrollbar, 1.5f * _timeline_height);
+                    GstClockTime playtime = 0;
+
+//                    GstClockTime d = tl->sectionsDuration();
+//                    size.x = size.x * d / ( maxduration * mp->playSpeed() );
+
+//                    ImGuiToolkit::ShowPlotHistoLines("##TimelineArray2", gaps, fade, numsteps, 0.f, 1.f, size);
+
+                    TimeIntervalSet se = tl->sections();
+                    for (auto section = se.begin(); section != se.end(); ++section) {
+
+                        GstClockTime d = section->duration();
+                        float w = size.x * d / ( maxduration * mp->playSpeed() );
+                        ImGuiToolkit::Timeline("##timeline2", mp->position(), section->begin, section->end, tl->step(), w);
+                        ImGui::SameLine(0,1);
+
+                        playtime += d;
+                    }
+
+//                    ImGuiToolkit::Timeline("##timeline2", mp->position(), tl->begin(), tl->end(), tl->step(), size.x);
+
+                    // text below timeline to show info
+                    ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 1.5f * _timeline_height + _v_space));
+                    GstClockTime t = (GstClockTime) (  (double) playtime / mp->playSpeed()  );
+                    ImGui::Text("%s play time / %.2f speed = %s (effective duration)", GstToolkit::time_to_string(playtime).c_str(), mp->playSpeed(), GstToolkit::time_to_string(t).c_str());
                 }
 
-                ImGui::Spacing();
+                // next line position
+                ImGui::SetCursorPos(image_top + ImVec2(0, 2.0f * _timeline_height + _v_space));
+//                ImGui::Spacing();
             }
 
-            ImGui::Columns(1);
             ImGui::PopStyleVar();
         }
         ImGui::EndChild();
