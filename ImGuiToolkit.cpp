@@ -475,8 +475,9 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(end) );
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(end) );
+    guint64 duration = end - start;
+    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(duration) );
+    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
 
     //
     // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
@@ -548,7 +549,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
             tick_step = optimal_tick_marks[i];
             large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
             label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
-            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(end) );
+            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
         }
     }
 
@@ -567,7 +568,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
 
     // render tick marks
-    while ( tick < end)
+    while ( tick < duration )
     {
         // large tick mark
         float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
@@ -575,7 +576,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
         // label tick mark
         if ( !(tick%label_tick_step) ) {
             tick_length = fontsize;
-            guint64 ticklabel = 100 * (guint64) round( (double)( tick ) / 100.0); // round value to avoid '0.99' and alike
+            guint64 ticklabel = 100 * (guint64) round( (double)( tick + start ) / 100.0); // round value to avoid '0.99' and alike
             ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                            GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
@@ -591,7 +592,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
 
         // next tick
         tick += tick_step;
-        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
+        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
     }
 
@@ -656,8 +657,9 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
 //    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(time - start) / static_cast<double>(end) );
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(end) );
+    guint64 duration = end - start;
+    float time_ = static_cast<float> ( static_cast<double>(time - start) / static_cast<double>(duration) );
+    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
 
     //
     // THIRD RENDER
@@ -695,7 +697,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
             tick_step = optimal_tick_marks[i];
             large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
             label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
-            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(end) );
+            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
         }
     }
 
@@ -709,12 +711,12 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
     ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                    GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
     ImVec2 overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
+    ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 5.f);
     if (overlay_size.x > 0.0f)
         ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
 
     // render tick marks
-    while ( tick < end)
+    while ( tick < duration )
     {
         // large tick mark
         float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
@@ -722,7 +724,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
         // label tick mark
         if ( !(tick%label_tick_step) ) {
             tick_length = fontsize;
-            guint64 ticklabel = 100 * (guint64) round( (double)( tick ) / 100.0); // round value to avoid '0.99' and alike
+            guint64 ticklabel = 100 * (guint64) round( (double)( tick + start) / 100.0); // round value to avoid '0.99' and alike
             ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
                            GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
             overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
@@ -738,7 +740,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
 
         // next tick
         tick += tick_step;
-        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(end) );
+        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
     }
 
@@ -758,7 +760,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
 //    }
 
     // draw the cursor
-    if ( time_ > 0.f && time_ < 1.f ) {
+    if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
         color = ImGui::GetColorU32(style.Colors[ImGuiCol_SliderGrab]);
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
         ImGui::RenderArrow(window->DrawList, pos, color, ImGuiDir_Up, cursor_scale);
@@ -984,12 +986,12 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
         // keep active area while mouse is pressed
         static bool active = false;
-        static uint previous_index = UINT32_MAX;
+        static size_t previous_index = UINT32_MAX;
         if (mouse_press)
         {
 
             float x = (float) values_count * (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
-            uint index = CLAMP( (int) floor(x), 0, values_count-1);
+            size_t index = CLAMP( (int) floor(x), 0, values_count);
 
             float y = mouse_pos_in_canvas.y / bbox.GetHeight();
             y = CLAMP( (y * (values_max-values_min)) + values_min, values_min, values_max);
@@ -997,8 +999,8 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
             if (previous_index == UINT32_MAX)
                 previous_index = index;
 
-            const uint left = MIN(previous_index, index);
-            const uint right = MAX(previous_index, index);
+            const size_t left = MIN(previous_index, index);
+            const size_t right = MAX(previous_index, index);
 
             if (edit_histogram){
                 static float target_value = values_min;
@@ -1009,13 +1011,13 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
                     active = true;
                 }
 
-                for (uint i = left; i < right; ++i)
+                for (size_t i = left; i < right; ++i)
                     histogram_array[i] = target_value;
             }
             else  {
                 const float target_value =  values_max - y;
 
-                for (uint i = left; i < right; ++i)
+                for (size_t i = left; i < right; ++i)
                     lines_array[i] = target_value;
 
             }

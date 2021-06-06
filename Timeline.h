@@ -85,6 +85,7 @@ public:
 
     bool is_valid();
     void update();
+    void refresh();
 
     // global properties of the timeline
     // timeline is valid only if all 3 are set

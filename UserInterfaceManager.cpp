@@ -2147,7 +2147,6 @@ void SourceController::RenderSelection(size_t i)
 //                    size_t numsteps = tl->fillSectionsArrays(gaps, fade) - 1;
 
                     ImVec2 size(rendersize.x - framesize.x - _h_space - _scrollbar, 1.5f * _timeline_height);
-                    GstClockTime playtime = 0;
 
 //                    GstClockTime d = tl->sectionsDuration();
 //                    size.x = size.x * d / ( maxduration * mp->playSpeed() );
@@ -2155,6 +2154,7 @@ void SourceController::RenderSelection(size_t i)
 //                    ImGuiToolkit::ShowPlotHistoLines("##TimelineArray2", gaps, fade, numsteps, 0.f, 1.f, size);
 
                     TimeIntervalSet se = tl->sections();
+                    GstClockTime playtime = tl->sectionsDuration();
                     for (auto section = se.begin(); section != se.end(); ++section) {
 
                         GstClockTime d = section->duration();
@@ -2162,7 +2162,7 @@ void SourceController::RenderSelection(size_t i)
                         ImGuiToolkit::Timeline("##timeline2", mp->position(), section->begin, section->end, tl->step(), w);
                         ImGui::SameLine(0,1);
 
-                        playtime += d;
+
                     }
 
 //                    ImGuiToolkit::Timeline("##timeline2", mp->position(), tl->begin(), tl->end(), tl->step(), size.x);
@@ -2170,7 +2170,9 @@ void SourceController::RenderSelection(size_t i)
                     // text below timeline to show info
                     ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 1.5f * _timeline_height + _v_space));
                     GstClockTime t = (GstClockTime) (  (double) playtime / mp->playSpeed()  );
-                    ImGui::Text("%s play time / %.2f speed = %s (effective duration)", GstToolkit::time_to_string(playtime).c_str(), mp->playSpeed(), GstToolkit::time_to_string(t).c_str());
+                    ImGui::Text("%d sections, %s play time / %.2f speed = %s (effective duration)",
+                                se.size(), GstToolkit::time_to_string(playtime).c_str(),
+                                mp->playSpeed(), GstToolkit::time_to_string(t).c_str());
                 }
 
                 // next line position
@@ -2516,16 +2518,23 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
+        // information visitor
         mp->accept(info_);
-
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
         ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
         ImGui::Text("%s", info_.str().c_str());
 
-        if (mp->isPlaying()) {
-            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.666f * tooltip_height));
+        // Icon to inform hardware decoding
+        if ( !mp->hardwareDecoderName().empty()) {
+            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
+            ImGui::Text(ICON_FA_MICROCHIP);
+        }
+
+        // refresh frequency
+        if ( mp->isPlaying()) {
+            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.667f * tooltip_height));
             ImGui::Text("%.1f Hz", mp->updateFrameRate());
         }
     }
@@ -2599,40 +2608,29 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::OpenPopup( "MenuTimeline" );
     if (ImGui::BeginPopup( "MenuTimeline" ))
     {
-        if (ImGui::MenuItem("Reset Speed" )){
+        if (ImGui::MenuItem(UNICODE_MULTIPLY " " ICON_FA_CARET_RIGHT  "  Reset Speed" )){
             speed = 1.f;
             mp->setPlaySpeed( static_cast<double>(speed) );
         }
-        if (ImGui::MenuItem( "Reset Timeline" )){
+        if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset Timeline" )){
             timeline_zoom = 1.f;
             mp->timeline()->clearFading();
             mp->timeline()->clearGaps();
             Action::manager().store("Timeline Reset");
         }
-//        if (ImGui::BeginMenu("Smooth curve"))
-//        {
-//            const char* names[] = { "Just a little", "A bit more", "Quite a lot"};
-//            for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
-//                if (ImGui::MenuItem(names[i])) {
-//                    mp->timeline()->smoothFading( 10 * (int) pow(4, i) );
-//                    Action::manager().store("Timeline Smooth curve");
-//                }
-//            }
-//            ImGui::EndMenu();
-//        }
-        if (ImGui::BeginMenu("Auto fading"))
+        if (ImGui::BeginMenu(ICON_FA_RANDOM "  Auto fading"))
         {
             const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
             for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
                 if (ImGui::MenuItem(names[i])) {
                     mp->timeline()->autoFading( 250 * (int ) pow(2, i) );
-                    mp->timeline()->smoothFading( 10 * (i + 1) );
+                    mp->timeline()->smoothFading( 2 * (i + 1) );
                     Action::manager().store("Timeline Auto fading");
                 }
             }
             ImGui::EndMenu();
         }
-        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu("Hardware Decoding"))
+        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware Decoding"))
         {
             bool hwdec = !mp->softwareDecodingForced();
             if (ImGui::MenuItem("Auto", "", &hwdec ))
@@ -2669,16 +2667,18 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), _timeline_height -1);
         size.x *= timeline_zoom;
 
-        bool released = false;
         Timeline *tl = mp->timeline();
         if (tl->is_valid())
         {
+            bool released = false;
             if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", tl->gapsArray(), tl->fadingArray(),
                                                   MAX_TIMELINE_ARRAY, 0.f, 1.f,
                                                   Settings::application.widget.timeline_editmode, &released, size) ) {
                 tl->update();
             }
-            else if (released) {
+            else if (released)
+            {
+                tl->refresh();
                 Action::manager().store("Timeline change");
             }
 
@@ -3990,7 +3990,7 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-        change |= ImGuiToolkit::ButtonSwitch( "Hardware video decoding", &gpu);
+        change |= ImGuiToolkit::ButtonSwitch( ICON_FA_MICROCHIP " Hardware video decoding", &gpu);
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
