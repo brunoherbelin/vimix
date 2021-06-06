@@ -120,6 +120,11 @@ void Timeline::update()
     gaps_array_need_update_ = false;
 }
 
+void Timeline::refresh()
+{
+    fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
+}
+
 bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
 {
     TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
@@ -354,8 +359,10 @@ void Timeline::autoFading(uint milisecond)
     {
         // get index of begining of section
         size_t s = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+        s += 1;
         // get index of ending of section
         size_t e = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+        e -= 1;
 
         // calculate size of the smooth transition in [s e] interval
         uint n = MIN( (e-s)/3, N );
@@ -405,14 +412,16 @@ void Timeline::updateGapsFromArray(float *array, size_t array_size)
             // detect a change of value between two slots
             if ( array[i] != status) {
                 // compute time of the event in array
-                GstClockTime t = (timing_.duration() * i) / array_size;
+                GstClockTime t = (timing_.duration() * i) / (array_size-1);
                 // change from 0.f to 1.f : begin of a gap
                 if (array[i] > 0.f) {
                     begin_gap = t;
                 }
                 // change from 1.f to 0.f : end of a gap
                 else {
-                    addGap( begin_gap, t );
+                    TimeInterval d (begin_gap, t) ;
+                    if (d.is_valid() && d.duration() > step_)
+                        addGap(d);
                     begin_gap = GST_CLOCK_TIME_NONE;
                 }
                 // swap
@@ -420,10 +429,14 @@ void Timeline::updateGapsFromArray(float *array, size_t array_size)
             }
         }
         // end a potentially pending gap if reached end of array with no end of gap
-        if (begin_gap != GST_CLOCK_TIME_NONE)
-            addGap( begin_gap, timing_.end );
+        if (begin_gap != GST_CLOCK_TIME_NONE) {
+            TimeInterval d (begin_gap, timing_.end) ;
+            if (d.is_valid() && d.duration() > step_)
+                addGap(d);
+        }
 
     }
+
 }
 
 void Timeline::fillArrayFromGaps(float *array, size_t array_size)
@@ -435,10 +448,11 @@ void Timeline::fillArrayFromGaps(float *array, size_t array_size)
         memcpy(gapsArray_, empty_gaps, MAX_TIMELINE_ARRAY * sizeof(float));
 
         // for each gap
+        GstClockTime d = timing_.duration();
         for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
         {
-            size_t s = ( (*it).begin * array_size ) / timing_.end;
-            size_t e = ( (*it).end * array_size ) / timing_.end;
+            size_t s = ( (*it).begin * array_size ) / d;
+            size_t e = ( (*it).end * array_size ) / d;
 
             // fill with 1 where there is a gap
             for (size_t i = s; i < e; ++i) {
