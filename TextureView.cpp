@@ -1209,10 +1209,10 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 sourceNode->rotation_.z = glm::radians( float(degrees) );
                 overlay_rotation_clock_->visible_ = true;
                 overlay_rotation_clock_->copyTransform(overlay_rotation_);
-                info << "Texture Angle " << degrees << "\u00b0"; // degree symbol
+                info << "Texture Angle " << degrees << UNICODE_DEGREE;
             }
             else
-                info << "Texture Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
+                info << "Texture Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
 
             overlay_rotation_clock_hand_->visible_ = true;
             overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;

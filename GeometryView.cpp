@@ -927,10 +927,10 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 sourceNode->rotation_.z = glm::radians( float(degrees) );
                 overlay_rotation_clock_->visible_ = true;
                 overlay_rotation_clock_->copyTransform(overlay_rotation_);
-                info << "Angle " << degrees << "\u00b0"; // degree symbol
+                info << "Angle " << degrees << UNICODE_DEGREE;
             }
             else
-                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << "\u00b0"; // degree symbol
+                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
 
             overlay_rotation_clock_hand_->visible_ = true;
             overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
