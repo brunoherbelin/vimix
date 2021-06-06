@@ -563,7 +563,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -598,7 +598,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -653,7 +653,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -700,7 +700,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -739,7 +739,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -783,7 +783,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);

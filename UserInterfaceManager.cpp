@@ -1702,7 +1702,7 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Columns(3, "abouts");
     ImGui::Separator();
 
-    ImGui::Text("- Dear ImGui");
+    ImGui::Text("Dear ImGui");
     ImGui::PushID("dearimguiabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_imgui_about = true;
@@ -1710,7 +1710,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::NextColumn();
 
-    ImGui::Text("- GStreamer");
+    ImGui::Text("GStreamer");
     ImGui::PushID("gstreamerabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_gst_about = true;
@@ -1718,7 +1718,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::NextColumn();
 
-    ImGui::Text("- OpenGL");
+    ImGui::Text("OpenGL");
     ImGui::PushID("openglabout");
     if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_opengl_about = true;
@@ -3904,6 +3904,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     std::string tooltip_ = "";
 
+    ImGui::SameLine(0, 20);
     if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
         Rendering::manager().mainWindow().toggleFullscreen();
     if (ImGui::IsItemHovered())
