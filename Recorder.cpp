@@ -143,7 +143,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    fast (5)
 #ifndef APPLE
     //    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
 #else
     "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
 #endif
