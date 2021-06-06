@@ -74,9 +74,10 @@ void Settings::Save()
     // Widgets
     XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
     widgetsNode->SetAttribute("preview", application.widget.preview);
+    widgetsNode->SetAttribute("preview_view", application.widget.preview_view);
     widgetsNode->SetAttribute("history", application.widget.history);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
-    widgetsNode->SetAttribute("media_player_listview", application.widget.media_player_listview);
+    widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
     widgetsNode->SetAttribute("timeline_editmode", application.widget.timeline_editmode);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
@@ -270,9 +271,10 @@ void Settings::Load()
     XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
     if (widgetsNode != nullptr) {
         widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
+        widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
         widgetsNode->QueryBoolAttribute("history", &application.widget.history);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
-        widgetsNode->QueryBoolAttribute("media_player_listview", &application.widget.media_player_listview);
+        widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
         widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.timeline_editmode);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);

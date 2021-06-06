@@ -238,10 +238,14 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
             // Logs
             Settings::application.widget.preview = !Settings::application.widget.preview;
+            if (Settings::application.widget.preview_view != Settings::application.current_view)
+                Settings::application.widget.preview_view = -1;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
+            if (Settings::application.widget.media_player_view != Settings::application.current_view)
+                Settings::application.widget.media_player_view = -1;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             if (shift_modifier_active)
@@ -750,13 +754,14 @@ void UserInterface::Render()
         // windows
         if (Settings::application.widget.toolbox)
             toolbox.Render();
-        if (Settings::application.widget.preview)
+        if (Settings::application.widget.preview && ( Settings::application.widget.preview_view < 0 ||
+            Settings::application.widget.preview_view == Settings::application.current_view ))
             RenderPreview();
         if (Settings::application.widget.history)
             RenderHistory();
-        if (Settings::application.widget.media_player)
+        if (Settings::application.widget.media_player && ( Settings::application.widget.media_player_view < 0 ||
+            Settings::application.widget.media_player_view == Settings::application.current_view ))
             sourcecontrol.Render();
-//        mediacontrol.Render();
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
         if (Settings::application.widget.logs)
@@ -1056,15 +1061,22 @@ void UserInterface::RenderPreview()
                         Mixer::manager().session()->setResolution(res);
                     }
                 }
-                ImGui::Separator();
+                if ( ImGui::MenuItem( ICON_FA_PLUS "  Insert Rendering Source") )
+                    Mixer::manager().addSource( Mixer::manager().createSourceRender() );
 
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
 
-                if ( ImGui::MenuItem( ICON_FA_SHARE_SQUARE "  Create Source") )
-                    Mixer::manager().addSource( Mixer::manager().createSourceRender() );
+                ImGui::Separator();
 
-                if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "D") )
+                bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
+                if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin to current view", nullptr, &pinned) ){
+                    if (pinned)
+                        Settings::application.widget.preview_view = Settings::application.current_view;
+                    else
+                        Settings::application.widget.preview_view = -1;
+                }
+                if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "D") )
                     Settings::application.widget.preview = false;
 
                 ImGui::EndMenu();
@@ -2021,9 +2033,15 @@ void SourceController::Render()
             Settings::application.widget.media_player = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
-            ImGui::MenuItem( ICON_FA_LIST " List view", nullptr, &Settings::application.widget.media_player_listview);
+            bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
+            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin to current view", nullptr, &pinned) ){
+                if (pinned)
+                    Settings::application.widget.media_player_view = Settings::application.current_view;
+                else
+                    Settings::application.widget.media_player_view = -1;
+            }
 
-            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close", CTRL_MOD "P") )
+            if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "P") )
                 Settings::application.widget.media_player = false;
 
             ImGui::EndMenu();
@@ -2442,15 +2460,6 @@ void SourceController::RenderSingleSource(Source *s)
         ImGui::SetCursorScreenPos(top);
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
 
-        // Play icon lower left corner
-        ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-        ImGui::SetCursorScreenPos(top + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
-        if (s->active())
-            ImGui::Text("%s %s", s->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(s->playtime()).c_str() );
-        else
-            ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(s->playtime()).c_str() );
-        ImGui::PopFont();
-
         ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
         if (ImGui::IsItemHovered()){
@@ -2469,6 +2478,14 @@ void SourceController::RenderSingleSource(Source *s)
                 ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
             }
         }
+        // Play icon lower left corner
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, -ImGui::GetTextLineHeightWithSpacing()));
+        if (s->active())
+            ImGui::Text("%s %s", s->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(s->playtime()).c_str() );
+        else
+            ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(s->playtime()).c_str() );
+        ImGui::PopFont();
 
         ///
         /// Play source button bar
@@ -2482,6 +2499,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
 {
     static float timeline_zoom = 1.f;
     const float slider_zoom_width = _timeline_height / 2.f;
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     ImVec2 top = ImGui::GetCursorScreenPos();
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, _mediaplayer_height);
@@ -2506,22 +2524,12 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::SetCursorScreenPos(top);
     ImGui::Image((void*)(uintptr_t) mp->texture(), framesize);
 
-    // Play icon lower left corner
-    ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-    ImGui::SetCursorScreenPos(top + ImVec2(_h_space, framesize.y - ImGui::GetTextLineHeightWithSpacing()));
-    if (mp->isEnabled())
-        ImGui::Text("%s %s", mp->isPlaying() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(mp->position()).c_str() );
-    else
-        ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(mp->position()).c_str() );
-    ImGui::PopFont();
-
     ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
         // information visitor
         mp->accept(info_);
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
         ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
         ImGui::Text("%s", info_.str().c_str());
@@ -2539,10 +2547,18 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         }
     }
 
+    // Play icon lower left corner
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, -ImGui::GetTextLineHeightWithSpacing()));
+    if (mp->isEnabled())
+        ImGui::Text("%s %s", mp->isPlaying() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(mp->position()).c_str() );
+    else
+        ImGui::Text(ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string(mp->position()).c_str() );
+    ImGui::PopFont();
+
     ///
     /// media player buttons bar
     ///
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddRectFilled(bottom, bottom + ImVec2(rendersize.x, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
 
     // buttons style
@@ -3917,14 +3933,20 @@ void Navigator::RenderMainPannelVimix()
         tooltip_ = "New note " CTRL_MOD "Shift+N";
 
     ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) ) {
         Settings::application.widget.media_player = true;
+        if (Settings::application.widget.media_player_view != Settings::application.current_view)
+            Settings::application.widget.media_player_view = -1;
+    }
     if (ImGui::IsItemHovered())
         tooltip_ = "Player       " CTRL_MOD "P";
 
     ImGui::SameLine(0, 40);
-    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) ) {
         Settings::application.widget.preview = true;
+        if (Settings::application.widget.preview_view != Settings::application.current_view)
+            Settings::application.widget.preview_view = -1;
+    }
     if (ImGui::IsItemHovered())
         tooltip_ = "Output       " CTRL_MOD "D";
 
