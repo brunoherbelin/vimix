@@ -120,7 +120,7 @@ class SourceController
     InfoVisitor info_;
 
     SourceList selection_;
-    void DrawButtonBar(ImVec2 bottom, float width);
+    void DrawButtonBar(ImVec2 bottom, float width, bool enabled = true);
 
     bool SourceButton(Source *s, ImVec2 framesize);
     void RenderSelectedSources();
