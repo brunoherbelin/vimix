@@ -70,7 +70,8 @@ static TextEditor editor;
 
 #include "UserInterfaceManager.h"
 #define PLOT_ARRAY_SIZE 180
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Active sources"
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
+#define LABEL_STORE_SELECTION "  Store selection"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -238,14 +239,18 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
             // Logs
             Settings::application.widget.preview = !Settings::application.widget.preview;
-            if (Settings::application.widget.preview_view != Settings::application.current_view)
+            if (Settings::application.widget.preview_view != Settings::application.current_view) {
                 Settings::application.widget.preview_view = -1;
+                Settings::application.widget.preview = true;
+            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Logs
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
-            if (Settings::application.widget.media_player_view != Settings::application.current_view)
+            if (Settings::application.widget.media_player_view != Settings::application.current_view) {
                 Settings::application.widget.media_player_view = -1;
+                Settings::application.widget.media_player = true;
+            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             if (shift_modifier_active)
@@ -2029,10 +2034,20 @@ void SourceController::Render()
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(4,16)){
             Settings::application.widget.media_player = false;
+            selection_.clear();
+        }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
+            if (ImGui::MenuItem( ICON_FA_WIND "  Clear")) {
+                selection_.clear();
+                resetActiveSelection();
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+            }
+
+            ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
             if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin to current view", nullptr, &pinned) ){
                 if (pinned)
@@ -2041,35 +2056,45 @@ void SourceController::Render()
                     Settings::application.widget.media_player_view = -1;
             }
 
-            if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "P") )
+            if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "P") ) {
                 Settings::application.widget.media_player = false;
+                selection_.clear();
+            }
 
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu(active_label_.c_str()))
         {
+            // info on selection status
+            int N = Mixer::manager().session()->numPlayGroups();
+            bool enabled = !selection_.empty() && active_selection_ < 0;
+
+            // Menu : Dynamic selection
             if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
                 resetActiveSelection();
-
-            // display list of available media
-            for (size_t i = 0 ; i < Mixer::manager().session()->numPlayGroups(); ++i)
+            // Menu : store selection
+            if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE LABEL_STORE_SELECTION, NULL, false, enabled))
             {
-                std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
-                if (ImGui::MenuItem( label.c_str() ))
-                {
-                    active_selection_ = i;
-                    active_label_ = label;
-                    info_.reset();
-                }
-            }
-
-            if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE "  New selection"))
-            {
-                active_selection_ = Mixer::manager().session()->numPlayGroups();
+                active_selection_ = N;
                 active_label_ = std::string("Selection #") + std::to_string(active_selection_);
-                Mixer::manager().session()->addPlayGroup( ids(playable_only(Mixer::selection().getCopy())) );
+//                    Mixer::manager().session()->addPlayGroup( ids(playable_only(Mixer::selection().getCopy())) );
+                Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
                 info_.reset();
+            }
+            // Menu : list of selections
+            if (N>0) {
+                ImGui::Separator();
+                for (size_t i = 0 ; i < N; ++i)
+                {
+                    std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
+                    if (ImGui::MenuItem( label.c_str() ))
+                    {
+                        active_selection_ = i;
+                        active_label_ = label;
+                        info_.reset();
+                    }
+                }
             }
 
             ImGui::EndMenu();
@@ -2078,15 +2103,11 @@ void SourceController::Render()
         ImGui::EndMenuBar();
     }
 
-
-    if (active_selection_ > -1) {
-        selection_ = Mixer::manager().session()->playGroup(active_selection_);
+    // render with appropriate method
+    if (active_selection_ > -1)
         RenderSelection(active_selection_);
-    }
-    else {
-        selection_ = playable_only(Mixer::selection().getCopy());
+    else
         RenderSelectedSources();
-    }
 
     ImGui::End();
 
@@ -2098,7 +2119,10 @@ void SourceController::RenderSelection(size_t i)
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, _buttons_height + _scrollbar + _v_space);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + _v_space);
 
+    selection_ = Mixer::manager().session()->playGroup(i);
     int numsources = selection_.size();
+    bool buttons_enabled = false;
+
     // no source selected
     if (numsources < 1)
     {
@@ -2148,8 +2172,10 @@ void SourceController::RenderSelection(size_t i)
 
                 // text below thumbnail to show status
                 const char *icon = ICON_FA_SNOWFLAKE;
-                if ((*source)->active())
+                if ((*source)->active()) {
                     icon = (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE;
+                    buttons_enabled = true;
+                }
                 ImGui::Text("%s %s", icon, GstToolkit::time_to_string((*source)->playtime()).c_str() );
 
                 MediaSource *ms = dynamic_cast<MediaSource *>(*source);
@@ -2243,7 +2269,7 @@ void SourceController::RenderSelection(size_t i)
     ///
     /// Play button bar
     ///
-    DrawButtonBar(bottom, rendersize.x);
+    DrawButtonBar(bottom, rendersize.x, buttons_enabled);
 
     ///
     /// Selection of sources
@@ -2317,12 +2343,17 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
 
 void SourceController::RenderSelectedSources()
 {
-
     ImVec2 top = ImGui::GetCursorScreenPos();
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, _buttons_height + _scrollbar + _v_space);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + _v_space);
 
+    // get new selection or validate previous list if selection was not updated
+    if (Mixer::selection().empty())
+        selection_ = Mixer::manager().validate(selection_);
+    else
+        selection_ = playable_only(Mixer::selection().getCopy());
     int numsources = selection_.size();
+
     // no source selected
     if (numsources < 1)
     {
@@ -2340,7 +2371,7 @@ void SourceController::RenderSelectedSources()
         ///
         /// Play button bar
         ///
-        DrawButtonBar(bottom, rendersize.x);
+        DrawButtonBar(bottom, rendersize.x, false);
 
     }
     // single source selected
@@ -2357,6 +2388,8 @@ void SourceController::RenderSelectedSources()
         ///
         /// Sources grid
         ///
+        ///
+        bool buttons_enabled = false;
         ImGui::BeginChild("##v_scroll", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         {
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
@@ -2378,10 +2411,12 @@ void SourceController::RenderSelectedSources()
                 ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
                 float h = ImGui::GetTextLineHeightWithSpacing();
                 ImGui::SetCursorPos(image_top + ImVec2( _h_space, framesize.y - h));
-                if ((*source)->active())
+                if ((*source)->active()) {
                     ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                    buttons_enabled = true;
+                }
                 else
-                    ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                    ImGui::Text(ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
                 ImGui::PopFont();
 
                 ImGui::Spacing();
@@ -2396,7 +2431,7 @@ void SourceController::RenderSelectedSources()
         ///
         /// Play button bar
         ///
-        DrawButtonBar(bottom, rendersize.x);
+        DrawButtonBar(bottom, rendersize.x, buttons_enabled);
 
         ///
         /// New Selection from active sources
@@ -2408,7 +2443,7 @@ void SourceController::RenderSelectedSources()
         float width = _buttons_height;
         std::string label(ICON_FA_PLUS_SQUARE);
         if (space > _buttons_width) { // enough space to show full button with label text
-            label += "  New Selection";
+            label += LABEL_STORE_SELECTION;
             width = _buttons_width;
         }
         ImGui::SameLine(0, space -width);
@@ -2431,7 +2466,7 @@ void SourceController::RenderSingleSource(Source *s)
 
     // in case of a MediaSource
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
-    if ( ms != nullptr) {
+    if ( ms != nullptr && s->active() ) {
         RenderMediaPlayer( ms->mediaplayer() );
     }
     else
@@ -2490,7 +2525,7 @@ void SourceController::RenderSingleSource(Source *s)
         ///
         /// Play source button bar
         ///
-        DrawButtonBar(bottom, rendersize.x);
+        DrawButtonBar(bottom, rendersize.x, s->active());
 
     }
 }
@@ -2762,13 +2797,13 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     }
 }
 
-void SourceController::DrawButtonBar(ImVec2 bottom, float width)
+void SourceController::DrawButtonBar(ImVec2 bottom, float width, bool enabled)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddRectFilled(bottom, bottom + ImVec2(width, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
 
     // buttons style: inactive if no source in selection
-    if (selection_.empty()) {
+    if (!enabled || selection_.empty()) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
@@ -2780,17 +2815,17 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
     }
 
     ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
-    if (ImGui::Button(ICON_FA_FAST_BACKWARD)) {
+    if (ImGui::Button(ICON_FA_FAST_BACKWARD) && enabled) {
         for (auto source = selection_.begin(); source != selection_.end(); ++source)
             (*source)->replay();
     }
     ImGui::SameLine(0, _h_space);
-    if (ImGui::Button(ICON_FA_PLAY)) {
+    if (ImGui::Button(ICON_FA_PLAY) && enabled) {
         for (auto source = selection_.begin(); source != selection_.end(); ++source)
             (*source)->play(true);
     }
     ImGui::SameLine(0, _h_space);
-    if (ImGui::Button(ICON_FA_PAUSE)) {
+    if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
         for (auto source = selection_.begin(); source != selection_.end(); ++source)
             (*source)->play(false);
     }
