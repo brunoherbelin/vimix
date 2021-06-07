@@ -770,6 +770,17 @@ SourceList Mixer::findSources (float depth_from, float depth_to)
     return found;
 }
 
+SourceList Mixer::validate (const SourceList &list)
+{
+    SourceList sl;
+    for( auto sit = list.begin(); sit != list.end(); ++sit) {
+        SourceList::iterator it = session_->find( *sit );
+        if (it != session_->end())
+            sl.push_back(*sit);
+    }
+    return sl;
+}
+
 void Mixer::setCurrentSource(uint64_t id)
 {
     setCurrentSource( session_->find(id) );
