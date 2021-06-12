@@ -435,239 +435,18 @@ void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut
 #define NUM_MARKS 10
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
-static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width)
+void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, guint64 start, guint64 end, guint64 step, bool verticalflip)
 {
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
+    static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
-    // get style & id
     const ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const float fontsize = g.FontSize;
-    const ImGuiID id = window->GetID(label);
+    const ImU32 text_color = ImGui::GetColorU32(ImGuiCol_Text);
 
-    //
-    // FIRST PREPARE ALL data structures
-    //
-
-    // widget bounding box
-    const float height = 2.f * (fontsize + style.FramePadding.y);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImVec2(width, height);
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    // cursor size
-    const float cursor_scale = 1.f;
-    const float cursor_width = 0.5f * fontsize * cursor_scale;
-
-    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-    ImRect timeline_bbox(bbox);
-    timeline_bbox.Expand( ImVec2(-cursor_width, -style.FramePadding.y) );
-
-    // SLIDER is inside the timeline
-    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
-
-    // units conversion: from time to float (calculation made with higher precision first)
     guint64 duration = end - start;
-    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(duration) );
     float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
-
-    //
-    // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
-    //
-
-    // read user input from system
-    bool left_mouse_press = false;
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        if (focus_requested || left_mouse_press || g.NavActivateId == id || g.NavInputId == id)
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-
-    // time Slider behavior
-    ImRect grab_slider_bb;
-    ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
-    float time_slider = time_ * 10.f; // x 10 precision on grab
-    float time_zero = 0.f;
-    float time_end = 10.f;
-    bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
-                                               &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
-    if (value_changed){
-        //        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end) ) + start;
-        grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
-    }
-
-    //
-    // THIRD RENDER
-    //
-
-    // Render the bounding box
-    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
-
-    // by default, put a tick mark at every frame step and a large mark every second
-    guint64 tick_step = step;
-    guint64 large_tick_step = optimal_tick_marks[1+LARGE_TICK_INCREMENT];
-    guint64 label_tick_step = optimal_tick_marks[1+LABEL_TICK_INCREMENT];
-
-    // how many pixels to represent one frame step?
-    float tick_step_pixels = timeline_bbox.GetWidth() * step_;     
-
-    // tick at each step: add a label every 0 frames
-    if (tick_step_pixels > 5.f)
-    {
-        large_tick_step = 10 * step;
-
-        // try to put a label every second
-        if ( 1000000000 % step  < 1000)
-            label_tick_step = (1000000000 / step) * step;
-        // not a round framerate: probalby best to use 10 frames interval
-        else
-            label_tick_step = 10 * step;
-    }
-    else {
-        // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
-        for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
-        {
-            // try to use the optimal tick marks pre-defined
-            tick_step = optimal_tick_marks[i];
-            large_tick_step = optimal_tick_marks[i+LARGE_TICK_INCREMENT];
-            label_tick_step = optimal_tick_marks[i+LABEL_TICK_INCREMENT];
-            tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
-        }
-    }
-
-    // render the tick marks along TIMELINE
-    ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-    pos = timeline_bbox.GetTL();
-    guint64 tick = 0;
-    char overlay_buf[24];
-
-    // render text duration
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
-                   GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
-    ImVec2 overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 3.f);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
-
-    // render tick marks
-    while ( tick < duration )
-    {
-        // large tick mark
-        float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
-
-        // label tick mark
-        if ( !(tick%label_tick_step) ) {
-            tick_length = fontsize;
-            guint64 ticklabel = 100 * (guint64) round( (double)( tick + start ) / 100.0); // round value to avoid '0.99' and alike
-            ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
-                           GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
-            overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-            ImVec2 mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
-            ImVec2 maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
-            // do not overlap with label for duration
-            if (maxi.x < duration_label.x)
-                ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
-        }
-
-        // draw the tick mark each step
-        window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), color);
-
-        // next tick
-        tick += tick_step;
-        float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
-    }
-
-    // tick EOF
-    window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetTR() + ImVec2(0.f, fontsize), color);
-
-// disabled: render position
-//    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
-//    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-//    overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
-//    if (overlay_size.x > 0.0f)
-//        ImGui::RenderTextClipped( bbox.GetBL() + overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
-
-    // draw slider grab handle
-    if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
-        window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
-    }
-
-    // draw the cursor
-    color = ImGui::GetColorU32(style.Colors[ImGuiCol_SliderGrab]);
-    pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-    ImGui::RenderArrow(window->DrawList, pos, color, ImGuiDir_Up, cursor_scale);
-
-    return left_mouse_press;
-}
-
-void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, guint64 end, guint64 step, const float width)
-{
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return;
-
-    // get style & id
-    const ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    const float fontsize = g.FontSize;
-    const ImGuiID id = window->GetID(label);
-
-    //
-    // FIRST PREPARE ALL data structures
-    //
-
-    // widget bounding box
-    const float height = 2.f * (fontsize + style.FramePadding.y);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImVec2(width, height);
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bbox, id))
-        return;
-
-    // cursor size
-    const float cursor_scale = 1.f;
-    const float cursor_width = 0.5f * fontsize * cursor_scale;
-
-    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-    ImRect timeline_bbox(bbox);
-    timeline_bbox.Expand( ImVec2(-cursor_width, -style.FramePadding.y) );
-
-    // SLIDER is inside the timeline
-//    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
-
-    // units conversion: from time to float (calculation made with higher precision first)
-    guint64 duration = end - start;
-    float time_ = static_cast<float> ( static_cast<double>(time - start) / static_cast<double>(duration) );
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
-
-    //
-    // THIRD RENDER
-    //
-
-    // Render the bounding box
-    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
 
     // by default, put a tick mark at every frame step and a large mark every second
     guint64 tick_step = step;
@@ -701,73 +480,239 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
         }
     }
 
-    // render the tick marks along TIMELINE
-    ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
-    pos = timeline_bbox.GetTL();
-    guint64 tick = 0;
-    char overlay_buf[24];
+    // render tics and text
+    char text_buf[24];
 
-    // render text duration
-    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+
+    // render tick and text START
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
+                   GstToolkit::time_to_string(start, GstToolkit::TIME_STRING_MINIMAL).c_str());
+    ImVec2 beginning_label_size = ImGui::CalcTextSize(text_buf, NULL);
+    ImVec2 beginning_label_pos = timeline_bbox.GetTL() + ImVec2(3.f, fontsize);
+    if (verticalflip)
+        beginning_label_pos.y -= fontsize;
+    ImGui::RenderTextClipped( beginning_label_pos, beginning_label_pos + beginning_label_size,
+                              text_buf, NULL, &beginning_label_size);
+    window->DrawList->AddLine( timeline_bbox.GetTL(), timeline_bbox.GetBL(), text_color, 1.5f);
+
+
+    // render tick and text END
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
                    GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
-    ImVec2 overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-    ImVec2 duration_label = bbox.GetBR() - overlay_size - ImVec2(3.f, 5.f);
-    if (overlay_size.x > 0.0f)
-        ImGui::RenderTextClipped( duration_label, bbox.Max, overlay_buf, NULL, &overlay_size);
+    ImVec2 duration_label_size = ImGui::CalcTextSize(text_buf, NULL);
+    ImVec2 duration_label_pos = timeline_bbox.GetTR() + ImVec2( -2.f -duration_label_size.x, fontsize);
+    if (verticalflip)
+        duration_label_pos.y -= fontsize;
+    ImGui::RenderTextClipped( duration_label_pos, duration_label_pos + duration_label_size,
+                              text_buf, NULL, &duration_label_size);
+    window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetBR(), text_color, 1.5f);
 
-    // render tick marks
+    ImGui::PopFont();
+
+    // render the tick marks along TIMELINE
+    ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_Text] -ImVec4(0.f,0.f,0.f,0.4f));
+    ImVec2 pos = verticalflip ? timeline_bbox.GetBL() : timeline_bbox.GetTL();
+    guint64 tick = 0;
     while ( tick < duration )
     {
         // large tick mark
-        float tick_length = !(tick%large_tick_step) ? fontsize - style.FramePadding.y : style.FramePadding.y;
+        float tick_length = (tick%large_tick_step) ? style.FramePadding.y : fontsize - style.FramePadding.y;
 
         // label tick mark
         if ( !(tick%label_tick_step) ) {
             tick_length = fontsize;
             guint64 ticklabel = 100 * (guint64) round( (double)( tick + start) / 100.0); // round value to avoid '0.99' and alike
-            ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s",
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
                            GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
-            overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-            ImVec2 mini = ImVec2( pos.x - overlay_size.x / 2.f, pos.y + tick_length );
-            ImVec2 maxi = ImVec2( pos.x + overlay_size.x / 2.f, pos.y + tick_length + overlay_size.y );
-            // do not overlap with label for duration
-            if (maxi.x < duration_label.x)
-                ImGui::RenderTextClipped(mini, maxi, overlay_buf, NULL, &overlay_size);
-        }
+            ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
+            ImVec2 mini = ImVec2( pos.x - label_size.x / 2.f, pos.y);
+            ImVec2 maxi = ImVec2( pos.x + label_size.x / 2.f, pos.y);
 
-        // draw the tick mark each step
-        window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), color);
+            if (verticalflip)   {
+                mini.y -= tick_length + label_size.y;
+                maxi.y -= tick_length;
+            }
+            else {
+                mini.y += tick_length;
+                maxi.y += tick_length + label_size.y;
+            }
+
+            // do not overlap with labels for beginning and duration
+            if (mini.x - style.ItemSpacing.x > (beginning_label_pos.x + beginning_label_size.x) &&  maxi.x + style.ItemSpacing.x < duration_label_pos.x)
+                ImGui::RenderTextClipped(mini, maxi, text_buf, NULL, &label_size);
+        }
 
         // next tick
         tick += tick_step;
         float tick_percent = static_cast<float> ( static_cast<double>(tick) / static_cast<double>(duration) );
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
+
+        // draw the tick mark each step
+        if (verticalflip)   {
+            window->DrawList->AddLine( pos, pos - ImVec2(0.f, tick_length), text_color);
+            pos = ImLerp(timeline_bbox.GetBL(), timeline_bbox.GetBR(), tick_percent);
+        }
+        else {
+            window->DrawList->AddLine( pos, pos + ImVec2(0.f, tick_length), text_color);
+            pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
+        }
+
+    }
+    ImGui::PopStyleColor(1);
+
+}
+
+bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // get style & id
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
+    const ImGuiID id = window->GetID(label);
+
+    //
+    // FIRST PREPARE ALL data structures
+    //
+
+    // widget bounding box
+    const float height = 2.f * (fontsize + style.FramePadding.y);
+    ImVec2 pos = window->DC.CursorPos;
+    ImVec2 size = ImVec2(width, height);
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    // cursor size
+    const float cursor_width = 0.5f * fontsize;
+
+    // TIMELINE is inside the bbox, in a slightly smaller bounding box
+    ImRect timeline_bbox(bbox);
+    timeline_bbox.Expand( ImVec2() - style.FramePadding );
+
+    // SLIDER is inside the timeline
+    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
+
+    // units conversion: from time to float (calculation made with higher precision first)
+    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(end - start) );
+
+    //
+    // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
+    //
+
+    // read user input from system
+    bool left_mouse_press = false;
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (focus_requested || left_mouse_press || g.NavActivateId == id || g.NavInputId == id)
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
     }
 
-    // tick EOF
-    window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetTR() + ImVec2(0.f, fontsize), color);
+    // time Slider behavior
+    ImRect grab_slider_bb;
+    ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
+    float time_slider = time_ * 10.f; // x 10 precision on grab
+    float time_zero = 0.f;
+    float time_end = 10.f;
+    bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
+                                               &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    if (value_changed){
+        //        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
+        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end - start) ) + start;
+        grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
+    }
 
-// disabled: render position
-//    ImFormatString(overlay_buf, IM_ARRAYSIZE(overlay_buf), "%s", GstToolkit::time_to_string(*time).c_str());
-//    overlay_size = ImGui::CalcTextSize(overlay_buf, NULL);
-//    overlay_size = ImVec2(3.f, -3.f - overlay_size.y);
-//    if (overlay_size.x > 0.0f)
-//        ImGui::RenderTextClipped( bbox.GetBL() + overlay_size, bbox.Max, overlay_buf, NULL, &overlay_size);
+    //
+    // THIRD RENDER
+    //
 
-//    // draw slider grab handle
-//    if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
-//        window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
-//    }
+    // Render the bounding box
+    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
+
+    // render the timeline
+    RenderTimeline(window, timeline_bbox, start, end, step);
+
+    // draw slider grab handle
+    if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
+        window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
+    }
+
+    // draw the cursor
+    pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
+    ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
+
+    return left_mouse_press;
+}
+
+
+void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, guint64 end, guint64 step, const float width)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+
+    // get style & id
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
+    const ImGuiID id = window->GetID(label);
+
+    //
+    // FIRST PREPARE ALL data structures
+    //
+
+    // widget bounding box
+    const float height = 2.f * (fontsize + style.FramePadding.y);
+    ImVec2 pos = window->DC.CursorPos;
+    ImVec2 size = ImVec2(width, height);
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bbox, id))
+        return;
+
+    // cursor size
+    const float cursor_width = 0.5f * fontsize;
+
+    // TIMELINE is inside the bbox, in a slightly smaller bounding box
+    ImRect timeline_bbox(bbox);
+    timeline_bbox.Expand( ImVec2() - style.FramePadding );
+
+    // units conversion: from time to float (calculation made with higher precision first)
+    guint64 duration = end - start;
+    float time_ = static_cast<float> ( static_cast<double>(time - start) / static_cast<double>(duration) );
+
+    //
+    // THIRD RENDER
+    //
+
+    // Render the bounding box
+    ImGui::RenderFrame(bbox.Min, bbox.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
+
+    // render the timeline
+    RenderTimeline(window, timeline_bbox, start, end, step);
 
     // draw the cursor
     if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
-        color = ImGui::GetColorU32(style.Colors[ImGuiCol_SliderGrab]);
         pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-        ImGui::RenderArrow(window->DrawList, pos, color, ImGuiDir_Up, cursor_scale);
+        ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
     }
 }
 
-//bool ImGuiToolkit::InvisibleSliderInt(const char* label, guint64 *index, guint64 min, guint64 max, ImVec2 size)
 bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, uint max, ImVec2 size)
 {
     // get window
@@ -908,31 +853,10 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
     return array_changed;
 }
 
-// Function to create Gaussian filter
-void FilterCreation(float GKernel[], int N)
-{
-    // intialising standard deviation to 1.0
-    float sigma = N * 0.25f;
-    float s = 2.0 * sigma * sigma;
-
-    // sum is for normalization
-    float max = 0.0;
-
-    // generating 5x5 kernel
-    for (int x = 0 ; x < N; x++) {
-        float r = x;
-        GKernel[x] = (exp(-(r * r) / s)) / sqrt(M_PI * 2.0 * sigma);
-        max = MAX(max, GKernel[x]);
-    }
-
-    // normalising the Kernel
-    for (int i = 0; i < N; ++i)
-        GKernel[i] /= max;
-}
-
 
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, bool edit_histogram, bool *released, const ImVec2 size)
+                                      int values_count, float values_min, float values_max, guint64 start, guint64 end,
+                                      bool edit_histogram, bool *released, const ImVec2 size)
 {
     bool array_changed = false;
 
@@ -942,7 +866,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
         return false;
 
     // capture coordinates before any draw or action
-    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
     ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
 
     // get id
@@ -976,8 +900,16 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     const ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
-    const float _h_space = g.Style.WindowPadding.x; 
+    const float _h_space = style.WindowPadding.x;
     ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
+
+    // prepare index
+    double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
+    size_t index = CLAMP( (int) floor(static_cast<double>(values_count) * x), 0, values_count);
+    char cursor_text[64];
+    guint64 time = start + (index * end) / static_cast<guint64>(values_count);
+    ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
+                   GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_MINIMAL).c_str());
 
     // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
@@ -989,12 +921,8 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
         static size_t previous_index = UINT32_MAX;
         if (mouse_press)
         {
-
-            float x = (float) values_count * (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
-            size_t index = CLAMP( (int) floor(x), 0, values_count);
-
-            float y = mouse_pos_in_canvas.y / bbox.GetHeight();
-            y = CLAMP( (y * (values_max-values_min)) + values_min, values_min, values_max);
+            float val = mouse_pos_in_canvas.y / bbox.GetHeight();
+            val = CLAMP( (val * (values_max-values_min)) + values_min, values_min, values_max);
 
             if (previous_index == UINT32_MAX)
                 previous_index = index;
@@ -1015,7 +943,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
                     histogram_array[i] = target_value;
             }
             else  {
-                const float target_value =  values_max - y;
+                const float target_value =  values_max - val;
 
                 for (size_t i = left; i < right; ++i)
                     lines_array[i] = target_value;
@@ -1038,9 +966,9 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     // back to draw
     ImGui::SetCursorScreenPos(canvas_pos);
 
-    // plot transparent histogram
+    // plot histogram (with frame)
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TitleBg]);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TitleBg]); // a dark color
     char buf[128];
     sprintf(buf, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
@@ -1048,21 +976,40 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
 
     ImGui::SetCursorScreenPos(canvas_pos);
 
-    // plot lines
+    // plot (transparent) lines
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
     sprintf(buf, "##Lines%s", label);
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
-    // draw the cursor bar
+    // draw the cursor
     if (hovered) {
-        const ImU32 cur_color = ImGui::GetColorU32( style.Colors[ImGuiCol_CheckMark] );
+        // prepare color and text
+        const ImU32 cur_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
+        ImGui::PushStyleColor(ImGuiCol_Text, cur_color);
+        ImVec2 label_size = ImGui::CalcTextSize(cursor_text, NULL);
+
+        // render cursor depending on action
         mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
-        if (edit_histogram)
-            window->DrawList->AddLine( canvas_pos + ImVec2(mouse_pos_in_canvas.x, 4.f), canvas_pos + ImVec2(mouse_pos_in_canvas.x, size.y - 4.f), cur_color);
-        else {
-            window->DrawList->AddCircleFilled(canvas_pos + mouse_pos_in_canvas, 3.f, cur_color, 8);
+        ImVec2 cursor_pos = canvas_pos;
+        if (edit_histogram) {
+            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
+            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
         }
+        else {
+            cursor_pos = cursor_pos + mouse_pos_in_canvas;
+            window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
+        }
+
+        // draw text
+        cursor_pos.y = canvas_pos.y + size.y - label_size.y - 1.f;
+        if (mouse_pos_in_canvas.x + label_size.x < size.x - 2.f * _h_space)
+            cursor_pos.x += _h_space;
+        else
+            cursor_pos.x -= label_size.x + _h_space;
+        ImGui::RenderTextClipped(cursor_pos, cursor_pos + label_size, cursor_text, NULL, &label_size);
+
+        ImGui::PopStyleColor(1);
     }
 
     return array_changed;
