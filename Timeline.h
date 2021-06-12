@@ -62,6 +62,10 @@ struct TimeInterval
     {
         return (is_valid() && t != GST_CLOCK_TIME_NONE && !(t < this->begin) && !(t > this->end) );
     }
+    inline bool includes(const TimeInterval& b) const
+    {
+        return (is_valid() && b.is_valid() && includes(b.begin) && includes(b.end) );
+    }
 };
 
 
@@ -69,7 +73,7 @@ struct order_comparator
 {
     inline bool operator () (const TimeInterval a, const TimeInterval b) const
     {
-        return (a < b);
+        return (a < b || a.begin < b.begin);
     }
 };
 
@@ -114,11 +118,13 @@ public:
     void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
+    bool cut(GstClockTime t);
     bool removeGaptAt(GstClockTime t);
     bool gapAt(const GstClockTime t, TimeInterval &gap) const;
 
     // Manipulation of Fading
     float fadingAt(const GstClockTime t) const;
+    size_t fadingIndexAt(const GstClockTime t) const;
     inline float *fadingArray() { return fadingArray_; }
     void clearFading();
 

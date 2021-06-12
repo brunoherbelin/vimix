@@ -2113,6 +2113,136 @@ void SourceController::Render()
 
 }
 
+void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+
+    // get style & id
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+
+    const ImVec2 timeline_size( static_cast<float>( static_cast<double>(duration) * width_ratio ), 2.f * g.FontSize);
+
+    const ImVec2 pos = window->DC.CursorPos;
+    const ImVec2 frame_size( timeline_size.x + 2.f * style.FramePadding.x, timeline_size.y + style.FramePadding.y);
+    const ImRect bbox(pos, pos + frame_size);
+    ImGui::ItemSize(frame_size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bbox, id))
+        return;
+
+    const ImVec2 timescale_pos = pos + ImVec2(style.FramePadding.x, 0.f);
+    const ImRect timescale_bbox( timescale_pos, timescale_pos + timeline_size);
+
+    ImGuiToolkit::RenderTimeline(window, timescale_bbox, 0, duration, 1000, true);
+
+}
+
+void DrawTimeline(const char* label, Timeline *timeline, guint64 time, double width_ratio, float height)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+
+    // get style & id
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
+    const ImGuiID id = window->GetID(label);
+
+    //
+    // FIRST PREPARE ALL data structures
+    //
+
+    // fixed elements of timeline
+    float *lines_array = timeline->fadingArray();
+    const guint64 duration = timeline->sectionsDuration();
+    TimeIntervalSet se = timeline->sections();
+    const ImVec2 timeline_size( static_cast<float>( static_cast<double>(duration) * width_ratio ), 2.f * fontsize);
+
+    // widget bounding box
+    const ImVec2 frame_pos = window->DC.CursorPos;
+    const ImVec2 frame_size( timeline_size.x + 2.f * style.FramePadding.x, height);
+    const ImRect bbox(frame_pos, frame_pos + frame_size);
+    ImGui::ItemSize(frame_size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bbox, id))
+        return;
+
+    // capture hover to avoid tooltip on plotlines
+    ImGui::ItemHoverable(bbox, id);
+
+    // cursor size
+    const float cursor_width = 0.5f * fontsize;
+
+    // TIMELINE is inside the bbox, at the bottom
+    const ImVec2 timeline_pos = frame_pos + ImVec2(style.FramePadding.x, frame_size.y - timeline_size.y -style.FramePadding.y);
+    const ImRect timeline_bbox( timeline_pos, timeline_pos + timeline_size);
+
+    // PLOT of opacity is inside the bbox, at the top
+    const ImVec2 plot_pos = frame_pos + style.FramePadding;
+    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 2.f * style.FramePadding.y - timeline_size.y));
+
+    //
+    // THIRD RENDER
+    //
+
+    // Render the bounding box frame
+    ImGui::RenderFrame(bbox.Min, bbox.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
+
+    // loop over sections of sources' timelines
+    guint64 d = 0;
+    guint64 e = 0;
+    ImVec2 section_bbox_min = timeline_bbox.Min;
+    for (auto section = se.begin(); section != se.end(); ++section) {
+
+        // increment duration to adjust horizontal position
+        d += section->duration();
+        e = section->end;
+        const float percent = static_cast<float>(d) / static_cast<float>(duration) ;
+        ImVec2 section_bbox_max = ImLerp(timeline_bbox.GetBL(), timeline_bbox.GetBR(), percent);
+
+        // adjust bbox of section and render a timeline
+        ImRect section_bbox(section_bbox_min, section_bbox_max);
+        ImGuiToolkit::RenderTimeline(window, section_bbox, section->begin, section->end, timeline->step());
+
+        // draw the cursor
+        float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
+        if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
+            ImVec2 pos = ImLerp(section_bbox.GetTL(), section_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
+            ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
+        }
+
+        // draw plot of lines
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
+        ImGui::SetCursorScreenPos(ImVec2(section_bbox_min.x, plot_bbox.Min.y));
+        // find the index in timeline array of the section start time
+        size_t i = timeline->fadingIndexAt(section->begin);
+        // number of values is the index after end time of section (+1), minus the start index
+        size_t values_count = 1 + timeline->fadingIndexAt(section->end) - i;
+        ImGui::PlotLines("##linessection", lines_array + i, values_count, 0, NULL, 0.f, 1.f, ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
+        ImGui::PopStyleColor(1);
+        ImGui::PopStyleVar(1);
+
+        // detect if there was a gap before
+        if (i > 0)
+            window->DrawList->AddRectFilled(ImVec2(section_bbox_min.x -2.f, plot_bbox.Min.y), ImVec2(section_bbox_min.x + 2.f, plot_bbox.Max.y), ImGui::GetColorU32(ImGuiCol_TitleBg));
+
+        // iterate: next bbox of section starts at end of current
+        section_bbox_min.x = section_bbox_max.x;
+    }
+
+    // detect if there is a gap after
+    if (e < timeline->duration())
+        window->DrawList->AddRectFilled(ImVec2(section_bbox_min.x -2.f, plot_bbox.Min.y), ImVec2(section_bbox_min.x + 2.f, plot_bbox.Max.y), ImGui::GetColorU32(ImGuiCol_TitleBg));
+
+
+}
+
 void SourceController::RenderSelection(size_t i)
 {
     ImVec2 top = ImGui::GetCursorScreenPos();
@@ -2121,7 +2251,6 @@ void SourceController::RenderSelection(size_t i)
 
     selection_ = Mixer::manager().session()->playGroup(i);
     int numsources = selection_.size();
-    bool buttons_enabled = false;
 
     // no source selected
     if (numsources < 1)
@@ -2140,27 +2269,38 @@ void SourceController::RenderSelection(size_t i)
     }
     else {
         ///
-        /// Sources grid
+        /// Sources LIST
         ///
         ///
 
-        // get max duration
+        // get max duration and max frame width
         GstClockTime maxduration = 0;
+        float maxframewidth = 0.f;
         for (auto source = selection_.begin(); source != selection_.end(); ++source) {
             MediaSource *ms = dynamic_cast<MediaSource *>(*source);
             if (ms != nullptr) {
-                GstClockTime d = ((double) ms->mediaplayer()->timeline()->sectionsDuration() / ms->mediaplayer()->playSpeed());
+                GstClockTime d = (static_cast<double>(ms->mediaplayer()->timeline()->sectionsDuration()) / ms->mediaplayer()->playSpeed());
                 if ( d > maxduration )
                     maxduration = d;
             }
+            float w = 1.5f * _timeline_height * (*source)->frame()->aspectRatio();
+            if ( w > maxframewidth)
+                maxframewidth = w;
         }
+        // compute the ratio for timeline rendering : width (pixel) per time unit (ms)
+        const float w = rendersize.x -maxframewidth - 3.f * _h_space - _scrollbar;
+        const double width_ratio = static_cast<double>(w) / static_cast<double>(maxduration);
 
-
-        // draw list
-        ImGui::BeginChild("##v_scroll2", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        // draw list in a scroll area
+        ImGui::BeginChild("##v_scroll2", rendersize, false);
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
+            // draw play time scale if a duration is set
+            if (maxduration > 0) {
+                ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2( maxframewidth + _h_space, 0));
+                DrawTimeScale("##timescale", maxduration, width_ratio);
+            }
 
+            // loop over all sources
             for (auto source = selection_.begin(); source != selection_.end(); ++source) {
 
                 ImVec2 framesize(1.5f * _timeline_height * (*source)->frame()->aspectRatio(), 1.5f * _timeline_height);
@@ -2171,52 +2311,25 @@ void SourceController::RenderSelection(size_t i)
                     UserInterface::manager().showSourceEditor(*source);
 
                 // text below thumbnail to show status
-                const char *icon = ICON_FA_SNOWFLAKE;
-                if ((*source)->active()) {
-                    icon = (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE;
-                    buttons_enabled = true;
-                }
-                ImGui::Text("%s %s", icon, GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                ImGui::Text(" %s %s", SourcePlayIcon(*source), GstToolkit::time_to_string((*source)->playtime()).c_str() );
 
+                // get media source
                 MediaSource *ms = dynamic_cast<MediaSource *>(*source);
                 if (ms != nullptr) {
-                    ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 0));
+                    // ok, get the media player of the media source
                     MediaPlayer *mp = ms->mediaplayer();
-                    Timeline *tl = mp->timeline();
 
-                    // cut gaps
-//                    // timeline of MediaSource to the right
-//                    static float gaps[MAX_TIMELINE_ARRAY];
-//                    static float fade[MAX_TIMELINE_ARRAY];
-//                    size_t numsteps = tl->fillSectionsArrays(gaps, fade) - 1;
+                    // start to draw timeline aligned at maximum frame width + horizontal space
+                    ImGui::SetCursorPos(image_top + ImVec2( maxframewidth + _h_space, 0));
 
-                    ImVec2 size(rendersize.x - framesize.x - _h_space - _scrollbar, 1.5f * _timeline_height);
+                    // draw the mediaplayer's timeline, with the indication of cursor position
+                    // NB: use the same width/time ratio for all to ensure timing vertical correspondance
+                    DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(), width_ratio / fabs(mp->playSpeed()), framesize.y);
 
-//                    GstClockTime d = tl->sectionsDuration();
-//                    size.x = size.x * d / ( maxduration * mp->playSpeed() );
-
-//                    ImGuiToolkit::ShowPlotHistoLines("##TimelineArray2", gaps, fade, numsteps, 0.f, 1.f, size);
-
-                    TimeIntervalSet se = tl->sections();
-                    GstClockTime playtime = tl->sectionsDuration();
-                    for (auto section = se.begin(); section != se.end(); ++section) {
-
-                        GstClockTime d = section->duration();
-                        float w = size.x * d / ( maxduration * mp->playSpeed() );
-                        ImGuiToolkit::Timeline("##timeline2", mp->position(), section->begin, section->end, tl->step(), w);
-                        ImGui::SameLine(0,1);
-
-
-                    }
-
-//                    ImGuiToolkit::Timeline("##timeline2", mp->position(), tl->begin(), tl->end(), tl->step(), size.x);
-
-                    // text below timeline to show info
-                    ImGui::SetCursorPos(image_top + ImVec2( framesize.x + _h_space, 1.5f * _timeline_height + _v_space));
-                    GstClockTime t = (GstClockTime) (  (double) playtime / mp->playSpeed()  );
-                    ImGui::Text("%d sections, %s play time / %.2f speed = %s (effective duration)",
-                                se.size(), GstToolkit::time_to_string(playtime).c_str(),
-                                mp->playSpeed(), GstToolkit::time_to_string(t).c_str());
+                    ImGui::SetCursorPos(image_top + ImVec2( maxframewidth + _h_space, framesize.y + _v_space));
+                    ImGui::Text("%s play time @ %.2f speed / %s (max duration)",
+                                GstToolkit::time_to_string(mp->timeline()->sectionsDuration()).c_str(),
+                                mp->playSpeed(), GstToolkit::time_to_string(maxduration).c_str());
                 }
 
                 // next line position
@@ -2224,52 +2337,15 @@ void SourceController::RenderSelection(size_t i)
 //                ImGui::Spacing();
             }
 
-            ImGui::PopStyleVar();
         }
         ImGui::EndChild();
-
-//        ImGui::BeginChild("##v_scroll", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-//        {
-//            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
-
-//            // area horizontal pack
-//            int numcolumns = CLAMP( int(ceil(1.0f * rendersize.x / rendersize.y)), 1, numsources );
-//            ImGui::Columns( numcolumns, "##selectiongrid", false);
-
-//            for (auto source = selection_.begin(); source != selection_.end(); ++source) {
-
-//                ImVec2 framesize(ImGui::GetColumnWidth(), ImGui::GetColumnWidth() / (*source)->frame()->aspectRatio());
-//                framesize.x -= _h_space;
-//                ImVec2 image_top = ImGui::GetCursorPos();
-
-//                if (SourceButton(*source, framesize))
-//                    UserInterface::manager().showSourceEditor(*source);
-
-//                // Play icon lower left corner
-//                ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-//                float h = ImGui::GetTextLineHeightWithSpacing();
-//                ImGui::SetCursorPos(image_top + ImVec2( _h_space, framesize.y - h));
-//                if ((*source)->active())
-//                    ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
-//                else
-//                    ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
-//                ImGui::PopFont();
-
-//                ImGui::Spacing();
-//                ImGui::NextColumn();
-//            }
-
-//            ImGui::Columns(1);
-//            ImGui::PopStyleVar();
-//        }
-//        ImGui::EndChild();
 
     }
 
     ///
     /// Play button bar
     ///
-    DrawButtonBar(bottom, rendersize.x, buttons_enabled);
+    DrawButtonBar(bottom, rendersize.x);
 
     ///
     /// Selection of sources
@@ -2368,42 +2444,43 @@ void SourceController::RenderSelectedSources()
         ImGui::Text("Nothing to play");
         ImGui::PopFont();
         ImGui::PopStyleColor(1);
+
         ///
-        /// Play button bar
+        /// Play button bar (automatically disabled)
         ///
-        DrawButtonBar(bottom, rendersize.x, false);
+        DrawButtonBar(bottom, rendersize.x);
 
     }
     // single source selected
     else if (numsources < 2)
     {
         ///
-        /// Sources display
+        /// Single Source display
         ///
         RenderSingleSource( selection_.front() );
     }
     // Several sources selected
     else {
-
         ///
         /// Sources grid
         ///
-        ///
-        bool buttons_enabled = false;
-        ImGui::BeginChild("##v_scroll", rendersize, false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        ImGui::BeginChild("##v_scroll", rendersize, false);
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, _v_space));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 2.f * _v_space));
 
             // area horizontal pack
             int numcolumns = CLAMP( int(ceil(1.0f * rendersize.x / rendersize.y)), 1, numsources );
             ImGui::Columns( numcolumns, "##selectiongrid", false);
+            float widthcolumn = rendersize.x / static_cast<float>(numcolumns);
+            widthcolumn -= _scrollbar;
 
+            // loop over sources in grid
             for (auto source = selection_.begin(); source != selection_.end(); ++source) {
-
-                ImVec2 framesize(ImGui::GetColumnWidth(), ImGui::GetColumnWidth() / (*source)->frame()->aspectRatio());
-                framesize.x -= _h_space;
-
+                ///
+                /// Source Image Button
+                ///
                 ImVec2 image_top = ImGui::GetCursorPos();
+                ImVec2 framesize(widthcolumn, widthcolumn / (*source)->frame()->aspectRatio());
                 if (SourceButton(*source, framesize))
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -2411,12 +2488,7 @@ void SourceController::RenderSelectedSources()
                 ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
                 float h = ImGui::GetTextLineHeightWithSpacing();
                 ImGui::SetCursorPos(image_top + ImVec2( _h_space, framesize.y - h));
-                if ((*source)->active()) {
-                    ImGui::Text("%s %s", (*source)->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string((*source)->playtime()).c_str() );
-                    buttons_enabled = true;
-                }
-                else
-                    ImGui::Text(ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                ImGui::Text("%s %s", SourcePlayIcon(*source),  GstToolkit::time_to_string((*source)->playtime()).c_str() );
                 ImGui::PopFont();
 
                 ImGui::Spacing();
@@ -2431,10 +2503,10 @@ void SourceController::RenderSelectedSources()
         ///
         /// Play button bar
         ///
-        DrawButtonBar(bottom, rendersize.x, buttons_enabled);
+        DrawButtonBar(bottom, rendersize.x);
 
         ///
-        /// New Selection from active sources
+        /// Menu to store Selection from current sources
         ///
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
@@ -2491,10 +2563,16 @@ void SourceController::RenderSingleSource(Source *s)
             framesize.x = tmp.x;
         }
 
+        ///
+        /// Image
+        ///
         top += corner;
         ImGui::SetCursorScreenPos(top);
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
 
+        ///
+        /// Info overlays
+        ///
         ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
         if (ImGui::IsItemHovered()){
@@ -2516,17 +2594,13 @@ void SourceController::RenderSingleSource(Source *s)
         // Play icon lower left corner
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, -ImGui::GetTextLineHeightWithSpacing()));
-        if (s->active())
-            ImGui::Text("%s %s", s->playing() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(s->playtime()).c_str() );
-        else
-            ImGui::Text("%s %s", ICON_FA_SNOWFLAKE, GstToolkit::time_to_string(s->playtime()).c_str() );
+        ImGui::Text("%s %s", SourcePlayIcon(s), GstToolkit::time_to_string(s->playtime()).c_str() );
         ImGui::PopFont();
 
         ///
-        /// Play source button bar
+        /// Play button bar
         ///
-        DrawButtonBar(bottom, rendersize.x, s->active());
-
+        DrawButtonBar(bottom, rendersize.x);
     }
 }
 
@@ -2555,10 +2629,16 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         framesize.x = tmp.x;
     }
 
+    ///
+    /// Image
+    ///
     top += corner;
     ImGui::SetCursorScreenPos(top);
     ImGui::Image((void*)(uintptr_t) mp->texture(), framesize);
 
+    ///
+    /// Info overlays
+    ///
     ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
@@ -2588,11 +2668,11 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     if (mp->isEnabled())
         ImGui::Text("%s %s", mp->isPlaying() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(mp->position()).c_str() );
     else
-        ImGui::Text(ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string(mp->position()).c_str() );
+        ImGui::Text( ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string(mp->position()).c_str() );
     ImGui::PopFont();
 
     ///
-    /// media player buttons bar
+    /// media player buttons bar (custom)
     ///
     draw_list->AddRectFilled(bottom, bottom + ImVec2(rendersize.x, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
 
@@ -2651,6 +2731,9 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
             mp->setPlaySpeed( static_cast<double>(speed) );
     }
 
+    ///
+    /// Media Player context menu
+    ///
     ImGui::SameLine();
     ImGui::SetCursorPosX(rendersize.x - _buttons_height / 1.5f);
 
@@ -2659,11 +2742,11 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::OpenPopup( "MenuTimeline" );
     if (ImGui::BeginPopup( "MenuTimeline" ))
     {
-        if (ImGui::MenuItem(UNICODE_MULTIPLY " " ICON_FA_CARET_RIGHT  "  Reset Speed" )){
+        if (ImGui::MenuItem(UNICODE_MULTIPLY " " ICON_FA_CARET_RIGHT  "  Reset speed" )){
             speed = 1.f;
             mp->setPlaySpeed( static_cast<double>(speed) );
         }
-        if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset Timeline" )){
+        if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline" )){
             timeline_zoom = 1.f;
             mp->timeline()->clearFading();
             mp->timeline()->clearGaps();
@@ -2681,7 +2764,14 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
             }
             ImGui::EndMenu();
         }
-        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware Decoding"))
+        if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" )){
+            if (ImGui::MenuItem("Cut faded areas"))
+                if (mp->timeline()->autoCut())
+                    Action::manager().store("Timeline Auto cut");
+
+            ImGui::EndMenu();
+        }
+        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
         {
             bool hwdec = !mp->softwareDecodingForced();
             if (ImGui::MenuItem("Auto", "", &hwdec ))
@@ -2723,7 +2813,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         {
             bool released = false;
             if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", tl->gapsArray(), tl->fadingArray(),
-                                                  MAX_TIMELINE_ARRAY, 0.f, 1.f,
+                                                  MAX_TIMELINE_ARRAY, 0.f, 1.f, tl->begin(), tl->end(),
                                                   Settings::application.widget.timeline_editmode, &released, size) ) {
                 tl->update();
             }
@@ -2745,15 +2835,15 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
     draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, _timeline_height -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
     ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-    const char *tooltip[2] = {"Draw opacity", "Cut sections"};
+    const char *tooltip[2] = {"Draw opacity tool", "Cut tool"};
     ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.timeline_editmode, tooltip);
 
     ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * _timeline_height));
     if (Settings::application.widget.timeline_editmode) {
         // action auto cut
-        if (ImGuiToolkit::IconButton(14, 12, "Auto cut")) {
-            if (mp->timeline()->autoCut())
-                Action::manager().store("Timeline Auto cut");
+        if (ImGuiToolkit::IconButton(9, 3, "Cut at cursor")) {
+            if (mp->timeline()->cut(mp->position()))
+                Action::manager().store("Timeline Cut");
         }
     }
     else {
@@ -2780,9 +2870,9 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::PopStyleVar(2);
 
     ///
-    /// media player actions
+    /// media player timeline actions
     ///
-    ///
+
     // request seek (ASYNC)
     if ( slider_pressed_ && mp->go_to(seek_t) )
         slider_pressed_ = false;
@@ -2797,41 +2887,81 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     }
 }
 
-void SourceController::DrawButtonBar(ImVec2 bottom, float width, bool enabled)
+const char *SourceController::SourcePlayIcon(Source *s)
 {
+    if (s->active()) {
+        if ( s->playing() )
+            return ICON_FA_PLAY;
+        else
+            return ICON_FA_PAUSE;
+    }
+    else
+        return ICON_FA_SNOWFLAKE;
+}
+
+void SourceController::DrawButtonBar(ImVec2 bottom, float width)
+{
+    // draw box
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddRectFilled(bottom, bottom + ImVec2(width, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
 
-    // buttons style: inactive if no source in selection
-    if (!enabled || selection_.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    // prepare position to draw text
+    ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
+
+    // play bar is enabled if only one source selected is enabled
+    bool enabled = false;
+    for (auto source = selection_.begin(); source != selection_.end(); ++source){
+        if ( (*source)->active() ) {
+            enabled = true;
+            break;
+        }
     }
-    else {
+
+    // buttons style for disabled / enabled bar
+    if (enabled) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
     }
+    else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    }
 
-    ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
+    // Always the rewind button
     if (ImGui::Button(ICON_FA_FAST_BACKWARD) && enabled) {
         for (auto source = selection_.begin(); source != selection_.end(); ++source)
             (*source)->replay();
     }
     ImGui::SameLine(0, _h_space);
-    if (ImGui::Button(ICON_FA_PLAY) && enabled) {
-        for (auto source = selection_.begin(); source != selection_.end(); ++source)
-            (*source)->play(true);
+
+    // unique play / pause button for single source
+    if (selection_.size() == 1) {
+        Source *s = selection_.front();
+        if (s->playing()) {
+            if (ImGui::Button(ICON_FA_PAUSE) && enabled)
+                (s)->play(false);
+        } else {
+            if (ImGui::Button(ICON_FA_PLAY) && enabled)
+                (s)->play(true);
+        }
     }
-    ImGui::SameLine(0, _h_space);
-    if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
-        for (auto source = selection_.begin(); source != selection_.end(); ++source)
-            (*source)->play(false);
+    // separate play & pause buttons for multiple sources (or none)
+    else {
+        if (ImGui::Button(ICON_FA_PLAY) && enabled) {
+            for (auto source = selection_.begin(); source != selection_.end(); ++source)
+                (*source)->play(true);
+        }
+        ImGui::SameLine(0, _h_space);
+        if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
+            for (auto source = selection_.begin(); source != selection_.end(); ++source)
+                (*source)->play(false);
+        }
     }
     ImGui::SameLine(0, _h_space);
 
-    // restore
+    // restore style
     ImGui::PopStyleColor(3);
 }
 
@@ -2958,7 +3088,7 @@ void Navigator::Render()
                     ImDrawList* draw_list = ImGui::GetWindowDrawList();
                     ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
                     ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
-                    const ImU32 color = ImGui::GetColorU32( style.Colors[ImGuiCol_Text] );
+                    const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
                     if ((*iter)->mode() == Source::CURRENT)  {
                         p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
                         p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
