@@ -118,9 +118,10 @@ class SourceController
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
-
     SourceList selection_;
-    void DrawButtonBar(ImVec2 bottom, float width, bool enabled = true);
+
+    void DrawButtonBar(ImVec2 bottom, float width);
+    const char *SourcePlayIcon(Source *s);
 
     bool SourceButton(Source *s, ImVec2 framesize);
     void RenderSelectedSources();

@@ -142,6 +142,40 @@ bool Timeline::addGap(GstClockTime begin, GstClockTime end)
     return addGap( TimeInterval(begin, end) );
 }
 
+bool Timeline::cut(GstClockTime t)
+{
+    bool ret = false;
+
+    if (timing_.includes(t))
+    {
+        TimeIntervalSet::iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
+        // cut a gap
+        if ( g != gaps_.end() )
+        {
+            GstClockTime b = g->begin;
+            gaps_.erase(g);
+            ret = addGap(b, t);
+        }
+        // create a gap
+        else {
+            TimeIntervalSet::iterator previous = gaps_.end();
+            for (g = gaps_.begin(); g != gaps_.end(); previous = g++) {
+                if ( g->begin > t)
+                    break;
+            }
+            if (previous == gaps_.end())
+                ret = addGap( TimeInterval(timing_.begin, t) );
+            else {
+                GstClockTime b = previous->begin;
+                gaps_.erase(previous);
+                ret = addGap(b, t);
+            }
+        }
+    }
+
+    return ret;
+}
+
 bool Timeline::addGap(TimeInterval s)
 {
     if ( s.is_valid() ) {
@@ -180,6 +214,7 @@ GstClockTime Timeline::sectionsDuration() const
     for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
         d += (*it).end - (*it).begin;
 
+    // remove sum of gaps from actual duration
     return duration() - d;
 }
 
@@ -302,6 +337,13 @@ float Timeline::fadingAt(const GstClockTime t) const
     v += percent * (fadingArray_[keyframe_next_index] - fadingArray_[keyframe_index]);
 
     return v;
+}
+
+size_t Timeline::fadingIndexAt(const GstClockTime t) const
+{
+    double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
+    double previous_index = floor(true_index);
+    return  MINI( static_cast<size_t>(previous_index), MAX_TIMELINE_ARRAY-1);
 }
 
 void Timeline::clearFading()
