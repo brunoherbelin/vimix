@@ -17,11 +17,12 @@ namespace ImGuiToolkit
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
 
-    // icon buttons
+    // buttons and gui items with icon
     bool ButtonIcon (int i, int j, const char* tooltip = nullptr);
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state);
     bool ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state);
+    bool MenuItemIcon (int i, int j, const char* label, bool selected = false, bool enabled = true);
 
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle);

@@ -90,7 +90,7 @@ GstClockTime Timeline::next(GstClockTime time) const
     GstClockTime next_time = time;
 
     TimeInterval gap;
-    if (gapAt(time, gap) && gap.is_valid())
+    if (getGapAt(time, gap) && gap.is_valid())
         next_time = gap.end;
 
     return next_time;
@@ -100,7 +100,7 @@ GstClockTime Timeline::previous(GstClockTime time) const
 {
     GstClockTime prev_time = time;
     TimeInterval gap;
-    if (gapAt(time, gap) && gap.is_valid())
+    if (getGapAt(time, gap) && gap.is_valid())
         prev_time = gap.begin;
 
     return prev_time;
@@ -125,7 +125,13 @@ void Timeline::refresh()
     fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
 }
 
-bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
+bool Timeline::gapAt(const GstClockTime t) const
+{
+    TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
+    return ( g != gaps_.end() );
+}
+
+bool Timeline::getGapAt(const GstClockTime t, TimeInterval &gap) const
 {
     TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
 
@@ -142,33 +148,77 @@ bool Timeline::addGap(GstClockTime begin, GstClockTime end)
     return addGap( TimeInterval(begin, end) );
 }
 
-bool Timeline::cut(GstClockTime t)
+bool Timeline::cut(GstClockTime t, bool left, bool join_extremity)
 {
     bool ret = false;
 
     if (timing_.includes(t))
     {
-        TimeIntervalSet::iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
-        // cut a gap
-        if ( g != gaps_.end() )
-        {
-            GstClockTime b = g->begin;
-            gaps_.erase(g);
-            ret = addGap(b, t);
-        }
-        // create a gap
-        else {
-            TimeIntervalSet::iterator previous = gaps_.end();
-            for (g = gaps_.begin(); g != gaps_.end(); previous = g++) {
-                if ( g->begin > t)
-                    break;
-            }
-            if (previous == gaps_.end())
-                ret = addGap( TimeInterval(timing_.begin, t) );
-            else {
-                GstClockTime b = previous->begin;
-                gaps_.erase(previous);
+        TimeIntervalSet::iterator gap = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
+
+        // cut left part
+        if (left) {
+            // cut a gap
+            if ( gap != gaps_.end() )
+            {
+                GstClockTime b = gap->begin;
+                gaps_.erase(gap);
                 ret = addGap(b, t);
+            }
+            // create a gap
+            else {
+                auto previous = gaps_.end();
+                for (auto g = gaps_.begin(); g != gaps_.end(); previous = g++) {
+                    if ( g->begin > t)
+                        break;
+                }
+                if (join_extremity) {
+ //TODO
+                }
+                else {
+                    if (previous == gaps_.end())
+                        ret = addGap( TimeInterval(timing_.begin, t) );
+                    else {
+                        GstClockTime b = previous->begin;
+                        gaps_.erase(previous);
+                        ret = addGap( TimeInterval(b, t) );
+                    }
+                }
+            }
+        }
+        // cut right part
+        else {
+            // cut a gap
+            if ( gap != gaps_.end() )
+            {
+                GstClockTime e = gap->end;
+                gaps_.erase(gap);
+                ret = addGap(t, e);
+            }
+            // create a gap
+            else {
+                auto suivant = gaps_.rend();
+                for (auto g = gaps_.rbegin(); g != gaps_.rend(); suivant = g++) {
+                    if ( g->end < t)
+                        break;
+                }
+                if (join_extremity) {
+                    if (suivant != gaps_.rend()) {
+                        for (auto g = gaps_.find(*suivant); g != gaps_.end(); ) {
+                            g = gaps_.erase(g);
+                        }
+                    }
+                    ret = addGap( TimeInterval(t, timing_.end) );
+                }
+                else {
+                    if (suivant == gaps_.rend())
+                        ret = addGap( TimeInterval(t, timing_.end) );
+                    else {
+                        GstClockTime e = suivant->end;
+                        gaps_.erase( gaps_.find(*suivant));
+                        ret = addGap( TimeInterval(t, e) );
+                    }
+                }
             }
         }
     }
