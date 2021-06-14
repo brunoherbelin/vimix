@@ -676,7 +676,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
 
         GstClockTime jumpPts = pos;
 
-        if (timeline_.gapAt(pos, gap)) {
+        if (timeline_.getGapAt(pos, gap)) {
             // if in a gap, find closest seek target
             if (gap.is_valid()) {
                 // jump in one or the other direction
@@ -922,7 +922,7 @@ void MediaPlayer::update()
     else {
         // manage timeline: test if position falls into a gap
         TimeInterval gap;
-        if (position_ != GST_CLOCK_TIME_NONE && timeline_.gapAt(position_, gap)) {
+        if (position_ != GST_CLOCK_TIME_NONE && timeline_.getGapAt(position_, gap)) {
             // if in a gap, seek to next section
             if (gap.is_valid()) {
                 // jump in one or the other direction
