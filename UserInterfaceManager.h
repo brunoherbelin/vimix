@@ -120,14 +120,24 @@ class SourceController
     InfoVisitor info_;
     SourceList selection_;
 
+    bool _selection_context_menu;
+    MediaPlayer *_selection_mediaplayer;
+    double _selection_target_slower;
+    double _selection_target_faster;
+    void RenderSelectionContextMenu();
+
+    // re-usable ui parts
     void DrawButtonBar(ImVec2 bottom, float width);
     const char *SourcePlayIcon(Source *s);
-
     bool SourceButton(Source *s, ImVec2 framesize);
-    void RenderSelectedSources();
-    void RenderSelection(size_t i);
-    void RenderSingleSource(Source *s);
 
+    // Render the sources dynamically selected
+    void RenderSelectedSources();
+    // Render a stored selection
+    void RenderSelection(size_t i);
+    // Render a single source
+    void RenderSingleSource(Source *s);
+    // Render a single media player
     bool media_playing_mode_;
     bool slider_pressed_;
     void RenderMediaPlayer(MediaPlayer *mp);

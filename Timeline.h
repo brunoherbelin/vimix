@@ -118,9 +118,11 @@ public:
     void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
-    bool cut(GstClockTime t);
+    bool cut(GstClockTime t, bool left, bool join_extremity);
     bool removeGaptAt(GstClockTime t);
-    bool gapAt(const GstClockTime t, TimeInterval &gap) const;
+
+    bool gapAt(const GstClockTime t) const;
+    bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
 
     // Manipulation of Fading
     float fadingAt(const GstClockTime t) const;

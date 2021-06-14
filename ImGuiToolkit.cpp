@@ -145,7 +145,10 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
 
     ImGui::PushID( i*20 + j);
-    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(),ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, 3);
+    ImGuiContext& g = *GImGui;
+    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons,
+                                   ImVec2(g.FontSize, g.FontSize),
+                                   uv0, uv1, g.Style.FramePadding.y);
     ImGui::PopID();
 
     if (tooltip != nullptr && ImGui::IsItemHovered())
@@ -353,6 +356,23 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vect
     return ret;
 }
 
+bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, bool selected, bool enabled)
+{
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // make some space
+    char text_buf[256];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "       %s", label);
+
+    // draw menu item
+    bool ret = ImGui::MenuItem(text_buf, NULL, selected, enabled);
+
+    // draw icon
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(i, j, enabled);
+
+    return ret;
+}
 
 void ImGuiToolkit::ShowIconsWindow(bool* p_open)
 {
