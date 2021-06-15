@@ -2015,7 +2015,7 @@ void SourceController::Render()
     _timeline_height = (g.FontSize + _v_space) * 2.0f ; // double line for each timeline
     _scrollbar = g.Style.ScrollbarSize;
     // all together: 1 title bar + spacing + 1 toolbar + spacing + 2 timelines + scrollbar
-    _mediaplayer_height = _buttons_height + 2.f * _timeline_height + _scrollbar + 2.f * _v_space;
+    _mediaplayer_height = _buttons_height + 2.f * _timeline_height + 2.f * _scrollbar +  _v_space;
 
     // constraint position
     static ImVec2 source_window_pos = ImVec2(1180, 20);
@@ -2337,113 +2337,118 @@ void SourceController::RenderSelection(size_t i)
                     // NB: use the same width/time ratio for all to ensure timing vertical correspondance
                     DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(), width_ratio / fabs(mp->playSpeed()), framesize.y);
 
-                    // next icon buttons are small
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.f, 3.f));
+                    if ( w > maxframewidth ) {
 
-                    // next buttons sub id
-                    ImGui::PushID( static_cast<int>(mp->id()));
+                        // next icon buttons are small
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.f, 3.f));
 
-                    // display play speed
-                    ImGui::SetCursorPos(pos + ImVec2( 0.f, framesize.y + _v_space));
-                    ImGui::Text(UNICODE_MULTIPLY " %.2f", mp->playSpeed());
-                    // if not 1x speed, offer to reset
-                    if ( fabs( fabs(mp->playSpeed()) - 1.0 ) > EPSILON ) {
-                        ImGui::SameLine(0,_h_space);
-                        if (ImGuiToolkit::ButtonIcon(19, 15, "Reset speed"))
-                            mp->setPlaySpeed( 1.0 );
-                    }
+                        // next buttons sub id
+                        ImGui::PushID( static_cast<int>(mp->id()));
 
-                    // if more than one duration of media players, add buttons to adjust
-                    if (durations.size() > 1)
-                    {
+                        // display play speed
+                        ImGui::SetCursorPos(pos + ImVec2( 0.f, framesize.y + _v_space));
+                        ImGui::Text(UNICODE_MULTIPLY " %.2f", mp->playSpeed());
+                        // if not 1x speed, offer to reset
+                        if ( fabs( fabs(mp->playSpeed()) - 1.0 ) > EPSILON ) {
+                            ImGui::SameLine(0,_h_space);
+                            if (ImGuiToolkit::ButtonIcon(19, 15, "Reset speed"))
+                                mp->setPlaySpeed( 1.0 );
+                        }
 
-                        for (auto d = durations.crbegin(); d != durations.crend(); ++d) {
+                        // if more than one duration of media players, add buttons to adjust
+                        if (durations.size() > 1)
+                        {
 
-                            ImGui::PushID( static_cast<int>(*d));
+                            for (auto d = durations.crbegin(); d != durations.crend(); ++d) {
 
-                            // calculate position of icons
-                            double x = static_cast<double>(*d) * width_ratio;
-                            ImGui::SetCursorPos(pos + ImVec2( static_cast<float>(x) - 2.f, framesize.y + _v_space) );
-                            // depending on position relative to media play duration, offer corresponding action
-                            double secdur = static_cast<double>(mp->timeline()->sectionsDuration());
-                            guint64 playdur = static_cast<guint64>( secdur / fabs(mp->playSpeed()) );
-                            // last icon in the timeline
-                            if ( playdur == (*d) ) {
-                                // not the minimum duration :
-                                if (playdur > durations.front() ) {
-                                    // offer to speed up or slow down [<>]
-                                    if (playdur < durations.back() ) {
-                                        if ( ImGuiToolkit::ButtonIcon(0, 12, "Adjust duration") ) {
-                                            auto prev = d;
-                                            prev--;
-                                            _selection_target_slower = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*prev);
+                                // next buttons sub id
+                                ImGui::PushID( static_cast<int>(*d));
+
+                                // calculate position of icons
+                                double x = static_cast<double>(*d) * width_ratio;
+                                ImGui::SetCursorPos(pos + ImVec2( static_cast<float>(x) - 2.f, framesize.y + _v_space) );
+                                // depending on position relative to media play duration, offer corresponding action
+                                double secdur = static_cast<double>(mp->timeline()->sectionsDuration());
+                                guint64 playdur = static_cast<guint64>( secdur / fabs(mp->playSpeed()) );
+                                // last icon in the timeline
+                                if ( playdur == (*d) ) {
+                                    // not the minimum duration :
+                                    if (playdur > durations.front() ) {
+                                        // offer to speed up or slow down [<>]
+                                        if (playdur < durations.back() ) {
+                                            if ( ImGuiToolkit::ButtonIcon(0, 12, "Adjust duration") ) {
+                                                auto prev = d;
+                                                prev--;
+                                                _selection_target_slower = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*prev);
+                                                auto next = d;
+                                                next++;
+                                                _selection_target_faster = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*next);
+                                                _selection_mediaplayer = mp;
+                                                _selection_context_menu = true;
+                                            }
+                                        }
+                                        // offer to speed up [< ]
+                                        else if ( ImGuiToolkit::ButtonIcon(8, 12, "Adjust duration") ) {
                                             auto next = d;
                                             next++;
                                             _selection_target_faster = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*next);
+                                            _selection_target_slower = 0.0;
                                             _selection_mediaplayer = mp;
                                             _selection_context_menu = true;
                                         }
                                     }
-                                    // offer to speed up [< ]
-                                    else if ( ImGuiToolkit::ButtonIcon(8, 12, "Adjust duration") ) {
-                                        auto next = d;
-                                        next++;
-                                        _selection_target_faster = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*next);
-                                        _selection_target_slower = 0.0;
+                                    // minimum duration : offer to slow down [ >]
+                                    else if ( ImGuiToolkit::ButtonIcon(9, 12, "Adjust duration") ) {
+                                        _selection_target_faster = 0.0;
+                                        auto prev = d;
+                                        prev--;
+                                        _selection_target_slower = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*prev);
                                         _selection_mediaplayer = mp;
                                         _selection_context_menu = true;
                                     }
                                 }
-                                // minimum duration : offer to slow down [ >]
-                                else if ( ImGuiToolkit::ButtonIcon(9, 12, "Adjust duration") ) {
-                                    _selection_target_faster = 0.0;
-                                    auto prev = d;
-                                    prev--;
-                                    _selection_target_slower = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*prev);
-                                    _selection_mediaplayer = mp;
-                                    _selection_context_menu = true;
-                                }
-                            }
-                            // middle buttons : offer to cut at this position
-                            else if ( playdur > (*d) ) {
-                                char text_buf[256];
-                                GstClockTime cutposition = (*d) * fabs(mp->playSpeed());
-                                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Cut at %s",
-                                               GstToolkit::time_to_string(cutposition, GstToolkit::TIME_STRING_MINIMAL).c_str());
+                                // middle buttons : offer to cut at this position
+                                else if ( playdur > (*d) ) {
+                                    char text_buf[256];
+                                    GstClockTime cutposition = mp->timeline()->sectionsTimeAt( (*d) * fabs(mp->playSpeed()) );
+                                    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Cut at %s",
+                                                   GstToolkit::time_to_string(cutposition, GstToolkit::TIME_STRING_MINIMAL).c_str());
 
-                                if ( ImGuiToolkit::ButtonIcon(9, 3, text_buf) ) {
-                                    if ( mp->timeline()->cut(cutposition, false, true) ) {
+                                    if ( ImGuiToolkit::ButtonIcon(9, 3, text_buf) ) {
+                                        if ( mp->timeline()->cut(cutposition, false, true) ) {
+                                            std::ostringstream info;
+                                            info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
+                                            Action::manager().store(info.str());
+                                        }
+                                    }
+                                }
+
+                                ImGui::PopID();
+                            }
+                        }
+                        // special case when all media players are (cut to) the same size
+                        else if ( durations.size() > 0) {
+
+                            // calculate position of icon
+                            double x = static_cast<double>(durations.front()) * width_ratio;
+                            ImGui::SetCursorPos(pos + ImVec2( static_cast<float>(x) - 2.f, framesize.y + _v_space) );
+
+                            // offer only to adjust size by removing ending gap
+                            if ( mp->timeline()->gapAt( mp->timeline()->end() ) ) {
+                                if ( ImGuiToolkit::ButtonIcon(7, 0, "Remove end gap" )){
+                                    if ( mp->timeline()->removeGaptAt(mp->timeline()->end()) ) {
                                         std::ostringstream info;
-                                        info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
+                                        info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline Remove end gap";
                                         Action::manager().store(info.str());
                                     }
                                 }
                             }
-
-                            ImGui::PopID();
                         }
-                    }
-                    // special case when all media players are (cut to) the same size
-                    else if ( durations.size() > 0) {
 
-                        // calculate position of icon
-                        double x = static_cast<double>(durations.front()) * width_ratio;
-                        ImGui::SetCursorPos(pos + ImVec2( static_cast<float>(x) - 2.f, framesize.y + _v_space) );
-
-                        // offer only to adjust size by removing ending gap
-                        if ( mp->timeline()->gapAt( mp->timeline()->end() ) ) {
-                            if ( ImGuiToolkit::ButtonIcon(7, 0, "Remove end gap" )){
-                                if ( mp->timeline()->removeGaptAt(mp->timeline()->end()) ) {
-                                    std::ostringstream info;
-                                    info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline Remove end gap";
-                                    Action::manager().store(info.str());
-                                }
-                            }
-                        }
+                        ImGui::PopStyleVar();
+                        ImGui::PopID();
                     }
 
-                    ImGui::PopStyleVar();
-                    ImGui::PopID();
                 }
 
                 // next line position
@@ -2523,20 +2528,20 @@ void SourceController::RenderSelectionContextMenu()
         std::ostringstream info;
         info << SystemToolkit::base_filename( _selection_mediaplayer->filename() );
 
-        if ( ImGuiToolkit::MenuItemIcon(14, 16, ICON_FA_CARET_LEFT " Accelerate", false, fabs(_selection_target_faster) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(14, 16,  ICON_FA_CARET_LEFT " Accelerate" , false, fabs(_selection_target_faster) > 0 )){
             _selection_mediaplayer->setPlaySpeed( _selection_target_faster );
             info << ": Speed x" << std::setprecision(3) << _selection_target_faster;
             Action::manager().store(info.str());
         }
-        if ( ImGuiToolkit::MenuItemIcon(15, 16,  ICON_FA_CARET_RIGHT " Slow down", false, fabs(_selection_target_slower) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(15, 16,  "Slow down " ICON_FA_CARET_RIGHT , false, fabs(_selection_target_slower) > 0 )){
             _selection_mediaplayer->setPlaySpeed( _selection_target_slower );
             info << ": Speed x" << std::setprecision(3) << _selection_target_slower;
             Action::manager().store(info.str());
         }
         if ( _selection_mediaplayer->timeline()->gapAt( _selection_mediaplayer->timeline()->end()) ) {
 
-            if ( ImGuiToolkit::MenuItemIcon(7, 0, "Remove end gap" )){
-                info << ": Remove end gap ";
+            if ( ImGuiToolkit::MenuItemIcon(7, 0, "Restore ending" )){
+                info << ": Restore ending";
                 if ( _selection_mediaplayer->timeline()->removeGaptAt(_selection_mediaplayer->timeline()->end()) )
                     Action::manager().store(info.str());
             }
@@ -2763,12 +2768,17 @@ void SourceController::RenderSingleSource(Source *s)
 
 void SourceController::RenderMediaPlayer(MediaPlayer *mp)
 {
+    // for action manager
+    std::ostringstream oss;
+    oss << SystemToolkit::base_filename( mp->filename() );
+
+    // for draw
     static float timeline_zoom = 1.f;
     const float slider_zoom_width = _timeline_height / 2.f;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    ImVec2 top = ImGui::GetCursorScreenPos();
-    ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, _mediaplayer_height);
+    const ImVec2 top = ImGui::GetCursorScreenPos();
+    const ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, _mediaplayer_height);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + _v_space);
 
     ///
@@ -2789,32 +2799,32 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ///
     /// Image
     ///
-    top += corner;
-    ImGui::SetCursorScreenPos(top);
+    const ImVec2 top_image = top + corner;
+    ImGui::SetCursorScreenPos(top_image);
     ImGui::Image((void*)(uintptr_t) mp->texture(), framesize);
 
     ///
     /// Info overlays
     ///
-    ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
+    ImGui::SetCursorScreenPos(top_image + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), _v_space));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
     if (ImGui::IsItemHovered()){
         // information visitor
         mp->accept(info_);
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-        draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
-        ImGui::SetCursorScreenPos(top + ImVec2(_h_space, _v_space));
+        draw_list->AddRectFilled(top_image, top_image + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
+        ImGui::SetCursorScreenPos(top_image + ImVec2(_h_space, _v_space));
         ImGui::Text("%s", info_.str().c_str());
 
         // Icon to inform hardware decoding
         if ( !mp->hardwareDecoderName().empty()) {
-            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
+            ImGui::SetCursorScreenPos(top_image + ImVec2( framesize.x - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
             ImGui::Text(ICON_FA_MICROCHIP);
         }
 
         // refresh frequency
         if ( mp->isPlaying()) {
-            ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * _buttons_height, 0.667f * tooltip_height));
+            ImGui::SetCursorScreenPos(top_image + ImVec2( framesize.x - 1.5f * _buttons_height, 0.667f * tooltip_height));
             ImGui::Text("%.1f Hz", mp->updateFrameRate());
         }
     }
@@ -2828,143 +2838,14 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::Text( ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string(mp->position()).c_str() );
     ImGui::PopFont();
 
-    ///
-    /// media player buttons bar (custom)
-    ///
-    draw_list->AddRectFilled(bottom, bottom + ImVec2(rendersize.x, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
-
-    // buttons style
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.24f, 0.24f, 0.24f, 0.2f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
-
-    ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
-    if (ImGui::Button(mp->playSpeed() > 0 ? ICON_FA_FAST_BACKWARD :ICON_FA_FAST_FORWARD))
-        mp->rewind();
-
-    // ignore actual play status of mediaplayer when slider is pressed
-    if (!slider_pressed_)
-        media_playing_mode_ = mp->isPlaying();
-
-    // display buttons Play/Stop depending on current playing mode
-    ImGui::SameLine(0, _h_space);
-    if (media_playing_mode_) {
-        if (ImGui::Button(ICON_FA_PAUSE))
-            media_playing_mode_ = false;
-        ImGui::SameLine(0, _h_space);
-
-        ImGui::PushButtonRepeat(true);
-        if (ImGui::Button( mp->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD))
-            mp->jump ();
-        ImGui::PopButtonRepeat();
-    }
-    else {
-        if (ImGui::Button(ICON_FA_PLAY))
-            media_playing_mode_ = true;
-        ImGui::SameLine(0, _h_space);
-
-        ImGui::PushButtonRepeat(true);
-        if (ImGui::Button( mp->playSpeed() < 0 ? ICON_FA_STEP_BACKWARD : ICON_FA_STEP_FORWARD))
-            mp->step();
-        ImGui::PopButtonRepeat();
-    }
-
-    // loop modes button
-    ImGui::SameLine(0, _h_space);
-    static int current_loop = 0;
-    static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
-    current_loop = (int) mp->loop();
-    if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
-        mp->setLoop( (MediaPlayer::LoopMode) current_loop );
-
-
-    std::ostringstream oss;
-    oss << SystemToolkit::base_filename( mp->filename() );
-
-    // speed slider (if enough space)
-    float speed = static_cast<float>(mp->playSpeed());
-    if ( rendersize.x > _min_width * 1.4f ) {
-        ImGui::SameLine(0, MAX(_h_space * 2.f, rendersize.x - _min_width * 1.6f) );
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - _buttons_height );
-        if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed " UNICODE_MULTIPLY " %.1f", 2.f))
-            mp->setPlaySpeed( static_cast<double>(speed) );
-
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            oss << ": Speed x" << std::setprecision(3) << speed;
-            Action::manager().store(oss.str());
-        }
-    }
-
-    ///
-    /// Media Player context menu
-    ///
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(rendersize.x - _buttons_height / 1.5f);
-
-    // Timeline popup menu
-    if (ImGuiToolkit::IconButton(5,8) )
-        ImGui::OpenPopup( "MenuTimeline" );
-    if (ImGui::BeginPopup( "MenuTimeline" ))
-    {
-        if (ImGuiToolkit::MenuItemIcon(19,15,"Reset speed" )){
-            speed = 1.f;
-            mp->setPlaySpeed( static_cast<double>(speed) );
-            oss << ": Speed x1";
-            Action::manager().store(oss.str());
-        }
-        if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline" )){
-            timeline_zoom = 1.f;
-            mp->timeline()->clearFading();
-            mp->timeline()->clearGaps();
-            oss << ": Reset timeline";
-            Action::manager().store(oss.str());
-        }
-        if (ImGui::BeginMenu(ICON_FA_RANDOM "  Auto fading"))
-        {
-            const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
-            for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
-                if (ImGui::MenuItem(names[i])) {
-                    mp->timeline()->autoFading( 250 * (int ) pow(2, i) );
-                    mp->timeline()->smoothFading( 2 * (i + 1) );
-                    oss << ": Timeline Auto fading " << 250 * (int ) pow(2, i);
-                    Action::manager().store(oss.str());
-                }
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" )){
-
-            if (ImGuiToolkit::MenuItemIcon(14, 12,  "Cut faded areas" ))
-                if (mp->timeline()->autoCut()){
-                    oss << ": Cut faded areas";
-                    Action::manager().store(oss.str());
-                }
-
-            ImGui::EndMenu();
-        }
-        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-        {
-            bool hwdec = !mp->softwareDecodingForced();
-            if (ImGui::MenuItem("Auto", "", &hwdec ))
-                mp->setSoftwareDecodingForced(false);
-            hwdec = mp->softwareDecodingForced();
-            if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                mp->setSoftwareDecodingForced(true);
-            ImGui::EndMenu();
-        }
-        ImGui::EndPopup();
-    }
-
-    // restore buttons style
-    ImGui::PopStyleColor(5);
 
     ///
     /// media player timelines
     ///
-    bottom += ImVec2(0, _buttons_height + _v_space);
-    ImGui::SetCursorScreenPos(bottom);
+
+    // ignore actual play status of mediaplayer when slider is pressed
+    if (!slider_pressed_)
+        media_playing_mode_ = mp->isPlaying();
 
     // seek position
     guint64 seek_t = mp->position();
@@ -2972,6 +2853,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     // scrolling sub-window
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.f, 0.f, 0.f, 0.0f));
 
     ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * _timeline_height + _scrollbar );
@@ -3063,6 +2945,135 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, _timeline_height), &timeline_zoom, 1.0, 5.f, "");
 
     ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(1);
+
+
+    ///
+    /// media player buttons bar (custom)
+    ///
+
+    bottom.x = top.x;
+    bottom.y += 2.f * _timeline_height + _scrollbar;
+
+    draw_list->AddRectFilled(bottom, bottom + ImVec2(rendersize.x, _buttons_height), ImGui::GetColorU32(ImGuiCol_FrameBg), _h_space);
+
+    // buttons style
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.24f, 0.24f, 0.24f, 0.2f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+
+    ImGui::SetCursorScreenPos(bottom + ImVec2(_h_space, _v_space) );
+    if (ImGui::Button(mp->playSpeed() > 0 ? ICON_FA_FAST_BACKWARD :ICON_FA_FAST_FORWARD))
+        mp->rewind();
+
+    // display buttons Play/Stop depending on current playing mode
+    ImGui::SameLine(0, _h_space);
+    if (media_playing_mode_) {
+        if (ImGui::Button(ICON_FA_PAUSE))
+            media_playing_mode_ = false;
+        ImGui::SameLine(0, _h_space);
+
+        ImGui::PushButtonRepeat(true);
+        if (ImGui::Button( mp->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD))
+            mp->jump ();
+        ImGui::PopButtonRepeat();
+    }
+    else {
+        if (ImGui::Button(ICON_FA_PLAY))
+            media_playing_mode_ = true;
+        ImGui::SameLine(0, _h_space);
+
+        ImGui::PushButtonRepeat(true);
+        if (ImGui::Button( mp->playSpeed() < 0 ? ICON_FA_STEP_BACKWARD : ICON_FA_STEP_FORWARD))
+            mp->step();
+        ImGui::PopButtonRepeat();
+    }
+
+    // loop modes button
+    ImGui::SameLine(0, _h_space);
+    static int current_loop = 0;
+    static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
+    current_loop = (int) mp->loop();
+    if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
+        mp->setLoop( (MediaPlayer::LoopMode) current_loop );
+
+    // speed slider (if enough space)
+    float speed = static_cast<float>(mp->playSpeed());
+    if ( rendersize.x > _min_width * 1.4f ) {
+        ImGui::SameLine(0, MAX(_h_space * 2.f, rendersize.x - _min_width * 1.6f) );
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - _buttons_height );
+        if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed " UNICODE_MULTIPLY " %.1f", 2.f))
+            mp->setPlaySpeed( static_cast<double>(speed) );
+
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            oss << ": Speed x" << std::setprecision(3) << speed;
+            Action::manager().store(oss.str());
+        }
+    }
+
+    ///
+    /// Media Player context menu
+    ///
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(rendersize.x - _buttons_height / 1.5f);
+
+    // Timeline popup menu
+    if (ImGuiToolkit::IconButton(5,8) )
+        ImGui::OpenPopup( "MenuTimeline" );
+    if (ImGui::BeginPopup( "MenuTimeline" ))
+    {
+        if (ImGuiToolkit::MenuItemIcon(19,15,"Reset speed" )){
+            speed = 1.f;
+            mp->setPlaySpeed( static_cast<double>(speed) );
+            oss << ": Speed x1";
+            Action::manager().store(oss.str());
+        }
+        if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline" )){
+            timeline_zoom = 1.f;
+            mp->timeline()->clearFading();
+            mp->timeline()->clearGaps();
+            oss << ": Reset timeline";
+            Action::manager().store(oss.str());
+        }
+        if (ImGui::BeginMenu(ICON_FA_RANDOM "  Auto fading"))
+        {
+            const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
+            for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
+                if (ImGui::MenuItem(names[i])) {
+                    mp->timeline()->autoFading( 250 * (int ) pow(2, i) );
+                    mp->timeline()->smoothFading( 2 * (i + 1) );
+                    oss << ": Timeline Auto fading " << 250 * (int ) pow(2, i);
+                    Action::manager().store(oss.str());
+                }
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
+        {
+            if (ImGuiToolkit::MenuItemIcon(14, 12,  "Cut faded areas" ))
+                if (mp->timeline()->autoCut()){
+                    oss << ": Cut faded areas";
+                    Action::manager().store(oss.str());
+                }
+            ImGui::EndMenu();
+        }
+        if (Settings::application.render.gpu_decoding && ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
+        {
+            bool hwdec = !mp->softwareDecodingForced();
+            if (ImGui::MenuItem("Auto", "", &hwdec ))
+                mp->setSoftwareDecodingForced(false);
+            hwdec = mp->softwareDecodingForced();
+            if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                mp->setSoftwareDecodingForced(true);
+            ImGui::EndMenu();
+        }
+        ImGui::EndPopup();
+    }
+
+    // restore buttons style
+    ImGui::PopStyleColor(5);
 
     ///
     /// media player timeline actions
@@ -3080,6 +3091,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     if ( mp->isPlaying() != media_play ) {
         mp->play( media_play );
     }
+
 }
 
 const char *SourceController::SourcePlayIcon(Source *s)
