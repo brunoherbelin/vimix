@@ -505,18 +505,6 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
 
-    // render tick and text START
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
-                   GstToolkit::time_to_string(start, GstToolkit::TIME_STRING_MINIMAL).c_str());
-    ImVec2 beginning_label_size = ImGui::CalcTextSize(text_buf, NULL);
-    ImVec2 beginning_label_pos = timeline_bbox.GetTL() + ImVec2(3.f, fontsize);
-    if (verticalflip)
-        beginning_label_pos.y -= fontsize;
-    ImGui::RenderTextClipped( beginning_label_pos, beginning_label_pos + beginning_label_size,
-                              text_buf, NULL, &beginning_label_size);
-    window->DrawList->AddLine( timeline_bbox.GetTL(), timeline_bbox.GetBL(), text_color, 1.5f);
-
-
     // render tick and text END
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
                    GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
@@ -527,6 +515,19 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     ImGui::RenderTextClipped( duration_label_pos, duration_label_pos + duration_label_size,
                               text_buf, NULL, &duration_label_size);
     window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetBR(), text_color, 1.5f);
+
+    // render tick and text START
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
+                   GstToolkit::time_to_string(start, GstToolkit::TIME_STRING_MINIMAL).c_str());
+    ImVec2 beginning_label_size = ImGui::CalcTextSize(text_buf, NULL);
+    ImVec2 beginning_label_pos = timeline_bbox.GetTL() + ImVec2(3.f, fontsize);
+    if (verticalflip)
+        beginning_label_pos.y -= fontsize;
+    if ( beginning_label_pos.x + beginning_label_size.x < duration_label_pos . x) {
+        ImGui::RenderTextClipped( beginning_label_pos, beginning_label_pos + beginning_label_size,
+                                  text_buf, NULL, &beginning_label_size);
+    }
+    window->DrawList->AddLine( timeline_bbox.GetTL(), timeline_bbox.GetBL(), text_color, 1.5f);
 
     ImGui::PopFont();
 

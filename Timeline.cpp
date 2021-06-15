@@ -268,6 +268,28 @@ GstClockTime Timeline::sectionsDuration() const
     return duration() - d;
 }
 
+
+GstClockTime Timeline::sectionsTimeAt(GstClockTime t) const
+{
+    // target time
+    GstClockTime d = t;
+
+    // loop over gaps
+    for (auto it = gaps_.begin(); it != gaps_.end(); ++it) {
+        // gap before target?
+        if ( (*it).end < d ) {
+            // increment target
+            d += (*it).end - (*it).begin;
+        }
+        else
+            // done
+            break;
+    }
+
+    // return updated target
+    return d;
+}
+
 size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
 {
     size_t arraysize = MAX_TIMELINE_ARRAY;

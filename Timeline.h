@@ -120,9 +120,14 @@ public:
     bool addGap(GstClockTime begin, GstClockTime end);
     bool cut(GstClockTime t, bool left, bool join_extremity);
     bool removeGaptAt(GstClockTime t);
-
     bool gapAt(const GstClockTime t) const;
     bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
+
+    // inverse of gaps: sections of play areas
+    TimeIntervalSet sections() const;
+    GstClockTime sectionsDuration() const;
+    GstClockTime sectionsTimeAt(GstClockTime t) const;
+    size_t fillSectionsArrays(float * const gaps, float * const fading);
 
     // Manipulation of Fading
     float fadingAt(const GstClockTime t) const;
@@ -134,10 +139,6 @@ public:
     void smoothFading(uint N = 1);
     void autoFading(uint milisecond = 100);
     bool autoCut();
-    TimeIntervalSet sections() const;
-
-    GstClockTime sectionsDuration() const;
-    size_t fillSectionsArrays(float * const gaps, float * const fading);
 
 private:
 
