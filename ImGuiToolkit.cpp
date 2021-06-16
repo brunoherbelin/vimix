@@ -537,11 +537,12 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     guint64 tick = 0;
     while ( tick < duration )
     {
-        // large tick mark
+        // large tick mark ?
         float tick_length = (tick%large_tick_step) ? style.FramePadding.y : fontsize - style.FramePadding.y;
 
         // label tick mark
-        if ( !(tick%label_tick_step) ) {
+        if ( !(tick%label_tick_step) )
+        {
             tick_length = fontsize;
             guint64 ticklabel = 100 * (guint64) round( (double)( tick + start) / 100.0); // round value to avoid '0.99' and alike
             ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
