@@ -2002,6 +2002,13 @@ void SourceController::resetActiveSelection()
 
 void SourceController::Render()
 {
+    // reset on session change
+    static Session *__session = nullptr;
+    if (Mixer::manager().session() != __session) {
+        __session = Mixer::manager().session();
+        resetActiveSelection();
+    }
+
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
