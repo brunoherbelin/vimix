@@ -106,25 +106,19 @@ public:
 
 class SourceController
 {
-    float _min_width;
-    float _h_space;
-    float _v_space;
-    float _buttons_width;
-    float _buttons_height;
-    float _timeline_height;
-    float _scrollbar;
-    float _mediaplayer_height;
+    float min_width_;
+    float h_space_;
+    float v_space_;
+    float buttons_width_;
+    float buttons_height_;
+    float timeline_height_;
+    float scrollbar_;
+    float mediaplayer_height_;
 
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
     SourceList selection_;
-
-    bool _selection_context_menu;
-    MediaPlayer *_selection_mediaplayer;
-    double _selection_target_slower;
-    double _selection_target_faster;
-    void RenderSelectionContextMenu();
 
     // re-usable ui parts
     void DrawButtonBar(ImVec2 bottom, float width);
@@ -133,13 +127,23 @@ class SourceController
 
     // Render the sources dynamically selected
     void RenderSelectedSources();
+
     // Render a stored selection
+    bool selection_context_menu_;
+    MediaPlayer *selection_mediaplayer_;
+    double selection_target_slower_;
+    double selection_target_faster_;
+    void RenderSelectionContextMenu();
     void RenderSelection(size_t i);
+
     // Render a single source
     void RenderSingleSource(Source *s);
+
     // Render a single media player
-    bool media_playing_mode_;
-    bool slider_pressed_;
+    MediaPlayer *mediaplayer_active_;
+    bool mediaplayer_mode_;
+    bool mediaplayer_slider_pressed_;
+    float mediaplayer_timeline_zoom_;
     void RenderMediaPlayer(MediaPlayer *mp);
 
 public:
