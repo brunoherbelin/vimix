@@ -3134,11 +3134,12 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
 
     // play bar is enabled if only one source selected is enabled
     bool enabled = false;
+    size_t n_play = 0;
     for (auto source = selection_.begin(); source != selection_.end(); ++source){
-        if ( (*source)->active() ) {
+        if ( (*source)->active() )
             enabled = true;
-            break;
-        }
+        if ( (*source)->playing() )
+            n_play++;
     }
 
     // buttons style for disabled / enabled bar
@@ -3160,18 +3161,22 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
     }
     ImGui::SameLine(0, h_space_);
 
-    // unique play / pause button for single source
-    if (selection_.size() == 1) {
-        Source *s = selection_.front();
-        if (s->playing()) {
-            if (ImGui::Button(ICON_FA_PAUSE) && enabled)
-                (s)->play(false);
-        } else {
-            if (ImGui::Button(ICON_FA_PLAY) && enabled)
-                (s)->play(true);
+    // unique play / pause button
+    if (n_play < 1 || selection_.size() == n_play) {
+        if (n_play) {
+            if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
+                for (auto source = selection_.begin(); source != selection_.end(); ++source)
+                    (*source)->play(false);
+            }
+        }
+        else {
+            if (ImGui::Button(ICON_FA_PLAY) && enabled){
+                for (auto source = selection_.begin(); source != selection_.end(); ++source)
+                    (*source)->play(true);
+            }
         }
     }
-    // separate play & pause buttons for multiple sources (or none)
+    // separate play & pause buttons for disagreeing sources
     else {
         if (ImGui::Button(ICON_FA_PLAY) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
