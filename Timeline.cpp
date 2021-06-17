@@ -258,11 +258,10 @@ bool Timeline::removeGaptAt(GstClockTime t)
 
 GstClockTime Timeline::sectionsDuration() const
 {
-    GstClockTime d = 0;
-
     // compute the sum of durations of gaps
-    for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
-        d += (*it).end - (*it).begin;
+    GstClockTime d = 0;
+    for (auto g = gaps_.begin(); g != gaps_.end(); ++g)
+        d+= g->duration();
 
     // remove sum of gaps from actual duration
     return duration() - d;
@@ -271,15 +270,13 @@ GstClockTime Timeline::sectionsDuration() const
 
 GstClockTime Timeline::sectionsTimeAt(GstClockTime t) const
 {
-    // target time
-    GstClockTime d = t;
-
     // loop over gaps
-    for (auto it = gaps_.begin(); it != gaps_.end(); ++it) {
+    GstClockTime d = t;
+    for (auto g = gaps_.begin(); g != gaps_.end(); ++g) {
         // gap before target?
-        if ( (*it).end < d ) {
+        if ( g->begin < d ) {
             // increment target
-            d += (*it).end - (*it).begin;
+            d += g->duration();
         }
         else
             // done
