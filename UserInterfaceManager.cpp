@@ -2570,11 +2570,13 @@ void SourceController::RenderSelection(size_t i)
     }
 
     ImGui::SameLine();
-    ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-    if (ImGuiToolkit::ButtonIcon(11,14,"Delete" )) {
+    ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.3f);
+    if (ImGui::Button(ICON_FA_MINUS_SQUARE)) {
         resetActiveSelection();
         Mixer::manager().session()->deletePlayGroup(i);
     }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Delete selection");
 
     ImGui::PopStyleColor(4);
 }
@@ -2585,10 +2587,10 @@ void SourceController::RenderSelectionContextMenu()
         return;
 
     if (selection_context_menu_) {
-        ImGui::OpenPopup("_speedchange_context_menu");
+        ImGui::OpenPopup("source_controller_selection_context_menu");
         selection_context_menu_ = false;
     }
-    if (ImGui::BeginPopup("_speedchange_context_menu"))
+    if (ImGui::BeginPopup("source_controller_selection_context_menu"))
     {
         std::ostringstream info;
         info << SystemToolkit::base_filename( selection_mediaplayer_->filename() );
