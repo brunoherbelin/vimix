@@ -1075,7 +1075,7 @@ void UserInterface::RenderPreview()
                 ImGui::Separator();
 
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
-                if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin to current view", nullptr, &pinned) ){
+                if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
                     if (pinned)
                         Settings::application.widget.preview_view = Settings::application.current_view;
                     else
@@ -2048,6 +2048,13 @@ void SourceController::Render()
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
+            if (ImGui::MenuItem( ICON_FA_TH "  List all")) {
+                selection_.clear();
+                resetActiveSelection();
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();
+                selection_ = playable_only( Mixer::manager().session()->getDepthSortedList() );
+            }
             if (ImGui::MenuItem( ICON_FA_WIND "  Clear")) {
                 selection_.clear();
                 resetActiveSelection();
@@ -2057,7 +2064,7 @@ void SourceController::Render()
 
             ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
-            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin to current view", nullptr, &pinned) ){
+            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
                 if (pinned)
                     Settings::application.widget.media_player_view = Settings::application.current_view;
                 else
@@ -2162,6 +2169,10 @@ void SourceController::Render()
 
                 ImGui::EndMenu();
             }
+        }
+        else {
+            ImGui::SameLine(0, 2.f * g.Style.ItemSpacing.x );
+            ImGui::TextDisabled(ICON_FA_FILM " Video");
         }
 
         ImGui::EndMenuBar();
@@ -2752,7 +2763,7 @@ void SourceController::RenderSelectedSources()
         if (ImGui::Button( label.c_str() )) {
             active_selection_ = Mixer::manager().session()->numPlayGroups();
             active_label_ = std::string("Selection #") + std::to_string(active_selection_);
-            Mixer::manager().session()->addPlayGroup( ids(playable_only(Mixer::selection().getCopy())) );
+            Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
         }
 
         ImGui::PopStyleColor(2);

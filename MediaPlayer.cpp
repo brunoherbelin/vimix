@@ -1250,6 +1250,6 @@ void MediaPlayer::TimeCounter::tic ()
     // calculate instantaneous framerate
     // Exponential moving averate with previous framerate to filter jitter
     if (dt > 1.0)
-        fps = 0.5 * fps + 500.0 / dt ;
+        fps = CLAMP( 0.5 * fps + 500.0 / dt, 0.0, 1000.0) ;
 }
 
