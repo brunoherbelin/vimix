@@ -14,6 +14,18 @@ bool compare_depth (Source * first, Source * second)
   return ( first->depth() < second->depth() );
 }
 
+
+bool notplayable (const Source *s) { return !s->playable(); }
+
+SourceList playable_only (const SourceList &list)
+{
+    SourceList pl = list;
+
+    pl.remove_if(notplayable);
+
+    return pl;
+}
+
 SourceList depth_sorted(const SourceList &list)
 {
     SourceList sl = list;

@@ -400,7 +400,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attach(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(" source inserted"));
+        Action::manager().store(s->name() + std::string(": source inserted"));
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -768,6 +768,17 @@ SourceList Mixer::findSources (float depth_from, float depth_to)
             found.push_back(*it);
     }
     return found;
+}
+
+SourceList Mixer::validate (const SourceList &list)
+{
+    SourceList sl;
+    for( auto sit = list.begin(); sit != list.end(); ++sit) {
+        SourceList::iterator it = session_->find( *sit );
+        if (it != session_->end())
+            sl.push_back(*sit);
+    }
+    return sl;
 }
 
 void Mixer::setCurrentSource(uint64_t id)

@@ -84,6 +84,14 @@ public:
      * */
     bool isPlaying(bool testpipeline = false) const;
     /**
+     * Attempt to restart
+     * */
+    virtual void rewind();
+    /**
+     * Get position time
+     * */
+    virtual GstClockTime position();
+    /**
      * Get rendering update framerate
      * measured during play
      * */
@@ -126,6 +134,7 @@ protected:
     bool live_;
 
     // GST & Play status
+    GstClockTime position_;
     GstState desired_state_;
     GstElement *pipeline_;
     GstVideoInfo v_frame_video_info_;
@@ -135,17 +144,13 @@ protected:
 
     // fps counter
     struct TimeCounter {
-
-        GstClockTime last_time;
-        GstClockTime tic_time;
-        int nbFrames;
+        GTimer *timer;
         gdouble fps;
     public:
         TimeCounter();
-        GstClockTime dt();
+        ~TimeCounter();
         void tic();
-        void reset();
-        gdouble frameRate() const;
+        inline gdouble frameRate() const { return fps; }
     };
     TimeCounter timecount_;
 

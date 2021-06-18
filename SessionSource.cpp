@@ -18,7 +18,7 @@
 #include "Mixer.h"
 
 
-SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false)
+SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false), timer_(0), paused_(false)
 {
     session_ = new Session;
 }
@@ -62,11 +62,11 @@ uint SessionSource::texture() const
 }
 
 void SessionSource::setActive (bool on)
-{
+{    
     Source::setActive(on);
 
     // change status of session (recursive change of internal sources)
-    if (session_ != nullptr)
+    if (session_)
         session_->setActive(active_);
 }
 
@@ -76,8 +76,10 @@ void SessionSource::update(float dt)
         return;
 
     // update content
-    if (active_)
+    if (active_ && !paused_) {
         session_->update(dt);
+        timer_ += guint64(dt * 1000.f) * GST_USECOND;
+    }
 
     // delete a source which failed
     if (session_->failedSource() != nullptr) {
@@ -88,6 +90,15 @@ void SessionSource::update(float dt)
     }
 
     Source::update(dt);
+}
+
+void SessionSource::replay ()
+{
+    if (session_) {
+        for( SourceList::iterator it = session_->begin(); it != session_->end(); ++it)
+            (*it)->replay();
+        timer_ = 0;
+    }
 }
 
 
@@ -150,6 +161,7 @@ void SessionFileSource::load(const std::string &p, uint recursion)
     }
 
     // will be ready after init and one frame rendered
+    initialized_ = false;
     ready_ = false;
 }
 
@@ -332,7 +344,7 @@ RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr)
 
 bool RenderSource::failed() const
 {
-    if ( mode_ > Source::UNINITIALIZED && session_!=nullptr )
+    if ( renderbuffer_ != nullptr && session_ != nullptr )
         return renderbuffer_->resolution() != session_->frame()->resolution();
 
     return false;
@@ -372,7 +384,7 @@ void RenderSource::init()
 
 glm::vec3 RenderSource::resolution() const
 {
-    if (mode_ > Source::UNINITIALIZED)
+    if (renderbuffer_ != nullptr)
         return renderbuffer_->resolution();
     else if (session_ && session_->frame())
         return session_->frame()->resolution();

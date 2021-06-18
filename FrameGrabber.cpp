@@ -41,12 +41,18 @@ void FrameGrabbing::add(FrameGrabber *rec)
         grabbers_.push_back(rec);
 }
 
+void FrameGrabbing::verify(FrameGrabber **rec)
+{
+    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() )
+        *rec = nullptr;
+}
+
 FrameGrabber *FrameGrabbing::front()
 {
     if (grabbers_.empty())
         return nullptr;
-    else
-        return grabbers_.front();
+
+    return grabbers_.front();
 }
 
 struct fgId: public std::unary_function<FrameGrabber*, bool>

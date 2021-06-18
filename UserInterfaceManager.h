@@ -10,10 +10,13 @@
 #define NAV_MENU 66
 #define NAV_TRANS 67
 
+#include "SourceList.h"
+#include "InfoVisitor.h"
+
 struct ImVec2;
-class Source;
 class MediaPlayer;
 class FrameBufferImage;
+class FrameGrabber;
 
 class SourcePreview {
 
@@ -101,20 +104,52 @@ public:
 };
 
 
-class MediaController
+class SourceController
 {
-    MediaPlayer *mp_;
-    std::string current_;
-    bool follow_active_source_;
-    bool media_playing_mode_;
-    bool slider_pressed_;
+    float min_width_;
+    float h_space_;
+    float v_space_;
+    float buttons_width_;
+    float buttons_height_;
+    float timeline_height_;
+    float scrollbar_;
+    float mediaplayer_height_;
+
+    std::string active_label_;
+    int active_selection_;
+    InfoVisitor info_;
+    SourceList selection_;
+
+    // re-usable ui parts
+    void DrawButtonBar(ImVec2 bottom, float width);
+    const char *SourcePlayIcon(Source *s);
+    bool SourceButton(Source *s, ImVec2 framesize);
+
+    // Render the sources dynamically selected
+    void RenderSelectedSources();
+
+    // Render a stored selection
+    bool selection_context_menu_;
+    MediaPlayer *selection_mediaplayer_;
+    double selection_target_slower_;
+    double selection_target_faster_;
+    void RenderSelectionContextMenu();
+    void RenderSelection(size_t i);
+
+    // Render a single source
+    void RenderSingleSource(Source *s);
+
+    // Render a single media player
+    MediaPlayer *mediaplayer_active_;
+    bool mediaplayer_mode_;
+    bool mediaplayer_slider_pressed_;
+    float mediaplayer_timeline_zoom_;
+    void RenderMediaPlayer(MediaPlayer *mp);
 
 public:
-    MediaController();
+    SourceController();
 
-    void setMediaPlayer(MediaPlayer *mp = nullptr);
-    void followCurrentSource();
-
+    void resetActiveSelection();
     void Render();
 };
 
@@ -124,7 +159,7 @@ class UserInterface
     friend class Navigator;
     Navigator navigator;
     ToolBox toolbox;
-    MediaController mediacontrol;
+    SourceController sourcecontrol;
 
     bool ctrl_modifier_active;
     bool alt_modifier_active;
@@ -138,8 +173,11 @@ class UserInterface
     unsigned int screenshot_step;
 
     // frame grabbers
-    uint64_t video_recorder_;
-    uint64_t webcam_emulator_;
+    FrameGrabber *video_recorder_;
+
+#if defined(LINUX)
+    FrameGrabber *webcam_emulator_;
+#endif
 
     // Private Constructor
     UserInterface();
@@ -171,7 +209,6 @@ public:
 
     void showPannel(int id = 0);
     void showSourceEditor(Source *s);
-    void showMediaPlayer(MediaPlayer *mp);
 
     // TODO implement the shader editor
     std::string currentTextEdit;

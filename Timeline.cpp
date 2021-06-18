@@ -6,6 +6,10 @@
 #include "Log.h"
 #include "Timeline.h"
 
+
+static float empty_gaps[MAX_TIMELINE_ARRAY] = {};
+static float empty_fade[MAX_TIMELINE_ARRAY] = {};
+
 struct includesTime: public std::unary_function<TimeInterval, bool>
 {
     inline bool operator()(const TimeInterval s) const
@@ -86,7 +90,7 @@ GstClockTime Timeline::next(GstClockTime time) const
     GstClockTime next_time = time;
 
     TimeInterval gap;
-    if (gapAt(time, gap) && gap.is_valid())
+    if (getGapAt(time, gap) && gap.is_valid())
         next_time = gap.end;
 
     return next_time;
@@ -96,7 +100,7 @@ GstClockTime Timeline::previous(GstClockTime time) const
 {
     GstClockTime prev_time = time;
     TimeInterval gap;
-    if (gapAt(time, gap) && gap.is_valid())
+    if (getGapAt(time, gap) && gap.is_valid())
         prev_time = gap.begin;
 
     return prev_time;
@@ -116,7 +120,18 @@ void Timeline::update()
     gaps_array_need_update_ = false;
 }
 
-bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
+void Timeline::refresh()
+{
+    fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
+}
+
+bool Timeline::gapAt(const GstClockTime t) const
+{
+    TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
+    return ( g != gaps_.end() );
+}
+
+bool Timeline::getGapAt(const GstClockTime t, TimeInterval &gap) const
 {
     TimeIntervalSet::const_iterator g = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
 
@@ -131,6 +146,84 @@ bool Timeline::gapAt(const GstClockTime t, TimeInterval &gap) const
 bool Timeline::addGap(GstClockTime begin, GstClockTime end)
 {
     return addGap( TimeInterval(begin, end) );
+}
+
+bool Timeline::cut(GstClockTime t, bool left, bool join_extremity)
+{
+    bool ret = false;
+
+    if (timing_.includes(t))
+    {
+        TimeIntervalSet::iterator gap = std::find_if(gaps_.begin(), gaps_.end(), includesTime(t));
+
+        // cut left part
+        if (left) {
+            // cut a gap
+            if ( gap != gaps_.end() )
+            {
+                GstClockTime b = gap->begin;
+                gaps_.erase(gap);
+                ret = addGap(b, t);
+            }
+            // create a gap
+            else {
+                auto previous = gaps_.end();
+                for (auto g = gaps_.begin(); g != gaps_.end(); previous = g++) {
+                    if ( g->begin > t)
+                        break;
+                }
+                if (join_extremity) {
+ //TODO
+                }
+                else {
+                    if (previous == gaps_.end())
+                        ret = addGap( TimeInterval(timing_.begin, t) );
+                    else {
+                        GstClockTime b = previous->begin;
+                        gaps_.erase(previous);
+                        ret = addGap( TimeInterval(b, t) );
+                    }
+                }
+            }
+        }
+        // cut right part
+        else {
+            // cut a gap
+            if ( gap != gaps_.end() )
+            {
+                GstClockTime e = gap->end;
+                gaps_.erase(gap);
+                ret = addGap(t, e);
+            }
+            // create a gap
+            else {
+                auto suivant = gaps_.rend();
+                for (auto g = gaps_.rbegin(); g != gaps_.rend(); suivant = g++) {
+                    if ( g->end < t)
+                        break;
+                }
+                if (join_extremity) {
+                    if (suivant != gaps_.rend()) {
+                        for (auto g = gaps_.find(*suivant); g != gaps_.end(); ) {
+                            g = gaps_.erase(g);
+                        }
+                    }
+                    ret = addGap( TimeInterval(t, timing_.end) );
+                }
+                else {
+                    if (suivant == gaps_.rend())
+                        ret = addGap( TimeInterval(t, timing_.end) );
+                    else {
+                        GstClockTime e = suivant->end;
+                        gaps_.erase( gaps_.find(*suivant));
+                        ret = addGap( TimeInterval(t, e) );
+                    }
+                }
+            }
+        }
+    }
+
+    return ret;
 }
 
 bool Timeline::addGap(TimeInterval s)
@@ -160,6 +253,108 @@ bool Timeline::removeGaptAt(GstClockTime t)
     }
 
     return false;
+}
+
+
+GstClockTime Timeline::sectionsDuration() const
+{
+    // compute the sum of durations of gaps
+    GstClockTime d = 0;
+    for (auto g = gaps_.begin(); g != gaps_.end(); ++g)
+        d+= g->duration();
+
+    // remove sum of gaps from actual duration
+    return duration() - d;
+}
+
+
+GstClockTime Timeline::sectionsTimeAt(GstClockTime t) const
+{
+    // loop over gaps
+    GstClockTime d = t;
+    for (auto g = gaps_.begin(); g != gaps_.end(); ++g) {
+        // gap before target?
+        if ( g->begin < d ) {
+            // increment target
+            d += g->duration();
+        }
+        else
+            // done
+            break;
+    }
+
+    // return updated target
+    return d;
+}
+
+size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
+{
+    size_t arraysize = MAX_TIMELINE_ARRAY;
+    float* gapsptr = gaps;
+    float* fadingptr = fading;
+
+    if (gaps_array_need_update_)
+        fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
+
+    if (gaps_.size() > 0) {
+
+        // indices to define [s e[] sections
+        size_t s = 0;
+        size_t e = MAX_TIMELINE_ARRAY;
+        arraysize = 0;
+
+        auto it = gaps_.begin();
+
+        // cut at the beginning
+        if ((*it).begin == timing_.begin) {
+            for (size_t i = 0; i < 5; ++i)
+                gapsptr[ MAX(i, 0) ] = 1.f;
+
+            s = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+            ++it;
+        }
+
+        // loop
+        for (; it != gaps_.end(); ++it) {
+
+            // [s e] section
+            e = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+            size_t n = e - s;
+            memcpy( gapsptr, gapsArray_ + s, n  * sizeof(float));
+            memcpy( fadingptr, fadingArray_ + s, n * sizeof(float));
+
+            for (size_t i = -5; i > 0; ++i)
+                gapsptr[ MAX(n+i, 0) ] = 1.f;
+
+            gapsptr += n;
+            fadingptr += n;
+            arraysize += n;
+
+            // next section
+            s = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+        }
+
+        // close last [s e] section
+        if (s != MAX_TIMELINE_ARRAY) {
+
+            // [s e] section
+            e = MAX_TIMELINE_ARRAY;
+
+            size_t n = e - s;
+            memcpy( gapsptr, gapsArray_ + s, n * sizeof(float));
+            memcpy( fadingptr, fadingArray_ + s, n * sizeof(float));
+            arraysize += n;
+        }
+
+    }
+    else {
+
+        memcpy( gaps, gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+        memcpy( fading, fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+    }
+
+    return arraysize;
 }
 
 
@@ -200,7 +395,7 @@ void Timeline::clearGaps()
     gaps_array_need_update_ = true;
 }
 
-float Timeline::fadingAt(const GstClockTime t)
+float Timeline::fadingAt(const GstClockTime t) const
 {
     double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
     double previous_index = floor(true_index);
@@ -213,10 +408,22 @@ float Timeline::fadingAt(const GstClockTime t)
     return v;
 }
 
+size_t Timeline::fadingIndexAt(const GstClockTime t) const
+{
+    double true_index = (static_cast<double>(MAX_TIMELINE_ARRAY) * static_cast<double>(t)) / static_cast<double>(timing_.end);
+    double previous_index = floor(true_index);
+    return  MINI( static_cast<size_t>(previous_index), MAX_TIMELINE_ARRAY-1);
+}
+
 void Timeline::clearFading()
 {
-    for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
-        fadingArray_[i] = 1.f;
+    // fill static with 1 (only once)
+    if (empty_fade[0] < 1.f){
+        for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
+            empty_fade[i] = 1.f;
+    }
+    // clear with static array
+    memcpy(fadingArray_, empty_fade, MAX_TIMELINE_ARRAY * sizeof(float));
 }
 
 void Timeline::smoothFading(uint N)
@@ -246,7 +453,6 @@ void Timeline::smoothFading(uint N)
 
 void Timeline::autoFading(uint milisecond)
 {
-
     GstClockTime stepduration = timing_.end / MAX_TIMELINE_ARRAY;
     stepduration = GST_TIME_AS_MSECONDS(stepduration);
     uint N = milisecond / stepduration;
@@ -264,8 +470,10 @@ void Timeline::autoFading(uint milisecond)
     {
         // get index of begining of section
         size_t s = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+        s += 1;
         // get index of ending of section
         size_t e = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
+        e -= 1;
 
         // calculate size of the smooth transition in [s e] interval
         uint n = MIN( (e-s)/3, N );
@@ -281,7 +489,23 @@ void Timeline::autoFading(uint milisecond)
         for (; i < e; ++i)
             fadingArray_[i] = static_cast<float>(e-i) / static_cast<float>(n);
     }
+}
 
+bool Timeline::autoCut()
+{
+    bool changed = false;
+    for (long i = 0; i < MAX_TIMELINE_ARRAY; ++i) {
+        if (fadingArray_[i] < EPSILON) {
+            if (gapsArray_[i] != 1.f)
+                changed = true;
+            gapsArray_[i] = 1.f;
+        }
+    }
+
+    updateGapsFromArray(gapsArray_, MAX_TIMELINE_ARRAY);
+    gaps_array_need_update_ = false;
+
+    return changed;
 }
 
 void Timeline::updateGapsFromArray(float *array, size_t array_size)
@@ -299,14 +523,16 @@ void Timeline::updateGapsFromArray(float *array, size_t array_size)
             // detect a change of value between two slots
             if ( array[i] != status) {
                 // compute time of the event in array
-                GstClockTime t = (timing_.duration() * i) / array_size;
+                GstClockTime t = (timing_.duration() * i) / (array_size-1);
                 // change from 0.f to 1.f : begin of a gap
                 if (array[i] > 0.f) {
                     begin_gap = t;
                 }
                 // change from 1.f to 0.f : end of a gap
                 else {
-                    addGap( begin_gap, t );
+                    TimeInterval d (begin_gap, t) ;
+                    if (d.is_valid() && d.duration() > step_)
+                        addGap(d);
                     begin_gap = GST_CLOCK_TIME_NONE;
                 }
                 // swap
@@ -314,10 +540,14 @@ void Timeline::updateGapsFromArray(float *array, size_t array_size)
             }
         }
         // end a potentially pending gap if reached end of array with no end of gap
-        if (begin_gap != GST_CLOCK_TIME_NONE)
-            addGap( begin_gap, timing_.end );
+        if (begin_gap != GST_CLOCK_TIME_NONE) {
+            TimeInterval d (begin_gap, timing_.end) ;
+            if (d.is_valid() && d.duration() > step_)
+                addGap(d);
+        }
 
     }
+
 }
 
 void Timeline::fillArrayFromGaps(float *array, size_t array_size)
@@ -325,14 +555,15 @@ void Timeline::fillArrayFromGaps(float *array, size_t array_size)
     // fill the array from gaps
     if (array != nullptr && array_size > 0 && timing_.is_valid()) {
 
-        for(int i=0;i<array_size;++i)
-            gapsArray_[i] = 0.f;
+        // clear with static array
+        memcpy(gapsArray_, empty_gaps, MAX_TIMELINE_ARRAY * sizeof(float));
 
         // for each gap
+        GstClockTime d = timing_.duration();
         for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
         {
-            size_t s = ( (*it).begin * array_size ) / timing_.end;
-            size_t e = ( (*it).end * array_size ) / timing_.end;
+            size_t s = ( (*it).begin * array_size ) / d;
+            size_t e = ( (*it).end * array_size ) / d;
 
             // fill with 1 where there is a gap
             for (size_t i = s; i < e; ++i) {

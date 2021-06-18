@@ -18,11 +18,13 @@ struct WidgetsConfig
     int  stats_mode;
     bool logs;
     bool preview;
-    bool history;
+    int  preview_view;
     bool media_player;
-    bool media_player_view;
+    int  media_player_view;
+    bool timeline_editmode;
     bool shader_editor;
     bool toolbox;
+    bool history;
 
     WidgetsConfig() {
         stats = false;
@@ -30,9 +32,11 @@ struct WidgetsConfig
         stats_corner = 1;
         logs = false;
         preview = false;
+        preview_view = -1;
         history = false;
         media_player = false;
-        media_player_view = true;
+        media_player_view = -1;
+        timeline_editmode = false;
         shader_editor = false;
         toolbox = false;
     }
@@ -69,10 +73,12 @@ struct RecordConfig
     std::string path;
     int profile;
     float timeout;
+    int delay;
 
     RecordConfig() : path("") {
         profile = 0;
         timeout = RECORD_MAX_TIMEOUT;
+        delay = 0;
     }
 
 };

@@ -112,6 +112,9 @@ void SessionCreator::load(const std::string& filename)
     // load notes
     loadNotes( xmlDoc_.FirstChildElement("Notes") );
 
+    // load playlists
+    loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
+
     // all good
     session_->setFilename(filename);
 }
@@ -163,11 +166,35 @@ void SessionCreator::loadNotes(XMLElement *notesNode)
             XMLElement *sizeNode = note->FirstChildElement("size");
             if (sizeNode)  tinyxml2::XMLElementToGLM( sizeNode->FirstChildElement("vec2"), N.size);
             XMLElement* contentNode = note->FirstChildElement("text");
-            if (contentNode)  N.text = std::string ( contentNode->GetText() );
+            if (contentNode && contentNode->GetText())
+                N.text = std::string ( contentNode->GetText() );
 
             session_->addNote(N);
         }
 
+    }
+}
+
+void SessionCreator::loadPlayGroups(tinyxml2::XMLElement *playgroupNode)
+{
+    if (playgroupNode != nullptr && session_ != nullptr) {
+
+        XMLElement* playgroup = playgroupNode->FirstChildElement("PlayGroup");
+        for( ; playgroup ; playgroup = playgroup->NextSiblingElement())
+        {
+            SourceIdList playgroup_sources;
+
+            XMLElement* playgroupSourceNode = playgroup->FirstChildElement("source");
+            for ( ; playgroupSourceNode ; playgroupSourceNode = playgroupSourceNode->NextSiblingElement()) {
+                uint64_t id__ = 0;
+                playgroupSourceNode->QueryUnsigned64Attribute("id", &id__);
+
+                if (sources_id_.count(id__) > 0)
+                    playgroup_sources.push_back( id__ );
+
+            }
+            session_->addPlayGroup( playgroup_sources );
+        }
     }
 }
 

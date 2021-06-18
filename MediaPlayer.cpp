@@ -166,7 +166,8 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                         video_stream_info.framerate_n = gst_discoverer_video_info_get_framerate_num(vinfo);
                         video_stream_info.framerate_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
                         if (video_stream_info.framerate_n == 0 || video_stream_info.framerate_d == 0) {
-                            video_stream_info.framerate_n = 25;
+                            Log::Info("'%s': No framerate indicated in the file; using default 30fps", uri.c_str());
+                            video_stream_info.framerate_n = 30;
                             video_stream_info.framerate_d = 1;
                         }
                         video_stream_info.dt = ( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
@@ -186,7 +187,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                     if ( tags ) {
                         gchar *container = NULL;
                         if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
-                             video_stream_info.codec_name += " " + std::string(container);
+                             video_stream_info.codec_name += ", " + std::string(container);
                         if (container)
                             g_free(container);
                     }
@@ -543,7 +544,7 @@ bool MediaPlayer::isImage() const
     return media_.isimage;
 }
 
-std::string MediaPlayer::hardwareDecoderName()
+std::string MediaPlayer::hardwareDecoderName() const
 {
     return hardware_decoder_;
 }
@@ -604,9 +605,6 @@ void MediaPlayer::play(bool on)
     else
         Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
-
-    // reset time counter
-    timecount_.reset();
 
 }
 
@@ -679,7 +677,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
 
         GstClockTime jumpPts = pos;
 
-        if (timeline_.gapAt(pos, gap)) {
+        if (timeline_.getGapAt(pos, gap)) {
             // if in a gap, find closest seek target
             if (gap.is_valid()) {
                 // jump in one or the other direction
@@ -925,7 +923,7 @@ void MediaPlayer::update()
     else {
         // manage timeline: test if position falls into a gap
         TimeInterval gap;
-        if (position_ != GST_CLOCK_TIME_NONE && timeline_.gapAt(position_, gap)) {
+        if (position_ != GST_CLOCK_TIME_NONE && timeline_.getGapAt(position_, gap)) {
             // if in a gap, seek to next section
             if (gap.is_valid()) {
                 // jump in one or the other direction
@@ -944,6 +942,7 @@ void MediaPlayer::update()
     if (need_loop) {
         execute_loop_command();
     }
+
 }
 
 void MediaPlayer::execute_loop_command()
@@ -1233,54 +1232,24 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-MediaPlayer::TimeCounter::TimeCounter() {
+MediaPlayer::TimeCounter::TimeCounter()
+{
+    timer = g_timer_new ();
+}
 
-    reset();
+MediaPlayer::TimeCounter::~TimeCounter()
+{
+    g_free(timer);
 }
 
 void MediaPlayer::TimeCounter::tic ()
 {
-    // how long since last time
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time;
-
-    // one more frame since last time
-    nbFrames++;
+    double dt = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (50/50)
-    // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
-    // NB: factor 100 to get 0.01 precision
-    fps = 0.5 * fps + 0.005 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
-
-    // reset counter every second
-    if ( dt >= GST_SECOND)
-    {
-        last_time = t;
-        nbFrames = 0;
-    }
-}
-
-GstClockTime MediaPlayer::TimeCounter::dt ()
-{
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - tic_time;
-    tic_time = t;
-
-    // return the instantaneous delta t
-    return dt;
-}
-
-void MediaPlayer::TimeCounter::reset ()
-{
-    last_time = gst_util_get_timestamp ();;
-    tic_time = last_time;
-    nbFrames = 0;
-    fps = 0.0;
-}
-
-double MediaPlayer::TimeCounter::frameRate() const
-{
-    return fps;
+    // Exponential moving averate with previous framerate to filter jitter
+    if (dt > 1.0)
+        fps = CLAMP( 0.5 * fps + 500.0 / dt, 0.0, 1000.0) ;
 }
 

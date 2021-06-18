@@ -425,7 +425,6 @@ void Source::render()
     }
 }
 
-
 void Source::attach(FrameBuffer *renderbuffer)
 {
     // invalid argument
@@ -870,7 +869,6 @@ void CloneSource::setActive (bool on)
     if ( mode_ > Source::UNINITIALIZED && origin_ != nullptr)
         origin_->touch();
 }
-
 
 uint CloneSource::texture() const
 {

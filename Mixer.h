@@ -40,7 +40,7 @@ public:
 
     // update session and all views
     void update();
-    inline float dt() const { return dt_;}
+    inline float dt() const { return dt_;} // in miliseconds
     inline int fps() const { return int(roundf(1000.f/dt__));}
 
     // draw session and current view
@@ -86,6 +86,7 @@ public:
     Source * findSource (std::string name);
     Source * findSource (uint64_t id);
     SourceList findSources (float depth_from, float depth_to);
+    SourceList validate(const SourceList &list);
 
     // management of view
     View *view   (View::Mode m = View::INVALID);

@@ -31,6 +31,7 @@ Stream::Stream()
     opened_ = false;
     enabled_ = true;
     desired_state_ = GST_STATE_PAUSED;
+    position_ = GST_CLOCK_TIME_NONE;
 
     width_ = -1;
     height_ = -1;
@@ -175,6 +176,7 @@ void Stream::execute_open()
 #endif
 
     // set to desired state (PLAY or PAUSE)
+    live_ = false;
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("Stream %s Could not open '%s'", std::to_string(id_).c_str(), description_.c_str());
@@ -218,15 +220,12 @@ void Stream::Frame::unmap()
 void Stream::close()
 {
     // not openned?
-    if (!opened_) {
-        // nothing else to change
+    if (!opened_)
         return;
-    }
 
     // un-ready
     opened_ = false;
-    single_frame_ = false;
-    live_ = false;
+    textureinitialized_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -350,9 +349,6 @@ void Stream::play(bool on)
     if (live_)
         gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-    // reset time counter
-    timecount_.reset();
-
 }
 
 bool Stream::isPlaying(bool testpipeline) const
@@ -371,7 +367,26 @@ bool Stream::isPlaying(bool testpipeline) const
     return state == GST_STATE_PLAYING;
 }
 
+void Stream::rewind()
+{
+    if ( pipeline_ == nullptr )
+        return;
 
+    GstEvent *seek_event = gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+                                               GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0);
+    gst_element_send_event(pipeline_, seek_event);
+}
+
+GstClockTime Stream::position()
+{
+    if (position_ == GST_CLOCK_TIME_NONE && pipeline_ != nullptr) {
+        gint64 p = GST_CLOCK_TIME_NONE;
+        if ( gst_element_query_position (pipeline_, GST_FORMAT_TIME, &p) )
+            position_ = p;
+    }
+
+    return position_;
+}
 
 void Stream::init_texture(guint index)
 {
@@ -443,46 +458,46 @@ void Stream::fill_texture(guint index)
     {
         // initialize texture
         init_texture(index);
+    }
 
+    glBindTexture(GL_TEXTURE_2D, textureindex_);
+
+    // use dual Pixel Buffer Object
+    if (pbo_size_ > 0) {
+        // In dual PBO mode, increment current index first then get the next index
+        pbo_index_ = (pbo_index_ + 1) % 2;
+        pbo_next_index_ = (pbo_index_ + 1) % 2;
+
+        // bind PBO to read pixels
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+        // copy pixels from PBO to texture object
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        // bind the next PBO to write pixels
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+        // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+        // map the buffer object into client's memory
+        GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+        if (ptr) {
+            // update data directly on the mapped buffer
+            // NB : equivalent but faster (memmove instead of memcpy ?) than
+            // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
+            memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+        }
+        // done with PBO
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     }
     else {
-        glBindTexture(GL_TEXTURE_2D, textureindex_);
-
-        // use dual Pixel Buffer Object
-        if (pbo_size_ > 0) {
-            // In dual PBO mode, increment current index first then get the next index
-            pbo_index_ = (pbo_index_ + 1) % 2;
-            pbo_next_index_ = (pbo_index_ + 1) % 2;
-
-            // bind PBO to read pixels
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
-            // copy pixels from PBO to texture object
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-            // bind the next PBO to write pixels
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
-            // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-            // map the buffer object into client's memory
-            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr) {
-                // update data directly on the mapped buffer
-                // NB : equivalent but faster (memmove instead of memcpy ?) than
-                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
-            // done with PBO
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-        }
-        else {
-            // without PBO, use standard opengl (slower)
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                            GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
-        }
-        glBindTexture(GL_TEXTURE_2D, 0);
+        // without PBO, use standard opengl (slower)
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                        GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 void Stream::update()
@@ -498,7 +513,7 @@ void Stream::update()
     }
 
     // prevent unnecessary updates: already filled image
-    if (single_frame_ && textureindex_>0)
+    if (single_frame_ && textureinitialized_)
         return;
 
     // local variables before trying to update
@@ -544,6 +559,9 @@ void Stream::update()
             // free frame
             frame_[read_index].unmap();
         }
+
+        // we just displayed a vframe : set position time to frame PTS
+        position_ = frame_[read_index].position;
 
         // avoid reading it again
         frame_[read_index].status = INVALID;
@@ -716,54 +734,23 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-Stream::TimeCounter::TimeCounter() {
+Stream::TimeCounter::TimeCounter()
+{
+    timer = g_timer_new ();
+}
 
-    reset();
+Stream::TimeCounter::~TimeCounter()
+{
+    g_free(timer);
 }
 
 void Stream::TimeCounter::tic ()
 {
-    // how long since last time
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - last_time;
-
-    // one more frame since last time
-    ++nbFrames;
+    double dt = g_timer_elapsed (timer, NULL) * 1000.0;
+    g_timer_start(timer);
 
     // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter (50/50)
-    // The divition of frame/time is done on long integer GstClockTime, counting in microsecond
-    // NB: factor 100 to get 0.01 precision
-    fps = 0.5 * fps + 0.005 * static_cast<double>( ( 100 * GST_SECOND * nbFrames ) / dt );
-
-    // reset counter every second
-    if ( dt >= GST_SECOND)
-    {
-        last_time = t;
-        nbFrames = 0;
-    }
+    // Exponential moving averate with previous framerate to filter jitter
+    if (dt > 1.0)
+        fps = 0.5 * fps + 500.0 / dt ;
 }
-
-GstClockTime Stream::TimeCounter::dt ()
-{
-    GstClockTime t = gst_util_get_timestamp ();
-    GstClockTime dt = t - tic_time;
-    tic_time = t;
-
-    // return the instantaneous delta t
-    return dt;
-}
-
-void Stream::TimeCounter::reset ()
-{
-    last_time = gst_util_get_timestamp ();;
-    tic_time = last_time;
-    nbFrames = 0;
-    fps = 0.0;
-}
-
-double Stream::TimeCounter::frameRate() const
-{
-    return fps;
-}
-

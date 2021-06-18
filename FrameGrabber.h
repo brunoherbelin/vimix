@@ -100,6 +100,7 @@ public:
     inline uint height() const { return height_; }
 
     void add(FrameGrabber *rec);
+    void verify(FrameGrabber **rec);
     FrameGrabber *front();
     FrameGrabber *get(uint64_t id);
     void stopAll();

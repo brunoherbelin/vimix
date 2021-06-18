@@ -93,6 +93,7 @@ class SessionCreator : public SessionLoader {
 
     void loadConfig(tinyxml2::XMLElement *viewsNode);
     void loadNotes(tinyxml2::XMLElement *notesNode);
+    void loadPlayGroups(tinyxml2::XMLElement *playlistsNode);
     void loadSnapshots(tinyxml2::XMLElement *snapshotNode);
 
 public:
