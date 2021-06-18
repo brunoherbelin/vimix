@@ -20,9 +20,12 @@ rules.ninja
 rsc/shaders/paint.fs
 
 .vscode/settings.json
+<<<<<<< HEAD
 
 osx/.DS_Store
 
 .DS_Store
 
 osx/runvimix
+=======
+>>>>>>> dev
