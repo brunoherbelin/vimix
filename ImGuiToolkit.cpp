@@ -465,35 +465,32 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     const float fontsize = g.FontSize;
     const ImU32 text_color = ImGui::GetColorU32(ImGuiCol_Text);
 
-    guint64 duration = end - start;
-    float step_ = static_cast<float> ( static_cast<double>(step) / static_cast<double>(duration) );
-
     // by default, put a tick mark at every frame step and a large mark every second
     guint64 tick_step = step;
     guint64 large_tick_step = optimal_tick_marks[1+LARGE_TICK_INCREMENT];
     guint64 label_tick_step = optimal_tick_marks[1+LABEL_TICK_INCREMENT];
     guint64 tick_delta = 0;
 
+    // keep duration
+    const guint64 duration = end - start;
+
     // how many pixels to represent one frame step?
+    const float step_ = static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;
 
     // large space
-    if (tick_step_pixels > 5.f)
+    if (tick_step_pixels > 5.f && step > 0)
     {
         // try to put a label ticks every second
-        tick_delta = SECOND % step;
-        if ( tick_delta < 100) {
-            label_tick_step = (SECOND / step) * step;
-            // try to put large ticks at half second
-            if ( (SECOND/2) % step  < 1000 )
-                large_tick_step = label_tick_step / 2;
-            else
-                large_tick_step = step *  5;
-        }
-        // not a round framerate: probalby best to use 10 frames interval
-        else {
-            label_tick_step = 10 * step;
-            large_tick_step = 5 * step;
+        label_tick_step = (SECOND / step) * step;
+        large_tick_step = 5 * step;
+        tick_delta = SECOND - label_tick_step;
+
+        // round to nearest
+        if (tick_delta > step / 2) {
+            label_tick_step += step;
+            large_tick_step += step;
+            tick_delta = SECOND - label_tick_step;
         }
     }
     else {
@@ -544,7 +541,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     ImVec2 pos = verticalflip ? timeline_bbox.GetBL() : timeline_bbox.GetTL();
 
     // loop ticks from start to end
-    guint64 tick = (start / tick_step) * tick_step;
+    guint64 tick = tick_step > 0 ? (start / tick_step) * tick_step : 0;
     while ( tick < end )
     {
         // large tick mark ?
@@ -557,7 +554,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
             tick_length = fontsize;
 
             // correct tick value for delta for approximation to rounded second marks
-            guint64 ticklabel =  tick + ( tick_delta * tick / label_tick_step);
+            guint64 ticklabel = tick + ( tick_delta * tick / label_tick_step);
             ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
                            GstToolkit::time_to_string(ticklabel, GstToolkit::TIME_STRING_MINIMAL).c_str());
             ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
