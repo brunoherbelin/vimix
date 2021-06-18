@@ -166,7 +166,8 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                         video_stream_info.framerate_n = gst_discoverer_video_info_get_framerate_num(vinfo);
                         video_stream_info.framerate_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
                         if (video_stream_info.framerate_n == 0 || video_stream_info.framerate_d == 0) {
-                            video_stream_info.framerate_n = 25;
+                            Log::Info("'%s': No framerate indicated in the file; using default 30fps", uri.c_str());
+                            video_stream_info.framerate_n = 30;
                             video_stream_info.framerate_d = 1;
                         }
                         video_stream_info.dt = ( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
