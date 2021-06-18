@@ -483,7 +483,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     {
         // try to put a label ticks every second
         label_tick_step = (SECOND / step) * step;
-        large_tick_step = 5 * step;
+        large_tick_step = label_tick_step % 5 ? (label_tick_step % 2 ?  label_tick_step : label_tick_step / 2 ) : label_tick_step / 5;
         tick_delta = SECOND - label_tick_step;
 
         // round to nearest
