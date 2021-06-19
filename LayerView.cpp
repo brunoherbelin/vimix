@@ -311,11 +311,9 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     // apply change
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
 
+    // store action in history
     std::ostringstream info;
     info << "Depth " << std::fixed << std::setprecision(2) << d << "  ";
-//    info << (s->locked() ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN); // TODO static not locked
-
-    // store action in history
     current_action_ = s->name() + ": " + info.str();
 
     return Cursor(Cursor_ResizeNESW, info.str() );

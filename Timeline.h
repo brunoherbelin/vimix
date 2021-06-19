@@ -62,6 +62,10 @@ struct TimeInterval
     {
         return (is_valid() && t != GST_CLOCK_TIME_NONE && !(t < this->begin) && !(t > this->end) );
     }
+    inline bool includes(const TimeInterval& b) const
+    {
+        return (is_valid() && b.is_valid() && includes(b.begin) && includes(b.end) );
+    }
 };
 
 
@@ -69,7 +73,7 @@ struct order_comparator
 {
     inline bool operator () (const TimeInterval a, const TimeInterval b) const
     {
-        return (a < b);
+        return (a < b || a.begin < b.begin);
     }
 };
 
@@ -85,6 +89,7 @@ public:
 
     bool is_valid();
     void update();
+    void refresh();
 
     // global properties of the timeline
     // timeline is valid only if all 3 are set
@@ -105,23 +110,35 @@ public:
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
 
-    // Manipulation of gaps in the timeline
+    // Manipulation of gaps
     inline TimeIntervalSet gaps() const { return gaps_; }
-    inline TimeIntervalSet sections() const;
     inline size_t numGaps() const { return gaps_.size(); }
     float *gapsArray();
     void clearGaps();
     void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
+    bool cut(GstClockTime t, bool left, bool join_extremity);
     bool removeGaptAt(GstClockTime t);
-    bool gapAt(const GstClockTime t, TimeInterval &gap) const;
+    bool gapAt(const GstClockTime t) const;
+    bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
 
-    float fadingAt(const GstClockTime t);
+    // inverse of gaps: sections of play areas
+    TimeIntervalSet sections() const;
+    GstClockTime sectionsDuration() const;
+    GstClockTime sectionsTimeAt(GstClockTime t) const;
+    size_t fillSectionsArrays(float * const gaps, float * const fading);
+
+    // Manipulation of Fading
+    float fadingAt(const GstClockTime t) const;
+    size_t fadingIndexAt(const GstClockTime t) const;
     inline float *fadingArray() { return fadingArray_; }
     void clearFading();
+
+    // Edit
     void smoothFading(uint N = 1);
     void autoFading(uint milisecond = 100);
+    bool autoCut();
 
 private:
 

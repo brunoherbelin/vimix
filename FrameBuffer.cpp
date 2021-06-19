@@ -171,6 +171,31 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
+void FrameBuffer::resize(int width, int height)
+{
+    if (framebufferid_) {
+        if (attrib_.viewport.x != width || attrib_.viewport.y != height)
+        {
+            // de-init
+            glDeleteFramebuffers(1, &framebufferid_);
+            framebufferid_ = 0;
+
+            if (intermediate_framebufferid_)
+                glDeleteFramebuffers(1, &intermediate_framebufferid_);
+            intermediate_framebufferid_ = 0;
+            if (textureid_)
+                glDeleteTextures(1, &textureid_);
+            textureid_ = 0;
+            if (intermediate_textureid_)
+                glDeleteTextures(1, &intermediate_textureid_);
+            intermediate_textureid_ = 0;
+
+            // change resolution
+            attrib_.viewport = glm::ivec2(width, height);
+        }
+    }
+}
+
 void FrameBuffer::begin(bool clear)
 {
     if (!framebufferid_)

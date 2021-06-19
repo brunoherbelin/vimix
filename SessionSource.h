@@ -14,6 +14,11 @@ public:
     // implementation of source API
     void update (float dt) override;
     void setActive (bool on) override;
+    bool playing () const override { return !paused_; }
+    void play (bool on) override { paused_ = !on; }
+    bool playable () const  override { return true; }
+    guint64 playtime () const override { return timer_; }
+    void replay () override;
     bool failed () const override;
     uint texture () const override;
 
@@ -24,6 +29,8 @@ protected:
 
     Session *session_;
     std::atomic<bool> failed_;
+    guint64 timer_;
+    bool paused_;
 };
 
 class SessionFileSource : public SessionSource
@@ -80,6 +87,9 @@ public:
     RenderSource(uint64_t id = 0);
 
     // implementation of source API
+    bool playing () const override { return true; }
+    void play (bool) override {}
+    bool playable () const  override { return false; }
     bool failed () const override;
     uint texture() const override;
     void accept (Visitor& v) override;

@@ -384,6 +384,10 @@ void DeviceSource::setDevice(const std::string &devicename)
 
         pipeline << " ! videoconvert";
 
+        // resize render buffer
+        if (renderbuffer_)
+            renderbuffer_->resize(best.width, best.height);
+
         // open gstreamer
         stream_->open( pipeline.str(), best.width, best.height);
         stream_->play(true);

@@ -108,12 +108,38 @@ void MediaSource::setActive (bool on)
 {
     bool was_active = active_;
 
+    // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
     // change status of media player (only if status changed)
-    if ( active_ != was_active ) {
+    if ( active_ != was_active )
         mediaplayer_->enable(active_);
-    }
+}
+
+
+bool MediaSource::playing () const
+{
+    return mediaplayer_->isPlaying();
+}
+
+void MediaSource::play (bool on)
+{
+    mediaplayer_->play(on);
+}
+
+bool MediaSource::playable () const
+{
+    return !mediaplayer_->isImage();
+}
+
+void MediaSource::replay ()
+{
+    mediaplayer_->rewind();
+}
+
+guint64 MediaSource::playtime () const
+{
+    return mediaplayer_->position();
 }
 
 void MediaSource::update(float dt)

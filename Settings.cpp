@@ -74,8 +74,11 @@ void Settings::Save()
     // Widgets
     XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
     widgetsNode->SetAttribute("preview", application.widget.preview);
+    widgetsNode->SetAttribute("preview_view", application.widget.preview_view);
     widgetsNode->SetAttribute("history", application.widget.history);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
+    widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
+    widgetsNode->SetAttribute("timeline_editmode", application.widget.timeline_editmode);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
     widgetsNode->SetAttribute("stats_mode", application.widget.stats_mode);
@@ -99,6 +102,7 @@ void Settings::Save()
     RecordNode->SetAttribute("path", application.record.path.c_str());
     RecordNode->SetAttribute("profile", application.record.profile);
     RecordNode->SetAttribute("timeout", application.record.timeout);
+    RecordNode->SetAttribute("delay", application.record.delay);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -267,8 +271,11 @@ void Settings::Load()
     XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
     if (widgetsNode != nullptr) {
         widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
+        widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
         widgetsNode->QueryBoolAttribute("history", &application.widget.history);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
+        widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
+        widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.timeline_editmode);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
         widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
@@ -293,6 +300,7 @@ void Settings::Load()
     if (recordnode != nullptr) {
         recordnode->QueryIntAttribute("profile", &application.record.profile);
         recordnode->QueryFloatAttribute("timeout", &application.record.timeout);
+        recordnode->QueryIntAttribute("delay", &application.record.delay);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)
