@@ -64,16 +64,15 @@ void InfoVisitor::visit(Primitive &n)
 
 void InfoVisitor::visit(MediaPlayer &mp)
 {
+    // do not ask twice
     if (current_id_ == mp.id())
         return;
-
-    Log::Info("Getting string info MediaPlayer %ld", current_id_);
 
     std::ostringstream oss;
     if (brief_) {
         oss << SystemToolkit::filename(mp.filename()) << std::endl;
         oss << mp.width() << " x " << mp.height() << ", ";
-        oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(','));
+        oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,"));
         if (!mp.isImage())
             oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
     }
@@ -86,7 +85,10 @@ void InfoVisitor::visit(MediaPlayer &mp)
     }
 
     information_ = oss.str();
-    current_id_ = mp.id();
+
+    // remember (except if codec was not identified yet)
+    if ( !mp.media().codec_name.empty() )
+        current_id_ = mp.id();
 }
 
 void InfoVisitor::visit(Stream &n)
@@ -104,12 +106,7 @@ void InfoVisitor::visit(Stream &n)
 
 void InfoVisitor::visit (MediaSource& s)
 {
-    if (current_id_ == s.id())
-        return;
-
     s.mediaplayer()->accept(*this);
-
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (SessionFileSource& s)
