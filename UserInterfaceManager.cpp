@@ -2896,7 +2896,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::Text("%s", info_.str().c_str());
 
         // Icon to inform hardware decoding
-        if ( !mediaplayer_active_->hardwareDecoderName().empty()) {
+        if ( mediaplayer_active_->decoderName().compare("software") != 0) {
             ImGui::SetCursorScreenPos(top_image + ImVec2( framesize.x - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
             ImGui::Text(ICON_FA_MICROCHIP);
         }

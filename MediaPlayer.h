@@ -232,7 +232,7 @@ public:
      * */
     guint height() const;
     /**
-     * Get frames displayt aspect ratio
+     * Get frames display aspect ratio
      * NB: can be different than width() / height()
      * */
     float aspectRatio() const;
@@ -242,19 +242,20 @@ public:
      * */
     guint texture() const;
     /**
-     * Get the name of the hardware decoder used
-     * Empty string if none (i.e. software decoding)
+     * Get the name of the decoder used,
+     * return 'software' if no hardware decoder is used
+     * NB: perform request on pipeline on first call
      * */
-    std::string hardwareDecoderName() const;
+    std::string decoderName();
     /**
      * Forces open using software decoding
      * (i.e. without hadrware decoding)
+     * NB: this reopens the video and reset decoder name
      * */
     void setSoftwareDecodingForced(bool on);
     bool softwareDecodingForced();
     /**
      * Accept visitors
-     * Used for saving session file
      * */
     void accept(Visitor& v);
     /**
@@ -292,7 +293,7 @@ private:
     bool seeking_;
     bool enabled_;
     bool force_software_decoding_;
-    std::string hardware_decoder_;
+    std::string decoder_name_;
 
     // fps counter
     struct TimeCounter {

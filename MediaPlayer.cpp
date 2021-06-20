@@ -38,7 +38,7 @@ MediaPlayer::MediaPlayer()
     failed_ = false;
     seeking_ = false;
     force_software_decoding_ = false;
-    hardware_decoder_ = "";
+    decoder_name_ = "";
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
@@ -544,9 +544,18 @@ bool MediaPlayer::isImage() const
     return media_.isimage;
 }
 
-std::string MediaPlayer::hardwareDecoderName() const
+std::string MediaPlayer::decoderName()
 {
-    return hardware_decoder_;
+    // decoder_name_ not initialized
+    if (decoder_name_.empty()) {
+        // try to know if it is a hardware decoder
+        decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
+        // nope, then it is a sofware decoder
+        if (decoder_name_.empty())
+            decoder_name_ = "software";
+    }
+
+    return decoder_name_;
 }
 
 bool MediaPlayer::softwareDecodingForced()
@@ -560,6 +569,7 @@ void MediaPlayer::setSoftwareDecodingForced(bool on)
 
     // set parameter
     force_software_decoding_ = on;
+    decoder_name_ = "";
 
     // changing state requires reload
     if (need_reload)
@@ -763,13 +773,14 @@ void MediaPlayer::init_texture(guint index)
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
+//        // now that a frame is ready, and once only, browse into the pipeline
+//        // for possible hadrware decoding plugins used. Empty string means none.
+//        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
+
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Using Pixel Buffer Object texturing.", std::to_string(id_).c_str());
+        Log::Info("MediaPlayer %s uses OpenGL PBO texturing.", std::to_string(id_).c_str());
 #endif
 
-        // now that a frame is ready, and once only, browse into the pipeline
-        // for possible hadrware decoding plugins used. Empty string means none.
-        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 }
