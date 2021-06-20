@@ -137,6 +137,8 @@ public:
     // Edit
     void smoothFading(uint N = 1);
     void autoFading(uint milisecond = 100);
+    void fadeIn(uint milisecond = 100);
+    void fadeOut(uint milisecond = 100);
     bool autoCut();
 
 private:

@@ -7,8 +7,8 @@
 #include "Timeline.h"
 
 
-static float empty_gaps[MAX_TIMELINE_ARRAY] = {};
-static float empty_fade[MAX_TIMELINE_ARRAY] = {};
+static float empty_zeros[MAX_TIMELINE_ARRAY] = {};
+static float empty_ones[MAX_TIMELINE_ARRAY] = {};
 
 struct includesTime: public std::unary_function<TimeInterval, bool>
 {
@@ -419,12 +419,12 @@ size_t Timeline::fadingIndexAt(const GstClockTime t) const
 void Timeline::clearFading()
 {
     // fill static with 1 (only once)
-    if (empty_fade[0] < 1.f){
+    if (empty_ones[0] < 1.f){
         for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
-            empty_fade[i] = 1.f;
+            empty_ones[i] = 1.f;
     }
     // clear with static array
-    memcpy(fadingArray_, empty_fade, MAX_TIMELINE_ARRAY * sizeof(float));
+    memcpy(fadingArray_, empty_ones, MAX_TIMELINE_ARRAY * sizeof(float));
 }
 
 void Timeline::smoothFading(uint N)
@@ -454,13 +454,11 @@ void Timeline::smoothFading(uint N)
 
 void Timeline::autoFading(uint milisecond)
 {
-    GstClockTime stepduration = timing_.end / MAX_TIMELINE_ARRAY;
-    stepduration = GST_TIME_AS_MSECONDS(stepduration);
-    uint N = milisecond / stepduration;
+    // mow many index values of timeline array for this duration?
+    size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
 
-    // reset all to zero
-    for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
-        fadingArray_[i] = 0.f;
+    // clear with static array
+    memcpy(fadingArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
 
     // get sections (inverse of gaps)
     TimeIntervalSet sec = sections();
@@ -470,14 +468,13 @@ void Timeline::autoFading(uint milisecond)
     for (auto it = sec.begin(); it != sec.end(); ++it)
     {
         // get index of begining of section
-        size_t s = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
-        s += 1;
+        const size_t s = ( (*it).begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+
         // get index of ending of section
-        size_t e = ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end;
-        e -= 1;
+        const size_t e = ( ( (*it).end * MAX_TIMELINE_ARRAY ) / timing_.end ) -1;
 
         // calculate size of the smooth transition in [s e] interval
-        uint n = MIN( (e-s)/3, N );
+        const size_t n = MIN( (e-s)/2, N );
 
         // linear fade in starting at s
         size_t i = s;
@@ -491,6 +488,59 @@ void Timeline::autoFading(uint milisecond)
             fadingArray_[i] = static_cast<float>(e-i) / static_cast<float>(n);
     }
 }
+
+
+void Timeline::fadeIn(uint milisecond)
+{
+    // mow many index values of timeline array for this duration?
+    const size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
+
+    // get sections (inverse of gaps)
+    TimeIntervalSet sec = sections();
+    auto it = sec.cbegin();
+
+    // get index of begining of section
+    const size_t s = ( it->begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+    // get index of ending of section
+    const size_t e = ( it->end * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+    // calculate size of the smooth transition in [s e] interval
+    const size_t n = MIN( e-s, N );
+
+    // linear fade in starting at s
+    size_t i = s;
+    float val = fadingArray_[i];
+    for (; i < s+n; ++i)
+        fadingArray_[i] = val * static_cast<float>(i-s) / static_cast<float>(n);
+}
+
+void Timeline::fadeOut(uint milisecond)
+{
+    // mow many index values of timeline array for this duration?
+    const size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
+
+    // get sections (inverse of gaps)
+    TimeIntervalSet sec = sections();
+    auto it = sec.cbegin();
+
+    // get index of begining of section
+    const size_t s = ( it->begin * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+    // get index of ending of section
+    const size_t e = ( it->end * MAX_TIMELINE_ARRAY ) / timing_.end;
+
+    // calculate size of the smooth transition in [s e] interval
+    const size_t n = MIN( e-s-1, N );
+
+    // linear fade out ending at e
+    size_t i = e-n;
+    float val = fadingArray_[i];
+    for (; i < e; ++i)
+        fadingArray_[i] = val * static_cast<float>(e-i) / static_cast<float>(n);
+}
+
+
 
 bool Timeline::autoCut()
 {
@@ -557,7 +607,7 @@ void Timeline::fillArrayFromGaps(float *array, size_t array_size)
     if (array != nullptr && array_size > 0 && timing_.is_valid()) {
 
         // clear with static array
-        memcpy(gapsArray_, empty_gaps, MAX_TIMELINE_ARRAY * sizeof(float));
+        memcpy(gapsArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
 
         // for each gap
         GstClockTime d = timing_.duration();
