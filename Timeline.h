@@ -92,19 +92,18 @@ public:
     void refresh();
 
     // global properties of the timeline
-    // timeline is valid only if all 3 are set
-    void setFirst(GstClockTime first);  // TODO : do we really use FIRST ?
     void setEnd(GstClockTime end);
     void setStep(GstClockTime dt);
+    void setFirst(GstClockTime first);
     void setTiming(TimeInterval interval, GstClockTime step = GST_CLOCK_TIME_NONE);
 
     // Timing manipulation
     inline GstClockTime begin() const { return timing_.begin; }
     inline GstClockTime end() const { return timing_.end; }
+    inline GstClockTime duration() const { return timing_.duration(); }
     inline GstClockTime first() const { return first_; }
     inline GstClockTime last() const { return timing_.end - step_; }
     inline GstClockTime step() const { return step_; }
-    inline GstClockTime duration() const { return timing_.duration(); }
     inline size_t numFrames() const { if (step_) return duration() / step_; else return 1; }
     inline TimeInterval interval() const { return timing_; }
     GstClockTime next(GstClockTime time) const;

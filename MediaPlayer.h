@@ -42,7 +42,7 @@ struct MediaInfo {
         bitrate = 0;
         framerate_n = 1;
         framerate_d = 25;
-        codec_name = "unknown";
+        codec_name = "";
         isimage = false;
         interlaced = false;
         seekable = false;

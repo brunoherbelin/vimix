@@ -456,7 +456,7 @@ void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
 
-void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, guint64 start, guint64 end, guint64 step, bool verticalflip)
+void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
@@ -472,7 +472,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     guint64 tick_delta = 0;
 
     // keep duration
-    const guint64 duration = end - start;
+    const guint64 duration = end - begin;
 
     // how many pixels to represent one frame step?
     const float step_ = static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
@@ -523,7 +523,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
 
     // render tick and text START
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
-                   GstToolkit::time_to_string(start, GstToolkit::TIME_STRING_MINIMAL).c_str());
+                   GstToolkit::time_to_string(begin, GstToolkit::TIME_STRING_MINIMAL).c_str());
     ImVec2 beginning_label_size = ImGui::CalcTextSize(text_buf, NULL);
     ImVec2 beginning_label_pos = timeline_bbox.GetTL() + ImVec2(3.f, fontsize);
     if (verticalflip)
@@ -540,8 +540,8 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_Text] -ImVec4(0.f,0.f,0.f,0.4f));
     ImVec2 pos = verticalflip ? timeline_bbox.GetBL() : timeline_bbox.GetTL();
 
-    // loop ticks from start to end
-    guint64 tick = tick_step > 0 ? (start / tick_step) * tick_step : 0;
+    // loop ticks from begin to end
+    guint64 tick = tick_step > 0 ? (begin / tick_step) * tick_step : 0;
     while ( tick < end )
     {
         // large tick mark ?
@@ -580,7 +580,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
 
         // next tick
         tick += tick_step;
-        float tick_percent = static_cast<float> ( static_cast<double>(tick-start) / static_cast<double>(duration) );
+        float tick_percent = static_cast<float> ( static_cast<double>(tick-begin) / static_cast<double>(duration) );
         if (verticalflip)
             pos = ImLerp(timeline_bbox.GetBL(), timeline_bbox.GetBR(), tick_percent);
         else
@@ -591,7 +591,7 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
 
 }
 
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width)
+bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -628,7 +628,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time - start) / static_cast<double>(end - start) );
+    float time_ = static_cast<float> ( static_cast<double>(*time - begin) / static_cast<double>(end - begin) );
 
     //
     // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
@@ -659,8 +659,9 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
                                                &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
     if (value_changed){
-        //        g_print("slider %f  %ld \n", time_slider, static_cast<guint64> ( static_cast<double>(time_slider) * static_cast<double>(duration) ));
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end - start) ) + start;
+        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end - begin) );
+        if (first != -1)
+            *time -= first;
         grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
     }
 
@@ -673,7 +674,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
     ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
 
     // render the timeline
-    RenderTimeline(window, timeline_bbox, start, end, step);
+    RenderTimeline(window, timeline_bbox, begin, end, step);
 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
@@ -688,7 +689,7 @@ bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 star
 }
 
 
-void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, guint64 end, guint64 step, const float width)
+void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -722,8 +723,8 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
     timeline_bbox.Expand( ImVec2() - style.FramePadding );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    guint64 duration = end - start;
-    float time_ = static_cast<float> ( static_cast<double>(time - start) / static_cast<double>(duration) );
+    guint64 duration = end - begin;
+    float time_ = static_cast<float> ( static_cast<double>(time - begin) / static_cast<double>(duration) );
 
     //
     // THIRD RENDER
@@ -733,7 +734,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 start, gui
     ImGui::RenderFrame(bbox.Min, bbox.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
 
     // render the timeline
-    RenderTimeline(window, timeline_bbox, start, end, step);
+    RenderTimeline(window, timeline_bbox, begin, end, step);
 
     // draw the cursor
     if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
@@ -884,7 +885,7 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 
 
 bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, guint64 start, guint64 end,
+                                      int values_count, float values_min, float values_max, guint64 begin, guint64 end,
                                       bool edit_histogram, bool *released, const ImVec2 size)
 {
     bool array_changed = false;
@@ -936,7 +937,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
     size_t index = CLAMP( (int) floor(static_cast<double>(values_count) * x), 0, values_count);
     char cursor_text[64];
-    guint64 time = start + (index * end) / static_cast<guint64>(values_count);
+    guint64 time = begin + (index * end) / static_cast<guint64>(values_count);
     ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
                    GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_MINIMAL).c_str());
 

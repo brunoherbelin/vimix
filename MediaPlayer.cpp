@@ -1112,7 +1112,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             frame_[write_index_].position = buf->pts;
 
             // set the start position (i.e. pts of first frame we got)
-            if (timeline_.begin() == GST_CLOCK_TIME_NONE) {
+            if (timeline_.first() == GST_CLOCK_TIME_NONE) {
                 timeline_.setFirst(buf->pts);
             }
         }

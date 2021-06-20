@@ -2963,7 +2963,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
 
             // custom timeline slider
             mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
-                                                           tl->end(), tl->step(), size.x);
+                                                                       tl->first(), tl->end(), tl->step(), size.x);
 
         }
     }

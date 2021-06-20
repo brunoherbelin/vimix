@@ -35,12 +35,12 @@ namespace ImGuiToolkit
     void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = nullptr);
 
     // sliders
-    bool TimelineSlider (const char* label, guint64 *time, guint64 start, guint64 end, guint64 step, const float width);
-    void RenderTimeline (struct ImGuiWindow* window, struct ImRect timeline_bbox, guint64 start, guint64 end, guint64 step, bool verticalflip = false);
-    void Timeline (const char* label, guint64 time, guint64 start, guint64 end, guint64 step, const float width);
+    bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width);
+    void RenderTimeline (struct ImGuiWindow* window, struct ImRect timeline_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
+    void Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width);
     bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
     bool EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size);
-    bool EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, guint64 start, guint64 end, bool cut, bool *released, const ImVec2 size);
+    bool EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, guint64 begin, guint64 end, bool cut, bool *released, const ImVec2 size);
     void ShowPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size);
 
     // fonts from ressources 'fonts/'
