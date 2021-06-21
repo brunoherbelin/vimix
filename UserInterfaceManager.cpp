@@ -2586,8 +2586,6 @@ void SourceController::RenderSelection(size_t i)
         resetActiveSelection();
         Mixer::manager().session()->deletePlayGroup(i);
     }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Delete selection");
 
     ImGui::PopStyleColor(4);
 }
@@ -2765,6 +2763,8 @@ void SourceController::RenderSelectedSources()
             active_label_ = std::string("Selection #") + std::to_string(active_selection_);
             Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
         }
+        if (space < buttons_width_ && ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(LABEL_STORE_SELECTION);
 
         ImGui::PopStyleColor(2);
     }
