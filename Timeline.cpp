@@ -37,8 +37,10 @@ Timeline& Timeline::operator = (const Timeline& b)
 {
     if (this != &b) {
         this->timing_ = b.timing_;
-        this->step_ = b.step_;
-        this->first_ = b.first_;
+        if (b.step_ != GST_CLOCK_TIME_NONE)
+            this->step_ = b.step_;
+        if (b.first_ != GST_CLOCK_TIME_NONE)
+            this->first_ = b.first_;
         this->gaps_ = b.gaps_;
         this->gaps_array_need_update_ = b.gaps_array_need_update_;
         memcpy( this->gapsArray_, b.gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));

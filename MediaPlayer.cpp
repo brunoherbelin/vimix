@@ -940,7 +940,7 @@ void MediaPlayer::update()
                 // jump in one or the other direction
                 GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
                 // seek to next valid time (if not beginnig or end of timeline)
-                if (jumpPts > timeline_.begin() && jumpPts < timeline_.last())
+                if (jumpPts > timeline_.first() && jumpPts < timeline_.last())
                     seek( jumpPts );
                 // otherwise, we should loop
                 else
