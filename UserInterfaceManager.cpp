@@ -2359,7 +2359,7 @@ void SourceController::RenderSelection(size_t i)
             // collect durations of all media sources
             MediaSource *ms = dynamic_cast<MediaSource *>(*source);
             if (ms != nullptr)
-                durations.push_back(static_cast<guint64>(static_cast<double>(ms->mediaplayer()->timeline()->sectionsDuration()) / ms->mediaplayer()->playSpeed()));
+                durations.push_back(static_cast<guint64>(static_cast<double>(ms->mediaplayer()->timeline()->sectionsDuration()) / fabs(ms->mediaplayer()->playSpeed())));
             // compute the displayed width of frames of this source, and keep the max to align afterwards
             float w = 1.5f * timeline_height_ * (*source)->frame()->aspectRatio();
             if ( w > maxframewidth)
