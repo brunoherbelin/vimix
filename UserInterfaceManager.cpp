@@ -72,6 +72,7 @@ static TextEditor editor;
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fading"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -2126,32 +2127,21 @@ void SourceController::Render()
                     oss << ": Reset timeline";
                     Action::manager().store(oss.str());
                 }
-                if (ImGui::BeginMenu(ICON_FA_RANDOM "  Auto fading"))
-                {
-                    const char* names[] = { "250 ms", "500 ms", "1 second", "2 seconds"};
-                    for (int i = 0; i < IM_ARRAYSIZE(names); ++i) {
-                        if (ImGui::MenuItem(names[i])) {
-                            mediaplayer_active_->timeline()->autoFading( 250 * (int ) pow(2, i) );
-                            mediaplayer_active_->timeline()->smoothFading( 2 * (i + 1) );
-                            std::ostringstream oss;
-                            oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-                            oss << ": Timeline Auto fading " << 250 * (int ) pow(2, i);
-                            Action::manager().store(oss.str());
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
-                {
-                    if (ImGuiToolkit::MenuItemIcon(14, 12,  "Cut faded areas" ))
-                        if (mediaplayer_active_->timeline()->autoCut()){
-                            std::ostringstream oss;
-                            oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-                            oss << ": Cut faded areas";
-                            Action::manager().store(oss.str());
-                        }
-                    ImGui::EndMenu();
-                }
+
+                if ( ImGui::MenuItem(LABEL_EDIT_FADING) )
+                    mediaplayer_edit_fading_ = true;
+
+//                if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
+//                {
+//                    if (ImGuiToolkit::MenuItemIcon(14, 12,  "Cut faded areas" ))
+//                        if (mediaplayer_active_->timeline()->autoCut()){
+//                            std::ostringstream oss;
+//                            oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+//                            oss << ": Cut faded areas";
+//                            Action::manager().store(oss.str());
+//                        }
+//                    ImGui::EndMenu();
+//                }
                 if (Settings::application.render.gpu_decoding)
                 {
                     ImGui::Separator();
@@ -2219,12 +2209,14 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 }
 
-void DrawTimeline(const char* label, Timeline *timeline, guint64 time, double width_ratio, float height)
+std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time, double width_ratio, float height)
 {
+    std::list< std::pair<float, guint64> > ret;
+
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
-        return;
+        return ret;
 
     // get style & id
     const ImGuiContext& g = *GImGui;
@@ -2248,7 +2240,7 @@ void DrawTimeline(const char* label, Timeline *timeline, guint64 time, double wi
     const ImRect bbox(frame_pos, frame_pos + frame_size);
     ImGui::ItemSize(frame_size, style.FramePadding.y);
     if (!ImGui::ItemAdd(bbox, id))
-        return;
+        return ret;
 
     // capture hover to avoid tooltip on plotlines
     ImGui::ItemHoverable(bbox, id);
@@ -2310,6 +2302,9 @@ void DrawTimeline(const char* label, Timeline *timeline, guint64 time, double wi
         if (i > 0)
             window->DrawList->AddRectFilled(ImVec2(section_bbox_min.x -2.f, plot_bbox.Min.y), ImVec2(section_bbox_min.x + 2.f, plot_bbox.Max.y), ImGui::GetColorU32(ImGuiCol_TitleBg));
 
+        ret.push_back( std::pair<float, guint64>(section_bbox_min.x,section->begin ) );
+        ret.push_back( std::pair<float, guint64>(section_bbox_max.x,section->end ) );
+
         // iterate: next bbox of section starts at end of current
         section_bbox_min.x = section_bbox_max.x;
     }
@@ -2318,7 +2313,7 @@ void DrawTimeline(const char* label, Timeline *timeline, guint64 time, double wi
     if (e < timeline->duration())
         window->DrawList->AddRectFilled(ImVec2(section_bbox_min.x -2.f, plot_bbox.Min.y), ImVec2(section_bbox_min.x + 2.f, plot_bbox.Max.y), ImGui::GetColorU32(ImGuiCol_TitleBg));
 
-
+    return ret;
 }
 
 void SourceController::RenderSelection(size_t i)
@@ -2882,6 +2877,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::SetCursorScreenPos(top_image);
     ImGui::Image((void*)(uintptr_t) mediaplayer_active_->texture(), framesize);
 
+
     ///
     /// Info overlays
     ///
@@ -3120,6 +3116,73 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         mediaplayer_active_->play( media_play );
     }
 
+
+    if (mediaplayer_edit_fading_) {
+        ImGui::OpenPopup(LABEL_EDIT_FADING);
+        mediaplayer_edit_fading_ = false;
+    }
+    const ImVec2 mp_dialog_size(buttons_width_ * 2.f, buttons_height_ * 6);
+    ImGui::SetNextWindowSize(mp_dialog_size, ImGuiCond_Always);
+    const ImVec2 mp_dialog_pos = top + rendersize * 0.5f  - mp_dialog_size * 0.5f;
+    ImGui::SetNextWindowPos(mp_dialog_pos, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal(LABEL_EDIT_FADING, NULL, ImGuiWindowFlags_NoResize))
+    {
+        const ImVec2 pos = ImGui::GetCursorPos();
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+
+        ImGui::Spacing();
+        ImGui::Text("Set parameters and apply:");
+        ImGui::Spacing();
+
+        static int l = 0;
+        static std::vector< std::pair<int, int> > icons_loc = { {19,7}, {18,7}, {0,8} };
+        static std::vector< std::string > labels_loc = { "Fade in", "Fade out", "Fade in & out (all)" };
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::ComboIcon("Fading", icons_loc, labels_loc, &l);
+
+        static int c = 0;
+        static std::vector< std::pair<int, int> > icons_curve = { {18,3}, {19,3}, {17,3} };
+        static std::vector< std::string > labels_curve = { "Linear", "Progressive", "Abrupt" };
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::ComboIcon("Curve", icons_curve, labels_curve, &c);
+
+        static int d = 1000;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::SliderTiming ("Duration", &d, 200, 5000);
+
+        bool close = false;
+        ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+        if (ImGui::Button("Cancel", ImVec2(area.x * 0.3f, 0)))
+            close = true;
+        ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
+        if (ImGui::Button("Apply", ImVec2(area.x * 0.3f, 0))) {
+            close = true;
+            // timeline to edit
+            Timeline *tl = mediaplayer_active_->timeline();
+            switch (l) {
+            case 0:
+                tl->fadeIn(d, (Timeline::FadingCurve) c);
+                oss << ": Timeline Fade in " << d;
+                break;
+            case 1:
+                tl->fadeOut(d, (Timeline::FadingCurve) c);
+                oss << ": Timeline Fade out " << d;
+                break;
+            case 2:
+                tl->autoFading(d, (Timeline::FadingCurve) c);
+                oss << ": Timeline Fade in&out " << d;
+                break;
+            default:
+                break;
+            }
+            tl->smoothFading( 4 );
+            Action::manager().store(oss.str());
+        }
+
+        if (close)
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
 }
 
 const char *SourceController::SourcePlayIcon(Source *s)
@@ -4286,31 +4349,31 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
-                                 "status of the current session.\n"
-                                 "Clic an item to preview or edit.\n"
-                                 "Double-clic to restore immediately.\n");
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
+//        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
+//                                 "status of the current session.\n"
+//                                 "Clic an item to preview or edit.\n"
+//                                 "Double-clic to restore immediately.\n");
 
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-//        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
-//                                 "Double-clic on a snapshot to restore it.\n\n"
-//                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
-//                                 "from current state to snapshot's state.");
-//        // toggle button for smooth interpolation
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-//        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
-//        if (ImGui::IsItemHovered())
-//            ImGuiToolkit::ToolTip("Snapshot interpolation");
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
+                                 "Double-clic on a snapshot to restore it.\n\n"
+                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
+                                 "from current state to snapshot's state.");
+        // toggle button for smooth interpolation
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Snapshot interpolation");
 
-//        if (Action::manager().currentSnapshot() > 0) {
-//            ImGui::SetCursorPos( pos_bot );
-//            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
-//            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
-//                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
+        if (Action::manager().currentSnapshot() > 0) {
+            ImGui::SetCursorPos( pos_bot );
+            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
+                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
 
-//        }
+        }
 
         ImGui::SetCursorPos( pos_bot );
     }

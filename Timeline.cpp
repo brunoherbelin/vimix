@@ -454,10 +454,13 @@ void Timeline::smoothFading(uint N)
 }
 
 
-void Timeline::autoFading(uint milisecond)
+void Timeline::autoFading(uint milisecond, FadingCurve curve)
 {
     // mow many index values of timeline array for this duration?
-    size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
+    size_t N = MAX_TIMELINE_ARRAY -1;
+    GstClockTime d = static_cast<GstClockTime>(milisecond) * 1000000;
+    if ( d < timing_.end )
+        N = d / (timing_.end / MAX_TIMELINE_ARRAY);
 
     // clear with static array
     memcpy(fadingArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
@@ -480,24 +483,41 @@ void Timeline::autoFading(uint milisecond)
 
         // linear fade in starting at s
         size_t i = s;
-        for (; i < s+n; ++i)
-            fadingArray_[i] = static_cast<float>(i-s) / static_cast<float>(n);
+        for (; i < s+n; ++i){
+            const float x = static_cast<float>(i-s) / static_cast<float>(n);
+            if (curve==FADING_BILINEAR)
+                fadingArray_[i] = x * x;
+            else if (curve==FADING_BILINEAR_INV)
+                fadingArray_[i] = 1.f - ((x- 1.f) * (x - 1.f));
+            else
+                fadingArray_[i] = x;
+        }
         // plateau
         for (; i < e-n; ++i)
             fadingArray_[i] = 1.f;
         // linear fade out ending at e
-        for (; i < e; ++i)
-            fadingArray_[i] = static_cast<float>(e-i) / static_cast<float>(n);
+        for (; i < e; ++i) {
+            const float x = static_cast<float>(e-i) / static_cast<float>(n);
+            if (curve==FADING_BILINEAR)
+                fadingArray_[i] = x * x;
+            else if (curve==FADING_BILINEAR_INV)
+                fadingArray_[i] = 1.f - ((x- 1.f) * (x - 1.f));
+            else
+                fadingArray_[i] = x;
+        }
     }
 }
 
 
-void Timeline::fadeIn(uint milisecond)
+void Timeline::fadeIn(uint milisecond, FadingCurve curve)
 {
     // mow many index values of timeline array for this duration?
-    const size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
+    size_t N = MAX_TIMELINE_ARRAY -1;
+    GstClockTime d = static_cast<GstClockTime>(milisecond) * 1000000;
+    if ( d < timing_.end )
+        N = d / (timing_.end / MAX_TIMELINE_ARRAY);
 
-    // get sections (inverse of gaps)
+    // get sections (inverse of gaps) is never empty
     TimeIntervalSet sec = sections();
     auto it = sec.cbegin();
 
@@ -512,19 +532,31 @@ void Timeline::fadeIn(uint milisecond)
 
     // linear fade in starting at s
     size_t i = s;
-    float val = fadingArray_[i];
-    for (; i < s+n; ++i)
-        fadingArray_[i] = val * static_cast<float>(i-s) / static_cast<float>(n);
+    float val = fadingArray_[s+n];
+    for (; i < s+n; ++i) {
+        const float x = static_cast<float>(i-s) / static_cast<float>(n);
+        if (curve==FADING_BILINEAR)
+            fadingArray_[i] = x * x;
+        else if (curve==FADING_BILINEAR_INV)
+            fadingArray_[i] = 1.f - ((x- 1.f) * (x - 1.f));
+        else
+            fadingArray_[i] = x;
+        fadingArray_[i] *= val;
+    }
 }
 
-void Timeline::fadeOut(uint milisecond)
+void Timeline::fadeOut(uint milisecond, FadingCurve curve)
 {
     // mow many index values of timeline array for this duration?
-    const size_t N = (milisecond * 1000000) / (timing_.end / MAX_TIMELINE_ARRAY);
+    size_t N = MAX_TIMELINE_ARRAY -1;
+    GstClockTime d = static_cast<GstClockTime>(milisecond) * 1000000;
+    if ( d < timing_.end )
+        N = d / (timing_.end / MAX_TIMELINE_ARRAY);
 
-    // get sections (inverse of gaps)
+    // get sections (inverse of gaps) is never empty
     TimeIntervalSet sec = sections();
-    auto it = sec.cbegin();
+    auto it = sec.end();
+    --it;
 
     // get index of begining of section
     const size_t s = ( it->begin * MAX_TIMELINE_ARRAY ) / timing_.end;
@@ -538,8 +570,16 @@ void Timeline::fadeOut(uint milisecond)
     // linear fade out ending at e
     size_t i = e-n;
     float val = fadingArray_[i];
-    for (; i < e; ++i)
-        fadingArray_[i] = val * static_cast<float>(e-i) / static_cast<float>(n);
+    for (; i < e; ++i){
+        const float x = static_cast<float>(e-i) / static_cast<float>(n);
+        if (curve==FADING_BILINEAR)
+            fadingArray_[i] = x * x;
+        else if (curve==FADING_BILINEAR_INV)
+            fadingArray_[i] = 1.f - ((x- 1.f) * (x - 1.f));
+        else
+            fadingArray_[i] = x;
+        fadingArray_[i] *= val;
+    }
 }
 
 

@@ -135,10 +135,15 @@ public:
     void clearFading();
 
     // Edit
+    typedef enum {
+        FADING_LINEAR = 0,
+        FADING_BILINEAR,
+        FADING_BILINEAR_INV
+    } FadingCurve;
     void smoothFading(uint N = 1);
-    void autoFading(uint milisecond = 100);
-    void fadeIn(uint milisecond = 100);
-    void fadeOut(uint milisecond = 100);
+    void autoFading(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
+    void fadeIn(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
+    void fadeOut(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
     bool autoCut();
 
 private:

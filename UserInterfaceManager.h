@@ -141,6 +141,7 @@ class SourceController
 
     // Render a single media player
     MediaPlayer *mediaplayer_active_;
+    bool mediaplayer_edit_fading_;
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;

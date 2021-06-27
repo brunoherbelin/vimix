@@ -326,17 +326,23 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vect
 
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
     float w = ImGui::GetTextLineHeight();
-    ImGui::SetNextItemWidth(w * 2.6f);
+    ImGui::SetNextItemWidth(w * 2.7f);
     if (ImGui::BeginCombo("##ComboIcon", "  ") )
     {
+        char space_buf[] = "                                                ";
+        const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+        const int space_num = static_cast<int>( ceil(ImGui::GetTextLineHeightWithSpacing() / space_size.x) );
+        space_buf[space_num]='\0';
+
         std::vector<std::pair<int, int> >::iterator it_icon = icons.begin();
         std::vector<std::string>::iterator it_label = labels.begin();
         for(int i = 0 ; it_icon != icons.end(); i++, ++it_icon, ++it_label) {
             ImGui::PushID( id.sum + i + 1);
             ImVec2 pos = ImGui::GetCursorScreenPos();
             // combo selectable item
-            std::string label = "   " + (*it_label);
-            if ( ImGui::Selectable(label.c_str(), i == *state )){
+            char text_buf[256];
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, it_label->c_str());
+            if ( ImGui::Selectable(text_buf, i == *state )){
                 *state = i;
                 ret = true;
             }
@@ -356,13 +362,82 @@ bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vect
     return ret;
 }
 
+bool ImGuiToolkit::ComboIcon (const char* label, std::vector<std::pair<int, int> > icons, std::vector<std::string> items, int* i)
+{
+    bool ret = false;
+    ImGuiContext& g = *GImGui;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos() + g.Style.FramePadding * 0.5;
+
+    // make some space
+    char space_buf[] = "                                                ";
+    const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+    const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
+    space_buf[space_num]='\0';
+
+    char text_buf[256];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, items[*i].c_str());
+
+    if (ImGui::BeginCombo(label, text_buf))
+    {
+        for (int p = 0; p < items.size(); ++p){
+            if (ImGuiToolkit::SelectableIcon( items[p].c_str(), icons[p].first, icons[p].second, p == *i) ) {
+                *i = p;
+                ret = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImVec2 end_pos = ImGui::GetCursorScreenPos();
+
+    // draw icon
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(icons[*i].first, icons[*i].second);
+
+    ImGui::SetCursorScreenPos(end_pos);
+
+    return ret;
+}
+
+bool ImGuiToolkit::SelectableIcon(const char* label, int i, int j, bool selected)
+{
+    ImGuiContext& g = *GImGui;
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos() - g.Style.FramePadding * 0.5;
+
+    // make some space
+    char space_buf[] = "                                                ";
+    const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+    const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
+    space_buf[space_num]='\0';
+
+    char text_buf[256];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, label);
+
+    // draw menu item
+    bool ret = ImGui::Selectable(text_buf, selected);
+    ImVec2 end_pos = ImGui::GetCursorScreenPos();
+
+    // draw icon
+    ImGui::SetCursorScreenPos(draw_pos);
+    Icon(i, j);
+
+    ImGui::SetCursorScreenPos(end_pos);
+
+    return ret;
+}
+
+
 bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, bool selected, bool enabled)
 {
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
     // make some space
+    char space_buf[] = "                                                ";
+    const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+    const int space_num = static_cast<int>( ceil(ImGui::GetTextLineHeightWithSpacing() / space_size.x) );
+    space_buf[space_num]='\0';
+
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "       %s", label);
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, label);
 
     // draw menu item
     bool ret = ImGui::MenuItem(text_buf, NULL, selected, enabled);
@@ -442,6 +517,44 @@ void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut
     ImGuiToolkit::Icon(i, j, false);
     if (ImGui::IsItemHovered())
         ToolTip(desc, shortcut);
+}
+
+
+bool ImGuiToolkit::SliderTiming (const char* label, int* ms, int v_min, int v_max, const char* text_max)
+{
+    char text_buf[256];
+    if ( *ms < v_min || text_max == nullptr) {
+
+        int milisec = (*ms)%1000;
+        int sec = (*ms)/1000;
+        int min = sec/60;
+
+        if (min > 0) {
+            if (milisec>0)
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %d s %03d ms", min, sec%60, milisec);
+            else
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %d s", min, sec%60);
+        }
+        else if (sec > 0) {
+            if (milisec>0)
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d s %03d ms", sec, milisec);
+            else
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d s", sec);
+        }
+        else
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%03d ms", milisec);
+    }
+    else {
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", text_max);
+    }
+
+    // precision 50 ms
+    int val = *ms / 50;
+    bool ret = ImGui::SliderInt(label, &val, v_min / 50, v_max / 50, text_buf);
+
+    *ms = val * 50;
+
+    return ret;
 }
 
 // Draws a timeline showing

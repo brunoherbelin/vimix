@@ -21,8 +21,10 @@ namespace ImGuiToolkit
     bool ButtonIcon (int i, int j, const char* tooltip = nullptr);
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state);
-    bool ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state);
     bool MenuItemIcon (int i, int j, const char* label, bool selected = false, bool enabled = true);
+    bool SelectableIcon(const char* label, int i, int j, bool selected = false);
+    bool ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state);
+    bool ComboIcon (const char* label, std::vector<std::pair<int, int> > icons, std::vector<std::string> items, int* i);
 
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle);
@@ -35,6 +37,7 @@ namespace ImGuiToolkit
     void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = nullptr);
 
     // sliders
+    bool SliderTiming (const char* label, int *ms, int v_min, int v_max, const char* text_max = nullptr);
     bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width);
     void RenderTimeline (struct ImGuiWindow* window, struct ImRect timeline_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     void Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width);
