@@ -543,6 +543,13 @@ void Timeline::fadeIn(uint milisecond, FadingCurve curve)
             fadingArray_[i] = x;
         fadingArray_[i] *= val;
     }
+
+    // add a bit of buffer to avoid jump to previous frame
+    size_t b = s - (step_ / 2) / (timing_.end / MAX_TIMELINE_ARRAY);
+    if (b > 0) {
+        for (size_t j = b; j < s; ++j)
+            fadingArray_[j] = 0.f;
+    }
 }
 
 void Timeline::fadeOut(uint milisecond, FadingCurve curve)
@@ -565,7 +572,7 @@ void Timeline::fadeOut(uint milisecond, FadingCurve curve)
     const size_t e = ( it->end * MAX_TIMELINE_ARRAY ) / timing_.end;
 
     // calculate size of the smooth transition in [s e] interval
-    const size_t n = MIN( e-s-1, N );
+    const size_t n = MIN( e-s, N );
 
     // linear fade out ending at e
     size_t i = e-n;
@@ -579,6 +586,13 @@ void Timeline::fadeOut(uint milisecond, FadingCurve curve)
         else
             fadingArray_[i] = x;
         fadingArray_[i] *= val;
+    }
+
+    // add a bit of buffer to avoid jump to next frame
+    size_t b = e + (1000 + step_) / (timing_.end / MAX_TIMELINE_ARRAY);
+    if (b < MAX_TIMELINE_ARRAY) {
+        for (size_t j = e; j < b; ++j)
+            fadingArray_[j] = 0.f;
     }
 }
 

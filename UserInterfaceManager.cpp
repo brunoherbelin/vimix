@@ -1162,8 +1162,6 @@ void UserInterface::RenderPreview()
 
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
-//                    ImGui::SliderFloat("Duration", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
-//                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "Until stopped", 3.f);
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                        Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
@@ -2094,7 +2092,7 @@ void SourceController::Render()
             if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE LABEL_STORE_SELECTION, NULL, false, enabled))
             {
                 active_selection_ = N;
-                active_label_ = std::string("Selection #") + std::to_string(active_selection_);
+                active_label_ = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(active_selection_);
                 Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
                 info_.reset();
             }
@@ -3136,7 +3134,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
 
         static int l = 0;
         static std::vector< std::pair<int, int> > icons_loc = { {19,7}, {18,7}, {0,8} };
-        static std::vector< std::string > labels_loc = { "Fade in", "Fade out", "Fade in & out (all)" };
+        static std::vector< std::string > labels_loc = { "Fade in", "Fade out", "Auto fade in & out" };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::ComboIcon("Fading", icons_loc, labels_loc, &l);
 
@@ -3148,7 +3146,9 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
 
         static uint d = 1000;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::SliderTiming ("Duration", &d, 200, 5000, 50);
+        ImGuiToolkit::SliderTiming ("Duration", &d, 200, 5050, 50, "Maximum");
+        if (d > 5000)
+            d = UINT_MAX;
 
         bool close = false;
         ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
@@ -3175,7 +3175,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
             default:
                 break;
             }
-            tl->smoothFading( 4 );
+            tl->smoothFading( 2 );
             Action::manager().store(oss.str());
         }
 
