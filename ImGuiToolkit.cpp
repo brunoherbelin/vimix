@@ -520,20 +520,20 @@ void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut
 }
 
 
-bool ImGuiToolkit::SliderTiming (const char* label, int* ms, int v_min, int v_max, const char* text_max)
+bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v_max, uint v_step, const char* text_max)
 {
     char text_buf[256];
-    if ( *ms < v_min || text_max == nullptr) {
-
+    if ( *ms < v_max || text_max == nullptr)
+    {
         int milisec = (*ms)%1000;
         int sec = (*ms)/1000;
         int min = sec/60;
 
         if (min > 0) {
             if (milisec>0)
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %d s %03d ms", min, sec%60, milisec);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %02d s %03d ms", min, sec%60, milisec);
             else
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %d s", min, sec%60);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %02d s", min, sec%60);
         }
         else if (sec > 0) {
             if (milisec>0)
@@ -549,10 +549,10 @@ bool ImGuiToolkit::SliderTiming (const char* label, int* ms, int v_min, int v_ma
     }
 
     // precision 50 ms
-    int val = *ms / 50;
-    bool ret = ImGui::SliderInt(label, &val, v_min / 50, v_max / 50, text_buf);
+    int val = *ms / v_step;
+    bool ret = ImGui::SliderInt(label, &val, v_min / v_step, v_max / v_step, text_buf);
 
-    *ms = val * 50;
+    *ms = val * v_step;
 
     return ret;
 }
@@ -700,11 +700,11 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
             pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
 
     }
-    ImGui::PopStyleColor(1);
 
+    ImGui::PopStyleColor(1);
 }
 
-bool ImGuiToolkit::TimelineSlider(const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width)
+bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -856,7 +856,7 @@ void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 begin, gui
     }
 }
 
-bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, uint max, ImVec2 size)
+bool ImGuiToolkit::InvisibleSliderInt (const char* label, uint *index, uint min, uint max, ImVec2 size)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -898,13 +898,12 @@ bool ImGuiToolkit::InvisibleSliderInt(const char* label, uint *index, uint min, 
         uint _end = max;
         value_changed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_U32, index, &_zero,
                                               &_end, "%ld", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
-
     }
 
     return value_changed;
 }
 
-bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
+bool ImGuiToolkit::EditPlotLines (const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
     bool array_changed = false;
 
@@ -997,7 +996,7 @@ bool ImGuiToolkit::EditPlotLines(const char* label, float *array, int values_cou
 }
 
 
-bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array,
+bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array, float *lines_array,
                                       int values_count, float values_min, float values_max, guint64 begin, guint64 end,
                                       bool edit_histogram, bool *released, const ImVec2 size)
 {
@@ -1158,7 +1157,7 @@ bool ImGuiToolkit::EditPlotHistoLines(const char* label, float *histogram_array,
     return array_changed;
 }
 
-void ImGuiToolkit::ShowPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size)
+void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -1204,7 +1203,7 @@ void ImGuiToolkit::ShowPlotHistoLines(const char* label, float *histogram_array,
 }
 
 
-void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
+void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
 {
     // Font Atlas ImGui Management
     ImGuiIO& io = ImGui::GetIO();    
@@ -1257,7 +1256,7 @@ void ImGuiToolkit::SetFont(ImGuiToolkit::font_style style, const std::string &tt
     
 }
 
-void ImGuiToolkit::PushFont(ImGuiToolkit::font_style style)
+void ImGuiToolkit::PushFont (ImGuiToolkit::font_style style)
 {
     if (fontmap.count(style) > 0)
         ImGui::PushFont( fontmap[style] );

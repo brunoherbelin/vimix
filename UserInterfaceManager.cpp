@@ -1161,8 +1161,9 @@ void UserInterface::RenderPreview()
                         Settings::application.record.path = SystemToolkit::home_path();
 
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::SliderFloat("Duration", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
-                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "Until stopped", 3.f);
+                    ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
+//                    ImGui::SliderFloat("Duration", &Settings::application.record.timeout, 1.f, RECORD_MAX_TIMEOUT,
+//                                       Settings::application.record.timeout < (RECORD_MAX_TIMEOUT - 1.f) ? "%.0f s" : "Until stopped", 3.f);
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                        Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
@@ -2814,7 +2815,7 @@ void SourceController::RenderSingleSource(Source *s)
             // fill info string
             s->accept(info_);
 
-            float tooltip_height = 2.f * ImGui::GetTextLineHeightWithSpacing();
+            float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(top + ImVec2(h_space_, v_space_));
@@ -2876,7 +2877,6 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
     ImGui::Image((void*)(uintptr_t) mediaplayer_active_->texture(), framesize);
-
 
     ///
     /// Info overlays
@@ -3146,9 +3146,9 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::ComboIcon("Curve", icons_curve, labels_curve, &c);
 
-        static int d = 1000;
+        static uint d = 1000;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::SliderTiming ("Duration", &d, 200, 5000);
+        ImGuiToolkit::SliderTiming ("Duration", &d, 200, 5000, 50);
 
         bool close = false;
         ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));

@@ -39,7 +39,7 @@ public:
 
     virtual void stop();
     virtual std::string info() const;
-    virtual double duration() const;
+    virtual uint64_t duration() const;
     virtual bool finished() const;
     virtual bool busy() const;
 

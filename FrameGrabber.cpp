@@ -249,9 +249,9 @@ bool FrameGrabber::busy() const
         return false;
 }
 
-double FrameGrabber::duration() const
+uint64_t FrameGrabber::duration() const
 {
-    return gst_guint64_to_gdouble( GST_TIME_AS_MSECONDS(timestamp_) ) / 1000.0;
+    return GST_TIME_AS_MSECONDS(timestamp_);
 }
 
 void FrameGrabber::stop ()

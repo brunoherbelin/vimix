@@ -37,7 +37,7 @@ namespace ImGuiToolkit
     void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = nullptr);
 
     // sliders
-    bool SliderTiming (const char* label, int *ms, int v_min, int v_max, const char* text_max = nullptr);
+    bool SliderTiming (const char* label, uint *ms, uint v_min, uint v_max, uint v_step, const char* text_max = nullptr);
     bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width);
     void RenderTimeline (struct ImGuiWindow* window, struct ImRect timeline_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     void Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width);

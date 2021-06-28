@@ -299,7 +299,7 @@ void Settings::Load()
     XMLElement * recordnode = pRoot->FirstChildElement("Record");
     if (recordnode != nullptr) {
         recordnode->QueryIntAttribute("profile", &application.record.profile);
-        recordnode->QueryFloatAttribute("timeout", &application.record.timeout);
+        recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
         recordnode->QueryIntAttribute("delay", &application.record.delay);
 
         const char *path_ = recordnode->Attribute("path");

@@ -66,13 +66,13 @@ struct ViewConfig
 
 };
 
-#define RECORD_MAX_TIMEOUT 1800.f
+#define RECORD_MAX_TIMEOUT 301000
 
 struct RecordConfig
 {
     std::string path;
     int profile;
-    float timeout;
+    uint timeout;
     int delay;
 
     RecordConfig() : path("") {
