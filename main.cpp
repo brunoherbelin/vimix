@@ -31,9 +31,27 @@ int main(int argc, char *argv[])
     // one extra argument is given
     if (argc == 2) {
         std::string argument(argv[1]);
-        if (argument == "--clean" || argument == "-c")
+        if (argument == "--clean" || argument == "-c") {
             // clean start if requested : Save empty settings before loading
             Settings::Save();
+            return 0;
+        }
+        else if (argument == "--version" || argument == "-v") {
+#ifdef VIMIX_VERSION_MAJOR
+            fprintf(stderr, "%s %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
+#else
+            fprintf(stderr, "%s\n", APP_NAME);
+#endif
+            return 0;
+        }
+        else if (argument == "--test" || argument == "-t") {
+            if ( !Rendering::manager().init() ) {
+                fprintf(stderr, "%s Failed\n", APP_NAME);
+                return 1;
+            }
+            fprintf(stderr, "%s OK\n", APP_NAME);
+            return 0;
+        }
         else {
             // try to open the file
             Mixer::manager().load(argument);
