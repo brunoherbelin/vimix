@@ -1,13 +1,17 @@
 #ifndef __SETTINGS_H_
 #define __SETTINGS_H_
 
-#include "defines.h"
+#ifdef __APPLE__
+#include <sys/types.h>
+#endif
 
 #include <string>
 #include <map>
 #include <vector>
 #include <list>
 #include <glm/glm.hpp>
+
+#include "defines.h"
 
 namespace Settings {
 

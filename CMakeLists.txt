@@ -40,7 +40,7 @@ if(UNIX)
         set(CMAKE_OSX_ARCHITECTURES x86_64)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 #        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X version to target for deployment")
-        set (ICU_ROOT /usr/local/Cellar/icu4c/67.1)
+        set (ICU_ROOT /usr/local/Cellar/icu4c/69.1)
 
     else()
         add_definitions(-DLINUX)
