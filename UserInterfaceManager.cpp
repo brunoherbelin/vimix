@@ -4349,31 +4349,31 @@ void Navigator::RenderMainPannelVimix()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
-//        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
-//                                 "status of the current session.\n"
-//                                 "Clic an item to preview or edit.\n"
-//                                 "Double-clic to restore immediately.\n");
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
+                                 "status of the current session.\n"
+                                 "Clic an item to preview or edit.\n"
+                                 "Double-clic to restore immediately.\n");
 
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
-                                 "Double-clic on a snapshot to restore it.\n\n"
-                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
-                                 "from current state to snapshot's state.");
-        // toggle button for smooth interpolation
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Snapshot interpolation");
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+//        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
+//                                 "Double-clic on a snapshot to restore it.\n\n"
+//                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
+//                                 "from current state to snapshot's state.");
+//        // toggle button for smooth interpolation
+//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+//        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
+//        if (ImGui::IsItemHovered())
+//            ImGuiToolkit::ToolTip("Snapshot interpolation");
 
-        if (Action::manager().currentSnapshot() > 0) {
-            ImGui::SetCursorPos( pos_bot );
-            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
-                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
+//        if (Action::manager().currentSnapshot() > 0) {
+//            ImGui::SetCursorPos( pos_bot );
+//            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
+//            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
+//                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
 
-        }
+//        }
 
         ImGui::SetCursorPos( pos_bot );
     }
