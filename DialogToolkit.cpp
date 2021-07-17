@@ -295,11 +295,11 @@ std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &
     std::list<std::string> files;
 
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[3] = { "*.tif", "*.jpg", "*.png" };
+    char const * open_pattern[6] = { "*.tif", "*.jpg", "*.png", "*.TIF", "*.JPG", "*.PNG" };
 
 #if USE_TINYFILEDIALOG
     char const * open_file_names;
-    open_file_names = tinyfd_openFileDialog( "Select images", startpath.c_str(), 3, open_pattern, "Images", 1);
+    open_file_names = tinyfd_openFileDialog( "Select images", startpath.c_str(), 6, open_pattern, "Images", 1);
 
     if (open_file_names) {
 
@@ -335,7 +335,7 @@ std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 3, open_pattern, "All supported formats");
+    add_filter_file_dialog(dialog, 6, open_pattern, "All supported formats");
     add_filter_any_file_dialog(dialog);
 
     // multiple files

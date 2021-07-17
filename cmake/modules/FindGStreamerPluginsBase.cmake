@@ -64,6 +64,8 @@ foreach(_component ${GStreamerPluginsBase_FIND_COMPONENTS})
     endif()
 endforeach()
 
+get_filename_component(_GSTREAMER_BASE_LIB_DIR ${GSTREAMER_APP_LIBRARY} PATH)
+set(PKG_GSTREAMER_BASE_PLUGIN_DIR ${_GSTREAMER_BASE_LIB_DIR}/gstreamer-${GSTREAMER_ABI_VERSION})
 
 # Version check
 if (GStreamerPluginsBase_FIND_VERSION)

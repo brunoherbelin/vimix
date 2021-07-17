@@ -2,11 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
-	<key>CFBundleDocumentTypes</key>
+        <key>Apl</key>
+        <string></string>
+        <key>LSAppNapIsDisabled</key>
+        <true/>
+        <key>NSCameraUsageDescription</key>
+        <string>vimix needs to access the camera to enable camera sources.</string>
+        <key>LSMinimumSystemVersion</key>
+        <string>10.13.0</string>
+        <key>NSHighResolutionCapable</key>
+        <true/>
+        <key>NSPrincipalClass</key>
+        <string>NSApplication</string>
+        <key>NSAppTransportSecurity</key>
+        <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <true/>
+        </dict>
+        <key>CFBundleDocumentTypes</key>
         <array>
                 <dict>
                         <key>CFBundleTypeName</key>
@@ -19,35 +32,33 @@
                         <string>Owner</string>
                         <key>LSItemContentTypes</key>
                         <array>
-                            <string>com.bhbn.mix</string>
+                                <string>com.bhbn.mix</string>
                         </array>
                 </dict>
         </array>
-	<key>CFBundleExecutable</key>
+        <key>CFBundleExecutable</key>
         <string>vimix</string>
-	<key>CFBundleGetInfoString</key>
-        <string>Vimix Bundle</string>
-	<key>CFBundleIconFile</key>
+        <key>CFBundleGetInfoString</key>
+        <string>vimix - Video Live Mix</string>
+        <key>CFBundleIconFile</key>
         <string>vimix.icns</string>
-	<key>CFBundleIdentifier</key>
+        <key>CFBundleIdentifier</key>
         <string>com.bhbn.vimix</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleLongVersionString</key>
-	<string>version 1.0</string>
-	<key>CFBundleName</key>
+        <key>CFBundleInfoDictionaryVersion</key>
+        <string>6.0</string>
+        <key>CFBundleLongVersionString</key>
+        <string>0.6.0</string>
+        <key>CFBundleName</key>
         <string>vimix</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-        <string>0.1</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>1.0</string>
-	<key>CSResourcesFileMapped</key>
-	<true/>
-	<key>NSHumanReadableCopyright</key>
-	<string>Bruno Herbelin</string>
+        <key>CFBundlePackageType</key>
+        <string>APPL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>0.6</string>
+        <key>CFBundleVersion</key>
+        <string>0.6</string>
+        <key>CSResourcesFileMapped</key>
+        <true/>
+        <key>NSHumanReadableCopyright</key>
+        <string>Bruno Herbelin</string>
 </dict>
 </plist>
