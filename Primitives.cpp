@@ -121,52 +121,6 @@ void ImageSurface::accept(Visitor& v)
     v.visit(*this);
 }
 
-MediaSurface::MediaSurface(const std::string& p, Shader *s) : Surface(s), path_(p)
-{
-    mediaplayer_ = new MediaPlayer;
-}
-
-MediaSurface::~MediaSurface()
-{
-    delete mediaplayer_;
-}
-
-void MediaSurface::init()
-{
-    Surface::init();
-
-    mediaplayer_->open(path_);
-    mediaplayer_->play(true);
-}
-
-void MediaSurface::draw(glm::mat4 modelview, glm::mat4 projection)
-{
-    if ( !initialized() ) {
-        init();
-        // set the texture to the media player once openned
-        if ( mediaplayer_->isOpen() )
-            textureindex_ = mediaplayer_->texture();
-    }
-
-    Surface::draw(modelview, projection);
-}
-
-void MediaSurface::update( float dt )
-{
-    if ( mediaplayer_->isOpen() ) {
-        mediaplayer_->update();
-        scale_.x = mediaplayer_->aspectRatio();
-    }
-
-    Primitive::update( dt );
-}
-
-void MediaSurface::accept(Visitor& v)
-{
-    Surface::accept(v);
-    v.visit(*this);
-}
-
 FrameBufferSurface::FrameBufferSurface(FrameBuffer *fb, Shader *s) : Surface(s), frame_buffer_(fb)
 {
 }
@@ -401,6 +355,24 @@ LineSquare::LineSquare(float linewidth) : Group()
 }
 
 
+LineSquare::LineSquare(const LineSquare &square)
+{
+    top_    = new HLine(square.top_->width);
+    top_->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    attach(top_);
+    bottom_ = new HLine(square.bottom_->width);
+    bottom_->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    attach(bottom_);
+    left_   = new VLine(square.left_->width);
+    left_->translation_ = glm::vec3(-1.f, 0.f, 0.f);
+    attach(left_);
+    right_  = new VLine(square.right_->width);
+    right_->translation_ = glm::vec3(1.f, 0.f, 0.f);
+    attach(right_);
+
+    setColor(square.color());
+}
+
 void LineSquare::setLineWidth(float v)
 {
     top_->width = v;
@@ -416,7 +388,6 @@ void LineSquare::setColor(glm::vec4 c)
     left_->color = c;
     right_->color = c;
 }
-
 
 LineStrip::LineStrip(const std::vector<glm::vec2> &path, float linewidth) : Primitive(new Shader),
     arrayBuffer_(0), path_(path)

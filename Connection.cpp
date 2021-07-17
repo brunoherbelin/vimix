@@ -157,7 +157,8 @@ void Connection::listen()
 #ifdef CONNECTION_DEBUG
     Log::Info("Accepting handshake on port %d", Connection::manager().connections_[0].port_handshake);
 #endif
-    Connection::manager().receiver_->Run();
+    if (Connection::manager().receiver_)
+        Connection::manager().receiver_->Run();
 }
 
 void Connection::ask()

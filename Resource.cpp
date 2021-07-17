@@ -162,9 +162,8 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
     uint mipMapCount = *(uint*)&(header[24]);
     uint fourCC      = *(uint*)&(header[80]);
 
-	// how big is it going to be including all mipmaps?
-    uint bufsize;
-	bufsize = mipMapCount > 1 ? linearSize * 2 : linearSize;
+    // how big is it going to be including all mipmaps?
+    uint bufsize = mipMapCount > 1 ? linearSize * 2 : linearSize;
 
 	// get the buffer = bytes [128 - ]
 	const char *buffer = fp + 128;
@@ -188,7 +187,7 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
         }
 	}
 
-    if (height == 0){
+    if (height == 0 || bufsize == 0){
         Log::Error("Invalid image in ressource %s", std::string(path).c_str());
         return 0;
     }

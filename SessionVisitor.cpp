@@ -309,14 +309,6 @@ void SessionVisitor::visit(FrameBufferSurface &)
     xmlCurrent_->SetAttribute("type", "FrameBufferSurface");
 }
 
-void SessionVisitor::visit(MediaSurface &n)
-{
-    // Node of a different type
-    xmlCurrent_->SetAttribute("type", "MediaSurface");
-
-    n.mediaPlayer()->accept(*this);
-}
-
 void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");

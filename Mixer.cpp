@@ -36,9 +36,9 @@
 #include "Mixer.h"
 
 #define THREADED_LOADING
-static std::vector< std::future<Session *> > sessionLoaders_;
-static std::vector< std::future<Session *> > sessionImporters_;
-static std::vector< SessionSource * > sessionSourceToImport_;
+std::vector< std::future<Session *> > sessionLoaders_;
+std::vector< std::future<Session *> > sessionImporters_;
+std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
@@ -1165,7 +1165,7 @@ void Mixer::merge(SessionSource *source)
 
 void Mixer::swap()
 {
-    if (!back_session_)
+    if (!back_session_ || !session_)
         return;
 
     if (session_) {

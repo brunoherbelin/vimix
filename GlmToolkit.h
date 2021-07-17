@@ -15,11 +15,8 @@ class AxisAlignedBoundingBox
 {
 public:
     AxisAlignedBoundingBox();
-
-    inline void operator = (const AxisAlignedBoundingBox &D ) {
-        mMin = D.mMin;
-        mMax = D.mMax;
-    }
+    AxisAlignedBoundingBox(const AxisAlignedBoundingBox &D);
+    void operator = (const AxisAlignedBoundingBox &D );
 
     // test
     inline bool isNull() const { return mMin.x > mMax.x || mMin.y > mMax.y || mMin.z > mMax.z;}

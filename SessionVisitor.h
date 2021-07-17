@@ -40,7 +40,6 @@ public:
     void visit (Primitive& n) override;
     void visit (Surface&) override;
     void visit (ImageSurface& n) override;
-    void visit (MediaSurface& n) override;
     void visit (FrameBufferSurface&) override;
     void visit (LineStrip& n) override;
     void visit (LineSquare&) override;

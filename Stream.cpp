@@ -56,7 +56,7 @@ Stream::Stream()
 
 Stream::~Stream()
 {
-    close();
+    Stream::close();
 
     // cleanup opengl texture
     if (textureindex_)

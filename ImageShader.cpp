@@ -27,7 +27,7 @@ ImageShader::ImageShader(): Shader(), stipple(0.f), mask_texture(0)
     // static program shader
     program_ = &imageShadingProgram;
     // reset instance
-    reset();
+    ImageShader::reset();
 }
 
 void ImageShader::use()
@@ -85,7 +85,7 @@ AlphaShader::AlphaShader(): ImageShader()
 MaskShader::MaskShader(): Shader(), mode(0)
 {
     // reset instance
-    reset();
+    MaskShader::reset();
     // static program shader
     program_ = &maskPrograms[0];
 }

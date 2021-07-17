@@ -12,7 +12,7 @@ const char* ImageProcessingShader::filter_names[12] = { "None", "Blur", "Sharpen
 ImageProcessingShader::ImageProcessingShader(): Shader()
 {
     program_ = &imageProcessingShadingProgram;
-    reset();
+    ImageProcessingShader::reset();
 }
 
 void ImageProcessingShader::use()

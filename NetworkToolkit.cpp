@@ -99,8 +99,7 @@ void add_interface(int fd, const char *name) {
     strncpy(ifreq.ifr_name, name, IFNAMSIZ);
     if(ioctl(fd, SIOCGIFADDR, &ifreq)==0) {
         char host[128];
-        int family;
-        switch(family=ifreq.ifr_addr.sa_family) {
+        switch(ifreq.ifr_addr.sa_family) {
             case AF_INET:
             case AF_INET6:
                 getnameinfo(&ifreq.ifr_addr, sizeof ifreq.ifr_addr, host, sizeof host, 0, 0, NI_NUMERICHOST);

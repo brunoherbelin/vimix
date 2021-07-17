@@ -18,6 +18,11 @@ struct TimeInterval
     {
         reset();
     }
+    TimeInterval(const TimeInterval& b)
+    {
+        begin = b.begin;
+        end = b.end;
+    }
     TimeInterval(GstClockTime a, GstClockTime b) : TimeInterval()
     {
         if ( a != GST_CLOCK_TIME_NONE && b != GST_CLOCK_TIME_NONE) {

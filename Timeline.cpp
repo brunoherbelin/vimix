@@ -302,8 +302,7 @@ size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
     if (gaps_.size() > 0) {
 
         // indices to define [s e[] sections
-        size_t s = 0;
-        size_t e = MAX_TIMELINE_ARRAY;
+        size_t s = 0, e;
         arraysize = 0;
 
         auto it = gaps_.begin();

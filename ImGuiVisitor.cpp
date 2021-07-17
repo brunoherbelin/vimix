@@ -152,14 +152,6 @@ void ImGuiVisitor::visit(FrameBufferSurface &n)
     ImGui::Text("Framebuffer");
 }
 
-void ImGuiVisitor::visit(MediaSurface &n)
-{
-    ImGui::Text("%s", n.path().c_str());
-
-    if (n.mediaPlayer())
-        n.mediaPlayer()->accept(*this);
-}
-
 void ImGuiVisitor::visit(MediaPlayer &n)
 {
     ImGui::Text("Media Player");

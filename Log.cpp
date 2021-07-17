@@ -144,7 +144,10 @@ struct AppLog
     }
 };
 
-static AppLog logs;
+AppLog logs;
+list<string> notifications;
+list<string> warnings;
+float notifications_timeout = 0.f;
 
 void Log::Info(const char* fmt, ...)
 {
@@ -159,9 +162,6 @@ void Log::ShowLogWindow(bool* p_open)
     ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
     logs.Draw( ICON_FA_LIST_UL " Logs", p_open);
 }
-
-static list<string> notifications;
-static float notifications_timeout = 0.f;
 
 void Log::Notify(const char* fmt, ...)
 {
@@ -179,9 +179,6 @@ void Log::Notify(const char* fmt, ...)
     // always log
     Log::Info("%s", buf.c_str());
 }
-
-
-static list<string> warnings;
 
 void Log::Warning(const char* fmt, ...)
 {

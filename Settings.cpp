@@ -13,8 +13,7 @@ using namespace tinyxml2;
 
 
 Settings::Application Settings::application;
-
-static string settingsFilename = "";
+string settingsFilename = "";
 
 void Settings::Save()
 {

@@ -66,7 +66,7 @@ using namespace std;
 #include "ImageProcessingShader.h"
 
 #include "TextEditor.h"
-static TextEditor editor;
+TextEditor editor;
 
 #include "UserInterfaceManager.h"
 #define PLOT_ARRAY_SIZE 180
@@ -85,14 +85,14 @@ void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 180.f);
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
 static std::atomic<bool> fileDialogPending_ = false;
 
-static std::vector< std::future<std::string> > saveSessionFileDialogs;
-static std::vector< std::future<std::string> > openSessionFileDialogs;
-static std::vector< std::future<std::string> > importSessionFileDialogs;
-static std::vector< std::future<std::string> > fileImportFileDialogs;
-static std::vector< std::future<std::string> > recentFolderFileDialogs;
-static std::vector< std::future<std::string> > recordFolderFileDialogs;
+std::vector< std::future<std::string> > saveSessionFileDialogs;
+std::vector< std::future<std::string> > openSessionFileDialogs;
+std::vector< std::future<std::string> > importSessionFileDialogs;
+std::vector< std::future<std::string> > fileImportFileDialogs;
+std::vector< std::future<std::string> > recentFolderFileDialogs;
+std::vector< std::future<std::string> > recordFolderFileDialogs;
 
-static std::vector< std::future<FrameGrabber *> > _video_recorders;
+std::vector< std::future<FrameGrabber *> > _video_recorders;
 FrameGrabber *delayTrigger(FrameGrabber *g, std::chrono::milliseconds delay) {
     std::this_thread::sleep_for (delay);
     return g;
@@ -1181,7 +1181,7 @@ void UserInterface::RenderPreview()
                         else
                             openInitializeSystemLoopback = true;
                     }
-                    else {
+                    else if (webcam_emulator_ != nullptr) {
                         webcam_emulator_->stop();
                         webcam_emulator_ = nullptr;
                     }
@@ -1651,15 +1651,18 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
         ImGui::PopFont();
         ImGui::SameLine(0, 10);
+        ImGui::PushID( "timermetric1" );
         if (ImGuiToolkit::IconButton(12, 14))
             start_time_1_ = time_; // reset timer 1
+        ImGui::PopID();
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
         ImGui::PopFont();
         ImGui::SameLine(0, 10);
+        ImGui::PushID( "timermetric2" );
         if (ImGuiToolkit::IconButton(12, 14))
             start_time_2_ = time_; // reset timer 2
-
+        ImGui::PopID();
     }
     else {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
@@ -1987,7 +1990,7 @@ SourceController::SourceController() : min_width_(0.f), h_space_(0.f), v_space_(
     timeline_height_(0.f), scrollbar_(0.f), mediaplayer_height_(0.f), buttons_width_(0.f),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
 {
     info_.setExtendedStringMode();
 }

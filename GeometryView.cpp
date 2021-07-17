@@ -224,7 +224,7 @@ void GeometryView::draw()
     scene.accept(draw_overlays);
 
     // 4. Draw control overlays of current source on top (if selectable)
-    if (canSelect(s)) {
+    if (s!=nullptr && canSelect(s)) {
         s->setMode(Source::CURRENT);
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
@@ -411,39 +411,40 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             if (current->workspace() != Settings::application.current_workspace){
                 current = nullptr;
             }
-
-            // find if the current source was picked
-            auto itp = pv.rbegin();
-            for (; itp != pv.rend(); ++itp){
-                // test if source contains this node
-                Source::hasNode is_in_source((*itp).first );
-                if ( is_in_source( current ) ){
-                    // a node in the current source was clicked !
-                    pick = *itp;
-                    break;
+            else {
+                // find if the current source was picked
+                auto itp = pv.rbegin();
+                for (; itp != pv.rend(); ++itp){
+                    // test if source contains this node
+                    Source::hasNode is_in_source((*itp).first );
+                    if ( is_in_source( current ) ){
+                        // a node in the current source was clicked !
+                        pick = *itp;
+                        break;
+                    }
                 }
-            }
-            // not found: the current source was not clicked
-            if (itp == pv.rend()) {
-                current = nullptr;
-            }
-            // picking on the menu handle: show context menu
-            else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
-                openContextMenu(MENU_SOURCE);
-            }
-            // pick on the lock icon; unlock source
-            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
-                lock(current, false);
-                pick = { nullptr, glm::vec2(0.f) };
-            }
-            // pick on the open lock icon; lock source and cancel pick
-            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
-                lock(current, true);
-                pick = { nullptr, glm::vec2(0.f) };
-            }
-            // pick a locked source ; cancel pick
-            else if ( current->locked() ) {
-                pick = { nullptr, glm::vec2(0.f) };
+                // not found: the current source was not clicked
+                if (itp == pv.rend()) {
+                    current = nullptr;
+                }
+                // picking on the menu handle: show context menu
+                else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
+                    openContextMenu(MENU_SOURCE);
+                }
+                // pick on the lock icon; unlock source
+                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
+                    lock(current, false);
+                    pick = { nullptr, glm::vec2(0.f) };
+                }
+                // pick on the open lock icon; lock source and cancel pick
+                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
+                    lock(current, true);
+                    pick = { nullptr, glm::vec2(0.f) };
+                }
+                // pick a locked source ; cancel pick
+                else if ( current->locked() ) {
+                    pick = { nullptr, glm::vec2(0.f) };
+                }
             }
         }
         // the clicked source changed (not the current source)
@@ -516,7 +517,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
+    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
 }
 
 

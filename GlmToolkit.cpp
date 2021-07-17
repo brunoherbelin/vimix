@@ -57,6 +57,16 @@ GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox() :
 {
 }
 
+GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox(const GlmToolkit::AxisAlignedBoundingBox &D) :
+    mMin(D.mMin), mMax(D.mMax)
+{
+}
+
+void GlmToolkit::AxisAlignedBoundingBox::operator = (const GlmToolkit::AxisAlignedBoundingBox &D ) {
+    mMin = D.mMin;
+    mMax = D.mMax;
+}
+
 void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point)
 {
     if (isNull()) {

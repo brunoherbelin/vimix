@@ -63,31 +63,6 @@ protected:
 
 
 /**
- * @brief The MediaSurface class is a Surface to draw a video
- *
- * URI is passed to a Media Player to handle the video playback
- * Height = 1.0, Width is set by the aspect ratio of the image
- */
-class MediaSurface : public Surface {
-
-public:
-    MediaSurface(const std::string& p, Shader *s = new ImageShader);
-    ~MediaSurface();
-
-    void init () override;
-    void draw (glm::mat4 modelview, glm::mat4 projection) override;
-    void accept (Visitor& v) override;
-    void update (float dt) override;
-
-    inline std::string path() const { return path_; }
-    inline MediaPlayer *mediaPlayer() const { return mediaplayer_; }
-
-protected:
-    std::string path_;
-    MediaPlayer *mediaplayer_;
-};
-
-/**
  * @brief The FrameBufferSurface class is a Surface to draw a framebuffer
  *
  * URI is passed to a Media Player to handle the video playback
@@ -166,6 +141,7 @@ class LineSquare : public Group {
 
 public:
     LineSquare(float linewidth = 1.f);
+    LineSquare(const LineSquare &square);
 
     void setLineWidth(float v);
     inline float lineWidth() const { return top_->width; }

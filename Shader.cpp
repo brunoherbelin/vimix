@@ -206,7 +206,7 @@ Shader::Shader() : blending(BLEND_OPACITY)
     id_ = BaseToolkit::uniqueId();
 
     program_ = &simpleShadingProgram;
-    reset();
+    Shader::reset();
 }
 
 

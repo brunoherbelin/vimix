@@ -85,7 +85,8 @@ std::string BaseToolkit::byte_to_string(long b)
         ++i;
         numbytes /= 1024.0;
     }
-    oss << std::fixed << std::setprecision(2) << numbytes << *i;
+    oss << std::fixed << std::setprecision(2) << numbytes;
+    if (i != list.end()) oss << *i;
     return oss.str();
 }
 
@@ -102,7 +103,8 @@ std::string BaseToolkit::bits_to_string(long b)
         ++i;
         numbytes /= 1000.0;
     }
-    oss << std::fixed << std::setprecision(2) << numbytes << *i;
+    oss << std::fixed << std::setprecision(2) << numbytes;
+    if (i != list.end()) oss << *i;
     return oss.str();
 }
 

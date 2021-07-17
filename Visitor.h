@@ -11,7 +11,6 @@ class Primitive;
 class Scene;
 class Surface;
 class ImageSurface;
-class MediaSurface;
 class FrameBufferSurface;
 class LineStrip;
 class LineSquare;
@@ -54,7 +53,6 @@ public:
     // not mandatory for all others
     virtual void visit (Surface&) {}
     virtual void visit (ImageSurface&) {}
-    virtual void visit (MediaSurface&) {}
     virtual void visit (FrameBufferSurface&) {}
     virtual void visit (LineStrip&)  {}
     virtual void visit (LineSquare&) {}

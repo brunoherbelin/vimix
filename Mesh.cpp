@@ -263,7 +263,6 @@ bool parsePLY(string ascii,
                         break;
                     default:
                         // ignore normals or other types
-                        value = parseValue<float>(stringstream);
                         break;
                     }
                 }

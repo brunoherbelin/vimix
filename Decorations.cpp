@@ -249,7 +249,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
         init();
     }
 
-    if ( visible_ ) {
+    if ( visible_ && handle_) {
         static Mesh *handle_active = new Mesh("mesh/border_handles_overlay_filled.ply");
 
         // set color

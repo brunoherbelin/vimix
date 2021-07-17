@@ -100,7 +100,7 @@ void Rendering::LinkPipeline( GstPipeline *pipeline )
 #endif
 
 
-static std::map<GLFWwindow *, RenderingWindow*> GLFW_window_;
+std::map<GLFWwindow *, RenderingWindow*> GLFW_window_;
 
 static void glfw_error_callback(int error, const char* description)
 {
