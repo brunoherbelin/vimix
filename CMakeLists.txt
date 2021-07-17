@@ -20,12 +20,12 @@ if(GIT_EXECUTABLE)
       add_definitions(-DVIMIX_VERSION_MAJOR=${VIMIX_VERSION_MAJOR})
       add_definitions(-DVIMIX_VERSION_MINOR=${VIMIX_VERSION_MINOR})
       add_definitions(-DVIMIX_VERSION_PATCH=${VIMIX_VERSION_PATCH})
+      message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}")
+  else()
+      message(STATUS "Compiling vimix (unknown version)")
   endif()
 endif()
 
-message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}")
-
-set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 set(CMAKE_INCLUDE_CURRENTDIR ON)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules )
 include(MacroLogFeature)
@@ -38,15 +38,18 @@ if(UNIX)
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
         set(CMAKE_OSX_ARCHITECTURES x86_64)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
-#        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X version to target for deployment")
-        set (ICU_ROOT /usr/local/Cellar/icu4c/69.1)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
+
+        # find icu4c in OSX (pretty well hidden...)
+        set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
 
     else()
         add_definitions(-DLINUX)
 
+        # linux opengl
         set(OpenGL_GL_PREFERENCE "GLVND")
 
+        # linux dialogs use GTK
         find_package(GTK 3.0 REQUIRED)
         macro_log_feature(GTK_FOUND "GTK" "GTK cross-platform widget toolkit" "http://www.gtk.org" TRUE)
 
@@ -71,9 +74,6 @@ macro_log_feature(GOBJECT_FOUND "GObject" "GTK object-oriented framework" "http:
 find_package(PNG REQUIRED)
 macro_log_feature(PNG_FOUND "PNG" "Portable Network Graphics" "http://www.libpng.org" TRUE)
 
-find_package(ICU REQUIRED COMPONENTS i18n io uc)
-macro_log_feature(ICU_FOUND "ICU" "International Components for Unicode" "http://site.icu-project.org" TRUE)
-
 #
 # GSTREAMER
 #
@@ -82,49 +82,46 @@ find_package(GStreamer 1.0.0 COMPONENTS base)
 macro_log_feature(GSTREAMER_FOUND "GStreamer"
 "Open Source Multiplatform Multimedia Framework"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
-macro_log_feature(GSTREAMER_BASE_LIBRARY_FOUND "GStreamer base library"
-"${GSTREAMER_BASE_LIBRARY}"
-"http://gstreamer.freedesktop.org/" FALSE "1.0.0")
 
 find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl)
-macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamer app library"
-"${GSTREAMER_APP_LIBRARY}"
+macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer app library"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamer audio library"
-"${GSTREAMER_AUDIO_LIBRARY}"
+macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer audio library"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-macro_log_feature(GSTREAMER_VIDEO_LIBRARY_FOUND "GStreamer video library"
-"${GSTREAMER_VIDEO_LIBRARY}"
+macro_log_feature(GSTREAMER_VIDEO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer video library"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamer pbutils library"
-"${GSTREAMER_PBUTILS_LIBRARY}"
+macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer pbutils library"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamer opengl library"
-"${GSTREAMER_GL_LIBRARY}"
+macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer opengl library"
 "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
-
-#find_package(GStreamerPluginsBad 1.0.0 COMPONENTS player)
-#macro_log_feature(GSTREAMER_PLAYER_LIBRARY_FOUND "GStreamer player library"
-#"${GSTREAMER_PLAYER_LIBRARY}"
-#"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
-
 
 # Various preprocessor definitions for GST
 add_definitions(-DGST_DISABLE_XML -DGST_DISABLE_LOADSAVE)
 
-
+#
+# ICU4C
+#
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(ICU REQUIRED icu-i18n icu-uc icu-io)
+else ()
+    find_package(ICU REQUIRED COMPONENTS i18n io uc)
+endif ()
+macro_log_feature(ICU_FOUND "ICU" "International Components for Unicode" "http://site.icu-project.org" TRUE)
 
 #
 # GLFW3
-# NB: set glfw3_PATH to /usr/local/Cellar/glfw/3.3.2/lib/cmake/glfw3
 #
-find_package(glfw3 3.2 REQUIRED)
-macro_log_feature(glfw3_FOUND "GLFW3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org" TRUE)
-set(GLFW_LIBRARY glfw)
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(GLFW3 REQUIRED glfw3>=3.2)
+else ()
+    find_package(glfw3 3.2 REQUIRED)
+endif()
+macro_log_feature(GLFW3_FOUND "glfw3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org" TRUE)
+
 
 macro_display_feature_log()
 
@@ -135,14 +132,14 @@ set(BUILD_STATIC_LIBS ON)
 # GLM
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
-message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net")
+message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm")
 
 #
 # GLAD
 #
 set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
 add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}.")
+message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}")
 
 #
 # DEAR IMGUI
@@ -158,23 +155,14 @@ set(IMGUI_SRCS
 set(IMGUI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui)
 add_library(IMGUI "${IMGUI_SRCS}")
 target_compile_definitions(IMGUI PRIVATE "IMGUI_IMPL_OPENGL_LOADER_GLAD")
-message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIR}.")
-
-#
-# ImGui Color Text Editor
-#
-set(IMGUITEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
-set(IMGUITEXTEDIT_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp
-)
-message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}.")
+message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIR}")
 
 #
 # TINY XML 2
 #
 set(TINYXML2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
 add_library(TINYXML2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2/tinyxml2.cpp")
-message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIR}.")
+message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIR}")
 
 #
 # OSCPack
@@ -195,22 +183,7 @@ set(OSCPACK_SRCS
 )
 set(OSCPACK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/OSCPack)
 add_library(OSCPACK "${OSCPACK_SRCS}")
-message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}.")
-
-#
-# STB
-#
-set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
-add_definitions(-DIMGUI_USE_STB_SPRINTF)
-message(STATUS "Including 'STB Nothings' from https://github.com/nothings/stb -- ${STB_INCLUDE_DIR}.")
-
-#
-# DIRENT
-#
-if(WIN32)
-    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/Dirent/include)
-    message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
-endif( WIN32 )
+message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}")
 
 #
 # FILE DIALOG: use tinyfiledialog for all except Linux
@@ -230,11 +203,27 @@ else()
 endif()
 
 #
-# OBJ LOADER - not used
+# ImGui Color Text Editor
 #
-#set(OBJLOADER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/obj)
-#add_library(OBJLOADER "${CMAKE_CURRENT_SOURCE_DIR}/ext/obj/ObjLoader.cpp")
-#message(STATUS "Compiling 'ObjLoader' from https://github.com/mortennobel/OpenGL_3_2_Utils -- ${OBJLOADER_INCLUDE_DIR}.")
+set(IMGUITEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
+set(IMGUITEXTEDIT_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp
+)
+message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}")
+
+#
+# STB
+#
+set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
+add_definitions(-DIMGUI_USE_STB_SPRINTF)
+message(STATUS "Including 'STB Nothings' from https://github.com/nothings/stb -- ${STB_INCLUDE_DIR}")
+
+#
+# DIRENT (windows only)
+if(WIN32)
+    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/Dirent/include)
+    message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
+endif()
 
 #
 #  Application
@@ -249,9 +238,11 @@ include_directories(
     ${GSTREAMER_APP_INCLUDE_DIR}
     ${GSTREAMER_PBUTILS_INCLUDE_DIR}
     ${GSTREAMER_GL_INCLUDE_DIR}
+    ${GLFW3_INCLUDE_DIRS}
+    ${ICU_INCLUDE_DIRS}
+    ${GLM_INCLUDE_DIRS}
     ${GLIB2_INCLUDE_DIR}
     ${GLAD_INCLUDE_DIR}
-    ${GLM_INCLUDE_DIRS}
     ${IMGUI_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}/examples
     ${IMGUITEXTEDIT_INCLUDE_DIR}
@@ -260,7 +251,11 @@ include_directories(
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
     ${OSCPACK_INCLUDE_DIR}
-    ${ICU_INCLUDE_DIRS}
+)
+
+link_directories(
+    ${GLFW3_LIBRARY_DIRS}
+    ${ICU_LIBRARY_DIRS}
 )
 
 
@@ -454,7 +449,6 @@ IF(APPLE)
     # create the application
     add_executable(${VMIX_BINARY} MACOSX_BUNDLE
         ${VMIX_SRCS}
-        ./osx/CustomDelegate.m
         ${IMGUITEXTEDIT_SRC}
         ${MACOSX_BUNDLE_ICON_FILE}
     )
@@ -491,11 +485,15 @@ set_property(TARGET ${VMIX_BINARY} PROPERTY C_STANDARD 11)
 target_compile_definitions(${VMIX_BINARY} PUBLIC "IMGUI_IMPL_OPENGL_LOADER_GLAD")
 
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
+    vmix::rc
+    glm::glm
     GLAD
     TINYXML2
     IMGUI
     OSCPACK
-    ${GLFW_LIBRARY}
+    ${TINYFD_LIBRARY}
+    ${GLFW3_LIBRARIES}
+    ${ICU_LIBRARIES}
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
     ${GSTREAMER_LIBRARY}
@@ -505,15 +503,8 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${GSTREAMER_VIDEO_LIBRARY}
     ${GSTREAMER_PBUTILS_LIBRARY}
     ${GSTREAMER_GL_LIBRARY}
-    ${GSTREAMER_PLAYER_LIBRARY}
-    ${TINYFD_LIBRARY}
     Threads::Threads
     PNG::PNG
-    glm::glm
-    ICU::i18n
-    ICU::io
-    ICU::uc
-    vmix::rc
     ${PLATFORM_LIBS}
 )
 
@@ -566,34 +557,51 @@ IF(APPLE)
 
     ### TODO configure auto to find installation dir of gst
 
+    message(STATUS "install  gst-plugins ${PKG_GSTREAMER_PLUGIN_DIR}")
+    message(STATUS "install  gst-plugins-base ${PKG_GSTREAMER_BASE_PLUGIN_DIR}")
+
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(PKG_GSTREAMER_PLUGINS_BAD gstreamer-plugins-bad-${GSTREAMER_ABI_VERSION})
+        set(PKG_GSTREAMER_BAD_PLUGIN_DIR ${PKG_GSTREAMER_PLUGINS_BAD_LIBDIR}/gstreamer-${GSTREAMER_ABI_VERSION})
+        message(STATUS "install  gst-plugins-bad ${PKG_GSTREAMER_BAD_PLUGIN_DIR}")
+    endif()
+
+    find_library(PKG_GSTREAMER_LIBAV_LIBRARY  NAMES gstlibav )
+    message(STATUS "install  libav ${PKG_GSTREAMER_LIBAV_LIBRARY}")
+
     # intall the gst-plugin-scanner program (used by plugins at load time)
-    install(FILES "/usr/local/Cellar/gstreamer/1.18.1/libexec/gstreamer-1.0/gst-plugin-scanner"
+    set(PKG_GSTREAMER_SCANNER "${PKG_GSTREAMER_PREFIX}/libexec/gstreamer-1.0/gst-plugin-scanner")
+    message(STATUS "install  gst-plugin-scanner ${PKG_GSTREAMER_SCANNER}")
+    install(FILES "${PKG_GSTREAMER_SCANNER}"
         DESTINATION "${plugin_dest_dir}"
         PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         COMPONENT Runtime
     )
 
-    # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
-    install(FILES "/usr/local/Cellar/icu4c/67.1/lib/libicudata.67.1.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.67.dylib" COMPONENT Runtime)
-
     # Install the gst-plugins (all those installed with brew )
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-base/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-bad/1.18.1_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "${PKG_GSTREAMER_BASE_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "${PKG_GSTREAMER_BAD_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.4_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    # install locally recompiled & installed gst-plugins (because not included in brew package)
+    install(DIRECTORY "/usr/local/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
-    # install locally recompiled gst-plugins (because not included in brew package)
-    set(LOCAL_BUILD_BAD "/Users/herbelin/Development/gst/gst-plugins-bad-1.18.0/build")
-    install(FILES "${LOCAL_BUILD_BAD}/sys/applemedia/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/ext/libde265/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "${LOCAL_BUILD_BAD}/ext/x265/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+#    # install locally recompiled gst-plugins (because not included in brew package)
+#    set(LOCAL_BUILD_BAD "/usr/local/lib/gstreamer-1.0/")
+#    install(FILES "${LOCAL_BUILD_BAD}/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+#    install(FILES "${LOCAL_BUILD_BAD}/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+#    install(FILES "${LOCAL_BUILD_BAD}/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+
+    # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
+    install(FILES "${ICU_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    message(STATUS "install  icu4c from ${ICU_LIBRARY_DIRS}")
 
     # package runtime fixup bundle
     install(CODE "
             file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
-            list(APPEND LIBS_PATH \"/usr/local/Cellar/icu4c/67.1/lib\")
+            list(APPEND LIBS_PATH \"\${ICU_LIBRARY_DIRS}\")
             include(BundleUtilities)
             set(BU_CHMOD_BUNDLE_ITEMS TRUE)
             fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"${LIBS_PATH}\")
