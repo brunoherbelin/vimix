@@ -340,7 +340,7 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
     // unproject mouse coordinate into scene coordinates
     glm::vec3 scene_point_ = Rendering::manager().unProject(P);
 
-    // picking visitor traverses the scene
+    // picking visitor traverses the scene (force to find source)
     PickingVisitor pv(scene_point_, true);
     scene.accept(pv);
 
@@ -378,17 +378,17 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
                 current = nullptr;
             }
             // picking on the menu handle
-            else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
+            else if ( !current->locked() && pick.first == current->handles_[mode_][Handles::MENU] ) {
                 // show context menu
                 openContextMenu(MENU_SOURCE);
             }
             // pick on the lock icon; unlock source
-            else if ( pick.first == current->lock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
                 lock(current, false);
                 pick = { current->locker_,  pick.second };
             }
             // pick on the open lock icon; lock source and cancel pick
-            else if ( pick.first == current->unlock_ ) {
+            else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
                 lock(current, true);
                 current = nullptr;
             }
@@ -842,12 +842,12 @@ void TextureView::draw()
         if (s != nullptr) {
 
             if (s->textureMirrored()) {
-                if (ImGui::Selectable( ICON_FA_TH "  Repeat " )){
+                if (ImGui::Selectable( ICON_FA_BORDER_NONE "  Repeat " )){
                     s->setTextureMirrored(false);
                     Action::manager().store(s->name() + std::string(": Texture Repeat"));
                 }
             } else {
-                if (ImGui::Selectable( ICON_FA_TH "  Mirror " )){
+                if (ImGui::Selectable( ICON_FA_BORDER_NONE "  Mirror " )){
                     s->setTextureMirrored(true);
                     Action::manager().store(s->name() + std::string(": Texture Mirror"));
                 }
@@ -1309,7 +1309,7 @@ void TextureView::terminate()
     overlay_rotation_->visible_       = false;
 
     // cancel of all handles overlays
-    glm::vec2 c(0.f, 0.f);
+    const glm::vec2 c(0.f, 0.f);
     for (auto sit = Mixer::manager().session()->begin();
          sit != Mixer::manager().session()->end(); sit++){
 
