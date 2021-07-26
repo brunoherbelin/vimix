@@ -316,6 +316,7 @@ void UserInterface::handleKeyboard()
     // No CTRL modifier
     else {
         ctrl_modifier_active = false;
+        Source *_cs = Mixer::manager().currentSource();
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -328,6 +329,12 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
             StartScreenshot();
+        // button home to toggle menu
+        else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
+            navigator.togglePannelMenu();
+        // button home to toggle menu
+        else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
+            navigator.togglePannelNew();
         // button esc
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
             // 1. escape fullscreen
@@ -348,14 +355,33 @@ void UserInterface::handleKeyboard()
                 Mixer::selection().clear();
             }
         }
-        // button home to toggle menu
-        else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
-            navigator.togglePannelMenu();
-        // button home to toggle menu
-        else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
-            navigator.togglePannelNew();
-        // normal keys in workspace // make sure no entry / window box is active
-        else if ( !ImGui::IsAnyWindowFocused() ){
+
+        // keys to control the current source if media player is not focused
+        if (_cs != nullptr && _cs->active() && (!ImGui::IsAnyWindowFocused() || sourcecontrol.Active()) )
+        {
+            // Space bar to toggle play / pause
+            if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
+                 _cs->play( !_cs->playing() );
+            }
+            // B to rewind to Beginning
+            else if (ImGui::IsKeyPressed( GLFW_KEY_B )) {
+                _cs->replay();
+            }
+            // N for Next frame or fast forward
+            else if (ImGui::IsKeyPressed( GLFW_KEY_N )) {
+                MediaSource *ms = dynamic_cast<MediaSource *>(_cs);
+                if ( ms != nullptr ) {
+                    if (ms->playing())
+                        ms->mediaplayer()->jump();
+                    else
+                        ms->mediaplayer()->step();
+                }
+            }
+        }
+
+        // normal keys in workspace // make sure no entry / window box is active        
+        if ( !ImGui::IsAnyWindowFocused() )
+        {
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
                 Mixer::manager().deleteSelection();
@@ -1986,7 +2012,7 @@ void ToolBox::Render()
 ///
 /// SOURCE CONTROLLER
 ///
-SourceController::SourceController() : min_width_(0.f), h_space_(0.f), v_space_(0.f), buttons_height_(0.f),
+SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), buttons_height_(0.f),
     timeline_height_(0.f), scrollbar_(0.f), mediaplayer_height_(0.f), buttons_width_(0.f),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
@@ -2001,6 +2027,14 @@ void SourceController::resetActiveSelection()
     info_.reset();
     active_selection_ = -1;
     active_label_ = LABEL_AUTO_MEDIA_PLAYER;
+}
+
+
+bool SourceController::Active()
+{
+    return ( Settings::application.widget.media_player
+             && (Settings::application.widget.media_player_view < 0 || Settings::application.widget.media_player_view == Settings::application.current_view )
+             && focused_);
 }
 
 void SourceController::Render()
@@ -2041,6 +2075,7 @@ void SourceController::Render()
     }
     source_window_pos = ImGui::GetWindowPos();
     source_window_size = ImGui::GetWindowSize();
+    focused_ = ImGui::IsWindowFocused();
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
