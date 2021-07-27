@@ -30,6 +30,9 @@ set(CMAKE_INCLUDE_CURRENTDIR ON)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules )
 include(MacroLogFeature)
 
+# Find the plugin libraries
+include(MacroFindGStreamerLibrary)
+
 if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
@@ -37,7 +40,7 @@ if(UNIX)
         # the RPATH to be used when installing
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
-        set(CMAKE_OSX_ARCHITECTURES x86_64)
+        set(CMAKE_OSX_ARCHITECTURES "x86_64")
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
 
         # find icu4c in OSX (pretty well hidden...)
@@ -464,7 +467,7 @@ IF(APPLE)
 
 ELSE(APPLE)
 
-   link_directories (${GTK3_LIBRARY_DIRS})
+    link_directories (${GTK3_LIBRARY_DIRS})
 
     add_executable(${VMIX_BINARY}
         ${VMIX_SRCS}
@@ -509,14 +512,14 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 )
 
 
-
 ### DEFINE THE PACKAGING (all OS)
 
 SET(CPACK_PACKAGE_NAME "vimix")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "vimix\nReal-time video mixing for live performance.")
 SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
-SET(CPACK_PACKAGE_CONTACT "bruno.herbelin@gmail.com")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
+SET(CPACK_PACKAGE_CONTACT "bruno.herbelin@gmail.com")
+SET(CPACK_PACKAGE_HOMEPAGE_URL "https://brunoherbelin.github.io/vimix")
 SET(CPACK_PACKAGE_VERSION_MAJOR "${VIMIX_VERSION_MAJOR}")
 SET(CPACK_PACKAGE_VERSION_MINOR "${VIMIX_VERSION_MINOR}")
 SET(CPACK_PACKAGE_VERSION_PATCH "${VIMIX_VERSION_PATCH}")
@@ -528,23 +531,19 @@ SET(CPACK_SOURCE_IGNORE_FILES
 )
 
 
+# optimize size ?
+SET(CPACK_STRIP_FILES TRUE)
+
 ### DEFINE THE PACKAGING (OS specific)
 
 IF(APPLE)
 
-#    include( InstallRequiredSystemLibraries )
-
     # Bundle target
-    set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_GENERATOR DragNDrop)
+    set(CPACK_BINARY_DRAGNDROP ON)
 
     # OSX cpack info
     set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
-    set(CPACK_BUNDLE_NAME  ${CPACK_PACKAGE_NAME})
-    set(CPACK_BUNDLE_ICON  ${MACOSX_BUNDLE_ICON_FILE})
-    set(CPACK_BUNDLE_PLIST ${MACOSX_BUNDLE_PLIST_FILE})
-
-    set(APPS "\${CMAKE_INSTALL_PREFIX}/vimix.app")
-    #    set( APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/vimix${CMAKE_EXECUTABLE_SUFFIX}")
 
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo
@@ -566,8 +565,6 @@ IF(APPLE)
         message(STATUS "install  gst-plugins-bad ${PKG_GSTREAMER_BAD_PLUGIN_DIR}")
     endif()
 
-    find_library(PKG_GSTREAMER_LIBAV_LIBRARY  NAMES gstlibav )
-    message(STATUS "install  libav ${PKG_GSTREAMER_LIBAV_LIBRARY}")
 
     # intall the gst-plugin-scanner program (used by plugins at load time)
     set(PKG_GSTREAMER_SCANNER "${PKG_GSTREAMER_PREFIX}/libexec/gstreamer-1.0/gst-plugin-scanner")
@@ -581,24 +578,24 @@ IF(APPLE)
     # Install the gst-plugins (all those installed with brew )
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "${PKG_GSTREAMER_BASE_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "${PKG_GSTREAMER_BAD_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.4_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    # install locally recompiled & installed gst-plugins (because not included in brew package)
-    install(DIRECTORY "/usr/local/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
-#    # install locally recompiled gst-plugins (because not included in brew package)
-#    set(LOCAL_BUILD_BAD "/usr/local/lib/gstreamer-1.0/")
-#    install(FILES "${LOCAL_BUILD_BAD}/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-#    install(FILES "${LOCAL_BUILD_BAD}/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-#    install(FILES "${LOCAL_BUILD_BAD}/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    # install locally recompiled & installed gst-plugins (because not included in brew package)
+    install(FILES "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/usr/local/lib/gstreamer-1.0/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/usr/local/lib/gstreamer-1.0/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 
     # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
-    install(FILES "${ICU_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    message(STATUS "install  icu4c from ${ICU_LIBRARY_DIRS}")
+#    install(FILES "${ICU_LINK_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES "/usr/local/Cellar/icu4c/69.1/lib/libicudata.69.1.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.69.dylib" COMPONENT Runtime)
+    message(STATUS "install  ${ICU_LINK_LIBRARIES} from ${ICU_LIBRARY_DIRS}")
 
     # package runtime fixup bundle
+    set(APPS "\${CMAKE_INSTALL_PREFIX}/vimix.app")
     install(CODE "
             file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
             list(APPEND LIBS_PATH \"\${ICU_LIBRARY_DIRS}\")
@@ -609,17 +606,21 @@ IF(APPLE)
             COMPONENT Runtime
     )
 
-    set(CPACK_BINARY_DRAGNDROP ON)
+#    # package runtime fixup bundle and codesign
+#    set(BUNDLE_NAME "vimix.app")
+#    set(BUNDLE_LIBS_DIR "${plugin_dest_dir}/gstreamer-1.0")
+#    set(BUNDLE_DIRS "${ICU_LIBRARY_DIRS}")
+#    set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
+
+#    configure_file(cmake/modules/BundleInstall.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake" @ONLY)
+#    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake" COMPONENT Runtime)
 
 ELSE(APPLE)
-
-    set(APPS "\${CMAKE_INSTALL_PREFIX}/bin/vimix")
 
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo
             RUNTIME DESTINATION bin COMPONENT Runtime
     )
-
 
 ENDIF(APPLE)
 
