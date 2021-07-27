@@ -106,6 +106,7 @@ public:
 
 class SourceController
 {
+    bool focused_;
     float min_width_;
     float h_space_;
     float v_space_;
@@ -152,6 +153,7 @@ public:
 
     void resetActiveSelection();
     void Render();
+    bool Active();
 };
 
 

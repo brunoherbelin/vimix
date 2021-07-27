@@ -115,7 +115,7 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 #endif
 
     std::string extension = filename.substr(filename.find_last_of(".") + 1);
-    if (extension != "mix")
+    if (!filename.empty() && extension != "mix")
         filename += ".mix";
 
     return filename;
