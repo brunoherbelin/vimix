@@ -54,7 +54,7 @@ static void saveSession(const std::string& filename, Session *session)
         // set session filename
         session->setFilename(filename);
         // cosmetics saved ok
-        Rendering::manager().mainWindow().setTitle(filename);
+        Rendering::manager().setMainWindowTitle(filename);
         Settings::application.recentSessions.push(filename);
         Log::Notify("Session %s saved.", filename.c_str());
 
@@ -67,7 +67,8 @@ static void saveSession(const std::string& filename, Session *session)
     session->unlock();
 }
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), current_view_(nullptr), dt_(0.f), dt__(0.f)
+Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested_(false),
+    current_view_(nullptr), dt_(0.f), dt__(0.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -141,8 +142,8 @@ void Mixer::update()
             // swap front and back sessions
             swap();
             ++View::need_deep_update_;
-            // set session filename
-            Rendering::manager().mainWindow().setTitle(session_->filename());
+            // inform new session filename
+            Rendering::manager().setMainWindowTitle(session_->filename());
             Settings::application.recentSessions.push(session_->filename());
         }
     }

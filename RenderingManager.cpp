@@ -278,8 +278,6 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
-//     guint64 _time = gst_util_get_timestamp ();
-
     // operate on main window context
     main_.makeCurrent();
 
@@ -335,6 +333,11 @@ void Rendering::draw()
         g_timer_start(timer);
     }
 
+    // change main window title if requested
+    if (!main_new_title_.empty()) {
+        main_.setTitle(main_new_title_);
+        main_new_title_.clear();
+    }
 }
 
 
@@ -487,7 +490,7 @@ void RenderingWindow::setTitle(const std::string &title)
 {
     std::string fulltitle = Settings::application.windows[index_].name;
     if ( !title.empty() )
-        fulltitle += " -- " + title;
+        fulltitle = std::string(APP_NAME) + " -- " + title;
 
     glfwSetWindowTitle(window_, fulltitle.c_str());
 }

@@ -29,6 +29,7 @@ class RenderingWindow
 
     GLFWwindow *window_, *master_;
     RenderingAttrib window_attributes_;
+    std::string title_changed_;
     int index_;
     float dpi_scale_;
 
@@ -106,9 +107,8 @@ public:
 
     // Initialization OpenGL and GLFW window creation
     bool init();
-
+    // show windows and reset views
     void show();
-
     // true if active rendering window
     bool isActive();
     // draw one frame
@@ -131,6 +131,7 @@ public:
     // get hold on the windows
     inline RenderingWindow& mainWindow() { return main_; }
     inline RenderingWindow& outputWindow() { return output_; }
+    inline void setMainWindowTitle(const std::string t) { main_new_title_ = t; }
 
     // request screenshot
     void requestScreenshot();
@@ -160,6 +161,7 @@ private:
     std::list<RenderingCallback> draw_callbacks_;
 
     RenderingWindow main_;
+    std::string main_new_title_;
     RenderingWindow output_;
 
     // file drop callback
