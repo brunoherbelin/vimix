@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
+#include <vector>
 
 using namespace std;
 
@@ -333,3 +334,84 @@ void SystemToolkit::execute(const string& command)
 //      std::thread (SystemToolkit::execute,
 //                   "gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink").detach();;
 
+
+
+bool StringEQ( const std::string& a, const std::string& b )
+{
+    if ( a.size() != b.size() )
+        return false;
+    return ( strcmp( a.c_str(), b.c_str() ) == 0 );
+}
+
+// 7.3: http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
+//
+void Tokenize(const string& str, vector<string>& tokens, const string& delimiters)
+{
+    // Skip delimiters at beginning.
+    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+    // Find first "non-delimiter".
+    string::size_type pos = str.find_first_of(delimiters, lastPos);
+
+    while (string::npos != pos || string::npos != lastPos)
+    {
+        // Found a token, add it to the vector.
+        tokens.push_back(str.substr(lastPos, pos - lastPos));
+        // Skip delimiters. Note the "not_of"
+        lastPos = str.find_first_not_of(delimiters, pos);
+        // Find next "non-delimiter"
+        pos = str.find_first_of(delimiters, lastPos);
+    }
+}
+
+//
+// "c:\a\b\c" + "c:\a\x\file.txt" => "..\..\x\file.txt"
+// http://mrpmorris.blogspot.com/2007/05/convert-absolute-path-to-relative-path.html
+//
+string SystemToolkit::path_relative_to_path( const string& absolutePath, const string& relativeTo )
+{
+    vector< string > absoluteDirectories;
+    vector< string > relativeDirectories;
+    Tokenize( absolutePath, absoluteDirectories, "/" );
+    Tokenize( relativeTo, relativeDirectories, "/" );
+
+    // Get the shortest of the two paths
+    size_t length = absoluteDirectories.size() < relativeDirectories.size() ? absoluteDirectories.size() : relativeDirectories.size();
+
+    // Use to determine where in the loop we exited
+    int lastCommonRoot = -1;
+    size_t index;
+
+    // Find common root
+    for (index = 0; index < length; ++index) {
+        if (StringEQ( absoluteDirectories[index], relativeDirectories[index]))
+            lastCommonRoot = index;
+        else
+            break;
+    }
+
+    // If we didn't find a common prefix then throw
+    if (lastCommonRoot == -1)
+    {
+        assert( 0 ); // "Paths do not have a common base"
+        return "";
+    }
+
+    string relativePath;
+
+    // Add on the ..
+    for (index = lastCommonRoot + 1; index < relativeDirectories.size(); ++index) {
+        if (relativeDirectories[index].size() > 0)
+            relativePath += "../";
+    }
+
+    // Add on the folders
+    for (index = lastCommonRoot + 1; index < absoluteDirectories.size() - 1; ++index)
+    {
+        relativePath += absoluteDirectories[index];
+        relativePath += "/";
+    }
+
+    relativePath += absoluteDirectories[absoluteDirectories.size() - 1];
+
+    return relativePath;
+}

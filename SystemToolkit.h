@@ -51,6 +51,8 @@ namespace SystemToolkit
     // list all files of a directory mathing the given filter extension (if any)
     std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &extensions);
 
+    std::string path_relative_to_path(const std::string& absolutePath, const std::string& relativeTo);
+
     // true of file exists
     bool file_exists(const std::string& path);
 
