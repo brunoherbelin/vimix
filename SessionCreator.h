@@ -67,6 +67,7 @@ public:
 protected:
     // result created session
     Session *session_;
+    std::string sessionFilePath_;
     // parsing current xml
     tinyxml2::XMLElement *xmlCurrent_;
     // level of loading recursion

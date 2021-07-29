@@ -336,12 +336,6 @@ void SystemToolkit::execute(const string& command)
 
 
 
-bool StringEQ( const std::string& a, const std::string& b )
-{
-    if ( a.size() != b.size() )
-        return false;
-    return ( strcmp( a.c_str(), b.c_str() ) == 0 );
-}
 
 // 7.3: http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
 //
@@ -364,54 +358,79 @@ void Tokenize(const string& str, vector<string>& tokens, const string& delimiter
 }
 
 //
-// "c:\a\b\c" + "c:\a\x\file.txt" => "..\..\x\file.txt"
 // http://mrpmorris.blogspot.com/2007/05/convert-absolute-path-to-relative-path.html
 //
 string SystemToolkit::path_relative_to_path( const string& absolutePath, const string& relativeTo )
 {
+    const string separator = string(1, PATH_SEP);
+    string relativePath = "";
     vector< string > absoluteDirectories;
-    vector< string > relativeDirectories;
-    Tokenize( absolutePath, absoluteDirectories, "/" );
-    Tokenize( relativeTo, relativeDirectories, "/" );
+    vector< string > relativeToDirectories;
+    Tokenize( absolutePath, absoluteDirectories, separator );
+    Tokenize( relativeTo, relativeToDirectories, separator );
 
     // Get the shortest of the two paths
-    size_t length = absoluteDirectories.size() < relativeDirectories.size() ? absoluteDirectories.size() : relativeDirectories.size();
+    int length = MINI( absoluteDirectories.size(), relativeToDirectories.size() );
 
     // Use to determine where in the loop we exited
     int lastCommonRoot = -1;
-    size_t index;
+    int index = 0;
 
     // Find common root
-    for (index = 0; index < length; ++index) {
-        if (StringEQ( absoluteDirectories[index], relativeDirectories[index]))
+    for (; index < length; ++index) {
+        if (absoluteDirectories[index].compare(relativeToDirectories[index]) == 0)
             lastCommonRoot = index;
         else
             break;
     }
 
-    // If we didn't find a common prefix then throw
-    if (lastCommonRoot == -1)
-    {
-        assert( 0 ); // "Paths do not have a common base"
-        return "";
+    // If we didn't find a common prefix then return base absolute path
+    if (lastCommonRoot < 0)
+        return absolutePath;
+
+    // Add the '..'
+    for (index = lastCommonRoot + 1; index < relativeToDirectories.size(); ++index) {
+        if (relativeToDirectories[index].size() > 0)
+            relativePath += ".." + separator;
     }
 
-    string relativePath;
-
-    // Add on the ..
-    for (index = lastCommonRoot + 1; index < relativeDirectories.size(); ++index) {
-        if (relativeDirectories[index].size() > 0)
-            relativePath += "../";
-    }
-
-    // Add on the folders
-    for (index = lastCommonRoot + 1; index < absoluteDirectories.size() - 1; ++index)
-    {
+    // Add the relative folders
+    for (index = lastCommonRoot + 1; index < absoluteDirectories.size() - 1; ++index) {
         relativePath += absoluteDirectories[index];
-        relativePath += "/";
+        relativePath += separator;
     }
 
     relativePath += absoluteDirectories[absoluteDirectories.size() - 1];
 
     return relativePath;
+}
+
+std::string SystemToolkit::path_absolute_from_path(const std::string& relativePath, const std::string& relativeTo)
+{
+    const string separator = string(1, PATH_SEP);
+    string absolutePath = separator;
+    vector< string > relativeDirectories;
+    vector< string > relativeToDirectories;
+    Tokenize( relativePath, relativeDirectories, separator );
+    Tokenize( relativeTo, relativeToDirectories, separator );
+
+    // how many ".."
+    int count_relative = 0;
+    for (; count_relative < relativeDirectories.size() - 1; ++count_relative) {
+        if (relativeDirectories[count_relative].compare("..") != 0)
+            break;
+    }
+    // take the left part of relativeTo path
+    for (int i = 0; i < relativeToDirectories.size() -count_relative; ++i) {
+        absolutePath += relativeToDirectories[i];
+        absolutePath += separator;
+    }
+    // add the rest of the relative path
+    for (; count_relative < relativeDirectories.size() - 1; ++count_relative) {
+        absolutePath += relativeDirectories[count_relative];
+        absolutePath += separator;
+    }
+    absolutePath += relativeDirectories[count_relative];
+
+    return absolutePath;
 }

@@ -232,6 +232,9 @@ void MediaPlayer::open (const std::string & filename, const string &uri)
     else
         uri_ = uri;
 
+    if (uri_.empty())
+        failed_ = true;
+
     // close before re-openning
     if (isOpen())
         close();

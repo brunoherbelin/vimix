@@ -122,7 +122,6 @@ protected:
     Session *back_session_;
     std::list<Session *> garbage_;
     bool sessionSwapRequested_;
-    bool sessionNameChanged_;
     void swap();
 
     SourceList candidate_sources_;

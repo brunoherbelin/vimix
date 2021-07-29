@@ -46,6 +46,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     XMLElement *sessionNode = xmlDoc.NewElement("Session");
     xmlDoc.InsertEndChild(sessionNode);
     SessionVisitor sv(&xmlDoc, sessionNode);
+    sv.sessionFilePath_ = SystemToolkit::path_filename(filename);
     for (auto iter = session->begin(); iter != session->end(); ++iter, sv.setRoot(sessionNode) )
         // source visitor
         (*iter)->accept(sv);
@@ -549,6 +550,9 @@ void SessionVisitor::visit (MediaSource& s)
     XMLText *text = xmlDoc_->NewText( s.path().c_str() );
     uri->InsertEndChild( text );
 
+    if (!sessionFilePath_.empty())
+        uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
+
     s.mediaplayer()->accept(*this);
 }
 
@@ -562,6 +566,9 @@ void SessionVisitor::visit (SessionFileSource& s)
     xmlCurrent_->InsertEndChild(path);
     XMLText *text = xmlDoc_->NewText( s.path().c_str() );
     path->InsertEndChild( text );
+
+    if (!sessionFilePath_.empty())
+        path->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
 }
 
 void SessionVisitor::visit (SessionGroupSource& s)
@@ -648,6 +655,10 @@ void SessionVisitor::visit (MultiFileSource& s)
     sequence->SetAttribute("width", s.sequence().width);
     sequence->SetAttribute("height", s.sequence().height);
     sequence->SetAttribute("codec", s.sequence().codec.c_str());
+
+    if (!sessionFilePath_.empty())
+        sequence->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.sequence().location, sessionFilePath_).c_str());
+
     XMLText *location = xmlDoc_->NewText( s.sequence().location.c_str() );
     sequence->InsertEndChild( location );
 

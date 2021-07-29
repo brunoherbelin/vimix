@@ -53,6 +53,8 @@ namespace SystemToolkit
 
     std::string path_relative_to_path(const std::string& absolutePath, const std::string& relativeTo);
 
+    std::string path_absolute_from_path(const std::string& relativePath, const std::string& relativeTo);
+
     // true of file exists
     bool file_exists(const std::string& path);
 

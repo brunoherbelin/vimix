@@ -117,7 +117,8 @@ void Mixer::update()
         // check status of loader: did it finish ?
         if (sessionLoaders_.back().wait_for(timeout_) == std::future_status::ready ) {
             // get the session loaded by this loader
-            set( sessionLoaders_.back().get() );
+            if (sessionLoaders_.back().valid())
+                set( sessionLoaders_.back().get() );
             // done with this session loader
             sessionLoaders_.pop_back();
         }

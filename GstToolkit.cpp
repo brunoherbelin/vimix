@@ -58,11 +58,13 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
 
 std::string GstToolkit::filename_to_uri(std::string path)
 {
+    if (path.empty())
+        return path;
+
     // set uri to open
     gchar *uritmp = gst_filename_to_uri(path.c_str(), NULL);
     std::string uri( uritmp );
     g_free(uritmp);
-
     return uri;
 }
 

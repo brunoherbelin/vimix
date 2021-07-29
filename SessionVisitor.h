@@ -13,6 +13,7 @@ class SessionVisitor : public Visitor {
     bool recursive_;
     tinyxml2::XMLDocument *xmlDoc_;
     tinyxml2::XMLElement *xmlCurrent_;
+    std::string sessionFilePath_;
 
     static void saveConfig(tinyxml2::XMLDocument *doc, Session *session);
     static void saveSnapshots(tinyxml2::XMLDocument *doc, Session *session);

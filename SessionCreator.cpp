@@ -99,6 +99,7 @@ void SessionCreator::load(const std::string& filename)
     loadConfig( xmlDoc_.FirstChildElement("Views") );
 
     // ready to read sources
+    sessionFilePath_ = SystemToolkit::path_filename(filename);
     SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
 
     // create groups
@@ -344,8 +345,13 @@ void SessionLoader::load(XMLElement *sessionNode)
                         SourceList::iterator origin;
                         if (id_origin_ > 0)
                             origin = session_->find(id_origin_);
-                        else
-                            origin = session_->find( std::string ( originNode->GetText() ) );
+                        else {
+                            const char *text = originNode->GetText();
+                            if (text)
+                                origin = session_->find( std::string(text) );
+                            else
+                                origin = session_->end();
+                        }
                         // found the orign source
                         if (origin != session_->end()) {
                             // create a new source of type Clone
@@ -829,12 +835,27 @@ void SessionLoader::visit (Source& s)
 void SessionLoader::visit (MediaSource& s)
 {
     // set uri
-    XMLElement* uriNode = xmlCurrent_->FirstChildElement("uri");
-    if (uriNode) {
-        std::string uri = std::string ( uriNode->GetText() );
-        // load only new files
-        if ( uri != s.path() )
-            s.setPath(uri);
+    XMLElement* pathNode = xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
+    if (pathNode) {
+        const char * text = pathNode->GetText();
+        if (text) {
+            std::string path(text);
+            // load only new files
+            if ( path.compare(s.path()) != 0 ) {
+                if ( !SystemToolkit::file_exists(path)){
+                    const char * relative;
+                    if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
+                        path = rel;
+                    }
+                }
+                s.setPath(path);
+            }
+        }
+        // ensures the source is initialized even if no valid path is given
+        else
+            s.setPath("");
     }
 
     // set config media player
@@ -850,10 +871,22 @@ void SessionLoader::visit (SessionFileSource& s)
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
-        std::string path = std::string ( pathNode->GetText() );
-        // load only new files
-        if ( path != s.path() )
-            s.load(path, recursion_ + 1);
+        const char * text = pathNode->GetText();
+        if (text) {
+            std::string path(text);
+            // load only new files
+            if ( path != s.path() ) {
+                if ( !SystemToolkit::file_exists(path)){
+                    const char * relative;
+                    if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
+                        path = rel;
+                    }
+                }
+                s.load(path, recursion_ + 1);
+            }
+        }
     }
 
 }
@@ -921,38 +954,56 @@ void SessionLoader::visit (MultiFileSource& s)
     if (seq) {
 
         MultiFileSequence sequence;
-        sequence.location = std::string ( seq->GetText() );
-        seq->QueryIntAttribute("min", &sequence.min);
-        seq->QueryIntAttribute("max", &sequence.max);
-        seq->QueryUnsignedAttribute("width", &sequence.width);
-        seq->QueryUnsignedAttribute("height", &sequence.height);
-        const char *codec = seq->Attribute("codec");
-        if (codec)
-            sequence.codec = std::string(codec);
 
-        uint fps = 0;
-        seq->QueryUnsignedAttribute("fps", &fps);
+        const char *text = seq->GetText();
+        if (text) {
+            sequence.location = std::string (text);
 
-        // different sequence
-        if ( sequence != s.sequence() ) {
-            s.setSequence( sequence, fps);
+            // fix path if absolute path is not found
+            std::string folder = SystemToolkit::path_filename(sequence.location);
+            std::string dir = SystemToolkit::path_directory(folder);
+            if ( dir.empty() ){
+                const char * relative;
+                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
+                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
+                    sequence.location = rel;
+                }
+            }
+
+            // set sequence parameters
+            seq->QueryIntAttribute("min", &sequence.min);
+            seq->QueryIntAttribute("max", &sequence.max);
+            seq->QueryUnsignedAttribute("width", &sequence.width);
+            seq->QueryUnsignedAttribute("height", &sequence.height);
+            const char *codec = seq->Attribute("codec");
+            if (codec)
+                sequence.codec = std::string(codec);
+
+            uint fps = 0;
+            seq->QueryUnsignedAttribute("fps", &fps);
+
+            // different sequence
+            if ( sequence != s.sequence() ) {
+                s.setSequence( sequence, fps);
+            }
+            // same sequence, different framerate
+            else if ( fps != s.framerate() )  {
+                s.setFramerate( fps );
+            }
+
+            int begin = -1;
+            seq->QueryIntAttribute("begin", &begin);
+            int end = INT_MAX;
+            seq->QueryIntAttribute("end", &end);
+            if ( begin != s.begin() || end != s.end() )
+                s.setRange(begin, end);
+
+            bool loop = true;
+            seq->QueryBoolAttribute("loop", &loop);
+            if ( loop != s.loop() )
+                s.setLoop(loop);
         }
-        // same sequence, different framerate
-        else if ( fps != s.framerate() )  {
-            s.setFramerate( fps );
-        }
-
-        int begin = -1;
-        seq->QueryIntAttribute("begin", &begin);
-        int end = INT_MAX;
-        seq->QueryIntAttribute("end", &end);
-        if ( begin != s.begin() || end != s.end() )
-            s.setRange(begin, end);
-
-        bool loop = true;
-        seq->QueryBoolAttribute("loop", &loop);
-        if ( loop != s.loop() )
-            s.setLoop(loop);
     }
 
 }
