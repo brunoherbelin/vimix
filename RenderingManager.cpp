@@ -488,9 +488,11 @@ RenderingWindow::~RenderingWindow()
 
 void RenderingWindow::setTitle(const std::string &title)
 {
-    std::string fulltitle = Settings::application.windows[index_].name;
-    if ( !title.empty() )
-        fulltitle = std::string(APP_NAME) + " -- " + title;
+    std::string fulltitle;
+    if ( title.empty() )
+        fulltitle = Settings::application.windows[index_].name;
+    else
+        fulltitle = title + std::string(" - " APP_NAME);
 
     glfwSetWindowTitle(window_, fulltitle.c_str());
 }

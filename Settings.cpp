@@ -39,13 +39,12 @@ void Settings::Save()
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
-        for (int i = 0; i < application.windows.size(); i++)
+        for (int i = 0; i < application.windows.size(); ++i)
         {
             const Settings::WindowConfig& w = application.windows[i];
 
             XMLElement *window = xmlDoc.NewElement( "Window" );
             window->SetAttribute("id", i);
-            window->SetAttribute("name", w.name.c_str());
 			window->SetAttribute("x", w.x);
 			window->SetAttribute("y", w.y);
 			window->SetAttribute("w", w.w);
@@ -334,16 +333,18 @@ void Settings::Load()
             for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
             {
                 Settings::WindowConfig w;
-                w.name = std::string(windowNode->Attribute("name"));
                 windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
                 windowNode->QueryIntAttribute("y", &w.y);
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                w.monitor = std::string(windowNode->Attribute("m"));
+                const char *text = windowNode->Attribute("m");
+                if (text)
+                    w.monitor = std::string(text);
 
                 int i = 0;
                 windowNode->QueryIntAttribute("id", &i);
+                w.name = application.windows[i].name; // keep only original name
                 application.windows[i] = w;
             }
         }

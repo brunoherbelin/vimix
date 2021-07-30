@@ -54,7 +54,7 @@ static void saveSession(const std::string& filename, Session *session)
         // set session filename
         session->setFilename(filename);
         // cosmetics saved ok
-        Rendering::manager().setMainWindowTitle(filename);
+        Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
         Settings::application.recentSessions.push(filename);
         Log::Notify("Session %s saved.", filename.c_str());
 
@@ -144,8 +144,12 @@ void Mixer::update()
             swap();
             ++View::need_deep_update_;
             // inform new session filename
-            Rendering::manager().setMainWindowTitle(session_->filename());
-            Settings::application.recentSessions.push(session_->filename());
+            if (session_->filename().empty()) {
+                Rendering::manager().setMainWindowTitle(Settings::application.windows[0].name);
+            } else {
+                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(session_->filename()));
+                Settings::application.recentSessions.push(session_->filename());
+            }
         }
     }
 

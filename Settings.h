@@ -225,10 +225,10 @@ struct Application
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         windows = std::vector<WindowConfig>(3);
-        windows[0].name = APP_NAME APP_TITLE;
+        windows[0].name = APP_TITLE;
         windows[0].w = 1600;
         windows[0].h = 900;
-        windows[1].name = APP_NAME " -- Output";
+        windows[1].name = "Output " APP_TITLE;
     }
 
 };

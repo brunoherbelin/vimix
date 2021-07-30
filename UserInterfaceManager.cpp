@@ -1715,7 +1715,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 void UserInterface::RenderAbout(bool* p_open)
 {
     ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("About " APP_NAME APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
