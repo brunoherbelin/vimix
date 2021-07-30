@@ -44,6 +44,7 @@ void Settings::Save()
             const Settings::WindowConfig& w = application.windows[i];
 
             XMLElement *window = xmlDoc.NewElement( "Window" );
+            window->SetAttribute("name", w.name.c_str());
             window->SetAttribute("id", i);
 			window->SetAttribute("x", w.x);
 			window->SetAttribute("y", w.y);
