@@ -336,45 +336,32 @@ void SystemToolkit::execute(const string& command)
 
 
 
-
-// 7.3: http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
-//
-void Tokenize(const string& str, vector<string>& tokens, const string& delimiters)
-{
-    // Skip delimiters at beginning.
-    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-    // Find first "non-delimiter".
-    string::size_type pos = str.find_first_of(delimiters, lastPos);
-
-    while (string::npos != pos || string::npos != lastPos)
-    {
-        // Found a token, add it to the vector.
-        tokens.push_back(str.substr(lastPos, pos - lastPos));
-        // Skip delimiters. Note the "not_of"
-        lastPos = str.find_first_not_of(delimiters, pos);
-        // Find next "non-delimiter"
-        pos = str.find_first_of(delimiters, lastPos);
+vector<string> split(const string& str, char delim) {
+    vector<string> strings;
+    size_t start;
+    size_t end = 0;
+    while ((start = str.find_first_not_of(delim, end)) != string::npos) {
+        end = str.find(delim, start);
+        strings.push_back(str.substr(start, end - start));
     }
+    return strings;
 }
 
 //
-// http://mrpmorris.blogspot.com/2007/05/convert-absolute-path-to-relative-path.html
+// loosely inspired from http://mrpmorris.blogspot.com/2007/05/convert-absolute-path-to-relative-path.html
 //
 string SystemToolkit::path_relative_to_path( const string& absolutePath, const string& relativeTo )
 {
-    const string separator = string(1, PATH_SEP);
     string relativePath = "";
-    vector< string > absoluteDirectories;
-    vector< string > relativeToDirectories;
-    Tokenize( absolutePath, absoluteDirectories, separator );
-    Tokenize( relativeTo, relativeToDirectories, separator );
+    vector<string> absoluteDirectories = split(absolutePath, PATH_SEP);
+    vector<string> relativeToDirectories = split(relativeTo, PATH_SEP);
 
     // Get the shortest of the two paths
-    int length = MINI( absoluteDirectories.size(), relativeToDirectories.size() );
+    size_t length = MINI( absoluteDirectories.size(), relativeToDirectories.size() );
 
     // Use to determine where in the loop we exited
-    int lastCommonRoot = -1;
-    int index = 0;
+    size_t lastCommonRoot = SIZE_T_MAX;
+    size_t index = 0;
 
     // Find common root
     for (; index < length; ++index) {
@@ -385,19 +372,19 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
     }
 
     // If we didn't find a common prefix then return base absolute path
-    if (lastCommonRoot < 0)
+    if (lastCommonRoot == SIZE_T_MAX || absoluteDirectories.size() < 1)
         return absolutePath;
 
     // Add the '..'
     for (index = lastCommonRoot + 1; index < relativeToDirectories.size(); ++index) {
         if (relativeToDirectories[index].size() > 0)
-            relativePath += ".." + separator;
+            relativePath += string("..") + PATH_SEP;
     }
 
     // Add the relative folders
     for (index = lastCommonRoot + 1; index < absoluteDirectories.size() - 1; ++index) {
         relativePath += absoluteDirectories[index];
-        relativePath += separator;
+        relativePath += PATH_SEP;
     }
 
     relativePath += absoluteDirectories[absoluteDirectories.size() - 1];
@@ -407,28 +394,27 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
 
 std::string SystemToolkit::path_absolute_from_path(const std::string& relativePath, const std::string& relativeTo)
 {
-    const string separator = string(1, PATH_SEP);
-    string absolutePath = separator;
-    vector< string > relativeDirectories;
-    vector< string > relativeToDirectories;
-    Tokenize( relativePath, relativeDirectories, separator );
-    Tokenize( relativeTo, relativeToDirectories, separator );
+    string absolutePath = string(1, PATH_SEP);
+    vector<string> relativeDirectories = split(relativePath, PATH_SEP);
+    vector<string> relativeToDirectories = split(relativeTo, PATH_SEP);
 
     // how many ".."
-    int count_relative = 0;
+    size_t count_relative = 0;
     for (; count_relative < relativeDirectories.size() - 1; ++count_relative) {
         if (relativeDirectories[count_relative].compare("..") != 0)
             break;
     }
     // take the left part of relativeTo path
-    for (int i = 0; i < relativeToDirectories.size() -count_relative; ++i) {
-        absolutePath += relativeToDirectories[i];
-        absolutePath += separator;
+    if (relativeToDirectories.size() > count_relative ) {
+        for (size_t i = 0; i < relativeToDirectories.size() -count_relative; ++i) {
+            absolutePath += relativeToDirectories[i];
+            absolutePath += PATH_SEP;
+        }
     }
     // add the rest of the relative path
     for (; count_relative < relativeDirectories.size() - 1; ++count_relative) {
         absolutePath += relativeDirectories[count_relative];
-        absolutePath += separator;
+        absolutePath += PATH_SEP;
     }
     absolutePath += relativeDirectories[count_relative];
 
