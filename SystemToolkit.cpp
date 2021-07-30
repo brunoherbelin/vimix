@@ -7,6 +7,7 @@
 #include <chrono>
 #include <algorithm>
 #include <vector>
+#include <climits>
 
 using namespace std;
 
@@ -360,7 +361,7 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
     size_t length = MINI( absoluteDirectories.size(), relativeToDirectories.size() );
 
     // Use to determine where in the loop we exited
-    size_t lastCommonRoot = SIZE_T_MAX;
+    size_t lastCommonRoot = SIZE_MAX;
     size_t index = 0;
 
     // Find common root
@@ -372,7 +373,7 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
     }
 
     // If we didn't find a common prefix then return base absolute path
-    if (lastCommonRoot == SIZE_T_MAX || absoluteDirectories.size() < 1)
+    if (lastCommonRoot == SIZE_MAX || absoluteDirectories.size() < 1)
         return absolutePath;
 
     // Add the '..'
