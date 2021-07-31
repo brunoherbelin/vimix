@@ -18,7 +18,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 {
 }
 
-Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fading_target_(0.f)
+Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fading_target_(0.f), thumbnail_(nullptr)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
@@ -226,6 +226,33 @@ Source *Session::popSource()
     }
 
     return s;
+}
+
+static void replaceThumbnail(Session *s)
+{
+    if (s != nullptr) {
+        FrameBufferImage *t = s->renderThumbnail();
+        if (t != nullptr) // avoid recursive infinite loop
+            s->setThumbnail(t);
+    }
+}
+
+void Session::setThumbnail(FrameBufferImage *t)
+{
+    resetThumbnail();
+    // replace with given image
+    if (t != nullptr)
+        thumbnail_ = t;
+    // no thumbnail image given: capture from rendering in a parallel thread
+    else
+        std::thread( replaceThumbnail, this ).detach();
+}
+
+void Session::resetThumbnail()
+{
+    if (thumbnail_ != nullptr)
+        delete thumbnail_;
+    thumbnail_ = nullptr;
 }
 
 void Session::setResolution(glm::vec3 resolution, bool useAlpha)

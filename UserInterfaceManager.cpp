@@ -767,7 +767,10 @@ void UserInterface::Render()
     }
     // verify the video recorder is valid
     FrameGrabbing::manager().verify(&video_recorder_);
-    if (video_recorder_ && video_recorder_->duration() > Settings::application.record.timeout ){
+    if (video_recorder_ // if there is an ongoing recorder
+        && Settings::application.record.timeout < RECORD_MAX_TIMEOUT  // and if the timeout is valid
+        && video_recorder_->duration() > Settings::application.record.timeout ) // and the timeout is reached
+    {
         video_recorder_->stop();
         video_recorder_ = nullptr;
     }
@@ -1078,26 +1081,32 @@ void UserInterface::RenderPreview()
                 Settings::application.widget.preview = false;
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
-                glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
-                std::ostringstream info;
-                info << "Resolution " << output->width() << "x" << output->height();
-                if (p.x > -1)
-                    info << "  " << FrameBuffer::aspect_ratio_name[p.x] ;
-                ImGui::MenuItem(info.str().c_str(), nullptr, false, false);
-                // cannot change resolution when recording
-                if (video_recorder_ == nullptr && p.y > -1) {
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
-                    {
-                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
-                        Mixer::manager().session()->setResolution(res);
-                    }
-                }
+//                glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
+//                std::ostringstream info;
+//                info << "Resolution " << output->width() << "x" << output->height();
+//                if (p.x > -1)
+//                    info << "  " << FrameBuffer::aspect_ratio_name[p.x] ;
+//                ImGui::MenuItem(info.str().c_str(), nullptr, false, false);
+//                // cannot change resolution when recording
+//                if (video_recorder_ == nullptr && p.y > -1) {
+//                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//                    if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
+//                    {
+//                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
+//                        Mixer::manager().session()->setResolution(res);
+//                    }
+//                }
                 if ( ImGui::MenuItem( ICON_FA_PLUS "  Insert Rendering Source") )
                     Mixer::manager().addSource( Mixer::manager().createSourceRender() );
 
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
                     Rendering::manager().outputWindow().show();
+
+                bool isfullscreen = Rendering::manager().outputWindow().isFullscreen();
+                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen output window", nullptr, &isfullscreen) ) {
+                    Rendering::manager().outputWindow().show();
+                    Rendering::manager().outputWindow().toggleFullscreen();
+                }
 
                 ImGui::Separator();
 
@@ -4105,7 +4114,7 @@ void Navigator::RenderMainPannelVimix()
                         _file_info = info.description;
                         if (info.thumbnail) {
                             // set image content to thumbnail display
-                            _file_thumbnail.set( info.thumbnail );
+                            _file_thumbnail.fill( info.thumbnail );
                             delete info.thumbnail;
                         } else
                             _file_thumbnail.reset();
@@ -4148,7 +4157,7 @@ void Navigator::RenderMainPannelVimix()
 
     // Right side of the list: helper and options
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
-    if ( ImGuiToolkit::IconButton( ICON_FA_FILE )) {
+    if ( ImGuiToolkit::IconButton( ICON_FA_FILE " +" )) {
         Mixer::manager().close(Settings::application.smooth_transition );
         hidePannel();
     }
@@ -4174,13 +4183,112 @@ void Navigator::RenderMainPannelVimix()
     // Status
     //
     ImGui::Spacing();
-    ImGui::Text("Status");
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode, ICON_FA_STAR " Snapshots\0" ICON_FA_HISTORY " Undo history\0");
+    ImGui::Text("Current");
 
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode,
+                 ICON_FA_STAR " Snapshots\0" ICON_FA_HISTORY " Undo history\0" ICON_FA_FILE_ALT "  Properties\0");
+
+    if (Settings::application.pannel_history_mode > 1) {
+
+        std::string sessionfilename = Mixer::manager().session()->filename();
+
+        // Information and resolution
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output)
+        {
+            // fill information buffer
+            ImGuiTextBuffer info;
+            if (!sessionfilename.empty())
+                info.appendf("%s\n", SystemToolkit::filename(sessionfilename).c_str());
+            else
+                info.append("<unsaved>\n");
+            info.appendf("Sources:     %d\n", Mixer::manager().session()->numSource());
+
+            glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
+            if (p.x > -1)
+                info.appendf("Ratio:       %s\n", FrameBuffer::aspect_ratio_name[p.x]);
+            info.appendf("Resolution:  %dx%d", output->width(), output->height());
+
+            // Show info text bloc (multi line, dark background)
+            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(IMGUI_RIGHT_ALIGN, 4*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+
+            // change resolution (height only)
+            if (p.y > -1) {
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                // cannot change resolution when recording
+                if ( UserInterface::manager().isRecording() ) {
+                    // show static info (same size than combo)
+                    static char dummy_str[512];
+                    sprintf(dummy_str, "%s", FrameBuffer::resolution_name[p.y]);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleColor(1);
+                }
+                else {
+                    // combo box to select height
+                    if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
+                    {
+                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
+                        Mixer::manager().session()->setResolution(res);
+                    }
+                }
+            }
+        }
+
+        // the session file exists
+        if (!sessionfilename.empty())
+        {
+            // Thumbnail
+            static Thumbnail _file_thumbnail;
+            static FrameBufferImage *thumbnail = nullptr;
+            if ( ImGui::Button( ICON_FA_TAGS "  Capture thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                Mixer::manager().session()->setThumbnail();
+                thumbnail = nullptr;
+            }
+            pos_bot = ImGui::GetCursorPos();
+            if (ImGui::IsItemHovered()){
+                // thumbnail changed
+                if (thumbnail != Mixer::manager().session()->thumbnail()) {
+                    _file_thumbnail.reset();
+                    thumbnail = Mixer::manager().session()->thumbnail();
+                    if (thumbnail != nullptr)
+                        _file_thumbnail.fill( thumbnail );
+                }
+                if (_file_thumbnail.filled()) {
+                    ImGui::BeginTooltip();
+                    _file_thumbnail.Render(230);
+                    ImGui::EndTooltip();
+                }
+            }
+            if (Mixer::manager().session()->thumbnail()) {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+                ImGui::SameLine();
+                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove captured thumbnail")) {
+                    Mixer::manager().session()->resetThumbnail();
+                    _file_thumbnail.reset();
+                    thumbnail = nullptr;
+                }
+                ImGui::PopStyleVar();
+            }
+            ImGui::SetCursorPos( pos_bot );
+
+            // Folder
+            std::string path = SystemToolkit::path_filename(sessionfilename);
+            std::string label = BaseToolkit::trunc_string(path, 23);
+            label = BaseToolkit::transliterate(label);
+            ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+        }
+
+    }
     //
     // UNDO History
-    if (Settings::application.pannel_history_mode > 0) {
+    else if (Settings::application.pannel_history_mode > 0) {
 
         static uint _over = 0;
         static uint64_t _displayed_over = 0;
@@ -4220,7 +4328,7 @@ void Navigator::RenderMainPannelVimix()
                         FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display
-                            _undo_thumbnail.set( im );
+                            _undo_thumbnail.fill( im );
                             delete im;
                         }
                         else
@@ -4329,7 +4437,7 @@ void Navigator::RenderMainPannelVimix()
                         FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display
-                            _snap_thumbnail.set( im );
+                            _snap_thumbnail.fill( im );
                             delete im;
                         }
                         else
@@ -4742,12 +4850,17 @@ Thumbnail::~Thumbnail()
         glDeleteTextures(1, &texture_);
 }
 
+bool Thumbnail::filled()
+{
+    return aspect_ratio_ > 0.f;
+}
+
 void Thumbnail::reset()
 {
     aspect_ratio_ = -1.f;
 }
 
-void Thumbnail::set(const FrameBufferImage *image)
+void Thumbnail::fill(const FrameBufferImage *image)
 {
     if (!texture_) {
         glGenTextures(1, &texture_);
@@ -4764,7 +4877,7 @@ void Thumbnail::set(const FrameBufferImage *image)
 
 void Thumbnail::Render(float width)
 {
-    if (aspect_ratio_>0.f)
+    if (filled())
         ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5f*aspect_ratio_, 1.f));
 }
 

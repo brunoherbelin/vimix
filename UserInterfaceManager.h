@@ -45,7 +45,8 @@ public:
     ~Thumbnail();
 
     void reset();
-    void set (const FrameBufferImage *image);
+    void fill (const FrameBufferImage *image);
+    bool filled();
     void Render(float width);
 };
 
@@ -218,6 +219,7 @@ public:
     void fillShaderEditor(const std::string &text);
 
     void StartScreenshot();
+    inline bool isRecording() const { return video_recorder_ != nullptr; }
 
 protected:
 

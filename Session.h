@@ -85,8 +85,13 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
-    // get thumbnail image
-    inline FrameBufferImage *thumbnail () { return render_.thumbnail(); }
+    // get an newly rendered thumbnail
+    inline FrameBufferImage *renderThumbnail () { return render_.thumbnail(); }
+
+    // get / set thumbnail image
+    inline FrameBufferImage *thumbnail () const { return thumbnail_; }
+    void setThumbnail(FrameBufferImage *t = nullptr);
+    void resetThumbnail();
 
     // configure rendering resolution
     void setResolution (glm::vec3 resolution, bool useAlpha = false);
@@ -153,7 +158,7 @@ protected:
     std::vector<SourceIdList> play_groups_;
     float fading_target_;
     std::mutex access_;
-
+    FrameBufferImage *thumbnail_;
 };
 
 

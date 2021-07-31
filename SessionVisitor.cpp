@@ -51,12 +51,26 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         // source visitor
         (*iter)->accept(sv);
 
-    // get the thumbnail
+    // save the thumbnail
     FrameBufferImage *thumbnail = session->thumbnail();
-    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, &xmlDoc);
-    if (imageelement)
-        sessionNode->InsertEndChild(imageelement);
-    delete thumbnail;
+    if (thumbnail != nullptr && thumbnail->width > 0 && thumbnail->height > 0) {
+        XMLElement *thumbnailelement = xmlDoc.NewElement("Thumbnail");
+        XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, &xmlDoc);
+        if (imageelement) {
+            sessionNode->InsertEndChild(thumbnailelement);
+            thumbnailelement->InsertEndChild(imageelement);
+        }
+    }
+    // if no thumbnail is set by user, capture thumbnail now
+    else {
+        thumbnail = session->renderThumbnail();
+        if (thumbnail) {
+            XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, &xmlDoc);
+            if (imageelement)
+                sessionNode->InsertEndChild(imageelement);
+            delete thumbnail;
+        }
+    }
 
     // 2. config of views
     saveConfig( &xmlDoc, session );

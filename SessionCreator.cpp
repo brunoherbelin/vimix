@@ -54,7 +54,13 @@ SessionInformation SessionCreator::info(const std::string& filename)
             }
             const XMLElement *session = doc.FirstChildElement("Session");
             if (session != nullptr ) {
-                ret.thumbnail = XMLToImage(session);
+                const XMLElement *thumbnailelement = session->FirstChildElement("Thumbnail");
+                // if there is a user defined thumbnail, get it
+                if (thumbnailelement)
+                    ret.thumbnail = XMLToImage(thumbnailelement);
+                // otherwise get the default saved thumbnail in session
+                else
+                    ret.thumbnail = XMLToImage(session);
             }
         }
     }
@@ -100,7 +106,8 @@ void SessionCreator::load(const std::string& filename)
 
     // ready to read sources
     sessionFilePath_ = SystemToolkit::path_filename(filename);
-    SessionLoader::load( xmlDoc_.FirstChildElement("Session") );
+    XMLElement *sessionNode = xmlDoc_.FirstChildElement("Session");
+    SessionLoader::load( sessionNode );
 
     // create groups
     std::list< SourceList > groups = getMixingGroups();
@@ -115,6 +122,15 @@ void SessionCreator::load(const std::string& filename)
 
     // load playlists
     loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
+
+    // thumbnail
+    const XMLElement *thumbnailelement = sessionNode->FirstChildElement("Thumbnail");
+    // if there is a user-defined thumbnail, get it
+    if (thumbnailelement) {
+        FrameBufferImage *thumbnail = XMLToImage(thumbnailelement);
+        if (thumbnail != nullptr)
+            session_->setThumbnail( thumbnail );
+    }
 
     // all good
     session_->setFilename(filename);

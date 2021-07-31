@@ -38,11 +38,13 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
     Session *se = Mixer::manager().session();
 
     // get the thumbnail (requires one opengl update to render)
-    FrameBufferImage *thumbnail = se->thumbnail();
-    XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
-    if (imageelement)
-        sessionNode->InsertEndChild(imageelement);
-    delete thumbnail;
+    FrameBufferImage *thumbnail = se->renderThumbnail();
+    if (thumbnail) {
+        XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
+        if (imageelement)
+            sessionNode->InsertEndChild(imageelement);
+        delete thumbnail;
+    }
 
     // save all sources using source visitor
     SessionVisitor sv(doc, sessionNode);
