@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <climits>
+#include <map>
 
 #include <locale>
 #include <unicode/ustream.h>
@@ -52,23 +53,35 @@ std::string BaseToolkit::uniqueName(const std::string &basename, std::list<std::
 
 std::string BaseToolkit::transliterate(const std::string &input)
 {
-    auto ucs = icu::UnicodeString::fromUTF8(input);
+    // because icu::Transliterator is slow, we keep a dictionnary of already
+    // transliterated texts to be faster during repeated calls (update of user interface)
+    static std::map<std::string, std::string> dictionnary_;
+    std::map<std::string, std::string>::const_iterator existingentry = dictionnary_.find(input);
 
-    UErrorCode status = U_ZERO_ERROR;
-    icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
-    firstTrans->transliterate(ucs);
-    delete firstTrans;
+    if (existingentry == dictionnary_.cend()) {
 
-    icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
-    secondTrans->transliterate(ucs);
-    delete secondTrans;
+        auto ucs = icu::UnicodeString::fromUTF8(input);
 
-    std::ostringstream output;
-    output << ucs;
+        UErrorCode status = U_ZERO_ERROR;
+        icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
+                    "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
+        firstTrans->transliterate(ucs);
+        delete firstTrans;
 
-    return output.str();
+        icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
+                    "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+        secondTrans->transliterate(ucs);
+        delete secondTrans;
+
+        std::ostringstream output;
+        output << ucs;
+
+        // remember for future
+        dictionnary_[input] = output.str();
+    }
+
+    // return remembered transliterated text
+    return dictionnary_[input];
 }
 
 
