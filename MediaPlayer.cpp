@@ -812,19 +812,21 @@ void MediaPlayer::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
             // bind the next PBO to write pixels
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+#ifdef USE_GL_BUFFER_SUBDATA
+            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, frame_[index].vframe.data[0]);
+#else
+            // update data directly on the mapped buffer
+            // NB : equivalent but faster than glBufferSubData (memmove instead of memcpy ?)
             // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
             glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
             if (ptr) {
-                // update data directly on the mapped buffer
-                // NB : equivalent but faster (memmove instead of memcpy ?) than
-                // glNamedBufferSubData(pboIds[nextIndex], 0, imgsize, vp->getBuffer())
                 memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-
                 // release pointer to mapping buffer
                 glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
             }
+#endif
             // done with PBO
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
         }
