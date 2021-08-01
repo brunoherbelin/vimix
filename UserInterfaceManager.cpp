@@ -72,7 +72,7 @@ TextEditor editor;
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
-#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fading"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Edit Fading"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -2159,8 +2159,12 @@ void SourceController::Render()
                     Action::manager().store(oss.str());
                 }
 
-                if ( ImGui::MenuItem(LABEL_EDIT_FADING) )
+                if (ImGui::MenuItem(LABEL_EDIT_FADING))
                     mediaplayer_edit_fading_ = true;
+
+                bool option = mediaplayer_active_->rewindOnDisabled();
+                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  " ICON_FA_SNOWFLAKE " Rewind when Inactive" , NULL, &option))
+                    mediaplayer_active_->setRewindOnDisabled(option);
 
 //                if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
 //                {

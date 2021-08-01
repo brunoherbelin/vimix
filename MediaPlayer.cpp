@@ -37,6 +37,7 @@ MediaPlayer::MediaPlayer()
 
     failed_ = false;
     seeking_ = false;
+    rewind_on_disable_ = false;
     force_software_decoding_ = false;
     decoder_name_ = "";
     rate_ = 1.0;
@@ -517,6 +518,11 @@ void MediaPlayer::enable(bool on)
 
     if ( enabled_ != on ) {
 
+        // option to automatically rewind each time the player is disabled
+        if (!on && rewind_on_disable_ )
+            rewind(true);
+
+        // apply change
         enabled_ = on;
 
         // default to pause
@@ -648,7 +654,7 @@ void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
     loop_ = mode;
 }
 
-void MediaPlayer::rewind()
+void MediaPlayer::rewind(bool force)
 {
     if (!enabled_ || !media_.seekable)
         return;
@@ -664,6 +670,12 @@ void MediaPlayer::rewind()
         // end is the start of a gab which includes the last PTS (if exists)
         // normal case, end is last frame
         execute_seek_command( timeline_.previous(timeline_.last()) );
+    }
+
+    if (force) {
+        GstState state;
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        update();
     }
 }
 
@@ -1111,7 +1123,9 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
         // get the frame from buffer
         if ( !gst_video_frame_map (&frame_[write_index_].vframe, &v_frame_video_info_, buf, GST_MAP_READ ) )
         {
+#ifdef MEDIA_PLAYER_DEBUG
             Log::Info("MediaPlayer %s Failed to map the video buffer", std::to_string(id_).c_str());
+#endif
             // free access to frame & exit
             frame_[write_index_].status = INVALID;
             frame_[write_index_].access.unlock();
@@ -1138,6 +1152,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
 #ifdef MEDIA_PLAYER_DEBUG
             Log::Info("MediaPlayer %s Received an Invalid frame", std::to_string(id_).c_str());
 #endif
+            // free access to frame & exit
             frame_[write_index_].status = INVALID;
             frame_[write_index_].access.unlock();
             return false;

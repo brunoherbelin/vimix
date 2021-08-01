@@ -701,6 +701,10 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryBoolAttribute("software_decoding", &gpudisable);
             n.setSoftwareDecodingForced(gpudisable);
 
+            bool rewind_on_disabled = false;
+            mediaplayerNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+            n.setRewindOnDisabled(rewind_on_disabled);
+
             bool play = true;
             mediaplayerNode->QueryBoolAttribute("play", &play);
             n.play(play);

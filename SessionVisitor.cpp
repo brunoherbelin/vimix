@@ -334,6 +334,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());
+        newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
