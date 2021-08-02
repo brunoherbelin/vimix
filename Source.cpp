@@ -268,7 +268,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // for drawing in mixing view
     mixingshader_ = new ImageShader;
-    mixingshader_->stipple = 1.0;
+    mixingshader_->stipple = 1.0f;
     mixinggroup_ = nullptr;
 
     // create media surface:
@@ -281,6 +281,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     renderbuffer_   = nullptr;
     rendersurface_  = nullptr;
     mixingsurface_  = nullptr;
+    activesurface_  = nullptr;
     maskbuffer_     = nullptr;
     maskimage_      = nullptr;
     mask_need_update_ = false;
@@ -454,11 +455,11 @@ void Source::attach(FrameBuffer *renderbuffer)
     groups_[View::LAYER]->attach(mixingsurface_);
 
     // for views showing a scaled mixing surface, a dedicated transparent surface allows grabbing
-    Surface *surfacetmp = new Surface();
-    surfacetmp->setTextureIndex(Resource::getTextureTransparent());
-    groups_[View::TEXTURE]->attach(surfacetmp);
-    groups_[View::MIXING]->attach(surfacetmp);
-    groups_[View::LAYER]->attach(surfacetmp);
+    activesurface_ = new Surface();
+    activesurface_->setTextureIndex(Resource::getTextureTransparent());
+    groups_[View::TEXTURE]->attach(activesurface_);
+    groups_[View::MIXING]->attach(activesurface_);
+    groups_[View::LAYER]->attach(activesurface_);
 
     // Transition group node is optionnal
     if (groups_[View::TRANSITION]->numChildren() > 0)
@@ -866,8 +867,18 @@ void CloneSource::setActive (bool on)
     groups_[View::GEOMETRY]->visible_ = active_;
     groups_[View::LAYER]->visible_ = active_;
 
-    if ( mode_ > Source::UNINITIALIZED && origin_ != nullptr)
-        origin_->touch();
+    if (origin_) {
+        if ( mode_ > Source::UNINITIALIZED)
+            origin_->touch();
+
+        // change visibility of active surface (show preview of origin when inactive)
+        if (activesurface_) {
+            if (active_)
+                activesurface_->setTextureIndex(Resource::getTextureTransparent());
+            else
+                activesurface_->setTextureIndex(origin_->texture());
+        }
+    }
 }
 
 uint CloneSource::texture() const

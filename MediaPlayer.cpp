@@ -519,7 +519,7 @@ void MediaPlayer::enable(bool on)
     if ( enabled_ != on ) {
 
         // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_ )
+        if (!on && rewind_on_disable_ && desired_state_ == GST_STATE_PLAYING)
             rewind(true);
 
         // apply change
@@ -529,9 +529,8 @@ void MediaPlayer::enable(bool on)
         GstState requested_state = GST_STATE_PAUSED;
 
         // unpause only if enabled
-        if (enabled_) {
+        if (enabled_)
             requested_state = desired_state_;
-        }
 
         //  apply state change
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);

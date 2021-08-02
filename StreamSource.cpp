@@ -105,10 +105,19 @@ void StreamSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    // change status of stream (only if status changed)
-    if ( stream_ && active_ != was_active )
-        stream_->enable(active_);
+    if (stream_) {
+        // change status of stream (only if status changed)
+        if (active_ != was_active)
+            stream_->enable(active_);
 
+        // change visibility of active surface (show preview of stream when inactive)
+        if (activesurface_) {
+            if (active_)
+                activesurface_->setTextureIndex(Resource::getTextureTransparent());
+            else
+                activesurface_->setTextureIndex(stream_->texture());
+        }
+    }
 }
 
 

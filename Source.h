@@ -250,7 +250,11 @@ protected:
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
     FrameBufferSurface *rendersurface_;
+
+    // for the mixer, we have a surface with stippling to show
+    // the rendering, and a preview of the original texture
     FrameBufferSurface *mixingsurface_;
+    Surface *activesurface_;
 
     // blendingshader provides mixing controls
     ImageShader *blendingshader_;

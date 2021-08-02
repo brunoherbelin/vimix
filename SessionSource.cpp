@@ -66,8 +66,17 @@ void SessionSource::setActive (bool on)
     Source::setActive(on);
 
     // change status of session (recursive change of internal sources)
-    if (session_)
+    if (session_) {
         session_->setActive(active_);
+
+        // change visibility of active surface (show preview of session when inactive)
+        if (activesurface_) {
+            if (active_)
+                activesurface_->setTextureIndex(Resource::getTextureTransparent());
+            else
+                activesurface_->setTextureIndex(session_->frame()->texture());
+        }
+    }
 }
 
 void SessionSource::update(float dt)
@@ -100,7 +109,6 @@ void SessionSource::replay ()
         timer_ = 0;
     }
 }
-
 
 SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_(""), initialized_(false), wait_for_sources_(false)
 {

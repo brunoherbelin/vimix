@@ -72,7 +72,7 @@ TextEditor editor;
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
-#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Edit Fading"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Edit timeline fading"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -2866,6 +2866,15 @@ void SourceController::RenderSingleSource(Source *s)
         ImGui::SetCursorScreenPos(bottom + ImVec2(h_space_, -ImGui::GetTextLineHeightWithSpacing()));
         ImGui::Text("%s %s", SourcePlayIcon(s), GstToolkit::time_to_string(s->playtime()).c_str() );
         ImGui::PopFont();
+
+//        if ( ms != nullptr ) {
+//            // ok, get the media player of the media source
+//            MediaPlayer *mp = ms->mediaplayer();
+//            const double width_ratio = static_cast<double>(rendersize.x) / static_cast<double>(mp->timeline()->sectionsDuration());
+
+//            DrawTimeline("##timeline_mediaplayers", mp->timeline(), mp->position(), width_ratio, 60);
+
+//        }
 
         ///
         /// Play button bar
