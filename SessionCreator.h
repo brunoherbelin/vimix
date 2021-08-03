@@ -82,9 +82,11 @@ protected:
 struct SessionInformation {
     std::string description;
     FrameBufferImage *thumbnail;
+    bool user_thumbnail_;
     SessionInformation() {
         description = "";
         thumbnail = nullptr;
+        user_thumbnail_ = false;
     }
 };
 

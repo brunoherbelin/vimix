@@ -4118,6 +4118,7 @@ void Navigator::RenderMainPannelVimix()
 
                     static std::string _file_info = "";
                     static Thumbnail _file_thumbnail;
+                    static bool with_tag_ = false;
 
                     // load info only if changed from the one already displayed
                     if (_displayed_over != _file_over) {
@@ -4127,6 +4128,7 @@ void Navigator::RenderMainPannelVimix()
                         if (info.thumbnail) {
                             // set image content to thumbnail display
                             _file_thumbnail.fill( info.thumbnail );
+                            with_tag_ = info.user_thumbnail_;
                             delete info.thumbnail;
                         } else
                             _file_thumbnail.reset();
@@ -4135,10 +4137,14 @@ void Navigator::RenderMainPannelVimix()
                     if ( !_file_info.empty()) {
 
                         ImGui::BeginTooltip();
+                        ImVec2 p_ = ImGui::GetCursorScreenPos();
                         _file_thumbnail.Render(size.x);
                         ImGui::Text("%s", _file_info.c_str());
+                        if (with_tag_) {
+                            ImGui::SetCursorScreenPos(p_ + ImVec2(6, 6));
+                            ImGui::Text(ICON_FA_TAG);
+                        }
                         ImGui::EndTooltip();
-
                     }
                     else
                         selection_session_mode_changed = true;

@@ -56,8 +56,10 @@ SessionInformation SessionCreator::info(const std::string& filename)
             if (session != nullptr ) {
                 const XMLElement *thumbnailelement = session->FirstChildElement("Thumbnail");
                 // if there is a user defined thumbnail, get it
-                if (thumbnailelement)
+                if (thumbnailelement) {
                     ret.thumbnail = XMLToImage(thumbnailelement);
+                    ret.user_thumbnail_ = true;
+                }
                 // otherwise get the default saved thumbnail in session
                 else
                     ret.thumbnail = XMLToImage(session);
