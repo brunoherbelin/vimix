@@ -1,3 +1,5 @@
+#include <thread>
+
 // Opengl
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -123,18 +125,22 @@ FrameBufferImage *RenderView::thumbnail ()
     // by default null image
     FrameBufferImage *img = nullptr;
 
+    // this function is always called from a parallel thread
+    // So we wait for a few frames of rendering before trying to capture a thumbnail
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     // create and store a promise for a FrameBufferImage
     thumbnailer_.emplace_back( std::promise<FrameBufferImage *>() );
 
-    // future will return the primised FrameBufferImage
-    std::future<FrameBufferImage *> t = thumbnailer_.back().get_future();
+    // future will return the promised FrameBufferImage
+    std::future<FrameBufferImage *> ft = thumbnailer_.back().get_future();
 
     try {
-        // wait for valid return value from promise
-        img = t.get();
+        // wait for a valid return value from promise
+        img = ft.get();
     }
     // catch any failed promise
-    catch (std::runtime_error&){
+    catch (const std::exception&){
     }
 
     return img;
