@@ -702,7 +702,7 @@ void UserInterface::NewFrame()
         Mixer::manager().saveas(sessionsavedialog->path());
 
     // overlay to ensure file dialog is modal
-    if (DialogToolkit::FileDialog::pending){
+    if (DialogToolkit::FileDialog::busy()){
         ImGui::OpenPopup("Busy");
         if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {

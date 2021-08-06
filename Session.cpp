@@ -85,19 +85,21 @@ void Session::update(float dt)
     if ( render_.frame() == nullptr )
         return;
 
-    // pre-render of all sources
+    // pre-render all sources
     failedSource_ = nullptr;
     bool ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
-        // ensure the RenderSource is rendering this session
-        RenderSource *s = dynamic_cast<RenderSource *>( *it );
-        if ( s!= nullptr && s->session() != this )
-                s->setSession(this);
+        // ensure the RenderSource is rendering *this* session
+        RenderSource *rs = dynamic_cast<RenderSource *>( *it );
+        if ( rs!= nullptr && rs->session() != this )
+            rs->setSession(this);
 
+        // discard failed source
         if ( (*it)->failed() ) {
             failedSource_ = (*it);
         }
+        // render normally
         else {
             if ( !(*it)->ready() )
                 ready = false;

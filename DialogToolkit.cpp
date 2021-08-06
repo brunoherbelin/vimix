@@ -65,7 +65,7 @@ bool gtk_init()
 
 // globals
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
-bool DialogToolkit::FileDialog::pending = false;
+bool DialogToolkit::FileDialog::busy_ = false;
 
 //
 // FileDialog common functions
@@ -91,7 +91,7 @@ bool DialogToolkit::FileDialog::closed()
             }
             // done with this file dialog
             promises_.pop_back();
-            pending = false;
+            busy_ = false;
             return true;
         }
     }
@@ -104,60 +104,60 @@ bool DialogToolkit::FileDialog::closed()
 std::string openImageFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenImageDialog::open()
 {
-    if ( !pending && promises_.empty() ) {
+    if ( !busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, openImageFileDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
 std::string openSessionFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenSessionDialog::open()
 {
-    if ( !pending && promises_.empty() ) {
+    if ( !busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, openSessionFileDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
 std::string openMediaFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenMediaDialog::open()
 {
-    if ( !pending && promises_.empty() ) {
+    if ( !busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, openMediaFileDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
 std::string saveSessionFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::SaveSessionDialog::open()
 {
-    if ( !pending && promises_.empty() ) {
+    if ( !busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, saveSessionFileDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
 std::string openFolderDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenFolderDialog::open()
 {
-    if ( !pending && promises_.empty() ) {
+    if ( !busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, openFolderDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
 std::list<std::string> selectImagesFileDialog(const std::string &label,const std::string &path);
 void DialogToolkit::MultipleImagesDialog::open()
 {
-    if ( !pending && promisedlist_.empty() ) {
+    if ( !busy_ && promisedlist_.empty() ) {
         promisedlist_.emplace_back( std::async(std::launch::async, selectImagesFileDialog, id_,
                                            Settings::application.dialogRecentFolder[id_]) );
-        pending = true;
+        busy_ = true;
     }
 }
 
@@ -181,7 +181,7 @@ bool DialogToolkit::MultipleImagesDialog::closed()
             }
             // done with this file dialog
             promisedlist_.pop_back();
-            pending = false;
+            busy_ = false;
             return true;
         }
     }
@@ -198,12 +198,12 @@ bool DialogToolkit::MultipleImagesDialog::closed()
 std::string saveSessionFileDialog(const std::string &label, const std::string &path)
 {
     std::string filename = "";
-    char const * save_pattern[1] = { "*.mix" };
+    char const * save_pattern[2] = { "*.mix", "*.MIX" };
 
 #if USE_TINYFILEDIALOG
     char const * save_file_name;
 
-    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 1, save_pattern, "vimix session");
+    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 2, save_pattern, "vimix session");
 
     if (save_file_name)
         filename = std::string(save_file_name);
@@ -220,7 +220,7 @@ std::string saveSessionFileDialog(const std::string &label, const std::string &p
     gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER(dialog), TRUE );
 
     // set file filters
-    add_filter_file_dialog(dialog, 1, save_pattern, "vimix session");
+    add_filter_file_dialog(dialog, 2, save_pattern, "vimix session");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -260,11 +260,11 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[1] = { "*.mix" };
+    char const * open_pattern[2] = { "*.mix", "*.MIX" };
 
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 1, open_pattern, "vimix session", 0);
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 2, open_pattern, "vimix session", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
@@ -280,7 +280,7 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 1, open_pattern, "vimix session");
+    add_filter_file_dialog(dialog, 2, open_pattern, "vimix session");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -316,12 +316,14 @@ std::string openMediaFileDialog(const std::string &label, const std::string &pat
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[18] = { "*.mix", "*.mp4", "*.mpg",
-                                      "*.avi", "*.mov", "*.mkv",
-                                      "*.webm", "*.mod", "*.wmv",
-                                      "*.mxf", "*.ogg", "*.flv",
-                                      "*.asf", "*.jpg", "*.png",
-                                      "*.gif", "*.tif", "*.svg" };
+    char const * open_pattern[52] = { "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",
+                                      "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",
+                                      "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",
+                                      "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
+                                      "*.MIX", "*.MP4", "*.MPG", "*.MPEG","*.M2V", "*.M4V", "*.AVI", "*.MOV",
+                                      "*.MKV", "*.WEBM", "*.MOD", "*.WMV", "*.MXF", "*.OGG",
+                                      "*.FLV", "*.HEVC", "*.ASF", "*.JPG", "*.PNG",  "*.GIF",
+                                      "*.TIF", "*.TIFF", "*.WEBP", "*.BMP", "*.PPM", "*.SVG"  };
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
     open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 18, open_pattern, "All supported formats", 0);
@@ -341,7 +343,7 @@ std::string openMediaFileDialog(const std::string &label, const std::string &pat
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 18, open_pattern, "All supported formats");
+    add_filter_file_dialog(dialog, 52, open_pattern, "Supported formats (videos, images, sessions)");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -377,10 +379,11 @@ std::string openImageFileDialog(const std::string &label, const std::string &pat
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[2] = { "*.jpg", "*.png"};
+    char const * open_pattern[10] = { "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif",
+                                      "*.JPG", "*.PNG", "*.BMP", "*.PPM", "*.GIF"};
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 2, open_pattern, "Image JPG or PNG", 0);
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 4, open_pattern, "Image JPG or PNG", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
@@ -397,7 +400,7 @@ std::string openImageFileDialog(const std::string &label, const std::string &pat
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 2, open_pattern, "Image JPG or PNG");
+    add_filter_file_dialog(dialog, 10, open_pattern, "Image (JPG, PNG, BMP, PPM, GIF)");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -486,7 +489,8 @@ std::list<std::string> selectImagesFileDialog(const std::string &label,const std
     std::list<std::string> files;
 
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[6] = { "*.tif", "*.jpg", "*.png", "*.TIF", "*.JPG", "*.PNG" };
+    char const * open_pattern[6] = {  "*.jpg", "*.png", "*.tif",
+                                      "*.JPG", "*.PNG", "*.TIF"  };
 
 #if USE_TINYFILEDIALOG
     char const * open_file_names;
@@ -526,7 +530,7 @@ std::list<std::string> selectImagesFileDialog(const std::string &label,const std
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 6, open_pattern, "All supported formats");
+    add_filter_file_dialog(dialog, 6, open_pattern, "Images (JPG, PNG, TIF)");
     add_filter_any_file_dialog(dialog);
 
     // multiple files

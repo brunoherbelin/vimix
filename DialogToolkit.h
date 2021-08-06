@@ -20,6 +20,7 @@ protected:
     std::string directory_;
     std::string path_;
     std::vector< std::future<std::string> >promises_;
+    static bool busy_;
 
 public:
     FileDialog(const std::string &name);
@@ -28,7 +29,7 @@ public:
     virtual bool closed();
     inline std::string path() const { return path_; }
 
-    static bool pending;
+    static bool busy() { return busy_; }
 };
 
 class OpenImageDialog : public FileDialog
