@@ -215,13 +215,12 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 
 
 FrameGrabber::FrameGrabber(): finished_(false), expecting_finished_(false), active_(false), accept_buffer_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timestamp_(0)
+    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timestamp_(0)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();
     // configure fix parameter
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
-    timeframe_ = 2 * frame_duration_;
 }
 
 FrameGrabber::~FrameGrabber()
@@ -332,31 +331,33 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
     // store a frame if recording is active
     else if (active_)
     {
-        // calculate dt in ns
-        timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f );
+        // initialize timer
+        if (timer_ == nullptr) {
+            timer_ = gst_pipeline_get_clock ( GST_PIPELINE(pipeline_) );
+            timer_firstframe_ = gst_clock_get_time(timer_);
+        }
 
-        // if time is passed one frame duration (with 10% margin)
+        // time since begin
+        GstClockTime t = gst_clock_get_time(timer_) - timer_firstframe_;
+        t = (t / frame_duration_) * frame_duration_;
+
+        // if delta time is passed one frame duration (with a margin)
         // and if the encoder accepts data
-        if ( timeframe_ > frame_duration_ - 3000000 && accept_buffer_) {
+        if ( (t - timestamp_) > (frame_duration_ - 3000) && accept_buffer_) {
 
             // set timing of buffer
-            buffer->pts = timestamp_;
-            buffer->duration = frame_duration_;
+            buffer->pts = t;
+            buffer->duration = t - timestamp_;
 
             // increment ref counter to make sure the frame remains available
             gst_buffer_ref(buffer);
 
-            // push
+            // push frame
             gst_app_src_push_buffer (src_, buffer);
             // NB: buffer will be unrefed by the appsrc
 
-            accept_buffer_ = false;
-
-            // next timestamp
-            timestamp_ += frame_duration_;
-
-            // restart frame counter
-            timeframe_ = 0;
+            // keep timestamp
+            timestamp_ = t;
         }
     }
 

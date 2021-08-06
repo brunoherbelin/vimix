@@ -62,9 +62,12 @@ protected:
     GstElement   *pipeline_;
     GstAppSrc    *src_;
     GstCaps      *caps_;
-    GstClockTime timeframe_;
+
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
+
+    GstClockTime timer_firstframe_;
+    GstClock     *timer_;
 
     // gstreamer callbacks
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
