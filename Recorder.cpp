@@ -201,6 +201,40 @@ VideoRecorder::VideoRecorder() : FrameGrabber()
 {
 }
 
+
+//static GstPadProbeReturn
+//event_probe(GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
+//{
+//  GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+//  if (GST_EVENT_TYPE (event) == GST_EVENT_EOS) {
+//      g_print ("Got event: %s\n", GST_EVENT_TYPE_NAME (event));
+//  }
+//  if (GST_EVENT_TYPE (event) == GST_EVENT_LATENCY) {
+//      g_print ("Got event: %s\n", GST_EVENT_TYPE_NAME (event));
+//  }
+
+
+////  g_print ("Got event: %s", GST_EVENT_TYPE_NAME (event));
+
+////  if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+////      g_print (" (downstream)\n");
+
+////      if (GST_EVENT_TYPE (event) == GST_EVENT_SEGMENT) {
+//////          gint64 duration = 0;
+
+//////          gst_pad_peer_query_duration (pad, GST_FORMAT_TIME, &duration);
+
+//////          g_print ("duration: %ld\n", duration);
+////      }
+////  }
+////  else {
+
+////      g_print (" (upstream)\n");
+////  }
+
+//  return GST_PAD_PROBE_OK;
+//}
+
 void VideoRecorder::init(GstCaps *caps)
 {
     // ignore
@@ -249,6 +283,12 @@ void VideoRecorder::init(GstCaps *caps)
                   "location", filename_.c_str(),
                   "sync", FALSE,
                   NULL);
+
+//    // setup EOS detector
+//    gulong probe_id;
+//    GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
+//    probe_id = gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_BOTH, event_probe, NULL, NULL);
+//    gst_object_unref (pad);
 
     // setup custom app source
     src_ = GST_APP_SRC( gst_bin_get_by_name (GST_BIN (pipeline_), "src") );
