@@ -548,11 +548,14 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
         ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", text_max);
     }
 
-    // precision 50 ms
-    int val = *ms / v_step;
-    bool ret = ImGui::SliderInt(label, &val, v_min / v_step, v_max / v_step, text_buf);
+//    int val = *ms / v_step;
+//    bool ret = ImGui::SliderInt(label, &val, v_min / v_step, v_max / v_step, text_buf);
+//    *ms = val * v_step;
 
-    *ms = val * v_step;
+    // quadratic scale
+    float val = *ms / v_step;
+    bool ret = ImGui::SliderFloat(label, &val, v_min / v_step, v_max / v_step, text_buf, 2.f);
+    *ms = int(floor(val)) * v_step;
 
     return ret;
 }
@@ -1264,6 +1267,17 @@ void ImGuiToolkit::PushFont (ImGuiToolkit::font_style style)
         ImGui::PushFont( NULL );    
 }
 
+
+void ImGuiToolkit::ImageGlyph(font_style type, char c, float h)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    const ImTextureID my_tex_id = io.Fonts->TexID;
+    const ImFontGlyph*glyph =  fontmap[type]->FindGlyph(c);
+    const ImVec2 size( h * (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0)  , h);
+    const ImVec2 uv0( glyph->U0, glyph->V0);
+    const ImVec2 uv1( glyph->U1, glyph->V1);
+    ImGui::Image((void*)(intptr_t)my_tex_id, size, uv0, uv1);
+}
 
 void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
 {
