@@ -6,15 +6,16 @@
 // because of 'zenity' access rights nightmare :(
 // Thus this re-implementation of native GTK+ dialogs for linux
 
+#include "defines.h"
+#include "Settings.h"
+#include "SystemToolkit.h"
+#include "DialogToolkit.h"
+
 #if defined(LINUX)
 #define USE_TINYFILEDIALOG 0
 #else
 #define USE_TINYFILEDIALOG 1
 #endif
-
-#include "defines.h"
-#include "SystemToolkit.h"
-#include "DialogToolkit.h"
 
 #if USE_TINYFILEDIALOG
 #include "tinyfiledialogs.h"
@@ -61,7 +62,140 @@ bool gtk_init()
 }
 #endif
 
-std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
+
+// globals
+const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
+bool DialogToolkit::FileDialog::pending = false;
+
+//
+// FileDialog common functions
+//
+DialogToolkit::FileDialog::FileDialog(const std::string &name) : id_(name)
+{
+    if ( Settings::application.dialogRecentFolder.count(id_) == 0 )
+        Settings::application.dialogRecentFolder[id_] = SystemToolkit::home_path();
+}
+
+bool DialogToolkit::FileDialog::closed()
+{
+    if ( !promises_.empty() ) {
+        // check that file dialog thread finished
+        if (promises_.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::string string = promises_.back().get();
+            if (!string.empty()) {
+                // selected a filename
+                path_ = string;
+                // save path location
+                Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename(string);
+            }
+            // done with this file dialog
+            promises_.pop_back();
+            pending = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// type specific implementations
+//
+std::string openImageFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenImageDialog::open()
+{
+    if ( !pending && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openImageFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+std::string openSessionFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenSessionDialog::open()
+{
+    if ( !pending && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openSessionFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+std::string openMediaFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenMediaDialog::open()
+{
+    if ( !pending && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openMediaFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+std::string saveSessionFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::SaveSessionDialog::open()
+{
+    if ( !pending && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, saveSessionFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+std::string openFolderDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenFolderDialog::open()
+{
+    if ( !pending && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openFolderDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+std::list<std::string> selectImagesFileDialog(const std::string &label,const std::string &path);
+void DialogToolkit::MultipleImagesDialog::open()
+{
+    if ( !pending && promisedlist_.empty() ) {
+        promisedlist_.emplace_back( std::async(std::launch::async, selectImagesFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        pending = true;
+    }
+}
+
+bool DialogToolkit::MultipleImagesDialog::closed()
+{
+    if ( !promisedlist_.empty() ) {
+        // check that file dialog thread finished
+        if (promisedlist_.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::list<std::string>  list = promisedlist_.back().get();
+            if (!list.empty()) {
+                // selected a filenames
+                pathlist_ = list;
+                path_ = list.front();
+                // save path location
+                Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename(path_);
+            }
+            else {
+                pathlist_.clear();
+                path_.clear();
+            }
+            // done with this file dialog
+            promisedlist_.pop_back();
+            pending = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+//
+//
+//  CALLBACKS
+//
+//
+
+std::string saveSessionFileDialog(const std::string &label, const std::string &path)
 {
     std::string filename = "";
     char const * save_pattern[1] = { "*.mix" };
@@ -69,17 +203,17 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 #if USE_TINYFILEDIALOG
     char const * save_file_name;
 
-    save_file_name = tinyfd_saveFileDialog( "Save a session file", path.c_str(), 1, save_pattern, "vimix session");
+    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 1, save_pattern, "vimix session");
 
     if (save_file_name)
         filename = std::string(save_file_name);
 #else
     if (!gtk_init()) {
-        ErrorDialog("Could not initialize GTK+ for dialog");
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
         return filename;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Save Session File", NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(), NULL,
                                           GTK_FILE_CHOOSER_ACTION_SAVE,
                                           "_Cancel", GTK_RESPONSE_CANCEL,
                                           "_Save", GTK_RESPONSE_ACCEPT, NULL );
@@ -122,7 +256,7 @@ std::string DialogToolkit::saveSessionFileDialog(const std::string &path)
 }
 
 
-std::string DialogToolkit::openSessionFileDialog(const std::string &path)
+std::string openSessionFileDialog(const std::string &label, const std::string &path)
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
@@ -130,17 +264,17 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
 
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( "Import a file", startpath.c_str(), 1, open_pattern, "vimix session", 0);
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 1, open_pattern, "vimix session", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
 #else
     if (!gtk_init()) {
-        ErrorDialog("Could not initialize GTK+ for dialog");
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
         return filename;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Open Session File",  NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
                                               GTK_FILE_CHOOSER_ACTION_OPEN,
                                               "_Cancel", GTK_RESPONSE_CANCEL,
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
@@ -178,7 +312,7 @@ std::string DialogToolkit::openSessionFileDialog(const std::string &path)
 }
 
 
-std::string DialogToolkit::openMediaFileDialog(const std::string &path)
+std::string openMediaFileDialog(const std::string &label, const std::string &path)
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
@@ -190,18 +324,18 @@ std::string DialogToolkit::openMediaFileDialog(const std::string &path)
                                       "*.gif", "*.tif", "*.svg" };
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( "Open Media File", startpath.c_str(), 18, open_pattern, "All supported formats", 0);
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 18, open_pattern, "All supported formats", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
 #else
 
     if (!gtk_init()) {
-        ErrorDialog("Could not initialize GTK+ for dialog");
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
         return filename;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Open Media File",  NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
                                               GTK_FILE_CHOOSER_ACTION_OPEN,
                                               "_Cancel", GTK_RESPONSE_CANCEL,
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
@@ -238,24 +372,81 @@ std::string DialogToolkit::openMediaFileDialog(const std::string &path)
     return filename;
 }
 
-std::string DialogToolkit::openFolderDialog(const std::string &path)
+
+std::string openImageFileDialog(const std::string &label, const std::string &path)
+{
+    std::string filename = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
+    char const * open_pattern[2] = { "*.jpg", "*.png"};
+#if USE_TINYFILEDIALOG
+    char const * open_file_name;
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 2, open_pattern, "Image JPG or PNG", 0);
+
+    if (open_file_name)
+        filename = std::string(open_file_name);
+#else
+
+    if (!gtk_init()) {
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
+        return filename;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
+                                              GTK_FILE_CHOOSER_ACTION_OPEN,
+                                              "_Cancel", GTK_RESPONSE_CANCEL,
+                                              "_Open", GTK_RESPONSE_ACCEPT,  NULL );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 2, open_pattern, "Image JPG or PNG");
+    add_filter_any_file_dialog(dialog);
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
+
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+
+        char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+        if (open_file_name)
+            filename = std::string(open_file_name);
+        g_free( open_file_name );
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+    return filename;
+}
+
+
+std::string openFolderDialog(const std::string &label, const std::string &path)
 {
     std::string foldername = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
 
 #if USE_TINYFILEDIALOG
     char const * open_folder_name;
-    open_folder_name = tinyfd_selectFolderDialog("Select folder", startpath.c_str());
+    open_folder_name = tinyfd_selectFolderDialog(label.c_str(), startpath.c_str());
 
     if (open_folder_name)
         foldername = std::string(open_folder_name);
 #else
     if (!gtk_init()) {
-        ErrorDialog("Could not initialize GTK+ for dialog");
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
         return foldername;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Select folder", NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(), NULL,
                                                      GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
                                                      "_Cancel", GTK_RESPONSE_CANCEL,
                                                      "_Select", GTK_RESPONSE_ACCEPT,  NULL );
@@ -290,7 +481,7 @@ std::string DialogToolkit::openFolderDialog(const std::string &path)
 }
 
 
-std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &path)
+std::list<std::string> selectImagesFileDialog(const std::string &label,const std::string &path)
 {
     std::list<std::string> files;
 
@@ -299,7 +490,7 @@ std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &
 
 #if USE_TINYFILEDIALOG
     char const * open_file_names;
-    open_file_names = tinyfd_openFileDialog( "Select images", startpath.c_str(), 6, open_pattern, "Images", 1);
+    open_file_names = tinyfd_openFileDialog(label.c_str(), startpath.c_str(), 6, open_pattern, "Images", 1);
 
     if (open_file_names) {
 
@@ -325,11 +516,11 @@ std::list<std::string> DialogToolkit::selectImagesFileDialog(const std::string &
 #else
 
     if (!gtk_init()) {
-        ErrorDialog("Could not initialize GTK+ for dialog");
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
         return files;
     }
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Select images",  NULL,
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
                                               GTK_FILE_CHOOSER_ACTION_OPEN,
                                               "_Cancel", GTK_RESPONSE_CANCEL,
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );

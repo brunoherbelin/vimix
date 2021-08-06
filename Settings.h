@@ -70,7 +70,6 @@ struct ViewConfig
 
 };
 
-#define RECORD_MAX_TIMEOUT 301000
 
 struct RecordConfig
 {
@@ -211,6 +210,7 @@ struct Application
     History recentSessions;
     History recentFolders;
     History recentImport;
+    std::map< std::string, std::string > dialogRecentFolder;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;

@@ -238,7 +238,6 @@ Source * Mixer::createSourceFile(const std::string &path)
 
         // remember in recent media
         Settings::application.recentImport.push(path);
-        Settings::application.recentImport.path = SystemToolkit::path_filename(path);
 
         // propose a new name based on uri
         s->setName(SystemToolkit::base_filename(path));
@@ -268,9 +267,6 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
             MultiFileSource *mfs = new MultiFileSource;
             mfs->setSequence(sequence, fps);
             s = mfs;
-
-            // remember in recent media
-            Settings::application.recentImport.path = SystemToolkit::path_filename(list_files.front());
 
             // propose a new name
             s->setName( SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) ) );

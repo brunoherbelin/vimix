@@ -173,13 +173,14 @@ void Settings::Save()
     {
         XMLElement *recent = xmlDoc.NewElement( "Recent" );
 
+        // recent session filenames
         XMLElement *recentsession = xmlDoc.NewElement( "Session" );
         recentsession->SetAttribute("path", application.recentSessions.path.c_str());
         recentsession->SetAttribute("autoload", application.recentSessions.load_at_start);
         recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
         recentsession->SetAttribute("valid", application.recentSessions.front_is_valid);
-        for(auto it = application.recentSessions.filenames.begin();
-            it != application.recentSessions.filenames.end(); ++it) {
+        for(auto it = application.recentSessions.filenames.cbegin();
+            it != application.recentSessions.filenames.cend(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -187,9 +188,10 @@ void Settings::Save()
         };
         recent->InsertEndChild(recentsession);
 
+        // recent session folders
         XMLElement *recentfolder = xmlDoc.NewElement( "Folder" );
-        for(auto it = application.recentFolders.filenames.begin();
-            it != application.recentFolders.filenames.end(); ++it) {
+        for(auto it = application.recentFolders.filenames.cbegin();
+            it != application.recentFolders.filenames.cend(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -197,10 +199,11 @@ void Settings::Save()
         };
         recent->InsertEndChild(recentfolder);
 
+        // recent media uri
         XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
         recentmedia->SetAttribute("path", application.recentImport.path.c_str());
-        for(auto it = application.recentImport.filenames.begin();
-            it != application.recentImport.filenames.end(); ++it) {
+        for(auto it = application.recentImport.filenames.cbegin();
+            it != application.recentImport.filenames.cend(); ++it) {
             XMLElement *fileNode = xmlDoc.NewElement("path");
             XMLText *text = xmlDoc.NewText( (*it).c_str() );
             fileNode->InsertEndChild( text );
@@ -208,9 +211,20 @@ void Settings::Save()
         }
         recent->InsertEndChild(recentmedia);
 
+        // recent dialog path
+        XMLElement *recentdialogpath = xmlDoc.NewElement( "Dialog" );
+        for(auto it = application.dialogRecentFolder.cbegin();
+            it != application.dialogRecentFolder.cend(); ++it) {
+            XMLElement *pathNode = xmlDoc.NewElement("path");
+            pathNode->SetAttribute("label", (*it).first.c_str() );
+            XMLText *text = xmlDoc.NewText( (*it).second.c_str() );
+            pathNode->InsertEndChild( text );
+            recentdialogpath->InsertFirstChild(pathNode);
+        }
+        recent->InsertEndChild(recentdialogpath);
+
         pRoot->InsertEndChild(recent);
     }
-
 
     // First save : create filename
     if (settingsFilename.empty())
@@ -459,6 +473,21 @@ void Settings::Load()
                     application.recentImport.push( std::string (p) );
                 }
             }
+            // recent dialog path
+            XMLElement * pDialog = pElement->FirstChildElement("Dialog");
+            if (pDialog)
+            {
+                application.dialogRecentFolder.clear();
+                XMLElement* path = pDialog->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    const char *l = path->Attribute("label");
+                    const char *p = path->GetText();
+                    if (l && p)
+                        application.dialogRecentFolder[ std::string(l)] = std::string (p);
+                }
+            }
+
         }
     }
 

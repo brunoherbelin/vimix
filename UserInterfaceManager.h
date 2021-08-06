@@ -12,6 +12,7 @@
 
 #include "SourceList.h"
 #include "InfoVisitor.h"
+#include "DialogToolkit.h"
 
 struct ImVec2;
 class MediaPlayer;
@@ -182,6 +183,11 @@ class UserInterface
 #if defined(LINUX)
     FrameGrabber *webcam_emulator_;
 #endif
+
+    // Dialogs
+    DialogToolkit::OpenSessionDialog *sessionopendialog;
+    DialogToolkit::OpenSessionDialog *sessionimportdialog;
+    DialogToolkit::SaveSessionDialog *sessionsavedialog;
 
     // Private Constructor
     UserInterface();

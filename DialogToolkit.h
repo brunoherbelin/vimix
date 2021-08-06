@@ -3,22 +3,79 @@
 
 #include <string>
 #include <list>
+#include <vector>
+#include <thread>
+#include <future>
 
 
 namespace DialogToolkit
 {
 
-std::string saveSessionFileDialog(const std::string &path);
-
-std::string openSessionFileDialog(const std::string &path);
-
-std::string openMediaFileDialog(const std::string &path);
-
-std::string openFolderDialog(const std::string &path);
-
-std::list<std::string> selectImagesFileDialog(const std::string &path);
-
 void ErrorDialog(const char* message);
+
+class FileDialog
+{
+protected:
+    std::string id_;
+    std::string directory_;
+    std::string path_;
+    std::vector< std::future<std::string> >promises_;
+
+public:
+    FileDialog(const std::string &name);
+
+    virtual void open() = 0;
+    virtual bool closed();
+    inline std::string path() const { return path_; }
+
+    static bool pending;
+};
+
+class OpenImageDialog : public FileDialog
+{
+public:
+    OpenImageDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class OpenSessionDialog : public FileDialog
+{
+public:
+    OpenSessionDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class OpenMediaDialog : public FileDialog
+{
+public:
+    OpenMediaDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class SaveSessionDialog : public FileDialog
+{
+public:
+    SaveSessionDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class OpenFolderDialog : public FileDialog
+{
+public:
+    OpenFolderDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class MultipleImagesDialog : public FileDialog
+{
+    std::list<std::string> pathlist_;
+    std::vector< std::future< std::list<std::string> > > promisedlist_;
+public:
+    MultipleImagesDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+    bool closed() override;
+    inline std::list<std::string> images() const { return pathlist_; }
+};
 
 }
 
