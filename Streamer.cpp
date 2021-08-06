@@ -389,6 +389,8 @@ void VideoStreamer::init(GstCaps *caps)
 
 void VideoStreamer::terminate()
 {
+    active_ = false;
+
     // send EOS
     gst_app_src_end_of_stream (src_);
 
@@ -414,6 +416,7 @@ void VideoStreamer::stop ()
 
     // force finished
     finished_ = true;
+    active_ = false;
 }
 
 std::string VideoStreamer::info() const

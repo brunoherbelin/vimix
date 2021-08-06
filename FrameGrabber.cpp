@@ -214,7 +214,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 
 
 
-FrameGrabber::FrameGrabber(): finished_(false), active_(false), accept_buffer_(false),
+FrameGrabber::FrameGrabber(): finished_(false), expecting_finished_(false), active_(false), accept_buffer_(false),
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timestamp_(0)
 {
     // unique id
@@ -257,6 +257,7 @@ uint64_t FrameGrabber::duration() const
 void FrameGrabber::stop ()
 {
     // send end of stream
+    expecting_finished_ = true;
     gst_app_src_end_of_stream (src_);
 
     // stop recording
@@ -287,6 +288,19 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
         grabber->accept_buffer_ = false;
 }
 
+GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer user_data)
+{
+  GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+  if (GST_EVENT_TYPE (event) == GST_EVENT_EOS)
+  {
+      FrameGrabber *g = static_cast<FrameGrabber *>(user_data);
+      if (g)
+          g->finished_ = true;
+  }
+
+  return GST_PAD_PROBE_OK;
+}
+
 void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
 {
     // ignore
@@ -294,23 +308,29 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
         return;
 
     // first time initialization
-    if (pipeline_ == nullptr)
+    if (pipeline_ == nullptr) {
+        // type specific initialisation
         init(caps);
+        // generic EOS detector
+        GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
+        gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
+        gst_object_unref (pad);
+    }
 
-    // cancel if finished
-    if (finished_)
-        return;
+    // terminate properly if finished
+    if (finished_) {
+        terminate();
+    }
 
     // stop if an incompatilble frame buffer given
-    if ( !gst_caps_is_equal( caps_, caps ))
+    else if ( !gst_caps_is_equal( caps_, caps ))
     {
         stop();
-//        Log::Warning("FrameGrabber interrupted: new session (%s)\nincompatible with recording (%s)", gst_caps_to_string(frame.caps), gst_caps_to_string(caps_));
         Log::Warning("FrameGrabber interrupted because the resolution changed.");
     }
 
     // store a frame if recording is active
-    if (active_)
+    else if (active_)
     {
         // calculate dt in ns
         timeframe_ +=  gst_gdouble_to_guint64( dt * 1000000.f );
@@ -339,27 +359,5 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
             timeframe_ = 0;
         }
     }
-    // did the recording terminate with sink receiving end-of-stream ?
-    else {
-
-        if (!finished_)
-        {
-            // Wait for EOS message
-            GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
-            GstMessage *msg = gst_bus_poll(bus, GST_MESSAGE_EOS, GST_TIME_AS_USECONDS(1));
-            // received EOS
-            if (msg) {
-                // stop the pipeline
-                GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
-                if (ret == GST_STATE_CHANGE_FAILURE)
-                    Log::Warning("FrameGrabber Could not stop.");
-
-                finished_ = true;
-            }
-        }
-    }
-
-    if (finished_)
-        terminate();
 
 }

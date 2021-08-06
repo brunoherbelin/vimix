@@ -53,6 +53,7 @@ protected:
     virtual void terminate() = 0;
 
     // thread-safe testing termination
+    std::atomic<bool> expecting_finished_;
     std::atomic<bool> finished_;
     std::atomic<bool> active_;
     std::atomic<bool> accept_buffer_;
@@ -67,8 +68,8 @@ protected:
 
     // gstreamer callbacks
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
-    static void callback_enough_data (GstAppSrc *, gpointer user_data);
-
+    static void callback_enough_data (GstAppSrc *, gpointer user_data);    
+    static GstPadProbeReturn callback_event_probe(GstPad *, GstPadProbeInfo *info, gpointer user_data);
 };
 
 /**

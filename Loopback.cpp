@@ -237,5 +237,6 @@ void Loopback::init(GstCaps *caps)
 
 void Loopback::terminate()
 {
+    active_ = false;
     Log::Notify("Loopback to %s terminated.", Loopback::system_loopback_name.c_str());
 }
