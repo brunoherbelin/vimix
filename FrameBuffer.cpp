@@ -342,7 +342,16 @@ FrameBufferImage::FrameBufferImage(jpegBuffer jpgimg) :
         rgb = stbi_load_from_memory(jpgimg.buffer, jpgimg.len, &width, &height, &c, 3);
 }
 
-FrameBufferImage::~FrameBufferImage() {
+FrameBufferImage::FrameBufferImage(const std::string &filename) :
+    rgb(nullptr), width(0), height(0)
+{
+    int c = 0;
+    if (!filename.empty())
+        rgb = stbi_load(filename.c_str(), &width, &height, &c, 3);
+}
+
+FrameBufferImage::~FrameBufferImage()
+{
     if (rgb!=nullptr)
         delete rgb;
 }
@@ -392,22 +401,49 @@ bool FrameBuffer::fill(FrameBufferImage *image)
     if (!framebufferid_)
         init();
 
-    // not compatible for RGB
+    // only compatible for RGB FrameBuffers
     if (use_alpha_ || use_multi_sampling_)
         return false;
 
     // invalid image
     if ( image == nullptr ||
          image->rgb==nullptr ||
-         image->width !=attrib_.viewport.x ||
-         image->height!=attrib_.viewport.y )
+         image->width < 1 ||
+         image->height < 1 )
         return false;
 
-    // fill texture with image
-    glBindTexture(GL_TEXTURE_2D, textureid_);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
-                    GL_RGB, GL_UNSIGNED_BYTE, image->rgb);    
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // is it same size ?
+    if (image->width == attrib_.viewport.x && image->height == attrib_.viewport.y ) {
+        // directly fill texture with image
+        glBindTexture(GL_TEXTURE_2D, textureid_);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
+                        GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    else {
+        uint textureimage, framebufferimage;
+        // generate texture
+        glGenTextures(1, &textureimage);
+        glBindTexture(GL_TEXTURE_2D, textureimage);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, image->width, image->height, 0, GL_RGB, GL_UNSIGNED_BYTE, image->rgb);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // create a framebuffer object
+        glGenFramebuffers(1, &framebufferimage);
+        glBindFramebuffer(GL_FRAMEBUFFER, framebufferimage);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureimage, 0);
+
+        // blit to the frame buffer object with interpolation
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferimage);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebufferid_);
+        glBlitFramebuffer(0, 0, image->width, image->height,
+                          0, 0, attrib_.viewport.x, attrib_.viewport.y, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // cleanup
+        glDeleteFramebuffers(1, &framebufferimage);
+        glDeleteTextures(1, &textureimage);
+    }
 
     return true;
 }

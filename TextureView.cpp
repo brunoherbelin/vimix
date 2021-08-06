@@ -22,6 +22,7 @@
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "ActionManager.h"
+#include "DialogToolkit.h"
 #include "Log.h"
 
 #include "TextureView.h"
@@ -717,6 +718,21 @@ void TextureView::draw()
                         ImGui::EndPopup();
                     }
 
+                    static DialogToolkit::OpenImageDialog maskdialog("Select Image");
+
+                    ImGui::SameLine();
+                    if (ImGui::Button(ICON_FA_FOLDER_OPEN))
+                        maskdialog.open();
+                    if (maskdialog.closed() && !maskdialog.path().empty())
+                    {
+                        FrameBufferImage *img = new FrameBufferImage(maskdialog.path());
+                        if (edit_source_->maskbuffer_->fill( img )) {
+                            std::ostringstream oss;
+                            oss << edit_source_->name();
+                            oss << ": Mask fill with " << maskdialog.path();
+                            Action::manager().store(oss.str());
+                        }
+                    }
 
                 }
                 // disabled info

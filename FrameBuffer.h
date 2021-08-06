@@ -24,6 +24,7 @@ public:
 
     FrameBufferImage(int w, int h);
     FrameBufferImage(jpegBuffer jpgimg);
+    FrameBufferImage(const std::string &filename);
     // non assignable class
     FrameBufferImage(FrameBufferImage const&) = delete;
     FrameBufferImage& operator=(FrameBufferImage const&) = delete;
