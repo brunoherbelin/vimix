@@ -727,9 +727,11 @@ void TextureView::draw()
                     {
                         FrameBufferImage *img = new FrameBufferImage(maskdialog.path());
                         if (edit_source_->maskbuffer_->fill( img )) {
+                            // apply mask filled
+                            edit_source_->storeMask();
+                            // store history
                             std::ostringstream oss;
-                            oss << edit_source_->name();
-                            oss << ": Mask fill with " << maskdialog.path();
+                            oss << edit_source_->name() << ": Mask fill with " << maskdialog.path();
                             Action::manager().store(oss.str());
                         }
                     }
