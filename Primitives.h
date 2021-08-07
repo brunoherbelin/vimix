@@ -76,7 +76,8 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    inline FrameBuffer *getFrameBuffer() const { return frame_buffer_; }
+    inline void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
+    inline FrameBuffer *frameBuffer() const { return frame_buffer_; }
 
 protected:
     FrameBuffer *frame_buffer_;
