@@ -386,6 +386,10 @@ FrameBufferImage *FrameBuffer::image(){
     if (!framebufferid_)
         return img;
 
+    // only compatible for RGB FrameBuffers
+    if (use_alpha_ || use_multi_sampling_)
+        return img;
+
     // allocate image
     img = new FrameBufferImage(attrib_.viewport.x, attrib_.viewport.y);
 

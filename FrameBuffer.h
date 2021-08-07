@@ -80,6 +80,7 @@ public:
     void setProjectionArea(glm::vec2 c);
 
     // internal pixel format
+    inline uint opengl_id() const { return framebufferid_; }
     inline bool use_alpha() const { return use_alpha_; }
     inline bool use_multisampling() const { return use_multi_sampling_; }
 
