@@ -625,7 +625,7 @@ void MixingView::updateSelectionOverlay()
 }
 
 #define CIRCLE_PIXELS 64
-#define CIRCLE_PIXEL_RADIUS 1024.0
+#define CIRCLE_PIXEL_RADIUS 1024.f
 //#define CIRCLE_PIXELS 256
 //#define CIRCLE_PIXEL_RADIUS 16384.0
 //#define CIRCLE_PIXELS 1024

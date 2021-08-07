@@ -1272,12 +1272,13 @@ void ImGuiToolkit::ImageGlyph(font_style type, char c, float h)
 {
     ImGuiIO& io = ImGui::GetIO();
     const ImTextureID my_tex_id = io.Fonts->TexID;
-    const ImFontGlyph*glyph =  fontmap[type]->FindGlyph(c);
+    const ImFontGlyph* glyph =  fontmap[type]->FindGlyph(c);
     const ImVec2 size( h * (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0)  , h);
     const ImVec2 uv0( glyph->U0, glyph->V0);
     const ImVec2 uv1( glyph->U1, glyph->V1);
     ImGui::Image((void*)(intptr_t)my_tex_id, size, uv0, uv1);
 }
+
 
 void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
 {
