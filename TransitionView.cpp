@@ -116,6 +116,8 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
+            // no fading when cross fading
+            Mixer::manager().session()->setFading( 0.f );
         }
         // fade to black
         else
