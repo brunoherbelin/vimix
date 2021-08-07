@@ -437,12 +437,6 @@ void Source::attach(FrameBuffer *renderbuffer)
         delete renderbuffer_;
     renderbuffer_ = renderbuffer;
 
-    // if a symbol is available, add it to overlay
-    if (symbol_) {
-        overlays_[View::MIXING]->attach( symbol_ );
-        overlays_[View::LAYER]->attach( symbol_ );
-    }
-
     // create the surfaces to draw the frame buffer in the views
     rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
     groups_[View::RENDERING]->attach(rendersurface_);
@@ -465,8 +459,13 @@ void Source::attach(FrameBuffer *renderbuffer)
     if (groups_[View::TRANSITION]->numChildren() > 0)
         groups_[View::TRANSITION]->attach(mixingsurface_);
 
-    // hack to place the symbols in the corner independently of aspect ratio
-    symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
+    // if a symbol is available, add it to overlay
+    if (symbol_) {
+        overlays_[View::MIXING]->attach( symbol_ );
+        overlays_[View::LAYER]->attach( symbol_ );
+        // hack to place the symbols in the corner independently of aspect ratio
+        symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
+    }
 
     // add lock icon to views (displayed on front)
     groups_[View::LAYER]->attach( locker_ );
