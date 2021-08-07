@@ -272,7 +272,7 @@ void UserInterface::handleKeyboard()
                 // toggle recording
                 if (video_recorder_) {
                     video_recorder_->stop();
-                    video_recorder_ = nullptr;
+//                    video_recorder_ = nullptr;
                 }
                 else {
                     _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder, std::chrono::seconds(Settings::application.record.delay)) );
@@ -726,14 +726,13 @@ void UserInterface::Render()
             _video_recorders.pop_back();
         }
     }
-    // verify the video recorder is valid
+    // verify the video recorder is valid (change to nullptr if invalid)
     FrameGrabbing::manager().verify(&video_recorder_);
     if (video_recorder_ // if there is an ongoing recorder
         && Settings::application.record.timeout < RECORD_MAX_TIMEOUT  // and if the timeout is valid
         && video_recorder_->duration() > Settings::application.record.timeout ) // and the timeout is reached
     {
         video_recorder_->stop();
-        video_recorder_ = nullptr;
     }
 
 #if defined(LINUX)
@@ -1088,7 +1087,6 @@ void UserInterface::RenderPreview()
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         video_recorder_->stop();
-                        video_recorder_ = nullptr;
                     }
                     ImGui::PopStyleColor(1);
                     static char dummy_str[512];

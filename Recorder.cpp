@@ -301,10 +301,11 @@ void VideoRecorder::init(GstCaps *caps)
 void VideoRecorder::terminate()
 {
     active_ = false;
-    if (expecting_finished_)
-        Log::Notify("Video Recording %s is ready.", filename_.c_str());
-    else
-        Log::Warning("Recording interrupted (no more disk space?).");
+
+    if (!expecting_finished_)
+        Log::Warning("Video Recording interrupted (no more disk space?).");
+
+    Log::Notify("Video Recording %s is ready.", filename_.c_str());
 }
 
 std::string VideoRecorder::info() const

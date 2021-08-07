@@ -285,16 +285,17 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
     FrameGrabber *grabber = static_cast<FrameGrabber *>(p);
     if (grabber)
         grabber->accept_buffer_ = false;
+
 }
 
-GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer user_data)
+GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer p)
 {
   GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
   if (GST_EVENT_TYPE (event) == GST_EVENT_EOS)
   {
-      FrameGrabber *g = static_cast<FrameGrabber *>(user_data);
-      if (g)
-          g->finished_ = true;
+      FrameGrabber *grabber = static_cast<FrameGrabber *>(p);
+      if (grabber)
+          grabber->finished_ = true;
   }
 
   return GST_PAD_PROBE_OK;
@@ -310,16 +311,15 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
     if (pipeline_ == nullptr) {
         // type specific initialisation
         init(caps);
-        // generic EOS detector
+        // attach EOS detector
         GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
         gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
         gst_object_unref (pad);
     }
 
     // terminate properly if finished
-    if (finished_) {
+    if (finished_)
         terminate();
-    }
 
     // stop if an incompatilble frame buffer given
     else if ( !gst_caps_is_equal( caps_, caps ))
@@ -329,21 +329,26 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
     }
 
     // store a frame if recording is active
-    else if (active_)
+    // and if the encoder accepts data
+    else if (active_ && accept_buffer_)
     {
-        // initialize timer
+        GstClockTime t = 0;
+
+        // initialize timer on first occurence
         if (timer_ == nullptr) {
             timer_ = gst_pipeline_get_clock ( GST_PIPELINE(pipeline_) );
             timer_firstframe_ = gst_clock_get_time(timer_);
         }
+        else
+            // time since timer starts (first frame registered)
+            t = gst_clock_get_time(timer_) - timer_firstframe_;
 
-        // time since begin
-        GstClockTime t = gst_clock_get_time(timer_) - timer_firstframe_;
-        t = (t / frame_duration_) * frame_duration_;
+        // if time is zero (first frame)
+        // of if delta time is passed one frame duration (with a margin)
+        if ( t == 0 || (t - timestamp_) > (frame_duration_ - 3000) ) {
 
-        // if delta time is passed one frame duration (with a margin)
-        // and if the encoder accepts data
-        if ( (t - timestamp_) > (frame_duration_ - 3000) && accept_buffer_) {
+            // round t to multiple of frame duration
+            t = ( t / frame_duration_) * frame_duration_;
 
             // set timing of buffer
             buffer->pts = t;
@@ -356,7 +361,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
             gst_app_src_push_buffer (src_, buffer);
             // NB: buffer will be unrefed by the appsrc
 
-            // keep timestamp
+            // keep timestamp for next addFrame
             timestamp_ = t;
         }
     }
