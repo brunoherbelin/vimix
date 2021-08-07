@@ -94,18 +94,19 @@ protected:
     static Mesh *disk_;
 };
 
-//class SelectionBox : public Group
+//class TextSurface : public Node
 //{
 //public:
-//    SelectionBox();
+//    TextSurface();
 
 //    void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
+//    void setText(const std::string &t);
 //    glm::vec4 color;
 
 //protected:
-//    LineSquare *square_;
-//    GlmToolkit::AxisAlignedBoundingBox bbox_;
+
+//    std::string text_;
 
 //};
 

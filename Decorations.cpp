@@ -11,6 +11,8 @@
 #include "Resource.h"
 #include "Log.h"
 
+#include "imgui.h"
+#include <glad/glad.h>
 
 Frame::Frame(CornerType corner, BorderType border, ShadowType shadow) : Node(),
     right_(nullptr), left_(nullptr), top_(nullptr), shadow_(nullptr), square_(nullptr)
@@ -557,54 +559,76 @@ void Disk::accept(Visitor& v)
 }
 
 
-//SelectionBox::SelectionBox()
-//{
-////    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-//    color = glm::vec4( 1.f, 0.f, 0.f, 1.f);
-//    square_ = new LineSquare( 3 );
 
-//}
-
-//void SelectionBox::draw (glm::mat4 modelview, glm::mat4 projection)
+//FrameBuffer *textToFrameBuffer(const std::string &text, font_style type, uint h)
 //{
-//    if ( !initialized() ) {
-//        square_->init();
-//        init();
+//    FrameBuffer *fb = nullptr;
+
+//    uint w = 0;
+//    for (auto i = 0; i < text.size(); ++i) {
+//        const ImFontGlyph* glyph = fontmap[type]->FindGlyph( text[i] );
+//        w += h * (uint) ceil( (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0) );
 //    }
+//    if (w > 0) {
 
-//    if (visible_) {
-
-//        // use a visitor bounding box to calculate extend of all selected nodes
-//        BoundingBoxVisitor vbox;
-
-//        // visit every child of the selection
-//        for (NodeSet::iterator node = children_.begin();
-//             node != children_.end(); node++) {
-//            // reset the transform before
-//            vbox.setModelview(glm::identity<glm::mat4>());
-//            (*node)->accept(vbox);
+//        // create and fill a FrameBuffer with the ImGui Font texture (once)
+//        static uint framebufferFont_ = 0;
+//        static uint textureFont_ = 0;
+//        static int widthFont_ =0;
+//        static int heightFont_ =0;
+//        if (framebufferFont_ == 0) {
+//            glGenTextures(1, &textureFont_);
+//            glBindTexture(GL_TEXTURE_2D, textureFont_);
+//            unsigned char *pixels;
+//            int bpp = 0;
+//            ImGuiIO& io = ImGui::GetIO();
+//            io.Fonts->GetTexDataAsRGBA32(&pixels, &widthFont_, &heightFont_, &bpp);
+//            glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA, widthFont_, heightFont_);
+//            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, widthFont_, heightFont_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+//            glBindTexture(GL_TEXTURE_2D, 0);
+//            glGenFramebuffers(1, &framebufferFont_);
+//            glBindFramebuffer(GL_FRAMEBUFFER, framebufferFont_);
+//            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureFont_, 0);
 //        }
 
-//        // get the bounding box
-//        bbox_ = vbox.bbox();
+//        // create an empty FrameBuffer for the target glyphs
+//        fb = new FrameBuffer(w, h, true);
 
-////        Log::Info("                                       -------- visitor box (%f, %f)-(%f, %f)", bbox_.min().x, bbox_.min().y, bbox_.max().x, bbox_.max().y);
+////        uint textureGlyphs_ = 0;
+////        glGenTextures(1, &textureGlyphs_);
+////        glBindTexture(GL_TEXTURE_2D, textureGlyphs_);
+////        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA, w, h);
+////        glBindTexture(GL_TEXTURE_2D, 0);
+////        uint framebufferGlyphs_ = 0;
+////        glGenFramebuffers(1, &framebufferGlyphs_);
+////        glBindFramebuffer(GL_FRAMEBUFFER, framebufferGlyphs_);
+////        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureGlyphs_, 0);
 
-//        // set color
-//        square_->shader()->color = color;
+////        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebufferGlyphs_);
 
-//        // compute transformation from bounding box
-////        glm::mat4 ctm = modelview * GlmToolkit::transform(glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f));
-//        glm::mat4 ctm = modelview * GlmToolkit::transform(bbox_.center(), glm::vec3(0.f), bbox_.scale());
 
-//        // draw bbox
-////        square_->draw( modelview, projection);
-//        square_->draw( ctm, projection);
+//        // blit glyphs from framebufferFont_ to framebuffer target
+//        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferFont_);
+//        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb->opengl_id() );
 
-//        // DEBUG
-////        visible_=false;
+//        GLint write_x = 0;
+//        for (auto i = 0; i < text.size(); ++i) {
+//            const ImFontGlyph* glyph = fontmap[type]->FindGlyph( text[i] );
+//            w = h * (uint) ceil( (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0) );
+
+//            GLint read_x0 = (GLint) ( glyph->U0 * (float) widthFont_ );
+//            GLint read_y0 = (GLint) ( glyph->V0 * (float) heightFont_ );
+//            GLint read_x1 = (GLint) ( glyph->U1 * (float) widthFont_ );
+//            GLint read_y1 = (GLint) ( glyph->V1 * (float) heightFont_ );
+//            glBlitFramebuffer(read_x0, read_y0, read_x1, read_y1,
+//                              write_x, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+//            write_x += w;
+//        }
+
 //    }
 
+//    return fb;
 //}
 
 
