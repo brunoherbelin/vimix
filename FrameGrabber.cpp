@@ -214,8 +214,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 
 
 
-FrameGrabber::FrameGrabber(): finished_(false), expecting_finished_(false), active_(false), accept_buffer_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timestamp_(0)
+FrameGrabber::FrameGrabber(): finished_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
+    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timestamp_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();
@@ -255,12 +255,11 @@ uint64_t FrameGrabber::duration() const
 
 void FrameGrabber::stop ()
 {
-    // send end of stream
-    expecting_finished_ = true;
-    gst_app_src_end_of_stream (src_);
-
     // stop recording
     active_ = false;
+
+    // send end of stream
+    gst_app_src_end_of_stream (src_);
 }
 
 std::string FrameGrabber::info() const
@@ -285,7 +284,6 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
     FrameGrabber *grabber = static_cast<FrameGrabber *>(p);
     if (grabber)
         grabber->accept_buffer_ = false;
-
 }
 
 GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer p)
@@ -295,7 +293,7 @@ GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo *
   {
       FrameGrabber *grabber = static_cast<FrameGrabber *>(p);
       if (grabber)
-          grabber->finished_ = true;
+          grabber->endofstream_ = true;
   }
 
   return GST_PAD_PROBE_OK;
@@ -316,54 +314,97 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
         gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
         gst_object_unref (pad);
     }
-
-    // terminate properly if finished
-    if (finished_)
-        terminate();
-
     // stop if an incompatilble frame buffer given
     else if ( !gst_caps_is_equal( caps_, caps ))
     {
         stop();
-        Log::Warning("FrameGrabber interrupted because the resolution changed.");
+        Log::Warning("Frame capture interrupted because the resolution changed.");
     }
 
-    // store a frame if recording is active
-    // and if the encoder accepts data
-    else if (active_ && accept_buffer_)
+    // store a frame if recording is active and if the encoder accepts data
+    if (active_)
     {
-        GstClockTime t = 0;
+        if (accept_buffer_) {
+            GstClockTime t = 0;
 
-        // initialize timer on first occurence
-        if (timer_ == nullptr) {
-            timer_ = gst_pipeline_get_clock ( GST_PIPELINE(pipeline_) );
-            timer_firstframe_ = gst_clock_get_time(timer_);
+            // initialize timer on first occurence
+            if (timer_ == nullptr) {
+                timer_ = gst_pipeline_get_clock ( GST_PIPELINE(pipeline_) );
+                timer_firstframe_ = gst_clock_get_time(timer_);
+            }
+            else
+                // time since timer starts (first frame registered)
+                t = gst_clock_get_time(timer_) - timer_firstframe_;
+
+            // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
+            if ( t == 0 || (t - timestamp_) > (frame_duration_ - 3000) ) {
+
+                // round time to a multiples of frame duration
+                t = ( t / frame_duration_) * frame_duration_;
+
+                // set frame presentation time stamp
+                buffer->pts = t;
+
+                // if time since last timestamp is more than 1 frame
+                if (t - timestamp_ > frame_duration_) {
+                    // compute duration
+                    buffer->duration = t - timestamp_;
+                    // keep timestamp for next addFrame to one frame later
+                    timestamp_ = t + frame_duration_;
+                }
+                // normal case (not delayed)
+                else {
+                    // normal frame duration
+                    buffer->duration = frame_duration_;
+                    // keep timestamp for next addFrame
+                    timestamp_ = t;
+                }
+
+                // when buffering is full, refuse buffer every frame
+                if (buffering_full_)
+                    accept_buffer_ = false;
+                else
+                {
+                    // enter buffering_full_ mode if the space left in buffering is for only few frames
+                    // (this prevents filling the buffer entirely)
+//                    if ( (double) gst_app_src_get_current_level_bytes(src_) / (double) buffering_size_ > 0.8) // 80% test
+                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 4 * gst_buffer_get_size(buffer))
+                        buffering_full_ = true;
+                }
+
+                // increment ref counter to make sure the frame remains available
+                gst_buffer_ref(buffer);
+
+                // push frame
+                gst_app_src_push_buffer (src_, buffer);
+                // NB: buffer will be unrefed by the appsrc
+
+                // count frames
+                frame_count_++;
+
+            }
+
         }
+    }
+
+    // if we received and end of stream (from callback_event_probe)
+    if (endofstream_)
+    {
+        // try to stop properly when interrupted
+        if (active_) {
+            // de-activate and re-send EOS
+            stop();
+            // inform
+            Log::Warning("Frame capture : interrupted after %s.", GstToolkit::time_to_string(timestamp_).c_str());
+            Log::Info("Frame capture: not space left on drive / encoding buffer full.");
+        }
+        // terminate properly if finished
         else
-            // time since timer starts (first frame registered)
-            t = gst_clock_get_time(timer_) - timer_firstframe_;
-
-        // if time is zero (first frame)
-        // of if delta time is passed one frame duration (with a margin)
-        if ( t == 0 || (t - timestamp_) > (frame_duration_ - 3000) ) {
-
-            // round t to multiple of frame duration
-            t = ( t / frame_duration_) * frame_duration_;
-
-            // set timing of buffer
-            buffer->pts = t;
-            buffer->duration = t - timestamp_;
-
-            // increment ref counter to make sure the frame remains available
-            gst_buffer_ref(buffer);
-
-            // push frame
-            gst_app_src_push_buffer (src_, buffer);
-            // NB: buffer will be unrefed by the appsrc
-
-            // keep timestamp for next addFrame
-            timestamp_ = t;
+        {
+            finished_ = true;
+            terminate();
         }
+
     }
 
 }

@@ -77,11 +77,13 @@ struct RecordConfig
     int profile;
     uint timeout;
     int delay;
+    int buffering_mode;
 
     RecordConfig() : path("") {
         profile = 0;
         timeout = RECORD_MAX_TIMEOUT;
         delay = 0;
+        buffering_mode = 0;
     }
 
 };

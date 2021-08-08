@@ -152,7 +152,6 @@ bool Loopback::systemLoopbackInitialized()
 Loopback::Loopback() : FrameGrabber()
 {
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 60);
-
 }
 
 void Loopback::init(GstCaps *caps)
@@ -190,25 +189,26 @@ void Loopback::init(GstCaps *caps)
     if (src_) {
 
         g_object_set (G_OBJECT (src_),
-                      "stream-type", GST_APP_STREAM_TYPE_STREAM,
                       "is-live", TRUE,
-                      "format", GST_FORMAT_TIME,
-                      //                     "do-timestamp", TRUE,
                       NULL);
 
-        // Direct encoding (no buffering)
-        gst_app_src_set_max_bytes( src_, 0 );
+        // configure stream
+        gst_app_src_set_stream_type( src_, GST_APP_STREAM_TYPE_STREAM);
+        gst_app_src_set_latency( src_, -1, 0);
+
+        // Set buffer size
+        gst_app_src_set_max_bytes( src_, buffering_size_ );
 
         // instruct src to use the required caps
         caps_ = gst_caps_copy( caps );
-        gst_app_src_set_caps (src_, caps_);
+        gst_app_src_set_caps( src_, caps_);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;
         callbacks.need_data = FrameGrabber::callback_need_data;
         callbacks.enough_data = FrameGrabber::callback_enough_data;
         callbacks.seek_data = NULL; // stream type is not seekable
-        gst_app_src_set_callbacks (src_, &callbacks, this, NULL);
+        gst_app_src_set_callbacks( src_, &callbacks, this, NULL);
 
     }
     else {
@@ -237,6 +237,5 @@ void Loopback::init(GstCaps *caps)
 
 void Loopback::terminate()
 {
-    active_ = false;
     Log::Notify("Loopback to %s terminated.", Loopback::system_loopback_name.c_str());
 }

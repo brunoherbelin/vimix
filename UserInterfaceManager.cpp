@@ -275,7 +275,9 @@ void UserInterface::handleKeyboard()
 //                    video_recorder_ = nullptr;
                 }
                 else {
-                    _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder, std::chrono::seconds(Settings::application.record.delay)) );
+                    _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
+                                                              new VideoRecorder(VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode]),
+                                                              std::chrono::seconds(Settings::application.record.delay)) );
                 }
             }
         }
@@ -1100,7 +1102,9 @@ void UserInterface::RenderPreview()
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder, std::chrono::seconds(Settings::application.record.delay)) );
+                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
+                                                                  new VideoRecorder(VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode]),
+                                                                  std::chrono::seconds(Settings::application.record.delay)) );
                     }
                     ImGui::PopStyleColor(1);
                     // select profile
@@ -1138,6 +1142,11 @@ void UserInterface::RenderPreview()
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                        Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
+
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, VIDEO_RECORDER_BUFFERING_NUM_PRESET-1,
+                                         VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
+
                 }
                 ImGui::EndMenu();
             }
@@ -4548,8 +4557,6 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetCursorPosY(width_);
 
         // Appearance
-//        ImGuiToolkit::Icon(3, 2);
-//        ImGui::SameLine(0, 10);
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
@@ -4562,8 +4569,6 @@ void Navigator::RenderMainPannelSettings()
 
         // Options
         ImGui::Spacing();
-//        ImGuiToolkit::Icon(2, 2);
-//        ImGui::SameLine(0, 10);
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
@@ -4578,13 +4583,8 @@ void Navigator::RenderMainPannelSettings()
 
         // system preferences
         ImGui::Spacing();
-//#ifdef LINUX
-//        ImGuiToolkit::Icon(12, 6);
-//#else
-//        ImGuiToolkit::Icon(6, 0);
-//#endif
-//        ImGui::SameLine(0, 10);
         ImGui::Text("System");
+
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
         static bool blit = Settings::application.render.blit;

@@ -14,6 +14,8 @@
 // https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
 #define USE_GLREADPIXEL
 
+#define MIN_BUFFER_SIZE 33177600  // 33177600 bytes = 1 frames 4K, 9 frames 720p
+
 class FrameBuffer;
 
 
@@ -53,9 +55,9 @@ protected:
     virtual void terminate() = 0;
 
     // thread-safe testing termination
-    std::atomic<bool> expecting_finished_;
     std::atomic<bool> finished_;
     std::atomic<bool> active_;
+    std::atomic<bool> endofstream_;
     std::atomic<bool> accept_buffer_;
 
     // gstreamer pipeline
@@ -65,6 +67,9 @@ protected:
 
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
+    guint64      frame_count_;
+    guint64      buffering_size_;
+    std::atomic<bool> buffering_full_;
 
     GstClockTime timer_firstframe_;
     GstClock     *timer_;

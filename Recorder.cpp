@@ -60,11 +60,12 @@ void PNGRecorder::init(GstCaps *caps)
     if (src_) {
 
         g_object_set (G_OBJECT (src_),
-                      "stream-type", GST_APP_STREAM_TYPE_STREAM,
                       "is-live", TRUE,
-                      "format", GST_FORMAT_TIME,
-                      //                     "do-timestamp", TRUE,
                       NULL);
+
+        // configure stream
+        gst_app_src_set_stream_type( src_, GST_APP_STREAM_TYPE_STREAM);
+        gst_app_src_set_latency( src_, -1, 0);
 
         // Direct encoding (no buffering)
         gst_app_src_set_max_bytes( src_, 0 );
@@ -104,7 +105,6 @@ void PNGRecorder::init(GstCaps *caps)
 
 void PNGRecorder::terminate()
 {
-    active_ = false;
     Log::Notify("PNG Capture %s is ready.", filename_.c_str());
 }
 
@@ -178,7 +178,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //      2 ‘standard’
     //      3 ‘hq’
     //      4 ‘4444’
-    "avenc_prores_ks pass=2 profile=2 quantizer=26 ! ",
+    "video/x-raw, format=I422_10LE ! avenc_prores_ks pass=2 profile=2 quantizer=26 ! ",
     "video/x-raw, format=Y444_10LE ! avenc_prores_ks pass=2 profile=4 quantizer=12 ! ",
     // VP8 WebM encoding
     "vp8enc end-usage=vbr cpu-used=8 max-quantizer=35 deadline=100000 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=100 ! ",
@@ -198,8 +198,13 @@ const std::vector<std::string> VideoRecorder::profile_description {
 //               "qtmux ! filesink name=sink";
 
 
-VideoRecorder::VideoRecorder() : FrameGrabber()
+const char*   VideoRecorder::buffering_preset_name[VIDEO_RECORDER_BUFFERING_NUM_PRESET] = { "30 MB", "100 MB", "200 MB", "500 MB", "1 GB", "2 GB" };
+const guint64 VideoRecorder::buffering_preset_value[VIDEO_RECORDER_BUFFERING_NUM_PRESET] = { MIN_BUFFER_SIZE, 104857600, 209715200, 524288000, 1073741824, 2147483648};
+
+
+VideoRecorder::VideoRecorder(guint64 buffersize) : FrameGrabber()
 {
+    buffering_size_ = MAX( MIN_BUFFER_SIZE, buffersize);
 }
 
 void VideoRecorder::init(GstCaps *caps)
@@ -239,7 +244,7 @@ void VideoRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("VideoRecorder Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        Log::Warning("Video Recording :  Could not construct pipeline %s:\n%s", description.c_str(), error->message);
         g_clear_error (&error);
         finished_ = true;
         return;
@@ -256,14 +261,17 @@ void VideoRecorder::init(GstCaps *caps)
     if (src_) {
 
         g_object_set (G_OBJECT (src_),
-                      "stream-type", GST_APP_STREAM_TYPE_STREAM,
                       "is-live", TRUE,
                       "format", GST_FORMAT_TIME,
-                      //                     "do-timestamp", TRUE,
+//                      "do-timestamp", TRUE,
                       NULL);
 
-        // Direct encoding (no buffering)
-        gst_app_src_set_max_bytes( src_, 0 );
+        // configure stream
+        gst_app_src_set_stream_type( src_, GST_APP_STREAM_TYPE_STREAM);
+        gst_app_src_set_latency( src_, -1, 0);
+
+        // Set buffer size
+        gst_app_src_set_max_bytes( src_, buffering_size_);
 
         // instruct src to use the required caps
         caps_ = gst_caps_copy( caps );
@@ -278,7 +286,7 @@ void VideoRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("VideoRecorder Could not configure source");
+        Log::Warning("Video Recording :  Could not configure source");
         finished_ = true;
         return;
     }
@@ -286,7 +294,7 @@ void VideoRecorder::init(GstCaps *caps)
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("VideoRecorder Could not record %s", filename_.c_str());
+        Log::Warning("Video Recording :  Could not record %s", filename_.c_str());
         finished_ = true;
         return;
     }
@@ -300,10 +308,15 @@ void VideoRecorder::init(GstCaps *caps)
 
 void VideoRecorder::terminate()
 {
-    active_ = false;
+    // stop the pipeline
+    gst_element_set_state (pipeline_, GST_STATE_NULL);
 
-    if (!expecting_finished_)
-        Log::Warning("Video Recording interrupted (no more disk space?).");
+    guint64 N = MAX( (guint64) timestamp_ / (guint64) frame_duration_, frame_count_);
+    float loss = 100.f * ((float) (N - frame_count_) ) / (float) N;
+    Log::Info("Video Recording : %ld frames in %s (aming for %ld, %.0f%% lost)", frame_count_, GstToolkit::time_to_string(timestamp_).c_str(), N, loss);
+    Log::Info("Video Recording : try with a lower resolution / a larger buffer size / a faster codec.");
+    if (loss > 20.f)
+        Log::Warning("Video Recording lost %.0f%% of frames.", loss);
 
     Log::Notify("Video Recording %s is ready.", filename_.c_str());
 }
@@ -312,6 +325,8 @@ std::string VideoRecorder::info() const
 {
     if (active_)
         return GstToolkit::time_to_string(timestamp_);
-    else
+    else if (!endofstream_)
         return "Saving file...";
+    else
+        return "...";
 }

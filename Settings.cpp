@@ -102,6 +102,7 @@ void Settings::Save()
     RecordNode->SetAttribute("profile", application.record.profile);
     RecordNode->SetAttribute("timeout", application.record.timeout);
     RecordNode->SetAttribute("delay", application.record.delay);
+    RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -314,6 +315,7 @@ void Settings::Load()
         recordnode->QueryIntAttribute("profile", &application.record.profile);
         recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
         recordnode->QueryIntAttribute("delay", &application.record.delay);
+        recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)

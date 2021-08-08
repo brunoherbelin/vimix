@@ -345,14 +345,17 @@ void VideoStreamer::init(GstCaps *caps)
     if (src_) {
 
         g_object_set (G_OBJECT (src_),
-                      "stream-type", GST_APP_STREAM_TYPE_STREAM,
                       "is-live", TRUE,
                       "format", GST_FORMAT_TIME,
                       //                     "do-timestamp", TRUE,
                       NULL);
 
-        // Direct encoding (no buffering)
-        gst_app_src_set_max_bytes( src_, 0 );
+        // configure stream
+        gst_app_src_set_stream_type( src_, GST_APP_STREAM_TYPE_STREAM);
+        gst_app_src_set_latency( src_, -1, 0);
+
+        // Set buffer size
+        gst_app_src_set_max_bytes( src_, buffering_size_ );
 
         // instruct src to use the required caps
         caps_ = gst_caps_copy( caps );
@@ -389,8 +392,6 @@ void VideoStreamer::init(GstCaps *caps)
 
 void VideoStreamer::terminate()
 {
-    active_ = false;
-
     // send EOS
     gst_app_src_end_of_stream (src_);
 

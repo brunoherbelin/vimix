@@ -25,6 +25,8 @@ protected:
 };
 
 
+#define VIDEO_RECORDER_BUFFERING_NUM_PRESET 6
+
 class VideoRecorder : public FrameGrabber
 {
     std::string  filename_;
@@ -45,10 +47,13 @@ public:
         JPEG_MULTI,
         DEFAULT
     } Profile;
-    static const char* profile_name[DEFAULT];
+    static const char*   profile_name[DEFAULT];
     static const std::vector<std::string> profile_description;
 
-    VideoRecorder();
+    static const char*   buffering_preset_name[VIDEO_RECORDER_BUFFERING_NUM_PRESET];
+    static const guint64 buffering_preset_value[VIDEO_RECORDER_BUFFERING_NUM_PRESET];
+
+    VideoRecorder(guint64 buffersize = 0);
     std::string info() const override;
 
 };
