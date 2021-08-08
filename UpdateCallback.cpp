@@ -64,9 +64,8 @@ void RotateToCallback::update(Node *n, float dt)
         startingangle_ = n->rotation_.z;
         initialized_ = true;
         // TODO select direction for shorter animation (CW or CCW)
-
-            Log::Info("starting angle %.2f", startingangle_);
-            Log::Info("target_        %.2f", target_);
+        //            Log::Info("starting angle %.2f", startingangle_);
+        //            Log::Info("target_        %.2f", target_);
     }
 
     // calculate amplitude of movement
