@@ -73,7 +73,7 @@ class MultipleImagesDialog : public FileDialog
     std::vector< std::future< std::list<std::string> > > promisedlist_;
 public:
     MultipleImagesDialog(const std::string &name) : FileDialog(name) {}
-    void open();
+    void open() override;
     bool closed() override;
     inline std::list<std::string> images() const { return pathlist_; }
 };

@@ -59,20 +59,20 @@ protected:
     std::atomic<bool> active_;
     std::atomic<bool> endofstream_;
     std::atomic<bool> accept_buffer_;
+    std::atomic<bool> buffering_full_;
 
     // gstreamer pipeline
     GstElement   *pipeline_;
     GstAppSrc    *src_;
     GstCaps      *caps_;
 
+    GstClock     *timer_;
     GstClockTime timestamp_;
     GstClockTime frame_duration_;
     guint64      frame_count_;
     guint64      buffering_size_;
-    std::atomic<bool> buffering_full_;
 
     GstClockTime timer_firstframe_;
-    GstClock     *timer_;
 
     // gstreamer callbacks
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
