@@ -12,7 +12,8 @@ namespace GstToolkit
 typedef enum {
     TIME_STRING_FIXED = 0,
     TIME_STRING_ADJUSTED,
-    TIME_STRING_MINIMAL
+    TIME_STRING_MINIMAL,
+    TIME_STRING_READABLE
 } time_string_mode;
 
 std::string time_to_string(guint64 t, time_string_mode m = TIME_STRING_ADJUSTED);

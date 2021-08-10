@@ -14,6 +14,8 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
             return "00:00:00.00";
         case TIME_STRING_MINIMAL:
             return "0.0";
+        case TIME_STRING_READABLE:
+            return "0 second";
         default:
             return "00.00";
         }
@@ -23,8 +25,27 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
     guint s = ms / 1000;
     ostringstream oss;
 
+    // READABLE : long format
+    if (m == TIME_STRING_READABLE) {
+        int count = 0;
+        if (s / 3600) {
+            oss << s / 3600 << " h ";
+            count++;
+        }
+        if ((s % 3600) / 60) {
+            oss << (s % 3600) / 60 << " min ";
+            count++;
+        }
+        if (count < 2) {
+            oss << setw(count > 0 ? 2 : 1) << setfill('0') << (s % 3600) % 60;
+            count++;
+        }
+        if (count < 2 )
+            oss << '.'<< setw(2) << setfill('0') << (ms % 1000) / 10;
+        oss << " second";
+    }
     // MINIMAL: keep only the 2 higher values (most significant)
-    if (m == TIME_STRING_MINIMAL) {
+    else if (m == TIME_STRING_MINIMAL) {
         int count = 0;
         if (s / 3600) {
             oss << s / 3600 << ':';
