@@ -177,7 +177,7 @@ void Log::Notify(const char* fmt, ...)
     notifications_timeout = 0.f;
 
     // always log
-    Log::Info("%s", buf.c_str());
+    Log::Info(ICON_FA_INFO_CIRCLE " %s", buf.c_str());
 }
 
 void Log::Warning(const char* fmt, ...)
@@ -193,7 +193,7 @@ void Log::Warning(const char* fmt, ...)
     warnings.push_back(buf.c_str());
 
     // always log
-    Log::Info("Warning - %s\n", buf.c_str());
+    Log::Info(ICON_FA_EXCLAMATION_TRIANGLE " Warning - %s", buf.c_str());
 }
 
 void Log::Render(bool *showWarnings)
