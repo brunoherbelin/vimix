@@ -198,13 +198,16 @@ const std::vector<std::string> VideoRecorder::profile_description {
 //               "qtmux ! filesink name=sink";
 
 
-const char*   VideoRecorder::buffering_preset_name[VIDEO_RECORDER_BUFFERING_NUM_PRESET] = { "30 MB", "100 MB", "200 MB", "500 MB", "1 GB", "2 GB" };
-const guint64 VideoRecorder::buffering_preset_value[VIDEO_RECORDER_BUFFERING_NUM_PRESET] = { MIN_BUFFER_SIZE, 104857600, 209715200, 524288000, 1073741824, 2147483648};
+const char*   VideoRecorder::buffering_preset_name[6]  = { "30 MB", "100 MB", "200 MB", "500 MB", "1 GB", "2 GB" };
+const guint64 VideoRecorder::buffering_preset_value[6] = { MIN_BUFFER_SIZE, 104857600, 209715200, 524288000, 1073741824, 2147483648 };
+
+const char*   VideoRecorder::framerate_preset_name[3]  = { "15 FPS", "25 FPS", "30 FPS" };
+const gint    VideoRecorder::framerate_preset_value[3] = { 15, 25, 30 };
 
 
-VideoRecorder::VideoRecorder(guint64 buffersize) : FrameGrabber()
+VideoRecorder::VideoRecorder() : FrameGrabber()
 {
-    buffering_size_ = MAX( MIN_BUFFER_SIZE, buffersize);
+
 }
 
 void VideoRecorder::init(GstCaps *caps)
@@ -212,6 +215,11 @@ void VideoRecorder::init(GstCaps *caps)
     // ignore
     if (caps == nullptr)
         return;
+
+    // apply settings
+    buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, framerate_preset_value[Settings::application.record.framerate_mode]);
+    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! ";
@@ -273,9 +281,18 @@ void VideoRecorder::init(GstCaps *caps)
         // Set buffer size
         gst_app_src_set_max_bytes( src_, buffering_size_);
 
-        // instruct src to use the required caps
-        caps_ = gst_caps_copy( caps );
+        // specify recorder framerate in the given caps
+        GstCaps *tmp = gst_caps_copy( caps );
+        GValue v = { 0, };
+        g_value_init (&v, GST_TYPE_FRACTION);
+        gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
+        gst_caps_set_value(tmp, "framerate", &v);
+        g_value_unset (&v);
+
+        // instruct src to use the caps
+        caps_ = gst_caps_copy( tmp );
         gst_app_src_set_caps (src_, caps_);
+        gst_caps_unref (tmp);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;
@@ -308,15 +325,24 @@ void VideoRecorder::init(GstCaps *caps)
 
 void VideoRecorder::terminate()
 {
-    // stop the pipeline
+    // stop the pipeline (again)
     gst_element_set_state (pipeline_, GST_STATE_NULL);
 
-    guint64 N = MAX( (guint64) timestamp_ / (guint64) frame_duration_, frame_count_);
+    // statistics on expected number of frames
+    guint64 N = MAX( (guint64) duration_ / (guint64) frame_duration_, frame_count_);
     float loss = 100.f * ((float) (N - frame_count_) ) / (float) N;
-    Log::Info("Video Recording : %ld frames in %s (aming for %ld, %.0f%% lost)", frame_count_, GstToolkit::time_to_string(timestamp_).c_str(), N, loss);
-    Log::Info("Video Recording : try with a lower resolution / a larger buffer size / a faster codec.");
-    if (loss > 20.f)
-        Log::Warning("Video Recording lost %.0f%% of frames.", loss);
+    Log::Info("Video Recording : %ld frames captured in %s (aming for %ld, %.0f%% lost)",
+              frame_count_, GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str(), N, loss);
+
+    // warn user if more than 10% lost
+    if (loss > 10.f) {
+        if (timestamp_on_clock_)
+            Log::Warning("Video Recording lost %.0f%% of frames: framerate could not be maintained at %ld FPS.", loss, GST_SECOND / frame_duration_);
+        else
+            Log::Warning("Video Recording lost %.0f%% of frames: video is only %s long.",
+                         loss, GstToolkit::time_to_string(timestamp_, GstToolkit::TIME_STRING_READABLE).c_str());
+        Log::Info("Video Recording : try a lower resolution / a lower framerate / a larger buffer size / a faster codec.");
+    }
 
     Log::Notify("Video Recording %s is ready.", filename_.c_str());
 }
@@ -324,7 +350,7 @@ void VideoRecorder::terminate()
 std::string VideoRecorder::info() const
 {
     if (active_)
-        return GstToolkit::time_to_string(timestamp_);
+        return FrameGrabber::info();
     else if (!endofstream_)
         return "Saving file...";
     else

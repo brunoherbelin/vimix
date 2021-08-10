@@ -88,7 +88,7 @@ public:
     void showPannelSource(int index);
     void togglePannelMenu();
     void togglePannelNew();
-
+    void showConfig();
 
     void Render();
 };

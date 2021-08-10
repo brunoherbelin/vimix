@@ -77,13 +77,19 @@ struct RecordConfig
     int profile;
     uint timeout;
     int delay;
+    int resolution_mode;
+    int framerate_mode;
     int buffering_mode;
+    int priority_mode;
 
     RecordConfig() : path("") {
         profile = 0;
         timeout = RECORD_MAX_TIMEOUT;
         delay = 0;
-        buffering_mode = 0;
+        resolution_mode = 1;
+        framerate_mode = 1;
+        buffering_mode = 2;
+        priority_mode = 1;
     }
 
 };

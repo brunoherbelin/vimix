@@ -12,7 +12,7 @@
 #define OSC_STREAM_REJECT "/reject"
 #define OSC_STREAM_DISCONNECT "/disconnect"
 
-
+#define STREAMING_FPS 30
 #define MAX_HANDSHAKE 20
 #define HANDSHAKE_PORT 71310
 #define STREAM_REQUEST_PORT 71510

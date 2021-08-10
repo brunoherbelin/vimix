@@ -102,7 +102,10 @@ void Settings::Save()
     RecordNode->SetAttribute("profile", application.record.profile);
     RecordNode->SetAttribute("timeout", application.record.timeout);
     RecordNode->SetAttribute("delay", application.record.delay);
+    RecordNode->SetAttribute("resolution_mode", application.record.resolution_mode);
+    RecordNode->SetAttribute("framerate_mode", application.record.framerate_mode);
     RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
+    RecordNode->SetAttribute("priority_mode", application.record.priority_mode);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -315,7 +318,10 @@ void Settings::Load()
         recordnode->QueryIntAttribute("profile", &application.record.profile);
         recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
         recordnode->QueryIntAttribute("delay", &application.record.delay);
+        recordnode->QueryIntAttribute("resolution_mode", &application.record.resolution_mode);
+        recordnode->QueryIntAttribute("framerate_mode", &application.record.framerate_mode);
         recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
+        recordnode->QueryIntAttribute("priority_mode", &application.record.priority_mode);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)

@@ -151,7 +151,7 @@ bool Loopback::systemLoopbackInitialized()
 
 Loopback::Loopback() : FrameGrabber()
 {
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 60);
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // fixed 30 FPS
 }
 
 void Loopback::init(GstCaps *caps)
@@ -199,9 +199,18 @@ void Loopback::init(GstCaps *caps)
         // Set buffer size
         gst_app_src_set_max_bytes( src_, buffering_size_ );
 
-        // instruct src to use the required caps
-        caps_ = gst_caps_copy( caps );
-        gst_app_src_set_caps( src_, caps_);
+        // specify streaming framerate in the given caps
+        GstCaps *tmp = gst_caps_copy( caps );
+        GValue v = { 0, };
+        g_value_init (&v, GST_TYPE_FRACTION);
+        gst_value_set_fraction (&v, 30, 1); // fixed 30 FPS
+        gst_caps_set_value(tmp, "framerate", &v);
+        g_value_unset (&v);
+
+        // instruct src to use the caps
+        caps_ = gst_caps_copy( tmp );
+        gst_app_src_set_caps (src_, caps_);
+        gst_caps_unref (tmp);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;

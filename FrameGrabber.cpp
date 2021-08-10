@@ -134,7 +134,6 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
                                      "format", G_TYPE_STRING, use_alpha_ ? "RGBA" : "RGB",
                                      "width",  G_TYPE_INT, width_,
                                      "height", G_TYPE_INT, height_,
-                                     "framerate", GST_TYPE_FRACTION, 30, 1,
                                      NULL);
     }
 
@@ -215,12 +214,13 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
 
 
 FrameGrabber::FrameGrabber(): finished_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timestamp_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE)
+    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr),
+    timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(false)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();
-    // configure fix parameter
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // 30 FPS
+    // configure default parameter
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, DEFAULT_GRABBER_FPS);  // 25 FPS by default
 }
 
 FrameGrabber::~FrameGrabber()
@@ -250,7 +250,7 @@ bool FrameGrabber::busy() const
 
 uint64_t FrameGrabber::duration() const
 {
-    return GST_TIME_AS_MSECONDS(timestamp_);
+    return GST_TIME_AS_MSECONDS(duration_);
 }
 
 void FrameGrabber::stop ()
@@ -265,7 +265,7 @@ void FrameGrabber::stop ()
 std::string FrameGrabber::info() const
 {
     if (active_)
-        return GstToolkit::time_to_string(timestamp_);
+        return GstToolkit::time_to_string(duration_);
     else
         return "Inactive";
 }
@@ -315,7 +315,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
         gst_object_unref (pad);
     }
     // stop if an incompatilble frame buffer given
-    else if ( !gst_caps_is_equal( caps_, caps ))
+    else if ( !gst_caps_is_subset( caps_, caps ))
     {
         stop();
         Log::Warning("Frame capture interrupted because the resolution changed.");
@@ -339,23 +339,32 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
             // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
             if ( t == 0 || (t - timestamp_) > (frame_duration_ - 3000) ) {
 
-                // round time to a multiples of frame duration
-                t = ( t / frame_duration_) * frame_duration_;
+                // count frames
+                frame_count_++;
+
+                // set duration to an exact multiples of frame duration
+                duration_ = ( t / frame_duration_) * frame_duration_;
+
+                if (timestamp_on_clock_)
+                    // set time to actual time
+                    // & round t to a multiples of frame duration
+                    t = duration_;
+                else
+                    // monotonic time increment to keep fixed FPS
+                    t = timestamp_ + frame_duration_;
 
                 // set frame presentation time stamp
                 buffer->pts = t;
+                buffer->duration = frame_duration_;
 
                 // if time since last timestamp is more than 1 frame
                 if (t - timestamp_ > frame_duration_) {
-                    // compute duration
-                    buffer->duration = t - timestamp_;
-                    // keep timestamp for next addFrame to one frame later
+                    // timestamp for next addFrame will be one frame later (skip a frame)
                     timestamp_ = t + frame_duration_;
                 }
                 // normal case (not delayed)
-                else {
-                    // normal frame duration
-                    buffer->duration = frame_duration_;
+                else
+                {
                     // keep timestamp for next addFrame
                     timestamp_ = t;
                 }
@@ -367,9 +376,14 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
                 {
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
-//                    if ( (double) gst_app_src_get_current_level_bytes(src_) / (double) buffering_size_ > 0.8) // 80% test
-                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 4 * gst_buffer_get_size(buffer))
+                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 3 * gst_buffer_get_size(buffer)) {
+#ifndef NDEBUG
+                        Log::Info("Frame capture : Using %s of %s Buffer.",
+                                  BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
+                                  BaseToolkit::byte_to_string(buffering_size_).c_str());
+#endif
                         buffering_full_ = true;
+                    }
                 }
 
                 // increment ref counter to make sure the frame remains available
@@ -378,9 +392,6 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
                 // push frame
                 gst_app_src_push_buffer (src_, buffer);
                 // NB: buffer will be unrefed by the appsrc
-
-                // count frames
-                frame_count_++;
 
             }
 
@@ -395,7 +406,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
             // de-activate and re-send EOS
             stop();
             // inform
-            Log::Warning("Frame capture : interrupted after %s.", GstToolkit::time_to_string(timestamp_).c_str());
+            Log::Warning("Frame capture : interrupted after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
             Log::Info("Frame capture: not space left on drive / encoding buffer full.");
         }
         // terminate properly if finished

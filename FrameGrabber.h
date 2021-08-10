@@ -13,7 +13,7 @@
 // read pixels & pbo should be the fastest
 // https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
 #define USE_GLREADPIXEL
-
+#define DEFAULT_GRABBER_FPS 30
 #define MIN_BUFFER_SIZE 33177600  // 33177600 bytes = 1 frames 4K, 9 frames 720p
 
 class FrameBuffer;
@@ -68,9 +68,11 @@ protected:
 
     GstClock     *timer_;
     GstClockTime timestamp_;
+    GstClockTime duration_;
     GstClockTime frame_duration_;
     guint64      frame_count_;
     guint64      buffering_size_;
+    bool         timestamp_on_clock_;
 
     GstClockTime timer_firstframe_;
 

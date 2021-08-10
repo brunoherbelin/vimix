@@ -275,8 +275,7 @@ void UserInterface::handleKeyboard()
 //                    video_recorder_ = nullptr;
                 }
                 else {
-                    _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
-                                                              new VideoRecorder(VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode]),
+                    _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                               std::chrono::seconds(Settings::application.record.delay)) );
                 }
             }
@@ -1102,8 +1101,7 @@ void UserInterface::RenderPreview()
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
-                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
-                                                                  new VideoRecorder(VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode]),
+                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
                     ImGui::PopStyleColor(1);
@@ -1114,40 +1112,46 @@ void UserInterface::RenderPreview()
                 // Options menu
                 ImGui::Separator();
                 ImGui::MenuItem("Options", nullptr, false, false);
-                {
-                    static char* name_path[4] = { nullptr };
-                    if ( name_path[0] == nullptr ) {
-                        for (int i = 0; i < 4; ++i)
-                            name_path[i] = (char *) malloc( 1024 * sizeof(char));
-                        sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
-                        sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
-                        sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
-                    }
-                    if (Settings::application.record.path.empty())
-                        Settings::application.record.path = SystemToolkit::home_path();
-                    sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
-
-                    int selected_path = 0;
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::Combo("Path", &selected_path, name_path, 4);
-                    if (selected_path > 2)
-                        recordFolderDialog.open();
-                    else if (selected_path > 1)
-                        Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
-                    else if (selected_path > 0)
-                        Settings::application.record.path = SystemToolkit::home_path();
-
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
-                                       Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
-
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, VIDEO_RECORDER_BUFFERING_NUM_PRESET-1,
-                                         VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
-
+                // offer to open config panel from here for more options
+                ImGui::SameLine(ImGui::GetContentRegionAvailWidth() + 1.2f * IMGUI_RIGHT_ALIGN);
+                if (ImGuiToolkit::IconButton(13, 5))
+                    navigator.showConfig();
+                ImGui::SameLine(0);
+                ImGui::Text("Settings");
+                // BASIC OPTIONS
+                static char* name_path[4] = { nullptr };
+                if ( name_path[0] == nullptr ) {
+                    for (int i = 0; i < 4; ++i)
+                        name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                    sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
+                    sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                    sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
                 }
+                if (Settings::application.record.path.empty())
+                    Settings::application.record.path = SystemToolkit::home_path();
+                sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
+
+                int selected_path = 0;
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::Combo("Path", &selected_path, name_path, 4);
+                if (selected_path > 2)
+                    recordFolderDialog.open();
+                else if (selected_path > 1)
+                    Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                else if (selected_path > 0)
+                    Settings::application.record.path = SystemToolkit::home_path();
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
+                                 Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
+
+//                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//                ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, VIDEO_RECORDER_BUFFERING_NUM_PRESET-1,
+//                                 VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
+
+                //
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Share stream"))
@@ -3343,6 +3347,13 @@ void Navigator::showPannelSource(int index)
     }
 }
 
+void Navigator::showConfig()
+{
+    selected_button[NAV_MENU] = true;
+    applyButtonSelection(NAV_MENU);
+    show_config_ = true;
+}
+
 void Navigator::togglePannelMenu()
 {
     selected_button[NAV_MENU] = !selected_button[NAV_MENU];
@@ -4148,19 +4159,32 @@ void Navigator::RenderMainPannelVimix()
             // get parameters to edit resolution
             glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
 
-            // Basic information on session
-            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.75);
-            if (sessionfilename.empty())
-                ImGui::Text(" <unsaved>");
-            else
-                ImGui::Text(" %s", SystemToolkit::filename(sessionfilename).c_str());
+            ImGuiTextBuffer info;
+            info.appendf("%d x %d px", output->width(), output->height());
             if (p.x > -1)
-                ImGui::Text(" %dx%dpx, %s", output->width(), output->height(), FrameBuffer::aspect_ratio_name[p.x]);
-            else
-                ImGui::Text(" %dx%dpx", output->width(), output->height());
-            ImGui::PopStyleVar();
+                info.appendf(", %s", FrameBuffer::aspect_ratio_name[p.x]);
+
+            // Show info text bloc (dark background)
+            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
             ImGui::PopFont();
+
+// Alternative // Basic information on session
+//            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
+//            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.75);
+//            if (sessionfilename.empty())
+//                ImGui::Text(" <unsaved>");
+//            else
+//                ImGui::Text(" %s", SystemToolkit::filename(sessionfilename).c_str());
+//            if (p.x > -1)
+//                ImGui::Text(" %dx%dpx, %s", output->width(), output->height(), FrameBuffer::aspect_ratio_name[p.x]);
+//            else
+//                ImGui::Text(" %dx%dpx", output->width(), output->height());
+//            ImGui::PopStyleVar();
+//            ImGui::PopFont();
 
 // Kept for later? Larger info box with more details on the session file...
 //            ImGuiTextBuffer info;
@@ -4472,10 +4496,10 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Snapshots keeps a list of favorite\n"
-                                 "status of the current session.\n"
+        ImGuiToolkit::HelpMarker("Snapshots keep a list of favorite\n"
+                                 "status of the current session.\n\n"
                                  "Clic an item to preview or edit.\n"
-                                 "Double-clic to restore immediately.\n");
+                                 "Double-clic to apply.\n");
 
 //        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
 //        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
@@ -4580,6 +4604,37 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
+        // Recording preferences
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Text("Recording");
+        ImGuiToolkit::HelpMarker(ICON_FA_CARET_RIGHT " Capture 15, 25 or 30 frames per seconds.\n"
+//                                 ICON_FA_CARET_RIGHT " Downscale captured frames if larger than Height.\n"
+                                 ICON_FA_CARET_RIGHT " Size of RAM Buffer storing frames before recording.\n"
+                                 ICON_FA_CARET_RIGHT " Priority when buffer is full and recorder skips frames;\n  "
+                                 ICON_FA_ANGLE_RIGHT " Clock    : variable framerate, correct duration.\n  "
+                                 ICON_FA_ANGLE_RIGHT " Framerate: correct framerate,  shorter duration.");
+        ImGui::SameLine(0);
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
+
+//        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//        ImGui::Combo("Height", &Settings::application.record.resolution_mode, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+
+        // TODO: compute number of frames in buffer and show warning sign if too low
+        //        ImGuiToolkit::HelpMarker("Buffer to store captured frames before recording", ICON_FA_EXCLAMATION_TRIANGLE);
+        //        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
+                         VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Clock\0Framerate\0");
 
         // system preferences
         ImGui::Spacing();
