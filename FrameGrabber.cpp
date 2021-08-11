@@ -186,10 +186,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
         pbo_index_ = (pbo_index_ + 1) % 2;
 
         // a frame was successfully grabbed
-        if (buffer != nullptr) {
-
-            if ( gst_buffer_get_size(buffer) == 0 )
-                g_print("Empty buffer");
+        if ( buffer != nullptr && gst_buffer_get_size(buffer) > 0) {
 
             // give the frame to all recorders
             std::list<FrameGrabber *>::iterator iter = grabbers_.begin();
@@ -364,7 +361,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
                     if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 3 * gst_buffer_get_size(buffer)) {
-#ifndef _NDEBUG
+#ifndef NDEBUG
                         Log::Info("Frame capture : Using %s of %s Buffer.",
                                   BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
                                   BaseToolkit::byte_to_string(buffering_size_).c_str());
@@ -397,8 +394,8 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             // de-activate and re-send EOS
             stop();
             // inform
+            Log::Info("Frame capture : Unnexpected EOF signal (no space left on drive? File deleted?)");
             Log::Warning("Frame capture : failed after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
-            Log::Info("Frame capture: no space left on drive ? / encoding buffer full.");
         }
         // terminate properly if finished
         else

@@ -252,7 +252,8 @@ void VideoRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("Video Recording :  Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        Log::Info("Video Recording : Could not construct pipeline %s\n%s", description.c_str(), error->message);
+        Log::Warning("Video Recording : Failed to initiate GStreamer.");
         g_clear_error (&error);
         finished_ = true;
         return;
@@ -303,7 +304,7 @@ void VideoRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("Video Recording :  Could not configure source");
+        Log::Warning("Video Recording : Failed to configure frame grabber.");
         finished_ = true;
         return;
     }
@@ -311,7 +312,7 @@ void VideoRecorder::init(GstCaps *caps)
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Video Recording :  Could not record %s", filename_.c_str());
+        Log::Warning("Video Recording : Failed to start frame grabber.");
         finished_ = true;
         return;
     }
