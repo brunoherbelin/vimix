@@ -48,7 +48,7 @@ public:
 protected:
 
     // only FrameGrabbing manager can add frame
-    virtual void addFrame(GstBuffer *buffer, GstCaps *caps, float dt);
+    virtual void addFrame(GstBuffer *buffer, GstCaps *caps);
 
     // only addFrame method shall call those
     virtual void init(GstCaps *caps) = 0;
@@ -120,7 +120,7 @@ public:
 protected:
 
     // only for friend Session
-    void grabFrame(FrameBuffer *frame_buffer, float dt);
+    void grabFrame(FrameBuffer *frame_buffer);
 
 private:
     std::list<FrameGrabber *> grabbers_;

@@ -20,7 +20,7 @@ protected:
 
     void init(GstCaps *caps) override;
     void terminate() override;
-    void addFrame(GstBuffer *buffer, GstCaps *caps, float dt) override;
+    void addFrame(GstBuffer *buffer, GstCaps *caps) override;
 
 };
 

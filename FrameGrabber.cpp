@@ -97,7 +97,7 @@ void FrameGrabbing::clearAll()
 }
 
 
-void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
+void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 {
     if (frame_buffer == nullptr)
         return;
@@ -188,12 +188,15 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, float dt)
         // a frame was successfully grabbed
         if (buffer != nullptr) {
 
+            if ( gst_buffer_get_size(buffer) == 0 )
+                g_print("Empty buffer");
+
             // give the frame to all recorders
             std::list<FrameGrabber *>::iterator iter = grabbers_.begin();
             while (iter != grabbers_.end())
             {
                 FrameGrabber *rec = *iter;
-                rec->addFrame(buffer, caps_, dt);
+                rec->addFrame(buffer, caps_);
 
                 if (rec->finished()) {
                     iter = grabbers_.erase(iter);
@@ -299,7 +302,7 @@ GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo *
   return GST_PAD_PROBE_OK;
 }
 
-void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
+void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 {
     // ignore
     if (buffer == nullptr)
@@ -348,26 +351,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
                 if (timestamp_on_clock_)
                     // set time to actual time
                     // & round t to a multiples of frame duration
-                    t = duration_;
+                    timestamp_ = duration_;
                 else
                     // monotonic time increment to keep fixed FPS
-                    t = timestamp_ + frame_duration_;
-
-                // set frame presentation time stamp
-                buffer->pts = t;
-                buffer->duration = frame_duration_;
-
-                // if time since last timestamp is more than 1 frame
-                if (t - timestamp_ > frame_duration_) {
-                    // timestamp for next addFrame will be one frame later (skip a frame)
-                    timestamp_ = t + frame_duration_;
-                }
-                // normal case (not delayed)
-                else
-                {
-                    // keep timestamp for next addFrame
-                    timestamp_ = t;
-                }
+                    timestamp_ += frame_duration_;
 
                 // when buffering is full, refuse buffer every frame
                 if (buffering_full_)
@@ -377,7 +364,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
                     if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 3 * gst_buffer_get_size(buffer)) {
-#ifndef NDEBUG
+#ifndef _NDEBUG
                         Log::Info("Frame capture : Using %s of %s Buffer.",
                                   BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
                                   BaseToolkit::byte_to_string(buffering_size_).c_str());
@@ -385,6 +372,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
                         buffering_full_ = true;
                     }
                 }
+
+                // set frame presentation time stamp
+                buffer->pts = timestamp_;
+                buffer->duration = frame_duration_;
 
                 // increment ref counter to make sure the frame remains available
                 gst_buffer_ref(buffer);
@@ -406,8 +397,8 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps, float dt)
             // de-activate and re-send EOS
             stop();
             // inform
-            Log::Warning("Frame capture : interrupted after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
-            Log::Info("Frame capture: not space left on drive / encoding buffer full.");
+            Log::Warning("Frame capture : failed after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
+            Log::Info("Frame capture: no space left on drive ? / encoding buffer full.");
         }
         // terminate properly if finished
         else

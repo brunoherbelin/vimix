@@ -108,13 +108,13 @@ void PNGRecorder::terminate()
     Log::Notify("PNG Capture %s is ready.", filename_.c_str());
 }
 
-void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *caps, float dt)
+void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *caps)
 {
-    FrameGrabber::addFrame(buffer, caps, dt);
+    FrameGrabber::addFrame(buffer, caps);
 
     // PNG Recorder specific :
     // stop after one frame
-    if (timestamp_ > 0) {
+    if (frame_count_ > 0) {
         stop();
     }
 }
