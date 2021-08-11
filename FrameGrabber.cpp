@@ -353,14 +353,14 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                     // monotonic time increment to keep fixed FPS
                     timestamp_ += frame_duration_;
 
-                // when buffering is full, refuse buffer every frame
+                // when buffering is (almost) full, refuse buffer 1 frame over 2
                 if (buffering_full_)
-                    accept_buffer_ = false;
+                    accept_buffer_ = frame_count_%2;
                 else
                 {
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
-                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 3 * gst_buffer_get_size(buffer)) {
+                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 5 * gst_buffer_get_size(buffer)) {
 #ifndef NDEBUG
                         Log::Info("Frame capture : Using %s of %s Buffer.",
                                   BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
@@ -380,9 +380,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 // push frame
                 gst_app_src_push_buffer (src_, buffer);
                 // NB: buffer will be unrefed by the appsrc
-
             }
-
         }
     }
 
