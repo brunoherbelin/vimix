@@ -57,6 +57,7 @@ namespace ImGuiToolkit
     void SetFont (font_style type, const std::string &ttf_font_name, int pointsize, int oversample = 2);
     void PushFont (font_style type);
     void ImageGlyph(font_style type, char c, float h = 60);
+    void Spacing();
 
     // text input
     bool InputText(const char* label, std::string* str);

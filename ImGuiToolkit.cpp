@@ -1280,6 +1280,11 @@ void ImGuiToolkit::ImageGlyph(font_style type, char c, float h)
 }
 
 
+void ImGuiToolkit::Spacing()
+{
+    ImGui::Dummy(ImVec2(0, 0.5 * ImGui::GetTextLineHeight()));
+}
+
 void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const char* text)
 {
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);

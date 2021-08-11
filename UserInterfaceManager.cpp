@@ -857,13 +857,9 @@ void UserInterface::showMenuFile()
     if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Re-open", CTRL_MOD "Shift+O"))
         Mixer::manager().load( Mixer::manager().session()->filename() );
 
-    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import")) {
+    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import") && sessionimportdialog) {
         // launch file dialog to open a session file
         sessionimportdialog->open();
-//        if ( importSessionFileDialogs.empty()) {
-//            importSessionFileDialogs.emplace_back( std::async(std::launch::async, DialogToolkit::openSessionFileDialog, Settings::application.recentSessions.path) );
-//            fileDialogPending_ = true;
-//        }
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", CTRL_MOD "S")) {
@@ -3929,7 +3925,6 @@ void Navigator::RenderMainPannelVimix()
     //
     // SESSION panel
     //
-    ImGui::Spacing();
     ImGui::Text("Sessions");
     static bool selection_session_mode_changed = true;
     static int selection_session_mode = 0;
@@ -4139,7 +4134,7 @@ void Navigator::RenderMainPannelVimix()
     //
     // Status
     //
-    ImGui::Spacing();
+    ImGuiToolkit::Spacing();
     ImGui::Text("Current");
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode,
@@ -4160,31 +4155,13 @@ void Navigator::RenderMainPannelVimix()
             glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
 
             ImGuiTextBuffer info;
-            info.appendf("%d x %d px", output->width(), output->height());
-            if (p.x > -1)
-                info.appendf(", %s", FrameBuffer::aspect_ratio_name[p.x]);
+            info.appendf("%s", SystemToolkit::filename(sessionfilename).c_str());
 
             // Show info text bloc (dark background)
-            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
-
-// Alternative // Basic information on session
-//            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
-//            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.75);
-//            if (sessionfilename.empty())
-//                ImGui::Text(" <unsaved>");
-//            else
-//                ImGui::Text(" %s", SystemToolkit::filename(sessionfilename).c_str());
-//            if (p.x > -1)
-//                ImGui::Text(" %dx%dpx, %s", output->width(), output->height(), FrameBuffer::aspect_ratio_name[p.x]);
-//            else
-//                ImGui::Text(" %dx%dpx", output->width(), output->height());
-//            ImGui::PopStyleVar();
-//            ImGui::PopFont();
 
 // Kept for later? Larger info box with more details on the session file...
 //            ImGuiTextBuffer info;
@@ -4217,18 +4194,28 @@ void Navigator::RenderMainPannelVimix()
 
             // change resolution (height only)
             if (p.y > -1) {
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 // cannot change resolution when recording
                 if ( UserInterface::manager().isRecording() ) {
                     // show static info (same size than combo)
                     static char dummy_str[512];
-                    sprintf(dummy_str, "%s", FrameBuffer::resolution_name[p.y]);
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    sprintf(dummy_str, "%s", FrameBuffer::aspect_ratio_name[p.x]);
+                    ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    sprintf(dummy_str, "%s", FrameBuffer::resolution_name[p.y]);
                     ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
                 }
                 else {
-                    // combo box to select height
+                    // combo boxes to select Rario and Height
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::Combo("Ratio", &p.x, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) ) )
+                    {
+                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
+                        Mixer::manager().session()->setResolution(res);
+                    }
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
                     {
                         glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
@@ -4244,7 +4231,7 @@ void Navigator::RenderMainPannelVimix()
             // Thumbnail
             static Thumbnail _file_thumbnail;
             static FrameBufferImage *thumbnail = nullptr;
-            if ( ImGui::Button( ICON_FA_TAG "  Capture thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_TAG "  New thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                 Mixer::manager().session()->setThumbnail();
                 thumbnail = nullptr;
             }
@@ -4260,14 +4247,14 @@ void Navigator::RenderMainPannelVimix()
                 if (_file_thumbnail.filled()) {
                     ImGui::BeginTooltip();
                     _file_thumbnail.Render(230);
-                    ImGui::Text("This thumbnail will be used\nin the sessions list above.");
+                    ImGui::Text("Thumbnail will be used in\nthe sessions list above.");
                     ImGui::EndTooltip();
                 }
             }
             if (Mixer::manager().session()->thumbnail()) {
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
                 ImGui::SameLine();
-                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove captured thumbnail")) {
+                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove thumbnail")) {
                     Mixer::manager().session()->resetThumbnail();
                     _file_thumbnail.reset();
                     thumbnail = nullptr;
@@ -4527,7 +4514,7 @@ void Navigator::RenderMainPannelVimix()
     //
     // Buttons to show WINDOWS
     //
-    ImGui::Spacing();
+    ImGuiToolkit::Spacing();
     ImGui::Text("Windows");
     ImGui::Spacing();
 
@@ -4592,7 +4579,7 @@ void Navigator::RenderMainPannelSettings()
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
         // Options
-        ImGui::Spacing();
+        ImGuiToolkit::Spacing();
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
@@ -4605,28 +4592,33 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
         // Recording preferences
-        ImGui::Spacing();
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::Spacing();
         ImGui::Text("Recording");
+        ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
         ImGuiToolkit::HelpMarker(ICON_FA_CARET_RIGHT " Capture 15, 25 or 30 frames per seconds.\n"
 //                                 ICON_FA_CARET_RIGHT " Downscale captured frames if larger than Height.\n"
                                  ICON_FA_CARET_RIGHT " Size of RAM Buffer storing frames before recording.\n"
                                  ICON_FA_CARET_RIGHT " Priority when buffer is full and recorder skips frames;\n  "
-                                 ICON_FA_ANGLE_RIGHT " Clock    : variable framerate, correct duration.\n  "
-                                 ICON_FA_ANGLE_RIGHT " Framerate: correct framerate,  shorter duration.");
-        ImGui::SameLine(0);
+                                 ICON_FA_ANGLE_RIGHT " Clock : variable framerate, correct duration.\n  "
+                                 ICON_FA_ANGLE_RIGHT " Framerate : correct framerate,  shorter duration.");
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
 
-//        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
-//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//        ImGui::Combo("Height", &Settings::application.record.resolution_mode, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+        // compute number of frames in buffer and show warning sign if too low
+        const FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output) {
+            guint64 nb = 0;
+            nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
+            char buf[256]; sprintf(buf, "Buffer can hold %ld frames", nb);
+            if (nb < VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode])
+                ImGuiToolkit::HelpMarker(buf, ICON_FA_EXCLAMATION_TRIANGLE);
+            else
+                ImGuiToolkit::HelpMarker(buf, ICON_FA_INFO);
+            ImGui::SameLine(0);
+        }
 
-        // TODO: compute number of frames in buffer and show warning sign if too low
-        //        ImGuiToolkit::HelpMarker("Buffer to store captured frames before recording", ICON_FA_EXCLAMATION_TRIANGLE);
-        //        ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
@@ -4637,7 +4629,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Clock\0Framerate\0");
 
         // system preferences
-        ImGui::Spacing();
+        ImGuiToolkit::Spacing();
         ImGui::Text("System");
 
         static bool need_restart = false;
@@ -4658,7 +4650,7 @@ void Navigator::RenderMainPannelSettings()
                  gpu != Settings::application.render.gpu_decoding );
         }
         if (need_restart) {
-            ImGui::Spacing();
+            ImGuiToolkit::Spacing();
             if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
                 Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.blit = blit;
@@ -4696,7 +4688,7 @@ void Navigator::RenderTransitionPannel()
         ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
 
         // Transition options
-        ImGui::Spacing();
+        ImGuiToolkit::Spacing();
         ImGui::Text("Animation");
         if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
         ImGui::SameLine(0, 10);
