@@ -118,11 +118,11 @@ void InfoVisitor::visit (SessionFileSource& s)
     if (brief_) {
         oss << SystemToolkit::filename(s.path()) << " (";
         oss << s.session()->numSource() << " sources)" << std::endl;
-        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
-        oss << "RGB";
     }
-    else {
+    else
         oss << s.path() << std::endl;
+
+    if (s.session()->frame()){
         oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
         oss << "RGB";
     }
@@ -137,13 +137,8 @@ void InfoVisitor::visit (SessionGroupSource& s)
         return;
 
     std::ostringstream oss;
-    if (brief_) {
-        oss << s.session()->numSource() << " sources in group" << std::endl;
-        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
-        oss << "RGB";
-    }
-    else {
-        oss << s.session()->numSource() << " sources in group" << std::endl;
+    oss << s.session()->numSource() << " sources in group" << std::endl;
+    if (s.session()->frame()){
         oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
         oss << "RGB";
     }
@@ -176,12 +171,8 @@ void InfoVisitor::visit (PatternSource& s)
         return;
 
     std::ostringstream oss;
-    if (brief_) {
-        oss << s.pattern()->width() << " x " << s.pattern()->height();
-        oss << ", RGB";
-    }
-    else {
-        oss << Pattern::pattern_types[s.pattern()->type()] << std::endl;
+    oss << Pattern::pattern_types[s.pattern()->type()] << std::endl;
+    if (s.pattern()) {
         oss << s.pattern()->width() << " x " << s.pattern()->height();
         oss << ", RGB";
     }
