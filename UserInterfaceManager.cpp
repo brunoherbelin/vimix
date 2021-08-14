@@ -4136,48 +4136,46 @@ void Navigator::RenderMainPannelVimix()
         const FrameBuffer *output = Mixer::manager().session()->frame();
         if (output)
         {
-            // get parameters to edit resolution
-            glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
-
+            // Show info text bloc (dark background)
             ImGuiTextBuffer info;
             info.appendf("%s", SystemToolkit::filename(sessionfilename).c_str());
-
-            // Show info text bloc (dark background)
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
             ImGui::PopStyleColor(1);
 
-// Kept for later? Larger info box with more details on the session file...
-//            ImGuiTextBuffer info;
-//            if (!sessionfilename.empty())
-//                info.appendf("%s\n", SystemToolkit::filename(sessionfilename).c_str());
-//            else
-//                info.append("<unsaved>\n");
-//            info.appendf("%dx%dpx", output->width(), output->height());
-//            if (p.x > -1)
-//                info.appendf(", %s", FrameBuffer::aspect_ratio_name[p.x]);
-//            // content info
-//            const uint N = Mixer::manager().session()->numSource();
-//            if (N > 1)
-//                info.appendf("\n%d sources", N);
-//            else if (N > 0)
-//                info.append("\n1 source");
-//            const size_t M = MediaPlayer::registered().size();
-//            if (M > 0) {
-//                info.appendf("\n%d media files:", M);
-//                for (auto mit = MediaPlayer::begin(); mit != MediaPlayer::end(); ++mit)
-//                    info.appendf("\n- %s", SystemToolkit::filename((*mit)->filename()).c_str());
-//            }
-//            // Show info text bloc (multi line, dark background)
-//            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
-//            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-//            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(IMGUI_RIGHT_ALIGN, 2*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
-//            ImGui::PopStyleColor(1);
-//            ImGui::PopFont();
+            // Kept for later? Larger info box with more details on the session file...
+            //            ImGuiTextBuffer info;
+            //            if (!sessionfilename.empty())
+            //                info.appendf("%s\n", SystemToolkit::filename(sessionfilename).c_str());
+            //            else
+            //                info.append("<unsaved>\n");
+            //            info.appendf("%dx%dpx", output->width(), output->height());
+            //            if (p.x > -1)
+            //                info.appendf(", %s", FrameBuffer::aspect_ratio_name[p.x]);
+            //            // content info
+            //            const uint N = Mixer::manager().session()->numSource();
+            //            if (N > 1)
+            //                info.appendf("\n%d sources", N);
+            //            else if (N > 0)
+            //                info.append("\n1 source");
+            //            const size_t M = MediaPlayer::registered().size();
+            //            if (M > 0) {
+            //                info.appendf("\n%d media files:", M);
+            //                for (auto mit = MediaPlayer::begin(); mit != MediaPlayer::end(); ++mit)
+            //                    info.appendf("\n- %s", SystemToolkit::filename((*mit)->filename()).c_str());
+            //            }
+            //            // Show info text bloc (multi line, dark background)
+            //            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
+            //            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            //            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            //            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(IMGUI_RIGHT_ALIGN, 2*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
+            //            ImGui::PopStyleColor(1);
+            //            ImGui::PopFont();
 
             // change resolution (height only)
+            // get parameters to edit resolution
+            glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
             if (p.y > -1) {
                 // cannot change resolution when recording
                 if ( UserInterface::manager().isRecording() ) {
@@ -4192,19 +4190,20 @@ void Navigator::RenderMainPannelVimix()
                     ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
                 }
+                // offer to change ratio and resolution
                 else {
                     // combo boxes to select Rario and Height
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Ratio", &p.x, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) ) )
                     {
                         glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
-                        Mixer::manager().session()->setResolution(res);
+                        Mixer::manager().setResolution(res);
                     }
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
                     {
                         glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
-                        Mixer::manager().session()->setResolution(res);
+                        Mixer::manager().setResolution(res);
                     }
                 }
             }

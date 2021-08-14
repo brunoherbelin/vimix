@@ -1269,6 +1269,17 @@ void Mixer::set(Session *s)
     sessionSwapRequested_ = true;
 }
 
+void Mixer::setResolution(glm::vec3 res)
+{
+    if (session_) {
+        session_->setResolution(res);
+        ++View::need_deep_update_;
+        std::ostringstream info;
+        info << "Session resolution changed to " << res.x << "x" << res.y;
+        Log::Info("%s", info.str().c_str());
+    }
+}
+
 void Mixer::paste(const std::string& clipboard)
 {
     tinyxml2::XMLDocument xmlDoc;

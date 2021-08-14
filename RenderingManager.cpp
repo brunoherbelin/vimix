@@ -831,8 +831,9 @@ void RenderingWindow::draw(FrameBuffer *fb)
 
                 // attach the 2D texture to local FBO
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
-
+#ifndef NDEBUG
                 Log::Info("Blit to output window enabled.");
+#endif
             }
 
             // calculate scaling factor of frame buffer inside window

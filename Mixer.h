@@ -107,6 +107,7 @@ public:
     void merge  (Session *session);
     void merge  (SessionSource *source);
     void set    (Session *session);
+    void setResolution(glm::vec3 res);
 
     // operations depending on transition mode
     void close  (bool smooth = false);
