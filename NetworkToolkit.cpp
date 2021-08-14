@@ -73,9 +73,9 @@ const char* NetworkToolkit::protocol_name[NetworkToolkit::DEFAULT] = {
 const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 
     "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc ! rtpjpegpay ! udpsink name=sink",
+    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc idct-method=float ! rtpjpegpay ! udpsink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! udpsink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
+    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink"
 };
 

@@ -196,6 +196,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //        "keyframe-max-dist=999999 min-quantizer=4 max-quantizer=50 ! ",
     "vp8enc end-usage=vbr deadline=1 cpu-used=8 threads=4 target-bitrate=400000 keyframe-max-dist=360 "
            "token-partitions=2 static-threshold=1000 min-quantizer=4 max-quantizer=20 ! ",
+    // JPEG encoding
+    "jpegenc idct-method=float ! "
 };
 
 
