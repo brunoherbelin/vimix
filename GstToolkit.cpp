@@ -145,6 +145,23 @@ bool GstToolkit::enable_feature (string name, bool enable) {
     return true;
 }
 
+bool GstToolkit::has_feature (string name)
+{
+    if (name.empty())
+        return false;
+
+    GstRegistry *registry = NULL;
+    GstElementFactory *factory = NULL;
+
+    registry = gst_registry_get();
+    if (!registry) return false;
+
+    factory = gst_element_factory_find (name.c_str());
+    if (!factory) return false;
+
+    return true;
+}
+
 
 string GstToolkit::gst_version()
 {

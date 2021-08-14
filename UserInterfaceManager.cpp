@@ -4641,7 +4641,7 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-        change |= ImGuiToolkit::ButtonSwitch( ICON_FA_MICROCHIP " Hardware video decoding", &gpu);
+        change |= ImGuiToolkit::ButtonSwitch( ICON_FA_MICROCHIP " Hardware video de/encoding", &gpu);
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||

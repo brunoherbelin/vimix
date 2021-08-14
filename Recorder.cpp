@@ -124,12 +124,13 @@ const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Realtime)",
     "H264 (High 4:4:4)",
     "H265 (Realtime)",
-    "H265 (HQ Animation)",
+    "H265 (HQ)",
     "ProRes (Standard)",
     "ProRes (HQ 4444)",
-    "WebM VP8 (2MB/s)",
+    "WebM VP8 (Realtime)",
     "Multiple JPEG"
 };
+
 const std::vector<std::string> VideoRecorder::profile_description {
     // Control x264 encoder quality :
     // pass
@@ -139,19 +140,17 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
     //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
     // speed-preset
+    //    ultrafast (1)
+    //    superfast (2)
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-#ifndef APPLE
-    //    "video/x-raw, format=I420 ! x264enc pass=4 quantizer=26 speed-preset=3 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 threads=4 ! video/x-h264, profile=baseline ! h264parse ! ",
-#else
-    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
-#endif
-    "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=16 speed-preset=4 threads=4 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control x265 encoder quality :
     // NB: apparently x265 only accepts I420 format :(
     // speed-preset
+    //    superfast (2)
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
@@ -163,42 +162,101 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //   fastdecode (5)
     //   animation (6) optimize the encode quality for animation content without impacting the encode speed
     // crf Quality-controlled variable bitrate [0 51]
-    // default 28
-    // 24 for x265 should be visually transparent; anything lower will probably just waste file size
-    "video/x-raw, format=I420 ! x265enc tune=4 speed-preset=3 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=I420 ! x265enc tune=6 speed-preset=4 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    //   default 28
+    //   24 for x265 should be visually transparent; anything lower will probably just waste file size
+    "video/x-raw, format=I420 ! x265enc tune=2 speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=6 speed-preset=2 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
     //      quant (2) – Constant Quantizer
     //      pass1 (512) – VBR Encoding - Pass 1
     //  profile
-    //      0 ‘proxy’
-    //      1 ‘lt’
-    //      2 ‘standard’
-    //      3 ‘hq’
-    //      4 ‘4444’
-    "video/x-raw, format=I422_10LE ! avenc_prores_ks pass=2 profile=2 quantizer=26 ! ",
-    "video/x-raw, format=Y444_10LE ! avenc_prores_ks pass=2 profile=4 quantizer=12 ! ",
+    //      0 ‘proxy’    45Mbps YUV 4:2:2
+    //      1 ‘lt’       102Mbps YUV 4:2:2
+    //      2 ‘standard’ 147Mbps YUV 4:2:2
+    //      3 ‘hq’       220Mbps YUV 4:2:2
+    //      4 ‘4444’     330Mbps YUVA 4:4:4:4
+    //  quant-mat
+    //      -1 auto
+    //      0  proxy
+    //      2  lt
+    //      3  standard
+    //      4  hq
+    //      6  default
+    "video/x-raw, format=I422_10LE ! avenc_prores_ks pass=2 bits_per_mb=8000 profile=2 quant-mat=6 quantizer=8 ! ",
+    "video/x-raw, format=Y444_10LE ! avenc_prores_ks pass=2 bits_per_mb=8000 profile=4 quant-mat=6 quantizer=4 ! ",
     // VP8 WebM encoding
-    "vp8enc end-usage=vbr cpu-used=8 max-quantizer=35 deadline=100000 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=100 ! ",
-    "jpegenc ! "
+    //  deadline per frame (usec)
+    //      0=best,
+    //      1=realtime
+    // see https://www.webmproject.org/docs/encoder-parameters/
+    //        "vp8enc end-usage=cbr deadline=1 cpu-used=8 threads=4 target-bitrate=400000 undershoot=95 "
+    //        "buffer-size=6000 buffer-initial-size=4000 buffer-optimal-size=5000 "
+    //        "keyframe-max-dist=999999 min-quantizer=4 max-quantizer=50 ! ",
+    "vp8enc end-usage=vbr deadline=1 cpu-used=8 threads=4 target-bitrate=400000 keyframe-max-dist=360 "
+           "token-partitions=2 static-threshold=1000 min-quantizer=4 max-quantizer=20 ! ",
 };
 
-// Too slow
-//// WebM VP9 encoding parameters
-//// https://www.webmproject.org/docs/encoder-parameters/
-//// https://developers.google.com/media/vp9/settings/vod/
-//"vp9enc end-usage=vbr end-usage=vbr cpu-used=3 max-quantizer=35 target-bitrate=200000 keyframe-max-dist=360 token-partitions=2 static-threshold=1000 ! "
 
-// FAILED
-// x265 encoder quality
-//       string description = "appsrc name=src ! videoconvert ! "
-//               "x265enc tune=4 speed-preset=2 option-string='crf=28' ! h265parse ! "
-//               "qtmux ! filesink name=sink";
+#if GST_GL_HAVE_PLATFORM_GLX
+// under GLX (Linux), gstreamer might have nvidia encoders
+const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+    "nvh264enc",
+    "nvh264enc",
+    "nvh265enc",
+    "nvh265enc",
+    "", "", "", ""
+};
+
+const std::vector<std::string> VideoRecorder::hardware_profile_description {
+    // qp-const  Constant quantizer (-1 = from NVENC preset)
+    //            Range: -1 - 51 Default: -1
+    // rc-mode Rate Control Mode
+    //    (0): default          - Default
+    //    (1): constqp          - Constant Quantization
+    //    (2): cbr              - Constant Bit Rate
+    //    (3): vbr              - Variable Bit Rate
+    //    (4): vbr-minqp        - Variable Bit Rate (with minimum quantization parameter, DEPRECATED)
+    //    (5): cbr-ld-hq        - Low-Delay CBR, High Quality
+    //    (6): cbr-hq           - CBR, High Quality (slower)
+    //    (7): vbr-hq           - VBR, High Quality (slower)
+    // Control nvh264enc encoder
+    "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 qp-const=18 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    // Control nvh265enc encoder
+    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main-10 ! h265parse ! ",
+    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "", "", "", ""
+};
+
+#elif GST_GL_HAVE_PLATFORM_CGL
+// under CGL (Mac), gstreamer might have the VideoToolbox
+const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+    "vtenc_h264_hw",
+    "vtenc_h264_hw",
+    "", "", "", "", "", ""
+};
+
+const std::vector<std::string> VideoRecorder::hardware_profile_description {
+    // Control vtenc_h264_hw encoder
+    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
+    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
+    "", "", "", "", "", ""
+};
+
+#else
+const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+    "", "", "", "", "", "", "", ""
+};
+const std::vector<std::string> VideoRecorder::hardware_profile_description {
+    "", "", "", "", "", "", "", ""
+};
+#endif
 
 
-const char*   VideoRecorder::buffering_preset_name[6]  = { "30 MB", "100 MB", "200 MB", "500 MB", "1 GB", "2 GB" };
+
+const char*   VideoRecorder::buffering_preset_name[6]  = { "Minimum", "100 MB", "200 MB", "500 MB", "1 GB", "2 GB" };
 const guint64 VideoRecorder::buffering_preset_value[6] = { MIN_BUFFER_SIZE, 104857600, 209715200, 524288000, 1073741824, 2147483648 };
 
 const char*   VideoRecorder::framerate_preset_name[3]  = { "15 FPS", "25 FPS", "30 FPS" };
@@ -225,7 +283,18 @@ void VideoRecorder::init(GstCaps *caps)
     std::string description = "appsrc name=src ! videoconvert ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
         Settings::application.record.profile = H264_STANDARD;
-    description += profile_description[Settings::application.record.profile];
+
+    // test for a hardware accelerated encoder
+    if (Settings::application.render.gpu_decoding &&
+            glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
+            GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
+
+        description += hardware_profile_description[Settings::application.record.profile];
+        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile]);
+    }
+    // revert to software encoder
+    else
+        description += profile_description[Settings::application.record.profile];
 
     // verify location path (path is always terminated by the OS dependent separator)
     std::string path = SystemToolkit::path_directory(Settings::application.record.path);
@@ -272,8 +341,10 @@ void VideoRecorder::init(GstCaps *caps)
         g_object_set (G_OBJECT (src_),
                       "is-live", TRUE,
                       "format", GST_FORMAT_TIME,
-//                      "do-timestamp", TRUE,
                       NULL);
+
+        if (timestamp_on_clock_)
+            g_object_set (G_OBJECT (src_),"do-timestamp", TRUE,NULL);
 
         // configure stream
         gst_app_src_set_stream_type( src_, GST_APP_STREAM_TYPE_STREAM);

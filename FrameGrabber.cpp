@@ -282,8 +282,12 @@ void FrameGrabber::callback_need_data (GstAppSrc *, guint , gpointer p)
 void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
 {
     FrameGrabber *grabber = static_cast<FrameGrabber *>(p);
-    if (grabber)
+    if (grabber) {
         grabber->accept_buffer_ = false;
+#ifndef NDEBUG
+                        Log::Info("Frame capture : Buffer full");
+#endif
+    }
 }
 
 GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer p)
@@ -346,12 +350,18 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 duration_ = ( t / frame_duration_) * frame_duration_;
 
                 if (timestamp_on_clock_)
+                    // automatic frame presentation time stamp
                     // set time to actual time
                     // & round t to a multiples of frame duration
                     timestamp_ = duration_;
-                else
+                else {
                     // monotonic time increment to keep fixed FPS
                     timestamp_ += frame_duration_;
+                    // force frame presentation time stamp
+                    buffer->pts = timestamp_;
+                    // set frame duration
+                    buffer->duration = frame_duration_;
+                }
 
                 // when buffering is (almost) full, refuse buffer 1 frame over 2
                 if (buffering_full_)
@@ -360,7 +370,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 {
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
-                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < 5 * gst_buffer_get_size(buffer)) {
+                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < MIN_BUFFER_SIZE ) {
 #ifndef NDEBUG
                         Log::Info("Frame capture : Using %s of %s Buffer.",
                                   BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
@@ -369,10 +379,6 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                         buffering_full_ = true;
                     }
                 }
-
-                // set frame presentation time stamp
-                buffer->pts = timestamp_;
-                buffer->duration = frame_duration_;
 
                 // increment ref counter to make sure the frame remains available
                 gst_buffer_ref(buffer);
