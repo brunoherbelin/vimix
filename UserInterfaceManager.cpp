@@ -1137,7 +1137,7 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Share stream"))
             {
-#if defined(LINUX)
+#if defined(LINUX_NOT_YET_WORKING)
                 bool on = webcam_emulator_ != nullptr;
                 if ( ImGui::MenuItem( ICON_FA_CAMERA "  Emulate video camera", NULL, &on) ) {
                     if (on) {
@@ -1155,7 +1155,7 @@ void UserInterface::RenderPreview()
                 }
 #endif
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections            ", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
@@ -1163,6 +1163,7 @@ void UserInterface::RenderPreview()
                 {
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::InputText("My ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
