@@ -1064,7 +1064,7 @@ void UserInterface::RenderPreview()
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame (PNG)", CTRL_MOD "Shitf+R") )
+                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame", CTRL_MOD "Shitf+R") )
                     FrameGrabbing::manager().add(new PNGRecorder);
 
                 // Stop recording menu if main recorder already exists
@@ -1073,24 +1073,12 @@ void UserInterface::RenderPreview()
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     ImGui::MenuItem( ICON_FA_SQUARE "  Record starting", CTRL_MOD "R", false, false);
                     ImGui::PopStyleColor(1);
-                    static char dummy_str[512];
-                    sprintf(dummy_str, "%s", VideoRecorder::profile_name[Settings::application.record.profile]);
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
-                    ImGui::InputText("Codec", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(1);
                 }
                 else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         video_recorder_->stop();
                     }
-                    ImGui::PopStyleColor(1);
-                    static char dummy_str[512];
-                    sprintf(dummy_str, "%s", VideoRecorder::profile_name[Settings::application.record.profile]);
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
-                    ImGui::InputText("Codec", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
                 }
                 // start recording
@@ -1101,9 +1089,6 @@ void UserInterface::RenderPreview()
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
                     ImGui::PopStyleColor(1);
-                    // select profile
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
                 }
                 // Options menu
                 ImGui::Separator();
@@ -4594,13 +4579,11 @@ void Navigator::RenderMainPannelSettings()
         // Recording preferences
         ImGuiToolkit::Spacing();
         ImGui::Text("Recording");
-        ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
-        ImGuiToolkit::HelpMarker(ICON_FA_CARET_RIGHT " Capture 15, 25 or 30 frames per seconds.\n"
-//                                 ICON_FA_CARET_RIGHT " Downscale captured frames if larger than Height.\n"
-                                 ICON_FA_CARET_RIGHT " Size of RAM Buffer storing frames before recording.\n"
-                                 ICON_FA_CARET_RIGHT " Priority when buffer is full and recorder skips frames;\n  "
-                                 ICON_FA_ANGLE_RIGHT " Clock : variable framerate, correct duration.\n  "
-                                 ICON_FA_ANGLE_RIGHT " Framerate : correct framerate,  shorter duration.");
+
+        // select CODEC and FPS
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -4611,11 +4594,9 @@ void Navigator::RenderMainPannelSettings()
         if (output) {
             guint64 nb = 0;
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-            char buf[256]; sprintf(buf, "Buffer can hold %ld frames", nb);
-            if (nb < VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode])
-                ImGuiToolkit::HelpMarker(buf, ICON_FA_EXCLAMATION_TRIANGLE);
-            else
-                ImGuiToolkit::HelpMarker(buf, ICON_FA_INFO);
+            char buf[256]; sprintf(buf, "Buffer can contain %ld frames (%dx%d), %.1f sec", nb, output->width(), output->height(),
+                                   (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
+            ImGuiToolkit::HelpMarker(buf, ICON_FA_INFO_CIRCLE);
             ImGui::SameLine(0);
         }
 
@@ -4624,6 +4605,10 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
+        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n  "
+                                 ICON_FA_ANGLE_RIGHT " Clock : variable framerate, correct duration.\n  "
+                                 ICON_FA_ANGLE_RIGHT " Framerate : correct framerate,  shorter duration.");
+        ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Clock\0Framerate\0");
@@ -4631,6 +4616,9 @@ void Navigator::RenderMainPannelSettings()
         // system preferences
         ImGuiToolkit::Spacing();
         ImGui::Text("System");
+        ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
+        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine,\n"
+                                 "you can try to disable some of the OpenGL optimizations below.");
 
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
@@ -4641,7 +4629,11 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-        change |= ImGuiToolkit::ButtonSwitch( ICON_FA_MICROCHIP " Hardware video de/encoding", &gpu);
+        // hardware support deserves more explanation
+        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated\n"
+                                 "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
+        ImGui::SameLine(0);
+        change |= ImGuiToolkit::ButtonSwitch( "Hardware video de/encoding", &gpu);
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||

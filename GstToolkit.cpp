@@ -42,7 +42,7 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
         }
         if (count < 2 )
             oss << '.'<< setw(2) << setfill('0') << (ms % 1000) / 10;
-        oss << " second";
+        oss << " sec";
     }
     // MINIMAL: keep only the 2 higher values (most significant)
     else if (m == TIME_STRING_MINIMAL) {
