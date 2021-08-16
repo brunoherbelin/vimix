@@ -413,7 +413,7 @@ void VideoStreamer::terminate()
     }
 
     Log::Notify("Streaming to %s finished after %s s.", config_.client_name.c_str(),
-                GstToolkit::time_to_string(timestamp_).c_str());
+                GstToolkit::time_to_string(duration_).c_str());
 }
 
 void VideoStreamer::stop ()
