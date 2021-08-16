@@ -341,7 +341,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 t = gst_clock_get_time(timer_) - timer_firstframe_;
 
             // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
-            if ( t == 0 || (t - timestamp_) > (frame_duration_ - 3000) ) {
+            if ( t == 0 || (t - duration_) > (frame_duration_ - 3000) ) {
 
                 // count frames
                 frame_count_++;
@@ -399,7 +399,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             stop();
             // inform
             Log::Info("Frame capture : Unnexpected EOF signal (no space left on drive? File deleted?)");
-            Log::Warning("Frame capture : failed after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
+            Log::Warning("Frame capture : Failed after %s.", GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str());
         }
         // terminate properly if finished
         else
