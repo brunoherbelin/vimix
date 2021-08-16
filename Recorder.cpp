@@ -243,7 +243,7 @@ const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
 const std::vector<std::string> VideoRecorder::hardware_profile_description {
     // Control vtenc_h264_hw encoder
     "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
-    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
+    "video/x-raw, format=UYVY ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
     "", "", "", "", "", ""
 };
 
@@ -288,7 +288,10 @@ void VideoRecorder::init(GstCaps *caps)
 
     // test for a hardware accelerated encoder
     if (Settings::application.render.gpu_decoding &&
+#if GST_GL_HAVE_PLATFORM_GLX
+
             glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
+#endif
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
