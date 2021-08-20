@@ -40,8 +40,8 @@ public:
     // size descriptions
     static const char* aspect_ratio_name[5];
     static glm::vec2 aspect_ratio_size[5];
-    static const char* resolution_name[4];
-    static float resolution_height[4];
+    static const char* resolution_name[5];
+    static float resolution_height[5];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
     static glm::ivec2 getParametersFromResolution(glm::vec3 res);
     // unbind any framebuffer object

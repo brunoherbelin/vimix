@@ -14,8 +14,8 @@
 
 const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
 glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
-const char* FrameBuffer::resolution_name[4] = { "720", "1080", "1440", "2160" };
-float FrameBuffer::resolution_height[4] = { 720.f, 1080.f, 1440.f, 2160.f };
+const char* FrameBuffer::resolution_name[5] = { "720", "1080", "1200", "1440", "2160" };
+float FrameBuffer::resolution_height[5] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.f };
 
 
 glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
