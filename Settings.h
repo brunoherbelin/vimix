@@ -29,6 +29,7 @@ struct WidgetsConfig
     bool shader_editor;
     bool toolbox;
     bool history;
+    bool help;
 
     WidgetsConfig() {
         stats = false;
@@ -43,6 +44,7 @@ struct WidgetsConfig
         timeline_editmode = false;
         shader_editor = false;
         toolbox = false;
+        help = false;
     }
 };
 

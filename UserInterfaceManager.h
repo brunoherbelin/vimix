@@ -13,6 +13,8 @@
 #include "SourceList.h"
 #include "InfoVisitor.h"
 #include "DialogToolkit.h"
+#include "SessionParser.h"
+
 
 struct ImVec2;
 class MediaPlayer;
@@ -105,6 +107,16 @@ public:
     void Render();
 };
 
+class HelperToolbox
+{
+    SessionParser parser_;
+
+public:
+    HelperToolbox();
+
+    void Render();
+
+};
 
 class SourceController
 {
@@ -118,6 +130,7 @@ class SourceController
     float scrollbar_;
     float mediaplayer_height_;
 
+    bool play_request_, replay_request_, next_request_;
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
@@ -153,6 +166,11 @@ class SourceController
 public:
     SourceController();
 
+    inline void Play()   { play_request_=true;  }
+    inline void Replay() { replay_request_=true;}
+    inline void Next()   { next_request_=true;  }
+    void Update();
+
     void resetActiveSelection();
     void Render();
     bool Active();
@@ -165,6 +183,7 @@ class UserInterface
     Navigator navigator;
     ToolBox toolbox;
     SourceController sourcecontrol;
+    HelperToolbox sessiontoolbox;
 
     bool ctrl_modifier_active;
     bool alt_modifier_active;

@@ -291,6 +291,7 @@ set(VMIX_SRCS
     SessionVisitor.cpp
     Interpolator.cpp
     SessionCreator.cpp
+    SessionParser.cpp
     Mixer.cpp
     FrameGrabber.cpp
     Recorder.cpp

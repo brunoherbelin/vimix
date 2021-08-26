@@ -297,7 +297,7 @@ struct Sum
     int sum{0};
 };
 
-bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state)
+bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state, const char* tooltip)
 {
     bool ret = false;
     Sum id = std::for_each(icons.begin(), icons.end(), Sum());
@@ -305,7 +305,7 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
 
     int num_button = static_cast<int>(icons.size()) -1;
     int s = CLAMP(*state, 0, num_button);
-    if ( ButtonIcon( icons[s].first, icons[s].second ) ){
+    if ( ButtonIcon( icons[s].first, icons[s].second, tooltip ) ){
         ++s;
         if (s > num_button)
             *state = 0;

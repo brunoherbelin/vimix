@@ -72,7 +72,7 @@ TextEditor editor;
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
-#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Edit timeline fading"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -222,7 +222,7 @@ void UserInterface::handleKeyboard()
             Mixer::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
-            // New Session
+            // Suspend / unsuspend session
             Mixer::manager().session()->setActive( !Mixer::manager().session()->active() );
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
@@ -230,15 +230,19 @@ void UserInterface::handleKeyboard()
             Settings::application.widget.logs = !Settings::application.widget.logs;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_T )) {
-            // Logs
+            // Developer toolbox
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
+            // Session toolbox
+//            Settings::application.widget.help = !Settings::application.widget.help;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_E )) {
             // Shader Editor
             Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
-            // Logs
+            // Display output
             Settings::application.widget.preview = !Settings::application.widget.preview;
             if (Settings::application.widget.preview_view != Settings::application.current_view) {
                 Settings::application.widget.preview_view = -1;
@@ -246,7 +250,7 @@ void UserInterface::handleKeyboard()
             }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
-            // Logs
+            // Media player
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
             if (Settings::application.widget.media_player_view != Settings::application.current_view) {
                 Settings::application.widget.media_player_view = -1;
@@ -317,7 +321,7 @@ void UserInterface::handleKeyboard()
     // No CTRL modifier
     else {
         ctrl_modifier_active = false;
-        Source *_cs = Mixer::manager().currentSource();
+//        Source *_cs = Mixer::manager().currentSource();
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -361,28 +365,38 @@ void UserInterface::handleKeyboard()
             }
         }
 
-        // keys to control the current source if media player is not focused
-        if (_cs != nullptr && _cs->active() && (!ImGui::IsAnyWindowFocused() || sourcecontrol.Active()) )
-        {
-            // Space bar to toggle play / pause
-            if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
-                 _cs->play( !_cs->playing() );
-            }
-            // B to rewind to Beginning
-            else if (ImGui::IsKeyPressed( GLFW_KEY_B )) {
-                _cs->replay();
-            }
-            // N for Next frame or fast forward
-            else if (ImGui::IsKeyPressed( GLFW_KEY_N )) {
-                MediaSource *ms = dynamic_cast<MediaSource *>(_cs);
-                if ( ms != nullptr ) {
-                    if (ms->playing())
-                        ms->mediaplayer()->jump();
-                    else
-                        ms->mediaplayer()->step();
-                }
-            }
-        }
+        // Space bar to toggle play / pause
+        if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
+            sourcecontrol.Play();
+        // B to rewind to Beginning
+        else if (ImGui::IsKeyPressed( GLFW_KEY_B ))
+            sourcecontrol.Replay();
+        // N for Next frame or fast forward
+        else if (ImGui::IsKeyPressed( GLFW_KEY_N ))
+            sourcecontrol.Next();
+
+//        // keys to control the current source if media player is not focused
+//        if (_cs != nullptr && _cs->active() && (!ImGui::IsAnyWindowFocused() || sourcecontrol.Active()) )
+//        {
+//            // Space bar to toggle play / pause
+//            if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
+//                 _cs->play( !_cs->playing() );
+//            }
+//            // B to rewind to Beginning
+//            else if (ImGui::IsKeyPressed( GLFW_KEY_B )) {
+//                _cs->replay();
+//            }
+//            // N for Next frame or fast forward
+//            else if (ImGui::IsKeyPressed( GLFW_KEY_N )) {
+//                MediaSource *ms = dynamic_cast<MediaSource *>(_cs);
+//                if ( ms != nullptr ) {
+//                    if (ms->playing())
+//                        ms->mediaplayer()->jump();
+//                    else
+//                        ms->mediaplayer()->step();
+//                }
+//            }
+//        }
 
         // normal keys in workspace // make sure no entry / window box is active        
         if ( !ImGui::IsAnyWindowFocused() )
@@ -759,13 +773,20 @@ void UserInterface::Render()
             RenderPreview();
         if (Settings::application.widget.history)
             RenderHistory();
-        if (Settings::application.widget.media_player && ( Settings::application.widget.media_player_view < 0 ||
-            Settings::application.widget.media_player_view == Settings::application.current_view ))
-            sourcecontrol.Render();
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
         if (Settings::application.widget.logs)
-            Log::ShowLogWindow(&Settings::application.widget.logs);        
+            Log::ShowLogWindow(&Settings::application.widget.logs);
+        if (Settings::application.widget.help)
+            sessiontoolbox.Render();
+
+        // Source controller
+        sourcecontrol.Update();
+        if (Settings::application.widget.media_player && ( Settings::application.widget.media_player_view < 0 ||
+            Settings::application.widget.media_player_view == Settings::application.current_view ))
+            sourcecontrol.Render();
+
+        // Notes
         RenderNotes();
 
         // dialogs
@@ -1955,11 +1976,67 @@ void ToolBox::Render()
 
 }
 
+
+///
+/// SESSION REPAIR WINDOW
+///
+HelperToolbox::HelperToolbox()
+{
+
+}
+
+void HelperToolbox::Render()
+{
+    // first run
+    ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
+    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help) )
+    {
+        ImGui::End();
+        return;
+    }
+
+    if (ImGui::CollapsingHeader("File repair"))
+    {
+
+    }
+
+    if (ImGui::CollapsingHeader("Keyboard shortcuts"))
+    {
+        ImGui::Columns(2, "mycolumns"); // 4-ways, with border
+        ImGui::Text("HOME"); ImGui::NextColumn();
+        ImGui::Text("Main menu"); ImGui::NextColumn();
+        ImGui::Text("INS"); ImGui::NextColumn();
+        ImGui::Text("New source"); ImGui::NextColumn();
+        ImGui::Text("F1"); ImGui::NextColumn();
+        ImGui::Text("Mixing view"); ImGui::NextColumn();
+        ImGui::Text("F2"); ImGui::NextColumn();
+        ImGui::Text("Geometry view"); ImGui::NextColumn();
+        ImGui::Text("F3"); ImGui::NextColumn();
+        ImGui::Text("Layers view"); ImGui::NextColumn();
+        ImGui::Text("F4"); ImGui::NextColumn();
+        ImGui::Text("Texturing view"); ImGui::NextColumn();
+        ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
+        ImGui::Text("Change view"); ImGui::NextColumn();
+        ImGui::Separator();
+        ImGui::Text("Ctrl + O"); ImGui::NextColumn();
+        ImGui::Text("Open Session file"); ImGui::NextColumn();
+        ImGui::Separator();
+
+        ImGui::Columns(1);
+    }
+
+    ImGui::End();
+
+}
+
 ///
 /// SOURCE CONTROLLER
 ///
 SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), buttons_height_(0.f),
     timeline_height_(0.f), scrollbar_(0.f), mediaplayer_height_(0.f), buttons_width_(0.f),
+    play_request_(false), replay_request_(false), next_request_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
@@ -1983,15 +2060,48 @@ bool SourceController::Active()
              && focused_);
 }
 
-void SourceController::Render()
+void SourceController::Update()
 {
     // reset on session change
     static Session *__session = nullptr;
-    if (Mixer::manager().session() != __session) {
+    if ( Mixer::manager().session() != __session ) {
         __session = Mixer::manager().session();
         resetActiveSelection();
     }
 
+    // Play button or keyboard [space] was pressed
+    if ( play_request_ ) {
+
+        // active selection
+        if (active_selection_ > -1){
+
+        }
+        // selected sources
+        else {
+
+
+        }
+
+        play_request_ = false;
+    }
+
+    // Replay / rewind button or keyboard [B] was pressed
+    if ( replay_request_ ) {
+
+        replay_request_ = false;
+    }
+
+    // Next frame / FFwrd button or keyboard [N] was pressed
+    if ( next_request_ ) {
+
+        next_request_ = false;
+    }
+
+
+}
+
+void SourceController::Render()
+{
     ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
@@ -2032,6 +2142,19 @@ void SourceController::Render()
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
+            // Menu section for play control
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Back", "B")) {
+
+            }
+            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space")) {
+
+            }
+            if (ImGui::MenuItem( ICON_FA_STEP_FORWARD "  Next frame | forward", "N")) {
+
+            }
+
+            // Menu section for list
+            ImGui::Separator();
             if (ImGui::MenuItem( ICON_FA_TH "  List all")) {
                 selection_.clear();
                 resetActiveSelection();
@@ -2045,7 +2168,7 @@ void SourceController::Render()
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();
             }
-
+            // Menu section for window management
             ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
             if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
@@ -2114,9 +2237,16 @@ void SourceController::Render()
                 if (ImGui::MenuItem(LABEL_EDIT_FADING))
                     mediaplayer_edit_fading_ = true;
 
-                bool option = mediaplayer_active_->rewindOnDisabled();
-                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  " ICON_FA_SNOWFLAKE " Rewind when Inactive" , NULL, &option))
-                    mediaplayer_active_->setRewindOnDisabled(option);
+                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "  Inactive"))
+                {
+                    bool option = !mediaplayer_active_->rewindOnDisabled();
+                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", "", &option ))
+                        mediaplayer_active_->setRewindOnDisabled(false);
+                    option = mediaplayer_active_->rewindOnDisabled();
+                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", "", &option ))
+                        mediaplayer_active_->setRewindOnDisabled(true);
+                    ImGui::EndMenu();
+                }
 
 //                if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
 //                {
@@ -2819,15 +2949,6 @@ void SourceController::RenderSingleSource(Source *s)
         ImGui::Text("%s %s", SourcePlayIcon(s), GstToolkit::time_to_string(s->playtime()).c_str() );
         ImGui::PopFont();
 
-//        if ( ms != nullptr ) {
-//            // ok, get the media player of the media source
-//            MediaPlayer *mp = ms->mediaplayer();
-//            const double width_ratio = static_cast<double>(rendersize.x) / static_cast<double>(mp->timeline()->sectionsDuration());
-
-//            DrawTimeline("##timeline_mediaplayers", mp->timeline(), mp->position(), width_ratio, 60);
-
-//        }
-
         ///
         /// Play button bar
         ///
@@ -3066,7 +3187,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         static int current_loop = 0;
         static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
         current_loop = (int) mediaplayer_active_->loop();
-        if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop) )
+        if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop, "Loop mode") )
             mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
 
         // speed slider (if enough space)
@@ -4143,7 +4264,10 @@ void Navigator::RenderMainPannelVimix()
         {
             // Show info text bloc (dark background)
             ImGuiTextBuffer info;
-            info.appendf("%s", SystemToolkit::filename(sessionfilename).c_str());
+            if (sessionfilename.empty())
+                info.appendf("<unsaved>");
+            else
+                info.appendf("%s", SystemToolkit::filename(sessionfilename).c_str());
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
