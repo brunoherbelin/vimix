@@ -816,84 +816,88 @@ void RenderingWindow::draw(FrameBuffer *fb)
         Rendering::manager().pushAttrib(window_attributes_);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // blit framebuffer
-        if (Settings::application.render.blit) {
+        // if not disabled
+        if (!Settings::application.render.disabled) {
 
-            if ( textureid_ != fb->texture()) {
+            // blit framebuffer
+            if (Settings::application.render.blit) {
 
-                textureid_ = fb->texture();
+                if ( textureid_ != fb->texture()) {
 
-                // create a new fbo in this opengl context
-                if (fbo_ != 0)
-                    glDeleteFramebuffers(1, &fbo_);
-                glGenFramebuffers(1, &fbo_);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+                    textureid_ = fb->texture();
 
-                // attach the 2D texture to local FBO
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
-#ifndef NDEBUG
-                Log::Info("Blit to output window enabled.");
-#endif
+                    // create a new fbo in this opengl context
+                    if (fbo_ != 0)
+                        glDeleteFramebuffers(1, &fbo_);
+                    glGenFramebuffers(1, &fbo_);
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+
+                    // attach the 2D texture to local FBO
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
+    #ifndef NDEBUG
+                    Log::Info("Blit to output window enabled.");
+    #endif
+                }
+
+                // calculate scaling factor of frame buffer inside window
+                int rx, ry, rw, rh;
+                float renderingAspectRatio = fb->aspectRatio();
+                if (aspectRatio() < renderingAspectRatio) {
+                    int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
+                    rx = 0;
+                    ry = (window_attributes_.viewport.y - nh) / 2;
+                    rw = window_attributes_.viewport.x;
+                    rh = (window_attributes_.viewport.y + nh) / 2;
+                } else {
+                    int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
+                    rx = (window_attributes_.viewport.x - nw) / 2;
+                    ry = 0;
+                    rw = (window_attributes_.viewport.x + nw) / 2;
+                    rh = window_attributes_.viewport.y;
+                }
+
+                // select fbo texture read target
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);
+
+                // select screen target
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+                // blit operation from fbo (containing texture) to screen
+                glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
             }
-
-            // calculate scaling factor of frame buffer inside window
-            int rx, ry, rw, rh;
-            float renderingAspectRatio = fb->aspectRatio();
-            if (aspectRatio() < renderingAspectRatio) {
-                int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
-                rx = 0;
-                ry = (window_attributes_.viewport.y - nh) / 2;
-                rw = window_attributes_.viewport.x;
-                rh = (window_attributes_.viewport.y + nh) / 2;
-            } else {
-                int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
-                rx = (window_attributes_.viewport.x - nw) / 2;
-                ry = 0;
-                rw = (window_attributes_.viewport.x + nw) / 2;
-                rh = window_attributes_.viewport.y;
-            }
-
-            // select fbo texture read target
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);
-
-            // select screen target
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-            // blit operation from fbo (containing texture) to screen
-            glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-        }
-        // draw geometry
-        else
-        {
-            // VAO is not shared between multiple contexts of different windows
-            // so we have to create a new VAO for rendering the surface in this window
-            if (surface_ == 0)
-                surface_ = new WindowSurface;
-
-            // calculate scaling factor of frame buffer inside window
-            float windowAspectRatio = aspectRatio();
-            float renderingAspectRatio = fb->aspectRatio();
-            glm::vec3 scale;
-            if (windowAspectRatio < renderingAspectRatio)
-                scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+            // draw geometry
             else
-                scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+            {
+                // VAO is not shared between multiple contexts of different windows
+                // so we have to create a new VAO for rendering the surface in this window
+                if (surface_ == 0)
+                    surface_ = new WindowSurface;
 
-            // make sure previous shader in another glcontext is disabled
-            ShadingProgram::enduse();
+                // calculate scaling factor of frame buffer inside window
+                float windowAspectRatio = aspectRatio();
+                float renderingAspectRatio = fb->aspectRatio();
+                glm::vec3 scale;
+                if (windowAspectRatio < renderingAspectRatio)
+                    scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+                else
+                    scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
 
-            // draw
-            glBindTexture(GL_TEXTURE_2D, fb->texture());
-            //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
-            static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-            surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+                // make sure previous shader in another glcontext is disabled
+                ShadingProgram::enduse();
 
-            // done drawing (unload shader from this glcontext)
-            ShadingProgram::enduse();
-            glBindTexture(GL_TEXTURE_2D, 0);
+                // draw
+                glBindTexture(GL_TEXTURE_2D, fb->texture());
+                //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
+                static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+                surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+
+                // done drawing (unload shader from this glcontext)
+                ShadingProgram::enduse();
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+
         }
-
         // restore attribs
         Rendering::manager().popAttrib();
 

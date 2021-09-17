@@ -235,7 +235,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
             // Session toolbox
-//            Settings::application.widget.help = !Settings::application.widget.help;
+            Settings::application.widget.help = !Settings::application.widget.help;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_E )) {
             // Shader Editor
@@ -1073,6 +1073,9 @@ void UserInterface::RenderPreview()
                     Rendering::manager().outputWindow().toggleFullscreen();
                 }
 
+                ImGui::MenuItem( ICON_FA_EYE_SLASH "  Disable output", NULL, &Settings::application.render.disabled);
+
+
                 ImGui::Separator();
 
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
@@ -1220,10 +1223,10 @@ void UserInterface::RenderPreview()
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
         }
+        const float r = ImGui::GetTextLineHeightWithSpacing();
         // recording indicator overlay
         if (video_recorder_)
         {
-            float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
@@ -1233,7 +1236,6 @@ void UserInterface::RenderPreview()
         }
         else if (!_video_recorders.empty())
         {
-            float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             static double anim = 0.f;
@@ -1246,7 +1248,6 @@ void UserInterface::RenderPreview()
         // streaming indicator overlay
         if (Settings::application.accept_connections)
         {
-            float r = ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( Streaming::manager().busy())
@@ -1257,6 +1258,18 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
+
+        // OUTPUT DISABLED indicator overlay
+        if (Settings::application.render.disabled)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + (width / ar) - 2.f*r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
+            ImGui::Text(ICON_FA_EYE_SLASH);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
+
 
 #if defined(LINUX)
         // streaming indicator overlay

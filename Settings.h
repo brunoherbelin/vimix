@@ -134,6 +134,7 @@ struct TransitionConfig
 
 struct RenderConfig
 {
+    bool disabled;
     bool blit;
     int vsync;
     int multisampling;
@@ -143,6 +144,7 @@ struct RenderConfig
     bool gpu_decoding;
 
     RenderConfig() {
+        disabled = false;
         blit = false;
         vsync = 1;
         multisampling = 2;
