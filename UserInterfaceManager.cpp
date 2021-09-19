@@ -1061,23 +1061,20 @@ void UserInterface::RenderPreview()
                 Settings::application.widget.preview = false;
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
-                if ( ImGui::MenuItem( ICON_FA_PLUS "  Insert Rendering Source") )
-                    Mixer::manager().addSource( Mixer::manager().createSourceRender() );
-
-                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show output window") )
+                // Output window menu
+                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show window") )
                     Rendering::manager().outputWindow().show();
 
                 bool isfullscreen = Rendering::manager().outputWindow().isFullscreen();
-                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen output window", nullptr, &isfullscreen) ) {
+                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen window", nullptr, &isfullscreen) ) {
                     Rendering::manager().outputWindow().show();
                     Rendering::manager().outputWindow().toggleFullscreen();
                 }
 
-                ImGui::MenuItem( ICON_FA_EYE_SLASH "  Disable output", NULL, &Settings::application.render.disabled);
+                ImGui::MenuItem( ICON_FA_EYE_SLASH " Disable", NULL, &Settings::application.render.disabled);
 
-
+                // output manager menu
                 ImGui::Separator();
-
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
                 if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
                     if (pinned)
@@ -1163,8 +1160,9 @@ void UserInterface::RenderPreview()
                 //
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Share stream"))
+            if (ImGui::BeginMenu("Share"))
             {
+
 #if defined(LINUX_NOT_YET_WORKING)
                 bool on = webcam_emulator_ != nullptr;
                 if ( ImGui::MenuItem( ICON_FA_CAMERA "  Emulate video camera", NULL, &on) ) {
