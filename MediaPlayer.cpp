@@ -1274,12 +1274,15 @@ MediaPlayer::TimeCounter::~TimeCounter()
 
 void MediaPlayer::TimeCounter::tic ()
 {
-    double dt = g_timer_elapsed (timer, NULL) * 1000.0;
-    g_timer_start(timer);
+    const double dt = g_timer_elapsed (timer, NULL) * 1000.0;
 
-    // calculate instantaneous framerate
-    // Exponential moving averate with previous framerate to filter jitter
-    if (dt > 1.0)
-        fps = CLAMP( 0.5 * fps + 500.0 / dt, 0.0, 1000.0) ;
+    // ignore refresh after too little time
+    if (dt > 3.0){
+        // restart timer
+        g_timer_start(timer);
+        // calculate instantaneous framerate
+        // Exponential moving averate with previous framerate to filter jitter
+        fps = CLAMP( 0.5 * fps + 500.0 / dt, 0.0, 1000.0);
+    }
 }
 
