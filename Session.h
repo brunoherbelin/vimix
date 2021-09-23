@@ -129,7 +129,7 @@ public:
     std::list<MixingGroup *>::iterator deleteMixingGroup (std::list<MixingGroup *>::iterator g);
 
     // snapshots
-    SessionSnapshots * const snapshots () { return &snapshots_; }
+    SessionSnapshots * snapshots () { return &snapshots_; }
 
     // playlists
     void addPlayGroup(const SourceIdList &ids);

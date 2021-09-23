@@ -124,11 +124,11 @@ class SourceController
     float min_width_;
     float h_space_;
     float v_space_;
+    float scrollbar_;
+    float timeline_height_;
+    float mediaplayer_height_;
     float buttons_width_;
     float buttons_height_;
-    float timeline_height_;
-    float scrollbar_;
-    float mediaplayer_height_;
 
     bool play_request_, replay_request_, next_request_;
     std::string active_label_;

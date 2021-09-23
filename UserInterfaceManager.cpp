@@ -2045,8 +2045,8 @@ void HelperToolbox::Render()
 ///
 /// SOURCE CONTROLLER
 ///
-SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), buttons_height_(0.f),
-    timeline_height_(0.f), scrollbar_(0.f), mediaplayer_height_(0.f), buttons_width_(0.f),
+SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
+    timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f),
     play_request_(false), replay_request_(false), next_request_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
@@ -2217,7 +2217,7 @@ void SourceController::Render()
             // Menu : list of selections
             if (N>0) {
                 ImGui::Separator();
-                for (size_t i = 0 ; i < N; ++i)
+                for (size_t i = 0 ; i < (int) N; ++i)
                 {
                     std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
                     if (ImGui::MenuItem( label.c_str() ))
@@ -3939,7 +3939,7 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select generator"))
             {
-                for (int p = 0; p < Pattern::pattern_types.size(); ++p){
+                for (int p = 0; p < (int) Pattern::pattern_types.size(); ++p){
                     if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
                         pattern_type = p;
                         update_new_source = true;
