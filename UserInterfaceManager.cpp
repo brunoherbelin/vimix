@@ -371,32 +371,6 @@ void UserInterface::handleKeyboard()
         // B to rewind to Beginning
         else if (ImGui::IsKeyPressed( GLFW_KEY_B ))
             sourcecontrol.Replay();
-        // N for Next frame or fast forward
-        else if (ImGui::IsKeyPressed( GLFW_KEY_N ))
-            sourcecontrol.Next();
-
-//        // keys to control the current source if media player is not focused
-//        if (_cs != nullptr && _cs->active() && (!ImGui::IsAnyWindowFocused() || sourcecontrol.Active()) )
-//        {
-//            // Space bar to toggle play / pause
-//            if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
-//                 _cs->play( !_cs->playing() );
-//            }
-//            // B to rewind to Beginning
-//            else if (ImGui::IsKeyPressed( GLFW_KEY_B )) {
-//                _cs->replay();
-//            }
-//            // N for Next frame or fast forward
-//            else if (ImGui::IsKeyPressed( GLFW_KEY_N )) {
-//                MediaSource *ms = dynamic_cast<MediaSource *>(_cs);
-//                if ( ms != nullptr ) {
-//                    if (ms->playing())
-//                        ms->mediaplayer()->jump();
-//                    else
-//                        ms->mediaplayer()->step();
-//                }
-//            }
-//        }
 
         // normal keys in workspace // make sure no entry / window box is active        
         if ( !ImGui::IsAnyWindowFocused() )
@@ -781,10 +755,9 @@ void UserInterface::Render()
             sessiontoolbox.Render();
 
         // Source controller
-        sourcecontrol.Update();
-        if (Settings::application.widget.media_player && ( Settings::application.widget.media_player_view < 0 ||
-            Settings::application.widget.media_player_view == Settings::application.current_view ))
+        if (sourcecontrol.Visible())
             sourcecontrol.Render();
+        sourcecontrol.Update();
 
         // Notes
         RenderNotes();
@@ -2047,7 +2020,7 @@ void HelperToolbox::Render()
 ///
 SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
     timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f),
-    play_request_(false), replay_request_(false), next_request_(false),
+    play_toggle_request_(false), replay_request_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
@@ -2064,51 +2037,54 @@ void SourceController::resetActiveSelection()
 }
 
 
-bool SourceController::Active()
+bool SourceController::Visible() const
 {
     return ( Settings::application.widget.media_player
              && (Settings::application.widget.media_player_view < 0 || Settings::application.widget.media_player_view == Settings::application.current_view )
-             && focused_);
+             );
 }
 
 void SourceController::Update()
 {
+    SourceList selectedsources;
+
+    // get new selection or validate previous list if selection was not updated
+    selectedsources = selection_;
+    if (selectedsources.empty() && !Mixer::selection().empty())
+        selectedsources = playable_only(Mixer::selection().getCopy());
+    size_t n_source = selectedsources.size();
+//    selection_.clear();
+
+    size_t n_play = 0;
+    for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source){
+        if ( (*source)->active() && (*source)->playing() )
+            n_play++;
+    }
+
+    // Play button or keyboard [space] was pressed
+    if ( play_toggle_request_ ) {
+
+        for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
+            (*source)->play( n_play < n_source );
+
+        play_toggle_request_ = false;
+    }
+
+    // Replay / rewind button or keyboard [B] was pressed
+    if ( replay_request_ ) {
+
+        for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
+            (*source)->replay();
+
+        replay_request_ = false;
+    }
+
     // reset on session change
     static Session *__session = nullptr;
     if ( Mixer::manager().session() != __session ) {
         __session = Mixer::manager().session();
         resetActiveSelection();
     }
-
-    // Play button or keyboard [space] was pressed
-    if ( play_request_ ) {
-
-        // active selection
-        if (active_selection_ > -1){
-
-        }
-        // selected sources
-        else {
-
-
-        }
-
-        play_request_ = false;
-    }
-
-    // Replay / rewind button or keyboard [B] was pressed
-    if ( replay_request_ ) {
-
-        replay_request_ = false;
-    }
-
-    // Next frame / FFwrd button or keyboard [N] was pressed
-    if ( next_request_ ) {
-
-        next_request_ = false;
-    }
-
-
 }
 
 void SourceController::Render()
@@ -2154,15 +2130,10 @@ void SourceController::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             // Menu section for play control
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Back", "B")) {
-
-            }
-            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space")) {
-
-            }
-            if (ImGui::MenuItem( ICON_FA_STEP_FORWARD "  Next frame | forward", "N")) {
-
-            }
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Back", "B"))
+                replay_request_ = true;
+            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space"))
+                play_toggle_request_ = true;
 
             // Menu section for list
             ImGui::Separator();
@@ -2248,7 +2219,7 @@ void SourceController::Render()
                 if (ImGui::MenuItem(LABEL_EDIT_FADING))
                     mediaplayer_edit_fading_ = true;
 
-                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "  Inactive"))
+                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "  Inactive action"))
                 {
                     bool option = !mediaplayer_active_->rewindOnDisabled();
                     if (ImGui::MenuItem(ICON_FA_STOP "  Stop", "", &option ))

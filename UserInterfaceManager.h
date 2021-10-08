@@ -130,7 +130,7 @@ class SourceController
     float buttons_width_;
     float buttons_height_;
 
-    bool play_request_, replay_request_, next_request_;
+    bool play_toggle_request_, replay_request_;
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
@@ -166,14 +166,14 @@ class SourceController
 public:
     SourceController();
 
-    inline void Play()   { play_request_=true;  }
-    inline void Replay() { replay_request_=true;}
-    inline void Next()   { next_request_=true;  }
+    inline void Play()   { play_toggle_request_  = true; }
+    inline void Replay() { replay_request_= true; }
     void Update();
 
     void resetActiveSelection();
     void Render();
-    bool Active();
+    bool Visible() const;
+    inline bool Foccused() const { return focused_; }
 };
 
 
