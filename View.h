@@ -120,6 +120,8 @@ protected:
     ContextMenu show_context_menu_;
     inline void openContextMenu (ContextMenu m) { show_context_menu_ = m; }
     void lock(Source *s, bool on);
+
+    float dt_;
 };
 
 

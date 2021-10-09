@@ -26,7 +26,7 @@
 
 uint View::need_deep_update_ = 1;
 
-View::View(Mode m) : mode_(m)
+View::View(Mode m) : mode_(m), dt_(16.f)
 {
     show_context_menu_ = MENU_NONE;
 
@@ -55,8 +55,10 @@ void View::draw()
 
 void View::update(float dt)
 {
+    dt_ = dt;
+
     // recursive update from root of scene
-    scene.update( dt );
+    scene.update( dt_ );
 
     // a more complete update is requested
     if (View::need_deep_update_ > 0) {

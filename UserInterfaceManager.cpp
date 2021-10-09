@@ -393,7 +393,7 @@ void UserInterface::handleKeyboard()
             if (ImGui::IsKeyDown( GLFW_KEY_UP ))
                 Mixer::manager().view()->arrow( glm::vec2(0.f, -1.f) );
             else if (ImGui::IsKeyDown( GLFW_KEY_DOWN ))
-                Mixer::manager().view()->arrow( glm::vec2(0.f, 1.f) );
+                Mixer::manager().view()->arrow( glm::vec2(0.f, +1.f) );
 
             if (ImGui::IsKeyReleased( GLFW_KEY_LEFT ) ||
                 ImGui::IsKeyReleased( GLFW_KEY_RIGHT ) ||

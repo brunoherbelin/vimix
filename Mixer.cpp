@@ -68,7 +68,7 @@ static void saveSession(const std::string& filename, Session *session)
 }
 
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested_(false),
-    current_view_(nullptr), dt_(0.f), dt__(0.f)
+    current_view_(nullptr), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
     session_ = new Session;

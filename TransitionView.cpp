@@ -401,7 +401,7 @@ void TransitionView::arrow (glm::vec2 movement)
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        float d = s->group(mode_)->translation_.x + gl_delta.x * ARROWS_MOVEMENT_FACTOR;
+        float d = s->group(mode_)->translation_.x + gl_delta.x * ARROWS_MOVEMENT_FACTOR * dt_;
         s->group(mode_)->translation_.x = CLAMP(d, -1.f, 0.f);
 
         // request update

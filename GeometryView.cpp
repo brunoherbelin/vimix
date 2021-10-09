@@ -1034,8 +1034,8 @@ void GeometryView::terminate()
 
 void GeometryView::arrow (glm::vec2 movement)
 {
-    static int accumulator = 0;
-    accumulator++;
+    static float accumulator = 0.f;
+    accumulator += dt_;
 
     glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
@@ -1058,18 +1058,19 @@ void GeometryView::arrow (glm::vec2 movement)
 
             // + ALT : discrete displacement
             if (UserInterface::manager().altModifier()) {
-                if (accumulator > 10) {
+                if (accumulator > 100.f) {
                     dest_translation += glm::sign(gl_delta) * 0.11f;
                     dest_translation.x = ROUND(dest_translation.x, 10.f);
                     dest_translation.y = ROUND(dest_translation.y, 10.f);
-                    accumulator = 0;
+                    accumulator = 0.f;
                 }
                 else
                     break;
             }
             else {
                 // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR;
+                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+                accumulator = 0.f;
             }
 
             // store action in history

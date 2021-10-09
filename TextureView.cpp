@@ -1348,20 +1348,27 @@ void TextureView::arrow (glm::vec2 movement)
 {
     Source *s = Mixer::manager().currentSource();
     if (s) {
+        static float accumulator = 0.f;
+        accumulator += dt_;
 
         glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
         glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
         glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
         Group *sourceNode = s->group(mode_);
-        static glm::vec3 alt_move_ = sourceNode->translation_;
-        if (UserInterface::manager().altModifier()) {
-            alt_move_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
-            sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
-            sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+        glm::vec3 alt_move_ = sourceNode->translation_;
+        if (UserInterface::manager().altModifier()) {            
+            if (accumulator > 100.f)
+            {
+                alt_move_ += glm::sign(gl_delta) * 0.1f;
+                sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
+                sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+                accumulator = 0.f;
+            }
         }
         else {
-            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR;
+            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+            accumulator = 0.f;
             alt_move_ = sourceNode->translation_;
         }
 
