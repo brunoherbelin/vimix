@@ -310,8 +310,11 @@ void UserInterface::handleKeyboard()
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F ) && shift_modifier_active) {
-            Rendering::manager().mainWindow().toggleFullscreen();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F )) {
+            if (shift_modifier_active)
+                Rendering::manager().mainWindow().toggleFullscreen();
+            else
+                Rendering::manager().outputWindow().toggleFullscreen();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
@@ -1193,6 +1196,10 @@ void UserInterface::RenderPreview()
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
+
+            // raise window on double clic
+            if (ImGui::IsMouseDoubleClicked(0) )
+                Rendering::manager().outputWindow().show();
         }
         const float r = ImGui::GetTextLineHeightWithSpacing();
         // recording indicator overlay
