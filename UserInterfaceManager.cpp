@@ -367,6 +367,9 @@ void UserInterface::handleKeyboard()
                 Mixer::selection().clear();
             }
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_END )) {
+            Settings::application.render.disabled = !Settings::application.render.disabled;
+        }
 
         // Space bar to toggle play / pause
         if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
@@ -1042,12 +1045,12 @@ void UserInterface::RenderPreview()
                     Rendering::manager().outputWindow().show();
 
                 bool isfullscreen = Rendering::manager().outputWindow().isFullscreen();
-                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen window", nullptr, &isfullscreen) ) {
+                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen window", CTRL_MOD "F", &isfullscreen) ) {
                     Rendering::manager().outputWindow().show();
                     Rendering::manager().outputWindow().toggleFullscreen();
                 }
 
-                ImGui::MenuItem( ICON_FA_EYE_SLASH " Disable", NULL, &Settings::application.render.disabled);
+                ImGui::MenuItem( ICON_FA_EYE_SLASH " Disable", "END", &Settings::application.render.disabled);
 
                 // output manager menu
                 ImGui::Separator();
