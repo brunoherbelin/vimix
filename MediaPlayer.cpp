@@ -954,9 +954,14 @@ void MediaPlayer::update()
             // if in a gap, seek to next section
             if (gap.is_valid()) {
                 // jump in one or the other direction
-                GstClockTime jumpPts = (rate_>0.f) ? gap.end : gap.begin;
-                // seek to next valid time (if not beginnig or end of timeline)
+                GstClockTime jumpPts = timeline_.step(); // round jump time to frame pts
+                if ( rate_ > 0.f )
+                    jumpPts *= ( gap.end / timeline_.step() ) + 1; // FWD: go to end of gap
+                else
+                    jumpPts *= ( gap.begin / timeline_.step() );   // BWD: go to begin of gap
+                // (if not beginnig or end of timeline)
                 if (jumpPts > timeline_.first() && jumpPts < timeline_.last())
+                    // seek to jump PTS time
                     seek( jumpPts );
                 // otherwise, we should loop
                 else
@@ -1006,9 +1011,12 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 
     // seek with flush (always)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
+
     // seek with trick mode if fast speed
-    if ( ABS(rate_) > 1.0 )
+    if ( ABS(rate_) > 1.5 )
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;
+    else
+        seek_flags |= GST_SEEK_FLAG_ACCURATE;
 
     // create seek event depending on direction
     GstEvent *seek_event = nullptr;

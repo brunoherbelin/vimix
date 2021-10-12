@@ -63,6 +63,14 @@ struct TimeInterval
         }
         return *this;
     }
+    inline TimeInterval& operator %= (const GstClockTime& precision)
+    {
+        if (precision != GST_CLOCK_TIME_NONE && precision > 0) {
+            this->begin -= this->begin % precision;
+            this->end   += precision - (this->end % precision) ;
+        }
+        return *this;
+    }
     inline bool includes(const GstClockTime t) const
     {
         return (is_valid() && t != GST_CLOCK_TIME_NONE && !(t < this->begin) && !(t > this->end) );
