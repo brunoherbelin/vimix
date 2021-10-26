@@ -207,9 +207,10 @@ bool Rendering::init()
     std::list<std::string> gpuplugins = GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
     if (Settings::application.render.gpu_decoding) {
         if (gpuplugins.size() > 0) {
-            Log::Info("Fond the following GPU decoding plugin(s):");
-            for(auto it = gpuplugins.begin(); it != gpuplugins.end(); it++)
-                Log::Info(" - %s", (*it).c_str());
+            Log::Info("Found the following GPU decoding plugin(s):");
+            int i = 1;
+            for(auto it = gpuplugins.rbegin(); it != gpuplugins.rend(); it++, ++i)
+                Log::Info("%d. %s", i, (*it).c_str());
         }
         else {
             Log::Info("No GPU decoding plugin found.");
