@@ -1250,6 +1250,7 @@ void Mixer::clear()
     // need to deeply update view to apply eventual changes
     ++View::need_deep_update_;
 
+    Settings::application.recentSessions.front_is_valid = false;
     Log::Info("New session ready.");
 }
 
