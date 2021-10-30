@@ -899,7 +899,7 @@ void Mixer::setView(View::Mode m)
         if ( se != nullptr )
             set ( se );
         else
-            Log::Info("Transition interrupted: Session source added.");
+            Log::Info("Transition interrupted.");
     }
 
     switch (m) {

@@ -25,6 +25,7 @@ public:
     Session *detach();
     void play(bool open);
     void open();
+    void cancel();
 
 private:
     Surface *output_surface_;

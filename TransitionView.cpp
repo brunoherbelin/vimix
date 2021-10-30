@@ -171,73 +171,81 @@ void TransitionView::draw()
     dv2.loop(N+1, T);
     scene.accept(dv2);
 
-    // display interface duration
-    glm::vec2 pos_window = Rendering::manager().project(glm::vec3(-0.2f, -0.14f, 0.f), scene.root()->transform_, false);
-    glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.14f, 0.f), scene.root()->transform_, false);
-    glm::vec2 pos_open = Rendering::manager().project(glm::vec3(POS_TARGET, -0.14f, 0.f), scene.root()->transform_, false);
+    // Display GUI if there is a transition source...
+    if ( transition_source_ ) {
 
-    ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
-    if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
-    {
+        // ..and a valid TRANSITION group
+        const Group *tg = transition_source_->group(View::TRANSITION);
+        if (tg) {
 
-        // style grey
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.79f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            // display interface below timeline
+            glm::vec2 pos_window = Rendering::manager().project(glm::vec3(-1.2f, -0.10f, 0.f), scene.root()->transform_, false);
+            ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
+            if (ImGui::Begin("##Transition", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                             | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                             | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
+            {
+                const glm::vec2 pos_canl = Rendering::manager().project(glm::vec3(-1.0f, -0.15f, 0.f), scene.root()->transform_, false);
+                const glm::vec2 pos_tran = Rendering::manager().project(glm::vec3(-0.5f, -0.15f, 0.f), scene.root()->transform_, false);
+                const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
+                const glm::vec2 pos_open = Rendering::manager().project(glm::vec3(POS_TARGET, -0.15f, 0.f), scene.root()->transform_, false);
 
-        // Duration slider (adjusted width)
-        ImGui::SetNextItemWidth(pos_play.x - pos_window.x - 20.f);
-        ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
-                           TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
+                // style grey
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.79f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
+                ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
-        // Play button just at the end of the timeline
-        ImGui::SetCursorScreenPos(ImVec2(pos_play.x, pos_play.y+2));
-        if ( ImGui::Button(ICON_FA_PLAY_CIRCLE) )
-            play(false);
+                // "Cancel" button at the begining of the timeline, only if transition not started
+                if (tg->translation_.x < -1.f + EPSILON) {
+                    ImGui::SetCursorScreenPos(ImVec2(pos_canl.x -80.f, pos_canl.y +2.f));
+                    ImGui::SetNextItemWidth(160.f);
+                    if ( ImGui::Button(ICON_FA_TIMES " Cancel") )
+                        cancel();
+                }
 
-        // centered "Open" button on the target frame
-        ImGui::SetCursorScreenPos(ImVec2(pos_open.x -80.f, pos_open.y +2.f));
-        ImGui::SetNextItemWidth(160.f);
-        if ( ImGui::Button(ICON_FA_FILE_UPLOAD " Open") )
-            open();
+                // toggle transition mode
+                if (!Settings::application.transition.cross_fade) {
+                    // black background in icon 'transition to black'
+                    ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.f));
+                    ImGuiToolkit::Icon(19,1);
+                    ImGui::PopStyleColor();
+                }
+                ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
+                const char *tooltip[2] = {"Transition to black", "Cross fading"};
+                ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
 
-        ImGui::PopFont();
-        ImGui::PopStyleColor(7);  // 7 colors
-        ImGui::End();
-    }
 
-    pos_window = Rendering::manager().project(glm::vec3(-0.535f, -0.14f, 0.f), scene.root()->transform_, false);
-    ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
-    if (ImGui::Begin("##TransitionType", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
-    {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+                //  Duration slider (adjusted width)
+                const float width = (pos_play.x - pos_canl.x) / 5.0;
+                ImGui::SetCursorScreenPos(ImVec2(pos_play.x - width, pos_play.y +2.f));
+                ImGui::SetNextItemWidth( width );
+                ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
+                                   TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
 
-        // black background in icon 'transition to black'
-        if (!Settings::application.transition.cross_fade) {
-            ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.f));
-            ImGuiToolkit::Icon(19,1);
-            ImGui::PopStyleColor();
-            ImGui::SetCursorScreenPos(draw_pos);
+                // Play-Pause button just at the end of the timeline
+                ImGui::SetCursorScreenPos(ImVec2(pos_play.x + 10.f, pos_play.y +2.f));
+                if ( ImGui::Button( tg->update_callbacks_.empty() ? ICON_FA_PLAY : ICON_FA_PAUSE) )
+                    // toggle play but do not open
+                    play(false);
+
+                // "Open" button on the target frame
+                ImGui::SetCursorScreenPos(ImVec2(pos_open.x -80.f, pos_open.y +2.f));
+                ImGui::SetNextItemWidth(160.f);
+                if ( ImGui::Button(ICON_FA_FILE_UPLOAD " Open") )
+                    open();
+
+                ImGui::PopFont();
+                ImGui::PopStyleColor(7);  // 7 colors
+                ImGui::End();
+            }
         }
-
-        // toggle transition mode
-        const char *tooltip[2] = {"Transition to black", "Cross fading"};
-        ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
-
-        ImGui::PopFont();
-        ImGui::End();
     }
-
 }
 
 bool TransitionView::canSelect(Source *s) {
@@ -327,10 +335,28 @@ std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 
 void TransitionView::open()
 {
-    // quick jump over to target (and open)
-    transition_source_->group(View::TRANSITION)->clearCallbacks();
-    MoveToCallback *anim = new MoveToCallback(glm::vec3(POS_TARGET, 0.0, 0.0), 180.f);
-    transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
+    if (transition_source_ != nullptr) {
+        // quick jump over to target (and open)
+        transition_source_->group(View::TRANSITION)->clearCallbacks();
+        MoveToCallback *anim = new MoveToCallback(glm::vec3(POS_TARGET, 0.0, 0.0), 180.f);
+        transition_source_->group(View::TRANSITION)->update_callbacks_.push_back(anim);
+    }
+}
+
+void TransitionView::cancel()
+{
+    if (transition_source_ != nullptr) {
+        // cancel any animation
+        transition_source_->group(View::TRANSITION)->clearCallbacks();
+        // get and detatch the group node from the view workspace
+        scene.ws()->detach( transition_source_->group(View::TRANSITION) );
+
+        // done with transition source
+        Mixer::manager().deleteSource(transition_source_);
+        transition_source_ = nullptr;
+        // quit view
+        Mixer::manager().setView(View::MIXING);
+    }
 }
 
 void TransitionView::play(bool open)
