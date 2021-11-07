@@ -598,7 +598,8 @@ void TextureView::draw()
                                           ICON_FA_CARET_SQUARE_DOWN "\tBrush shape\n"
                                           ICON_FA_DOT_CIRCLE  "\tBrush size\n"
                                           ICON_FA_FEATHER_ALT "\tBrush Pressure\n\n"
-                                          ICON_FA_MAGIC "\tEffects");
+                                          ICON_FA_MAGIC "\tEffects\n"
+                                          ICON_FA_FOLDER_OPEN "\tOpen image");
 
                 // select cursor
                 static bool on = true;
