@@ -5,10 +5,22 @@
 
 #include "StreamSource.h"
 
+typedef struct pattern_ {
+    std::string label;
+    std::string feature;
+    std::string pipeline;
+    bool animated;
+    bool available;
+} pattern_descriptor;
+
+
 class Pattern : public Stream
 {
+    static std::vector<pattern_descriptor> patterns_;
+
 public:
-    static std::vector<std::string> pattern_types;
+    static pattern_descriptor get(uint type);
+    static uint count();
 
     Pattern();
     void open( uint pattern, glm::ivec2 res);

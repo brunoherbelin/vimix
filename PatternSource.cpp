@@ -10,92 +10,66 @@
 #include "Stream.h"
 #include "Visitor.h"
 #include "Log.h"
+#include "GstToolkit.h"
 
-#define MAX_PATTERN 24
+//
+//   Fill the list of patterns
+//
+//    Label (for display), feature (for test), pipeline (for gstreamer), animated (true/false), available (false by default)
+std::vector<pattern_descriptor> Pattern::patterns_ = {
+    { "Black", "videotestsrc", "videotestsrc pattern=black", false, false },
+    { "White", "videotestsrc", "videotestsrc pattern=white", false, false },
+    { "Gradient", "videotestsrc", "videotestsrc pattern=gradient", false, false },
+    { "Checkers 1x1 px", "videotestsrc", "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert", false, false },
+    { "Checkers 8x8 px", "videotestsrc", "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert", false, false },
+    { "Circles", "videotestsrc", "videotestsrc pattern=circular", false, false },
+    { "Lissajous", "frei0r-src-lissajous0r", "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert", false, false },
+    { "Pinwheel", "videotestsrc", "videotestsrc pattern=pinwheel", false, false },
+    { "Spokes", "videotestsrc", "videotestsrc pattern=spokes", false, false },
+    { "Red", "videotestsrc", "videotestsrc pattern=red", false, false },
+    { "Green", "videotestsrc", "videotestsrc pattern=green", false, false },
+    { "Blue", "videotestsrc", "videotestsrc pattern=blue", false, false },
+    { "Color bars", "videotestsrc", "videotestsrc pattern=smpte100", false, false },
+    { "RGB grid", "videotestsrc", "videotestsrc pattern=colors", false, false },
+    { "SMPTE test pattern", "videotestsrc", "videotestsrc pattern=smpte", true, false },
+    { "Television snow", "videotestsrc", "videotestsrc pattern=snow", true, false },
+    { "Blink", "videotestsrc", "videotestsrc pattern=blink", true, false },
+    { "Fresnel zone plate", "videotestsrc", "videotestsrc pattern=zone-plate kx2=XXX ky2=YYY kt=4", true, false },
+    { "Chroma zone plate", "videotestsrc", "videotestsrc pattern=chroma-zone-plate kx2=XXX ky2=YYY kt=4", true, false },
+    { "Bar moving", "videotestsrc", "videotestsrc pattern=bar horizontal-speed=5", true, false },
+    { "Ball bouncing", "videotestsrc", "videotestsrc pattern=ball", true, false },
+    { "Blob", "frei0r-src-ising0r", "frei0r-src-ising0r", true, false },
+    { "Timer", "timeoverlay",  "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
+    { "Clock", "clockoverlay", "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
+    { "Resolution", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"XXXX x YYYY px\" halignment=center valignment=center font-desc=\"Sans, 52\" ", false, false },
+    { "Frame", "videobox", "videotestsrc pattern=black ! videobox fill=white top=-10 bottom=-10 left=-10 right=-10", false, false },
+    { "Cross", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"+\" halignment=center valignment=center font-desc=\"Times, 22\" ", false, false },
+    { "Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.35", false, false },
+    { "Point Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.4", false, false },
+    { "Ruler", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.9", false, false },
+    { "RGB noise", "frei0r-filter-rgbnoise", "videotestsrc pattern=black ! frei0r-filter-rgbnoise noise=0.6", true, false },
+    { "Philips test pattern", "frei0r-src-test-pat-b", "frei0r-src-test-pat-b type=0.7 ", false, false }
+};
 
-//    smpte (0) – SMPTE 100%% color bars
-//    snow (1) – Random (television snow)
-//    black (2) – 100%% Black
-//    white (3) – 100%% White
-//    red (4) – Red
-//    green (5) – Green
-//    blue (6) – Blue
-//    checkers-1 (7) – Checkers 1px
-//    checkers-2 (8) – Checkers 2px
-//    checkers-4 (9) – Checkers 4px
-//    checkers-8 (10) – Checkers 8px
-//    circular (11) – Circular
-//    blink (12) – Blink
-//    smpte75 (13) – SMPTE 75%% color bars
-//    zone-plate (14) – Zone plate
-//    gamut (15) – Gamut checkers
-//    chroma-zone-plate (16) – Chroma zone plate
-//    solid-color (17) – Solid color
-//    ball (18) – Moving ball
-//    smpte100 (19) – SMPTE 100%% color bars
-//    bar (20) – Bar
-//    pinwheel (21) – Pinwheel
-//    spokes (22) – Spokes
-//    gradient (23) – Gradient
-//    colors (24) – Colors
-const char* pattern_internal_[MAX_PATTERN] = { "videotestsrc pattern=black",
-                                    "videotestsrc pattern=white",
-                                    "videotestsrc pattern=gradient",
-                                    "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert",
-                                    "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert",
-                                    "videotestsrc pattern=circular",
-                                    "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert",
-                                    "videotestsrc pattern=pinwheel",
-                                    "videotestsrc pattern=spokes",
-                                    "videotestsrc pattern=red",
-                                    "videotestsrc pattern=green",
-                                    "videotestsrc pattern=blue",
-                                    "videotestsrc pattern=smpte100",
-                                    "videotestsrc pattern=colors",
-                                    "videotestsrc pattern=smpte",
-                                    "videotestsrc pattern=snow",
-                                    "videotestsrc pattern=blink",
-                                    "videotestsrc pattern=zone-plate",
-                                    "videotestsrc pattern=chroma-zone-plate",
-                                    "videotestsrc pattern=bar horizontal-speed=5",
-                                    "videotestsrc pattern=ball",
-                                    "frei0r-src-ising0r",
-                                    "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ",
-                                    "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" "
-                                    };
 
-std::vector<std::string> Pattern::pattern_types = { "Black",
-                                                    "White",
-                                                    "Gradient",
-                                                    "Checkers 1x1 px",
-                                                    "Checkers 8x8 px",
-                                                    "Circles",
-                                                    "Lissajous",
-                                                    "Pinwheel",
-                                                    "Spokes",
-                                                    "Red",
-                                                    "Green",
-                                                    "Blue",
-                                                    "Color bars",
-                                                    "RGB grid",
-                                                    "SMPTE test pattern",
-                                                    "Television snow",
-                                                    "Blink",
-                                                    "Fresnel zone plate",
-                                                    "Chroma zone plate",
-                                                    "Bar moving",
-                                                    "Ball bouncing"
-                                                    #if GST_VERSION_MINOR > 17
-                                                    ,
-                                                    "Blob",
-                                                    "Timer",
-                                                    "Clock"
-                                                    #endif
-                                                  };
-
-Pattern::Pattern() : Stream(), type_(MAX_PATTERN) // invalid pattern
+Pattern::Pattern() : Stream(), type_(UINT_MAX) // invalid pattern
 {
 
+}
+
+pattern_descriptor Pattern::get(uint type)
+{
+    // check availability of feature to use this pattern
+    if (!patterns_[type].available)
+        patterns_[type].available = GstToolkit::has_feature(patterns_[type].feature);
+
+    // return struct
+    return patterns_[type];
+}
+
+uint Pattern::count()
+{
+    return patterns_.size();
 }
 
 glm::ivec2 Pattern::resolution()
@@ -106,27 +80,34 @@ glm::ivec2 Pattern::resolution()
 
 void Pattern::open( uint pattern, glm::ivec2 res )
 {
-    type_ = MIN(pattern, MAX_PATTERN-1);
-    std::string gstreamer_pattern = pattern_internal_[type_];
+    // clamp type to be sure
+    type_ = MIN(pattern, Pattern::patterns_.size()-1);
+    std::string gstreamer_pattern = Pattern::patterns_[type_].pipeline;
 
-    // there is always a special case...
-    switch(type_)
-    {
-    case 18: // zone plates
-    case 17:
-    {
-        std::ostringstream oss;
-        oss << " kx2=" << (int)(res.x * 10.f / res.y) << " ky2=10 kt=4";
-        gstreamer_pattern += oss.str(); // Zone plate
-    }
-        break;
-    default:
-        break;
-    }
+    //
+    // pattern string post-processing: replace placeholders by resolution values
+    // XXXX, YYYY = resolution x and y
+    // XXX,  YYY  = resolution x and y / 10
+    //
+    // if there is a XXXX parameter to enter
+    std::string::size_type xxxx = gstreamer_pattern.find("XXXX");
+    if (xxxx != std::string::npos)
+        gstreamer_pattern = gstreamer_pattern.replace(xxxx, 4, std::to_string(res.x));
+    // if there is a YYYY parameter to enter
+    std::string::size_type yyyy = gstreamer_pattern.find("YYYY");
+    if (yyyy != std::string::npos)
+        gstreamer_pattern = gstreamer_pattern.replace(yyyy, 4, std::to_string(res.y));
+    // if there is a XXX parameter to enter
+    std::string::size_type xxx = gstreamer_pattern.find("XXX");
+    if (xxx != std::string::npos)
+        gstreamer_pattern = gstreamer_pattern.replace(xxx, 3, std::to_string(res.x/10));
+    // if there is a YYY parameter to enter
+    std::string::size_type yyy = gstreamer_pattern.find("YYY");
+    if (yyy != std::string::npos)
+        gstreamer_pattern = gstreamer_pattern.replace(yyy, 3, std::to_string(res.y/10));
 
-    // all patterns before 'SMPTE test pattern' are single frames (not animated)
-    single_frame_ = type_ < 14;
-    Log::Info("Stream %d SingleFrame", single_frame_);
+    // remember if the pattern is to be updated once or animated
+    single_frame_ = !Pattern::patterns_[type_].animated;
 
     // (private) open stream
     Stream::open(gstreamer_pattern, res.x, res.y);
@@ -144,10 +125,18 @@ PatternSource::PatternSource(uint64_t id) : StreamSource(id)
 
 void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 {
-    Log::Notify("Creating Source with pattern '%s'", Pattern::pattern_types[type].c_str());
+    // open gstreamer with pattern
+    if ( Pattern::get(type).available)      {
+        pattern()->open( (uint) type, resolution );
+        Log::Notify("Creating Source with pattern '%s'", Pattern::get(type).label.c_str());
+    }
+    // revert to pattern Black if not available
+    else {
+        pattern()->open( 0, resolution );
+        Log::Notify("Pattern '%s' is not available in this version of vimix.", Pattern::get(type).label.c_str());
+    }
 
-    // open gstreamer
-    pattern()->open( (uint) type, resolution );
+    // play gstreamer
     stream_->play(true);
 
     // will be ready after init and one frame rendered

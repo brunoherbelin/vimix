@@ -171,7 +171,7 @@ void InfoVisitor::visit (PatternSource& s)
         return;
 
     std::ostringstream oss;
-    oss << Pattern::pattern_types[s.pattern()->type()] << std::endl;
+    oss << Pattern::get(s.pattern()->type()).label << std::endl;
     if (s.pattern()) {
         oss << s.pattern()->width() << " x " << s.pattern()->height();
         oss << ", RGB";

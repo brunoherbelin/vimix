@@ -3922,8 +3922,8 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select generator"))
             {
-                for (int p = 0; p < (int) Pattern::pattern_types.size(); ++p){
-                    if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
+                for (int p = 0; p < (int) Pattern::count(); ++p){
+                    if (Pattern::get(p).available && ImGui::Selectable( Pattern::get(p).label.c_str() )) {
                         pattern_type = p;
                         update_new_source = true;
                     }
@@ -3953,7 +3953,7 @@ void Navigator::RenderNewPannel()
             {
                 glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
                 new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res),
-                                               Pattern::pattern_types[pattern_type]);
+                                               Pattern::get(pattern_type).label);
             }
         }
         // External source creator

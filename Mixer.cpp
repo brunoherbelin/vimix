@@ -313,7 +313,7 @@ Source * Mixer::createSourcePattern(uint pattern, glm::ivec2 res)
     s->setPattern(pattern, res);
 
     // propose a new name based on pattern name
-    std::string name = Pattern::pattern_types[pattern];
+    std::string name = Pattern::get(pattern).label;
     name = name.substr(0, name.find(" "));
     s->setName(name);
 

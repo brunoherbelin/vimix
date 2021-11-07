@@ -699,14 +699,14 @@ void ImGuiVisitor::visit (PatternSource& s)
     }
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##Patterns", Pattern::pattern_types[s.pattern()->type()].c_str()) )
+    if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str()) )
     {
-        for (uint p = 0; p < Pattern::pattern_types.size(); ++p){
-            if (ImGui::Selectable( Pattern::pattern_types[p].c_str() )) {
+        for (uint p = 0; p < Pattern::count(); ++p){
+            if (ImGui::Selectable( Pattern::get(p).label.c_str() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 info.reset();
                 std::ostringstream oss;
-                oss << s.name() << ": Pattern " << Pattern::pattern_types[p];
+                oss << s.name() << ": Pattern " << Pattern::get(p).label;
                 Action::manager().store(oss.str());
             }
         }
