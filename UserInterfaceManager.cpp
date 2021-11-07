@@ -1698,6 +1698,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    ImGuiToolkit::ButtonOpenUrl("User Manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
 
     ImGui::Spacing();
@@ -3797,6 +3798,7 @@ void Navigator::RenderNewPannel()
                 std::string open_filename = fileimportdialog.path();
                 // create a source with this file
                 if (open_filename.empty()) {
+                    new_source_preview_.setSource();
                     Log::Notify("No file selected.");
                 } else {
                     std::string label = BaseToolkit::transliterate( open_filename );
@@ -4460,7 +4462,7 @@ void Navigator::RenderMainPannelVimix()
             ImGui::TextDisabled( ICON_FA_REDO );
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_LOCATION_ARROW, &Settings::application.action_history_follow_view);
+        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view);
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Show in view");
     }
@@ -4813,7 +4815,7 @@ void Navigator::RenderTransitionPannel()
 
         // specific transition actions
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY_CIRCLE "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+        if ( ImGui::Button( ICON_FA_PLAY "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(false);
         }
@@ -4828,7 +4830,7 @@ void Navigator::RenderTransitionPannel()
 
         // General transition actions
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY_CIRCLE "  Play &  " ICON_FA_FILE_UPLOAD " Open ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
+        if ( ImGui::Button( ICON_FA_PLAY "  Play &  " ICON_FA_FILE_UPLOAD " Open ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(true);
         }
