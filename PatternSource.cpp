@@ -43,7 +43,7 @@ std::vector<pattern_descriptor> Pattern::patterns_ = {
     { "Clock", "clockoverlay", "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
     { "Resolution", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"XXXX x YYYY px\" halignment=center valignment=center font-desc=\"Sans, 52\" ", false, false },
     { "Frame", "videobox", "videotestsrc pattern=black ! videobox fill=white top=-10 bottom=-10 left=-10 right=-10", false, false },
-    { "Cross", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"+\" halignment=center valignment=center font-desc=\"Times, 22\" ", false, false },
+    { "Cross", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"+\" halignment=center valignment=center font-desc=\"Sans, 22\" ", false, false },
     { "Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.35", false, false },
     { "Point Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.4", false, false },
     { "Ruler", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.9", false, false },
