@@ -82,12 +82,10 @@ bool DialogToolkit::FileDialog::closed()
         // check that file dialog thread finished
         if (promises_.back().wait_for(timeout) == std::future_status::ready ) {
             // get the filename from this file dialog
-            std::string string = promises_.back().get();
-            if (!string.empty()) {
-                // selected a filename
-                path_ = string;
+            path_ = promises_.back().get();
+            if (!path_.empty()) {
                 // save path location
-                Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename(string);
+                Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename(path_);
             }
             // done with this file dialog
             promises_.pop_back();
