@@ -256,8 +256,10 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     // locker switch button : locked / unlocked icons
     locker_  = new Switch;
     lock_ = new Handles(Handles::LOCKED);
+    lock_->color.a = 0.6;
     locker_->attach(lock_);
     unlock_ = new Handles(Handles::UNLOCKED);
+    unlock_->color.a = 0.6;
     locker_->attach(unlock_);
 
     // simple image shader (with texturing) for blending
