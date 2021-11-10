@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <iostream>
 #include <cstring>
 #include <sstream>
@@ -2182,7 +2201,7 @@ void SourceController::Render()
         if (ImGui::BeginMenu(active_label_.c_str()))
         {
             // info on selection status
-            int N = Mixer::manager().session()->numPlayGroups();
+            size_t N = Mixer::manager().session()->numPlayGroups();
             bool enabled = !selection_.empty() && active_selection_ < 0;
 
             // Menu : Dynamic selection
@@ -2199,7 +2218,7 @@ void SourceController::Render()
             // Menu : list of selections
             if (N>0) {
                 ImGui::Separator();
-                for (size_t i = 0 ; i < (int) N; ++i)
+                for (size_t i = 0 ; i < N; ++i)
                 {
                     std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
                     if (ImGui::MenuItem( label.c_str() ))

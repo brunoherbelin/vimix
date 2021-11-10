@@ -28,7 +28,7 @@ class CopyCallback : public UpdateCallback
 
 public:
     CopyCallback(Node *target);
-    void update(Node *n, float dt);
+    void update(Node *n, float);
 };
 
 class MoveToCallback : public UpdateCallback
@@ -63,10 +63,10 @@ public:
 
 class BounceScaleCallback : public UpdateCallback
 {
+    bool  initialized_;
     float duration_;
     float scale_;
     float progress_;
-    bool  initialized_;
     glm::vec3 initial_scale_;
 
 public:

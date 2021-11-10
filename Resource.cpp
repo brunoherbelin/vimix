@@ -1,6 +1,21 @@
-#include "defines.h"
-#include "Resource.h"
-#include "Log.h"
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
 
 #include <fstream>
 #include <sstream>
@@ -16,6 +31,10 @@
 // CMake Ressource Compiler
 #include <cmrc/cmrc.hpp>
 CMRC_DECLARE(vmix);
+
+#include "defines.h"
+#include "Log.h"
+#include "Resource.h"
 
 
 std::map<std::string, uint> textureIndex;
@@ -236,10 +255,9 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 {
     std::string ext = path.substr(path.find_last_of(".") + 1);
-    if (ext=="dds")
+    if (ext=="dds"){
         return getTextureDDS(path, aspect_ratio);
-
-	GLuint textureID = 0;
+    }
 
     // return previously openned resource if already openned before
     if (textureIndex.count(path) > 0) {
@@ -247,6 +265,7 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 		return textureIndex[path];
     }
 
+    GLuint textureID = 0;
     float ar = 1.0;
  	int w, h, n;
     unsigned char* img = nullptr;

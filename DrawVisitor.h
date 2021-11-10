@@ -21,7 +21,7 @@ public:
 
     void visit(Scene& n) override;
     void visit(Node& n) override;
-    void visit(Primitive& n) override;
+    void visit(Primitive& ) override;
     void visit(Group& n) override;
     void visit(Switch& n) override;
 };

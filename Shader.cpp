@@ -1,9 +1,21 @@
-﻿#include "Shader.h"
-#include "Resource.h"
-#include "FrameBuffer.h"
-#include "Log.h"
-#include "Visitor.h"
-#include "RenderingManager.h"
+﻿/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
 
 #include <fstream>
 #include <sstream>
@@ -14,10 +26,18 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 
-#include "BaseToolkit.h"
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
+
+#include "Resource.h"
+#include "FrameBuffer.h"
+#include "Log.h"
+#include "Visitor.h"
+#include "BaseToolkit.h"
+#include "RenderingManager.h"
+
+#include "Shader.h"
 
 // Globals
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;

@@ -17,7 +17,7 @@ public:
     // non assignable class
     MixingGroup(MixingGroup const&) = delete;
     MixingGroup& operator=(MixingGroup const&) = delete;
-    ~MixingGroup ();
+    virtual ~MixingGroup ();
 
     // Get unique id
     inline uint64_t id () const { return id_; }

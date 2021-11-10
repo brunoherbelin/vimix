@@ -1,4 +1,27 @@
-#include "SessionVisitor.h"
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
+#include <iostream>
+#include <locale>
+
+#include <tinyxml2.h>
+using namespace tinyxml2;
 
 #include "Log.h"
 #include "defines.h"
@@ -19,11 +42,7 @@
 #include "SystemToolkit.h"
 #include "ActionManager.h"
 
-#include <iostream>
-#include <locale>
-
-#include <tinyxml2.h>
-using namespace tinyxml2;
+#include "SessionVisitor.h"
 
 
 bool SessionVisitor::saveSession(const std::string& filename, Session *session)

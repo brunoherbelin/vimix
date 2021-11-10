@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,7 +39,9 @@
 #include "Scene.h"
 
 #define DEBUG_SCENE 0
+#if DEBUG_SCENE
 static int num_nodes_ = 0;
+#endif
 
 // Node
 Node::Node() : initialized_(false), visible_(true), refcount_(0)

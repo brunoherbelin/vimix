@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <sstream>
 #include <iomanip>
 using namespace std;
@@ -229,7 +248,7 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
                 gchar *name = gst_element_get_name(e);
-                 g_print(" - %s", name);
+//                 g_print(" - %s", name);
                 std::string e_name(name);
                 g_free(name);
                 for (int i = 0; i < N; i++) {

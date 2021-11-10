@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <iostream>
 #include <sstream>
 #include <istream>
@@ -16,9 +35,10 @@
 #include "Resource.h"
 #include "ImageShader.h"
 #include "Visitor.h"
-#include "Log.h"
-#include "Mesh.h"
 #include "GlmToolkit.h"
+#include "Log.h"
+
+#include "Mesh.h"
 
 using namespace std;
 using namespace glm;
@@ -227,7 +247,6 @@ bool parsePLY(string ascii,
                 // a numerical property
                 if ( ! prop.is_list ) {
 
-                    float value;
                     switch ( prop.name[0] ) {
                     case 'x':
                         point.x = parseValue<float>(stringstream);
@@ -263,7 +282,7 @@ bool parsePLY(string ascii,
                         break;
                     default:
                         // ignore normals or other types
-                        value = parseValue<float>(stringstream);
+                        parseValue<float>(stringstream);
                         break;
                     }
                 }

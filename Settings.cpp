@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <algorithm>
 #include <iostream>
 #include <locale>
@@ -8,8 +27,8 @@ using namespace std;
 using namespace tinyxml2;
 
 #include "defines.h"
-#include "Settings.h"
 #include "SystemToolkit.h"
+#include "Settings.h"
 
 
 Settings::Application Settings::application;
@@ -39,7 +58,7 @@ void Settings::Save()
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
-        for (int i = 0; i < application.windows.size(); ++i)
+        for (int i = 0; i < (int) application.windows.size(); ++i)
         {
             const Settings::WindowConfig& w = application.windows[i];
 
@@ -578,9 +597,9 @@ void Settings::Check()
 
     XMLDocument xmlDoc;
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
-    if (XMLResultError(eResult))
+    if (XMLResultError(eResult)) {
         return;
-
+    }
 	xmlDoc.Print();
 }
 

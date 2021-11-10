@@ -18,10 +18,10 @@
  */
 class PickingVisitor: public Visitor
 {
+    bool force_;
     std::vector<glm::vec3> points_;
     glm::mat4 modelview_;
     std::vector< std::pair<Node *, glm::vec2> > nodes_;
-    bool force_;
 
 public:
 

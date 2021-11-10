@@ -25,7 +25,7 @@ public:
     /**
      * Destructor.
      */
-    ~Stream();
+    virtual ~Stream();
     /**
      * Get unique id
      */
