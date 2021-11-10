@@ -200,6 +200,11 @@ bool Rendering::init()
         g_setenv ("GST_PLUGIN_SYSTEM_PATH", plugins_path.c_str(), TRUE);
         g_setenv ("GST_PLUGIN_SCANNER", plugins_scanner.c_str(), TRUE);
     }
+    std::string frei0r_path = SystemToolkit::cwd_path() + "frei0r-1" ;
+    if ( SystemToolkit::file_exists(frei0r_path)) {
+        Log::Info("Found Frei0r plugins in %s", frei0r_path.c_str());
+        g_setenv ("FREI0R_PATH", frei0r_path.c_str(), TRUE);
+    }
     g_setenv ("GST_GL_API", "opengl3", TRUE);
     gst_init (NULL, NULL);
 

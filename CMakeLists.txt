@@ -586,9 +586,16 @@ IF(APPLE)
     install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # install locally recompiled & installed gst-plugins (because not included in brew package)
-    install(FILES "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/usr/local/lib/gstreamer-1.0/libgstde265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/usr/local/lib/gstreamer-1.0/libgstx265.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+    install(FILES   "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib"
+                    "/usr/local/lib/gstreamer-1.0/libgstde265.dylib"
+                    "/usr/local/lib/gstreamer-1.0/libgstx265.dylib"
+            DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+
+    # install frei0r plugins (dependencies of gstreamer-1.0/libgstfrei0r.dylib plugin)
+    install(FILES "/usr/local/Cellar/frei0r/1.7.0/lib/frei0r-1/lissajous0r.so"
+                  "/usr/local/Cellar/frei0r/1.7.0/lib/frei0r-1/rgbnoise.so"
+            DESTINATION "${plugin_dest_dir}/frei0r-1" COMPONENT Runtime)
+
 
     # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
 #    install(FILES "${ICU_LINK_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
