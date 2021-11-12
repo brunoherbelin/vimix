@@ -2,6 +2,7 @@
 #define ACTIONMANAGER_H
 
 #include <list>
+#include <string>
 #include <atomic>
 
 #include <tinyxml2.h>

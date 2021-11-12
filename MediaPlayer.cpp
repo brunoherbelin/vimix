@@ -17,9 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <thread>
-using namespace std;
-
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
@@ -238,7 +235,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
     return video_stream_info;
 }
 
-void MediaPlayer::open (const std::string & filename, const string &uri)
+void MediaPlayer::open (const std::string & filename, const std::string &uri)
 {
     // set path
     filename_ = BaseToolkit::transliterate( filename );
@@ -287,7 +284,7 @@ void MediaPlayer::execute_open()
     //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to command line
     //         "gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink"
-    string description = "uridecodebin name=decoder uri=" + uri_ + " ! queue max-size-time=0 ! ";
+    std::string description = "uridecodebin name=decoder uri=" + uri_ + " ! queue max-size-time=0 ! ";
     // NB: queue adds some control over the buffer, thereby limiting the frame delay. zero size means no buffering
 
 //    string description = "uridecodebin name=decoder uri=" + uri_ + " decoder. ! ";
@@ -341,7 +338,7 @@ void MediaPlayer::execute_open()
     gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);    
-    string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
+    std::string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
             ",height=" + std::to_string(media_.height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {

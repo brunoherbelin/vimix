@@ -17,10 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <thread>
-
-using namespace std;
-
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
@@ -127,7 +123,7 @@ void Stream::execute_open()
     opened_ = false;
 
     // Add custom app sink to the gstreamer pipeline
-    string description = description_;
+    std::string description = description_;
     description += " ! appsink name=sink";
 
     // parse pipeline descriptor
@@ -143,7 +139,7 @@ void Stream::execute_open()
     gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
     // GstCaps *caps = gst_static_caps_get (&frame_render_caps);
-    string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) +
+    std::string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(width_) +
             ",height=" + std::to_string(height_);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!caps || !gst_video_info_from_caps (&v_frame_video_info_, caps)) {

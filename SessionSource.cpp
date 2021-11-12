@@ -17,10 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <thread>
-#include <chrono>
 #include <algorithm>
+
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
 #include "Log.h"

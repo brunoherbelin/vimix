@@ -17,8 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <thread>
-
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
