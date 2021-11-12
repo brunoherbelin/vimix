@@ -138,6 +138,13 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
 message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm")
 
 #
+# Ableton LINK
+#
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/link)
+include(${CMAKE_CURRENT_SOURCE_DIR}/ext/link/AbletonLinkConfig.cmake)
+message(STATUS "Compiling Ableton 'Link' https://github.com/Ableton/link -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/link")
+
+#
 # GLAD
 #
 set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
@@ -254,6 +261,7 @@ include_directories(
     ${STB_INCLUDE_DIR}
     ${DIRENT_INCLUDE_DIR}
     ${OSCPACK_INCLUDE_DIR}
+    ${link_HEADERS}
 )
 
 link_directories(
@@ -328,6 +336,7 @@ set(VMIX_SRCS
     Connection.cpp
     ActionManager.cpp
     Overlay.cpp
+    Metronome.cpp
 )
 
 
@@ -509,6 +518,7 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     ${GSTREAMER_GL_LIBRARY}
     Threads::Threads
     PNG::PNG
+    Ableton::Link
     ${PLATFORM_LIBS}
 )
 

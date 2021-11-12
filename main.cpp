@@ -28,7 +28,7 @@
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
 #include "Connection.h"
-
+#include "Metronome.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -86,9 +86,15 @@ int main(int argc, char *argv[])
     Settings::Lock();
 
     ///
+    ///
     /// CONNECTION INIT
     ///
     if ( !Connection::manager().init() )
+        return 1;
+
+    /// METRONOME INIT
+    ///
+    if ( !Metronome::manager().init() )
         return 1;
 
     ///
@@ -139,6 +145,11 @@ int main(int argc, char *argv[])
     /// RENDERING TERMINATE
     ///
     Rendering::manager().terminate();
+
+    ///
+    /// METRONOME TERMINATE
+    ///
+    Metronome::manager().terminate();
 
     ///
     /// CONNECTION TERMINATE
