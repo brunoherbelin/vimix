@@ -1,19 +1,30 @@
-
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <thread>
 
+/// Ableton Link is a technology that synchronizes musical beat, tempo,
+/// and phase across multiple applications running on one or more devices.
+/// Applications on devices connected to a local network discover each other
+/// automatically and form a musical session in which each participant can
+/// perform independently: anyone can start or stop while still staying in time.
+/// Anyone can change the tempo, the others will follow.
+/// Anyone can join or leave without disrupting the session.
+///
+/// https://ableton.github.io/link/
+///
 #include <ableton/Link.hpp>
 
+#include "Settings.h"
 #include "Metronome.h"
 
 
 namespace ableton
 {
 
+  /// Inspired from Dummy audio platform example
+  /// https://github.com/Ableton/link/blob/master/examples/linkaudio/AudioPlatform_Dummy.hpp
   class Engine
   {
   public:
@@ -48,11 +59,24 @@ namespace ableton
       return sessionState.beatAtTime(now(), mQuantum);
     }
 
-    void setTempo(double tempo)
+    double phaseTime() const
+    {
+      auto sessionState = mLink.captureAppSessionState();
+      return sessionState.phaseAtTime(now(), mQuantum);
+    }
+
+    double tempo() const
+    {
+      auto sessionState = mLink.captureAppSessionState();
+      return sessionState.tempo();
+    }
+
+    double setTempo(double tempo)
     {
       auto sessionState = mLink.captureAppSessionState();
       sessionState.setTempo(tempo, now());
       mLink.commitAppSessionState(sessionState);
+      return sessionState.tempo();
     }
 
     double quantum() const
@@ -86,40 +110,11 @@ namespace ableton
   };
 
 
-  struct State
-  {
-    std::atomic<bool> running;
-    Link link;
-    Engine engine;
-    double beats, phase, tempo;
-    State()  : running(true), link(120.), engine(link), beats(0.), phase(4.), tempo(120.)
-    {
-    }
-  };
-
-  void update(State& state)
-  {
-      state.link.enable(true);
-
-      while (state.running)
-      {
-          const auto time = state.link.clock().micros();
-          auto sessionState = state.link.captureAppSessionState();
-
-          state.beats = sessionState.beatAtTime(time, state.engine.quantum());
-          state.phase = sessionState.phaseAtTime(time, state.engine.quantum());
-          state.tempo = sessionState.tempo();
-
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-
-      state.link.enable(false);
-  }
-
 } // namespace ableton
 
 
-ableton::State link_state_;
+ableton::Link link_(120.);
+ableton::Engine engine_(link_);
 
 Metronome::Metronome()
 {
@@ -128,28 +123,65 @@ Metronome::Metronome()
 
 bool Metronome::init()
 {
-    std::thread(ableton::update, std::ref(link_state_)).detach();
+    // connect
+    link_.enable(true);
 
-    return link_state_.running;
+    // enable sync
+    link_.enableStartStopSync(true);
+
+    // set parameters
+    setTempo(Settings::application.metronome.tempo);
+    setQuantum(Settings::application.metronome.quantum);
+
+    // no reason for failure?
+    return true;
 }
 
 void Metronome::terminate()
 {
-    link_state_.running = false;
+    // save current tempo
+    Settings::application.metronome.tempo = tempo();
+
+    // disconnect
+    link_.enable(false);
 }
 
 
 double Metronome::beats() const
 {
-    return link_state_.beats;
+    return engine_.beatTime();
 }
 
 double Metronome::phase() const
 {
-    return link_state_.phase;
+    return engine_.phaseTime();
+}
+
+void Metronome::setQuantum(double q)
+{
+    engine_.setQuantum(q);
+    Settings::application.metronome.quantum = engine_.quantum();
+}
+
+double Metronome::quantum() const
+{
+    return engine_.quantum();
+}
+
+void Metronome::setTempo(double t)
+{
+    // set the tempo to t
+    // OR
+    // adopt the last tempo value that have been proposed on the network
+    Settings::application.metronome.tempo = engine_.setTempo(t);
 }
 
 double Metronome::tempo() const
 {
-    return link_state_.tempo;
+    return engine_.tempo();
+}
+
+size_t Metronome::peers() const
+{
+    return link_.numPeers();
 }

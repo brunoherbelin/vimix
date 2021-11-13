@@ -1,6 +1,7 @@
 #ifndef METRONOME_H
 #define METRONOME_H
 
+#include <string>
 
 class Metronome
 {
@@ -21,7 +22,16 @@ public:
     bool init ();
     void terminate();
 
+    double beats() const;
+    double phase() const;
 
+    void setTempo(double t);
+    double tempo() const;
+
+    void setQuantum(double q);
+    double quantum() const;
+
+    size_t peers() const;
 };
 
 #endif // METRONOME_H

@@ -83,6 +83,7 @@ using namespace std;
 #include "PickingVisitor.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "Metronome.h"
 
 #include "TextEditor.h"
 TextEditor editor;
@@ -1589,14 +1590,55 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     ImGui::Combo("##mode", p_mode,
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
                  ICON_FA_HOURGLASS_HALF "  Timers\0"
-                 ICON_FA_VECTOR_SQUARE  "  Source\0");
+                 ICON_FA_VECTOR_SQUARE  "  Source\0"
+                 ICON_FA_USER_CLOCK  "  Ableton link\0");
 
     ImGui::SameLine();
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
     ImGui::Spacing();
 
-    if (*p_mode > 1) {
+    if (*p_mode > 2) {
+        // get values
+        double t = Metronome::manager().tempo();
+        double p = Metronome::manager().phase();
+        double q = Metronome::manager().quantum();
+        int n    = (int) Metronome::manager().peers();
+
+        // tempo
+        char buf[32];
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        ImGui::Text("Tempo  %.1f BPM   ", t);
+
+        // network peers indicator
+        ImGui::SameLine();
+        if ( n < 1) {
+            ImGui::TextDisabled( ICON_FA_NETWORK_WIRED );
+            if (ImGui::IsItemHovered()){
+                sprintf(buf, "No peer linked");
+                ImGuiToolkit::ToolTip(buf);
+            }
+        }
+        else {
+            ImGui::Text( ICON_FA_NETWORK_WIRED );
+            if (ImGui::IsItemHovered()){
+                sprintf(buf, "%d peer%c linked", n, n < 2 ? ' ' : 's');
+                ImGuiToolkit::ToolTip(buf);
+            }
+        }
+
+        // compute and display duration of a phase
+        double duration = 60.0 / t * q;
+        guint64 time_phase = GST_SECOND * duration ;
+        ImGui::Text("Phase  %s", GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::PopFont();
+
+        // metronome
+        sprintf(buf, "%d/%d", (int)(p)+1, (int)(q) );
+        ImGui::ProgressBar(ceil(p)/ceil(q), ImVec2(250.f,0.f), buf);
+
+    }
+    else if (*p_mode > 1) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         Source *s = Mixer::manager().currentSource();
         if (s) {
@@ -4693,7 +4735,9 @@ void Navigator::RenderMainPannelSettings()
         ImGui::PopFont();
         ImGui::SetCursorPosY(width_);
 
+        //
         // Appearance
+        //
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
@@ -4704,11 +4748,47 @@ void Navigator::RenderMainPannelSettings()
         if (b || o || g)
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
+        //
         // Options
+        //
         ImGuiToolkit::Spacing();
         ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
+
+        //
+        // Metronome
+        //
+        ImGuiToolkit::Spacing();
+        ImGui::Text("Ableton Link");
+
+        ImGuiToolkit::HelpMarker("Ableton link enables time synchronization\n  "
+                                 ICON_FA_ANGLE_RIGHT " Tempo is the number of beats per minute (or set by peers).\n  "
+                                 ICON_FA_ANGLE_RIGHT " Quantum is the number of beats in a phase.");
+        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        int t = (int) Metronome::manager().tempo();
+        // if no other peers, user can set a tempo
+        if (Metronome::manager().peers() < 1) {
+            if ( ImGui::SliderInt("Tempo", &t, 20, 240, "%d BPM") )
+                Metronome::manager().setTempo((double) t);
+        }
+        // if there are other peers, tempo cannot be changed
+        else {
+            // show static info (same size than slider)
+            static char dummy_str[64];
+            sprintf(dummy_str, "%d BPM", t);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::InputText("Tempo", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+        }
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        int q = (int) Metronome::manager().quantum();
+        if ( ImGui::SliderInt("Quantum", &q, 2, 100) )
+            Metronome::manager().setQuantum((double) q);
 
 #ifndef NDEBUG
         ImGui::Text("Expert");
@@ -4717,7 +4797,9 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
+        //
         // Recording preferences
+        //
         ImGuiToolkit::Spacing();
         ImGui::Text("Recording");
 
@@ -4754,7 +4836,9 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Clock\0Framerate\0");
 
-        // system preferences
+        //
+        // System preferences
+        //
         ImGuiToolkit::Spacing();
         ImGui::Text("System");
         ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);

@@ -249,6 +249,12 @@ void Settings::Save()
         pRoot->InsertEndChild(recent);
     }
 
+    // Metronome
+    XMLElement *metroConfNode = xmlDoc.NewElement( "Metronome" );
+    metroConfNode->SetAttribute("tempo", application.metronome.tempo);
+    metroConfNode->SetAttribute("quantum", application.metronome.quantum);
+    pRoot->InsertEndChild(metroConfNode);
+
     // First save : create filename
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
@@ -516,6 +522,13 @@ void Settings::Load()
             }
 
         }
+    }
+
+    // bloc metronome
+    XMLElement * metroconfnode = pRoot->FirstChildElement("Metronome");
+    if (metroconfnode != nullptr) {
+        metroconfnode->QueryDoubleAttribute("tempo", &application.metronome.tempo);
+        metroconfnode->QueryDoubleAttribute("quantum", &application.metronome.quantum);
     }
 
 }

@@ -168,6 +168,16 @@ struct SourceConfig
     }
 };
 
+struct MetronomeConfig
+{
+    double tempo;
+    double quantum;
+
+    MetronomeConfig() {
+        tempo = 120.;
+        quantum = 4.;
+    }
+};
 
 struct Application
 {
@@ -223,6 +233,9 @@ struct Application
     History recentFolders;
     History recentImport;
     std::map< std::string, std::string > dialogRecentFolder;
+
+    // Metronome
+    MetronomeConfig metronome;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
