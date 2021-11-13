@@ -1,7 +1,7 @@
 #ifndef METRONOME_H
 #define METRONOME_H
 
-#include <string>
+#include <chrono>
 
 class Metronome
 {
@@ -20,18 +20,20 @@ public:
     }
 
     bool init ();
-    void terminate();
+    void terminate ();
 
-    double beats() const;
-    double phase() const;
+    double beats () const;
+    double phase () const;
 
-    void setTempo(double t);
-    double tempo() const;
+    void setTempo (double t);
+    double tempo () const;
 
-    void setQuantum(double q);
-    double quantum() const;
+    void setQuantum (double q);
+    double quantum () const;
 
-    size_t peers() const;
+    std::chrono::microseconds timeToBeat();
+
+    size_t peers () const;
 };
 
 #endif // METRONOME_H

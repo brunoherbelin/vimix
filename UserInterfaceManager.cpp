@@ -1591,7 +1591,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
                  ICON_FA_HOURGLASS_HALF "  Timers\0"
                  ICON_FA_VECTOR_SQUARE  "  Source\0"
-                 ICON_FA_USER_CLOCK  "  Ableton link\0");
+                 ICON_FA_USER_CLOCK  " Metronome\0");
 
     ImGui::SameLine();
     if (ImGuiToolkit::IconButton(5,8))
@@ -1603,13 +1603,13 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         double t = Metronome::manager().tempo();
         double p = Metronome::manager().phase();
         double q = Metronome::manager().quantum();
-        int n    = (int) Metronome::manager().peers();
+        uint n   = (int) Metronome::manager().peers();
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
 
         // tempo
         char buf[32];
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         ImGui::Text("Tempo  %.1f BPM   ", t);
-
         // network peers indicator
         ImGui::SameLine();
         if ( n < 1) {
@@ -1626,17 +1626,14 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 ImGuiToolkit::ToolTip(buf);
             }
         }
-
         // compute and display duration of a phase
-        double duration = 60.0 / t * q;
-        guint64 time_phase = GST_SECOND * duration ;
+        guint64 time_phase = GST_SECOND * (60.0 * q / t) ;
         ImGui::Text("Phase  %s", GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::PopFont();
-
         // metronome
         sprintf(buf, "%d/%d", (int)(p)+1, (int)(q) );
         ImGui::ProgressBar(ceil(p)/ceil(q), ImVec2(250.f,0.f), buf);
 
+        ImGui::PopFont();
     }
     else if (*p_mode > 1) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
@@ -4760,15 +4757,15 @@ void Navigator::RenderMainPannelSettings()
         // Metronome
         //
         ImGuiToolkit::Spacing();
-        ImGui::Text("Ableton Link");
+        ImGui::Text("Ableton link");
 
-        ImGuiToolkit::HelpMarker("Ableton link enables time synchronization\n  "
+        ImGuiToolkit::HelpMarker("Time synchronization between computers with Ableton link\n  "
                                  ICON_FA_ANGLE_RIGHT " Tempo is the number of beats per minute (or set by peers).\n  "
                                  ICON_FA_ANGLE_RIGHT " Quantum is the number of beats in a phase.");
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        int t = (int) Metronome::manager().tempo();
+        int t = (int) ceil(Metronome::manager().tempo());
         // if no other peers, user can set a tempo
         if (Metronome::manager().peers() < 1) {
             if ( ImGui::SliderInt("Tempo", &t, 20, 240, "%d BPM") )
@@ -4786,9 +4783,11 @@ void Navigator::RenderMainPannelSettings()
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        int q = (int) Metronome::manager().quantum();
+        int q = (int) ceil(Metronome::manager().quantum());
         if ( ImGui::SliderInt("Quantum", &q, 2, 100) )
             Metronome::manager().setQuantum((double) q);
+
+//        ImGuiToolkit::ButtonSwitch( ICON_FA_USER_CLOCK "  Start/stop sync", &Settings::application.metronome.start_stop_sync);
 
 #ifndef NDEBUG
         ImGui::Text("Expert");

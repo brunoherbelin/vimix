@@ -170,12 +170,16 @@ struct SourceConfig
 
 struct MetronomeConfig
 {
+    bool start_stop_sync;
     double tempo;
     double quantum;
+    bool sync_tempo;
 
     MetronomeConfig() {
+        start_stop_sync = true;
         tempo = 120.;
         quantum = 4.;
+        sync_tempo = true;
     }
 };
 

@@ -1,5 +1,4 @@
 #include <atomic>
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <thread>
@@ -59,6 +58,13 @@ namespace ableton
       return sessionState.beatAtTime(now(), mQuantum);
     }
 
+    std::chrono::microseconds timeNextBeat() const
+    {
+        auto sessionState = mLink.captureAppSessionState();
+        double beat = ceil(sessionState.beatAtTime(now(), mQuantum));
+        return sessionState.timeAtBeat(beat, mQuantum);
+    }
+
     double phaseTime() const
     {
       auto sessionState = mLink.captureAppSessionState();
@@ -99,12 +105,12 @@ namespace ableton
       mLink.enableStartStopSync(enabled);
     }
 
-  private:
     std::chrono::microseconds now() const
     {
       return mLink.clock().micros();
     }
 
+  private:
     Link& mLink;
     double mQuantum;
   };
@@ -146,7 +152,6 @@ void Metronome::terminate()
     link_.enable(false);
 }
 
-
 double Metronome::beats() const
 {
     return engine_.beatTime();
@@ -179,6 +184,11 @@ void Metronome::setTempo(double t)
 double Metronome::tempo() const
 {
     return engine_.tempo();
+}
+
+std::chrono::microseconds Metronome::timeToBeat()
+{
+    return engine_.timeNextBeat() - engine_.now();
 }
 
 size_t Metronome::peers() const
