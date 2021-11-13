@@ -27,12 +27,6 @@
 #  include <shellapi.h>
 #endif
 
-#include "imgui.h"
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
-#endif
-#include "imgui_internal.h"
-
 #define MILISECOND 1000000UL
 #define SECOND 1000000000UL
 #define MINUTE 60000000000UL

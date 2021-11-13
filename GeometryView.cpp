@@ -27,7 +27,6 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-#include "imgui.h"
 #include "ImGuiToolkit.h"
 
 #include "Mixer.h"

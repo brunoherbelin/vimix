@@ -27,7 +27,6 @@
 #include <sstream>
 #include <iomanip>
 
-#include "imgui.h"
 #include "ImGuiToolkit.h"
 
 #include "defines.h"

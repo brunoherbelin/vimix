@@ -26,7 +26,6 @@
 #include <sstream>
 #include <regex>
 
-#include "imgui.h"
 #include "ImGuiToolkit.h"
 
 #include "defines.h"
