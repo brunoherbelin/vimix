@@ -217,9 +217,8 @@ void LayerView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec3 border_left(scene.root()->scale_.x * -2.f, scene.root()->scale_.y * -1.f, 0.f);
-    glm::vec3 border_right(scene.root()->scale_.x * 8.f, scene.root()->scale_.y * 8.f, 0.f);
-    scene.root()->translation_ = glm::clamp(scene.root()->translation_, border_left, border_right);
+    glm::vec3 border(2.f, 1.f, 0.f);
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border * 2.f);
 }
 
 int  LayerView::size ()

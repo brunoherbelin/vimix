@@ -250,7 +250,8 @@ void MixingView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec3 border(scene.root()->scale_.x * 1.f, scene.root()->scale_.y * 1.f, 0.f);
+    glm::vec2 res = resolution();
+    glm::vec3 border(2.3f * res.x/res.y, 2.3f, 0.f);
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 

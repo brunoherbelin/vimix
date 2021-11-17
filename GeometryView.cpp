@@ -186,7 +186,7 @@ void GeometryView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec3 border(scene.root()->scale_.x * 1.5, scene.root()->scale_.y * 1.5, 0.f);
+    glm::vec3 border(2.f * Mixer::manager().session()->frame()->aspectRatio(), 2.f, 0.f);
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 

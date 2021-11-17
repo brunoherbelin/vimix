@@ -287,3 +287,9 @@ void View::lock(Source *s, bool on)
         Action::manager().store(s->name() + std::string(": unlock."));
 }
 
+
+glm::vec2 View::resolution() const
+{
+    const ImGuiIO& io = ImGui::GetIO();
+    return glm::vec2(io.DisplaySize.x, io.DisplaySize.y);
+}

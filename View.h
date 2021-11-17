@@ -88,6 +88,9 @@ public:
     // left-right [-1 1] and up-down [1 -1] action from arrow keys
     virtual void arrow (glm::vec2) {}
 
+    // resolution on screen
+    glm::vec2 resolution() const;
+
     // accessible scene
     Scene scene;
 
