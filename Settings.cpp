@@ -34,7 +34,7 @@ using namespace tinyxml2;
 Settings::Application Settings::application;
 string settingsFilename = "";
 
-void Settings::Save()
+void Settings::Save(uint64_t runtime)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -49,6 +49,9 @@ void Settings::Save()
     pRoot->SetAttribute("minor", VIMIX_VERSION_MINOR);
     xmlDoc.InsertEndChild(pRoot);
 #endif
+    // runtime
+    if (runtime>0)
+        pRoot->SetAttribute("runtime", runtime + application.total_runtime);
 
     string comment = "Settings for " + application.name;
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
@@ -93,7 +96,8 @@ void Settings::Save()
     XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
     widgetsNode->SetAttribute("preview", application.widget.preview);
     widgetsNode->SetAttribute("preview_view", application.widget.preview_view);
-    widgetsNode->SetAttribute("history", application.widget.history);
+    widgetsNode->SetAttribute("timer", application.widget.timer);
+    widgetsNode->SetAttribute("timer_view", application.widget.timer_view);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
     widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
     widgetsNode->SetAttribute("timeline_editmode", application.widget.timeline_editmode);
@@ -250,10 +254,14 @@ void Settings::Save()
     }
 
     // Metronome
-    XMLElement *metroConfNode = xmlDoc.NewElement( "Metronome" );
-    metroConfNode->SetAttribute("tempo", application.metronome.tempo);
-    metroConfNode->SetAttribute("quantum", application.metronome.quantum);
-    pRoot->InsertEndChild(metroConfNode);
+    XMLElement *timerConfNode = xmlDoc.NewElement( "Timer" );
+    timerConfNode->SetAttribute("mode", application.timer.mode);
+    timerConfNode->SetAttribute("link_enabled", application.timer.link_enabled);
+    timerConfNode->SetAttribute("link_tempo", application.timer.link_tempo);
+    timerConfNode->SetAttribute("link_quantum", application.timer.link_quantum);
+    timerConfNode->SetAttribute("link_start_stop_sync", application.timer.link_start_stop_sync);
+    timerConfNode->SetAttribute("stopwatch_duration", application.timer.stopwatch_duration);
+    pRoot->InsertEndChild(timerConfNode);
 
     // First save : create filename
     if (settingsFilename.empty())
@@ -296,6 +304,8 @@ void Settings::Load()
     if (version_major != VIMIX_VERSION_MAJOR || version_minor != VIMIX_VERSION_MINOR)
         return;
 #endif
+    // runtime
+    pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
     XMLElement * applicationNode = pRoot->FirstChildElement("Application");
     if (applicationNode != nullptr) {
@@ -314,7 +324,8 @@ void Settings::Load()
     if (widgetsNode != nullptr) {
         widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
         widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
-        widgetsNode->QueryBoolAttribute("history", &application.widget.history);
+        widgetsNode->QueryBoolAttribute("timer", &application.widget.timer);
+        widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
         widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
         widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.timeline_editmode);
@@ -525,10 +536,14 @@ void Settings::Load()
     }
 
     // bloc metronome
-    XMLElement * metroconfnode = pRoot->FirstChildElement("Metronome");
-    if (metroconfnode != nullptr) {
-        metroconfnode->QueryDoubleAttribute("tempo", &application.metronome.tempo);
-        metroconfnode->QueryDoubleAttribute("quantum", &application.metronome.quantum);
+    XMLElement * timerconfnode = pRoot->FirstChildElement("Timer");
+    if (timerconfnode != nullptr) {
+        timerconfnode->QueryUnsigned64Attribute("mode", &application.timer.mode);
+        timerconfnode->QueryBoolAttribute("link_enabled", &application.timer.link_enabled);
+        timerconfnode->QueryDoubleAttribute("link_tempo", &application.timer.link_tempo);
+        timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
+        timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
+        timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
     }
 
 }
@@ -606,8 +621,6 @@ void Settings::Unlock()
 
 void Settings::Check()
 {
-	Settings::Save();
-
     XMLDocument xmlDoc;
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
     if (XMLResultError(eResult)) {

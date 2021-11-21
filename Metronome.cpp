@@ -17,6 +17,7 @@
 
 #include "Settings.h"
 #include "Metronome.h"
+#include "Log.h"
 
 
 namespace ableton
@@ -129,15 +130,11 @@ Metronome::Metronome()
 
 bool Metronome::init()
 {
-    // connect
-    link_.enable(true);
-
-    // enable sync
-    link_.enableStartStopSync(true);
-
     // set parameters
-    setTempo(Settings::application.metronome.tempo);
-    setQuantum(Settings::application.metronome.quantum);
+    setEnabled(Settings::application.timer.link_enabled);
+    setTempo(Settings::application.timer.link_tempo);
+    setQuantum(Settings::application.timer.link_quantum);
+    setStartStopSync(Settings::application.timer.link_start_stop_sync);
 
     // no reason for failure?
     return true;
@@ -146,10 +143,22 @@ bool Metronome::init()
 void Metronome::terminate()
 {
     // save current tempo
-    Settings::application.metronome.tempo = tempo();
+    Settings::application.timer.link_tempo = tempo();
 
     // disconnect
     link_.enable(false);
+}
+
+void Metronome::setEnabled (bool on)
+{
+    link_.enable(on);
+    Settings::application.timer.link_enabled = link_.isEnabled();
+    Log::Info("Metronome Ableton Link %s", Settings::application.timer.link_enabled ? "Enabled" : "Disabled");
+}
+
+bool Metronome::enabled () const
+{
+    return link_.isEnabled();
 }
 
 double Metronome::beats() const
@@ -165,7 +174,7 @@ double Metronome::phase() const
 void Metronome::setQuantum(double q)
 {
     engine_.setQuantum(q);
-    Settings::application.metronome.quantum = engine_.quantum();
+    Settings::application.timer.link_quantum = engine_.quantum();
 }
 
 double Metronome::quantum() const
@@ -178,7 +187,7 @@ void Metronome::setTempo(double t)
     // set the tempo to t
     // OR
     // adopt the last tempo value that have been proposed on the network
-    Settings::application.metronome.tempo = engine_.setTempo(t);
+    Settings::application.timer.link_tempo = engine_.setTempo(t);
 }
 
 double Metronome::tempo() const
@@ -186,9 +195,38 @@ double Metronome::tempo() const
     return engine_.tempo();
 }
 
+
+void Metronome::setStartStopSync (bool on)
+{
+    engine_.setStartStopSyncEnabled(on);
+    Settings::application.timer.link_start_stop_sync = engine_.isStartStopSyncEnabled();
+    Log::Info("Metronome Ableton Link start & stop sync %s", Settings::application.timer.link_start_stop_sync ? "Enabled" : "Disabled");
+}
+
+bool Metronome::startStopSync () const
+{
+    return engine_.isStartStopSyncEnabled();
+}
+
+void Metronome::restart()
+{
+    engine_.startPlaying();
+}
+
 std::chrono::microseconds Metronome::timeToBeat()
 {
     return engine_.timeNextBeat() - engine_.now();
+}
+
+void delay(std::function<void()> f, std::chrono::microseconds us)
+{
+    std::this_thread::sleep_for(us);
+    f();
+}
+
+void Metronome::executeAtBeat( std::function<void()> f )
+{
+    std::thread( delay, f, timeToBeat() ).detach();
 }
 
 size_t Metronome::peers() const

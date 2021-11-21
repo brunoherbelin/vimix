@@ -189,6 +189,10 @@ public:
      * */
     void rewind(bool force = false);
     /**
+     * pending
+     * */
+    bool pending() const { return pending_; }
+    /**
      * Get position time
      * */
     GstClockTime position();
@@ -296,11 +300,14 @@ private:
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> opened_;
     std::atomic<bool> failed_;
+    bool force_update_;
+    bool pending_;
     bool seeking_;
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
     std::string decoder_name_;
+    bool metro_linked_;
 
     // fps counter
     struct TimeCounter {
@@ -348,8 +355,9 @@ private:
 
     // gst pipeline control
     void execute_open();
+    void execute_play_command(bool on);
     void execute_loop_command();
-    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE);
+    void execute_seek_command(GstClockTime target = GST_CLOCK_TIME_NONE, bool force = false);
 
     // gst frame filling
     void init_texture(guint index);

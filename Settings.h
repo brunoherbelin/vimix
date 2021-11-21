@@ -25,10 +25,11 @@ struct WidgetsConfig
     int  preview_view;
     bool media_player;
     int  media_player_view;
+    bool timer;
+    int  timer_view;
     bool timeline_editmode;
     bool shader_editor;
     bool toolbox;
-    bool history;
     bool help;
 
     WidgetsConfig() {
@@ -38,13 +39,14 @@ struct WidgetsConfig
         logs = false;
         preview = false;
         preview_view = -1;
-        history = false;
         media_player = false;
         media_player_view = -1;
         timeline_editmode = false;
         shader_editor = false;
         toolbox = false;
         help = false;
+        timer = false;
+        timer_view = -1;
     }
 };
 
@@ -168,18 +170,22 @@ struct SourceConfig
     }
 };
 
-struct MetronomeConfig
+struct TimerConfig
 {
-    bool start_stop_sync;
-    double tempo;
-    double quantum;
-    bool sync_tempo;
+    uint64_t mode;
+    bool link_enabled;
+    double link_tempo;
+    double link_quantum;
+    bool link_start_stop_sync;
+    uint64_t stopwatch_duration;
 
-    MetronomeConfig() {
-        start_stop_sync = true;
-        tempo = 120.;
-        quantum = 4.;
-        sync_tempo = true;
+    TimerConfig() {
+        mode = 0;
+        link_enabled = true;
+        link_tempo = 120.;
+        link_quantum = 4.;
+        link_start_stop_sync = true;
+        stopwatch_duration = 60;
     }
 };
 
@@ -192,6 +198,7 @@ struct Application
     // Verification
     std::string name;
     std::string executable;
+    uint64_t total_runtime;
 
     // Global settings Application interface
     float scale;
@@ -238,8 +245,8 @@ struct Application
     History recentImport;
     std::map< std::string, std::string > dialogRecentFolder;
 
-    // Metronome
-    MetronomeConfig metronome;
+    // Metronome & stopwatch
+    TimerConfig timer;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
@@ -268,7 +275,7 @@ struct Application
 extern Application application;
 
 // Save and Load store settings in XML file
-void Save();
+void Save(uint64_t runtime = 0);
 void Load();
 void Lock();
 void Unlock();

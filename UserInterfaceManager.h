@@ -131,6 +131,7 @@ class SourceController
     float buttons_height_;
 
     bool play_toggle_request_, replay_request_;
+    bool pending_;
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
@@ -185,6 +186,7 @@ class UserInterface
     SourceController sourcecontrol;
     HelperToolbox sessiontoolbox;
 
+    uint64_t start_time;
     bool ctrl_modifier_active;
     bool alt_modifier_active;
     bool shift_modifier_active;
@@ -230,6 +232,8 @@ public:
     void Render();
     // Post-loop termination
     void Terminate();
+    // Runtime
+    uint64_t Runtime() const;
 
     // status querries
     inline bool ctrlModifier() const { return ctrl_modifier_active; }
@@ -255,7 +259,7 @@ protected:
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
     void RenderPreview();
-    void RenderHistory();
+    void RenderTimer();
     void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);
     void RenderAbout(bool* p_open);

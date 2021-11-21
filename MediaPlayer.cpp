@@ -28,6 +28,7 @@
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
 #include "RenderingManager.h"
+#include "Metronome.h"
 
 #include "MediaPlayer.h"
 
@@ -49,6 +50,9 @@ MediaPlayer::MediaPlayer()
     desired_state_ = GST_STATE_PAUSED;
 
     failed_ = false;
+    pending_ = false;
+    metro_linked_ = false;
+    force_update_ = false;
     seeking_ = false;
     rewind_on_disable_ = false;
     force_software_decoding_ = false;
@@ -597,13 +601,9 @@ void MediaPlayer::setSoftwareDecodingForced(bool on)
         reopen();
 }
 
-void MediaPlayer::play(bool on)
+void MediaPlayer::execute_play_command(bool on)
 {
-    // ignore if disabled, and cannot play an image
-    if (!enabled_ || media_.isimage)
-        return;
-
-    // request state 
+    // request state
     GstState requested_state = on ? GST_STATE_PLAYING : GST_STATE_PAUSED;
 
     // ignore if requesting twice same state
@@ -619,9 +619,10 @@ void MediaPlayer::play(bool on)
 
     // requesting to play, but stopped at end of stream : rewind first !
     if ( desired_state_ == GST_STATE_PLAYING) {
-        if ( ( rate_ < 0.0 && position_ <= timeline_.next(0)  )
-             || ( rate_ > 0.0 && position_ >= timeline_.previous(timeline_.last()) ) )
-            rewind();
+        if (rate_ > 0.0 && position_ >= timeline_.previous(timeline_.last()))
+            execute_seek_command(timeline_.next(0));
+        else if ( rate_ < 0.0 && position_ <= timeline_.next(0)  )
+            execute_seek_command(timeline_.previous(timeline_.last()));
     }
 
     // all ready, apply state change immediately
@@ -629,14 +630,32 @@ void MediaPlayer::play(bool on)
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Failed to play", std::to_string(id_).c_str());
         failed_ = true;
-    }    
+    }
 #ifdef MEDIA_PLAYER_DEBUG
     else if (on)
         Log::Info("MediaPlayer %s Start", std::to_string(id_).c_str());
     else
         Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
+}
 
+void MediaPlayer::play(bool on)
+{
+    // ignore if disabled, and cannot play an image
+    if (!enabled_ || media_.isimage || pending_)
+        return;
+
+    // Metronome
+    if (metro_linked_) {
+        // busy with this play()
+        pending_ = true;
+        // Execute: sync to Metronome if active
+        Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, bool o) {
+                                        p->execute_play_command(o); p->pending_=false; }, this, on) );
+    }
+    else
+        // execute immediately
+        execute_play_command( on );
 }
 
 bool MediaPlayer::isPlaying(bool testpipeline) const
@@ -666,44 +685,60 @@ void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
     loop_ = mode;
 }
 
+//void
+
 void MediaPlayer::rewind(bool force)
 {
-    if (!enabled_ || !media_.seekable)
+    if (!enabled_ || !media_.seekable || pending_)
         return;
 
-    // playing forward, loop to begin
-    if (rate_ > 0.0) {
-        // begin is the end of a gab which includes the first PTS (if exists)
-        // normal case, begin is zero
-        execute_seek_command( timeline_.next(0) );
-    }
+    // playing forward, loop to begin;
+    //          begin is the end of a gab which includes the first PTS (if exists)
+    //          normal case, begin is zero
     // playing backward, loop to endTimeInterval gap;
-    else {
-        // end is the start of a gab which includes the last PTS (if exists)
-        // normal case, end is last frame
-        execute_seek_command( timeline_.previous(timeline_.last()) );
-    }
+    //          end is the start of a gab which includes the last PTS (if exists)
+    //          normal case, end is last frame
+    GstClockTime target = (rate_ > 0.0) ? timeline_.next(0) : timeline_.previous(timeline_.last());
 
-    if (force) {
-        GstState state;
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-        update();
+    // Metronome
+    if (metro_linked_) {
+        // busy with this play()
+        pending_ = true;
+        // Execute: sync to Metronome if active
+        Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, GstClockTime t, bool f) {
+                                            p->execute_seek_command( t, f ); p->pending_=false; }, this, target, force) );
     }
+    else
+        // execute immediately
+        execute_seek_command( target, force );
 }
 
 
 void MediaPlayer::step()
 {
     // useful only when Paused
-    if (!enabled_ || isPlaying())
+    if (!enabled_ || isPlaying() || pending_)
         return;
 
     if ( ( rate_ < 0.0 && position_ <= timeline_.next(0)  )
          || ( rate_ > 0.0 && position_ >= timeline_.previous(timeline_.last()) ) )
         rewind();
+    else {
+        // step event
+        GstEvent *stepevent = gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE);
 
-    // step 
-    gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE));
+        // Metronome
+        if (metro_linked_) {
+            // busy with this play()
+            pending_ = true;
+            // Execute: sync to Metronome if active
+            Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, GstEvent *e) {
+                                                gst_element_send_event(p->pipeline_, e); p->pending_=false; }, this, stepevent) );
+        }
+        else
+            // execute immediately
+            gst_element_send_event (pipeline_, stepevent);
+    }
 }
 
 bool MediaPlayer::go_to(GstClockTime pos)
@@ -893,7 +928,7 @@ void MediaPlayer::update()
     }
 
     // prevent unnecessary updates: disabled or already filled image
-    if (!enabled_ || (media_.isimage && textureindex_>0 ) )
+    if ( (!enabled_ && !force_update_) || (media_.isimage && textureindex_>0 ) )
         return;
 
     // local variables before trying to update
@@ -904,13 +939,6 @@ void MediaPlayer::update()
     index_lock_.lock();
     // get the last frame filled from fill_frame()
     read_index = last_index_;
-//    // Do NOT miss and jump directly (after seek) to a pre-roll
-//    for (guint i = 0; i < N_VFRAME; ++i) {
-//        if (frame_[i].status == PREROLL) {
-//            read_index = i;
-//            break;
-//        }
-//    }
     // unlock access to index change
     index_lock_.unlock();
 
@@ -988,6 +1016,7 @@ void MediaPlayer::update()
         execute_loop_command();
     }
 
+    force_update_ = false;
 }
 
 void MediaPlayer::execute_loop_command()
@@ -1004,7 +1033,7 @@ void MediaPlayer::execute_loop_command()
     }
 }
 
-void MediaPlayer::execute_seek_command(GstClockTime target)
+void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 {
     if ( pipeline_ == nullptr || !media_.seekable )
         return;
@@ -1050,6 +1079,13 @@ void MediaPlayer::execute_seek_command(GstClockTime target)
 #ifdef MEDIA_PLAYER_DEBUG
         Log::Info("MediaPlayer %s Seek %ld %.1f", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
+    }
+
+    // Force update
+    if (force) {
+        GstState state;
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        force_update_ = true;
     }
 
 }

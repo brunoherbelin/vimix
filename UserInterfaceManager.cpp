@@ -109,9 +109,22 @@ FrameGrabber *delayTrigger(FrameGrabber *g, std::chrono::milliseconds delay) {
     return g;
 }
 
+// Helper functions for imgui window aspect-ratio constraints
+struct CustomConstraints
+{
+    static void AspectRatio(ImGuiSizeCallbackData* data) {
+        float *ar = (float*) data->UserData;
+        data->DesiredSize.y = (data->CurrentSize.x / (*ar)) + 35.f;
+    }
+    static void Square(ImGuiSizeCallbackData* data) {
+        data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y);
+    }
+
+};
 
 UserInterface::UserInterface()
 {
+    start_time = gst_util_get_timestamp ();
     ctrl_modifier_active = false;
     alt_modifier_active = false;
     shift_modifier_active = false;
@@ -204,6 +217,11 @@ bool UserInterface::Init()
     return true;
 }
 
+uint64_t UserInterface::Runtime() const
+{
+    return gst_util_get_timestamp () - start_time;
+}
+
 void UserInterface::handleKeyboard()
 {
     const ImGuiIO& io = ImGui::GetIO();
@@ -250,11 +268,15 @@ void UserInterface::handleKeyboard()
             Settings::application.widget.logs = !Settings::application.widget.logs;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_T )) {
+            // Timers
+            Settings::application.widget.timer = !Settings::application.widget.timer;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_G )) {
             // Developer toolbox
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
-            // Session toolbox
+            // Helper
             Settings::application.widget.help = !Settings::application.widget.help;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_E )) {
@@ -374,11 +396,11 @@ void UserInterface::handleKeyboard()
             // 3. hide windows
             else if (Settings::application.widget.preview ||
                      Settings::application.widget.media_player ||
-                     Settings::application.widget.history ||
+                     Settings::application.widget.timer ||
                      Settings::application.widget.logs)  {
                 Settings::application.widget.preview = false;
                 Settings::application.widget.media_player = false;
-                Settings::application.widget.history = false;
+                Settings::application.widget.timer = false;
                 Settings::application.widget.logs = false;
             }
             // 4. cancel selection
@@ -771,8 +793,9 @@ void UserInterface::Render()
         if (Settings::application.widget.preview && ( Settings::application.widget.preview_view < 0 ||
             Settings::application.widget.preview_view == Settings::application.current_view ))
             RenderPreview();
-        if (Settings::application.widget.history)
-            RenderHistory();
+        if (Settings::application.widget.timer && ( Settings::application.widget.timer_view < 0 ||
+            Settings::application.widget.timer_view == Settings::application.current_view ))
+            RenderTimer();
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
         if (Settings::application.widget.logs)
@@ -944,62 +967,263 @@ void UserInterface::handleScreenshot()
     }
 }
 
-void UserInterface::RenderHistory()
-{
-    float history_height = 5.f * ImGui::GetFrameHeightWithSpacing();
-    ImVec2 MinWindowSize = ImVec2(250.f, history_height);
 
-    ImGui::SetNextWindowPos(ImVec2(1180, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(MinWindowSize, ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_HISTORY, &Settings::application.widget.history, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+#define MAX_SEGMENTS 64
+
+void UserInterface::RenderTimer()
+{
+    // timer modes : 0 Metronome, 1 Stopwatch
+    static std::array< std::string, 2 > timer_menu = { " Metronome ", " Stopwatch " };
+
+    // constraint position
+    static ImVec2 timer_window_pos = ImVec2(1180, 20);
+    static ImVec2 timer_window_size = ImVec2(400, 400);
+    SetNextWindowVisible(timer_window_pos, timer_window_size);
+
+    // constraint square resizing
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(600, 600), CustomConstraints::Square);
+
+    if ( !ImGui::Begin(IMGUI_TITLE_TIMER, &Settings::application.widget.timer, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
         ImGui::End();
         return;
     }
 
+    // current window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    timer_window_pos = window->Pos;
+    timer_window_size = window->Size;
+
     // menu (no title bar)
-    bool tmp = false;
     if (ImGui::BeginMenuBar())
     {
+        // Close and widget menu
         if (ImGuiToolkit::IconButton(4,16))
-            Settings::application.widget.history = false;
-        if (ImGui::BeginMenu(IMGUI_TITLE_HISTORY))
+            Settings::application.widget.timer = false;
+        if (ImGui::BeginMenu(IMGUI_TITLE_TIMER))
         {
-            if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
-                Action::manager().undo();
-            if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
-                Action::manager().redo();
+            // Enable/Disable Ableton Link
+            if ( ImGui::MenuItem( ICON_FA_USER_CLOCK "  Ableton Link", nullptr, &Settings::application.timer.link_enabled) ) {
+                Metronome::manager().setEnabled(Settings::application.timer.link_enabled);
+            }
 
-            ImGui::MenuItem( ICON_FA_DIRECTIONS " Follow view", nullptr, &Settings::application.action_history_follow_view);
-
+            // output manager menu
+            ImGui::Separator();
+            bool pinned = Settings::application.widget.timer_view == Settings::application.current_view;
+            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
+                if (pinned)
+                    Settings::application.widget.timer_view = Settings::application.current_view;
+                else
+                    Settings::application.widget.timer_view = -1;
+            }
             if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
-                Settings::application.widget.history = false;
+                Settings::application.widget.timer = false;
 
             ImGui::EndMenu();
         }
-        if ( ImGui::Selectable(ICON_FA_UNDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0)))
-            Action::manager().undo();
-        if ( ImGui::Selectable(ICON_FA_REDO, &tmp, ImGuiSelectableFlags_None, ImVec2(20,0)))
-            Action::manager().redo();
+        // Selection of the timer mode
+        if (ImGui::BeginMenu( timer_menu[Settings::application.timer.mode].c_str() ))
+        {
+            for (size_t i = 0; i < timer_menu.size(); ++i) {
+                if (ImGui::MenuItem(timer_menu[i].c_str(), NULL, Settings::application.timer.mode==i))
+                    Settings::application.timer.mode = i;
+            }
+            ImGui::EndMenu();
+        }
 
         ImGui::EndMenuBar();
     }
 
-    if (ImGui::ListBoxHeader("##History", ImGui::GetContentRegionAvail() ) )
-    {
-        for (uint i = Action::manager().max(); i > 0; i--) {
+    // Window draw parameters
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    // positions and size of GUI elements
+    const float margin = window->MenuBarHeight();
+    const float h = 0.4f * ImGui::GetFrameHeight();
+    const ImVec2 circle_top_left = window->Pos + ImVec2(margin + h, margin + h);
+    const ImVec2 circle_top_right = window->Pos + ImVec2(window->Size.y - margin - h, margin + h);
+//    const ImVec2 circle_botom_left = window->Pos + ImVec2(margin + h, window->Size.x - margin - h);
+    const ImVec2 circle_botom_right = window->Pos + ImVec2(window->Size.y - margin - h, window->Size.x - margin - h);
+    const ImVec2 circle_center = window->Pos + (window->Size + ImVec2(margin, margin) )/ 2.f;
+    const float circle_radius = (window->Size.y - 2.f * margin) / 2.f;
 
-            std::string step_label_ = Action::manager().label(i);
+    // color palette
+    const ImU32 colorbg = ImGui::GetColorU32(ImGuiCol_FrameBgActive, 0.6f);
+    const ImU32 colorfg = ImGui::GetColorU32(ImGuiCol_FrameBg, 2.5f);
+    const ImU32 colorline = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
 
-            bool enable = i == Action::manager().current();
-            if (ImGui::Selectable( step_label_.c_str(), &enable, ImGuiSelectableFlags_AllowDoubleClick )) {
+    //
+    // METRONOME
+    //
+    if (Settings::application.timer.mode < 1) {
 
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                    Action::manager().stepTo(i);
+        // Metronome info
+        double t = Metronome::manager().tempo();
+        double p = Metronome::manager().phase();
+        double q = Metronome::manager().quantum();
+        uint np  = (int) Metronome::manager().peers();
+
+        // draw background ring
+        draw_list->AddCircleFilled(circle_center, circle_radius, colorbg, MAX_SEGMENTS);
+
+        // draw quarter
+        static const float resolution = MAX_SEGMENTS / (2.f * M_PI);
+        static ImVec2 buffer[MAX_SEGMENTS];
+        float a0 = -M_PI_2 + (floor(p)/floor(q)) * (2.f * M_PI);
+        float a1 = a0 + (1.f / floor(q)) * (2.f * M_PI);
+        int n = ImMax(3, (int)((a1 - a0) * resolution));
+        double da = (a1 - a0) / (n - 1);
+        int index = 0;
+        buffer[index++] = circle_center;
+        for (int i = 0; i < n; ++i) {
+            double a = a0 + i * da;
+            buffer[index++] = ImVec2(circle_center.x + circle_radius * cos(a), circle_center.y + circle_radius * sin(a));
+        }
+        draw_list->AddConvexPolyFilled(buffer, index, colorfg);
+
+        // draw clock hand
+        a0 = -M_PI_2 + (p/q) * (2.f * M_PI);
+        draw_list->AddLine(ImVec2(circle_center.x + margin * cos(a0), circle_center.y + margin * sin(a0)),
+                           ImVec2(circle_center.x + circle_radius * cos(a0), circle_center.y + circle_radius * sin(a0)), colorline, 2.f);
+
+        // centered indicator 'x / N'
+        draw_list->AddCircleFilled(circle_center, margin, colorfg, MAX_SEGMENTS);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        char text_buf[24];
+        sprintf(text_buf, "%d/%d", (int)(p)+1, (int)(q) );
+        ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
+        ImGui::SetCursorScreenPos(circle_center - label_size/2);
+        ImGui::Text("%s", text_buf);
+        ImGui::PopFont();
+
+        // left slider : quantum
+        float float_value = ceil(Metronome::manager().quantum());
+        ImGui::SetCursorScreenPos(timer_window_pos + ImVec2(0.5f * margin, 1.5f * margin));
+        if ( ImGui::VSliderFloat("##quantum", ImVec2(0.5f * margin, 2.f * circle_radius ), &float_value, 2, 200, "", 2.f) ){
+            Metronome::manager().setQuantum( ceil(float_value) );
+        }
+        if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+            ImGui::BeginTooltip();
+            guint64 time_phase = GST_SECOND * (60.0 * q / t) ;
+            ImGui::Text("Quantum: %d\nPhase duration: %s", (int) ceil(float_value), GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::EndTooltip();
+        }
+
+        // Controls NOT operational if peer connected
+        if (np >0 ) {
+            // Tempo
+            ImGui::SetCursorScreenPos(circle_top_right);
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+            ImGui::PushStyleColor(ImGuiCol_Text, colorfg);
+            sprintf(text_buf, "%d", (int) ceil(t) );
+            ImGui::Text("%s", text_buf);
+            ImGui::PopStyleColor();
+            ImGui::PopFont();
+            if (ImGui::IsItemHovered()){
+                sprintf(text_buf, "%d BPM\n(set by peer)", (int) ceil(t));
+                ImGuiToolkit::ToolTip(text_buf);
             }
         }
-        ImGui::ListBoxFooter();
+        // Controls operational only if no peer
+        else {
+            // Tempo
+            ImGui::SetCursorScreenPos(circle_top_right);
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+            sprintf(text_buf, "%d", (int) ceil(t) );
+            ImGui::Text("%s", text_buf);
+            ImGui::PopFont();
+            if (ImGui::IsItemClicked())
+                ImGui::OpenPopup("bpm_popup");
+            else if (ImGui::IsItemHovered()){
+                sprintf(text_buf, "%d BPM\n(clic to edit)", (int) ceil(t));
+                ImGuiToolkit::ToolTip(text_buf);
+            }
+            if (ImGui::BeginPopup("bpm_popup", ImGuiWindowFlags_NoMove))
+            {
+                ImGui::SetNextItemWidth(80);
+                ImGui::InputText("BPM", text_buf, 8, ImGuiInputTextFlags_CharsDecimal);
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    int t = 0;
+                    sscanf(text_buf, "%d", &t);
+                    t = CLAMP(t, 20, 2000);
+                    Metronome::manager().setTempo((double) t);
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
+            }
+            // restart icon
+            ImGui::SetCursorScreenPos(circle_top_left);
+            if (ImGuiToolkit::IconButton(9, 13)) {
+                Metronome::manager().restart();
+            }
+        }
+
+        // Network indicator, if link enabled
+        if (Settings::application.timer.link_enabled) {
+            ImGui::SetCursorScreenPos(circle_botom_right);
+            ImGuiToolkit::Icon(16, 5, np > 0);
+            if (ImGui::IsItemHovered()){
+                sprintf(text_buf, np < 1 ? "Ableton Link\nNo peer" : "Ableton Link\n%d peer%c", np, np < 2 ? ' ' : 's' );
+                ImGuiToolkit::ToolTip(text_buf);
+            }
+        }
+
+    }
+    //
+    // STOPWATCH
+    //
+    else {
+        // clock times
+        static guint64 start_time_    = gst_util_get_timestamp ();
+        static guint64 start_time_hand_ = gst_util_get_timestamp ();
+        static guint64 duration_hand_   = Settings::application.timer.stopwatch_duration *  GST_SECOND;
+        guint64 time_ = gst_util_get_timestamp ();
+
+        // draw ring
+        draw_list->AddCircle(circle_center, circle_radius, colorbg, MAX_SEGMENTS, 12 );
+        draw_list->AddCircleFilled(ImVec2(circle_center.x, circle_center.y - circle_radius), 7, colorfg, MAX_SEGMENTS);
+        // draw indicator time hand
+        double da = -M_PI_2 + ( (double) (time_-start_time_hand_) / (double) duration_hand_) * (2.f * M_PI);
+        draw_list->AddCircleFilled(ImVec2(circle_center.x + circle_radius * cos(da), circle_center.y + circle_radius * sin(da)), 7, colorline, MAX_SEGMENTS);
+
+        // left slider : countdown
+        float float_value = (float) Settings::application.timer.stopwatch_duration;
+        ImGui::SetCursorScreenPos(timer_window_pos + ImVec2(0.5f * margin, 1.5f * margin));
+        if ( ImGui::VSliderFloat("##duration", ImVec2(0.5f * margin, 2.f * circle_radius ), &float_value, 1, 3600, "", 3.f) ){
+            Settings::application.timer.stopwatch_duration = (uint64_t) float_value;
+            duration_hand_ = Settings::application.timer.stopwatch_duration * GST_SECOND;
+        }
+        if (ImGui::IsItemHovered() || ImGui::IsItemActive())  {
+            ImGui::BeginTooltip();
+            ImGui::Text("Countdown\n%s", GstToolkit::time_to_string(duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::EndTooltip();
+        }
+
+        // main text: elapsed time
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        char text_buf[24];
+        sprintf(text_buf, "%s", GstToolkit::time_to_string(time_-start_time_, GstToolkit::TIME_STRING_FIXED).c_str() );
+        ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
+        ImGui::SetCursorScreenPos(circle_center - label_size/2);
+        ImGui::Text("%s", text_buf);
+        ImGui::PopFont();
+
+        // small text: remaining time
+        ImGui::PushStyleColor(ImGuiCol_Text, colorfg);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        sprintf(text_buf, "%s", GstToolkit::time_to_string(duration_hand_-(time_-start_time_hand_)%duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+        label_size = ImGui::CalcTextSize(text_buf, NULL);
+        ImGui::SetCursorScreenPos(circle_center + ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
+        ImGui::Text("%s", text_buf);
+        ImGui::PopFont();
+        ImGui::PopStyleColor();
+
+        // reset icon
+        ImGui::SetCursorScreenPos(circle_top_left);
+        if (ImGuiToolkit::IconButton(8, 13))
+            start_time_ = start_time_hand_ = time_; // reset timers
+
+        // TODO : pause ?
     }
 
     ImGui::End();
@@ -1013,15 +1237,6 @@ void UserInterface::RenderPreview()
 
     // recording location
     static DialogToolkit::OpenFolderDialog recordFolderDialog("Recording Location");
-
-    // Helper functions for aspect-ratio constraints
-    struct CustomConstraints
-    {
-        static void AspectRatio(ImGuiSizeCallbackData* data) {
-            float *ar = (float*) data->UserData;
-            data->DesiredSize.y = (data->CurrentSize.x / (*ar)) + 35.f;
-        }
-    };
 
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
@@ -1562,9 +1777,6 @@ void UserInterface::RenderShaderEditor()
 
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 {
-    static guint64 start_time_1_ = gst_util_get_timestamp ();
-    static guint64 start_time_2_ = gst_util_get_timestamp ();
-
     if (!p_corner || !p_open)
         return;
 
@@ -1589,53 +1801,15 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     ImGui::SetNextItemWidth(200);
     ImGui::Combo("##mode", p_mode,
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
-                 ICON_FA_HOURGLASS_HALF "  Timers\0"
-                 ICON_FA_VECTOR_SQUARE  "  Source\0"
-                 ICON_FA_USER_CLOCK  " Metronome\0");
+                 ICON_FA_HOURGLASS_HALF "  Runtime\0"
+                 ICON_FA_VECTOR_SQUARE  "  Source\0");
 
     ImGui::SameLine();
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
     ImGui::Spacing();
 
-    if (*p_mode > 2) {
-        // get values
-        double t = Metronome::manager().tempo();
-        double p = Metronome::manager().phase();
-        double q = Metronome::manager().quantum();
-        uint n   = (int) Metronome::manager().peers();
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-
-        // tempo
-        char buf[32];
-        ImGui::Text("Tempo  %.1f BPM   ", t);
-        // network peers indicator
-        ImGui::SameLine();
-        if ( n < 1) {
-            ImGui::TextDisabled( ICON_FA_NETWORK_WIRED );
-            if (ImGui::IsItemHovered()){
-                sprintf(buf, "No peer linked");
-                ImGuiToolkit::ToolTip(buf);
-            }
-        }
-        else {
-            ImGui::Text( ICON_FA_NETWORK_WIRED );
-            if (ImGui::IsItemHovered()){
-                sprintf(buf, "%d peer%c linked", n, n < 2 ? ' ' : 's');
-                ImGuiToolkit::ToolTip(buf);
-            }
-        }
-        // compute and display duration of a phase
-        guint64 time_phase = GST_SECOND * (60.0 * q / t) ;
-        ImGui::Text("Phase  %s", GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str());
-        // metronome
-        sprintf(buf, "%d/%d", (int)(p)+1, (int)(q) );
-        ImGui::ProgressBar(ceil(p)/ceil(q), ImVec2(250.f,0.f), buf);
-
-        ImGui::PopFont();
-    }
-    else if (*p_mode > 1) {
+    if (*p_mode > 1) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         Source *s = Mixer::manager().currentSource();
         if (s) {
@@ -1690,24 +1864,13 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::PopFont();
     }
     else if (*p_mode > 0) {
-        guint64 time_ = gst_util_get_timestamp ();
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_1_, GstToolkit::TIME_STRING_FIXED).c_str());
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        ImGui::Text("Session  %s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
+        uint64_t time = Runtime();
+        ImGui::Text("Program  %s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        time += Settings::application.total_runtime;
+        ImGui::Text("Total    %s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
         ImGui::PopFont();
-        ImGui::SameLine(0, 10);
-        ImGui::PushID( "timermetric1" );
-        if (ImGuiToolkit::IconButton(12, 14))
-            start_time_1_ = time_; // reset timer 1
-        ImGui::PopID();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("%s", GstToolkit::time_to_string(time_-start_time_2_, GstToolkit::TIME_STRING_FIXED).c_str());
-        ImGui::PopFont();
-        ImGui::SameLine(0, 10);
-        ImGui::PushID( "timermetric2" );
-        if (ImGuiToolkit::IconButton(12, 14))
-            start_time_2_ = time_; // reset timer 2
-        ImGui::PopID();
     }
     else {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
@@ -2089,7 +2252,7 @@ void HelperToolbox::Render()
 ///
 SourceController::SourceController() : focused_(false), min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
     timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f),
-    play_toggle_request_(false), replay_request_(false),
+    play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
@@ -3081,7 +3244,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ImGui::PopFont();
 
 
-    ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
+    const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * timeline_height_ + scrollbar_ );
 
     ///
@@ -3267,6 +3430,11 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         // restore buttons style
         ImGui::PopStyleColor(5);
 
+        if (mediaplayer_active_->pending())
+        {
+            draw_list->AddRectFilled(bottom, bottom + ImVec2(rendersize.x, buttons_height_), ImGui::GetColorU32(ImGuiCol_ScrollbarBg), h_space_);
+        }
+
         ///
         /// media player timeline actions
         ///
@@ -3283,11 +3451,12 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         if ( mediaplayer_active_->isPlaying() != media_play ) {
             mediaplayer_active_->play( media_play );
         }
+
     }
     else {
 
         const ImGuiContext& g = *GImGui;
-        const double width_ratio = static_cast<double>(scrollwindow.x + g.Style.FramePadding.x ) / static_cast<double>(mediaplayer_active_->timeline()->sectionsDuration());
+        const double width_ratio = static_cast<double>(scrollwindow.x - slider_zoom_width + g.Style.FramePadding.x ) / static_cast<double>(mediaplayer_active_->timeline()->sectionsDuration());
         DrawTimeline("##timeline_mediaplayers", mediaplayer_active_->timeline(), mediaplayer_active_->position(), width_ratio, 2.f * timeline_height_);
 
         ///
@@ -4716,6 +4885,15 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::IsItemHovered())
         tooltip_ = "Output       " CTRL_MOD "D";
 
+    ImGui::SameLine(0, 40);
+    if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) ) {
+        Settings::application.widget.timer = true;
+        if (Settings::application.widget.timer_view != Settings::application.current_view)
+            Settings::application.widget.timer_view = -1;
+    }
+    if (ImGui::IsItemHovered())
+        tooltip_ = "Timer      " CTRL_MOD "T";
+
     ImGui::PopFont();
     if (!tooltip_.empty()) {
         ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
@@ -4753,47 +4931,11 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
-        //
-        // Metronome
-        //
-        ImGuiToolkit::Spacing();
-        ImGui::Text("Ableton link");
-
-        ImGuiToolkit::HelpMarker("Time synchronization between computers with Ableton link\n  "
-                                 ICON_FA_ANGLE_RIGHT " Tempo is the number of beats per minute (or set by peers).\n  "
-                                 ICON_FA_ANGLE_RIGHT " Quantum is the number of beats in a phase.");
-        ImGui::SameLine(0);
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        int t = (int) ceil(Metronome::manager().tempo());
-        // if no other peers, user can set a tempo
-        if (Metronome::manager().peers() < 1) {
-            if ( ImGui::SliderInt("Tempo", &t, 20, 240, "%d BPM") )
-                Metronome::manager().setTempo((double) t);
-        }
-        // if there are other peers, tempo cannot be changed
-        else {
-            // show static info (same size than slider)
-            static char dummy_str[64];
-            sprintf(dummy_str, "%d BPM", t);
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-            ImGui::InputText("Tempo", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopStyleColor(1);
-        }
-
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        int q = (int) ceil(Metronome::manager().quantum());
-        if ( ImGui::SliderInt("Quantum", &q, 2, 100) )
-            Metronome::manager().setQuantum((double) q);
-
-//        ImGuiToolkit::ButtonSwitch( ICON_FA_USER_CLOCK "  Start/stop sync", &Settings::application.metronome.start_stop_sync);
-
 #ifndef NDEBUG
         ImGui::Text("Expert");
 //        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_HISTORY, &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "T");
+        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "G");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
 #endif
         //
@@ -5117,6 +5259,7 @@ void Thumbnail::Render(float width)
 
 #define SEGMENT_ARRAY_MAX 1000
 #define MAXSIZE 65535
+
 
 void ShowSandbox(bool* p_open)
 {

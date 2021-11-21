@@ -86,12 +86,12 @@ int main(int argc, char *argv[])
     Settings::Lock();
 
     ///
-    ///
     /// CONNECTION INIT
     ///
     if ( !Connection::manager().init() )
         return 1;
 
+    ///
     /// METRONOME INIT
     ///
     if ( !Metronome::manager().init() )
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Save();
+    Settings::Save(UserInterface::manager().Runtime());
 
     /// ok
     return 0;

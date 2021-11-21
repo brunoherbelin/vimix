@@ -2,6 +2,8 @@
 #define METRONOME_H
 
 #include <chrono>
+#include <thread>
+#include <functional>
 
 class Metronome
 {
@@ -22,8 +24,8 @@ public:
     bool init ();
     void terminate ();
 
-    double beats () const;
-    double phase () const;
+    void setEnabled (bool on);
+    bool enabled () const;
 
     void setTempo (double t);
     double tempo () const;
@@ -31,9 +33,31 @@ public:
     void setQuantum (double q);
     double quantum () const;
 
+    void setStartStopSync (bool on);
+    bool startStopSync () const;
+    void restart();
+
+    // get beat and phase
+    double beats () const;
+    double phase () const;
+
+    // mechanisms to delay execution to next beat of phase
     std::chrono::microseconds timeToBeat();
+    void executeAtBeat( std::function<void()> f );
 
     size_t peers () const;
+
 };
+
+/// Example calls to executeAtBeat
+///
+/// With a Lamda function calling a member function of an object
+///  - without parameter
+///    Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p) { p->rewind(); }, mediaplayer_) );
+///
+///  - with parameter
+///    Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, bool o) { p->play(o); }, mediaplayer_, on) );
+///
+
 
 #endif // METRONOME_H
