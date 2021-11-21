@@ -60,7 +60,7 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
             count++;
         }
         if (count < 2 )
-            oss << '.'<< setw(2) << setfill('0') << (ms % 1000) / 10;
+            oss << '.'<< setw(1) << setfill('0') << (ms % 1000) / 100;
         oss << " sec";
     }
     // MINIMAL: keep only the 2 higher values (most significant)
