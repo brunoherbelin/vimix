@@ -58,10 +58,12 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
         if (count < 2) {
             oss << setw(count > 0 ? 2 : 1) << setfill('0') << (s % 3600) % 60;
             count++;
+
+            if (count < 2 )
+                oss << '.'<< setw(1) << setfill('0') << (ms % 1000) / 100 << " sec";
+            else
+                oss << " s";
         }
-        if (count < 2 )
-            oss << '.'<< setw(1) << setfill('0') << (ms % 1000) / 100;
-        oss << " sec";
     }
     // MINIMAL: keep only the 2 higher values (most significant)
     else if (m == TIME_STRING_MINIMAL) {
