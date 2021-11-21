@@ -973,15 +973,15 @@ void UserInterface::handleScreenshot()
 void UserInterface::RenderTimer()
 {
     // timer modes : 0 Metronome, 1 Stopwatch
-    static std::array< std::string, 2 > timer_menu = { " Metronome ", " Stopwatch " };
+    static std::array< std::string, 2 > timer_menu = { "Metronome", "Stopwatch" };
 
     // constraint position
     static ImVec2 timer_window_pos = ImVec2(1180, 20);
-    static ImVec2 timer_window_size = ImVec2(400, 400);
+    static ImVec2 timer_window_size = ImVec2(300, 300);
     SetNextWindowVisible(timer_window_pos, timer_window_size);
 
     // constraint square resizing
-    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(600, 600), CustomConstraints::Square);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(500, 500), CustomConstraints::Square);
 
     if ( !ImGui::Begin(IMGUI_TITLE_TIMER, &Settings::application.widget.timer, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
@@ -4869,27 +4869,30 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SameLine(0, 40);
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) ) {
-        Settings::application.widget.media_player = true;
-        if (Settings::application.widget.media_player_view != Settings::application.current_view)
-            Settings::application.widget.media_player_view = -1;
+        if (Settings::application.widget.media_player && Settings::application.widget.media_player_view > -1 && Settings::application.widget.media_player_view != Settings::application.current_view)
+            Settings::application.widget.media_player_view = Settings::application.current_view;
+        else
+            Settings::application.widget.media_player = !Settings::application.widget.media_player;
     }
     if (ImGui::IsItemHovered())
         tooltip_ = "Player       " CTRL_MOD "P";
 
     ImGui::SameLine(0, 40);
     if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) ) {
-        Settings::application.widget.preview = true;
-        if (Settings::application.widget.preview_view != Settings::application.current_view)
-            Settings::application.widget.preview_view = -1;
+        if (Settings::application.widget.preview && Settings::application.widget.preview_view > -1 && Settings::application.widget.preview_view != Settings::application.current_view)
+            Settings::application.widget.preview_view = Settings::application.current_view;
+        else
+            Settings::application.widget.preview = !Settings::application.widget.preview;
     }
     if (ImGui::IsItemHovered())
         tooltip_ = "Output       " CTRL_MOD "D";
 
     ImGui::SameLine(0, 40);
     if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) ) {
-        Settings::application.widget.timer = true;
-        if (Settings::application.widget.timer_view != Settings::application.current_view)
-            Settings::application.widget.timer_view = -1;
+        if (Settings::application.widget.timer && Settings::application.widget.timer_view > -1 && Settings::application.widget.timer_view != Settings::application.current_view)
+            Settings::application.widget.timer_view = Settings::application.current_view;
+        else
+            Settings::application.widget.timer = !Settings::application.widget.timer;
     }
     if (ImGui::IsItemHovered())
         tooltip_ = "Timer      " CTRL_MOD "T";
