@@ -59,6 +59,7 @@ Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fadin
     config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
 
     snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
+    start_time_ = gst_util_get_timestamp ();
 }
 
 
@@ -85,6 +86,11 @@ Session::~Session()
 
     snapshots_.keys_.clear();
     delete snapshots_.xmlDoc_;
+}
+
+uint64_t Session::runtime() const
+{
+    return gst_util_get_timestamp () - start_time_;
 }
 
 void Session::setActive (bool on)

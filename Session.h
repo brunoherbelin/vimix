@@ -74,6 +74,7 @@ public:
 
     // update all sources and mark sources which failed
     void update (float dt);
+    uint64_t runtime() const;
 
     // update mode (active or not)
     void setActive (bool on);
@@ -159,6 +160,7 @@ protected:
     float fading_target_;
     std::mutex access_;
     FrameBufferImage *thumbnail_;
+    uint64_t start_time_;
 };
 
 
