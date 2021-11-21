@@ -40,7 +40,6 @@
 #include "UserInterfaceManager.h"
 #include "ActionManager.h"
 #include "DialogToolkit.h"
-#include "Log.h"
 
 #include "TextureView.h"
 
@@ -667,7 +666,7 @@ void TextureView::draw()
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
-                        if (ImGui::IsItemHovered())  {
+                        if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%d px", pixel_size);
                             ImGui::EndTooltip();
@@ -689,7 +688,7 @@ void TextureView::draw()
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         ImGuiToolkit::HelpMarker("Light  ", ICON_FA_FEATHER_ALT, ICON_FA_CARET_SQUARE_UP);
                         ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
-                        if (ImGui::IsItemHovered())  {
+                        if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
                             ImGui::EndTooltip();
@@ -828,7 +827,7 @@ void TextureView::draw()
                             Action::manager().store(oss.str());
                             smoothchanged = false;
                         }
-                        if (ImGui::IsItemHovered())  {
+                        if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.d%%", blur_percent);
                             ImGui::EndTooltip();
