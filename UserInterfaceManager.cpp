@@ -101,6 +101,17 @@ void ShowSandbox(bool* p_open);
 void SetMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor());
 void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 180.f);
 
+std::string readable_date_time_string(std::string date){
+    if (date.length()<12)
+        return "";
+    std::string s = date.substr(0, 12);
+    s.insert(10, ":");
+    s.insert(8, "  ");
+    s.insert(6, "/");
+    s.insert(4, "/");
+    return s;
+}
+
 // globals
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
 std::vector< std::future<FrameGrabber *> > _video_recorders;
@@ -4569,6 +4580,14 @@ void Navigator::RenderMainPannelVimix()
         // the session file exists
         if (!sessionfilename.empty())
         {
+            // Folder
+            std::string path = SystemToolkit::path_filename(sessionfilename);
+            std::string label = BaseToolkit::trunc_string(path, 23);
+            label = BaseToolkit::transliterate(label);
+            ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+            ImGui::SameLine();
+            ImGui::Text("Folder");
+
             // Thumbnail
             static Thumbnail _file_thumbnail;
             static FrameBufferImage *thumbnail = nullptr;
@@ -4603,12 +4622,6 @@ void Navigator::RenderMainPannelVimix()
                 ImGui::PopStyleVar();
             }
             ImGui::SetCursorPos( pos_bot );
-
-            // Folder
-            std::string path = SystemToolkit::path_filename(sessionfilename);
-            std::string label = BaseToolkit::trunc_string(path, 23);
-            label = BaseToolkit::transliterate(label);
-            ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
         }
 
     }
@@ -4734,6 +4747,7 @@ void Navigator::RenderMainPannelVimix()
             static uint64_t _selected = 0;
             static Thumbnail _snap_thumbnail;
             static std::string _snap_label = "";
+            static std::string _snap_date = "";
 
             int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
@@ -4780,6 +4794,7 @@ void Navigator::RenderMainPannelVimix()
                     // load label and thumbnail only if current changed
                     if (current_over != _over) {
                         _snap_label = Action::manager().label(_over);
+                        _snap_date  = "Version of " + readable_date_time_string(Action::manager().date(_over));
                         FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display
@@ -4793,6 +4808,7 @@ void Navigator::RenderMainPannelVimix()
                     // draw thumbnail in tooltip
                     ImGui::BeginTooltip();
                     _snap_thumbnail.Render(size.x);
+                    ImGui::Text(_snap_date.c_str());
                     ImGui::EndTooltip();
                     ++count_over; // prevents display twice on item overlap
                 }
@@ -4803,17 +4819,16 @@ void Navigator::RenderMainPannelVimix()
             if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
             {
                 _selected = current;
-                ImGui::TextDisabled("Edit");
+                // snapshot thumbnail
+                _snap_thumbnail.Render(size.x);
                 // snapshot editable label
                 ImGui::SetNextItemWidth(size.x);
                 if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
                     Action::manager().setLabel( current, _snap_label);
-                // snapshot thumbnail
-                _snap_thumbnail.Render(size.x);
                 // snapshot actions
-                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Restore", false, 0, size ))
+                if (ImGui::Selectable( ICON_FA_ANGLE_DOUBLE_RIGHT "    Restore", false, 0, size ))
                     Action::manager().restore();
-                if (ImGui::Selectable( ICON_FA_CODE_BRANCH "_    Remove", false, 0, size ))
+                if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
                     Action::manager().remove();
                 ImGui::EndPopup();
             }

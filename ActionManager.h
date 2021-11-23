@@ -50,6 +50,7 @@ public:
     void remove  (uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
+    std::string date  (uint64_t snapshotid) const;
     std::list<std::string> labels () const;
     void setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;

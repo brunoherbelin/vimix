@@ -31,6 +31,7 @@
 #include "Settings.h"
 #include "BaseToolkit.h"
 #include "Interpolator.h"
+#include "SystemToolkit.h"
 
 #include "ActionManager.h"
 
@@ -50,6 +51,8 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
     doc->InsertEndChild(sessionNode);
     // label describes the action
     sessionNode->SetAttribute("label", label.c_str() );
+    // label describes the action
+    sessionNode->SetAttribute("date", SystemToolkit::date_time_string().c_str() );
     // view indicates the view when this action occured
     sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
 
@@ -301,6 +304,23 @@ std::string Action::label(uint64_t snapshotid) const
     return label;
 }
 
+std::string Action::date(uint64_t snapshotid) const
+{
+    std::string date = "";
+
+    // get snapshot node of target in current session
+    Session *se = Mixer::manager().session();
+    const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+
+    if (snap){
+        const char *d = snap->Attribute("date");
+        if (d)
+            date = std::string(d);
+    }
+
+    return date;
+}
+
 void Action::setLabel (uint64_t snapshotid, const std::string &label)
 {
     open(snapshotid);
@@ -327,7 +347,8 @@ FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
 void Action::clearSnapshots()
 {
     Session *se = Mixer::manager().session();
-    se->snapshots()->keys_.clear();
+    while (!se->snapshots()->keys_.empty())
+        remove(se->snapshots()->keys_.front());
 }
 
 void Action::remove(uint64_t snapshotid)
