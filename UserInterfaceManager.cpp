@@ -976,12 +976,13 @@ void UserInterface::RenderTimer()
     static std::array< std::string, 2 > timer_menu = { "Metronome", "Stopwatch" };
 
     // constraint position
-    static ImVec2 timer_window_pos = ImVec2(1180, 20);
-    static ImVec2 timer_window_size = ImVec2(300, 300);
+    static ImVec2 timer_window_pos = ImVec2(1080, 20);
+    static ImVec2 timer_window_size_min = ImVec2(11.f * ImGui::GetTextLineHeight(), 11.f * ImGui::GetTextLineHeight());
+    static ImVec2 timer_window_size = timer_window_size_min * 1.1f;
     SetNextWindowVisible(timer_window_pos, timer_window_size);
 
     // constraint square resizing
-    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(500, 500), CustomConstraints::Square);
+    ImGui::SetNextWindowSizeConstraints(timer_window_size_min, timer_window_size_min * 1.5f, CustomConstraints::Square);
 
     if ( !ImGui::Begin(IMGUI_TITLE_TIMER, &Settings::application.widget.timer, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
     {
@@ -1884,6 +1885,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     if (ImGui::BeginPopup("metrics_menu"))
     {
+        ImGui::TextDisabled("Metrics");
         if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
         if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
         if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
@@ -4855,19 +4857,19 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     std::string tooltip_ = "";
 
-    ImGui::SameLine(0, 20);
+    ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
         Rendering::manager().mainWindow().toggleFullscreen();
     if (ImGui::IsItemHovered())
         tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
 
-    ImGui::SameLine(0, 40);
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
         Mixer::manager().session()->addNote();
     if (ImGui::IsItemHovered())
         tooltip_ = "New note " CTRL_MOD "Shift+N";
 
-    ImGui::SameLine(0, 40);
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) ) {
         if (Settings::application.widget.media_player && Settings::application.widget.media_player_view > -1 && Settings::application.widget.media_player_view != Settings::application.current_view)
             Settings::application.widget.media_player_view = Settings::application.current_view;
@@ -4877,7 +4879,7 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::IsItemHovered())
         tooltip_ = "Player       " CTRL_MOD "P";
 
-    ImGui::SameLine(0, 40);
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) ) {
         if (Settings::application.widget.preview && Settings::application.widget.preview_view > -1 && Settings::application.widget.preview_view != Settings::application.current_view)
             Settings::application.widget.preview_view = Settings::application.current_view;
@@ -4887,7 +4889,7 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::IsItemHovered())
         tooltip_ = "Output       " CTRL_MOD "D";
 
-    ImGui::SameLine(0, 40);
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) ) {
         if (Settings::application.widget.timer && Settings::application.widget.timer_view > -1 && Settings::application.widget.timer_view != Settings::application.current_view)
             Settings::application.widget.timer_view = Settings::application.current_view;
@@ -4936,7 +4938,6 @@ void Navigator::RenderMainPannelSettings()
 
 #ifndef NDEBUG
         ImGui::Text("Expert");
-//        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_HISTORY, &Settings::application.widget.history);
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "G");
         ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
