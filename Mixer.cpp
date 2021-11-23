@@ -62,8 +62,12 @@ const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
 // static multithreaded session saving
-static void saveSession(const std::string& filename, Session *session)
+static void saveSession(const std::string& filename, Session *session, bool with_version)
 {
+    // capture a snapshot of current version if requested
+    if (with_version)
+        Action::manager().snapshot( SystemToolkit::date_time_string());
+
     // lock access while saving
     session->lock();
 
@@ -971,13 +975,13 @@ View *Mixer::view(View::Mode m)
     }
 }
 
-void Mixer::save()
+void Mixer::save(bool with_version)
 {
     if (!session_->filename().empty())
-        saveas(session_->filename());
+        saveas(session_->filename(), with_version);
 }
 
-void Mixer::saveas(const std::string& filename)
+void Mixer::saveas(const std::string& filename, bool with_version)
 {
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
@@ -986,7 +990,7 @@ void Mixer::saveas(const std::string& filename)
     session_->config(View::TEXTURE)->copyTransform( appearance_.scene.root() );
 
     // launch a thread to save the session
-    std::thread (saveSession, filename, session_).detach();
+    std::thread (saveSession, filename, session_, with_version).detach();
 }
 
 void Mixer::load(const std::string& filename)

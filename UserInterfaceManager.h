@@ -254,6 +254,7 @@ protected:
 
     void showMenuFile();
     void showMenuEdit();
+    bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();
 

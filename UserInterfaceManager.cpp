@@ -249,11 +249,12 @@ void UserInterface::handleKeyboard()
                 selectOpenFilename();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
-            // Save Session
-            if (shift_modifier_active || Mixer::manager().session()->filename().empty())
+            // SHIFT + CTRL + S : save as
+            if (shift_modifier_active)
                 selectSaveFilename();
+            // CTRL + S : save (save as if necessary)
             else
-                Mixer::manager().save();
+                saveOrSaveAs();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
             // New Session
@@ -325,9 +326,6 @@ void UserInterface::handleKeyboard()
                                                               std::chrono::seconds(Settings::application.record.delay)) );
                 }
             }
-        }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_Y )) {
-            Action::manager().snapshot( "Snap" );
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
@@ -703,6 +701,20 @@ void UserInterface::handleMouse()
     }
 }
 
+
+bool UserInterface::saveOrSaveAs(bool force_versioning)
+{
+    bool finished = false;
+
+    if (Mixer::manager().session()->filename().empty())
+        selectSaveFilename();
+    else {
+        Mixer::manager().save(force_versioning || Settings::application.save_version_snapshot);
+        finished = true;
+    }
+    return finished;
+}
+
 void UserInterface::selectSaveFilename()
 {
     if (sessionsavedialog)
@@ -740,7 +752,7 @@ void UserInterface::NewFrame()
         Mixer::manager().import(sessionimportdialog->path());
 
     if (sessionsavedialog && sessionsavedialog->closed() && !sessionsavedialog->path().empty())
-        Mixer::manager().saveas(sessionsavedialog->path());
+        Mixer::manager().saveas(sessionsavedialog->path(), Settings::application.save_version_snapshot);
 
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
@@ -839,7 +851,7 @@ void UserInterface::Render()
 void UserInterface::Terminate()
 {
     if (Settings::application.recentSessions.save_on_exit)
-        Mixer::manager().save();
+        Mixer::manager().save(false);
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
@@ -880,8 +892,6 @@ void UserInterface::showMenuEdit()
         Action::manager().undo();
     if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
         Action::manager().redo();
-    if ( ImGui::MenuItem( ICON_FA_STAR "+ Snapshot", CTRL_MOD "Y") )
-        Action::manager().snapshot( "Snap" );
 }
 
 void UserInterface::showMenuFile()
@@ -910,12 +920,8 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", CTRL_MOD "S")) {
-        if (Mixer::manager().session()->filename().empty())
-            selectSaveFilename();
-        else {
-            Mixer::manager().save();
+        if (saveOrSaveAs())
             navigator.hidePannel();
-        }
     }
     if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save as", CTRL_MOD "Shift+S"))
         selectSaveFilename();
@@ -4440,7 +4446,6 @@ void Navigator::RenderMainPannelVimix()
 
     ImVec2 pos_bot = ImGui::GetCursorPos();
 
-
     // Right side of the list: helper and options
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
     if ( ImGuiToolkit::IconButton( ICON_FA_FILE " +" )) {
@@ -4464,20 +4469,20 @@ void Navigator::RenderMainPannelVimix()
     // come back...
     ImGui::SetCursorPos(pos_bot);
 
-
     //
     // Status
     //
     ImGuiToolkit::Spacing();
-    ImGui::Text("Current");
+    ImGui::Text("Current session");
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##SelectHistory", &Settings::application.pannel_history_mode,
-                 ICON_FA_STAR " Snapshots\0" ICON_FA_HISTORY " Undo history\0" ICON_FA_FILE_ALT "  Properties\0");
+    ImGui::Combo("##Selectpanelsession", &Settings::application.pannel_current_session_mode,
+                 ICON_FA_CODE_BRANCH "  Versions\0" ICON_FA_HISTORY " Undo history\0" ICON_FA_FILE_ALT "  Properties\0");
+    pos_bot = ImGui::GetCursorPos();
 
     //
     // Current 2. PROPERTIES
     //
-    if (Settings::application.pannel_history_mode > 1) {
+    if (Settings::application.pannel_current_session_mode > 1) {
 
         std::string sessionfilename = Mixer::manager().session()->filename();
 
@@ -4583,7 +4588,7 @@ void Navigator::RenderMainPannelVimix()
                 if (_file_thumbnail.filled()) {
                     ImGui::BeginTooltip();
                     _file_thumbnail.Render(230);
-                    ImGui::Text("Thumbnail will be used in\nthe sessions list above.");
+                    ImGui::Text("Thumbnail used in the\nlist of Sessions above.");
                     ImGui::EndTooltip();
                 }
             }
@@ -4610,11 +4615,20 @@ void Navigator::RenderMainPannelVimix()
     //
     // Current 1. UNDO History
     //
-    else if (Settings::application.pannel_history_mode > 0) {
+    else if (Settings::application.pannel_current_session_mode > 0) {
 
         static uint _over = 0;
         static uint64_t _displayed_over = 0;
         static bool _tooltip = 0;
+
+        ImGui::SameLine();
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear undo")) {
+            Action::manager().init();
+        }
+        ImGui::PopStyleVar();
+        // come back...
+        ImGui::SetCursorPos(pos_bot);
 
         pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -4696,11 +4710,20 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Show in view");
     }
     //
-    // Current 0. SNAPSHOTS
+    // Current 0. VERSIONS
     //
     else {
         static uint64_t _over = 0;
         static bool _tooltip = 0;
+
+        ImGui::SameLine();
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear versions")) {
+            Action::manager().clearSnapshots();
+        }
+        ImGui::PopStyleVar();
+        // come back...
+        ImGui::SetCursorPos(pos_bot);
 
         // list snapshots
         std::list<uint64_t> snapshots = Action::manager().snapshots();
@@ -4714,7 +4737,7 @@ void Navigator::RenderMainPannelVimix()
 
             int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-            for (auto snapit = snapshots.begin(); snapit != snapshots.end(); ++snapit)
+            for (auto snapit = snapshots.rbegin(); snapit != snapshots.rend(); ++snapit)
             {
                 // entry
                 ImVec2 pos = ImGui::GetCursorPos();
@@ -4780,7 +4803,7 @@ void Navigator::RenderMainPannelVimix()
             if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
             {
                 _selected = current;
-                ImGui::TextDisabled("Edit snapshot");
+                ImGui::TextDisabled("Edit");
                 // snapshot editable label
                 ImGui::SetNextItemWidth(size.x);
                 if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
@@ -4788,12 +4811,10 @@ void Navigator::RenderMainPannelVimix()
                 // snapshot thumbnail
                 _snap_thumbnail.Render(size.x);
                 // snapshot actions
-                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Apply", false, 0, size ))
+                if (ImGui::Selectable( " " ICON_FA_ANGLE_DOUBLE_RIGHT "      Restore", false, 0, size ))
                     Action::manager().restore();
-                if (ImGui::Selectable( ICON_FA_STAR "_    Remove", false, 0, size ))
+                if (ImGui::Selectable( ICON_FA_CODE_BRANCH "_    Remove", false, 0, size ))
                     Action::manager().remove();
-                if (ImGui::Selectable( ICON_FA_STAR "=    Replace", false, 0, size ))
-                    Action::manager().replace();
                 ImGui::EndPopup();
             }
             else
@@ -4813,36 +4834,22 @@ void Navigator::RenderMainPannelVimix()
 
         // right buttons
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if ( ImGuiToolkit::IconButton( ICON_FA_STAR "+"))
-            Action::manager().snapshot( "Snap" );
+        if ( ImGuiToolkit::IconButton( ICON_FA_FILE_DOWNLOAD " +")) {
+            UserInterface::manager().saveOrSaveAs(true);
+        }
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Take Snapshot ", CTRL_MOD "Y");
+            ImGuiToolkit::ToolTip("Save & Keep version");
 
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Snapshots keep a list of favorite\n"
-                                 "status of the current session.\n\n"
-                                 "Clic an item to preview or edit.\n"
-                                 "Double-clic to apply.\n");
-
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-//        ImGuiToolkit::HelpMarker("Snapshots capture the state of the session.\n"
-//                                 "Double-clic on a snapshot to restore it.\n\n"
-//                                 ICON_FA_ROUTE "  Enable interpolation to animate\n"
-//                                 "from current state to snapshot's state.");
-//        // toggle button for smooth interpolation
-//        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-//        ImGuiToolkit::ButtonToggle(ICON_FA_ROUTE, &Settings::application.smooth_snapshot);
-//        if (ImGui::IsItemHovered())
-//            ImGuiToolkit::ToolTip("Snapshot interpolation");
-
-//        if (Action::manager().currentSnapshot() > 0) {
-//            ImGui::SetCursorPos( pos_bot );
-//            int interpolation = static_cast<int> (Action::manager().interpolation() * 100.f);
-//            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//            if ( ImGui::SliderInt("Animate", &interpolation, 0, 100, "%d %%") )
-//                Action::manager().interpolate( static_cast<float> ( interpolation ) * 0.01f );
-
-//        }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top).\n"
+                                 "Double-clic on a version to restore it.\n\n"
+                                 ICON_FA_CODE_BRANCH "  Enable iterative saving to automatically\n"
+                                 "keep a version each time a session is saved.");
+        // toggle button for versioning
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
     }

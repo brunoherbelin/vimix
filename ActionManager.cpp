@@ -202,7 +202,7 @@ void Action::restore(uint target)
 
 
 
-void Action::snapshot(const std::string &label)
+void Action::snapshot(const std::string &label, bool threaded)
 {
     // ignore if locked
     if (locked_)
@@ -217,8 +217,11 @@ void Action::snapshot(const std::string &label)
     Session *se = Mixer::manager().session();
     se->snapshots()->keys_.push_back(id);
 
-    // threaded capture state of current session
-    std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label).detach();
+    if (threaded)
+        // threaded capture state of current session
+        std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label).detach();
+    else
+        captureMixerSession(se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label);
 
 #ifdef ACTION_DEBUG
     Log::Info("Snapshot stored %d '%s'", id, snap_label.c_str());
@@ -319,6 +322,12 @@ FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
     }
 
     return img;
+}
+
+void Action::clearSnapshots()
+{
+    Session *se = Mixer::manager().session();
+    se->snapshots()->keys_.clear();
 }
 
 void Action::remove(uint64_t snapshotid)

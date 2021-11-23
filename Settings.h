@@ -203,12 +203,12 @@ struct Application
     // Global settings Application interface
     float scale;
     int  accent_color;
-    bool smooth_snapshot;
+    bool save_version_snapshot;
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
 
-    int  pannel_history_mode;
+    int  pannel_current_session_mode;
 
     // connection settings
     bool accept_connections;
@@ -252,11 +252,11 @@ struct Application
         scale = 1.f;
         accent_color = 0;
         smooth_transition = false;
-        smooth_snapshot = false;
+        save_version_snapshot = false;
         smooth_cursor = false;
         action_history_follow_view = false;
         accept_connections = false;
-        pannel_history_mode = 0;
+        pannel_current_session_mode = 0;
         current_view = 1;
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);

@@ -85,11 +85,11 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
-    applicationNode->SetAttribute("smooth_snapshot", application.smooth_snapshot);
+    applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
     applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
-    applicationNode->SetAttribute("pannel_history_mode", application.pannel_history_mode);
+    applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -312,11 +312,11 @@ void Settings::Load()
         applicationNode->QueryFloatAttribute("scale", &application.scale);
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
-        applicationNode->QueryBoolAttribute("smooth_snapshot", &application.smooth_snapshot);
+        applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
         applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
-        applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_history_mode);
+        applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
     }
 
     // Widgets

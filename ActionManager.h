@@ -39,8 +39,8 @@ public:
     FrameBufferImage *thumbnail (uint s) const;
 
     // Snapshots
-    void snapshot (const std::string &label = "");
-
+    void snapshot (const std::string &label = "", bool threaded = false);
+    void clearSnapshots ();
     std::list<uint64_t> snapshots () const;
     uint64_t currentSnapshot () const { return snapshot_id_; }
 
