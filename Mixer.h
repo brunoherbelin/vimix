@@ -115,6 +115,8 @@ public:
 
     // create sources if clipboard contains well-formed xml text
     void paste  (const std::string& clipboard);
+
+    // version and undo management
     void restore(tinyxml2::XMLElement *sessionNode);
 
 protected:

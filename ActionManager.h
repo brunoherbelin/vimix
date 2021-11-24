@@ -44,10 +44,11 @@ public:
     std::list<uint64_t> snapshots () const;
     uint64_t currentSnapshot () const { return snapshot_id_; }
 
-    void open (uint64_t snapshotid);
+    void open    (uint64_t snapshotid);
     void replace (uint64_t snapshotid = 0);
     void restore (uint64_t snapshotid = 0);
     void remove  (uint64_t snapshotid = 0);
+    void saveas  (const std::string& filename, uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
     std::string date  (uint64_t snapshotid) const;

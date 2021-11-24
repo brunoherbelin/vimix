@@ -4830,6 +4830,13 @@ void Navigator::RenderMainPannelVimix()
                     Action::manager().restore();
                 if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
                     Action::manager().remove();
+                // export option if possible
+                std::string filename = Mixer::manager().session()->filename();
+                if (filename.size()>0) {
+                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export", false, 0, size )) {
+                        Action::manager().saveas(filename);
+                    }
+                }
                 ImGui::EndPopup();
             }
             else

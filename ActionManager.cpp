@@ -19,6 +19,7 @@
 
 #include <string>
 #include <algorithm>
+#include <thread>
 
 #include "Log.h"
 #include "View.h"
@@ -444,3 +445,68 @@ void Action::interpolate(float val, uint64_t snapshotid)
 
 }
 
+
+
+// static multithreaded version saving
+static void saveSnapshot(const std::string& filename, tinyxml2::XMLElement *snapshot_node)
+{
+    if (!snapshot_node){
+        Log::Warning("Invalid version.", filename.c_str());
+        return;
+    }
+    const char *l = snapshot_node->Attribute("label");
+    if (!l) {
+        Log::Warning("Invalid version.", filename.c_str());
+        return;
+    }
+
+    // load the file: is it a session?
+    tinyxml2::XMLDocument xmlDoc;
+    XMLError eResult = xmlDoc.LoadFile(filename.c_str());
+    if ( XMLResultError(eResult)){
+        Log::Warning("%s could not be openned for re-export.", filename.c_str());
+        return;
+    }
+    XMLElement *header = xmlDoc.FirstChildElement(APP_NAME);
+    if (header == nullptr) {
+        Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
+        return;
+    }
+
+    // remove all snapshots
+    XMLElement* snapshotNode = xmlDoc.FirstChildElement("Snapshots");
+    xmlDoc.DeleteChild(snapshotNode);
+
+    // swap "Session" node with version_node
+    XMLElement *sessionNode = xmlDoc.FirstChildElement("Session");
+    xmlDoc.DeleteChild(sessionNode);
+    sessionNode = snapshot_node->DeepClone(&xmlDoc)->ToElement();
+    sessionNode->SetName("Session");
+    xmlDoc.InsertEndChild(sessionNode);
+
+    // we got a session, set a new export filename
+    std::string newfilename = filename;
+    newfilename.insert(filename.size()-4, "_" + std::string(l));
+
+    // save new file to disk
+    if ( XMLSaveDoc(&xmlDoc, newfilename) )
+        Log::Notify("Version exported to %s.", newfilename.c_str());
+    else
+        // error
+        Log::Warning("Failed to export Session file %s.", newfilename.c_str());
+}
+
+void Action::saveas(const std::string& filename, uint64_t snapshotid)
+{
+    // ignore if locked or if no label is given
+    if (locked_)
+        return;
+
+    if (snapshotid > 0)
+        open(snapshotid);
+
+    if (snapshot_node_) {
+        // launch a thread to save the session
+        std::thread (saveSnapshot, filename, snapshot_node_).detach();
+    }
+}
