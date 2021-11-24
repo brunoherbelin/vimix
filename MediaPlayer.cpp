@@ -51,7 +51,7 @@ MediaPlayer::MediaPlayer()
 
     failed_ = false;
     pending_ = false;
-    metro_linked_ = false;
+    metro_sync_ = Metronome::SYNC_NONE;
     force_update_ = false;
     seeking_ = false;
     rewind_on_disable_ = false;
@@ -646,7 +646,7 @@ void MediaPlayer::play(bool on)
         return;
 
     // Metronome
-    if (metro_linked_) {
+    if (metro_sync_) {
         // busy with this play()
         pending_ = true;
         // Execute: sync to Metronome if active
@@ -701,7 +701,7 @@ void MediaPlayer::rewind(bool force)
     GstClockTime target = (rate_ > 0.0) ? timeline_.next(0) : timeline_.previous(timeline_.last());
 
     // Metronome
-    if (metro_linked_) {
+    if (metro_sync_) {
         // busy with this play()
         pending_ = true;
         // Execute: sync to Metronome if active
@@ -728,7 +728,7 @@ void MediaPlayer::step()
         GstEvent *stepevent = gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
-        if (metro_linked_) {
+        if (metro_sync_) {
             // busy with this play()
             pending_ = true;
             // Execute: sync to Metronome if active

@@ -2,7 +2,6 @@
 #define METRONOME_H
 
 #include <chrono>
-#include <thread>
 #include <functional>
 
 class Metronome
@@ -13,6 +12,12 @@ class Metronome
     Metronome& operator=(Metronome const& copy) = delete;
 
 public:
+
+    typedef enum {
+        SYNC_NONE = 0,
+        SYNC_BEAT,
+        SYNC_PHASE
+    } Synchronicity;
 
     static Metronome& manager ()
     {
@@ -41,9 +46,13 @@ public:
     double beats () const;
     double phase () const;
 
-    // mechanisms to delay execution to next beat of phase
+    // mechanisms to delay execution to next beat
     std::chrono::microseconds timeToBeat();
     void executeAtBeat( std::function<void()> f );
+
+    // mechanisms to delay execution to next phase
+    std::chrono::microseconds timeToPhase();
+    void executeAtPhase( std::function<void()> f );
 
     size_t peers () const;
 

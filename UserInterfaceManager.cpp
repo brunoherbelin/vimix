@@ -2470,13 +2470,28 @@ void SourceController::Render()
                 if (ImGui::MenuItem(LABEL_EDIT_FADING))
                     mediaplayer_edit_fading_ = true;
 
-                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "  Inactive action"))
+                if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+                {
+                    Metronome::Synchronicity sync = mediaplayer_active_->synchedToMetronome();
+                    bool active = sync == Metronome::SYNC_NONE;
+                    if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
+                    active = sync == Metronome::SYNC_BEAT;
+                    if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
+                    active = sync == Metronome::SYNC_PHASE;
+                    if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
                 {
                     bool option = !mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", "", &option ))
+                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
                         mediaplayer_active_->setRewindOnDisabled(false);
                     option = mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", "", &option ))
+                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
                         mediaplayer_active_->setRewindOnDisabled(true);
                     ImGui::EndMenu();
                 }
@@ -4926,7 +4941,7 @@ void Navigator::RenderMainPannelVimix()
             Settings::application.widget.timer = !Settings::application.widget.timer;
     }
     if (ImGui::IsItemHovered())
-        tooltip_ = "Timer      " CTRL_MOD "T";
+        tooltip_ = "Timer        " CTRL_MOD "T";
 
     ImGui::PopFont();
     if (!tooltip_.empty()) {
