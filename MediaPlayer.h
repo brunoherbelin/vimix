@@ -269,7 +269,7 @@ public:
      * Option to synchronize with metronome
      * */
     inline void setSyncToMetronome(Metronome::Synchronicity s) { metro_sync_ = s; }
-    inline Metronome::Synchronicity synchedToMetronome() const { return metro_sync_; }
+    inline Metronome::Synchronicity syncToMetronome() const { return metro_sync_; }
     /**
      * Accept visitors
      * */

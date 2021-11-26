@@ -104,11 +104,8 @@ void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 180.f);
 std::string readable_date_time_string(std::string date){
     if (date.length()<12)
         return "";
-    std::string s = date.substr(0, 12);
-    s.insert(10, ":");
-    s.insert(8, "  ");
-    s.insert(6, "/");
-    s.insert(4, "/");
+    std::string s = date.substr(6, 2) + "/" + date.substr(4, 2) + "/" + date.substr(0, 4);
+    s += " @ " + date.substr(8, 2) + ":" + date.substr(10, 2);
     return s;
 }
 
@@ -2472,7 +2469,7 @@ void SourceController::Render()
 
                 if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
                 {
-                    Metronome::Synchronicity sync = mediaplayer_active_->synchedToMetronome();
+                    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                     bool active = sync == Metronome::SYNC_NONE;
                     if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
                         mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);

@@ -75,8 +75,9 @@ namespace ableton
     std::chrono::microseconds timeNextPhase() const
     {
         auto sessionState = mLink.captureAppSessionState();
-        double beat = ceil(sessionState.phaseAtTime(now(), mQuantum));
-        return sessionState.timeAtBeat(beat, mQuantum);
+        double phase = ceil(sessionState.phaseAtTime(now(), mQuantum));
+        double beat = ceil(sessionState.beatAtTime(now(), mQuantum));
+        return sessionState.timeAtBeat(beat + (mQuantum-phase), mQuantum);
     }
 
     double tempo() const
