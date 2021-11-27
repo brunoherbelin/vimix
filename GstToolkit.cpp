@@ -68,20 +68,28 @@ string GstToolkit::time_to_string(guint64 t, time_string_mode m)
     // MINIMAL: keep only the 2 higher values (most significant)
     else if (m == TIME_STRING_MINIMAL) {
         int count = 0;
+        // hours
         if (s / 3600) {
             oss << s / 3600 << ':';
             count++;
         }
-        if ((s % 3600) / 60) {
+        // minutes
+        if (count > 0) {
+            oss << setw(2) << setfill('0') << (s % 3600) / 60 << ':';
+            count++;
+        }
+        else if ((s % 3600) / 60)
+        {
             oss << (s % 3600) / 60 << ':';
             count++;
         }
-        if (count < 2) {
+        // seconds
+        {
             oss << setw(count > 0 ? 2 : 1) << setfill('0') << (s % 3600) % 60;
             count++;
         }
-        if (count < 2 )
-            oss << '.'<< setw(2) << setfill('0') << (ms % 1000) / 10;
+        if (count < 2)
+            oss << '.'<< setw((ms % 1000) / 100 ? 2 : 1) << setfill('0') << (ms % 1000) / 10;
     }
     else {
         // TIME_STRING_FIXED : fixed length string (11 chars) HH:mm:ss.ii"
