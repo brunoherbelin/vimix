@@ -1119,7 +1119,8 @@ void UserInterface::RenderTimer()
         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
             ImGui::BeginTooltip();
             guint64 time_phase = GST_SECOND * (60.0 * q / t) ;
-            ImGui::Text("Quantum: %d\nPhase duration: %s", (int) ceil(float_value), GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::Text("%d beats per phase\n= %s at %d BPM", (int) ceil(float_value),
+                        GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str(), (int) t);
             ImGui::EndTooltip();
         }
 
@@ -1210,7 +1211,7 @@ void UserInterface::RenderTimer()
         }
         if (ImGui::IsItemHovered() || ImGui::IsItemActive())  {
             ImGui::BeginTooltip();
-            ImGui::Text("Countdown\n%s", GstToolkit::time_to_string(duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::Text("%s\ncountdown", GstToolkit::time_to_string(duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
             ImGui::EndTooltip();
         }
 
@@ -3320,8 +3321,13 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
                 }
 
                 // custom timeline slider
-                mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
-                                                                           tl->first(), tl->end(), tl->step(), size.x);
+                if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
+                    mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
+                                                                               tl->first(), tl->end(), tl->step(), size.x,
+                                                                               Metronome::manager().tempo(), Metronome::manager().quantum());
+                else
+                    mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
+                                                                               tl->first(), tl->end(), tl->step(), size.x);
 
             }
         }
