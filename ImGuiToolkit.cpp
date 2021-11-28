@@ -965,59 +965,6 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
 }
 
 
-//void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width)
-//{
-//    // get window
-//    ImGuiWindow* window = ImGui::GetCurrentWindow();
-//    if (window->SkipItems)
-//        return;
-
-//    // get style & id
-//    const ImGuiContext& g = *GImGui;
-//    const ImGuiStyle& style = g.Style;
-//    const float fontsize = g.FontSize;
-//    const ImGuiID id = window->GetID(label);
-
-//    //
-//    // FIRST PREPARE ALL data structures
-//    //
-
-//    // widget bounding box
-//    const float height = 2.f * (fontsize + style.FramePadding.y);
-//    ImVec2 pos = window->DC.CursorPos;
-//    ImVec2 size = ImVec2(width, height);
-//    ImRect bbox(pos, pos + size);
-//    ImGui::ItemSize(size, style.FramePadding.y);
-//    if (!ImGui::ItemAdd(bbox, id))
-//        return;
-
-//    // cursor size
-//    const float cursor_width = 0.5f * fontsize;
-
-//    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-//    ImRect timeline_bbox(bbox);
-//    timeline_bbox.Expand( ImVec2() - style.FramePadding );
-
-//    // units conversion: from time to float (calculation made with higher precision first)
-//    guint64 duration = end - begin;
-//    float time_ = static_cast<float> ( static_cast<double>(time - begin) / static_cast<double>(duration) );
-
-//    //
-//    // THIRD RENDER
-//    //
-
-//    // Render the bounding box
-//    ImGui::RenderFrame(bbox.Min, bbox.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
-
-//    // render the timeline
-//    RenderTimeline(window, timeline_bbox, begin, end, step);
-
-//    // draw the cursor
-//    if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
-//        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-//        ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
-//    }
-//}
 
 bool ImGuiToolkit::InvisibleSliderInt (const char* label, uint *index, uint min, uint max, ImVec2 size)
 {

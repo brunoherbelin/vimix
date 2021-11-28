@@ -2572,7 +2572,8 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 }
 
-std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time, double width_ratio, float height)
+std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time,
+                                                    double width_ratio, float height, double tempo = 0, double quantum = 0)
 {
     std::list< std::pair<float, guint64> > ret;
 
@@ -2640,7 +2641,11 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
-        ImGuiToolkit::RenderTimeline(window, section_bbox, section->begin, section->end, timeline->step());
+        // render the timeline
+        if (tempo > 0 && quantum > 0)
+            ImGuiToolkit::RenderTimelineBPM(window, section_bbox, tempo, quantum, section->begin, section->end, timeline->step());
+        else
+            ImGuiToolkit::RenderTimeline(window, section_bbox, section->begin, section->end, timeline->step());
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -2770,7 +2775,14 @@ void SourceController::RenderSelection(size_t i)
 
                     // draw the mediaplayer's timeline, with the indication of cursor position
                     // NB: use the same width/time ratio for all to ensure timing vertical correspondance
-                    DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(), width_ratio / fabs(mp->playSpeed()), framesize.y);
+
+                    if (mp->syncToMetronome() > Metronome::SYNC_NONE)
+                        DrawTimeline("##timeline_mediaplayer_bpm", mp->timeline(), mp->position(),
+                                     width_ratio / fabs(mp->playSpeed()), framesize.y,
+                                     Metronome::manager().tempo(), Metronome::manager().quantum());
+                    else
+                        DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(),
+                                     width_ratio / fabs(mp->playSpeed()), framesize.y);
 
                     if ( w > maxframewidth ) {
 
