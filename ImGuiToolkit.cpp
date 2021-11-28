@@ -502,7 +502,7 @@ void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     ImGui::BeginTooltip();
-    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 14.0f);
     ImGui::TextUnformatted(desc);
     ImGui::PopTextWrapPos();
 

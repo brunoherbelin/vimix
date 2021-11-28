@@ -4066,7 +4066,12 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n- video (*.mpg, *mov, *.avi, etc.)\n- image (*.jpg, *.png, etc.)\n- vector graphics (*.svg)\n- vimix session (*.mix)\n\n(Equivalent to dropping the file in the workspace)");
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n"
+                                     ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
+                                     ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
+                                     ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
+                                     ICON_FA_CARET_RIGHT " vimix session (*.mix)\n\n"
+                                     "(Equivalent to dropping the file in the workspace)");
 
             // get media file if dialog finished
             if (fileimportdialog.closed()){
@@ -4188,7 +4193,9 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.");
+            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.\n"
+                                     ICON_FA_CARET_RIGHT " Loopback from output\n"
+                                     ICON_FA_CARET_RIGHT " Clone other sources");
         }
         // Generated Source creator
         else if (Settings::application.source.new_type == 3){
@@ -4256,7 +4263,10 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n- webcams or frame grabbers\n- screen capture\n- vimix stream from connected machines");
+            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n"
+                                     ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
+                                     ICON_FA_CARET_RIGHT " screen capture\n"
+                                     ICON_FA_CARET_RIGHT " stream from connected vimix");
 
         }
 
@@ -4497,11 +4507,10 @@ void Navigator::RenderMainPannelVimix()
         ImGuiToolkit::ToolTip("New session", CTRL_MOD "W");
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpMarker("Select the history of recently\n"
-                             "opened files or a folder.\n"
-                             "Double-clic a filename to open.\n\n"
-                             ICON_FA_ARROW_CIRCLE_RIGHT "  Enable smooth transition to\n"
-                             "perform smooth cross fading.");
+    ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
+                             "Double-clic on a filename to open it.\n\n"
+                             ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
+                             "performs cross fading to the openned session.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
@@ -4893,10 +4902,10 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Save & Keep version");
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top).\n"
+        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top). "
                                  "Double-clic on a version to restore it.\n\n"
-                                 ICON_FA_CODE_BRANCH "  Enable iterative saving to automatically\n"
-                                 "keep a version each time a session is saved.");
+                                 ICON_FA_CODE_BRANCH "  Iterative saving automatically "
+                                 "keeps a version each time a session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot);
@@ -5032,9 +5041,9 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
-        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n  "
-                                 ICON_FA_ANGLE_RIGHT " Clock : variable framerate, correct duration.\n  "
-                                 ICON_FA_ANGLE_RIGHT " Framerate : correct framerate,  shorter duration.");
+        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n"
+                                 ICON_FA_CARET_RIGHT " Clock: variable framerate, correct duration.\n"
+                                 ICON_FA_CARET_RIGHT " Framerate: correct framerate,  shorter duration.");
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5046,7 +5055,7 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Spacing();
         ImGui::Text("System");
         ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
-        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine,\n"
+        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
                                  "you can try to disable some of the OpenGL optimizations below.");
 
         static bool need_restart = false;
@@ -5059,7 +5068,7 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
         // hardware support deserves more explanation
-        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated\n"
+        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
         ImGui::SameLine(0);
         change |= ImGuiToolkit::ButtonSwitch( "Hardware video de/encoding", &gpu);
