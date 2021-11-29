@@ -12,6 +12,7 @@
 #include <gst/app/gstappsink.h>
 
 #include "Timeline.h"
+#include "Metronome.h"
 
 // Forward declare classes referenced
 class Visitor;
@@ -265,6 +266,11 @@ public:
     inline void setRewindOnDisabled(bool on) { rewind_on_disable_ = on; }
     inline bool rewindOnDisabled() const { return rewind_on_disable_; }
     /**
+     * Option to synchronize with metronome
+     * */
+    inline void setSyncToMetronome(Metronome::Synchronicity s) { metro_sync_ = s; }
+    inline Metronome::Synchronicity syncToMetronome() const { return metro_sync_; }
+    /**
      * Accept visitors
      * */
     void accept(Visitor& v);
@@ -307,7 +313,7 @@ private:
     bool rewind_on_disable_;
     bool force_software_decoding_;
     std::string decoder_name_;
-    bool metro_linked_;
+    Metronome::Synchronicity metro_sync_;
 
     // fps counter
     struct TimeCounter {

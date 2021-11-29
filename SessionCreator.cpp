@@ -726,6 +726,10 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
             n.setRewindOnDisabled(rewind_on_disabled);
 
+            int sync_to_metronome = 0;
+            mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
+            n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
+
             bool play = true;
             mediaplayerNode->QueryBoolAttribute("play", &play);
             n.play(play);

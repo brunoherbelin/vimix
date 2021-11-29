@@ -502,7 +502,7 @@ void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     ImGui::BeginTooltip();
-    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 14.0f);
     ImGui::TextUnformatted(desc);
     ImGui::PopTextWrapPos();
 
@@ -584,7 +584,8 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
 
-void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip)
+void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox,
+                                   guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
@@ -719,7 +720,151 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox, gu
     ImGui::PopStyleColor(1);
 }
 
-bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width)
+
+void ImGuiToolkit::RenderTimelineBPM (ImGuiWindow* window, ImRect timeline_bbox, double tempo, double quantum,
+                                      guint64 begin, guint64 end, guint64 step, bool verticalflip)
+{
+    if (tempo<1.)
+        return;
+
+
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float fontsize = g.FontSize;
+    const ImU32 text_color = ImGui::GetColorU32(ImGuiCol_Text);
+
+    // keep duration
+    const guint64 duration = end - begin;
+
+    // by default, put a tick mark at every frame step
+    guint64 tick_step = step;
+
+    // how many pixels to represent one frame step?
+    const float step_ = static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
+
+    // spacing between small tick marks for frames
+    for (float tick_step_pixels = timeline_bbox.GetWidth() * step_; tick_step_pixels < 5.f; tick_step *= 2)
+    {
+        tick_step_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(tick_step) / static_cast<double>(duration) );
+    }
+
+    // by default, put large mark every beat and label every phase
+    guint64 time_beat = GST_SECOND * (60.0 / tempo) ;
+    guint64 large_tick_step = time_beat;
+
+    // how many pixels to represent one beat?
+    const float beat_ = static_cast<float> ( static_cast<double>(large_tick_step) / static_cast<double>(duration) );
+
+    // spacing between small tick marks for frames
+    for (float tick_beat_pixels = timeline_bbox.GetWidth() * beat_; tick_beat_pixels < 10.f; large_tick_step *= 2)
+    {
+        tick_beat_pixels = timeline_bbox.GetWidth() * static_cast<float> ( static_cast<double>(large_tick_step) / static_cast<double>(duration) );
+    }
+
+    guint64 label_tick_step = large_tick_step * (guint64) ceil(quantum);
+
+    // render tics and text
+    char text_buf[24];
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+
+    // render tick and text END
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
+                   GstToolkit::time_to_string(end, GstToolkit::TIME_STRING_MINIMAL).c_str());
+    ImVec2 duration_label_size = ImGui::CalcTextSize(text_buf, NULL);
+    ImVec2 duration_label_pos = timeline_bbox.GetTR() + ImVec2( -2.f -duration_label_size.x, fontsize);
+    if (verticalflip)
+        duration_label_pos.y -= fontsize;
+    ImGui::RenderTextClipped( duration_label_pos, duration_label_pos + duration_label_size,
+                              text_buf, NULL, &duration_label_size);
+    window->DrawList->AddLine( timeline_bbox.GetTR(), timeline_bbox.GetBR(), text_color, 1.5f);
+
+    // render tick and text START
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s",
+                   GstToolkit::time_to_string(begin, GstToolkit::TIME_STRING_MINIMAL).c_str());
+    ImVec2 beginning_label_size = ImGui::CalcTextSize(text_buf, NULL);
+    ImVec2 beginning_label_pos = timeline_bbox.GetTL() + ImVec2(3.f, fontsize);
+    if (verticalflip)
+        beginning_label_pos.y -= fontsize;
+    if ( beginning_label_pos.x + beginning_label_size.x < duration_label_pos . x) {
+        ImGui::RenderTextClipped( beginning_label_pos, beginning_label_pos + beginning_label_size,
+                                  text_buf, NULL, &beginning_label_size);
+    }
+    window->DrawList->AddLine( timeline_bbox.GetTL(), timeline_bbox.GetBL(), text_color, 1.5f);
+
+    ImGui::PopFont();
+
+    // render the tick marks along TIMELINE
+    ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_Text] -ImVec4(0.f,0.f,0.f,0.4f));
+    ImVec2 pos = verticalflip ? timeline_bbox.GetBL() : timeline_bbox.GetTL();
+
+    // SMALL ticks every step
+    float tick_length = style.FramePadding.y;
+    guint64 tick = 0;
+    while ( tick < end )
+    {
+        // draw the tick mark each step
+        window->DrawList->AddLine( pos, pos + ImVec2(0.f, verticalflip ? -tick_length : tick_length), text_color);
+
+        // next tick
+        tick += tick_step;
+        float tick_percent = static_cast<float> ( static_cast<double>(tick-begin) / static_cast<double>(duration) );
+        if (verticalflip)
+            pos = ImLerp(timeline_bbox.GetBL(), timeline_bbox.GetBR(), tick_percent);
+        else
+            pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
+
+    }
+
+    // LARGE tick marks every tempo
+    pos = verticalflip ? timeline_bbox.GetBL() : timeline_bbox.GetTL();
+    tick_length =  fontsize - style.FramePadding.y;
+    tick = 0;
+    while ( tick < end )
+    {
+        // label tick mark
+        if ( (tick%label_tick_step) < 1 )
+        {
+            // beat count label
+            guint64 ticklabel = tick / time_beat;
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%ld", ticklabel);
+            ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
+            ImVec2 mini = ImVec2( pos.x - label_size.x / 2.f, pos.y);
+            ImVec2 maxi = ImVec2( pos.x + label_size.x / 2.f, pos.y);
+
+            if (verticalflip)   {
+                mini.y -= tick_length + label_size.y;
+                maxi.y -= tick_length;
+            }
+            else {
+                mini.y += tick_length;
+                maxi.y += tick_length + label_size.y;
+            }
+
+            // do not overlap with labels for beginning and duration
+            if (mini.x - style.ItemSpacing.x > (beginning_label_pos.x + beginning_label_size.x) &&  maxi.x + style.ItemSpacing.x < duration_label_pos.x)
+                ImGui::RenderTextClipped(mini, maxi, text_buf, NULL, &label_size);
+        }
+
+        // draw the tick mark each step
+        window->DrawList->AddLine( pos, pos + ImVec2(0.f, verticalflip ? -tick_length : tick_length), text_color);
+
+        // next tick
+        tick += large_tick_step;
+        float tick_percent = static_cast<float> ( static_cast<double>(tick-begin) / static_cast<double>(duration) );
+        if (verticalflip)
+            pos = ImLerp(timeline_bbox.GetBL(), timeline_bbox.GetBR(), tick_percent);
+        else
+            pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), tick_percent);
+
+    }
+
+    ImGui::PopStyleColor(1);
+}
+
+
+bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first,
+                                   guint64 end, guint64 step, const float width, double tempo, double quantum)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -788,7 +933,7 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
                                                &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
     if (value_changed){
         *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end - begin) );
-        if (first != -1)
+        if (first != GST_CLOCK_TIME_NONE)
             *time -= first;
         grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
     }
@@ -802,7 +947,10 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
     ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
 
     // render the timeline
-    RenderTimeline(window, timeline_bbox, begin, end, step);
+    if (tempo > 0 && quantum > 0)
+        RenderTimelineBPM(window, timeline_bbox, tempo, quantum, begin, end, step);
+    else
+        RenderTimeline(window, timeline_bbox, begin, end, step);
 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
@@ -817,59 +965,6 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
 }
 
 
-void ImGuiToolkit::Timeline (const char* label, guint64 time, guint64 begin, guint64 end, guint64 step, const float width)
-{
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return;
-
-    // get style & id
-    const ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    const float fontsize = g.FontSize;
-    const ImGuiID id = window->GetID(label);
-
-    //
-    // FIRST PREPARE ALL data structures
-    //
-
-    // widget bounding box
-    const float height = 2.f * (fontsize + style.FramePadding.y);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImVec2(width, height);
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bbox, id))
-        return;
-
-    // cursor size
-    const float cursor_width = 0.5f * fontsize;
-
-    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-    ImRect timeline_bbox(bbox);
-    timeline_bbox.Expand( ImVec2() - style.FramePadding );
-
-    // units conversion: from time to float (calculation made with higher precision first)
-    guint64 duration = end - begin;
-    float time_ = static_cast<float> ( static_cast<double>(time - begin) / static_cast<double>(duration) );
-
-    //
-    // THIRD RENDER
-    //
-
-    // Render the bounding box
-    ImGui::RenderFrame(bbox.Min, bbox.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
-
-    // render the timeline
-    RenderTimeline(window, timeline_bbox, begin, end, step);
-
-    // draw the cursor
-    if ( time_ > -FLT_EPSILON && time_ < 1.f ) {
-        pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-        ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
-    }
-}
 
 bool ImGuiToolkit::InvisibleSliderInt (const char* label, uint *index, uint min, uint max, ImVec2 size)
 {

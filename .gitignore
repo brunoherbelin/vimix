@@ -24,3 +24,5 @@ osx/.DS_Store
 .DS_Store
 
 osx/runvimix
+
+*.autosave

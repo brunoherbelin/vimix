@@ -104,11 +104,8 @@ void SetNextWindowVisible(ImVec2 pos, ImVec2 size, float margin = 180.f);
 std::string readable_date_time_string(std::string date){
     if (date.length()<12)
         return "";
-    std::string s = date.substr(0, 12);
-    s.insert(10, ":");
-    s.insert(8, "  ");
-    s.insert(6, "/");
-    s.insert(4, "/");
+    std::string s = date.substr(6, 2) + "/" + date.substr(4, 2) + "/" + date.substr(0, 4);
+    s += " @ " + date.substr(8, 2) + ":" + date.substr(10, 2);
     return s;
 }
 
@@ -1122,7 +1119,8 @@ void UserInterface::RenderTimer()
         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
             ImGui::BeginTooltip();
             guint64 time_phase = GST_SECOND * (60.0 * q / t) ;
-            ImGui::Text("Quantum: %d\nPhase duration: %s", (int) ceil(float_value), GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::Text("%d beats per phase\n= %s at %d BPM", (int) ceil(float_value),
+                        GstToolkit::time_to_string(time_phase, GstToolkit::TIME_STRING_READABLE).c_str(), (int) t);
             ImGui::EndTooltip();
         }
 
@@ -1213,7 +1211,7 @@ void UserInterface::RenderTimer()
         }
         if (ImGui::IsItemHovered() || ImGui::IsItemActive())  {
             ImGui::BeginTooltip();
-            ImGui::Text("Countdown\n%s", GstToolkit::time_to_string(duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+            ImGui::Text("%s\ncountdown", GstToolkit::time_to_string(duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
             ImGui::EndTooltip();
         }
 
@@ -2470,13 +2468,28 @@ void SourceController::Render()
                 if (ImGui::MenuItem(LABEL_EDIT_FADING))
                     mediaplayer_edit_fading_ = true;
 
-                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "  Inactive action"))
+                if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+                {
+                    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
+                    bool active = sync == Metronome::SYNC_NONE;
+                    if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
+                    active = sync == Metronome::SYNC_BEAT;
+                    if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
+                    active = sync == Metronome::SYNC_PHASE;
+                    if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
                 {
                     bool option = !mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", "", &option ))
+                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
                         mediaplayer_active_->setRewindOnDisabled(false);
                     option = mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", "", &option ))
+                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
                         mediaplayer_active_->setRewindOnDisabled(true);
                     ImGui::EndMenu();
                 }
@@ -2559,7 +2572,8 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 }
 
-std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time, double width_ratio, float height)
+std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time,
+                                                    double width_ratio, float height, double tempo = 0, double quantum = 0)
 {
     std::list< std::pair<float, guint64> > ret;
 
@@ -2627,7 +2641,11 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
-        ImGuiToolkit::RenderTimeline(window, section_bbox, section->begin, section->end, timeline->step());
+        // render the timeline
+        if (tempo > 0 && quantum > 0)
+            ImGuiToolkit::RenderTimelineBPM(window, section_bbox, tempo, quantum, section->begin, section->end, timeline->step());
+        else
+            ImGuiToolkit::RenderTimeline(window, section_bbox, section->begin, section->end, timeline->step());
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -2757,7 +2775,14 @@ void SourceController::RenderSelection(size_t i)
 
                     // draw the mediaplayer's timeline, with the indication of cursor position
                     // NB: use the same width/time ratio for all to ensure timing vertical correspondance
-                    DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(), width_ratio / fabs(mp->playSpeed()), framesize.y);
+
+                    if (mp->syncToMetronome() > Metronome::SYNC_NONE)
+                        DrawTimeline("##timeline_mediaplayer_bpm", mp->timeline(), mp->position(),
+                                     width_ratio / fabs(mp->playSpeed()), framesize.y,
+                                     Metronome::manager().tempo(), Metronome::manager().quantum());
+                    else
+                        DrawTimeline("##timeline_mediaplayer", mp->timeline(), mp->position(),
+                                     width_ratio / fabs(mp->playSpeed()), framesize.y);
 
                     if ( w > maxframewidth ) {
 
@@ -3308,8 +3333,13 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
                 }
 
                 // custom timeline slider
-                mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
-                                                                           tl->first(), tl->end(), tl->step(), size.x);
+                if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
+                    mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
+                                                                               tl->first(), tl->end(), tl->step(), size.x,
+                                                                               Metronome::manager().tempo(), Metronome::manager().quantum());
+                else
+                    mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
+                                                                               tl->first(), tl->end(), tl->step(), size.x);
 
             }
         }
@@ -4036,7 +4066,12 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n- video (*.mpg, *mov, *.avi, etc.)\n- image (*.jpg, *.png, etc.)\n- vector graphics (*.svg)\n- vimix session (*.mix)\n\n(Equivalent to dropping the file in the workspace)");
+            ImGuiToolkit::HelpMarker("Create a source from a file:\n"
+                                     ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
+                                     ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
+                                     ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
+                                     ICON_FA_CARET_RIGHT " vimix session (*.mix)\n\n"
+                                     "(Equivalent to dropping the file in the workspace)");
 
             // get media file if dialog finished
             if (fileimportdialog.closed()){
@@ -4158,7 +4193,9 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.");
+            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.\n"
+                                     ICON_FA_CARET_RIGHT " Loopback from output\n"
+                                     ICON_FA_CARET_RIGHT " Clone other sources");
         }
         // Generated Source creator
         else if (Settings::application.source.new_type == 3){
@@ -4226,7 +4263,10 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n- webcams or frame grabbers\n- screen capture\n- vimix stream from connected machines");
+            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n"
+                                     ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
+                                     ICON_FA_CARET_RIGHT " screen capture\n"
+                                     ICON_FA_CARET_RIGHT " stream from connected vimix");
 
         }
 
@@ -4467,11 +4507,10 @@ void Navigator::RenderMainPannelVimix()
         ImGuiToolkit::ToolTip("New session", CTRL_MOD "W");
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpMarker("Select the history of recently\n"
-                             "opened files or a folder.\n"
-                             "Double-clic a filename to open.\n\n"
-                             ICON_FA_ARROW_CIRCLE_RIGHT "  Enable smooth transition to\n"
-                             "perform smooth cross fading.");
+    ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
+                             "Double-clic on a filename to open it.\n\n"
+                             ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
+                             "performs cross fading to the openned session.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
@@ -4863,10 +4902,10 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Save & Keep version");
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top).\n"
+        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top). "
                                  "Double-clic on a version to restore it.\n\n"
-                                 ICON_FA_CODE_BRANCH "  Enable iterative saving to automatically\n"
-                                 "keep a version each time a session is saved.");
+                                 ICON_FA_CODE_BRANCH "  Iterative saving automatically "
+                                 "keeps a version each time a session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot);
@@ -4926,7 +4965,7 @@ void Navigator::RenderMainPannelVimix()
             Settings::application.widget.timer = !Settings::application.widget.timer;
     }
     if (ImGui::IsItemHovered())
-        tooltip_ = "Timer      " CTRL_MOD "T";
+        tooltip_ = "Timer        " CTRL_MOD "T";
 
     ImGui::PopFont();
     if (!tooltip_.empty()) {
@@ -5002,9 +5041,9 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
-        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n  "
-                                 ICON_FA_ANGLE_RIGHT " Clock : variable framerate, correct duration.\n  "
-                                 ICON_FA_ANGLE_RIGHT " Framerate : correct framerate,  shorter duration.");
+        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n"
+                                 ICON_FA_CARET_RIGHT " Clock: variable framerate, correct duration.\n"
+                                 ICON_FA_CARET_RIGHT " Framerate: correct framerate,  shorter duration.");
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5016,7 +5055,7 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Spacing();
         ImGui::Text("System");
         ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
-        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine,\n"
+        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
                                  "you can try to disable some of the OpenGL optimizations below.");
 
         static bool need_restart = false;
@@ -5029,7 +5068,7 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
         // hardware support deserves more explanation
-        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated\n"
+        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
         ImGui::SameLine(0);
         change |= ImGuiToolkit::ButtonSwitch( "Hardware video de/encoding", &gpu);

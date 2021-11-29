@@ -72,6 +72,14 @@ namespace ableton
       return sessionState.phaseAtTime(now(), mQuantum);
     }
 
+    std::chrono::microseconds timeNextPhase() const
+    {
+        auto sessionState = mLink.captureAppSessionState();
+        double phase = ceil(sessionState.phaseAtTime(now(), mQuantum));
+        double beat = ceil(sessionState.beatAtTime(now(), mQuantum));
+        return sessionState.timeAtBeat(beat + (mQuantum-phase), mQuantum);
+    }
+
     double tempo() const
     {
       auto sessionState = mLink.captureAppSessionState();
@@ -218,6 +226,11 @@ std::chrono::microseconds Metronome::timeToBeat()
     return engine_.timeNextBeat() - engine_.now();
 }
 
+std::chrono::microseconds Metronome::timeToPhase()
+{
+    return engine_.timeNextPhase() - engine_.now();
+}
+
 void delay(std::function<void()> f, std::chrono::microseconds us)
 {
     std::this_thread::sleep_for(us);
@@ -227,6 +240,11 @@ void delay(std::function<void()> f, std::chrono::microseconds us)
 void Metronome::executeAtBeat( std::function<void()> f )
 {
     std::thread( delay, f, timeToBeat() ).detach();
+}
+
+void Metronome::executeAtPhase( std::function<void()> f )
+{
+    std::thread( delay, f, timeToPhase() ).detach();
 }
 
 size_t Metronome::peers() const

@@ -206,9 +206,8 @@ bool Rendering::init()
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
     // additional window callbacks for main window
-    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
+//    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
-    glfwSetWindowSizeLimits( main_.window(), 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     //
     // Gstreamer setup
@@ -304,6 +303,16 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
+    // change windows fullscreen mode if requested
+    main_.toggleFullscreen_();
+    output_.toggleFullscreen_();
+
+    // change main window title if requested
+    if (!main_new_title_.empty()) {
+        main_.setTitle(main_new_title_);
+        main_new_title_.clear();
+    }
+
     // operate on main window context
     main_.makeCurrent();
 
@@ -327,28 +336,11 @@ void Rendering::draw()
         request_screenshot_ = false;
     }
 
-    // draw output window (and swap buffer output)
-    output_.draw( Mixer::manager().session()->frame() );
-
     // swap GL buffers
     glfwSwapBuffers(main_.window());
-    glfwSwapBuffers(output_.window());
 
-    // Poll and handle events (inputs, window resize, etc.)
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    glfwPollEvents();
-
-    // change windows
-    main_.toggleFullscreen_();
-    output_.toggleFullscreen_();
-
-#ifndef USE_GST_APPSINK_CALLBACKS
-    // no g_main_loop_run(loop) : update global GMainContext
-    g_main_context_iteration(NULL, FALSE);
-#endif
+    // draw output window (and swap buffer output)
+    output_.draw( Mixer::manager().session()->frame() );
 
     // software framerate limiter 60FPS if not v-sync
     if ( Settings::application.render.vsync < 1 ) {
@@ -359,11 +351,18 @@ void Rendering::draw()
         g_timer_start(timer);
     }
 
-    // change main window title if requested
-    if (!main_new_title_.empty()) {
-        main_.setTitle(main_new_title_);
-        main_new_title_.clear();
-    }
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    glfwPollEvents();
+
+#ifndef USE_GST_APPSINK_CALLBACKS
+    // no g_main_loop_run(loop) : update global GMainContext
+    g_main_context_iteration(NULL, FALSE);
+#endif
+
 }
 
 
@@ -614,7 +613,7 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
     // done request
     request_toggle_fullscreen_ = false;
 
-    // if in fullscreen mode
+    // disable fullscreen mode
     if (mo == nullptr) {
         // store fullscreen mode
         Settings::application.windows[index_].fullscreen = false;
@@ -626,7 +625,7 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
                                                 Settings::application.windows[index_].w,
                                                 Settings::application.windows[index_].h, 0 );
     }
-    // not in fullscreen mode
+    // set fullscreen mode
     else {
         // store fullscreen mode
         Settings::application.windows[index_].fullscreen = true;
@@ -636,12 +635,11 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
-
-        // Enable vsync on output window only (i.e. not 0 if has a master)
-        // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
-        glfwSwapInterval( nullptr == master_ ? 0 : Settings::application.render.vsync);
     }
 
+    // Enable vsync on output window only (i.e. not 0 if has a master)
+    // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
+    glfwSwapInterval( nullptr == master_ ? 0 : Settings::application.render.vsync);
 
 }
 
@@ -720,23 +718,25 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
-    // create the window normal
+    // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
         Log::Error("Failed to create GLFW Window %d", index_);
         return false;
     }
 
-    // set position
+    // ensure minimal window size
+    glfwSetWindowSizeLimits(window_, 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
+
+    // set initial position
     glfwSetWindowPos(window_, winset.x, winset.y);
 
     /// CALLBACKS
     // store global ref to pointers (used by callbacks)
     GLFW_window_[window_] = this;
     // window position and resize callbacks
-    glfwSetWindowSizeCallback( window_, WindowResizeCallback );
-//    glfwSetFramebufferSizeCallback( window_, WindowResizeCallback );
     glfwSetWindowPosCallback( window_, WindowMoveCallback );
+    glfwSetWindowSizeCallback( window_, WindowResizeCallback );
 
     // take opengl context ownership
     glfwMakeContextCurrent(window_);
@@ -925,6 +925,8 @@ void RenderingWindow::draw(FrameBuffer *fb)
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
+        // swap buffer
+        glfwSwapBuffers(window_);
     }
 
     // restore attribs

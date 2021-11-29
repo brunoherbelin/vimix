@@ -51,7 +51,7 @@ MediaPlayer::MediaPlayer()
 
     failed_ = false;
     pending_ = false;
-    metro_linked_ = false;
+    metro_sync_ = Metronome::SYNC_NONE;
     force_update_ = false;
     seeking_ = false;
     rewind_on_disable_ = false;
@@ -646,12 +646,17 @@ void MediaPlayer::play(bool on)
         return;
 
     // Metronome
-    if (metro_linked_) {
-        // busy with this play()
+    if (metro_sync_ > Metronome::SYNC_NONE) {
+        // busy with this delayed action
         pending_ = true;
-        // Execute: sync to Metronome if active
-        Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, bool o) {
-                                        p->execute_play_command(o); p->pending_=false; }, this, on) );
+        // delayed execution function
+         std::function<void()> playlater = std::bind([](MediaPlayer *p, bool o) {
+                 p->execute_play_command(o); p->pending_=false; }, this, on);
+        // Execute: sync to Metronome
+        if (metro_sync_ > Metronome::SYNC_BEAT)
+            Metronome::manager().executeAtPhase( playlater );
+        else
+            Metronome::manager().executeAtBeat( playlater );
     }
     else
         // execute immediately
@@ -701,12 +706,17 @@ void MediaPlayer::rewind(bool force)
     GstClockTime target = (rate_ > 0.0) ? timeline_.next(0) : timeline_.previous(timeline_.last());
 
     // Metronome
-    if (metro_linked_) {
-        // busy with this play()
+    if (metro_sync_) {
+        // busy with this delayed action
         pending_ = true;
-        // Execute: sync to Metronome if active
-        Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, GstClockTime t, bool f) {
-                                            p->execute_seek_command( t, f ); p->pending_=false; }, this, target, force) );
+        // delayed execution function
+         std::function<void()> rewindlater = std::bind([](MediaPlayer *p, GstClockTime t, bool f) {
+                 p->execute_seek_command( t, f ); p->pending_=false; }, this, target, force);
+        // Execute: sync to Metronome
+        if (metro_sync_ > Metronome::SYNC_BEAT)
+            Metronome::manager().executeAtPhase( rewindlater );
+        else
+            Metronome::manager().executeAtBeat( rewindlater );
     }
     else
         // execute immediately
@@ -728,12 +738,18 @@ void MediaPlayer::step()
         GstEvent *stepevent = gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
-        if (metro_linked_) {
-            // busy with this play()
+        if (metro_sync_) {
+            // busy with this delayed action
             pending_ = true;
-            // Execute: sync to Metronome if active
-            Metronome::manager().executeAtBeat( std::bind([](MediaPlayer *p, GstEvent *e) {
-                                                gst_element_send_event(p->pipeline_, e); p->pending_=false; }, this, stepevent) );
+            // delayed execution function
+             std::function<void()> steplater = std::bind([](MediaPlayer *p, GstEvent *e) {
+                     gst_element_send_event(p->pipeline_, e); p->pending_=false; }, this, stepevent) ;
+            // Execute: sync to Metronome
+            if (metro_sync_ > Metronome::SYNC_BEAT)
+                Metronome::manager().executeAtPhase( steplater );
+            else
+                Metronome::manager().executeAtBeat( steplater );
+
         }
         else
             // execute immediately

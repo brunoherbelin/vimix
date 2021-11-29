@@ -354,6 +354,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());
         newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
+        newelement->SetAttribute("sync_to_metronome", (int) n.syncToMetronome());
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
