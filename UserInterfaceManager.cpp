@@ -326,8 +326,15 @@ void UserInterface::handleKeyboard()
             else {
                 // toggle recording
                 if (video_recorder_) {
-                    video_recorder_->stop();
-//                    video_recorder_ = nullptr;
+                    // allow 'save & continue' for Ctrl+Alt+R if no timeout for recording
+                    if (alt_modifier_active && Settings::application.record.timeout == RECORD_MAX_TIMEOUT) {
+                        VideoRecorder *rec = new VideoRecorder;
+                        FrameGrabbing::manager().chain(video_recorder_, rec);
+                        video_recorder_ = rec;
+                    }
+                    // normal case: Ctrl+R stop recording
+                    else
+                        video_recorder_->stop();
                 }
                 else {
                     _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
@@ -1333,6 +1340,14 @@ void UserInterface::RenderPreview()
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
                         video_recorder_->stop();
+                    }
+                    // offer the 'save & continue' recording for undefined duration
+                    if (Settings::application.record.timeout == RECORD_MAX_TIMEOUT) {
+                        if ( ImGui::MenuItem( ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Save & continue", CTRL_MOD "Alt+R") ) {
+                            VideoRecorder *rec = new VideoRecorder;
+                            FrameGrabbing::manager().chain(video_recorder_, rec);
+                            video_recorder_ = rec;
+                        }
                     }
                     ImGui::PopStyleColor(1);
                 }

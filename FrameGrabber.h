@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <list>
+#include <map>
 #include <string>
 
 #include <gst/gst.h>
@@ -111,6 +112,7 @@ public:
     inline uint height() const { return height_; }
 
     void add(FrameGrabber *rec);
+    void chain(FrameGrabber *rec, FrameGrabber *new_rec);
     void verify(FrameGrabber **rec);
     FrameGrabber *front();
     FrameGrabber *get(uint64_t id);
@@ -124,6 +126,7 @@ protected:
 
 private:
     std::list<FrameGrabber *> grabbers_;
+    std::map<FrameGrabber *, FrameGrabber *> grabbers_chain_;
     guint pbo_[2];
     guint pbo_index_;
     guint pbo_next_index_;

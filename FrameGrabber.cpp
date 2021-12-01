@@ -60,9 +60,22 @@ void FrameGrabbing::add(FrameGrabber *rec)
         grabbers_.push_back(rec);
 }
 
+void FrameGrabbing::chain(FrameGrabber *rec, FrameGrabber *next_rec)
+{
+    if (rec != nullptr && next_rec != nullptr)
+    {
+        // add grabber if not yet
+        if ( std::find(grabbers_.begin(), grabbers_.end(), rec) == grabbers_.end() )
+            grabbers_.push_back(rec);
+
+        grabbers_chain_[next_rec] = rec;
+    }
+}
+
 void FrameGrabbing::verify(FrameGrabber **rec)
 {
-    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() )
+    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() &&
+         grabbers_chain_.find(*rec) == grabbers_chain_.end()  )
         *rec = nullptr;
 }
 
@@ -214,12 +227,32 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
                 FrameGrabber *rec = *iter;
                 rec->addFrame(buffer, caps_);
 
+                // remove finished recorders
                 if (rec->finished()) {
                     iter = grabbers_.erase(iter);
                     delete rec;
                 }
                 else
                     ++iter;
+            }
+
+            // manage the list of chainned recorder
+            std::map<FrameGrabber *, FrameGrabber *>::iterator chain = grabbers_chain_.begin();
+            while (chain != grabbers_chain_.end()) {
+                // update frame grabber of chain list
+                chain->first->addFrame(buffer, caps_);
+                // if the chained recorder is now active
+                if (chain->first->active_ && chain->first->accept_buffer_){
+                    // add it to main grabbers,
+                    grabbers_.push_back(chain->first);
+                    // stop the replaced grabber
+                    chain->second->stop();
+                    // loop in chain list: done with this chain
+                    chain = grabbers_chain_.erase(chain);
+                }
+                else
+                    // loop in chain list
+                    ++chain;
             }
 
             // unref / free the frame
