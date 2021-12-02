@@ -271,8 +271,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 
 
 
-FrameGrabber::FrameGrabber(): finished_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr),
+FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
+    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
     timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(false)
 {
     // unique id
@@ -315,6 +315,8 @@ uint64_t FrameGrabber::duration() const
 
 void FrameGrabber::stop ()
 {
+    // TODO if not initialized wait for initializer
+
     // stop recording
     active_ = false;
 
@@ -324,6 +326,8 @@ void FrameGrabber::stop ()
 
 std::string FrameGrabber::info() const
 {
+    if (!initialized_)
+        return "Initializing";
     if (active_)
         return GstToolkit::time_to_string(duration_);
     else
@@ -363,6 +367,12 @@ GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo *
   return GST_PAD_PROBE_OK;
 }
 
+
+std::string FrameGrabber::initialize(FrameGrabber *rec, GstCaps *caps)
+{
+    return rec->init(caps);
+}
+
 void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 {
     // ignore
@@ -371,15 +381,37 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
     // first time initialization
     if (pipeline_ == nullptr) {
-        // type specific initialisation
-        init(caps);
-        // attach EOS detector
-        GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
-        gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
-        gst_object_unref (pad);
+        initializer_ = std::async( FrameGrabber::initialize, this, caps);
     }
-    // stop if an incompatilble frame buffer given
-    else if ( !gst_caps_is_subset( caps_, caps ))
+
+    // initializer ongoing in separate thread
+    if (initializer_.valid()) {
+        // try to get info from initializer
+        if (initializer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+        {
+            // done initialization
+            std::string msg = initializer_.get();
+
+            // if initialization succeeded
+            if (initialized_) {
+                // attach EOS detector
+                GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
+                gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
+                gst_object_unref (pad);
+                // start recording
+                active_ = true;
+                // inform
+                Log::Info("%s", msg.c_str());
+            }
+            // else show warning
+            else {
+                Log::Warning("%s", msg.c_str());
+            }
+        }
+    }
+
+    // stop if an incompatilble frame buffer given after initialization
+    if (initialized_ && !gst_caps_is_subset( caps_, caps ))
     {
         stop();
         Log::Warning("Frame capture interrupted because the resolution changed.");

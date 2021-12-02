@@ -171,16 +171,15 @@ Loopback::Loopback() : FrameGrabber()
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, 30);  // fixed 30 FPS
 }
 
-void Loopback::init(GstCaps *caps)
+std::string Loopback::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     if (!Loopback::systemLoopbackInitialized()){
-        Log::Warning("Loopback system shall be initialized first.");
         finished_ = true;
-        return;
+        return std::string("Loopback system shall be initialized first.");
     }
 
     // create a gstreamer pipeline
@@ -190,10 +189,10 @@ void Loopback::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("Loopback Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        std::string msg = std::string("Loopback : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         finished_ = true;
-        return;
+        return msg;
     }
 
     // setup device sink
@@ -238,27 +237,21 @@ void Loopback::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("Loopback Could not configure source");
         finished_ = true;
-        return;
+        return std::string("Loopback : Could not configure source.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Loopback Could not open %s", Loopback::system_loopback_name.c_str());
         finished_ = true;
-        return;
+        return std::string("Loopback : Could not open ") + Loopback::system_loopback_name;
     }
 
     // all good
-#if defined(LINUX)
-    Log::Notify("Loopback started (v4l2loopback on %s)", Loopback::system_loopback_name.c_str());
-#else
-    Log::Notify("Loopback started (%s)", Loopback::system_loopback_name.c_str());
-#endif
-    // start
-    active_ = true;
+    initialized_ = true;
+
+    return std::string("Loopback started on ") + Loopback::system_loopback_name;
 }
 
 void Loopback::terminate()

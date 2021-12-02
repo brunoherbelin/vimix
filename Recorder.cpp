@@ -43,11 +43,11 @@ PNGRecorder::PNGRecorder() : FrameGrabber()
 {
 }
 
-void PNGRecorder::init(GstCaps *caps)
+std::string PNGRecorder::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! pngenc ! filesink name=sink";
@@ -56,10 +56,10 @@ void PNGRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("PNG Capture Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        std::string msg = std::string("PNG Capture Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         finished_ = true;
-        return;
+        return msg;
     }
 
     // verify location path (path is always terminated by the OS dependent separator)
@@ -102,24 +102,21 @@ void PNGRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("PNG Capture Could not configure source");
         finished_ = true;
-        return;
+        return std::string("PNG Capture : Failed to configure frame grabber.");
     }
 
     // start pipeline
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("PNG Capture Could not record %s", filename_.c_str());
         finished_ = true;
-        return;
+        return std::string("PNG Capture : Failed to start frame grabber.");
     }
 
     // all good
-    Log::Info("PNG Capture started.");
+    initialized_ = true;
 
-    // start recording !!
-    active_ = true;
+    return std::string("PNG Capture started ");
 }
 
 void PNGRecorder::terminate()
@@ -289,11 +286,11 @@ VideoRecorder::VideoRecorder() : FrameGrabber()
 
 }
 
-void VideoRecorder::init(GstCaps *caps)
+std::string VideoRecorder::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
@@ -307,10 +304,10 @@ void VideoRecorder::init(GstCaps *caps)
 
     // test for a hardware accelerated encoder
     if (Settings::application.render.gpu_decoding &&
-#if GST_GL_HAVE_PLATFORM_GLX
+//#if GST_GL_HAVE_PLATFORM_GLX
 
-            glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
-#endif
+//            glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
+//#endif
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
@@ -345,11 +342,10 @@ void VideoRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Info("Video Recording : Could not construct pipeline %s\n%s", description.c_str(), error->message);
-        Log::Warning("Video Recording : Failed to initiate GStreamer.");
+        std::string msg = std::string("Video Recording : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         finished_ = true;
-        return;
+        return msg;
     }
 
     // setup file sink
@@ -399,24 +395,22 @@ void VideoRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("Video Recording : Failed to configure frame grabber.");
         finished_ = true;
-        return;
+        return std::string("Video Recording : Failed to configure frame grabber.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Video Recording : Failed to start frame grabber.");
         finished_ = true;
-        return;
+        return std::string("Video Recording : Failed to start frame grabber.");
     }
 
     // all good
-    Log::Info("Video Recording started (%s)", profile_name[Settings::application.record.profile]);
+    initialized_ = true;
 
-    // start recording !!
-    active_ = true;
+    return std::string("Video Recording started ") + profile_name[Settings::application.record.profile];
+
 }
 
 void VideoRecorder::terminate()
@@ -445,10 +439,8 @@ void VideoRecorder::terminate()
 
 std::string VideoRecorder::info() const
 {
-    if (active_)
-        return FrameGrabber::info();
-    else if (!endofstream_)
+    if (initialized_ && !active_ && !endofstream_)
         return "Saving file...";
-    else
-        return "...";
+
+    return FrameGrabber::info();
 }

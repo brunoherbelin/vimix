@@ -18,7 +18,7 @@ public:
 
 protected:
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
     void addFrame(GstBuffer *buffer, GstCaps *caps) override;
 
@@ -28,7 +28,7 @@ class VideoRecorder : public FrameGrabber
 {
     std::string  filename_;
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
 
 public:

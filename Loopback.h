@@ -15,7 +15,7 @@ class Loopback : public FrameGrabber
     static std::string  system_loopback_name;
     static bool system_loopback_initialized;
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
 
 public:
