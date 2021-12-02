@@ -123,8 +123,12 @@ void FrameGrabbing::clearAll()
     {
         FrameGrabber *rec = *iter;
         rec->stop();
-        iter = grabbers_.erase(iter);
-        delete rec;
+        if (rec->finished()) {
+            iter = grabbers_.erase(iter);
+            delete rec;
+        }
+        else
+            ++iter;
     }
 }
 
@@ -238,9 +242,11 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 
             // manage the list of chainned recorder
             std::map<FrameGrabber *, FrameGrabber *>::iterator chain = grabbers_chain_.begin();
-            while (chain != grabbers_chain_.end()) {
+            while (chain != grabbers_chain_.end())
+            {
                 // update frame grabber of chain list
                 chain->first->addFrame(buffer, caps_);
+
                 // if the chained recorder is now active
                 if (chain->first->active_ && chain->first->accept_buffer_){
                     // add it to main grabbers,
@@ -282,7 +288,9 @@ FrameGrabber::~FrameGrabber()
     if (caps_ != nullptr)
         gst_caps_unref (caps_);
     if (pipeline_ != nullptr) {
-        gst_element_set_state (pipeline_, GST_STATE_NULL);
+        GstState state = GST_STATE_NULL;
+        gst_element_set_state (pipeline_, state);
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
         gst_object_unref (pipeline_);
     }
 }
@@ -456,8 +464,8 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
         // terminate properly if finished
         else
         {
-            finished_ = true;
             terminate();
+            finished_ = true;
         }
 
     }
