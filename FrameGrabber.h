@@ -78,7 +78,6 @@ protected:
     guint64      buffering_size_;
     bool         timestamp_on_clock_;
 
-
     // async threaded initializer
     std::future<std::string> initializer_;
     static std::string initialize(FrameGrabber *rec, GstCaps *caps);

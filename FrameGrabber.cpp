@@ -287,6 +287,9 @@ FrameGrabber::~FrameGrabber()
         gst_object_unref (src_);
     if (caps_ != nullptr)
         gst_caps_unref (caps_);
+    if (timer_)
+        gst_object_unref (timer_);
+
     if (pipeline_ != nullptr) {
         GstState state = GST_STATE_NULL;
         gst_element_set_state (pipeline_, state);
@@ -405,6 +408,9 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             }
             // else show warning
             else {
+                // end frame grabber
+                finished_ = true;
+                // inform
                 Log::Warning("%s", msg.c_str());
             }
         }
