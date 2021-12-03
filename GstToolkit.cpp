@@ -171,6 +171,8 @@ bool GstToolkit::enable_feature (string name, bool enable) {
     }
 
     gst_registry_add_feature (registry, GST_PLUGIN_FEATURE (factory));
+    gst_object_unref (factory);
+
     return true;
 }
 
@@ -188,6 +190,12 @@ bool GstToolkit::has_feature (string name)
     factory = gst_element_factory_find (name.c_str());
     if (!factory) return false;
 
+    GstElement *elem = gst_element_factory_create (factory, NULL);
+    gst_object_unref (factory);
+
+    if (!elem) return false;
+
+    gst_object_unref (elem);
     return true;
 }
 
@@ -205,9 +213,9 @@ string GstToolkit::gst_version()
 
 #if GST_GL_HAVE_PLATFORM_GLX
     // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
-    const char *plugins[11] = { "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
+    const char *plugins[11] = { "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vaapidecodebin", "vdpaumpegdec",
                                 "nvh264dec", "nvh265dec", "nvmpeg2videodec",
-                                "nvmpeg4videodec", "nvvp8dec", "nvvp9dec", "vaapidecodebin"
+                                "nvmpeg4videodec", "nvvp8dec", "nvvp9dec"
                                };
     const int N = 11;
 #elif GST_GL_HAVE_PLATFORM_CGL

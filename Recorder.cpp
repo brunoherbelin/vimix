@@ -218,10 +218,11 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 #if GST_GL_HAVE_PLATFORM_GLX
 
+// under GLX (Linux), gstreamer might have nvidia or vaapi encoders
+// the hardware encoder will be filled at first instanciation of VideoRecorder
 std::vector<std::string> VideoRecorder::hardware_encoder;
 std::vector<std::string> VideoRecorder::hardware_profile_description;
 
-// under GLX (Linux), gstreamer might have nvidia encoders
 std::vector<std::string> nvidia_encoder = {
     "nvh264enc",
     "nvh264enc",
@@ -251,7 +252,6 @@ std::vector<std::string> nvidia_profile_description {
     "", "", "", ""
 };
 
-// under GLX (Linux), gstreamer might have vaapi encoders
 std::vector<std::string> vaapi_encoder = {
     "vaapih264enc",
     "vaapih264enc",
@@ -287,6 +287,7 @@ std::vector<std::string> VideoRecorder::hardware_profile_description {
 };
 
 #else
+// in other platforms, no hardware encoder
 std::vector<std::string> VideoRecorder::hardware_encoder;
 std::vector<std::string> VideoRecorder::hardware_profile_description;
 #endif
@@ -302,13 +303,17 @@ const gint    VideoRecorder::framerate_preset_value[3] = { 15, 25, 30 };
 
 VideoRecorder::VideoRecorder() : FrameGrabber()
 {
+    // first run initialization of hardware encoders in linux
 #if GST_GL_HAVE_PLATFORM_GLX
     if (hardware_encoder.size() < 1) {
-        if ( glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' )    {
+        // test nvidia encoder
+        if ( GstToolkit::has_feature(nvidia_encoder[0] ) )   {
+            // consider that if first nvidia encoder is valid, all others should also be available
             hardware_encoder.assign(nvidia_encoder.begin(), nvidia_encoder.end());
             hardware_profile_description.assign(nvidia_profile_description.begin(), nvidia_profile_description.end());
         }
-        else {
+        // test vaapi encoder
+        else if ( GstToolkit::has_feature(vaapi_encoder[0] ) ) {
             hardware_encoder.assign(vaapi_encoder.begin(), vaapi_encoder.end());
             hardware_profile_description.assign(vaapi_profile_description.begin(), vaapi_profile_description.end());
         }
@@ -333,7 +338,7 @@ std::string VideoRecorder::init(GstCaps *caps)
         Settings::application.record.profile = H264_STANDARD;
 
     // test for a hardware accelerated encoder
-    if (Settings::application.render.gpu_decoding && hardware_encoder.size() > 1 &&
+    if (Settings::application.render.gpu_decoding && (int) hardware_encoder.size() > 0 &&
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
