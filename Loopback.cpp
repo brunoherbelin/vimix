@@ -178,7 +178,6 @@ std::string Loopback::init(GstCaps *caps)
         return std::string("Invalid caps");
 
     if (!Loopback::systemLoopbackInitialized()){
-        finished_ = true;
         return std::string("Loopback system shall be initialized first.");
     }
 
@@ -191,7 +190,6 @@ std::string Loopback::init(GstCaps *caps)
     if (error != NULL) {
         std::string msg = std::string("Loopback : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
         return msg;
     }
 
@@ -237,14 +235,12 @@ std::string Loopback::init(GstCaps *caps)
 
     }
     else {
-        finished_ = true;
         return std::string("Loopback : Could not configure source.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        finished_ = true;
         return std::string("Loopback : Could not open ") + Loopback::system_loopback_name;
     }
 

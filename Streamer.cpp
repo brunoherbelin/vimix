@@ -322,7 +322,6 @@ std::string VideoStreamer::init(GstCaps *caps)
     if ( gst_structure_has_field (capstruct, "height"))
         gst_structure_get_int (capstruct, "height", &h);
     if ( config_.width != w || config_.height != h) {
-        finished_ = true;
         return std::string("Video Streamer cannot start: given frames (") + std::to_string(w) + " x " + std::to_string(h) +
                 ") are incompatible with stream (" + std::to_string(config_.width) + " x " + std::to_string(config_.height) + ")";
     }
@@ -341,7 +340,6 @@ std::string VideoStreamer::init(GstCaps *caps)
     if (error != NULL) {
         std::string msg = std::string("Video Streamer : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
         return msg;
     }
 
@@ -397,14 +395,12 @@ std::string VideoStreamer::init(GstCaps *caps)
 
     }
     else {
-        finished_ = true;
         return std::string("Video Streamer : Failed to configure frame grabber.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        finished_ = true;
         return std::string("Video Streamer : Failed to start frame grabber.");
     }
 

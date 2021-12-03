@@ -58,7 +58,6 @@ std::string PNGRecorder::init(GstCaps *caps)
     if (error != NULL) {
         std::string msg = std::string("PNG Capture Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
         return msg;
     }
 
@@ -102,14 +101,12 @@ std::string PNGRecorder::init(GstCaps *caps)
 
     }
     else {
-        finished_ = true;
         return std::string("PNG Capture : Failed to configure frame grabber.");
     }
 
     // start pipeline
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        finished_ = true;
         return std::string("PNG Capture : Failed to start frame grabber.");
     }
 
@@ -344,7 +341,6 @@ std::string VideoRecorder::init(GstCaps *caps)
     if (error != NULL) {
         std::string msg = std::string("Video Recording : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
         return msg;
     }
 
@@ -395,14 +391,12 @@ std::string VideoRecorder::init(GstCaps *caps)
 
     }
     else {
-        finished_ = true;
         return std::string("Video Recording : Failed to configure frame grabber.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        finished_ = true;
         return std::string("Video Recording : Failed to start frame grabber.");
     }
 
