@@ -18,6 +18,8 @@
 **/
 
 #include <thread>
+#include<algorithm> // for copy() and assign()
+#include<iterator> // for back_inserter
 
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -215,8 +217,12 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 
 #if GST_GL_HAVE_PLATFORM_GLX
+
+std::vector<std::string> VideoRecorder::hardware_encoder;
+std::vector<std::string> VideoRecorder::hardware_profile_description;
+
 // under GLX (Linux), gstreamer might have nvidia encoders
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+std::vector<std::string> nvidia_encoder = {
     "nvh264enc",
     "nvh264enc",
     "nvh265enc",
@@ -224,7 +230,7 @@ const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
     "", "", "", ""
 };
 
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
+std::vector<std::string> nvidia_profile_description {
     // qp-const  Constant quantizer (-1 = from NVENC preset)
     //            Range: -1 - 51 Default: -1
     // rc-mode Rate Control Mode
@@ -245,15 +251,35 @@ const std::vector<std::string> VideoRecorder::hardware_profile_description {
     "", "", "", ""
 };
 
+// under GLX (Linux), gstreamer might have vaapi encoders
+std::vector<std::string> vaapi_encoder = {
+    "vaapih264enc",
+    "vaapih264enc",
+    "vaapih265enc",
+    "vaapih265enc",
+    "", "", "", ""
+};
+
+std::vector<std::string> vaapi_profile_description {
+
+    // Control vaapih264enc encoder
+    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    // Control vaapih265enc encoder
+    "video/x-raw, format=NV12 ! vaapih265enc ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=NV12 ! vaapih265enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "", "", "", ""
+};
+
 #elif GST_GL_HAVE_PLATFORM_CGL
 // under CGL (Mac), gstreamer might have the VideoToolbox
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+std::vector<std::string> VideoRecorder::hardware_encoder = {
     "vtenc_h264_hw",
     "vtenc_h264_hw",
     "", "", "", "", "", ""
 };
 
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
+std::vector<std::string> VideoRecorder::hardware_profile_description {
     // Control vtenc_h264_hw encoder
     "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
     "video/x-raw, format=UYVY ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
@@ -261,12 +287,8 @@ const std::vector<std::string> VideoRecorder::hardware_profile_description {
 };
 
 #else
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
-    "", "", "", "", "", "", "", ""
-};
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
-    "", "", "", "", "", "", "", ""
-};
+std::vector<std::string> VideoRecorder::hardware_encoder;
+std::vector<std::string> VideoRecorder::hardware_profile_description;
 #endif
 
 
@@ -280,7 +302,18 @@ const gint    VideoRecorder::framerate_preset_value[3] = { 15, 25, 30 };
 
 VideoRecorder::VideoRecorder() : FrameGrabber()
 {
-
+#if GST_GL_HAVE_PLATFORM_GLX
+    if (hardware_encoder.size() < 1) {
+        if ( glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' )    {
+            hardware_encoder.assign(nvidia_encoder.begin(), nvidia_encoder.end());
+            hardware_profile_description.assign(nvidia_profile_description.begin(), nvidia_profile_description.end());
+        }
+        else {
+            hardware_encoder.assign(vaapi_encoder.begin(), vaapi_encoder.end());
+            hardware_profile_description.assign(vaapi_profile_description.begin(), vaapi_profile_description.end());
+        }
+    }
+#endif
 }
 
 std::string VideoRecorder::init(GstCaps *caps)
@@ -300,15 +333,11 @@ std::string VideoRecorder::init(GstCaps *caps)
         Settings::application.record.profile = H264_STANDARD;
 
     // test for a hardware accelerated encoder
-    if (Settings::application.render.gpu_decoding &&
-//#if GST_GL_HAVE_PLATFORM_GLX
-
-//            glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
-//#endif
+    if (Settings::application.render.gpu_decoding && hardware_encoder.size() > 1 &&
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
-        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile]);
+        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile].c_str());
     }
     // revert to software encoder
     else

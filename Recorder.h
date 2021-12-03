@@ -2,6 +2,8 @@
 #define RECORDER_H
 
 #include <vector>
+#include <string>
+
 
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsrc.h>
@@ -45,9 +47,9 @@ public:
         DEFAULT
     } Profile;
     static const char*   profile_name[DEFAULT];
-    static const char*   hardware_encoder[DEFAULT];
     static const std::vector<std::string> profile_description;
-    static const std::vector<std::string> hardware_profile_description;
+    static std::vector<std::string> hardware_encoder;
+    static std::vector<std::string> hardware_profile_description;
 
     static const char*   buffering_preset_name[6];
     static const guint64 buffering_preset_value[6];
