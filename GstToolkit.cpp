@@ -214,10 +214,10 @@ string GstToolkit::gst_version()
 #if GST_GL_HAVE_PLATFORM_GLX
     // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
     // list ordered with higher priority first (e.g. nvidia proprietary before vaapi)
-    const char *plugins[12] = { "nvh264dec", "nvh265dec",  "nvmpeg2videodec", "nvmpeg4videodec", "nvvp8dec", "nvvp9dec", "nvjpegdec",
+    const char *plugins[11] = { "nvh264dec", "nvh265dec",  "nvmpeg2videodec", "nvmpeg4videodec", "nvvp8dec", "nvvp9dec",
                                 "vaapidecodebin", "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
                                };
-    const int N = 12;
+    const int N = 11;
 #elif GST_GL_HAVE_PLATFORM_CGL
     const char *plugins[2] = { "vtdec_hw", "vtdechw" };
     const int N = 2;

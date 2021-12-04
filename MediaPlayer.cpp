@@ -854,8 +854,6 @@ void MediaPlayer::init_texture(guint index)
         // initialize decoderName once
         Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
     }
-    else
-        Log::Info("MediaPlayer %s Uses %s decoding.", std::to_string(id_).c_str(), decoderName().c_str());
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
