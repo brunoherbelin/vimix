@@ -363,7 +363,6 @@ DeviceSource::~DeviceSource()
 void DeviceSource::setDevice(const std::string &devicename)
 {
     device_ = devicename;
-    Log::Notify("Creating Source with device '%s'", device_.c_str());
 
     int index = Device::manager().index(device_);
     if (index > -1) {
@@ -587,6 +586,11 @@ glm::ivec2 DeviceSource::icon() const
         return glm::ivec2(19, 1);
     else
         return glm::ivec2(2, 14);
+}
+
+std::string DeviceSource::info() const
+{
+    return std::string("device '") + device_ + "'";
 }
 
 

@@ -51,7 +51,8 @@ public:
 
     // StreamSource interface
     Stream *stream () const override { return stream_; }
-    glm::ivec2 icon () const override { return glm::ivec2(3, 9); }
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
     // specific interface
     void setFiles (const std::list<std::string> &list_files, uint framerate);

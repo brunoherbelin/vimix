@@ -46,7 +46,6 @@ MediaSource::~MediaSource()
 void MediaSource::setPath(const std::string &p)
 {
     path_ = p;
-    Log::Notify("Creating Source with media '%s'", path_.c_str());
 
     // open gstreamer
     mediaplayer_->open(path_);
@@ -72,6 +71,11 @@ glm::ivec2 MediaSource::icon() const
         return glm::ivec2(4, 9);
     else
         return glm::ivec2(18, 13);
+}
+
+std::string MediaSource::info() const
+{
+    return std::string("media '") + path_ + "'";
 }
 
 bool MediaSource::failed() const

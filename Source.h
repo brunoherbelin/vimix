@@ -230,6 +230,9 @@ public:
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
 
+    // class-dependent notification
+    virtual std::string info () const { return "Undefined"; }
+
     SourceLink processingshader_link_;
 
 protected:
@@ -322,7 +325,8 @@ public:
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
-    glm::ivec2 icon() const override { return glm::ivec2(9, 2); }
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 protected:
     // only Source class can create new CloneSource via clone();

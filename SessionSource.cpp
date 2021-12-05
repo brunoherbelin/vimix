@@ -279,6 +279,16 @@ void SessionFileSource::accept(Visitor& v)
         v.visit(*this);
 }
 
+glm::ivec2 SessionFileSource::icon() const
+{
+    return glm::ivec2(19, 6);
+}
+
+std::string SessionFileSource::info() const
+{
+    return std::string("session vimix '") + path_ + "'";
+}
+
 
 SessionGroupSource::SessionGroupSource(uint64_t id) : SessionSource(id), resolution_(glm::vec3(0.f))
 {
@@ -335,7 +345,7 @@ void SessionGroupSource::init()
         ++View::need_deep_update_;
 
         // done init
-        Log::Info("Source Group (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+        Log::Info("Source Group created (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
     }
 }
 
@@ -358,6 +368,19 @@ void SessionGroupSource::accept(Visitor& v)
     Source::accept(v);
     if (!failed())
         v.visit(*this);
+}
+
+glm::ivec2 SessionGroupSource::icon() const
+{
+    return glm::ivec2(10, 6);
+}
+
+std::string SessionGroupSource::info() const
+{
+    if (session_)
+        return std::string("group of ") + std::to_string(session_->numSource()) + " sources";
+    else
+        return std::string("undefined group.");
 }
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr)
@@ -422,4 +445,14 @@ void RenderSource::accept(Visitor& v)
     Source::accept(v);
 //    if (!failed())
         v.visit(*this);
+}
+
+glm::ivec2 RenderSource::icon() const
+{
+    return glm::ivec2(0, 2);
+}
+
+std::string RenderSource::info() const
+{
+    return std::string("Render loopback");
 }

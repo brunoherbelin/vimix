@@ -258,10 +258,6 @@ Source * Mixer::createSourceFile(const std::string &path)
             ms->setPath(path);
             s = ms;
         }
-
-        // remember in recent media
-        Settings::application.recentImport.push(path);
-
         // propose a new name based on uri
         s->setName(SystemToolkit::base_filename(path));
 
@@ -426,6 +422,12 @@ void Mixer::insertSource(Source *s, View::Mode m)
 
         // new state in history manager
         Action::manager().store(s->name() + std::string(": source inserted"));
+
+        // notify creation of source
+        Log::Notify("Added source '%s' with %s", s->name().c_str(), s->info().c_str());
+        MediaSource *ms = dynamic_cast<MediaSource *>(s);
+        if (ms)
+            Settings::application.recentImport.push(ms->path());
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -703,9 +705,10 @@ void Mixer::groupSelection()
     info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
     Action::manager().store(info.str());
 
+    Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+
     // give the hand to the user
     Mixer::manager().setCurrentSource(sessiongroup);
-    Log::Notify(info.str().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
