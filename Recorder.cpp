@@ -462,6 +462,8 @@ void VideoRecorder::terminate()
         Log::Info("Video Recording : try a lower resolution / a lower framerate / a larger buffer size / a faster codec.");
     }
 
+    // remember and inform
+    Settings::application.recentRecordings.push(filename_);
     Log::Notify("Video Recording %s is ready.", filename_.c_str());
 }
 

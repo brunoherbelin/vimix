@@ -238,6 +238,29 @@ void Settings::Save(uint64_t runtime)
         }
         recent->InsertEndChild(recentmedia);
 
+        // recent import folders
+        XMLElement *recentimportfolder = xmlDoc.NewElement( "ImportFolder" );
+        recentmedia->SetAttribute("path", application.recentImportFolders.path.c_str());
+        for(auto it = application.recentImportFolders.filenames.cbegin();
+            it != application.recentImportFolders.filenames.cend(); ++it) {
+            XMLElement *pathNode = xmlDoc.NewElement("path");
+            XMLText *text = xmlDoc.NewText( (*it).c_str() );
+            pathNode->InsertEndChild( text );
+            recentimportfolder->InsertFirstChild(pathNode);
+        }
+        recent->InsertEndChild(recentimportfolder);
+
+        // recent recordings
+        XMLElement *recentrecord = xmlDoc.NewElement( "Record" );
+        for(auto it = application.recentRecordings.filenames.cbegin();
+            it != application.recentRecordings.filenames.cend(); ++it) {
+            XMLElement *pathNode = xmlDoc.NewElement("path");
+            XMLText *text = xmlDoc.NewText( (*it).c_str() );
+            pathNode->InsertEndChild( text );
+            recentrecord->InsertFirstChild(pathNode);
+        }
+        recent->InsertEndChild(recentrecord);
+
         // recent dialog path
         XMLElement *recentdialogpath = xmlDoc.NewElement( "Dialog" );
         for(auto it = application.dialogRecentFolder.cbegin();
@@ -517,6 +540,37 @@ void Settings::Load()
                     application.recentImport.push( std::string (p) );
                 }
             }
+
+            // recent import folders
+            XMLElement * pImportFolder = pElement->FirstChildElement("ImportFolder");
+            if (pImportFolder)
+            {
+                const char *path_ = pImportFolder->Attribute("path");
+                if (path_)
+                    application.recentImportFolders.path = std::string(path_);
+                application.recentImportFolders.filenames.clear();
+                XMLElement* path = pImportFolder->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    const char *p = path->GetText();
+                    if (p)
+                    application.recentImportFolders.push( std::string (p) );
+                }
+            }
+            // recent recordings
+            XMLElement * pRecord = pElement->FirstChildElement("Record");
+            if (pRecord)
+            {
+                application.recentRecordings.filenames.clear();
+                XMLElement* path = pRecord->FirstChildElement("path");
+                for( ; path ; path = path->NextSiblingElement())
+                {
+                    const char *p = path->GetText();
+                    if (p)
+                    application.recentRecordings.push( std::string (p) );
+                }
+            }
+
             // recent dialog path
             XMLElement * pDialog = pElement->FirstChildElement("Dialog");
             if (pDialog)
@@ -581,6 +635,37 @@ void Settings::History::validate()
             fit = filenames.erase(fit);
     }
 }
+
+// TODO unified history function saving
+//void load_history(Settings::History &h, XMLElement *root)
+//{
+//    XMLElement * pElement = root->FirstChildElement("Import");
+//    if (pElement)
+//    {
+//        h.filenames.clear();
+//        XMLElement* path = pElement->FirstChildElement("path");
+//        for( ; path ; path = path->NextSiblingElement())
+//        {
+//            const char *p = path->GetText();
+//            if (p)
+//            h.push( std::string (p) );
+//        }
+//    }
+//}
+
+//XMLElement *save_history(Settings::History &h, XMLDocument &xmlDoc)
+//{
+//    XMLElement *pElement = xmlDoc.NewElement( "Import" );
+//    for(auto it = h.filenames.cbegin();
+//        it != h.filenames.cend(); ++it) {
+//        XMLElement *fileNode = xmlDoc.NewElement("path");
+//        XMLText *text = xmlDoc.NewText( (*it).c_str() );
+//        fileNode->InsertEndChild( text );
+//        pElement->InsertFirstChild(fileNode);
+//    }
+//    return pElement;
+//}
+
 
 void Settings::Lock()
 {

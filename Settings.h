@@ -243,6 +243,8 @@ struct Application
     History recentSessions;
     History recentFolders;
     History recentImport;
+    History recentImportFolders;
+    History recentRecordings;
     std::map< std::string, std::string > dialogRecentFolder;
 
     // Metronome & stopwatch
