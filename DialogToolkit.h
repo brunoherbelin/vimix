@@ -6,6 +6,12 @@
 #include <vector>
 #include <future>
 
+#define VIMIX_FILES_PATTERN "*.mix"
+#define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
+    "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
+    "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
+    "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
+#define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
 
 namespace DialogToolkit
 {
