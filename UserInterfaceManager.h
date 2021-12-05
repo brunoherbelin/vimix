@@ -81,7 +81,18 @@ class Navigator
     void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
 
 public:
+
+    typedef enum {
+        SOURCE_FILE = 0,
+        SOURCE_SEQUENCE,
+        SOURCE_CONNECTED,
+        SOURCE_GENERATED,
+        SOURCE_INTERNAL,
+        SOURCE_TYPES
+    } NewSourceType;
+
     Navigator();
+    void Render();
 
     bool pannelVisible() { return pannel_visible_; }
     void hidePannel();
@@ -97,18 +108,9 @@ public:
     } MediaCreateMode;
     void setNewMedia(MediaCreateMode mode, std::string path = std::string());
 
-    void Render();
 
 private:
     // for new source panel
-    typedef enum {
-        SOURCE_FILE = 0,
-        SOURCE_SEQUENCE,
-        SOURCE_CONNECTED,
-        SOURCE_GENERATED,
-        SOURCE_INTERNAL,
-        SOURCE_TYPES
-    } NewSourceType;
     SourcePreview new_source_preview_;
     std::list<std::string> sourceSequenceFiles;
     std::list<std::string> sourceMediaFiles;

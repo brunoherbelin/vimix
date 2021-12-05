@@ -334,8 +334,7 @@ void UserInterface::handleKeyboard()
                     }
                     // normal case: Ctrl+R stop recording
                     else {
-                        // prepare for next open new source panel to show the recording
-                        navigator.setNewMedia(Navigator::MEDIA_RECORDING, video_recorder_->filename());
+                        // stop recording
                         video_recorder_->stop();
                     }
                 }
@@ -1332,31 +1331,29 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame", CTRL_MOD "Shitf+R") )
                     FrameGrabbing::manager().add(new PNGRecorder);
 
-                // Stop recording menu if main recorder already exists
-
+                // temporary disabled
                 if (!_video_recorders.empty()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    ImGui::MenuItem( ICON_FA_SQUARE "  Record starting", CTRL_MOD "R", false, false);
+                    ImGui::MenuItem( ICON_FA_SQUARE "  Record", CTRL_MOD "R", false, false);
+                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
                     ImGui::PopStyleColor(1);
                 }
+                // Stop recording menu (recorder already exists)
                 else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") )
                         video_recorder_->stop();
-                        // prepare for next open new source panel to show the recording
-                        navigator.setNewMedia(Navigator::MEDIA_RECORDING, video_recorder_->filename());
-                    }
-                    // offer the 'save & continue' recording for undefined duration
-                    if (Settings::application.record.timeout == RECORD_MAX_TIMEOUT) {
-                        if ( ImGui::MenuItem( ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Save & continue", CTRL_MOD "Alt+R") ) {
-                            // prepare for next open new source panel to show the recording
-                            navigator.setNewMedia(Navigator::MEDIA_RECORDING, video_recorder_->filename());
-                            // create a new recorder chainned to the current one
-                            VideoRecorder *rec = new VideoRecorder;
-                            FrameGrabbing::manager().chain(video_recorder_, rec);
-                            // swap recorder
-                            video_recorder_ = rec;
-                        }
+                    // offer the 'save & continue' recording
+                    if ( ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R") ) {
+                        // prepare for next time user open new source panel to show the recording
+                        Settings::application.recentRecordings.load_at_start = true;
+                        Settings::application.source.new_type = Navigator::SOURCE_FILE;
+                        navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                        // create a new recorder chainned to the current one
+                        VideoRecorder *rec = new VideoRecorder;
+                        FrameGrabbing::manager().chain(video_recorder_, rec);
+                        // swap recorder
+                        video_recorder_ = rec;
                     }
                     ImGui::PopStyleColor(1);
                 }
@@ -1367,6 +1364,7 @@ void UserInterface::RenderPreview()
                         _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
+                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
                     ImGui::PopStyleColor(1);
                 }
                 // Options menu
@@ -1407,11 +1405,6 @@ void UserInterface::RenderPreview()
                 ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                  Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
 
-//                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, VIDEO_RECORDER_BUFFERING_NUM_PRESET-1,
-//                                 VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
-
-                //
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Share"))
@@ -4053,12 +4046,10 @@ void Navigator::RenderSourcePannel(Source *s)
 
 void Navigator::setNewMedia(MediaCreateMode mode, std::string path)
 {
-    // switch new source to Media pannel
-    Settings::application.source.new_type = SOURCE_FILE;
-
     // change mode
     new_media_mode = mode;
     new_media_mode_changed = true;
+
     // mode dependent actions
     switch (new_media_mode) {
     case MEDIA_RECENT:
@@ -4223,6 +4214,7 @@ void Navigator::RenderNewPannel()
                     // show list of recent imports
                     Settings::application.recentImport.validate();
                     sourceMediaFiles = Settings::application.recentImport.filenames;
+                    // done changed
                     Settings::application.recentImport.changed = false;
                 }
                 // MODE RECORDINGS
@@ -4230,6 +4222,14 @@ void Navigator::RenderNewPannel()
                     // show list of recent records
                     Settings::application.recentRecordings.validate();
                     sourceMediaFiles = Settings::application.recentRecordings.filenames;
+                    //
+                    if (Settings::application.recentRecordings.load_at_start && Settings::application.recentRecordings.changed){
+                        Settings::application.recentRecordings.load_at_start = false;
+                        sourceMediaFileCurrent = sourceMediaFiles.front();
+                        std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
+                    }
+                    // done changed
                     Settings::application.recentRecordings.changed = false;
                 }
                 // MODE LIST FOLDER
