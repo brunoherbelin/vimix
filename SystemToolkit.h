@@ -49,7 +49,7 @@ namespace SystemToolkit
     std::string path_directory(const std::string& path);
 
     // list all files of a directory mathing the given filter extension (if any)
-    std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &extensions);
+    std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &patterns);
 
     // builds a path relative to 'relativeTo' to reach file at 'absolutePath' (e.g. /a/b/c/d rel to /a/b/e -> ../c/d)
     std::string path_relative_to_path(const std::string& absolutePath, const std::string& relativeTo);
