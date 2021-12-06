@@ -34,6 +34,25 @@ using namespace tinyxml2;
 Settings::Application Settings::application;
 string settingsFilename = "";
 
+
+XMLElement *save_history(Settings::History &h, const char *nodename, XMLDocument &xmlDoc)
+{
+    XMLElement *pElement = xmlDoc.NewElement( nodename );
+    pElement->SetAttribute("path", h.path.c_str());
+    pElement->SetAttribute("autoload", h.load_at_start);
+    pElement->SetAttribute("autosave", h.save_on_exit);
+    pElement->SetAttribute("valid", h.front_is_valid);
+    for(auto it = h.filenames.cbegin();
+        it != h.filenames.cend(); ++it) {
+        XMLElement *fileNode = xmlDoc.NewElement("path");
+        XMLText *text = xmlDoc.NewText( (*it).c_str() );
+        fileNode->InsertEndChild( text );
+        pElement->InsertFirstChild(fileNode);
+    }
+    return pElement;
+}
+
+
 void Settings::Save(uint64_t runtime)
 {
     // impose C locale for all app
@@ -201,42 +220,19 @@ void Settings::Save(uint64_t runtime)
         XMLElement *recent = xmlDoc.NewElement( "Recent" );
 
         // recent session filenames
-        XMLElement *recentsession = xmlDoc.NewElement( "Session" );
-        recentsession->SetAttribute("path", application.recentSessions.path.c_str());
-        recentsession->SetAttribute("autoload", application.recentSessions.load_at_start);
-        recentsession->SetAttribute("autosave", application.recentSessions.save_on_exit);
-        recentsession->SetAttribute("valid", application.recentSessions.front_is_valid);
-        for(auto it = application.recentSessions.filenames.cbegin();
-            it != application.recentSessions.filenames.cend(); ++it) {
-            XMLElement *fileNode = xmlDoc.NewElement("path");
-            XMLText *text = xmlDoc.NewText( (*it).c_str() );
-            fileNode->InsertEndChild( text );
-            recentsession->InsertFirstChild(fileNode);
-        };
-        recent->InsertEndChild(recentsession);
+        recent->InsertEndChild( save_history(application.recentSessions, "Session", xmlDoc));
 
         // recent session folders
-        XMLElement *recentfolder = xmlDoc.NewElement( "Folder" );
-        for(auto it = application.recentFolders.filenames.cbegin();
-            it != application.recentFolders.filenames.cend(); ++it) {
-            XMLElement *fileNode = xmlDoc.NewElement("path");
-            XMLText *text = xmlDoc.NewText( (*it).c_str() );
-            fileNode->InsertEndChild( text );
-            recentfolder->InsertFirstChild(fileNode);
-        };
-        recent->InsertEndChild(recentfolder);
+        recent->InsertEndChild( save_history(application.recentFolders, "Folder", xmlDoc));
 
-        // recent media uri
-        XMLElement *recentmedia = xmlDoc.NewElement( "Import" );
-        recentmedia->SetAttribute("path", application.recentImport.path.c_str());
-        for(auto it = application.recentImport.filenames.cbegin();
-            it != application.recentImport.filenames.cend(); ++it) {
-            XMLElement *fileNode = xmlDoc.NewElement("path");
-            XMLText *text = xmlDoc.NewText( (*it).c_str() );
-            fileNode->InsertEndChild( text );
-            recentmedia->InsertFirstChild(fileNode);
-        }
-        recent->InsertEndChild(recentmedia);
+        // recent import media uri
+        recent->InsertEndChild( save_history(application.recentImport, "Import", xmlDoc));
+
+        // recent import folders
+        recent->InsertEndChild( save_history(application.recentImportFolders, "ImportFolder", xmlDoc));
+
+        // recent recordings
+        recent->InsertEndChild( save_history(application.recentRecordings, "Record", xmlDoc));
 
         // recent dialog path
         XMLElement *recentdialogpath = xmlDoc.NewElement( "Dialog" );
@@ -270,6 +266,34 @@ void Settings::Save(uint64_t runtime)
     XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
     XMLResultError(eResult);
 
+}
+
+
+void load_history(Settings::History &h, const char *nodename, XMLElement *root)
+{
+    XMLElement * pElement = root->FirstChildElement(nodename);
+    if (pElement)
+    {
+        // list of path
+        h.filenames.clear();
+        XMLElement* path = pElement->FirstChildElement("path");
+        for( ; path ; path = path->NextSiblingElement())
+        {
+            const char *p = path->GetText();
+            if (p)
+                h.push( std::string (p) );
+        }
+        // path attribute
+        const char *path_ = pElement->Attribute("path");
+        if (path_)
+            h.path = std::string(path_);
+        else
+            h.path = SystemToolkit::home_path();
+        // other attritutes
+        pElement->QueryBoolAttribute("autoload", &h.load_at_start);
+        pElement->QueryBoolAttribute("autosave", &h.save_on_exit);
+        pElement->QueryBoolAttribute("valid", &h.front_is_valid);
+    }
 }
 
 void Settings::Load()
@@ -466,57 +490,20 @@ void Settings::Load()
         if (pElement)
         {
             // recent session filenames
-            XMLElement * pSession = pElement->FirstChildElement("Session");
-            if (pSession)
-            {
-                const char *path_ = pSession->Attribute("path");
-                if (path_)
-                    application.recentSessions.path = std::string(path_);
-                else
-                    application.recentSessions.path = SystemToolkit::home_path();
-                application.recentSessions.filenames.clear();
-                XMLElement* path = pSession->FirstChildElement("path");
-                for( ; path ; path = path->NextSiblingElement())
-                {
-                    const char *p = path->GetText();
-                    if (p)
-                    application.recentSessions.push( std::string (p) );
-                }
-                pSession->QueryBoolAttribute("autoload", &application.recentSessions.load_at_start);
-                pSession->QueryBoolAttribute("autosave", &application.recentSessions.save_on_exit);
-                pSession->QueryBoolAttribute("valid", &application.recentSessions.front_is_valid);
-            }
+            load_history(application.recentSessions, "Session", pElement);
+
             // recent session folders
-            XMLElement * pFolder = pElement->FirstChildElement("Folder");
-            if (pFolder)
-            {
-                application.recentFolders.filenames.clear();
-                XMLElement* path = pFolder->FirstChildElement("path");
-                for( ; path ; path = path->NextSiblingElement())
-                {
-                    const char *p = path->GetText();
-                    if (p)
-                    application.recentFolders.push( std::string (p) );
-                }
-            }
+            load_history(application.recentFolders, "Folder", pElement);
+
             // recent media uri
-            XMLElement * pImport = pElement->FirstChildElement("Import");
-            if (pImport)
-            {
-                const char *path_ = pImport->Attribute("path");
-                if (path_)
-                    application.recentImport.path = std::string(path_);
-                else
-                    application.recentImport.path = SystemToolkit::home_path();
-                application.recentImport.filenames.clear();
-                XMLElement* path = pImport->FirstChildElement("path");
-                for( ; path ; path = path->NextSiblingElement())
-                {
-                    const char *p = path->GetText();
-                    if (p)
-                    application.recentImport.push( std::string (p) );
-                }
-            }
+            load_history(application.recentImport, "Import", pElement);
+
+            // recent import folders
+            load_history(application.recentImportFolders, "ImportFolder", pElement);
+
+            // recent recordings
+            load_history(application.recentRecordings, "Record", pElement);
+
             // recent dialog path
             XMLElement * pDialog = pElement->FirstChildElement("Dialog");
             if (pDialog)

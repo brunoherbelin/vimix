@@ -2,6 +2,8 @@
 #define RECORDER_H
 
 #include <vector>
+#include <string>
+
 
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsrc.h>
@@ -10,15 +12,16 @@
 
 class PNGRecorder : public FrameGrabber
 {
-    std::string     filename_;
+    std::string filename_;
 
 public:
 
     PNGRecorder();
+    std::string filename() const { return filename_; }
 
 protected:
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
     void addFrame(GstBuffer *buffer, GstCaps *caps) override;
 
@@ -26,9 +29,9 @@ protected:
 
 class VideoRecorder : public FrameGrabber
 {
-    std::string  filename_;
+    std::string filename_;
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
 
 public:
@@ -45,9 +48,9 @@ public:
         DEFAULT
     } Profile;
     static const char*   profile_name[DEFAULT];
-    static const char*   hardware_encoder[DEFAULT];
     static const std::vector<std::string> profile_description;
-    static const std::vector<std::string> hardware_profile_description;
+    static std::vector<std::string> hardware_encoder;
+    static std::vector<std::string> hardware_profile_description;
 
     static const char*   buffering_preset_name[6];
     static const guint64 buffering_preset_value[6];
@@ -56,7 +59,7 @@ public:
 
     VideoRecorder();
     std::string info() const override;
-
+    std::string filename() const { return filename_; }
 };
 
 

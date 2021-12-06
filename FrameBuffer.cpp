@@ -40,6 +40,7 @@ float FrameBuffer::resolution_height[5] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.
 glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
 {
     float width = aspect_ratio_size[ar].x * resolution_height[h] / aspect_ratio_size[ar].y;
+    width -= (int)width % 2;
     glm::vec3 res = glm::vec3( width, resolution_height[h] , 0.f);
 
     return res;

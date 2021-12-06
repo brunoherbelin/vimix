@@ -310,7 +310,6 @@ NetworkStream *NetworkSource::networkStream() const
 void NetworkSource::setConnection(const std::string &nameconnection)
 {
     connection_name_ = nameconnection;
-    Log::Notify("Network Source connecting to '%s'", connection_name_.c_str());
 
     // open network stream
     networkStream()->connect( connection_name_ );
@@ -333,5 +332,13 @@ void NetworkSource::accept(Visitor& v)
         v.visit(*this);
 }
 
+glm::ivec2 NetworkSource::icon() const
+{
+    return glm::ivec2(18, 11);
+}
 
+std::string NetworkSource::info() const
+{
+    return std::string("connected to '") + connection_name_ + "'";
+}
 

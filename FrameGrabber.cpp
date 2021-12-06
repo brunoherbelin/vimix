@@ -60,9 +60,22 @@ void FrameGrabbing::add(FrameGrabber *rec)
         grabbers_.push_back(rec);
 }
 
+void FrameGrabbing::chain(FrameGrabber *rec, FrameGrabber *next_rec)
+{
+    if (rec != nullptr && next_rec != nullptr)
+    {
+        // add grabber if not yet
+        if ( std::find(grabbers_.begin(), grabbers_.end(), rec) == grabbers_.end() )
+            grabbers_.push_back(rec);
+
+        grabbers_chain_[next_rec] = rec;
+    }
+}
+
 void FrameGrabbing::verify(FrameGrabber **rec)
 {
-    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() )
+    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() &&
+         grabbers_chain_.find(*rec) == grabbers_chain_.end()  )
         *rec = nullptr;
 }
 
@@ -110,8 +123,12 @@ void FrameGrabbing::clearAll()
     {
         FrameGrabber *rec = *iter;
         rec->stop();
-        iter = grabbers_.erase(iter);
-        delete rec;
+        if (rec->finished()) {
+            iter = grabbers_.erase(iter);
+            delete rec;
+        }
+        else
+            ++iter;
     }
 }
 
@@ -214,12 +231,34 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
                 FrameGrabber *rec = *iter;
                 rec->addFrame(buffer, caps_);
 
+                // remove finished recorders
                 if (rec->finished()) {
                     iter = grabbers_.erase(iter);
                     delete rec;
                 }
                 else
                     ++iter;
+            }
+
+            // manage the list of chainned recorder
+            std::map<FrameGrabber *, FrameGrabber *>::iterator chain = grabbers_chain_.begin();
+            while (chain != grabbers_chain_.end())
+            {
+                // update frame grabber of chain list
+                chain->first->addFrame(buffer, caps_);
+
+                // if the chained recorder is now active
+                if (chain->first->active_ && chain->first->accept_buffer_){
+                    // add it to main grabbers,
+                    grabbers_.push_back(chain->first);
+                    // stop the replaced grabber
+                    chain->second->stop();
+                    // loop in chain list: done with this chain
+                    chain = grabbers_chain_.erase(chain);
+                }
+                else
+                    // loop in chain list
+                    ++chain;
             }
 
             // unref / free the frame
@@ -232,8 +271,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 
 
 
-FrameGrabber::FrameGrabber(): finished_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr),
+FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
+    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
     timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(false)
 {
     // unique id
@@ -248,8 +287,13 @@ FrameGrabber::~FrameGrabber()
         gst_object_unref (src_);
     if (caps_ != nullptr)
         gst_caps_unref (caps_);
+    if (timer_)
+        gst_object_unref (timer_);
+
     if (pipeline_ != nullptr) {
-        gst_element_set_state (pipeline_, GST_STATE_NULL);
+        GstState state = GST_STATE_NULL;
+        gst_element_set_state (pipeline_, state);
+        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
         gst_object_unref (pipeline_);
     }
 }
@@ -274,6 +318,8 @@ uint64_t FrameGrabber::duration() const
 
 void FrameGrabber::stop ()
 {
+    // TODO if not initialized wait for initializer
+
     // stop recording
     active_ = false;
 
@@ -283,6 +329,8 @@ void FrameGrabber::stop ()
 
 std::string FrameGrabber::info() const
 {
+    if (!initialized_)
+        return "Initializing";
     if (active_)
         return GstToolkit::time_to_string(duration_);
     else
@@ -322,6 +370,12 @@ GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo *
   return GST_PAD_PROBE_OK;
 }
 
+
+std::string FrameGrabber::initialize(FrameGrabber *rec, GstCaps *caps)
+{
+    return rec->init(caps);
+}
+
 void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 {
     // ignore
@@ -330,15 +384,40 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
     // first time initialization
     if (pipeline_ == nullptr) {
-        // type specific initialisation
-        init(caps);
-        // attach EOS detector
-        GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
-        gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
-        gst_object_unref (pad);
+        initializer_ = std::async( FrameGrabber::initialize, this, caps);
     }
-    // stop if an incompatilble frame buffer given
-    else if ( !gst_caps_is_subset( caps_, caps ))
+
+    // initializer ongoing in separate thread
+    if (initializer_.valid()) {
+        // try to get info from initializer
+        if (initializer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+        {
+            // done initialization
+            std::string msg = initializer_.get();
+
+            // if initialization succeeded
+            if (initialized_) {
+                // attach EOS detector
+                GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
+                gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
+                gst_object_unref (pad);
+                // start recording
+                active_ = true;
+                // inform
+                Log::Info("%s", msg.c_str());
+            }
+            // else show warning
+            else {
+                // end frame grabber
+                finished_ = true;
+                // inform
+                Log::Warning("%s", msg.c_str());
+            }
+        }
+    }
+
+    // stop if an incompatilble frame buffer given after initialization
+    if (initialized_ && !gst_caps_is_subset( caps_, caps ))
     {
         stop();
         Log::Warning("Frame capture interrupted because the resolution changed.");
@@ -423,8 +502,8 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
         // terminate properly if finished
         else
         {
-            finished_ = true;
             terminate();
+            finished_ = true;
         }
 
     }

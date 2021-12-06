@@ -20,6 +20,7 @@ struct ImVec2;
 class MediaPlayer;
 class FrameBufferImage;
 class FrameGrabber;
+class VideoRecorder;
 
 class SourcePreview {
 
@@ -33,7 +34,7 @@ public:
     void setSource(Source *s = nullptr, const std::string &label = "");
     Source *getSource();
 
-    void Render(float width, bool controlbutton = false);
+    void Render(float width);
     bool ready() const;
     inline bool filled() const { return source_ != nullptr; }
 };
@@ -67,7 +68,6 @@ class Navigator
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
-    std::list<std::string> _selectedFiles;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 
@@ -80,10 +80,19 @@ class Navigator
     void RenderNewPannel();
     void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
 
-    SourcePreview new_source_preview_;
-
 public:
+
+    typedef enum {
+        SOURCE_FILE = 0,
+        SOURCE_SEQUENCE,
+        SOURCE_CONNECTED,
+        SOURCE_GENERATED,
+        SOURCE_INTERNAL,
+        SOURCE_TYPES
+    } NewSourceType;
+
     Navigator();
+    void Render();
 
     bool pannelVisible() { return pannel_visible_; }
     void hidePannel();
@@ -92,7 +101,22 @@ public:
     void togglePannelNew();
     void showConfig();
 
-    void Render();
+    typedef enum {
+        MEDIA_RECENT = 0,
+        MEDIA_RECORDING,
+        MEDIA_FOLDER
+    } MediaCreateMode;
+    void setNewMedia(MediaCreateMode mode, std::string path = std::string());
+
+
+private:
+    // for new source panel
+    SourcePreview new_source_preview_;
+    std::list<std::string> sourceSequenceFiles;
+    std::list<std::string> sourceMediaFiles;
+    std::string sourceMediaFileCurrent;
+    MediaCreateMode new_media_mode;
+    bool new_media_mode_changed;
 };
 
 class ToolBox
@@ -199,7 +223,7 @@ class UserInterface
     unsigned int screenshot_step;
 
     // frame grabbers
-    FrameGrabber *video_recorder_;
+    VideoRecorder *video_recorder_;
 
 #if defined(LINUX)
     FrameGrabber *webcam_emulator_;

@@ -46,7 +46,9 @@ public:
     void load(const std::string &p = "", uint recursion = 0);
 
     inline std::string path() const { return path_; }
-    glm::ivec2 icon() const override { return glm::ivec2(19, 6); }
+
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 protected:
 
@@ -72,7 +74,8 @@ public:
     // import a source
     bool import(Source *source);
 
-    glm::ivec2 icon() const override { return glm::ivec2(10, 6); }
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 protected:
 
@@ -99,7 +102,8 @@ public:
 
     glm::vec3 resolution() const;
 
-    glm::ivec2 icon() const override { return glm::ivec2(0, 2); }
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 protected:
 

@@ -470,7 +470,7 @@ void ImGuiVisitor::visit (Source& s)
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y + 3.5f * ImGui::GetFrameHeightWithSpacing()) );
-    if ( ImGuiToolkit::ButtonToggle(ICON_FA_MAGIC, &on) ){
+    if ( ImGuiToolkit::ButtonIconToggle(6, 2, 6, 2, &on, "Filters") ){
         std::ostringstream oss;
         oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
         Action::manager().store(oss.str());

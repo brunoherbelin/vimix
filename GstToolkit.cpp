@@ -171,6 +171,8 @@ bool GstToolkit::enable_feature (string name, bool enable) {
     }
 
     gst_registry_add_feature (registry, GST_PLUGIN_FEATURE (factory));
+    gst_object_unref (factory);
+
     return true;
 }
 
@@ -188,6 +190,12 @@ bool GstToolkit::has_feature (string name)
     factory = gst_element_factory_find (name.c_str());
     if (!factory) return false;
 
+    GstElement *elem = gst_element_factory_create (factory, NULL);
+    gst_object_unref (factory);
+
+    if (!elem) return false;
+
+    gst_object_unref (elem);
     return true;
 }
 
@@ -205,9 +213,9 @@ string GstToolkit::gst_version()
 
 #if GST_GL_HAVE_PLATFORM_GLX
     // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
-    const char *plugins[11] = { "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
-                                "nvh264dec", "nvh265dec", "nvmpeg2videodec",
-                                "nvmpeg4videodec", "nvvp8dec", "nvvp9dec", "vaapidecodebin"
+    // list ordered with higher priority first (e.g. nvidia proprietary before vaapi)
+    const char *plugins[11] = { "nvh264dec", "nvh265dec",  "nvmpeg2videodec", "nvmpeg4videodec", "nvvp8dec", "nvvp9dec",
+                                "vaapidecodebin", "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
                                };
     const int N = 11;
 #elif GST_GL_HAVE_PLATFORM_CGL
@@ -235,7 +243,7 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
             GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
             if(feature != NULL) {
                 plugins_list_.push_front( string( plugins[i] ) );
-                gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + 1 : GST_RANK_MARGINAL);
+                gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + (N-i) : GST_RANK_MARGINAL);
                 gst_object_unref(feature);
             }
         }
@@ -257,12 +265,9 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
         {
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
-                gchar *name = gst_element_get_name(e);
-//                 g_print(" - %s", name);
-                std::string e_name(name);
-                g_free(name);
+                const gchar *name = gst_element_get_name(e);
                 for (int i = 0; i < N; i++) {
-                    if (e_name.find(plugins[i]) != std::string::npos) {
+                    if (std::string(name).find(plugins[i]) != std::string::npos) {
                         found = plugins[i];
                         break;
                     }
@@ -290,7 +295,7 @@ std::string GstToolkit::used_decoding_plugins(GstElement *gstbin)
         {
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
-                gchar *name = gst_element_get_name(e);
+                const gchar *name = gst_element_get_name(e);
                 found += std::string(name) + ", ";
             }
         }

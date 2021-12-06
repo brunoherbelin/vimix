@@ -259,3 +259,14 @@ MultiFile *MultiFileSource::multifile () const
 }
 
 
+glm::ivec2 MultiFileSource::icon () const
+{
+    return glm::ivec2(3, 9);
+}
+
+std::string MultiFileSource::info() const
+{
+    return std::string("sequence '") + sequence_.location + "'";
+}
+
+

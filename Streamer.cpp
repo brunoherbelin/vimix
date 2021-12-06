@@ -308,11 +308,11 @@ VideoStreamer::VideoStreamer(const NetworkToolkit::StreamConfig &conf): FrameGra
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, STREAMING_FPS);  // fixed 30 FPS
 }
 
-void VideoStreamer::init(GstCaps *caps)
+std::string VideoStreamer::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     // check that config matches the given buffer properties
     gint w = 0, h = 0;
@@ -322,10 +322,8 @@ void VideoStreamer::init(GstCaps *caps)
     if ( gst_structure_has_field (capstruct, "height"))
         gst_structure_get_int (capstruct, "height", &h);
     if ( config_.width != w || config_.height != h) {
-        Log::Warning("Streaming cannot start: given frames (%d x %d) incompatible with stream (%d x %d)",
-                     w, w, config_.width, config_.height);
-        finished_ = true;
-        return;
+        return std::string("Video Streamer cannot start: given frames (") + std::to_string(w) + " x " + std::to_string(h) +
+                ") are incompatible with stream (" + std::to_string(config_.width) + " x " + std::to_string(config_.height) + ")";
     }
 
     // prevent eroneous protocol values
@@ -340,10 +338,9 @@ void VideoStreamer::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("VideoStreamer Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        std::string msg = std::string("Video Streamer : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
-        return;
+        return msg;
     }
 
     // setup streaming sink
@@ -398,24 +395,19 @@ void VideoStreamer::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("VideoStreamer Could not configure capture source");
-        finished_ = true;
-        return;
+        return std::string("Video Streamer : Failed to configure frame grabber.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("VideoStreamer failed");
-        finished_ = true;
-        return;
+        return std::string("Video Streamer : Failed to start frame grabber.");
     }
 
     // all good
-    Log::Notify("Streaming to %s.", config_.client_name.c_str());
+    initialized_ = true;
 
-    // start streaming !!
-    active_ = true;
+    return std::string("Streaming to ") + config_.client_name + "started.";
 }
 
 void VideoStreamer::terminate()
@@ -451,7 +443,9 @@ void VideoStreamer::stop ()
 std::string VideoStreamer::info() const
 {
     std::ostringstream ret;
-    if (active_) {
+    if (!initialized_)
+        ret << "Connecting";
+    else if (active_) {
         ret << NetworkToolkit::protocol_name[config_.protocol];
         ret << " to ";
         ret << config_.client_name;

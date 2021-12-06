@@ -18,6 +18,8 @@
 **/
 
 #include <thread>
+#include<algorithm> // for copy() and assign()
+#include<iterator> // for back_inserter
 
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -43,11 +45,11 @@ PNGRecorder::PNGRecorder() : FrameGrabber()
 {
 }
 
-void PNGRecorder::init(GstCaps *caps)
+std::string PNGRecorder::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! pngenc ! filesink name=sink";
@@ -56,10 +58,9 @@ void PNGRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("PNG Capture Could not construct pipeline %s:\n%s", description.c_str(), error->message);
+        std::string msg = std::string("PNG Capture Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
-        return;
+        return msg;
     }
 
     // verify location path (path is always terminated by the OS dependent separator)
@@ -102,28 +103,25 @@ void PNGRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("PNG Capture Could not configure source");
-        finished_ = true;
-        return;
+        return std::string("PNG Capture : Failed to configure frame grabber.");
     }
 
     // start pipeline
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("PNG Capture Could not record %s", filename_.c_str());
-        finished_ = true;
-        return;
+        return std::string("PNG Capture : Failed to start frame grabber.");
     }
 
     // all good
-    Log::Info("PNG Capture started.");
+    initialized_ = true;
 
-    // start recording !!
-    active_ = true;
+    return std::string("PNG Capture started ");
 }
 
 void PNGRecorder::terminate()
 {
+    // remember and inform
+    Settings::application.recentRecordings.push(filename_);
     Log::Notify("PNG Capture %s is ready.", filename_.c_str());
 }
 
@@ -221,8 +219,13 @@ const std::vector<std::string> VideoRecorder::profile_description {
 
 
 #if GST_GL_HAVE_PLATFORM_GLX
-// under GLX (Linux), gstreamer might have nvidia encoders
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+
+// under GLX (Linux), gstreamer might have nvidia or vaapi encoders
+// the hardware encoder will be filled at first instanciation of VideoRecorder
+std::vector<std::string> VideoRecorder::hardware_encoder;
+std::vector<std::string> VideoRecorder::hardware_profile_description;
+
+std::vector<std::string> nvidia_encoder = {
     "nvh264enc",
     "nvh264enc",
     "nvh265enc",
@@ -230,7 +233,7 @@ const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
     "", "", "", ""
 };
 
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
+std::vector<std::string> nvidia_profile_description {
     // qp-const  Constant quantizer (-1 = from NVENC preset)
     //            Range: -1 - 51 Default: -1
     // rc-mode Rate Control Mode
@@ -251,15 +254,34 @@ const std::vector<std::string> VideoRecorder::hardware_profile_description {
     "", "", "", ""
 };
 
+std::vector<std::string> vaapi_encoder = {
+    "vaapih264enc",
+    "vaapih264enc",
+    "vaapih265enc",
+    "vaapih265enc",
+    "", "", "", ""
+};
+
+std::vector<std::string> vaapi_profile_description {
+
+    // Control vaapih264enc encoder
+    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    // Control vaapih265enc encoder
+    "video/x-raw, format=NV12 ! vaapih265enc ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=NV12 ! vaapih265enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "", "", "", ""
+};
+
 #elif GST_GL_HAVE_PLATFORM_CGL
 // under CGL (Mac), gstreamer might have the VideoToolbox
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
+std::vector<std::string> VideoRecorder::hardware_encoder = {
     "vtenc_h264_hw",
     "vtenc_h264_hw",
     "", "", "", "", "", ""
 };
 
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
+std::vector<std::string> VideoRecorder::hardware_profile_description {
     // Control vtenc_h264_hw encoder
     "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
     "video/x-raw, format=UYVY ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
@@ -267,12 +289,9 @@ const std::vector<std::string> VideoRecorder::hardware_profile_description {
 };
 
 #else
-const char* VideoRecorder::hardware_encoder[VideoRecorder::DEFAULT] = {
-    "", "", "", "", "", "", "", ""
-};
-const std::vector<std::string> VideoRecorder::hardware_profile_description {
-    "", "", "", "", "", "", "", ""
-};
+// in other platforms, no hardware encoder
+std::vector<std::string> VideoRecorder::hardware_encoder;
+std::vector<std::string> VideoRecorder::hardware_profile_description;
 #endif
 
 
@@ -286,14 +305,29 @@ const gint    VideoRecorder::framerate_preset_value[3] = { 15, 25, 30 };
 
 VideoRecorder::VideoRecorder() : FrameGrabber()
 {
-
+    // first run initialization of hardware encoders in linux
+#if GST_GL_HAVE_PLATFORM_GLX
+    if (hardware_encoder.size() < 1) {
+        // test nvidia encoder
+        if ( GstToolkit::has_feature(nvidia_encoder[0] ) )   {
+            // consider that if first nvidia encoder is valid, all others should also be available
+            hardware_encoder.assign(nvidia_encoder.begin(), nvidia_encoder.end());
+            hardware_profile_description.assign(nvidia_profile_description.begin(), nvidia_profile_description.end());
+        }
+        // test vaapi encoder
+        else if ( GstToolkit::has_feature(vaapi_encoder[0] ) ) {
+            hardware_encoder.assign(vaapi_encoder.begin(), vaapi_encoder.end());
+            hardware_profile_description.assign(vaapi_profile_description.begin(), vaapi_profile_description.end());
+        }
+    }
+#endif
 }
 
-void VideoRecorder::init(GstCaps *caps)
+std::string VideoRecorder::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return;
+        return std::string("Invalid caps");
 
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
@@ -306,15 +340,11 @@ void VideoRecorder::init(GstCaps *caps)
         Settings::application.record.profile = H264_STANDARD;
 
     // test for a hardware accelerated encoder
-    if (Settings::application.render.gpu_decoding &&
-#if GST_GL_HAVE_PLATFORM_GLX
-
-            glGetString(GL_VENDOR)[0] == 'N' && glGetString(GL_VENDOR)[1] == 'V' &&             // TODO; hack to test for NVIDIA GPU support
-#endif
+    if (Settings::application.render.gpu_decoding && (int) hardware_encoder.size() > 0 &&
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
-        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile]);
+        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile].c_str());
     }
     // revert to software encoder
     else
@@ -345,11 +375,9 @@ void VideoRecorder::init(GstCaps *caps)
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Info("Video Recording : Could not construct pipeline %s\n%s", description.c_str(), error->message);
-        Log::Warning("Video Recording : Failed to initiate GStreamer.");
+        std::string msg = std::string("Video Recording : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
-        finished_ = true;
-        return;
+        return msg;
     }
 
     // setup file sink
@@ -399,24 +427,20 @@ void VideoRecorder::init(GstCaps *caps)
 
     }
     else {
-        Log::Warning("Video Recording : Failed to configure frame grabber.");
-        finished_ = true;
-        return;
+        return std::string("Video Recording : Failed to configure frame grabber.");
     }
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Video Recording : Failed to start frame grabber.");
-        finished_ = true;
-        return;
+        return std::string("Video Recording : Failed to start frame grabber.");
     }
 
     // all good
-    Log::Info("Video Recording started (%s)", profile_name[Settings::application.record.profile]);
+    initialized_ = true;
 
-    // start recording !!
-    active_ = true;
+    return std::string("Video Recording started ") + profile_name[Settings::application.record.profile];
+
 }
 
 void VideoRecorder::terminate()
@@ -440,15 +464,15 @@ void VideoRecorder::terminate()
         Log::Info("Video Recording : try a lower resolution / a lower framerate / a larger buffer size / a faster codec.");
     }
 
+    // remember and inform
+    Settings::application.recentRecordings.push(filename_);
     Log::Notify("Video Recording %s is ready.", filename_.c_str());
 }
 
 std::string VideoRecorder::info() const
 {
-    if (active_)
-        return FrameGrabber::info();
-    else if (!endofstream_)
+    if (initialized_ && !active_ && !endofstream_)
         return "Saving file...";
-    else
-        return "...";
+
+    return FrameGrabber::info();
 }

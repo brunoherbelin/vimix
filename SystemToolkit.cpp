@@ -43,6 +43,7 @@ using namespace std;
 #include <sys/stat.h>
 #include <pwd.h>
 #include <dirent.h>
+#include <fnmatch.h>
 #define PATH_SEP '/'
 #endif
 
@@ -298,7 +299,7 @@ std::string SystemToolkit::path_directory(const std::string& path)
     return directorypath;
 }
 
-list<string> SystemToolkit::list_directory(const string& path, const list<string>& extensions)
+list<string> SystemToolkit::list_directory(const string& path, const list<string>& patterns)
 {
     list<string> ls;
 
@@ -309,10 +310,12 @@ list<string> SystemToolkit::list_directory(const string& path, const list<string
         while ((ent = readdir (dir)) != NULL) {
             if ( ent->d_type == DT_REG)
             {
-                string filename = string(ent->d_name);
-                string ext = extension_filename(filename);
-                if ( extensions.empty() || find(extensions.cbegin(), extensions.cend(), ext) != extensions.cend())
-                    ls.push_back( full_filename(path, filename) );
+                int found = FNM_NOMATCH;
+                for (auto it = patterns.cbegin(); it != patterns.cend() && found == FNM_NOMATCH; ++it)
+                    // test pattern in CASE insensitive
+                    found = fnmatch( it->c_str(), ent->d_name, FNM_CASEFOLD );
+                if (found != FNM_NOMATCH)
+                    ls.push_back( full_filename(path, ent->d_name) );
             }
         }
         closedir (dir);

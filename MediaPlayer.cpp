@@ -424,7 +424,7 @@ void MediaPlayer::execute_open()
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
-              uri_.c_str(), media_.codec_name.c_str(), media_.width, media_.height);
+              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
     Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
               timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
@@ -851,15 +851,10 @@ void MediaPlayer::init_texture(guint index)
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
-//        // now that a frame is ready, and once only, browse into the pipeline
-//        // for possible hadrware decoding plugins used. Empty string means none.
-//        hardware_decoder_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
-
-#ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s uses OpenGL PBO texturing.", std::to_string(id_).c_str());
-#endif
-
+        // initialize decoderName once
+        Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
     }
+
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

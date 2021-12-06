@@ -70,7 +70,7 @@ class VideoStreamer : public FrameGrabber
 {
     friend class Streaming;
 
-    void init(GstCaps *caps) override;
+    std::string init(GstCaps *caps) override;
     void terminate() override;
     void stop() override;
 

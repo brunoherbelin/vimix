@@ -147,7 +147,6 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
     // open gstreamer with pattern
     if ( Pattern::get(type).available)      {
         pattern()->open( (uint) type, resolution );
-        Log::Notify("Creating Source with pattern '%s'", Pattern::get(type).label.c_str());
     }
     // revert to pattern Black if not available
     else {
@@ -175,3 +174,12 @@ Pattern *PatternSource::pattern() const
 }
 
 
+glm::ivec2 PatternSource::icon() const
+{
+    return glm::ivec2(11, 5);
+}
+
+std::string PatternSource::info() const
+{
+    return std::string("pattern '") + Pattern::get(pattern()->type()).label + "'";
+}

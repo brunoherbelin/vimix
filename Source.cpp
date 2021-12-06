@@ -733,7 +733,7 @@ FrameBuffer *Source::frame() const
         return renderbuffer_;
     }
     else {
-        static FrameBuffer *black = new FrameBuffer(640,480);
+        static FrameBuffer *black = new FrameBuffer(320,180);
         return black;
     }
 }
@@ -914,5 +914,15 @@ void CloneSource::accept(Visitor& v)
     Source::accept(v);
     if (!failed())
         v.visit(*this);
+}
+
+glm::ivec2 CloneSource::icon() const
+{
+    return glm::ivec2(9, 2);
+}
+
+std::string CloneSource::info() const
+{
+    return std::string("clone of '") + origin_->name() + "'";
 }
 

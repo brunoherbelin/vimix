@@ -2,7 +2,9 @@
 #define FRAMEGRABBER_H
 
 #include <atomic>
+#include <future>
 #include <list>
+#include <map>
 #include <string>
 
 #include <gst/gst.h>
@@ -51,11 +53,12 @@ protected:
     virtual void addFrame(GstBuffer *buffer, GstCaps *caps);
 
     // only addFrame method shall call those
-    virtual void init(GstCaps *caps) = 0;
+    virtual std::string init(GstCaps *caps) = 0;
     virtual void terminate() = 0;
 
     // thread-safe testing termination
     std::atomic<bool> finished_;
+    std::atomic<bool> initialized_;
     std::atomic<bool> active_;
     std::atomic<bool> endofstream_;
     std::atomic<bool> accept_buffer_;
@@ -67,6 +70,7 @@ protected:
     GstCaps      *caps_;
 
     GstClock     *timer_;
+    GstClockTime timer_firstframe_;
     GstClockTime timestamp_;
     GstClockTime duration_;
     GstClockTime frame_duration_;
@@ -74,7 +78,9 @@ protected:
     guint64      buffering_size_;
     bool         timestamp_on_clock_;
 
-    GstClockTime timer_firstframe_;
+    // async threaded initializer
+    std::future<std::string> initializer_;
+    static std::string initialize(FrameGrabber *rec, GstCaps *caps);
 
     // gstreamer callbacks
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
@@ -111,6 +117,7 @@ public:
     inline uint height() const { return height_; }
 
     void add(FrameGrabber *rec);
+    void chain(FrameGrabber *rec, FrameGrabber *new_rec);
     void verify(FrameGrabber **rec);
     FrameGrabber *front();
     FrameGrabber *get(uint64_t id);
@@ -124,6 +131,7 @@ protected:
 
 private:
     std::list<FrameGrabber *> grabbers_;
+    std::map<FrameGrabber *, FrameGrabber *> grabbers_chain_;
     guint pbo_[2];
     guint pbo_index_;
     guint pbo_next_index_;

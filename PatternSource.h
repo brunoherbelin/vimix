@@ -47,7 +47,8 @@ public:
     Pattern *pattern() const;
     void setPattern(uint type, glm::ivec2 resolution);
 
-    glm::ivec2 icon() const override { return glm::ivec2(11, 5); }
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 };
 

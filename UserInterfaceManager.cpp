@@ -111,8 +111,8 @@ std::string readable_date_time_string(std::string date){
 
 // globals
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
-std::vector< std::future<FrameGrabber *> > _video_recorders;
-FrameGrabber *delayTrigger(FrameGrabber *g, std::chrono::milliseconds delay) {
+std::vector< std::future<VideoRecorder *> > _video_recorders;
+VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
     std::this_thread::sleep_for (delay);
     return g;
 }
@@ -324,10 +324,21 @@ void UserInterface::handleKeyboard()
                 FrameGrabbing::manager().add(new PNGRecorder);
             }
             else {
-                // toggle recording
+                // toggle recording stop / start
                 if (video_recorder_) {
-                    video_recorder_->stop();
-//                    video_recorder_ = nullptr;
+                    // prepare for next time user open new source panel to show the recording
+                    if (Settings::application.recentRecordings.load_at_start)
+                        navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                    // 'save & continue' for Ctrl+Alt+R if no timeout for recording
+                    if (alt_modifier_active) {
+                        VideoRecorder *rec = new VideoRecorder;
+                        FrameGrabbing::manager().chain(video_recorder_, rec);
+                        video_recorder_ = rec;
+                    }
+                    // normal case: Ctrl+R stop recording
+                    else
+                        // stop recording
+                        video_recorder_->stop();
                 }
                 else {
                     _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
@@ -788,7 +799,7 @@ void UserInterface::Render()
         }
     }
     // verify the video recorder is valid (change to nullptr if invalid)
-    FrameGrabbing::manager().verify(&video_recorder_);
+    FrameGrabbing::manager().verify( (FrameGrabber**) &video_recorder_);
     if (video_recorder_ // if there is an ongoing recorder
         && Settings::application.record.timeout < RECORD_MAX_TIMEOUT  // and if the timeout is valid
         && video_recorder_->duration() > Settings::application.record.timeout ) // and the timeout is reached
@@ -1322,17 +1333,33 @@ void UserInterface::RenderPreview()
                 if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame", CTRL_MOD "Shitf+R") )
                     FrameGrabbing::manager().add(new PNGRecorder);
 
-                // Stop recording menu if main recorder already exists
-
+                // temporary disabled
                 if (!_video_recorders.empty()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    ImGui::MenuItem( ICON_FA_SQUARE "  Record starting", CTRL_MOD "R", false, false);
+                    ImGui::MenuItem( ICON_FA_SQUARE "  Record", CTRL_MOD "R", false, false);
+                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
                     ImGui::PopStyleColor(1);
                 }
+                // Stop recording menu (recorder already exists)
                 else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
+                        // prepare for next time user open new source panel to show the recording
+                        if (Settings::application.recentRecordings.load_at_start)
+                            navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                        // stop recorder
                         video_recorder_->stop();
+                    }
+                    // offer the 'save & continue' recording
+                    if ( ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R") ) {
+                        // prepare for next time user open new source panel to show the recording
+                        if (Settings::application.recentRecordings.load_at_start)
+                            navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                        // create a new recorder chainned to the current one
+                        VideoRecorder *rec = new VideoRecorder;
+                        FrameGrabbing::manager().chain(video_recorder_, rec);
+                        // swap recorder
+                        video_recorder_ = rec;
                     }
                     ImGui::PopStyleColor(1);
                 }
@@ -1343,6 +1370,7 @@ void UserInterface::RenderPreview()
                         _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
+                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
                     ImGui::PopStyleColor(1);
                 }
                 // Options menu
@@ -1383,11 +1411,6 @@ void UserInterface::RenderPreview()
                 ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                  Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
 
-//                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//                ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, VIDEO_RECORDER_BUFFERING_NUM_PRESET-1,
-//                                 VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
-
-                //
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Share"))
@@ -3685,6 +3708,15 @@ Navigator::Navigator()
     pannel_visible_ = false;
     view_pannel_visible = false;
     clearButtonSelection();
+
+    // restore media mode as saved
+    if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_FILES) == 0)
+        new_media_mode = MEDIA_RECENT;
+    else if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_RECORDS) == 0)
+        new_media_mode = MEDIA_RECORDING;
+    else
+        new_media_mode = MEDIA_FOLDER;
+    new_media_mode_changed = true;
 }
 
 void Navigator::applyButtonSelection(int index)
@@ -3709,7 +3741,9 @@ void Navigator::clearButtonSelection()
     // clear new source pannel
     new_source_preview_.setSource();
     pattern_type = -1;
-    _selectedFiles.clear();
+    sourceSequenceFiles.clear();
+    sourceMediaFileCurrent.clear();
+    new_media_mode_changed = true;
 }
 
 void Navigator::showPannelSource(int index)
@@ -3740,6 +3774,7 @@ void Navigator::togglePannelNew()
 {
     selected_button[NAV_NEW] = !selected_button[NAV_NEW];
     applyButtonSelection(NAV_NEW);
+    new_media_mode_changed = true;
 }
 
 void Navigator::hidePannel()
@@ -4022,6 +4057,43 @@ void Navigator::RenderSourcePannel(Source *s)
     }
 }
 
+
+void Navigator::setNewMedia(MediaCreateMode mode, std::string path)
+{
+    Settings::application.source.new_type = Navigator::SOURCE_FILE;
+
+    // change mode
+    new_media_mode = mode;
+    new_media_mode_changed = true;
+
+    // mode dependent actions
+    switch (new_media_mode) {
+    case MEDIA_RECENT:
+        // set filename
+        sourceMediaFileCurrent = path;
+        // set combo to 'recent files'
+        Settings::application.recentImportFolders.path = IMGUI_LABEL_RECENT_FILES;
+        break;
+    case MEDIA_RECORDING:
+        // set filename
+        sourceMediaFileCurrent = path;
+        // set combo to 'recent recordings'
+        Settings::application.recentImportFolders.path = IMGUI_LABEL_RECENT_RECORDS;
+        break;
+    default:
+    case MEDIA_FOLDER:
+        // reset filename
+        sourceMediaFileCurrent.clear();
+        // set combo: a path was selected
+        if (!path.empty())
+            Settings::application.recentImportFolders.path.assign(path);
+        break;
+    }
+
+    // clear preview
+    new_source_preview_.setSource();
+}
+
 void Navigator::RenderNewPannel()
 {
     // Next window is a side pannel
@@ -4043,7 +4115,7 @@ void Navigator::RenderNewPannel()
         //
         // News Source selection pannel
         //
-        static const char* origin_names[5] = { ICON_FA_PHOTO_VIDEO "  File",
+        static const char* origin_names[SOURCE_TYPES] = { ICON_FA_PHOTO_VIDEO "  File",
                                                ICON_FA_SORT_NUMERIC_DOWN "   Sequence",
                                                ICON_FA_PLUG "    Connected",
                                                ICON_FA_COG "   Generated",
@@ -4056,66 +4128,205 @@ void Navigator::RenderNewPannel()
         ImGui::SetCursorPosY(2.f * width_);
 
         // File Source creation
-        if (Settings::application.source.new_type == 0) {
+        if (Settings::application.source.new_type == SOURCE_FILE) {
 
             static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
+            static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open media", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
+            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open File", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
                 fileimportdialog.open();
-
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source from a file:\n"
-                                     ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
-                                     ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
-                                     ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
-                                     ICON_FA_CARET_RIGHT " vimix session (*.mix)\n\n"
-                                     "(Equivalent to dropping the file in the workspace)");
+                                                 ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
+                                                 ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
+                                                 ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
+                                                 ICON_FA_CARET_RIGHT " vimix session (*.mix)\n"
+                                                 "\nNB: Equivalent to dropping the file in the workspace");
 
             // get media file if dialog finished
             if (fileimportdialog.closed()){
                 // get the filename from this file dialog
-                std::string open_filename = fileimportdialog.path();
-                // create a source with this file
-                if (open_filename.empty()) {
-                    new_source_preview_.setSource();
-                    Log::Notify("No file selected.");
-                } else {
-                    std::string label = BaseToolkit::transliterate( open_filename );
-                    label = BaseToolkit::trunc_string(label, 35);
-                    new_source_preview_.setSource( Mixer::manager().createSourceFile(open_filename), label);
+                std::string importpath = fileimportdialog.path();
+                // switch to recent files
+                setNewMedia(MEDIA_RECENT, importpath);
+                // open file
+                if (!importpath.empty()) {
+                    std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
+                    new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
                 }
             }
 
-            // combo of recent media filenames
+            // combo to offer lists
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##RecentImport", IMGUI_LABEL_RECENT_FILES))
+            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::trunc_string(Settings::application.recentImportFolders.path, 25).c_str() ))
             {
-                std::list<std::string> recent = Settings::application.recentImport.filenames;
-                for (std::list<std::string>::iterator path = recent.begin(); path != recent.end(); ++path )
-                {
-                    std::string recentpath(*path);
-                    if ( SystemToolkit::file_exists(recentpath)) {
-                        std::string label = BaseToolkit::transliterate( recentpath );
-                        label = BaseToolkit::trunc_string(label, 35);
-                        if (ImGui::Selectable( label.c_str() )) {
-                            new_source_preview_.setSource( Mixer::manager().createSourceFile(recentpath.c_str()), label);
-                        }
+                // Mode MEDIA_RECENT : recent files
+                if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
+                     setNewMedia(MEDIA_RECENT);
+                }
+                // Mode MEDIA_RECORDING : recent recordings
+                if (ImGui::Selectable( ICON_FA_LIST_UL IMGUI_LABEL_RECENT_RECORDS) ) {
+                    setNewMedia(MEDIA_RECORDING);
+                }
+                // Mode MEDIA_FOLDER : known folders
+                for(auto foldername = Settings::application.recentImportFolders.filenames.begin();
+                    foldername != Settings::application.recentImportFolders.filenames.end(); foldername++) {
+                    std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::trunc_string( *foldername, 40);
+                    if (ImGui::Selectable( f.c_str() )) {
+                        setNewMedia(MEDIA_FOLDER, *foldername);
                     }
+                }
+                // Add a folder for MEDIA_FOLDER
+                if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ) {
+                    folderimportdialog.open();
                 }
                 ImGui::EndCombo();
             }
+
+            // return from thread for folder openning
+            if (folderimportdialog.closed() && !folderimportdialog.path().empty()) {
+                Settings::application.recentImportFolders.push(folderimportdialog.path());
+                setNewMedia(MEDIA_FOLDER, folderimportdialog.path());
+            }
+
+            // icons to clear lists or discarc folder
+            ImVec2 pos_top = ImGui::GetCursorPos();
+            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+            if ( new_media_mode == MEDIA_FOLDER ) {
+                if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_MINUS, "Discard folder")) {
+                    Settings::application.recentImportFolders.filenames.remove(Settings::application.recentImportFolders.path);
+                    if (Settings::application.recentImportFolders.filenames.empty())
+                        // revert mode RECENT
+                        setNewMedia(MEDIA_RECENT);
+                    else
+                        setNewMedia(MEDIA_FOLDER, Settings::application.recentImportFolders.filenames.front());
+                }
+            }
+            else if ( new_media_mode == MEDIA_RECORDING ) {
+                if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
+                    Settings::application.recentRecordings.filenames.clear();
+                    Settings::application.recentRecordings.front_is_valid = false;
+                    setNewMedia(MEDIA_RECORDING);
+                }
+            }
+            else if ( new_media_mode == MEDIA_RECENT ) {
+                if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
+                    Settings::application.recentImport.filenames.clear();
+                    Settings::application.recentImport.front_is_valid = false;
+                    setNewMedia(MEDIA_RECENT);
+                }
+            }
+            ImGui::PopStyleVar();
+            ImGui::SetCursorPos(pos_top);
+
+            // change session list if changed
+            if (new_media_mode_changed || Settings::application.recentImport.changed || Settings::application.recentRecordings.changed) {
+
+                // MODE RECENT
+                if ( new_media_mode == MEDIA_RECENT) {
+                    // show list of recent imports
+                    Settings::application.recentImport.validate();
+                    sourceMediaFiles = Settings::application.recentImport.filenames;
+                    // done changed
+                    Settings::application.recentImport.changed = false;
+                }
+                // MODE RECORDINGS
+                else if ( new_media_mode == MEDIA_RECORDING) {
+                    // show list of recent records
+                    Settings::application.recentRecordings.validate();
+                    sourceMediaFiles = Settings::application.recentRecordings.filenames;
+                    // in auto
+                    if (Settings::application.recentRecordings.load_at_start
+                            && Settings::application.recentRecordings.changed
+                            && Settings::application.recentRecordings.filenames.size() > 0){
+                        sourceMediaFileCurrent = sourceMediaFiles.front();
+                        std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
+                    }
+                    // done changed
+                    Settings::application.recentRecordings.changed = false;
+                }
+                // MODE LIST FOLDER
+                else if ( new_media_mode == MEDIA_FOLDER) {
+                    // show list of media files in folder
+                    sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path, { MEDIA_FILES_PATTERN });
+                }
+                // indicate the list changed (do not change at every frame)
+                new_media_mode_changed = false;
+            }
+
+            // different labels for each mode
+            static const char *listboxname[3] = { "##NewSourceMediaRecent", "##NewSourceMediaRecording", "##NewSourceMediafolder"};
+            // display the import-list and detect if one was selected
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, 6)) ) {
+                static int tooltip = 0;
+                static std::string filenametooltip;
+                // loop over list of files
+                for(auto it = sourceMediaFiles.begin(); it != sourceMediaFiles.end(); ++it) {
+                    // build displayed file name
+                    std::string filename = BaseToolkit::transliterate(*it);
+                    std::string label = BaseToolkit::trunc_string(SystemToolkit::filename(filename), 25);
+                    // add selectable item to ListBox; open if clickec
+                    if (ImGui::Selectable( label.c_str(), sourceMediaFileCurrent.compare(*it) == 0 )) {
+                        // set new source preview
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(*it), filename);
+                        // remember current list item
+                        sourceMediaFileCurrent = *it;
+                    }
+                    // smart tooltip : displays only after timout when item changed
+                    if (ImGui::IsItemHovered()){
+                        if (filenametooltip.compare(filename)==0){
+                            ++tooltip;
+                            if (tooltip>30) {
+                                ImGui::BeginTooltip();
+                                ImGui::Text(filenametooltip.c_str());
+                                ImGui::EndTooltip();
+                            }
+                        }
+                        else {
+                            filenametooltip.assign(filename);
+                            tooltip = 0;
+                        }
+                    }
+                }
+                ImGui::ListBoxFooter();
+            }
+
+            if (new_media_mode == MEDIA_RECORDING) {
+                // Bottom Right side of the list: helper and options
+                ImVec2 pos_bot = ImGui::GetCursorPos();
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+                ImGuiToolkit::HelpMarker("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
+                                         ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
+                                         "most recent recording after 'Stop Record' or 'Save & continue'.");
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+                if (ImGuiToolkit::ButtonToggle( ICON_FA_CHEVRON_CIRCLE_RIGHT, &Settings::application.recentRecordings.load_at_start, "Auto-preload" ) ){
+                    // demonstrate action
+                    if (Settings::application.recentRecordings.load_at_start
+                            && Settings::application.recentRecordings.filenames.size() > 0) {
+                        sourceMediaFileCurrent = sourceMediaFiles.front();
+                        std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
+                    }
+                }
+                // come back...
+                ImGui::SetCursorPos(pos_bot);
+            }
+
         }
         // Folder Source creator
-        else if (Settings::application.source.new_type == 1){
+        else if (Settings::application.source.new_type == SOURCE_SEQUENCE){
 
             bool update_new_source = false;
             static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select Images");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_IMAGES " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
-                _selectedFiles.clear();
+                sourceSequenceFiles.clear();
                 _selectImagesDialog.open();
             }
 
@@ -4125,15 +4336,15 @@ void Navigator::RenderNewPannel()
 
             // return from thread for folder openning
             if (_selectImagesDialog.closed()) {
-                _selectedFiles = _selectImagesDialog.images();
-                if (_selectedFiles.empty())
+                sourceSequenceFiles = _selectImagesDialog.images();
+                if (sourceSequenceFiles.empty())
                     Log::Notify("No file selected.");
                 // ask to reload the preview
                 update_new_source = true;
             }
 
             // multiple files selected
-            if (_selectedFiles.size() > 1) {
+            if (sourceSequenceFiles.size() > 1) {
 
                 // set framerate
                 static int _fps = 30;
@@ -4149,27 +4360,25 @@ void Navigator::RenderNewPannel()
                 }
 
                 if (update_new_source) {
-                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(_selectedFiles) );
-                    label = BaseToolkit::trunc_string(label, 35);
-                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(_selectedFiles, _fps), label);
+                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
+                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
                 }
             }
             // single file selected
-            else if (_selectedFiles.size() > 0) {
+            else if (sourceSequenceFiles.size() > 0) {
 
                 ImGui::Text("Single file selected");
 
                 if (update_new_source) {
-                    std::string label = BaseToolkit::transliterate( _selectedFiles.front() );
-                    label = BaseToolkit::trunc_string(label, 35);
-                    new_source_preview_.setSource( Mixer::manager().createSourceFile(_selectedFiles.front()), label);
+                    std::string label = BaseToolkit::transliterate( sourceSequenceFiles.front() );
+                    new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceSequenceFiles.front()), label);
                 }
 
             }
 
         }
         // Internal Source creator
-        else if (Settings::application.source.new_type == 4){
+        else if (Settings::application.source.new_type == SOURCE_INTERNAL){
 
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -4198,7 +4407,7 @@ void Navigator::RenderNewPannel()
                                      ICON_FA_CARET_RIGHT " Clone other sources");
         }
         // Generated Source creator
-        else if (Settings::application.source.new_type == 3){
+        else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
             bool update_new_source = false;
 
@@ -4240,7 +4449,7 @@ void Navigator::RenderNewPannel()
             }
         }
         // External source creator
-        else if (Settings::application.source.new_type == 2){
+        else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##External", "Select device"))
@@ -4275,7 +4484,7 @@ void Navigator::RenderNewPannel()
         // if a new source was added
         if (new_source_preview_.filled()) {
             // show preview
-            new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, Settings::application.source.new_type != 2);
+            new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
             // ask to import the source in the mixer
             ImGui::NewLine();
             if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
@@ -4325,13 +4534,13 @@ void Navigator::RenderMainPannelVimix()
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##SelectionSession", BaseToolkit::trunc_string(Settings::application.recentFolders.path, 25).c_str() )) {
 
-        // Option 0 : recent files
-        if (ImGui::Selectable( ICON_FA_CLOCK IMGUI_LABEL_RECENT_FILES) ) {
+        // Mode 0 : recent files
+        if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
              Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
              selection_session_mode = 0;
              selection_session_mode_changed = true;
         }
-        // Options 1 : known folders
+        // Mode 1 : known folders
         for(auto foldername = Settings::application.recentFolders.filenames.begin();
             foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
             std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::trunc_string( *foldername, 40);
@@ -4343,7 +4552,7 @@ void Navigator::RenderMainPannelVimix()
                 selection_session_mode_changed = true;
             }
         }
-        // Option 2 : add a folder
+        // Add a folder
         if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") )
             customFolder.open();
         ImGui::EndCombo();
@@ -4375,7 +4584,7 @@ void Navigator::RenderMainPannelVimix()
         }
     }
     else {
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear history")) {
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
             Settings::application.recentSessions.filenames.clear();
             Settings::application.recentSessions.front_is_valid = false;
             // reload the list next time
@@ -4400,7 +4609,7 @@ void Navigator::RenderMainPannelVimix()
         // selection MODE 1 : LIST FOLDER
         else if ( selection_session_mode == 1) {
             // show list of vimix files in folder
-            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, {"mix", "MIX"});
+            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILES_PATTERN });
         }
         // indicate the list changed (do not change at every frame)
         selection_session_mode_changed = false;
@@ -4508,14 +4717,12 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
     ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
-                             "Double-clic on a filename to open it.\n\n"
+                             "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
                              "performs cross fading to the openned session.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Smooth transition");
+    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
     // come back...
     ImGui::SetCursorPos(pos_bot);
 
@@ -4675,7 +4882,7 @@ void Navigator::RenderMainPannelVimix()
 
         ImGui::SameLine();
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear undo")) {
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear history")) {
             Action::manager().init();
         }
         ImGui::PopStyleVar();
@@ -4757,9 +4964,7 @@ void Navigator::RenderMainPannelVimix()
             ImGui::TextDisabled( ICON_FA_REDO );
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Show in view");
+        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show in view");
     }
     //
     // Current 0. VERSIONS
@@ -4908,9 +5113,7 @@ void Navigator::RenderMainPannelVimix()
                                  "keeps a version each time a session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Iterative saving");
+        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot,"Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
     }
@@ -5211,7 +5414,7 @@ void SourcePreview::setSource(Source *s, const string &label)
         delete source_;
 
     source_ = s;
-    label_ = label;
+    label_ = BaseToolkit::trunc_string(label, 35);
     reset_ = true;
 }
 
@@ -5222,7 +5425,7 @@ Source * SourcePreview::getSource()
     return s;
 }
 
-void SourcePreview::Render(float width, bool controlbutton)
+void SourcePreview::Render(float width)
 {
     if(source_) {
         // cancel if failed
@@ -5255,15 +5458,21 @@ void SourcePreview::Render(float width, bool controlbutton)
             FrameBuffer *frame = source_->frame();
             ImVec2 preview_size(width, width / frame->aspectRatio());
             ImGui::Image((void*)(uintptr_t) frame->texture(), preview_size);
-
-            if (controlbutton && source_->ready()) {
-                ImVec2 pos = ImGui::GetCursorPos();
-                ImGui::SameLine();
-                bool active = source_->active();
-                if (ImGuiToolkit::IconToggle(12,7,1,8, &active))
-                    source_->setActive(active);
-                ImGui::SetCursorPos(pos);
+            // if the source is playable and once its ready
+            if (source_->playable() && source_->ready()) {
+                // activate the source on mouse over
+                bool activate = ImGui::IsItemHovered();
+                if (source_->active() != activate)
+                    source_->setActive(activate);
+                // show icon '>' to indicate if we can activate it
+                if (!activate) {
+                    ImVec2 pos = ImGui::GetCursorPos();
+                    ImGui::SetCursorPos(pos + preview_size * ImVec2(0.5f, -0.6f));
+                    ImGuiToolkit::Icon(12,7);
+                    ImGui::SetCursorPos(pos);
+                }
             }
+            // information text
             ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
             ImGui::SameLine(0, 10);
             ImGui::Text("%s", label_.c_str());

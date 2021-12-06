@@ -53,9 +53,9 @@ void ImGuiToolkit::ButtonOpenUrl( const char* label, const char* url, const ImVe
 }
 
 
-bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
+bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle, const char *tooltip)
 {
-    ImVec4* colors = ImGui::GetStyle().Colors;
+    const ImVec4* colors = ImGui::GetStyle().Colors;
     const auto active = *toggle;
     if( active ) {
         ImGui::PushStyleColor( ImGuiCol_Button, colors[ImGuiCol_TabActive] );
@@ -63,6 +63,8 @@ bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle )
         ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
     }
     bool action = ImGui::Button( label );
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip);
     if( action ) *toggle = !*toggle;
     if( active ) ImGui::PopStyleColor( 3 );
     return action;
@@ -169,16 +171,23 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
     return ret;
 }
 
-bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle)
+bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip)
 {
     bool ret = false;
     ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
 
-    if (*toggle) {
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    const auto active = *toggle;
+    if( active ) {
+        ImGui::PushStyleColor( ImGuiCol_Button, colors[ImGuiCol_TabActive] );
+        ImGui::PushStyleColor( ImGuiCol_ButtonHovered, colors[ImGuiCol_TabHovered] );
+        ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
+
         if ( ButtonIcon(i_toggle, j_toggle)) {
             *toggle = false;
             ret = true;
         }
+        ImGui::PopStyleColor( 3 );
     }
     else {
         if ( ButtonIcon(i, j)) {
@@ -186,6 +195,9 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
             ret = true;
         }
     }
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip);
 
     ImGui::PopID();
     return ret;
