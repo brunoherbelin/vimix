@@ -3709,7 +3709,13 @@ Navigator::Navigator()
     view_pannel_visible = false;
     clearButtonSelection();
 
-    new_media_mode = MEDIA_RECENT;
+    // restore media mode as saved
+    if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_FILES) == 0)
+        new_media_mode = MEDIA_RECENT;
+    else if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_RECORDS) == 0)
+        new_media_mode = MEDIA_RECORDING;
+    else
+        new_media_mode = MEDIA_FOLDER;
     new_media_mode_changed = true;
 }
 
@@ -3737,6 +3743,7 @@ void Navigator::clearButtonSelection()
     pattern_type = -1;
     sourceSequenceFiles.clear();
     sourceMediaFileCurrent.clear();
+    new_media_mode_changed = true;
 }
 
 void Navigator::showPannelSource(int index)
@@ -3767,6 +3774,7 @@ void Navigator::togglePannelNew()
 {
     selected_button[NAV_NEW] = !selected_button[NAV_NEW];
     applyButtonSelection(NAV_NEW);
+    new_media_mode_changed = true;
 }
 
 void Navigator::hidePannel()
@@ -4294,9 +4302,9 @@ void Navigator::RenderNewPannel()
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
                 ImGuiToolkit::HelpMarker("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
                                          ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
-                                         "most recent video after finishing recording.");
+                                         "most recent recording after 'Stop Record' or 'Save & continue'.");
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-                if (ImGuiToolkit::ButtonToggle( ICON_FA_CHEVRON_CIRCLE_RIGHT, &Settings::application.recentRecordings.load_at_start ) ){
+                if (ImGuiToolkit::ButtonToggle( ICON_FA_CHEVRON_CIRCLE_RIGHT, &Settings::application.recentRecordings.load_at_start, "Auto-preload" ) ){
                     // demonstrate action
                     if (Settings::application.recentRecordings.load_at_start
                             && Settings::application.recentRecordings.filenames.size() > 0) {
@@ -4305,8 +4313,6 @@ void Navigator::RenderNewPannel()
                         new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
                     }
                 }
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Auto-preload");
                 // come back...
                 ImGui::SetCursorPos(pos_bot);
             }
@@ -4711,14 +4717,12 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
     ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
-                             "Double-clic on a filename to open it.\n\n"
+                             "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
                              "performs cross fading to the openned session.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition);
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Smooth transition");
+    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
     // come back...
     ImGui::SetCursorPos(pos_bot);
 
@@ -4960,9 +4964,7 @@ void Navigator::RenderMainPannelVimix()
             ImGui::TextDisabled( ICON_FA_REDO );
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Show in view");
+        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show in view");
     }
     //
     // Current 0. VERSIONS
@@ -5111,9 +5113,7 @@ void Navigator::RenderMainPannelVimix()
                                  "keeps a version each time a session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Iterative saving");
+        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot,"Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
     }
