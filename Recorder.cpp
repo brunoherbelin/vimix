@@ -120,6 +120,8 @@ std::string PNGRecorder::init(GstCaps *caps)
 
 void PNGRecorder::terminate()
 {
+    // remember and inform
+    Settings::application.recentRecordings.push(filename_);
     Log::Notify("PNG Capture %s is ready.", filename_.c_str());
 }
 
