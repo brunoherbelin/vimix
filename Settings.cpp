@@ -252,6 +252,7 @@ void Settings::Save(uint64_t runtime)
 
         // recent recordings
         XMLElement *recentrecord = xmlDoc.NewElement( "Record" );
+        recentrecord->SetAttribute("autoload", application.recentRecordings.load_at_start);
         for(auto it = application.recentRecordings.filenames.cbegin();
             it != application.recentRecordings.filenames.cend(); ++it) {
             XMLElement *pathNode = xmlDoc.NewElement("path");
@@ -569,6 +570,7 @@ void Settings::Load()
                     if (p)
                     application.recentRecordings.push( std::string (p) );
                 }
+                pRecord->QueryBoolAttribute("autoload", &application.recentRecordings.load_at_start);
             }
 
             // recent dialog path

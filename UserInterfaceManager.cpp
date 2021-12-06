@@ -326,17 +326,19 @@ void UserInterface::handleKeyboard()
             else {
                 // toggle recording stop / start
                 if (video_recorder_) {
+                    // prepare for next time user open new source panel to show the recording
+                    if (Settings::application.recentRecordings.load_at_start)
+                        navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                     // 'save & continue' for Ctrl+Alt+R if no timeout for recording
-                    if (alt_modifier_active && Settings::application.record.timeout == RECORD_MAX_TIMEOUT) {
+                    if (alt_modifier_active) {
                         VideoRecorder *rec = new VideoRecorder;
                         FrameGrabbing::manager().chain(video_recorder_, rec);
                         video_recorder_ = rec;
                     }
                     // normal case: Ctrl+R stop recording
-                    else {
+                    else
                         // stop recording
                         video_recorder_->stop();
-                    }
                 }
                 else {
                     _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
@@ -1341,14 +1343,18 @@ void UserInterface::RenderPreview()
                 // Stop recording menu (recorder already exists)
                 else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") )
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
+                        // prepare for next time user open new source panel to show the recording
+                        if (Settings::application.recentRecordings.load_at_start)
+                            navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                        // stop recorder
                         video_recorder_->stop();
+                    }
                     // offer the 'save & continue' recording
                     if ( ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R") ) {
                         // prepare for next time user open new source panel to show the recording
-                        Settings::application.recentRecordings.load_at_start = true;
-                        Settings::application.source.new_type = Navigator::SOURCE_FILE;
-                        navigator.setNewMedia(Navigator::MEDIA_RECORDING);
+                        if (Settings::application.recentRecordings.load_at_start)
+                            navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // create a new recorder chainned to the current one
                         VideoRecorder *rec = new VideoRecorder;
                         FrameGrabbing::manager().chain(video_recorder_, rec);
@@ -3730,7 +3736,7 @@ void Navigator::clearButtonSelection()
     new_source_preview_.setSource();
     pattern_type = -1;
     sourceSequenceFiles.clear();
-    setNewMedia(new_media_mode);
+    sourceMediaFileCurrent.clear();
 }
 
 void Navigator::showPannelSource(int index)
@@ -4046,6 +4052,8 @@ void Navigator::RenderSourcePannel(Source *s)
 
 void Navigator::setNewMedia(MediaCreateMode mode, std::string path)
 {
+    Settings::application.source.new_type = Navigator::SOURCE_FILE;
+
     // change mode
     new_media_mode = mode;
     new_media_mode_changed = true;
@@ -4222,9 +4230,10 @@ void Navigator::RenderNewPannel()
                     // show list of recent records
                     Settings::application.recentRecordings.validate();
                     sourceMediaFiles = Settings::application.recentRecordings.filenames;
-                    //
-                    if (Settings::application.recentRecordings.load_at_start && Settings::application.recentRecordings.changed){
-                        Settings::application.recentRecordings.load_at_start = false;
+                    // in auto
+                    if (Settings::application.recentRecordings.load_at_start
+                            && Settings::application.recentRecordings.changed
+                            && Settings::application.recentRecordings.filenames.size() > 0){
                         sourceMediaFileCurrent = sourceMediaFiles.front();
                         std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
                         new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
@@ -4246,6 +4255,8 @@ void Navigator::RenderNewPannel()
             // display the import-list and detect if one was selected
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, 6)) ) {
+                static int tooltip = 0;
+                static std::string filenametooltip;
                 // loop over list of files
                 for(auto it = sourceMediaFiles.begin(); it != sourceMediaFiles.end(); ++it) {
                     // build displayed file name
@@ -4258,8 +4269,46 @@ void Navigator::RenderNewPannel()
                         // remember current list item
                         sourceMediaFileCurrent = *it;
                     }
+                    // smart tooltip : displays only after timout when item changed
+                    if (ImGui::IsItemHovered()){
+                        if (filenametooltip.compare(filename)==0){
+                            ++tooltip;
+                            if (tooltip>30) {
+                                ImGui::BeginTooltip();
+                                ImGui::Text(filenametooltip.c_str());
+                                ImGui::EndTooltip();
+                            }
+                        }
+                        else {
+                            filenametooltip.assign(filename);
+                            tooltip = 0;
+                        }
+                    }
                 }
                 ImGui::ListBoxFooter();
+            }
+
+            if (new_media_mode == MEDIA_RECORDING) {
+                // Bottom Right side of the list: helper and options
+                ImVec2 pos_bot = ImGui::GetCursorPos();
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+                ImGuiToolkit::HelpMarker("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
+                                         ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
+                                         "most recent video after finishing recording.");
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+                if (ImGuiToolkit::ButtonToggle( ICON_FA_CHEVRON_CIRCLE_RIGHT, &Settings::application.recentRecordings.load_at_start ) ){
+                    // demonstrate action
+                    if (Settings::application.recentRecordings.load_at_start
+                            && Settings::application.recentRecordings.filenames.size() > 0) {
+                        sourceMediaFileCurrent = sourceMediaFiles.front();
+                        std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
+                        new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
+                    }
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Auto-preload");
+                // come back...
+                ImGui::SetCursorPos(pos_bot);
             }
 
         }
@@ -4306,7 +4355,6 @@ void Navigator::RenderNewPannel()
 
                 if (update_new_source) {
                     std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                    label = BaseToolkit::trunc_string(label, 35);
                     new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
                 }
             }
@@ -4317,7 +4365,6 @@ void Navigator::RenderNewPannel()
 
                 if (update_new_source) {
                     std::string label = BaseToolkit::transliterate( sourceSequenceFiles.front() );
-                    label = BaseToolkit::trunc_string(label, 35);
                     new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceSequenceFiles.front()), label);
                 }
 
