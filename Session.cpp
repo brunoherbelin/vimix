@@ -37,7 +37,8 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 {
 }
 
-Session::Session() : active_(true), filename_(""), failedSource_(nullptr), fading_target_(0.f), thumbnail_(nullptr)
+Session::Session() : active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
+    filename_(""), failedSource_(nullptr), fading_target_(0.f), thumbnail_(nullptr)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
@@ -131,6 +132,7 @@ void Session::update(float dt)
             // render the source
             (*it)->render();
             // update the source
+            (*it)->setActive( (*it)->mix_distance() < activation_threshold_);
             (*it)->update(dt);
         }
     }

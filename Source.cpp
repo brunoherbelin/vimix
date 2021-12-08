@@ -519,6 +519,10 @@ void Source::attach(FrameBuffer *renderbuffer)
 
 void Source::setActive (bool on)
 {
+    // request update
+    need_update_ |= active_ != on;
+
+    // activate
     active_ = on;
 
     // do not disactivate if a clone depends on it
@@ -571,6 +575,11 @@ void Source::setDepth(float d)
     touch();
 }
 
+float Source::mix_distance()
+{
+    return glm::length( glm::vec2(groups_[View::MIXING]->translation_) );
+}
+
 float Source::alpha() const
 {
     return blendingShader()->color.a;
@@ -578,6 +587,7 @@ float Source::alpha() const
 
 void Source::setAlpha(float a)
 {
+    a = CLAMP(a, 0.f, 1.f);
     glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
     glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));// step in diagonal by default
 
@@ -587,10 +597,10 @@ void Source::setAlpha(float a)
 
     // converge to reduce the difference of alpha
     // using dichotomic algorithm
-    float delta = sin_quad_(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
+    float delta = sin_quad_(dist.x, dist.y) - a;
     while ( glm::abs(delta) > DELTA_ALPHA ){
         dist += step * (delta / 2.f);
-        delta = sin_quad_(dist.x, dist.y) - CLAMP(a, 0.f, 1.f);
+        delta = sin_quad_(dist.x, dist.y) - a;
     }
 
     // apply new mixing coordinates
@@ -613,12 +623,8 @@ void Source::update(float dt)
         // use the sinusoidal transfer function
         blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, sin_quad_( dist.x, dist.y ));
         mixingshader_->color = blendingshader_->color;
-
-        // CHANGE update status based on limbo
-        bool a = glm::length(dist) < MIXING_LIMBO_SCALE;
-        setActive( a );
         // adjust scale of mixing icon : smaller if not active
-        groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( a ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
+        groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
 
         // MODIFY geometry based on GEOMETRY node
         groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
