@@ -101,6 +101,10 @@ public:
     void setFading (float f, bool forcenow = false);
     inline float fading () const { return fading_target_; }
 
+    // activation threshold for source (mixing distance)
+    inline void setActivationThreshold(float t) { activation_threshold_ = t; }
+    inline float activationThreshold() const { return activation_threshold_;}
+
     // configuration for group nodes of views
     inline Group *config (View::Mode m) const { return config_.at(m); }
 
@@ -147,6 +151,7 @@ public:
 
 protected:
     bool active_;
+    float activation_threshold_;
     RenderView render_;
     std::string filename_;
     Source *failedSource_;

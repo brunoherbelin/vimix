@@ -1334,7 +1334,6 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
     //
     // source lists
     //
-
     // sessionsources contains list of ids of all sources currently in the session (before loading)
     SourceIdList session_sources = session_->getIdList();
 //    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)

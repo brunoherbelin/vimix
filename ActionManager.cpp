@@ -69,6 +69,9 @@ void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::stri
         delete thumbnail;
     }
 
+    // save session attributes
+    sessionNode->SetAttribute("activationThreshold", se->activationThreshold());
+
     // save all sources using source visitor
     SessionVisitor sv(doc, sessionNode);
     for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )

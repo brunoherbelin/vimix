@@ -48,7 +48,7 @@ uint textureMixingQuadratic();
 
 
 
-MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
+MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
 {
     scene.root()->scale_ = glm::vec3(MIXING_DEFAULT_SCALE, MIXING_DEFAULT_SCALE, 1.0f);
     scene.root()->translation_ = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -62,10 +62,30 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
         restoreSettings();
 
     // Mixing scene background
-    Mesh *tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
-    tmp->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 0.6f );
-    scene.bg()->attach(tmp);
+    limbo_ = new Mesh("mesh/disk.ply");
+    limbo_->scale_ = glm::vec3(limbo_scale_, limbo_scale_, 1.f);
+    limbo_->shader()->color = glm::vec4( COLOR_LIMBO_CIRCLE, 1.f );
+    scene.bg()->attach(limbo_);
+
+    // interactive limbo scaling slider
+    limbo_slider_root_ = new Group;
+    limbo_slider_root_->translation_ = glm::vec3(0.0f, limbo_scale_, 0.f);
+    scene.bg()->attach(limbo_slider_root_);
+    limbo_slider_ = new Disk();
+    limbo_slider_->translation_ = glm::vec3(0.f, -0.01f, 0.f);
+    limbo_slider_->scale_ = glm::vec3(0.1f, 0.1f, 1.f);
+    limbo_slider_->color = glm::vec4( COLOR_LIMBO_CIRCLE, 1.f );
+    limbo_slider_root_->attach(limbo_slider_);
+    limbo_up_ = new Mesh("mesh/triangle_point.ply");
+    limbo_up_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
+    limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_slider_root_->attach(limbo_up_);
+    limbo_down_ = new Mesh("mesh/triangle_point.ply");
+    limbo_down_->translation_ = glm::vec3(0.f, -0.02f, 0.f);
+    limbo_down_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
+    limbo_down_->rotation_ = glm::vec3(0.f, 0.f, M_PI);
+    limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_slider_root_->attach(limbo_down_);
 
     mixingCircle_ = new Mesh("mesh/disk.ply");
     mixingCircle_->shader()->color = glm::vec4( 1.f, 1.f, 1.f, 1.f );
@@ -77,8 +97,8 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
 
     // Mixing scene foreground
 
-    // button frame
-    tmp = new Mesh("mesh/disk.ply");
+    // button frame (non interactive; no picking detected on Mesh)
+    Mesh *tmp = new Mesh("mesh/disk.ply");
     tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
     tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
     tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
@@ -118,10 +138,10 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_LIMBO_SCALE)
     slider_root_->attach(tmp);
 
 
-    stashCircle_ = new Disk();
-    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
-    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
+//    stashCircle_ = new Disk();
+//    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
+//    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
+//    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
 //    scene.bg()->attach(stashCircle_);
 
 }
@@ -294,6 +314,13 @@ void MixingView::update(float dt)
     if (View::need_deep_update_ > 0) {
 
         //
+        // Set limbo scale according to session
+        //
+        const float p = CLAMP(Mixer::manager().session()->activationThreshold(), MIXING_MIN_THRESHOLD, MIXING_MAX_THRESHOLD);
+        limbo_slider_root_->translation_.y = p;
+        limbo_->scale_ = glm::vec3(p, p, 1.f);
+
+        //
         // Set slider to match the actual fading of the session
         //
         float f = Mixer::manager().session()->empty() ? 0.f : Mixer::manager().session()->fading();
@@ -312,8 +339,8 @@ void MixingView::update(float dt)
     }
 
     // the current view is the mixing view
-    if (Mixer::manager().view() == this )
-    {
+    if (Mixer::manager().view() == this ){
+
         //
         // Set session fading to match the slider angle (during animation)
         //
@@ -449,6 +476,22 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             info  << "Global opacity " << 100 - int(Mixer::manager().session()->fading() * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
         }
+        else if (pick.first == limbo_slider_) {
+
+            // move slider scaling limbo area
+            const float p = CLAMP(gl_Position_to.y, MIXING_MIN_THRESHOLD, MIXING_MAX_THRESHOLD);
+            limbo_slider_root_->translation_.y = p;
+            limbo_->scale_ = glm::vec3(p, p, 1.f);
+            Mixer::manager().session()->setActivationThreshold(p);
+
+            // color change of arrow indicators
+            limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p < MIXING_MAX_THRESHOLD ? 0.15f : 0.01f );
+            limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p > MIXING_MIN_THRESHOLD ? 0.15f : 0.01f );
+
+            std::ostringstream info;
+            info << ICON_FA_SNOWFLAKE " Deactivation limit";
+            return Cursor(Cursor_Hand, info.str() );
+        }
 
         // nothing to do
         return Cursor();
@@ -531,6 +574,16 @@ View::Cursor MixingView::over (glm::vec2 pos)
     }
     else
         slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+
+    if ( pick.first == limbo_slider_ ) {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
+        ret.type = Cursor_Hand;
+    }
+    else {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    }
 
 
     return ret;

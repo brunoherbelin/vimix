@@ -291,8 +291,18 @@ void SessionLoader::load(XMLElement *sessionNode)
         return;
     }
 
-    if (sessionNode != nullptr && session_ != nullptr) {
+    if (sessionNode != nullptr && session_ != nullptr)
+    {
+        //
+        // session attributes
+        //
+        float t = MIXING_MIN_THRESHOLD;
+        sessionNode->QueryFloatAttribute("activationThreshold", &t);
+        session_->setActivationThreshold(t);
 
+        //
+        // source lists
+        //
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
         for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
         {

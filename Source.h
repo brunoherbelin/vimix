@@ -170,6 +170,7 @@ public:
     void  setDepth (float d);
 
     // operations on alpha
+    float mix_distance ();
     float alpha () const;
     void  setAlpha (float a);
 

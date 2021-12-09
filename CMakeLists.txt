@@ -413,6 +413,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/shadow_perspective.ply
     ./rsc/mesh/point.ply
     ./rsc/mesh/square_point.ply
+    ./rsc/mesh/triangle_point.ply
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply

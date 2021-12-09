@@ -70,6 +70,9 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         // source visitor
         (*iter)->accept(sv);
 
+    // save session attributes
+    sessionNode->SetAttribute("activationThreshold", session->activationThreshold());
+
     // save the thumbnail
     FrameBufferImage *thumbnail = session->thumbnail();
     if (thumbnail != nullptr && thumbnail->width > 0 && thumbnail->height > 0) {

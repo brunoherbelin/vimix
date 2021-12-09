@@ -26,7 +26,6 @@ public:
     void arrow (glm::vec2) override;
 
     void setAlpha (Source *s);
-    inline float limboScale() { return limbo_scale_; }
 
 private:
     void updateSelectionOverlay() override;
@@ -37,9 +36,13 @@ private:
     Disk *slider_;
     Disk *button_white_;
     Disk *button_black_;
-    Disk *stashCircle_;
+//    Disk *stashCircle_;
     Mesh *mixingCircle_;
     Mesh *circle_;
+    Mesh *limbo_;
+    Group *limbo_slider_root_;
+    Mesh *limbo_up_, *limbo_down_;
+    Disk *limbo_slider_;
 };
 
 
