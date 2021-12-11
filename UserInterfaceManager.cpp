@@ -2321,12 +2321,12 @@ void SourceController::Update()
     SourceList selectedsources;
 
     // get new selection or validate previous list if selection was not updated
-    selectedsources = selection_;
+    selectedsources = Mixer::manager().validate(selection_);
     if (selectedsources.empty() && !Mixer::selection().empty())
         selectedsources = playable_only(Mixer::selection().getCopy());
-    size_t n_source = selectedsources.size();
-//    selection_.clear();
 
+    // compute number of source selected and playable
+    size_t n_source = selectedsources.size();
     size_t n_play = 0;
     for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source){
         if ( (*source)->active() && (*source)->playing() )
