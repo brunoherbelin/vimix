@@ -68,9 +68,9 @@ MediaPlayer *MediaSource::mediaplayer() const
 glm::ivec2 MediaSource::icon() const
 {
     if (mediaplayer_->isImage())
-        return glm::ivec2(4, 9);
+        return glm::ivec2(ICON_SOURCE_IMAGE);
     else
-        return glm::ivec2(18, 13);
+        return glm::ivec2(ICON_SOURCE_VIDEO);
 }
 
 std::string MediaSource::info() const

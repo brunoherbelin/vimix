@@ -583,9 +583,9 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
 glm::ivec2 DeviceSource::icon() const
 {
     if ( device_.find("Screen") != std::string::npos )
-        return glm::ivec2(19, 1);
+        return glm::ivec2(ICON_SOURCE_DEVICE_SCREEN);
     else
-        return glm::ivec2(2, 14);
+        return glm::ivec2(ICON_SOURCE_DEVICE);
 }
 
 std::string DeviceSource::info() const

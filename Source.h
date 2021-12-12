@@ -10,6 +10,19 @@
 
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
 
+#define ICON_SOURCE_VIDEO 18, 13
+#define ICON_SOURCE_IMAGE 4, 9
+#define ICON_SOURCE_DEVICE_SCREEN 19, 1
+#define ICON_SOURCE_DEVICE 2, 14
+#define ICON_SOURCE_SEQUENCE 3, 9
+#define ICON_SOURCE_NETWORK 18, 11
+#define ICON_SOURCE_PATTERN 11, 5
+#define ICON_SOURCE_SESSION 19, 6
+#define ICON_SOURCE_GROUP 10, 6
+#define ICON_SOURCE_RENDER 0, 2
+#define ICON_SOURCE_CLONE 9, 2
+#define ICON_SOURCE 12, 11
+
 class ImageShader;
 class MaskShader;
 class ImageProcessingShader;
@@ -229,7 +242,7 @@ public:
     }
 
     // class-dependent icon
-    virtual glm::ivec2 icon () const { return glm::ivec2(12, 11); }
+    virtual glm::ivec2 icon () const { return glm::ivec2(ICON_SOURCE); }
 
     // class-dependent notification
     virtual std::string info () const { return "Undefined"; }
