@@ -220,7 +220,10 @@ bool UserInterface::Init()
     // init dialogs
     sessionopendialog   = new DialogToolkit::OpenSessionDialog("Open Session");
     sessionsavedialog   = new DialogToolkit::SaveSessionDialog("Save Session");
-    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Session") ;
+    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Session");
+
+    // init tooltips
+    ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
 
     return true;
 }
@@ -484,7 +487,7 @@ void UserInterface::handleKeyboard()
     {
         ImGui::Text(" Leave vimix? [Q to confirm]");
         // Clic Quit or press Q to confirm exit
-        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit  ", ImVec2(250,0)) ||
+        if (ImGui::Button( MENU_QUIT, ImVec2(250,0)) ||
             ( !confirm_quit_popup && ImGui::IsKeyPressed( GLFW_KEY_Q )) )
             Rendering::manager().close();
         ImGui::EndPopup();
@@ -884,7 +887,7 @@ void UserInterface::showMenuEdit()
     const char *clipboard = ImGui::GetClipboardText();
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
-    if (ImGui::MenuItem( ICON_FA_CUT "  Cut", CTRL_MOD "X", false, has_selection)) {
+    if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, false, has_selection)) {
         std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty()) {
             ImGui::SetClipboardText(copied_text.c_str());
@@ -892,45 +895,45 @@ void UserInterface::showMenuEdit()
         }
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_COPY "  Copy", CTRL_MOD "C", false, has_selection)) {
+    if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, false, has_selection)) {
         std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty())
             ImGui::SetClipboardText(copied_text.c_str());
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_PASTE "  Paste", CTRL_MOD "V", false, has_clipboard)) {
+    if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, false, has_clipboard)) {
         Mixer::manager().paste(clipboard);
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_LIST "  Select all", CTRL_MOD "A")) {
+    if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL)) {
         Mixer::manager().view()->selectAll();
         navigator.hidePannel();
     }
     ImGui::Separator();
-    if ( ImGui::MenuItem( ICON_FA_UNDO "  Undo", CTRL_MOD "Z") )
+    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO) )
         Action::manager().undo();
-    if ( ImGui::MenuItem( ICON_FA_REDO "  Redo", CTRL_MOD "Shift+Z") )
+    if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO) )
         Action::manager().redo();
 }
 
 void UserInterface::showMenuFile()
 {
-    if (ImGui::MenuItem( ICON_FA_FILE "  New", CTRL_MOD "W")) {
+    if (ImGui::MenuItem( MENU_NEW_FILE, SHORTCUT_NEW_FILE)) {
         Mixer::manager().close();
         navigator.hidePannel();
     }
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.6f);
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
     ImGui::Combo("Ratio", &Settings::application.render.ratio, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.6f);
+    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
     ImGui::Combo("Height", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
     ImGui::Separator();
 
     ImGui::MenuItem( ICON_FA_LEVEL_UP_ALT "  Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
 
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Open", CTRL_MOD "O"))
+    if (ImGui::MenuItem( MENU_OPEN_FILE, SHORTCUT_OPEN_FILE))
         selectOpenFilename();
-    if (ImGui::MenuItem( ICON_FA_FILE_UPLOAD "  Re-open", CTRL_MOD "Shift+O"))
+    if (ImGui::MenuItem( MENU_REOPEN_FILE, SHORTCUT_REOPEN_FILE))
         Mixer::manager().load( Mixer::manager().session()->filename() );
 
     if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import") && sessionimportdialog) {
@@ -938,17 +941,19 @@ void UserInterface::showMenuFile()
         sessionimportdialog->open();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save", CTRL_MOD "S")) {
+    if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE)) {
         if (saveOrSaveAs())
             navigator.hidePannel();
     }
-    if (ImGui::MenuItem( ICON_FA_FILE_DOWNLOAD "  Save as", CTRL_MOD "Shift+S"))
+    if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
 
     ImGui::MenuItem( ICON_FA_LEVEL_DOWN_ALT "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
-    if (ImGui::MenuItem( ICON_FA_POWER_OFF " Quit", CTRL_MOD "Q"))
+    if (ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP))
+        Settings::application.widget.help = true;
+    if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT))
         Rendering::manager().close();
 
 }
@@ -1036,13 +1041,13 @@ void UserInterface::RenderTimer()
             // output manager menu
             ImGui::Separator();
             bool pinned = Settings::application.widget.timer_view == Settings::application.current_view;
-            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
+            if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
                 if (pinned)
                     Settings::application.widget.timer_view = Settings::application.current_view;
                 else
                     Settings::application.widget.timer_view = -1;
             }
-            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+            if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_TIMER) )
                 Settings::application.widget.timer = false;
 
             ImGui::EndMenu();
@@ -1307,43 +1312,45 @@ void UserInterface::RenderPreview()
                     Rendering::manager().outputWindow().show();
 
                 bool isfullscreen = Rendering::manager().outputWindow().isFullscreen();
-                if ( ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Fullscreen window", CTRL_MOD "F", &isfullscreen) ) {
+                if ( ImGui::MenuItem( MENU_OUTPUTFULLSCREEN, SHORTCUT_OUTPUTFULLSCREEN, &isfullscreen) ) {
                     Rendering::manager().outputWindow().show();
                     Rendering::manager().outputWindow().toggleFullscreen();
                 }
 
-                ImGui::MenuItem( ICON_FA_EYE_SLASH " Disable", "END", &Settings::application.render.disabled);
+                ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 
                 // output manager menu
                 ImGui::Separator();
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
-                if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
+                if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
                     if (pinned)
                         Settings::application.widget.preview_view = Settings::application.current_view;
                     else
                         Settings::application.widget.preview_view = -1;
                 }
-                if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "D") )
+                if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_OUTPUT) )
                     Settings::application.widget.preview = false;
 
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Record"))
             {
-                if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Capture frame", CTRL_MOD "Shitf+R") )
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
+                if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) )
                     FrameGrabbing::manager().add(new PNGRecorder);
+                ImGui::PopStyleColor(1);
 
                 // temporary disabled
                 if (!_video_recorders.empty()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    ImGui::MenuItem( ICON_FA_SQUARE "  Record", CTRL_MOD "R", false, false);
-                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
+                    ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD, false, false);
+                    ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
                     ImGui::PopStyleColor(1);
                 }
                 // Stop recording menu (recorder already exists)
                 else if (video_recorder_) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", CTRL_MOD "R") ) {
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
                             navigator.setNewMedia(Navigator::MEDIA_RECORDING);
@@ -1351,7 +1358,7 @@ void UserInterface::RenderPreview()
                         video_recorder_->stop();
                     }
                     // offer the 'save & continue' recording
-                    if ( ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R") ) {
+                    if ( ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
                             navigator.setNewMedia(Navigator::MEDIA_RECORDING);
@@ -1366,11 +1373,11 @@ void UserInterface::RenderPreview()
                 // start recording
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
-                    if ( ImGui::MenuItem( ICON_FA_CIRCLE "  Record", CTRL_MOD "R") ) {
+                    if ( ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD) ) {
                         _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
-                    ImGui::MenuItem( ICON_FA_STOP_CIRCLE "  Save & continue", CTRL_MOD "Alt+R", false, false);
+                    ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
                     ImGui::PopStyleColor(1);
                 }
                 // Options menu
@@ -1764,20 +1771,20 @@ void UserInterface::RenderShaderEditor()
                 editor.SetReadOnly(ro);
             ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_UNDO " Undo", CTRL_MOD "Z", nullptr, !ro && editor.CanUndo()))
+            if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && editor.CanUndo()))
                 editor.Undo();
-            if (ImGui::MenuItem( ICON_FA_REDO " Redo", CTRL_MOD "Y", nullptr, !ro && editor.CanRedo()))
+            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && editor.CanRedo()))
                 editor.Redo();
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem( ICON_FA_COPY " Copy", CTRL_MOD "C", nullptr, editor.HasSelection()))
+            if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, editor.HasSelection()))
                 editor.Copy();
-            if (ImGui::MenuItem( ICON_FA_CUT " Cut", CTRL_MOD "X", nullptr, !ro && editor.HasSelection()))
+            if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, nullptr, !ro && editor.HasSelection()))
                 editor.Cut();
-            if (ImGui::MenuItem( ICON_FA_ERASER " Delete", "Del", nullptr, !ro && editor.HasSelection()))
+            if (ImGui::MenuItem( MENU_DELETE, SHORTCUT_DELETE, nullptr, !ro && editor.HasSelection()))
                 editor.Delete();
-            if (ImGui::MenuItem( ICON_FA_PASTE " Paste", CTRL_MOD "V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+            if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
                 editor.Paste();
 
             ImGui::Separator();
@@ -1959,8 +1966,6 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-    ImGuiToolkit::ButtonOpenUrl("User Manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-
 
     ImGui::Spacing();
     ImGui::Text("\nvimix is built using the following libraries:");
@@ -2247,38 +2252,212 @@ void HelperToolbox::Render()
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help) )
+
+    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
     {
         ImGui::End();
         return;
     }
 
-    if (ImGui::CollapsingHeader("File repair"))
+    // menu (no title bar)
+    if (ImGui::BeginMenuBar())
+    {
+        // Close and widget menu
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.help = false;
+        if (ImGui::BeginMenu(IMGUI_TITLE_HELP))
+        {
+            // Enable/Disable Ableton Link
+            if ( ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Online user manual") ) {
+                SystemToolkit::open("https://github.com/brunoherbelin/vimix/wiki/User-manual");
+            }
+
+            // Enable/Disable tooltips
+            if ( ImGui::MenuItem( ICON_FA_QUESTION_CIRCLE "  Show tooltips", nullptr, &Settings::application.show_tooptips) ) {
+                ImGuiToolkit::setToolTipsEnabled( Settings::application.show_tooptips );
+            }
+
+            // output manager menu
+            ImGui::Separator();
+            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+                Settings::application.widget.help = false;
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    const float width_window = ImGui::GetWindowSize().x - ImGui::GetFontSize();
+    const float width_column0 = ImGui::GetFontSize() * 6;
+
+    if (ImGui::CollapsingHeader("Views"))
     {
 
+        ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+
+        ImGui::Text(ICON_FA_BULLSEYE "  Mixing"); ImGui::NextColumn();
+        ImGui::Text ("Adjust opacity of sources, visible in the center and transparent on the side. Sources are de-activated outside of darker circle.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_OBJECT_UNGROUP "  Geometry"); ImGui::NextColumn();
+        ImGui::Text ("Move, scale, rotate or crop sources to place them in the output frame.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_LAYER_GROUP "  Layers"); ImGui::NextColumn();
+        ImGui::Text ("Organize the rendering order of sources, from background to foreground.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing"); ImGui::NextColumn();
+        ImGui::Text ("Apply masks or freely paint the texture on the source surface. Repeat or crop the graphics.");
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Windows"))
+    {
+        ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+
+        ImGui::Text(ICON_FA_STICKY_NOTE "  Notes"); ImGui::NextColumn();
+        ImGui::Text ("Place sticky notes into your session.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLAY_CIRCLE "  Player"); ImGui::NextColumn();
+        ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_DESKTOP "  Output"); ImGui::NextColumn();
+        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and sharing to other vimix in local network.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CLOCK "  Timer"); ImGui::NextColumn();
+        ImGui::Text ("Keep track of time with a stopwatch or a metronome (Ableton Link).");
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Sources"))
+    {
+        ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+
+        ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, 10);ImGui::Text("Video"); ImGui::NextColumn();
+        ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, 10);ImGui::Text("Image"); ImGui::NextColumn();
+        ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, 10);ImGui::Text("Session"); ImGui::NextColumn();
+        ImGui::Text ("Render a session (*.mix) as a source.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, 10);ImGui::Text("Sequence"); ImGui::NextColumn();
+        ImGui::Text ("Serie of images (*.jpg, *.png, etc.) numbered sequentially.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, 10);ImGui::Text("Device"); ImGui::NextColumn();
+        ImGui::Text ("Connected webcam or frame grabber.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, 10);ImGui::Text("Screen"); ImGui::NextColumn();
+        ImGui::Text ("Screen capture.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, 10);ImGui::Text("Network"); ImGui::NextColumn();
+        ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, 10);ImGui::Text("Pattern"); ImGui::NextColumn();
+        ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, 10);ImGui::Text("Rendering"); ImGui::NextColumn();
+        ImGui::Text ("Loopback the rendering output as a source.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, 10);ImGui::Text("Clone"); ImGui::NextColumn();
+        ImGui::Text ("Clone a source (original images) into another source.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, 10);ImGui::Text("Group"); ImGui::NextColumn();
+        ImGui::Text ("Group of sources rendered together after flatten in Layers view.");
+
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
     }
 
     if (ImGui::CollapsingHeader("Keyboard shortcuts"))
     {
-        ImGui::Columns(2, "mycolumns"); // 4-ways, with border
+        ImGui::Columns(2, "keyscolumns", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+
         ImGui::Text("HOME"); ImGui::NextColumn();
-        ImGui::Text("Main menu"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_BARS " Main menu"); ImGui::NextColumn();
         ImGui::Text("INS"); ImGui::NextColumn();
-        ImGui::Text("New source"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLUS " New source"); ImGui::NextColumn();
         ImGui::Text("F1"); ImGui::NextColumn();
-        ImGui::Text("Mixing view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_BULLSEYE " Mixing view"); ImGui::NextColumn();
         ImGui::Text("F2"); ImGui::NextColumn();
-        ImGui::Text("Geometry view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_OBJECT_UNGROUP " Geometry view"); ImGui::NextColumn();
         ImGui::Text("F3"); ImGui::NextColumn();
-        ImGui::Text("Layers view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_LAYER_GROUP " Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
-        ImGui::Text("Texturing view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
-        ImGui::Text("Change view"); ImGui::NextColumn();
+        ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Separator();
-        ImGui::Text("Ctrl + O"); ImGui::NextColumn();
-        ImGui::Text("Open Session file"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EXPAND_ALT TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_STICKY_NOTE TOOLTIP_NOTE); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLAY_CIRCLE TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_DESKTOP TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CLOCK TOOLTIP_TIMER "window"); ImGui::NextColumn();
         ImGui::Separator();
+        ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
+        ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_OPEN_FILE); ImGui::NextColumn();
+        ImGui::Text(MENU_OPEN_FILE " session"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_REOPEN_FILE); ImGui::NextColumn();
+        ImGui::Text(MENU_REOPEN_FILE " session"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_SAVE_FILE); ImGui::NextColumn();
+        ImGui::Text(MENU_SAVE_FILE " session"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_SAVEAS_FILE); ImGui::NextColumn();
+        ImGui::Text(MENU_SAVEAS_FILE " session"); ImGui::NextColumn();
+        ImGui::Separator();
+        ImGui::Text(SHORTCUT_CUT); ImGui::NextColumn();
+        ImGui::Text(MENU_CUT " source"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_COPY); ImGui::NextColumn();
+        ImGui::Text(MENU_COPY " source"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PASTE); ImGui::NextColumn();
+        ImGui::Text(MENU_PASTE); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_SELECTALL); ImGui::NextColumn();
+        ImGui::Text(MENU_SELECTALL " source"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_UNDO); ImGui::NextColumn();
+        ImGui::Text(MENU_UNDO); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_REDO); ImGui::NextColumn();
+        ImGui::Text(MENU_REDO); ImGui::NextColumn();
+        ImGui::Separator();
+        ImGui::Text(SHORTCUT_CAPTUREFRAME); ImGui::NextColumn();
+        ImGui::Text(MENU_CAPTUREFRAME " Output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_RECORD); ImGui::NextColumn();
+        ImGui::Text(MENU_RECORD " Output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_RECORDCONT); ImGui::NextColumn();
+        ImGui::Text(MENU_RECORDCONT " recording"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_OUTPUTFULLSCREEN); ImGui::NextColumn();
+        ImGui::Text(MENU_OUTPUTFULLSCREEN " output window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
+        ImGui::Text(MENU_OUTPUTDISABLE " output window"); ImGui::NextColumn();
+        ImGui::Separator();
+        ImGui::Text("Space"); ImGui::NextColumn();
+        ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
+        ImGui::Text("B"); ImGui::NextColumn();
+        ImGui::Text("Back restart selected videos"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ARROW_LEFT ICON_FA_ARROW_UP ICON_FA_ARROW_DOWN ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
+        ImGui::Text("Move the source in the canvas"); ImGui::NextColumn();
+        ImGui::Separator();
+        ImGui::Text(SHORTCUT_HELP); ImGui::NextColumn();
+        ImGui::Text(MENU_HELP " window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_QUIT); ImGui::NextColumn();
+        ImGui::Text(MENU_QUIT); ImGui::NextColumn();
 
         ImGui::Columns(1);
     }
@@ -2425,14 +2604,14 @@ void SourceController::Render()
             // Menu section for window management
             ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
-            if ( ImGui::MenuItem( ICON_FA_MAP_PIN "    Pin window to view", nullptr, &pinned) ){
+            if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
                 if (pinned)
                     Settings::application.widget.media_player_view = Settings::application.current_view;
                 else
                     Settings::application.widget.media_player_view = -1;
             }
 
-            if ( ImGui::MenuItem( ICON_FA_TIMES "   Close", CTRL_MOD "P") ) {
+            if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_PLAYER) ) {
                 Settings::application.widget.media_player = false;
                 selection_.clear();
             }
@@ -4713,7 +4892,7 @@ void Navigator::RenderMainPannelVimix()
         hidePannel();
     }
     if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("New session", CTRL_MOD "W");
+        ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
     ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
@@ -5126,19 +5305,19 @@ void Navigator::RenderMainPannelVimix()
     ImGui::Spacing();
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    std::string tooltip_ = "";
+    std::pair<std::string, std::string> tooltip_;
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
         Rendering::manager().mainWindow().toggleFullscreen();
     if (ImGui::IsItemHovered())
-        tooltip_ = "Fullscreen " CTRL_MOD "Shift+F";
+        tooltip_ = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
         Mixer::manager().session()->addNote();
     if (ImGui::IsItemHovered())
-        tooltip_ = "New note " CTRL_MOD "Shift+N";
+        tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) ) {
@@ -5148,7 +5327,7 @@ void Navigator::RenderMainPannelVimix()
             Settings::application.widget.media_player = !Settings::application.widget.media_player;
     }
     if (ImGui::IsItemHovered())
-        tooltip_ = "Player       " CTRL_MOD "P";
+        tooltip_ = { TOOLTIP_PLAYER, SHORTCUT_PLAYER};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) ) {
@@ -5158,7 +5337,7 @@ void Navigator::RenderMainPannelVimix()
             Settings::application.widget.preview = !Settings::application.widget.preview;
     }
     if (ImGui::IsItemHovered())
-        tooltip_ = "Output       " CTRL_MOD "D";
+        tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) ) {
@@ -5168,11 +5347,11 @@ void Navigator::RenderMainPannelVimix()
             Settings::application.widget.timer = !Settings::application.widget.timer;
     }
     if (ImGui::IsItemHovered())
-        tooltip_ = "Timer        " CTRL_MOD "T";
+        tooltip_ = { TOOLTIP_TIMER, SHORTCUT_TIMER};
 
     ImGui::PopFont();
-    if (!tooltip_.empty()) {
-        ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-12).c_str(), tooltip_.substr(tooltip_.size()-12, 12).c_str());
+    if (!tooltip_.first.empty()) {
+        ImGuiToolkit::ToolTip(tooltip_.first.c_str(), tooltip_.second.c_str());
     }
 
 }
@@ -5389,10 +5568,14 @@ void Navigator::RenderMainPannel()
         }
 
         // About & System config toggle
-        if ( ImGui::Button( ICON_FA_CROW " About vimix", ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, 0)) )
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4());
+        const char *button_label[2] = {ICON_FA_CROW " About vimix", "About vimix"};
+        if ( ImGui::Button( button_label[show_icon], ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, 0)) )
             UserInterface::manager().show_vimix_about = true;
         ImGui::SameLine(0,  ImGui::GetTextLineHeightWithSpacing());
-        ImGuiToolkit::IconToggle(13,5,12,5,&show_config_);
+        const char *tooltip[2] = {"Settings", "Settings"};
+        ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
+        ImGui::PopStyleColor();
 
 
         ImGui::End();
@@ -5623,7 +5806,7 @@ void ShowAboutOpengl(bool* p_open)
     if (show_opengl_info)
     {
         ImGui::Separator();
-        bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+        bool copy_to_clipboard = ImGui::Button(MENU_COPY);
         ImGui::SameLine(0.f, 60.f);
         static char _openglfilter[64] = "";
         ImGui::InputText("Filter", _openglfilter, 64);
@@ -5686,7 +5869,7 @@ void ShowAboutGStreamer(bool* p_open)
         if (show_config_info)
         {
             ImGui::Separator();
-            bool copy_to_clipboard = ImGui::Button( ICON_FA_COPY " Copy");
+            bool copy_to_clipboard = ImGui::Button(MENU_COPY);
             ImGui::SameLine(0.f, 60.f);
             static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
             ImGui::SameLine();

@@ -207,6 +207,7 @@ struct Application
     bool smooth_transition;
     bool smooth_cursor;
     bool action_history_follow_view;
+    bool show_tooptips;
 
     int  pannel_current_session_mode;
 
@@ -257,6 +258,7 @@ struct Application
         save_version_snapshot = false;
         smooth_cursor = false;
         action_history_follow_view = false;
+        show_tooptips = true;
         accept_connections = false;
         pannel_current_session_mode = 0;
         current_view = 1;

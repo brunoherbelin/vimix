@@ -107,6 +107,7 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
     applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
+    applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
     pRoot->InsertEndChild(applicationNode);
@@ -339,6 +340,7 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
         applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
+        applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
     }
