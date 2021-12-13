@@ -5,10 +5,68 @@
 #include <list>
 
 #define NAV_COUNT 68
-#define NAV_MAX 64
-#define NAV_NEW 65
-#define NAV_MENU 66
+#define NAV_MAX   64
+#define NAV_NEW   65
+#define NAV_MENU  66
 #define NAV_TRANS 67
+
+#ifdef APPLE
+#define CTRL_MOD "Cmd+"
+#else
+#define CTRL_MOD "Ctrl+"
+#endif
+
+#define MENU_NEW_FILE         ICON_FA_FILE "  New"
+#define SHORTCUT_NEW_FILE     CTRL_MOD "W"
+#define MENU_OPEN_FILE        ICON_FA_FILE_UPLOAD "  Open"
+#define SHORTCUT_OPEN_FILE    CTRL_MOD "O"
+#define MENU_REOPEN_FILE      ICON_FA_FILE_UPLOAD "  Re-open"
+#define SHORTCUT_REOPEN_FILE  CTRL_MOD "Shift+O"
+#define MENU_SAVE_FILE        ICON_FA_FILE_DOWNLOAD "  Save"
+#define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
+#define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
+#define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
+#define MENU_HELP             ICON_FA_LIFE_RING " Help"
+#define SHORTCUT_HELP         CTRL_MOD "H"
+#define MENU_QUIT             ICON_FA_POWER_OFF " Quit"
+#define SHORTCUT_QUIT         CTRL_MOD "Q"
+#define MENU_CUT              ICON_FA_CUT "  Cut"
+#define SHORTCUT_CUT          CTRL_MOD "X"
+#define MENU_COPY             ICON_FA_COPY "  Copy"
+#define SHORTCUT_COPY         CTRL_MOD "C"
+#define MENU_DELETE           ICON_FA_ERASER " Delete"
+#define SHORTCUT_DELETE       "Del"
+#define MENU_PASTE            ICON_FA_PASTE "  Paste"
+#define SHORTCUT_PASTE        CTRL_MOD "V"
+#define MENU_SELECTALL        ICON_FA_LIST "  Select all"
+#define SHORTCUT_SELECTALL    CTRL_MOD "A"
+#define MENU_UNDO             ICON_FA_UNDO "  Undo"
+#define SHORTCUT_UNDO         CTRL_MOD "Z"
+#define MENU_REDO             ICON_FA_REDO "  Redo"
+#define SHORTCUT_REDO         CTRL_MOD "Shift+Z"
+#define MENU_RECORD           ICON_FA_CIRCLE "  Record"
+#define SHORTCUT_RECORD       CTRL_MOD "R"
+#define MENU_RECORDCONT       ICON_FA_STOP_CIRCLE "  Save & continue"
+#define SHORTCUT_RECORDCONT   CTRL_MOD "Alt+R"
+#define MENU_CAPTUREFRAME     ICON_FA_CAMERA_RETRO "  Capture frame"
+#define SHORTCUT_CAPTUREFRAME CTRL_MOD "Shitf+R"
+#define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
+#define SHORTCUT_OUTPUTDISABLE "END"
+#define MENU_OUTPUTFULLSCREEN ICON_FA_EXPAND_ALT "  Fullscreen window"
+#define SHORTCUT_OUTPUTFULLSCREEN CTRL_MOD "F"
+#define MENU_PINWINDOW        ICON_FA_MAP_PIN "    Pin window to view"
+#define MENU_CLOSE            ICON_FA_TIMES "   Close"
+
+#define TOOLTIP_NOTE          " New note "
+#define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
+#define TOOLTIP_PLAYER        " Player "
+#define SHORTCUT_PLAYER       CTRL_MOD "P"
+#define TOOLTIP_OUTPUT        " Output "
+#define SHORTCUT_OUTPUT       CTRL_MOD "D"
+#define TOOLTIP_TIMER         " Timer "
+#define SHORTCUT_TIMER        CTRL_MOD "T"
+#define TOOLTIP_FULLSCREEN    " Fullscreen "
+#define SHORTCUT_FULLSCREEN   CTRL_MOD "Shift+F"
 
 #include "SourceList.h"
 #include "InfoVisitor.h"

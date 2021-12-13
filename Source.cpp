@@ -924,7 +924,7 @@ void CloneSource::accept(Visitor& v)
 
 glm::ivec2 CloneSource::icon() const
 {
-    return glm::ivec2(9, 2);
+    return glm::ivec2(ICON_SOURCE_CLONE);
 }
 
 std::string CloneSource::info() const

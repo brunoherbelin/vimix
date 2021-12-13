@@ -176,7 +176,7 @@ Pattern *PatternSource::pattern() const
 
 glm::ivec2 PatternSource::icon() const
 {
-    return glm::ivec2(11, 5);
+    return glm::ivec2(ICON_SOURCE_PATTERN);
 }
 
 std::string PatternSource::info() const

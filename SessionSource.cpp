@@ -281,7 +281,7 @@ void SessionFileSource::accept(Visitor& v)
 
 glm::ivec2 SessionFileSource::icon() const
 {
-    return glm::ivec2(19, 6);
+    return glm::ivec2(ICON_SOURCE_SESSION);
 }
 
 std::string SessionFileSource::info() const
@@ -372,7 +372,7 @@ void SessionGroupSource::accept(Visitor& v)
 
 glm::ivec2 SessionGroupSource::icon() const
 {
-    return glm::ivec2(10, 6);
+    return glm::ivec2(ICON_SOURCE_GROUP);
 }
 
 std::string SessionGroupSource::info() const
@@ -449,7 +449,7 @@ void RenderSource::accept(Visitor& v)
 
 glm::ivec2 RenderSource::icon() const
 {
-    return glm::ivec2(0, 2);
+    return glm::ivec2(ICON_SOURCE_RENDER);
 }
 
 std::string RenderSource::info() const

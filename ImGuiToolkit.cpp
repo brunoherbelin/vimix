@@ -39,6 +39,7 @@
 
 #include "ImGuiToolkit.h"
 
+bool tooltips_enabled = true;
 unsigned int textureicons = 0;
 std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 
@@ -71,7 +72,7 @@ bool ImGuiToolkit::ButtonToggle( const char* label, bool* toggle, const char *to
 }
 
 
-bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* help)
+bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* shortcut)
 {
     bool ret = false;
 
@@ -114,9 +115,9 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* hel
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
 
     // draw help text if present
-    if (help) {
+    if (shortcut) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-        ImGui::RenderText(draw_pos, help);
+        ImGui::RenderText(draw_pos, shortcut);
         ImGui::PopStyleColor(1);
     }
 
@@ -233,11 +234,7 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
 
     // tooltip
     if (tooltip != nullptr && hovered)
-    {
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", tooltip);
-        ImGui::EndTooltip();
-    }
+        ImGuiToolkit::ToolTip(tooltip);
 
     // draw icon
     ImGui::SetCursorScreenPos(draw_pos);
@@ -267,11 +264,7 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
     ImGui::Text(icon);
 
     if (tooltip != nullptr && ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", tooltip);
-        ImGui::EndTooltip();
-    }
+        ImGuiToolkit::ToolTip(tooltip);
 
     ImGui::PopID();
     return ret;
@@ -304,11 +297,7 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 
     int tooltipid = *toggle ? 1 : 0;
     if (tooltips != nullptr && tooltips[tooltipid] != nullptr && ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", tooltips[tooltipid]);
-        ImGui::EndTooltip();
-    }
+        ImGuiToolkit::ToolTip(tooltips[tooltipid]);
 
     ImGui::PopID();
     return ret;
@@ -510,8 +499,22 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
     }
 }
 
+
+void ImGuiToolkit::setToolTipsEnabled (bool on)
+{
+    tooltips_enabled = on;
+}
+
+bool ImGuiToolkit::toolTipsEnabled ()
+{
+    return tooltips_enabled;
+}
+
 void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 {
+    if (!tooltips_enabled)
+        return;
+
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     ImGui::BeginTooltip();
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 14.0f);
@@ -531,16 +534,24 @@ void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 void ImGuiToolkit::HelpMarker(const char* desc, const char* icon, const char* shortcut)
 {
-    ImGui::TextDisabled( icon );
-    if (ImGui::IsItemHovered())
-        ToolTip(desc, shortcut);
+    if (tooltips_enabled) {
+        ImGui::TextDisabled( icon );
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(desc, shortcut);
+    }
+    else
+        ImGui::Text(" ");
 }
 
 void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut)
 {
-    ImGuiToolkit::Icon(i, j, false);
-    if (ImGui::IsItemHovered())
-        ToolTip(desc, shortcut);
+    if (tooltips_enabled) {
+        ImGuiToolkit::Icon(i, j, false);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(desc, shortcut);
+    }
+    else
+        ImGui::Text(" ");
 }
 
 

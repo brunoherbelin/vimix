@@ -261,7 +261,7 @@ MultiFile *MultiFileSource::multifile () const
 
 glm::ivec2 MultiFileSource::icon () const
 {
-    return glm::ivec2(3, 9);
+    return glm::ivec2(ICON_SOURCE_SEQUENCE);
 }
 
 std::string MultiFileSource::info() const

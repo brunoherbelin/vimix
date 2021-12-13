@@ -334,7 +334,7 @@ void NetworkSource::accept(Visitor& v)
 
 glm::ivec2 NetworkSource::icon() const
 {
-    return glm::ivec2(18, 11);
+    return glm::ivec2(ICON_SOURCE_NETWORK);
 }
 
 std::string NetworkSource::info() const
