@@ -286,7 +286,7 @@ bool SystemToolkit::file_exists(const string& path)
 
 
 // tests if dir is a directory and return its path, empty string otherwise
-std::string SystemToolkit::path_directory(const std::string& path)
+string SystemToolkit::path_directory(const string& path)
 {
     string directorypath = "";
 
@@ -359,13 +359,13 @@ void SystemToolkit::execute(const string& command)
 
 
 
-vector<string> split(const string& str, char delim) {
+vector<string> split_path(const string& path) {
     vector<string> strings;
     size_t start;
     size_t end = 0;
-    while ((start = str.find_first_not_of(delim, end)) != string::npos) {
-        end = str.find(delim, start);
-        strings.push_back(str.substr(start, end - start));
+    while ((start = path.find_first_not_of(PATH_SEP, end)) != string::npos) {
+        end = path.find(PATH_SEP, start);
+        strings.push_back(path.substr(start, end - start));
     }
     return strings;
 }
@@ -376,8 +376,8 @@ vector<string> split(const string& str, char delim) {
 string SystemToolkit::path_relative_to_path( const string& absolutePath, const string& relativeTo )
 {
     string relativePath = "";
-    vector<string> absoluteDirectories = split(absolutePath, PATH_SEP);
-    vector<string> relativeToDirectories = split(relativeTo, PATH_SEP);
+    vector<string> absoluteDirectories = split_path(absolutePath);
+    vector<string> relativeToDirectories = split_path(relativeTo);
 
     // Get the shortest of the two paths
     size_t length = MINI( absoluteDirectories.size(), relativeToDirectories.size() );
@@ -415,11 +415,11 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
     return relativePath;
 }
 
-std::string SystemToolkit::path_absolute_from_path(const std::string& relativePath, const std::string& relativeTo)
+string SystemToolkit::path_absolute_from_path(const string& relativePath, const string& relativeTo)
 {
     string absolutePath = string(1, PATH_SEP);
-    vector<string> relativeDirectories = split(relativePath, PATH_SEP);
-    vector<string> relativeToDirectories = split(relativeTo, PATH_SEP);
+    vector<string> relativeDirectories = split_path(relativePath);
+    vector<string> relativeToDirectories = split_path(relativeTo);
 
     // how many ".."
     size_t count_relative = 0;

@@ -3,31 +3,15 @@
 
 #include <mutex>
 
-#include <gst/pbutils/pbutils.h>
-#include <gst/app/gstappsrc.h>
-
-#include "osc/OscReceivedElements.h"
-#include "osc/OscPacketListener.h"
-#include "ip/UdpSocket.h"
-
 #include "NetworkToolkit.h"
 #include "FrameGrabber.h"
 
+#define STREAMING_FPS 30
 
-class Session;
 class VideoStreamer;
-
-class StreamingRequestListener : public osc::OscPacketListener {
-
-protected:
-    virtual void ProcessMessage( const osc::ReceivedMessage& m,
-                                 const IpEndpointName& remoteEndpoint );
-};
 
 class Streaming
 {
-    friend class StreamingRequestListener;
-
     // Private Constructor
     Streaming();
     Streaming(Streaming const& copy) = delete;
@@ -53,13 +37,20 @@ public:
     std::vector<std::string> listStreams();
 
 protected:
+
+    class RequestListener : public osc::OscPacketListener {
+
+    protected:
+        virtual void ProcessMessage( const osc::ReceivedMessage& m,
+                                     const IpEndpointName& remoteEndpoint );
+    };
     void addStream(const std::string &sender, int reply_to, const std::string &clientname);
     void refuseStream(const std::string &sender, int reply_to);
 
 private:
 
     bool enabled_;
-    StreamingRequestListener listener_;
+    RequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
 
     std::vector<VideoStreamer *> streamers_;    

@@ -4349,7 +4349,7 @@ void Navigator::RenderNewPannel()
 
             // combo to offer lists
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::trunc_string(Settings::application.recentImportFolders.path, 25).c_str() ))
+            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 25).c_str() ))
             {
                 // Mode MEDIA_RECENT : recent files
                 if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
@@ -4362,7 +4362,7 @@ void Navigator::RenderNewPannel()
                 // Mode MEDIA_FOLDER : known folders
                 for(auto foldername = Settings::application.recentImportFolders.filenames.begin();
                     foldername != Settings::application.recentImportFolders.filenames.end(); foldername++) {
-                    std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::trunc_string( *foldername, 40);
+                    std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::truncated( *foldername, 40);
                     if (ImGui::Selectable( f.c_str() )) {
                         setNewMedia(MEDIA_FOLDER, *foldername);
                     }
@@ -4458,7 +4458,7 @@ void Navigator::RenderNewPannel()
                 for(auto it = sourceMediaFiles.begin(); it != sourceMediaFiles.end(); ++it) {
                     // build displayed file name
                     std::string filename = BaseToolkit::transliterate(*it);
-                    std::string label = BaseToolkit::trunc_string(SystemToolkit::filename(filename), 25);
+                    std::string label = BaseToolkit::truncated(SystemToolkit::filename(filename), 25);
                     // add selectable item to ListBox; open if clickec
                     if (ImGui::Selectable( label.c_str(), sourceMediaFileCurrent.compare(*it) == 0 )) {
                         // set new source preview
@@ -4721,7 +4721,7 @@ void Navigator::RenderMainPannelVimix()
 
     // Show combo box of quick selection modes
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##SelectionSession", BaseToolkit::trunc_string(Settings::application.recentFolders.path, 25).c_str() )) {
+    if (ImGui::BeginCombo("##SelectionSession", BaseToolkit::truncated(Settings::application.recentFolders.path, 25).c_str() )) {
 
         // Mode 0 : recent files
         if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
@@ -4732,7 +4732,7 @@ void Navigator::RenderMainPannelVimix()
         // Mode 1 : known folders
         for(auto foldername = Settings::application.recentFolders.filenames.begin();
             foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
-            std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::trunc_string( *foldername, 40);
+            std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::truncated( *foldername, 40);
             if (ImGui::Selectable( f.c_str() )) {
                 // remember which path was selected
                 Settings::application.recentFolders.path.assign(*foldername);
@@ -5017,7 +5017,7 @@ void Navigator::RenderMainPannelVimix()
         {
             // Folder
             std::string path = SystemToolkit::path_filename(sessionfilename);
-            std::string label = BaseToolkit::trunc_string(path, 23);
+            std::string label = BaseToolkit::truncated(path, 23);
             label = BaseToolkit::transliterate(label);
             ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
             ImGui::SameLine();
@@ -5607,7 +5607,7 @@ void SourcePreview::setSource(Source *s, const string &label)
         delete source_;
 
     source_ = s;
-    label_ = BaseToolkit::trunc_string(label, 35);
+    label_ = BaseToolkit::truncated(label, 35);
     reset_ = true;
 }
 

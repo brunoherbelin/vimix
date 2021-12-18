@@ -582,7 +582,7 @@ void ImGuiVisitor::visit (MediaSource& s)
 
     // folder
     std::string path = SystemToolkit::path_filename(s.path());
-    std::string label = BaseToolkit::trunc_string(path, 25);
+    std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 
@@ -637,7 +637,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::Text("File");
 
     std::string path = SystemToolkit::path_filename(s.path());
-    std::string label = BaseToolkit::trunc_string(path, 25);
+    std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
     ImGui::SameLine();
@@ -864,7 +864,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     std::string path = SystemToolkit::path_filename(s.sequence().location);
-    std::string label = BaseToolkit::trunc_string(path, 25);
+    std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
     ImGui::SameLine();

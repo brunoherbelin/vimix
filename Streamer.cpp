@@ -32,6 +32,8 @@
 // gstreamer
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
+#include <gst/app/gstappsrc.h>
+#include <gst/pbutils/pbutils.h>
 
 //osc
 #include "osc/OscOutboundPacketStream.h"
@@ -52,7 +54,7 @@
 #define STREAMER_DEBUG
 #endif
 
-void StreamingRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
+void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
 {
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];

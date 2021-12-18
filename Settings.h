@@ -189,6 +189,15 @@ struct TimerConfig
     }
 };
 
+struct ControllerConfig
+{
+    int osc_port;
+
+    ControllerConfig() {
+        osc_port = OSC_DEFAULT_PORT;
+    }
+};
+
 struct Application
 {
     // instance check
@@ -236,6 +245,9 @@ struct Application
 
     // settings transition
     TransitionConfig transition;
+
+    // settings controller
+    ControllerConfig control;
 
     // multiple windows handling
     std::vector<WindowConfig> windows;

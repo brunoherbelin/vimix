@@ -337,6 +337,7 @@ set(VMIX_SRCS
     ActionManager.cpp
     Overlay.cpp
     Metronome.cpp
+    ControlManager.cpp
 )
 
 

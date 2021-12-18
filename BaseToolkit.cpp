@@ -141,16 +141,26 @@ std::string BaseToolkit::bits_to_string(long b)
 }
 
 
-std::string BaseToolkit::trunc_string(const std::string& path, int N)
+std::string BaseToolkit::truncated(const std::string& str, int N)
 {
-    std::string trunc = path;
-    int l = path.size();
+    std::string trunc = str;
+    int l = str.size();
     if ( l > N ) {
-        trunc = std::string("...") + path.substr( l - N + 3 );
+        trunc = std::string("...") + str.substr( l - N + 3 );
     }
     return trunc;
 }
 
+std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim) {
+    std::list<std::string> strings;
+    size_t start;
+    size_t end = 0;
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
+        end = str.find(delim, start);
+        strings.push_back(str.substr(start, end - start));
+    }
+    return strings;
+}
 
 std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )
 {

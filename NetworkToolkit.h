@@ -4,6 +4,10 @@
 #include <string>
 #include <vector>
 
+#include "osc/OscReceivedElements.h"
+#include "osc/OscPacketListener.h"
+#include "ip/UdpSocket.h"
+
 #define OSC_PREFIX "/vimix"
 #define OSC_PING "/ping"
 #define OSC_PONG "/pong"
@@ -12,11 +16,6 @@
 #define OSC_STREAM_REJECT "/reject"
 #define OSC_STREAM_DISCONNECT "/disconnect"
 
-#define STREAMING_FPS 30
-#define MAX_HANDSHAKE 20
-#define HANDSHAKE_PORT 71310
-#define STREAM_REQUEST_PORT 71510
-#define OSC_DIALOG_PORT 71010
 #define IP_MTU_SIZE 1536
 
 namespace NetworkToolkit

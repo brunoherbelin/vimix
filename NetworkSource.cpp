@@ -27,13 +27,14 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/gst.h>
 
+#include "osc/OscOutboundPacketStream.h"
+
 #include "SystemToolkit.h"
 #include "defines.h"
 #include "Stream.h"
 #include "Decorations.h"
 #include "Visitor.h"
 #include "Log.h"
-#include "Connection.h"
 
 #include "NetworkSource.h"
 
@@ -43,7 +44,7 @@
 
 
 // this is called when receiving an answer for streaming request
-void StreamerResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
+void NetworkStream::ResponseListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
 {
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];

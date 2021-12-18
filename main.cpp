@@ -27,6 +27,7 @@
 #include "Mixer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
+#include "ControlManager.h"
 #include "Connection.h"
 #include "Metronome.h"
 
@@ -92,6 +93,12 @@ int main(int argc, char *argv[])
         return 1;
 
     ///
+    /// CONTROLLER INIT
+    ///
+    if ( !Control::manager().init() )
+        return 1;
+
+    ///
     /// METRONOME INIT
     ///
     if ( !Metronome::manager().init() )
@@ -150,6 +157,11 @@ int main(int argc, char *argv[])
     /// METRONOME TERMINATE
     ///
     Metronome::manager().terminate();
+
+    ///
+    /// CONTROLLER TERMINATE
+    ///
+    Control::manager().terminate();
 
     ///
     /// CONNECTION TERMINATE

@@ -1,22 +1,17 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
+#include <string>
 #include <vector>
-
-#include "osc/OscReceivedElements.h"
-#include "osc/OscPacketListener.h"
-#include "ip/UdpSocket.h"
 
 #include "NetworkToolkit.h"
 
+#define MAX_HANDSHAKE 20
+#define HANDSHAKE_PORT 71310
+#define STREAM_REQUEST_PORT 71510
+#define OSC_DIALOG_PORT 71010
 #define ALIVE 3
 
-class ConnectionRequestListener : public osc::OscPacketListener {
-
-protected:
-    virtual void ProcessMessage( const osc::ReceivedMessage& m,
-                                 const IpEndpointName& remoteEndpoint );
-};
 
 struct ConnectionInfo {
 
@@ -58,8 +53,6 @@ struct ConnectionInfo {
 
 class Connection
 {
-    friend class ConnectionRequestListener;
-
     // Private Constructor
     Connection();
     Connection(Connection const& copy) = delete;
@@ -82,11 +75,19 @@ public:
     int index(const std::string &name) const;
     ConnectionInfo info(int index = 0);  // index 0 for self
 
+protected:
+    class RequestListener : public osc::OscPacketListener {
+
+    protected:
+        virtual void ProcessMessage( const osc::ReceivedMessage& m,
+                                     const IpEndpointName& remoteEndpoint );
+    };
+
 private:
 
     static void ask();
     static void listen();
-    ConnectionRequestListener listener_;
+    RequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
 
     std::vector< ConnectionInfo > connections_;

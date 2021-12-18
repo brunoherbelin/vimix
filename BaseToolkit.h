@@ -22,8 +22,11 @@ std::string byte_to_string(long b);
 // get a string to display bit size with unit Kbit, MBit, Gbit, Tbit
 std::string bits_to_string(long b);
 
-// Truncate a string to display the right most N characters (e.g. ./home/me/toto.mpg -> ...ome/me/toto.mpg)
-std::string trunc_string(const std::string& path, int N);
+// cut a string to display the right most N characters (e.g. /home/me/toto.mpg -> ...ome/me/toto.mpg)
+std::string truncated(const std::string& str, int N);
+
+// split a string into list of strings separated by delimitor (e.g. /home/me/toto.mpg -> {home, me, toto.mpg} )
+std::list<std::string> splitted(const std::string& str, char delim);
 
 // find common parts in a list of strings
 std::string common_prefix(const std::list<std::string> &allStrings);
