@@ -255,6 +255,7 @@ public:
 
     void resetActiveSelection();
     void Render();
+    void setVisible(bool on);
     bool Visible() const;
     inline bool Foccused() const { return focused_; }
 };

@@ -305,11 +305,12 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Media player
-            Settings::application.widget.media_player = !Settings::application.widget.media_player;
-            if (Settings::application.widget.media_player_view != Settings::application.current_view) {
-                Settings::application.widget.media_player_view = -1;
-                Settings::application.widget.media_player = true;
-            }
+            sourcecontrol.setVisible(!Settings::application.widget.media_player);
+//            Settings::application.widget.media_player = !Settings::application.widget.media_player;
+//            if (Settings::application.widget.media_player_view != Settings::application.current_view) {
+//                Settings::application.widget.media_player_view = -1;
+//                Settings::application.widget.media_player = true;
+//            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             if (shift_modifier_active)
@@ -1690,7 +1691,7 @@ void UserInterface::showSourceEditor(Source *s)
     if (s) {
         Mixer::manager().setCurrentSource( s );
         if (s->playable()) {
-            Settings::application.widget.media_player = true;
+            sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();
             return;
         }
@@ -2487,6 +2488,15 @@ void SourceController::resetActiveSelection()
     active_label_ = LABEL_AUTO_MEDIA_PLAYER;
 }
 
+
+
+void SourceController::setVisible(bool on)
+{
+    if (on && Settings::application.widget.media_player_view != Settings::application.current_view)
+        Settings::application.widget.media_player_view = -1;
+
+    Settings::application.widget.media_player = on;
+}
 
 bool SourceController::Visible() const
 {
