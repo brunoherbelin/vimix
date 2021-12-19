@@ -36,6 +36,7 @@
 #endif
 
 #define CONTROL_OSC_MSG "OSC: "
+#define OSC_SEPARATOR   '/'
 
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
@@ -58,21 +59,41 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
         if (address.size() == 3 && address.front().compare(APP_NAME) == 0 ){
             // done with the first part of the OSC address
             address.pop_front();
-            // execute next part of the OSC message
+            //
+            // Execute next part of the OSC message according to target
+            //
             std::string target = address.front();
             std::string attribute = address.back();
-            // Log target
+            // Log target: just print text in log window
             if ( target.compare(OSC_LOG) == 0 )
             {
                 if ( attribute.compare(OSC_LOG_INFO) == 0)
                     Log::Info(CONTROL_OSC_MSG "received '%s' from %s", m.AddressPattern(), sender);
             }
-            // Output target
+            // Output target: concerns attributes of the rendering output
             else if ( target.compare(OSC_OUTPUT) == 0 )
             {
                 Control::manager().setOutputAttribute(attribute, m.ArgumentStream());
             }
-            // Current source target
+            // ALL sources target: apply attribute to all sources of the session
+            else if ( target.compare(OSC_ALL) == 0 )
+            {
+                // Loop over selected sources
+                for (SourceList::iterator it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it) {
+                    // attributes operate on current source
+                    Control::manager().setSourceAttribute( *it, attribute, m.ArgumentStream());
+                }
+            }
+            // Selected sources target: apply attribute to all sources of the selection
+            else if ( target.compare(OSC_SELECTED) == 0 )
+            {
+                // Loop over selected sources
+                for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                    // attributes operate on current source
+                    Control::manager().setSourceAttribute( *it, attribute, m.ArgumentStream());
+                }
+            }
+            // Current source target: apply attribute to the current sources
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
                 // attributes to change current
@@ -141,6 +162,7 @@ Control::~Control()
         receiver_->Break();
         delete receiver_;
     }
+
 }
 
 bool Control::init()
@@ -169,11 +191,12 @@ void Control::terminate()
         receiver_->AsynchronousBreak();
 }
 
+
 void Control::setOutputAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
     try {
-        /// '/vimix/output/enable' or '/vimix/output/enable T' or '/vimix/output/enable F'
+        /// e.g. '/vimix/output/enable' or '/vimix/output/enable T' or '/vimix/output/enable F'
         if ( attribute.compare(OSC_OUTPUT_ENABLE) == 0) {
             bool on = true;
             if ( !arguments.Eos()) {
@@ -181,7 +204,7 @@ void Control::setOutputAttribute(const std::string &attribute,
             }
             Settings::application.render.disabled = !on;
         }
-        /// '/vimix/output/disable' or '/vimix/output/disable T' or '/vimix/output/disable F'
+        /// e.g. '/vimix/output/disable' or '/vimix/output/disable T' or '/vimix/output/disable F'
         else if ( attribute.compare(OSC_OUTPUT_DISABLE) == 0) {
             bool on = true;
             if ( !arguments.Eos()) {
@@ -189,7 +212,7 @@ void Control::setOutputAttribute(const std::string &attribute,
             }
             Settings::application.render.disabled = on;
         }
-        /// '/vimix/output/fading f 0.2'
+        /// e.g. '/vimix/output/fading f 0.2'
         else if ( attribute.compare(OSC_OUTPUT_FADING) == 0) {
             float fading = 0.f;
             arguments >> fading >> osc::EndMessage;
@@ -220,21 +243,45 @@ void Control::setSourceAttribute(Source *target, const std::string &attribute,
         return;
 
     try {
-        /// '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
+        /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
         if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
             bool on = true;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->play(on);
+            target->call( new SetPlay(on) );
         }
-        /// '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
+        /// e.g. '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
         else if ( attribute.compare(OSC_SOURCE_PAUSE) == 0) {
             bool on = true;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->play(!on);
+            target->call( new SetPlay(!on) );
+        }
+        /// e.g. '/vimix/current/alpha f 0.3'
+        else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
+            float x = 0.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new SetAlpha(x) );
+        }
+        /// e.g. '/vimix/current/transparency f 0.7'
+        else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
+            float x = 0.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new SetAlpha(1.f - x) );
+        }
+        /// e.g. '/vimix/current/depth f 5.0'
+        else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
+            float x = 0.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new SetDepth(x) );
+        }
+        /// e.g. '/vimix/current/translation ff 10.0 2.2'
+        else if ( attribute.compare(OSC_SOURCE_TRANSLATE) == 0) {
+            float x = 0.f, y = 0.f;
+            arguments >> x >> y >> osc::EndMessage;
+            target->call( new Translation( x, y), true );
         }
 #ifdef CONTROL_DEBUG
         else {
