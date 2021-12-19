@@ -831,6 +831,16 @@ void Mixer::setCurrentSource(Source *s)
         setCurrentSource( session_->find(s) );
 }
 
+
+Source *Mixer::sourceAtIndex (int index)
+{
+    SourceList::iterator s = session_->at(index);
+    if (s!=session_->end())
+        return *s;
+    else
+        return nullptr;
+}
+
 void Mixer::setCurrentIndex(int index)
 {
     setCurrentSource( session_->at(index) );

@@ -191,10 +191,12 @@ struct TimerConfig
 
 struct ControllerConfig
 {
-    int osc_port;
+    int osc_port_receive;
+    int osc_port_send;
 
     ControllerConfig() {
-        osc_port = OSC_DEFAULT_PORT;
+        osc_port_receive = OSC_PORT_RECV_DEFAULT;
+        osc_port_send = OSC_PORT_SEND_DEFAULT;
     }
 };
 

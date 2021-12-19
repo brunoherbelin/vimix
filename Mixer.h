@@ -77,6 +77,7 @@ public:
     void setCurrentPrevious ();
     void unsetCurrentSource ();
 
+    Source *sourceAtIndex (int index);
     void setCurrentIndex (int index);
     void moveIndex (int current_index, int target_index);
     int  indexCurrentSource ();
