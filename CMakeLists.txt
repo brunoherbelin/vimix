@@ -292,6 +292,7 @@ set(VMIX_SRCS
     TextureView.cpp
     TransitionView.cpp
     Source.cpp
+    SourceCallback.cpp
     SourceList.cpp
     Session.cpp
     Selection.cpp

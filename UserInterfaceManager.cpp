@@ -1867,7 +1867,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             float v = s->alpha();
             ImGui::SetNextItemWidth(rightalign);
             if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
-                s->setAlpha(v);
+                s->call(new SetAlpha(v));
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
                 Action::manager().store(info.str());
@@ -4223,6 +4223,9 @@ void Navigator::RenderSourcePannel(Source *s)
 //        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
 //        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
 //        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
+
+        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        ImGui::Text("#%d", Mixer::manager().indexCurrentSource());
 
         std::string sname = s->name();
         ImGui::SetCursorPosY(width_);
