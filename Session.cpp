@@ -132,7 +132,7 @@ void Session::update(float dt)
             // render the source
             (*it)->render();
             // update the source
-            (*it)->setActive( (*it)->mix_distance() < activation_threshold_);
+            (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
         }
     }
