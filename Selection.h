@@ -1,6 +1,7 @@
 #ifndef SELECTION_H
 #define SELECTION_H
 
+#include <string>
 #include "SourceList.h"
 
 class Selection

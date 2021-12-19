@@ -151,12 +151,17 @@ Interpolator::Interpolator()
 
 Interpolator::~Interpolator()
 {
+    clear();
+}
+
+void Interpolator::clear()
+{
     for (auto i = interpolators_.begin(); i != interpolators_.end(); ) {
         delete *i;
         i = interpolators_.erase(i);
     }
-
 }
+
 
 void Interpolator::add (Source *s, const SourceCore &target)
 {
