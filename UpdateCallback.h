@@ -15,11 +15,11 @@ public:
     virtual void update(Node *, float) = 0;
 
     inline bool finished() const { return finished_; }
-    inline bool enabled() const { return enabled_; }
+    inline void reset() { initialized_ = false; }
 
 protected:
-    bool enabled_;
     bool finished_;
+    bool initialized_;
 };
 
 class CopyCallback : public UpdateCallback
@@ -35,35 +35,30 @@ class MoveToCallback : public UpdateCallback
 {
     float duration_;
     float progress_;
-    bool  initialized_;
     glm::vec3 startingpoint_;
     glm::vec3 target_;
 
 public:
-    MoveToCallback(glm::vec3 target, float duration = 1000.f);
+    MoveToCallback(glm::vec3 target, float duration = 100.f);
     void update(Node *n, float dt);
 
-    inline void reset() { initialized_ = false; }
 };
 
 class RotateToCallback : public UpdateCallback
 {
     float duration_;
     float progress_;
-    bool  initialized_;
     float startingangle_;
     float target_;
 
 public:
-    RotateToCallback(float target, float speed = 1000.f);
+    RotateToCallback(float target, float duration = 100.f);
     void update(Node *n, float dt);
 
-    inline void reset() { initialized_ = false; }
 };
 
 class BounceScaleCallback : public UpdateCallback
 {
-    bool  initialized_;
     float duration_;
     float scale_;
     float progress_;
@@ -78,7 +73,6 @@ class InfiniteGlowCallback : public UpdateCallback
 {
     float amplitude_;
     float time_;
-    bool  initialized_;
     glm::vec3 initial_scale_;
 
 public:
