@@ -206,7 +206,7 @@ bool Rendering::init()
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
     // additional window callbacks for main window
-//    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
+    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
     //
@@ -316,18 +316,12 @@ void Rendering::draw()
     // operate on main window context
     main_.makeCurrent();
 
-    // User Interface step 1
-    UserInterface::manager().NewFrame();
-
-    // Custom draw
+    // draw
     std::list<Rendering::RenderingCallback>::iterator iter;
     for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); ++iter)
     {
         (*iter)();
     }
-
-    // User Interface step 2
-    UserInterface::manager().Render();
 
     // perform screenshot if requested
     if (request_screenshot_) {
