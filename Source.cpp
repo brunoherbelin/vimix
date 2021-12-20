@@ -335,6 +335,13 @@ Source::~Source()
     overlays_.clear();
     frames_.clear();
     handles_.clear();
+
+    // clear and delete callbacks
+    for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )  {
+        SourceCallback *callback = *iter;
+        iter = update_callbacks_.erase(iter);
+        delete callback;
+    }
 }
 
 void Source::setName (const std::string &name)
