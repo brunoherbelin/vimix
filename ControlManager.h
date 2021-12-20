@@ -14,16 +14,19 @@
 #define OSC_ALL                "all"
 #define OSC_SELECTED           "selected"
 #define OSC_CURRENT            "current"
-#define OSC_CURRENT_NONE       "none"
-#define OSC_CURRENT_NEXT       "next"
-#define OSC_CURRENT_PREVIOUS   "previous"
+#define OSC_NEXT               "next"
+#define OSC_PREVIOUS           "previous"
+#define OSC_SET                "set"
+//#define OSC_VERSION            "version"
 
 #define OSC_SOURCE_PLAY        "play"
 #define OSC_SOURCE_PAUSE       "pause"
+#define OSC_SOURCE_REPLAY      "replay"
 #define OSC_SOURCE_ALPHA       "alpha"
 #define OSC_SOURCE_TRANSPARENCY "transparency"
 #define OSC_SOURCE_DEPTH       "depth"
-#define OSC_SOURCE_TRANSLATE   "translate"
+#define OSC_SOURCE_GRAB        "grab"
+#define OSC_SOURCE_RESIZE      "resize"
 
 class Session;
 class Source;

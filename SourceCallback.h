@@ -14,7 +14,9 @@ public:
         CALLBACK_ALPHA,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
-        CALLBACK_TRANSLATION
+        CALLBACK_REPLAY,
+        CALLBACK_GRAB,
+        CALLBACK_RESIZE
     } CallbackType;
 
     SourceCallback();
@@ -61,16 +63,23 @@ public:
 class SetPlay : public SourceCallback
 {
     bool play_;
-    float delay_;
-    float progress_;
 
 public:
-    SetPlay(bool on, float delay = 0.f);
+    SetPlay(bool on);
     void update(Source *s, float) override;
     CallbackType type () override { return CALLBACK_PLAY; }
 };
 
-class Translation : public SourceCallback
+class RePlay : public SourceCallback
+{
+
+public:
+    RePlay();
+    void update(Source *s, float) override;
+    CallbackType type () override { return CALLBACK_REPLAY; }
+};
+
+class Grab : public SourceCallback
 {
     glm::vec2 speed_;
     glm::vec2 start_;
@@ -79,9 +88,23 @@ class Translation : public SourceCallback
     float progress_;
 
 public:
-    Translation(float dx, float dy, float duration = 0.f);
+    Grab(float dx, float dy, float duration = 0.f);
     void update(Source *s, float) override;
-    CallbackType type () override { return CALLBACK_TRANSLATION; }
+    CallbackType type () override { return CALLBACK_GRAB; }
+};
+
+class Resize : public SourceCallback
+{
+    glm::vec2 speed_;
+    glm::vec2 start_;
+    glm::vec2 target_;
+    float duration_;
+    float progress_;
+
+public:
+    Resize(float dx, float dy, float duration = 0.f);
+    void update(Source *s, float) override;
+    CallbackType type () override { return CALLBACK_RESIZE; }
 };
 
 

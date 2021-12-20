@@ -79,13 +79,14 @@ void SetDepth::update(Source *s, float dt)
         }
 
         // calculate amplitude of movement
-        progress_ += dt / duration_;
+        progress_ += dt;
 
         // perform movement
-        s->group(View::LAYER)->translation_.z = start_ + progress_ * (target_ - start_);
+        if ( ABS(duration_) > 0.f)
+            s->group(View::LAYER)->translation_.z = start_ + (progress_/duration_) * (target_ - start_);
 
         // end of movement
-        if ( progress_ > 1.f ) {
+        if ( progress_ > duration_ ) {
             // apply depth to target
             s->group(View::LAYER)->translation_.z = target_;
             // ensure reordering of view
@@ -99,40 +100,41 @@ void SetDepth::update(Source *s, float dt)
 }
 
 
-SetPlay::SetPlay(bool on, float delay) : SourceCallback(), play_(on), delay_(delay), progress_(0.f)
+SetPlay::SetPlay(bool on) : SourceCallback(), play_(on)
 {
 }
 
-void SetPlay::update(Source *s, float dt)
+void SetPlay::update(Source *s, float)
 {
     if (s && s->playing() != play_) {
-        // reset on first run or upon call of reset()
-        if (!initialized_){
-            progress_ = 0.f;
-            initialized_ = true;
-        }
-
-        // increment time count
-        progress_ += dt;
-
-        // timeout
-        if ( progress_ > delay_ ) {
-            // call play function
-            s->play(play_);
-            // done
-            finished_ = true;
-        }
+        // call play function
+        s->play(play_);
     }
-    else
-        finished_ = true;
+
+    finished_ = true;
 }
 
-Translation::Translation(float dx, float dy, float duration) : SourceCallback(), speed_(glm::vec2(dx,dy)),
+RePlay::RePlay() : SourceCallback()
+{
+}
+
+void RePlay::update(Source *s, float)
+{
+    if (s) {
+        // call replay function
+        s->replay();
+    }
+
+    finished_ = true;
+}
+
+
+Grab::Grab(float dx, float dy, float duration) : SourceCallback(), speed_(glm::vec2(dx,dy)),
     duration_(duration), progress_(0.f)
 {
 }
 
-void Translation::update(Source *s, float dt)
+void Grab::update(Source *s, float dt)
 {
     if (s && !s->locked()) {
         // reset on first run or upon call of reset()
@@ -145,14 +147,48 @@ void Translation::update(Source *s, float dt)
         }
 
         // calculate amplitude of movement
-        progress_ += dt / duration_;
+        progress_ += dt;
 
         // perform movement
-        glm::vec2 pos = start_ + speed_ * dt;
+        glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
         s->group(View::GEOMETRY)->translation_ = glm::vec3(pos, s->group(View::GEOMETRY)->translation_.z);
 
         // timeout
-        if ( progress_ > 1.f ) {
+        if ( progress_ > duration_ ) {
+            // done
+            finished_ = true;
+        }
+    }
+    else
+        finished_ = true;
+}
+
+Resize::Resize(float dx, float dy, float duration) : SourceCallback(), speed_(glm::vec2(dx,dy)),
+    duration_(duration), progress_(0.f)
+{
+}
+
+void Resize::update(Source *s, float dt)
+{
+    if (s && !s->locked()) {
+        // reset on first run or upon call of reset()
+        if (!initialized_){
+            // start animation
+            progress_ = 0.f;
+            // initial position
+            start_ = glm::vec2(s->group(View::GEOMETRY)->scale_);
+            initialized_ = true;
+        }
+
+        // calculate amplitude of movement
+        progress_ += dt;
+
+        // perform movement
+        glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
+        s->group(View::GEOMETRY)->scale_ = glm::vec3(pos, s->group(View::GEOMETRY)->scale_.z);
+
+        // timeout
+        if ( progress_ > duration_ ) {
             // done
             finished_ = true;
         }

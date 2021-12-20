@@ -97,11 +97,14 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
                 // attributes to change current
-                if ( attribute.compare(OSC_CURRENT_NONE) == 0)
-                    Mixer::manager().unsetCurrentSource();
-                else if ( attribute.compare(OSC_CURRENT_NEXT) == 0)
+                if ( attribute.compare(OSC_SET) == 0) {
+                    int index = 0;
+                    m.ArgumentStream() >> index >> osc::EndMessage;
+                    Mixer::manager().setCurrentIndex(index);
+                }
+                else if ( attribute.compare(OSC_NEXT) == 0)
                     Mixer::manager().setCurrentNext();
-                else if ( attribute.compare(OSC_CURRENT_PREVIOUS) == 0)
+                else if ( attribute.compare(OSC_PREVIOUS) == 0)
                     Mixer::manager().setCurrentPrevious();
                 // all other attributes operate on current source
                 else
@@ -259,17 +262,21 @@ void Control::setSourceAttribute(Source *target, const std::string &attribute,
             }
             target->call( new SetPlay(!on) );
         }
+        /// e.g. '/vimix/current/replay'
+        else if ( attribute.compare(OSC_SOURCE_REPLAY) == 0) {
+            target->call( new RePlay() );
+        }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
-            float x = 0.f;
+            float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(x) );
+            target->call( new SetAlpha(x), true );
         }
         /// e.g. '/vimix/current/transparency f 0.7'
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(1.f - x) );
+            target->call( new SetAlpha(1.f - x), true );
         }
         /// e.g. '/vimix/current/depth f 5.0'
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
@@ -278,10 +285,16 @@ void Control::setSourceAttribute(Source *target, const std::string &attribute,
             target->call( new SetDepth(x) );
         }
         /// e.g. '/vimix/current/translation ff 10.0 2.2'
-        else if ( attribute.compare(OSC_SOURCE_TRANSLATE) == 0) {
+        else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
             float x = 0.f, y = 0.f;
             arguments >> x >> y >> osc::EndMessage;
-            target->call( new Translation( x, y), true );
+            target->call( new Grab( x, y), true );
+        }
+        /// e.g. '/vimix/current/scale ff 10.0 2.2'
+        else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
+            float x = 0.f, y = 0.f;
+            arguments >> x >> y >> osc::EndMessage;
+            target->call( new Resize( x, y), true );
         }
 #ifdef CONTROL_DEBUG
         else {
