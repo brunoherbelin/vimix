@@ -909,9 +909,14 @@ void Mixer::unsetCurrentSource()
     }
 }
 
-int Mixer::indexCurrentSource()
+int Mixer::indexCurrentSource() const
 {
     return current_source_index_;
+}
+
+int  Mixer::count() const
+{
+    return (int) session_->numSource();
 }
 
 Source *Mixer::currentSource()

@@ -80,7 +80,8 @@ public:
     Source *sourceAtIndex (int index);
     void setCurrentIndex (int index);
     void moveIndex (int current_index, int target_index);
-    int  indexCurrentSource ();
+    int  indexCurrentSource () const;
+    int  count() const;
 
     // browsing into sources
     Source * findSource (Node *node);

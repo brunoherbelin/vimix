@@ -8,6 +8,7 @@
 #include "osc/OscPacketListener.h"
 #include "ip/UdpSocket.h"
 
+#define OSC_SEPARATOR   '/'
 #define OSC_PREFIX "/vimix"
 #define OSC_PING "/ping"
 #define OSC_PONG "/pong"

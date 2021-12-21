@@ -153,11 +153,11 @@ std::string BaseToolkit::truncated(const std::string& str, int N)
 
 std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim) {
     std::list<std::string> strings;
-    size_t start;
+    size_t start = 0;
     size_t end = 0;
     while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
         end = str.find(delim, start);
-        strings.push_back(str.substr(start, end - start));
+        strings.push_back(str.substr(start - 1, end - start + 1));
     }
     return strings;
 }
