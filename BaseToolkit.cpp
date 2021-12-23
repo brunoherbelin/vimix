@@ -162,6 +162,21 @@ std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim)
     return strings;
 }
 
+bool BaseToolkit::is_a_number(const std::string& str, int *val)
+{
+    bool isanumber = false;
+
+    try {
+        *val = std::stoi(str);
+        isanumber = true;
+    }
+    catch (const std::invalid_argument&) {
+        // avoids crash
+    }
+
+    return isanumber;
+}
+
 std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )
 {
     if (allStrings.empty())

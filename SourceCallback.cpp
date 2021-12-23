@@ -27,6 +27,16 @@ SourceCallback::SourceCallback(): active_(true), finished_(false), initialized_(
 {
 }
 
+void ResetGeometry::update(Source *s, float)
+{
+    s->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
+    s->group(View::GEOMETRY)->rotation_.z = 0;
+    s->group(View::GEOMETRY)->crop_ = glm::vec3(1.f);
+    s->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
+    s->touch();
+    finished_ = true;
+}
+
 SetAlpha::SetAlpha(float alpha) : SourceCallback(), alpha_(CLAMP(alpha, 0.f, 1.f))
 {
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
@@ -186,6 +196,39 @@ void Resize::update(Source *s, float dt)
         // perform movement
         glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
         s->group(View::GEOMETRY)->scale_ = glm::vec3(pos, s->group(View::GEOMETRY)->scale_.z);
+
+        // timeout
+        if ( progress_ > duration_ ) {
+            // done
+            finished_ = true;
+        }
+    }
+    else
+        finished_ = true;
+}
+
+Turn::Turn(float da, float duration) : SourceCallback(), speed_(da),
+    duration_(duration), progress_(0.f)
+{
+}
+
+void Turn::update(Source *s, float dt)
+{
+    if (s && !s->locked()) {
+        // reset on first run or upon call of reset()
+        if (!initialized_){
+            // start animation
+            progress_ = 0.f;
+            // initial position
+            start_ = s->group(View::GEOMETRY)->rotation_.z;
+            initialized_ = true;
+        }
+
+        // calculate amplitude of movement
+        progress_ += dt;
+
+        // perform movement
+        s->group(View::GEOMETRY)->rotation_.z = start_ + speed_ * ( dt * -0.001f / M_PI);
 
         // timeout
         if ( progress_ > duration_ ) {

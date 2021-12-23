@@ -37,6 +37,7 @@
 
 #define CONTROL_OSC_MSG "OSC: "
 
+
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
 {
@@ -55,19 +56,30 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
         // A wellformed OSC address is in the form '/vimix/target/attribute {arguments}'
         // First test: should have 3 elements and start with APP_NAME ('vimix')
         //
-        if (address.size() == 3 && address.front().compare(OSC_PREFIX) == 0 ){
+        if (address.size() > 2 && address.front().compare(OSC_PREFIX) == 0 ){
             // done with the first part of the OSC address
             address.pop_front();
-            //
-            // Execute next part of the OSC message according to target
-            //
+            // next part of the OSC message is the target
             std::string target = address.front();
-            std::string attribute = address.back();
+            // next part of the OSC message is the attribute
+            address.pop_front();
+            std::string attribute = address.front();
             // Log target: just print text in log window
             if ( target.compare(OSC_INFO) == 0 )
             {
-                if ( attribute.compare(OSC_INFO_TEST) == 0)
+                if ( attribute.compare(OSC_INFO_SYNC) == 0) {
+                    // send the global status
                     Control::manager().sendStatus(remoteEndpoint);
+                    //
+                    // send the status of all sources
+                    //
+                    //  (if an argument is given, it indicates the number of sources to update)
+                    float N = 0.f;
+                    if ( !m.ArgumentStream().Eos())
+                        m.ArgumentStream() >> N >> osc::EndMessage;
+                    // send the status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
+                }
                 else if ( attribute.compare(OSC_INFO_LOG) == 0)
                     Log::Info(CONTROL_OSC_MSG "received '%s' from %s", m.AddressPattern(), sender);
             }
@@ -97,23 +109,36 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Current source target: apply attribute to the current sources
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
-                // attributes to change current
-                if ( attribute.compare(OSC_SET) == 0) {
-                    int index = 0;
-                    m.ArgumentStream() >> index >> osc::EndMessage;
-                    Mixer::manager().setCurrentIndex(index);
-                    // confirm by sending back the current source attributes
-                    Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                }
-                else if ( attribute.compare(OSC_NEXT) == 0) {
+                int sourceid = -1;
+                if ( attribute.compare(OSC_NEXT) == 0) {
+                    // set current to NEXT
                     Mixer::manager().setCurrentNext();
                     // confirm by sending back the current source attributes
                     Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+                    // send the updated status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint);
                 }
                 else if ( attribute.compare(OSC_PREVIOUS) == 0) {
+                    // set current to PREVIOUS
                     Mixer::manager().setCurrentPrevious();
                     // confirm by sending back the current source attributes
                     Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+                    // send the updated status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint);
+                }
+                else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
+                    // set current to given INDEX
+                    Mixer::manager().setCurrentIndex(sourceid);
+                    // confirm by sending back the current source attributes
+                    Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+                    //
+                    // send the status of all sources
+                    //
+                    //  (if an argument is given, it indicates the number of sources to update)
+                    float N = 0.f;
+                    if ( !m.ArgumentStream().Eos())
+                        m.ArgumentStream() >> N >> osc::EndMessage;
+                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
                 }
                 // all other attributes operate on current source
                 else
@@ -126,16 +151,10 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 // try to find source by name
                 Source *s = Mixer::manager().findSource(target);
                 // if failed, try to find source by index
-                if (s == nullptr) {
-                    int N = -1;
-                    try {
-                        N = std::stoi(target);
-                    }  catch (const std::invalid_argument&) {
-                        N = -1;
-                    }
-                    if (N>=0)
-                        s = Mixer::manager().sourceAtIndex(N);
-                }
+                int sourceid = -1;
+                if (s == nullptr && BaseToolkit::is_a_number(target, &sourceid) )
+                    s = Mixer::manager().sourceAtIndex(sourceid);
+                // if a source with the given target nameor index was found
                 if (s)
                     Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream());
                 else
@@ -212,19 +231,19 @@ void Control::receiveOutputAttribute(const std::string &attribute,
     try {
         /// e.g. '/vimix/output/enable' or '/vimix/output/enable T' or '/vimix/output/enable F'
         if ( attribute.compare(OSC_OUTPUT_ENABLE) == 0) {
-            bool on = true;
+            float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            Settings::application.render.disabled = !on;
+            Settings::application.render.disabled = on < 0.5f;
         }
         /// e.g. '/vimix/output/disable' or '/vimix/output/disable T' or '/vimix/output/disable F'
         else if ( attribute.compare(OSC_OUTPUT_DISABLE) == 0) {
-            bool on = true;
+            float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            Settings::application.render.disabled = on;
+            Settings::application.render.disabled = on > 0.5f;
         }
         /// e.g. '/vimix/output/fading f 0.2'
         else if ( attribute.compare(OSC_OUTPUT_FADING) == 0) {
@@ -259,19 +278,19 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
     try {
         /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
         if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
-            bool on = true;
+            float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->call( new SetPlay(on) );
+            target->call( new SetPlay(on > 0.5f) );
         }
         /// e.g. '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
         else if ( attribute.compare(OSC_SOURCE_PAUSE) == 0) {
-            bool on = true;
+            float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->call( new SetPlay(!on) );
+            target->call( new SetPlay(on < 0.5f) );
         }
         /// e.g. '/vimix/current/replay'
         else if ( attribute.compare(OSC_SOURCE_REPLAY) == 0) {
@@ -307,6 +326,16 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> x >> y >> osc::EndMessage;
             target->call( new Resize( x, y), true );
         }
+        /// e.g. '/vimix/current/turn f 1.0'
+        else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
+            float x = 0.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new Turn( x ), true );
+        }
+        /// e.g. '/vimix/current/reset'
+        else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {
+            target->call( new ResetGeometry(), true );
+        }
 #ifdef CONTROL_DEBUG
         else {
             Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
@@ -328,48 +357,86 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
 
 void Control::sendCurrentSourceAttibutes(const IpEndpointName &remoteEndpoint)
 {
+    // default values
+    char name[21] = {"\0"};
+    float play = 0.f;
+    float depth = 0.f;
+    float alpha = 0.f;
+
+    // fill values if the current source is valid
     Source *s = Mixer::manager().currentSource();
     if (s!=nullptr) {
-
-        // build socket to send message to indicated endpoint
-        UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
-
-        // build messages packet
-        char buffer[IP_MTU_SIZE];
-        osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-
-        // create bundle
-        p.Clear();
-        p << osc::BeginBundle();
-
-        ///
-        /// messages
-        ///
-        /// Play status
-        p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_PLAY );
-        p << s->playing();
-        p << osc::EndMessage;
-        /// Depth
-        p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_DEPTH );
-        p << s->depth();
-        p << osc::EndMessage;
-        /// Alpha
-        p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_ALPHA );
-        p << s->alpha();
-        p << osc::EndMessage;
-        /// indexed alpha
-        std::string addresspattern = std::string(OSC_PREFIX) + OSC_SEPARATOR;
-        addresspattern += std::to_string(Mixer::manager().indexCurrentSource()) + OSC_SOURCE_ALPHA;
-        p << osc::BeginMessage(addresspattern.c_str());
-        p << s->alpha();
-        p << osc::EndMessage;
-        socket.Send( p.Data(), p.Size() );
-
-        // send bundle
-        p << osc::EndBundle;
-        socket.Send( p.Data(), p.Size() );
+        strncpy(name, s->name().c_str(), 20);
+        play  = s->playing() ? 1.f : 0.f;
+        depth = s->depth();
+        alpha = s->alpha();
     }
+
+    // build socket to send message to indicated endpoint
+    UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
+
+    // build messages packet
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+
+    // create bundle
+    p.Clear();
+    p << osc::BeginBundle();
+
+    /// name
+    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_NAME ) << name << osc::EndMessage;
+    /// Play status
+    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_PLAY ) << play << osc::EndMessage;
+    /// Depth
+    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_DEPTH ) << depth << osc::EndMessage;
+    /// Alpha
+    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_ALPHA ) << alpha << osc::EndMessage;
+
+    // send bundle
+    p << osc::EndBundle;
+    socket.Send( p.Data(), p.Size() );
 }
+
+
+void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, float max_count)
+{
+    // build socket to send message to indicated endpoint
+    UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
+
+    // build messages packet
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+
+    p.Clear();
+    p << osc::BeginBundle();
+
+    int i = 0;
+    char oscaddr[128];
+    int index_current = Mixer::manager().indexCurrentSource();
+    for (; i < Mixer::manager().count(); ++i) {
+        // send status of currently selected
+        sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
+        p << osc::BeginMessage( oscaddr ) << (index_current == i ? 1.f : 0.f) << osc::EndMessage;
+
+        // send status of alpha
+        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
+        p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
+    }
+
+    for (; i < max_count; ++i) {
+        // reset status of currently selected
+        sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
+        p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
+
+        // reset status of alpha
+        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
+        p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
+    }
+
+    p << osc::EndBundle;
+    socket.Send( p.Data(), p.Size() );
+}
+
 
 void Control::sendStatus(const IpEndpointName &remoteEndpoint)
 {
@@ -383,27 +450,20 @@ void Control::sendStatus(const IpEndpointName &remoteEndpoint)
     p.Clear();
     p << osc::BeginBundle();
 
+    ///
+    /// messages
+    ///
     /// Agree to test
-    p << osc::BeginMessage( OSC_PREFIX OSC_INFO OSC_INFO_TEST );
+    p << osc::BeginMessage( OSC_PREFIX OSC_INFO OSC_INFO_SYNC );
     p << true;
     p << osc::EndMessage;
-
-    /// send output attributes
+    /// output attributes
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_ENABLE );
-    p << !Settings::application.render.disabled;
+    p << (Settings::application.render.disabled ? 0.f : 1.f);
     p << osc::EndMessage;
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_FADING );
     p << Mixer::manager().session()->fading();
     p << osc::EndMessage;
-
-    /// send all sources alpha
-    for (int i = 0; i < Mixer::manager().count(); ++i) {
-        std::string addresspattern = std::string(OSC_PREFIX) + OSC_SEPARATOR;
-        addresspattern += std::to_string(i) + OSC_SOURCE_ALPHA;
-        p << osc::BeginMessage(addresspattern.c_str());
-        p << Mixer::manager().sourceAtIndex(i)->alpha();
-        p << osc::EndMessage;
-    }
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );

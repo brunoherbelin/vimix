@@ -16,7 +16,8 @@ public:
         CALLBACK_PLAY,
         CALLBACK_REPLAY,
         CALLBACK_GRAB,
-        CALLBACK_RESIZE
+        CALLBACK_RESIZE,
+        CALLBACK_TURN
     } CallbackType;
 
     SourceCallback();
@@ -33,6 +34,14 @@ protected:
     bool active_;
     bool finished_;
     bool initialized_;
+};
+
+class ResetGeometry : public SourceCallback
+{
+
+public:
+    ResetGeometry() : SourceCallback() {}
+    void update(Source *s, float) override;
 };
 
 class SetAlpha : public SourceCallback
@@ -105,6 +114,20 @@ public:
     Resize(float dx, float dy, float duration = 0.f);
     void update(Source *s, float) override;
     CallbackType type () override { return CALLBACK_RESIZE; }
+};
+
+class Turn : public SourceCallback
+{
+    float speed_;
+    float start_;
+    float target_;
+    float duration_;
+    float progress_;
+
+public:
+    Turn(float da, float duration = 0.f);
+    void update(Source *s, float) override;
+    CallbackType type () override { return CALLBACK_TURN; }
 };
 
 

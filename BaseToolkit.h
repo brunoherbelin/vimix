@@ -28,6 +28,9 @@ std::string truncated(const std::string& str, int N);
 // split a string into list of strings separated by delimitor (e.g. /home/me/toto.mpg -> {home, me, toto.mpg} )
 std::list<std::string> splitted(const std::string& str, char delim);
 
+// returns true if the string
+bool is_a_number(const std::string& str, int *val = nullptr);
+
 // find common parts in a list of strings
 std::string common_prefix(const std::list<std::string> &allStrings);
 std::string common_suffix(const std::list<std::string> &allStrings);

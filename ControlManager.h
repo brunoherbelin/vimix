@@ -4,7 +4,7 @@
 #include "NetworkToolkit.h"
 
 #define OSC_INFO               "/info"
-#define OSC_INFO_TEST          "/test"
+#define OSC_INFO_SYNC          "/sync"
 #define OSC_INFO_LOG           "/log"
 
 #define OSC_OUTPUT             "/output"
@@ -17,9 +17,8 @@
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
-#define OSC_SET                "/set"
-//#define OSC_VERSION            "version"
 
+#define OSC_SOURCE_NAME        "/name"
 #define OSC_SOURCE_PLAY        "/play"
 #define OSC_SOURCE_PAUSE       "/pause"
 #define OSC_SOURCE_REPLAY      "/replay"
@@ -28,6 +27,8 @@
 #define OSC_SOURCE_DEPTH       "/depth"
 #define OSC_SOURCE_GRAB        "/grab"
 #define OSC_SOURCE_RESIZE      "/resize"
+#define OSC_SOURCE_TURN        "/turn"
+#define OSC_SOURCE_RESET       "/reset"
 
 class Session;
 class Source;
@@ -69,6 +70,7 @@ protected:
                             osc::ReceivedMessageArgumentStream arguments);
 
     void sendCurrentSourceAttibutes(const IpEndpointName& remoteEndpoint);
+    void sendSourcesStatus(const IpEndpointName& remoteEndpoint, float max_count = 0.f);
     void sendStatus(const IpEndpointName& remoteEndpoint);
 
 private:
