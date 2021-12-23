@@ -546,7 +546,7 @@ void Source::setActive (bool on)
 
 void Source::setActive (float threshold)
 {
-    Source::setActive( glm::length( glm::vec2(groups_[View::MIXING]->translation_) ) < threshold );
+    setActive( glm::length( glm::vec2(groups_[View::MIXING]->translation_) ) < threshold );
 }
 
 void Source::setLocked (bool on)
