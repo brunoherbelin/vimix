@@ -20,6 +20,7 @@
 #include <thread>
 #include <mutex>
 #include <sstream>
+#include <iomanip>
 
 #include "osc/OscOutboundPacketStream.h"
 
@@ -46,7 +47,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
     try{
 #ifdef CONTROL_DEBUG
-        Log::Info(CONTROL_OSC_MSG "received '%s' from %s", m.AddressPattern(), sender);
+        Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
 #endif
         // TODO Preprocessing with Translator
 
@@ -80,8 +81,9 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, N);
                 }
-                else if ( attribute.compare(OSC_INFO_LOG) == 0)
-                    Log::Info(CONTROL_OSC_MSG "received '%s' from %s", m.AddressPattern(), sender);
+                else if ( attribute.compare(OSC_INFO_LOG) == 0) {
+                    Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
+                }
             }
             // Output target: concerns attributes of the rendering output
             else if ( target.compare(OSC_OUTPUT) == 0 )
@@ -115,16 +117,28 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     Mixer::manager().setCurrentNext();
                     // confirm by sending back the current source attributes
                     Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                    // send the updated status of all sources
-                    Control::manager().sendSourcesStatus(remoteEndpoint);
+                    //
+                    // send the status of all sources
+                    //
+                    //  (if an argument is given, it indicates the number of sources to update)
+                    float N = 0.f;
+                    if ( !m.ArgumentStream().Eos())
+                        m.ArgumentStream() >> N >> osc::EndMessage;
+                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
                 }
                 else if ( attribute.compare(OSC_PREVIOUS) == 0) {
                     // set current to PREVIOUS
                     Mixer::manager().setCurrentPrevious();
                     // confirm by sending back the current source attributes
                     Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                    // send the updated status of all sources
-                    Control::manager().sendSourcesStatus(remoteEndpoint);
+                    //
+                    // send the status of all sources
+                    //
+                    //  (if an argument is given, it indicates the number of sources to update)
+                    float N = 0.f;
+                    if ( !m.ArgumentStream().Eos())
+                        m.ArgumentStream() >> N >> osc::EndMessage;
+                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
                 }
                 else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
                     // set current to given INDEX
@@ -174,6 +188,52 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     }
 }
 
+
+std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m )
+{
+    // build a string with the address pattern of the message
+    std::ostringstream message;
+    message << m.AddressPattern() << " ";
+
+    // try to fill the string with the arguments
+    std::ostringstream arguments;
+    try{
+        // loop over all arguments
+        osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+        while (arg != m.ArgumentsEnd()) {
+            if( arg->IsBool() ){
+                bool a = (arg++)->AsBoolUnchecked();
+                message << (a ? "T" : "F");
+            }
+            else if( arg->IsInt32() ){
+                int a = (arg++)->AsInt32Unchecked();
+                message << "i";
+                arguments << " " << a;
+            }
+            else if( arg->IsFloat() ){
+                float a = (arg++)->AsFloatUnchecked();
+                message << "f";
+                arguments << " " << std::fixed << std::setprecision(2) << a;
+            }
+            else if( arg->IsString() ){
+                const char *a = (arg++)->AsStringUnchecked();
+                message << "s";
+                arguments << " " << a;
+            }
+        }
+    }
+    catch( osc::Exception& e ){
+        // any parsing errors such as unexpected argument types, or
+        // missing arguments get thrown as exceptions.
+        Log::Info(CONTROL_OSC_MSG "Ignoring error in message '%s': %s", m.AddressPattern(), e.what());
+    }
+
+    // append list of arguments to the message string
+    message << arguments.str();
+
+    // returns the full message
+    return message.str();
+}
 
 void Control::listen()
 {
@@ -455,7 +515,6 @@ void Control::sendStatus(const IpEndpointName &remoteEndpoint)
     ///
     /// Agree to test
     p << osc::BeginMessage( OSC_PREFIX OSC_INFO OSC_INFO_SYNC );
-    p << true;
     p << osc::EndMessage;
     /// output attributes
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_ENABLE );

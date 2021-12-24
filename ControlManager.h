@@ -15,6 +15,7 @@
 #define OSC_ALL                "/all"
 #define OSC_SELECTED           "/selected"
 #define OSC_CURRENT            "/current"
+#define OSC_VERSION            "/version"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
 
@@ -29,6 +30,7 @@
 #define OSC_SOURCE_RESIZE      "/resize"
 #define OSC_SOURCE_TURN        "/turn"
 #define OSC_SOURCE_RESET       "/reset"
+
 
 class Session;
 class Source;
@@ -61,6 +63,7 @@ protected:
     protected:
         virtual void ProcessMessage( const osc::ReceivedMessage& m,
                                      const IpEndpointName& remoteEndpoint );
+        std::string FullMessage( const osc::ReceivedMessage& m );
     };
 
     void receiveOutputAttribute(const std::string &attribute,
