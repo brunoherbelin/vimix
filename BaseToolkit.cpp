@@ -104,6 +104,16 @@ std::string BaseToolkit::transliterate(const std::string &input)
 }
 
 
+std::string BaseToolkit::unspace(const std::string &input)
+{
+    std::string output = input;
+    for(std::size_t i = 0; i < output.length(); ++i) {
+        if( isspace(output[i]) )
+            output[i] = '_';
+    }
+    return output;
+}
+
 std::string BaseToolkit::byte_to_string(long b)
 {
     double numbytes = static_cast<double>(b);

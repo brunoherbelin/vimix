@@ -347,7 +347,7 @@ Source::~Source()
 void Source::setName (const std::string &name)
 {
     if (!name.empty())
-        name_ = BaseToolkit::transliterate(name);
+        name_ = BaseToolkit::unspace( BaseToolkit::transliterate(name) );
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );
