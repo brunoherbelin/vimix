@@ -12,6 +12,7 @@ public:
     typedef  enum {
         CALLBACK_GENERIC = 0,
         CALLBACK_ALPHA,
+        CALLBACK_LOOM,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
         CALLBACK_REPLAY,
@@ -56,6 +57,20 @@ public:
     CallbackType type () override { return CALLBACK_ALPHA; }
 };
 
+class Loom : public SourceCallback
+{
+    float speed_;
+    glm::vec2 pos_;
+    glm::vec2 step_;
+    float duration_;
+    float progress_;
+
+public:
+    Loom(float da, float duration = 0.f);
+    void update(Source *s, float) override;
+    CallbackType type () override { return CALLBACK_LOOM; }
+};
+
 class SetDepth : public SourceCallback
 {
     float duration_;
@@ -92,7 +107,6 @@ class Grab : public SourceCallback
 {
     glm::vec2 speed_;
     glm::vec2 start_;
-    glm::vec2 target_;
     float duration_;
     float progress_;
 
@@ -106,7 +120,6 @@ class Resize : public SourceCallback
 {
     glm::vec2 speed_;
     glm::vec2 start_;
-    glm::vec2 target_;
     float duration_;
     float progress_;
 
@@ -120,7 +133,6 @@ class Turn : public SourceCallback
 {
     float speed_;
     float start_;
-    float target_;
     float duration_;
     float progress_;
 

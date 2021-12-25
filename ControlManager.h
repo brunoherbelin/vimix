@@ -3,8 +3,9 @@
 
 #include "NetworkToolkit.h"
 
+#define OSC_SYNC               "/sync"
+
 #define OSC_INFO               "/info"
-#define OSC_INFO_SYNC          "/sync"
 #define OSC_INFO_LOG           "/log"
 
 #define OSC_OUTPUT             "/output"
@@ -24,6 +25,7 @@
 #define OSC_SOURCE_PAUSE       "/pause"
 #define OSC_SOURCE_REPLAY      "/replay"
 #define OSC_SOURCE_ALPHA       "/alpha"
+#define OSC_SOURCE_LOOM        "/loom"
 #define OSC_SOURCE_TRANSPARENCY "/transparency"
 #define OSC_SOURCE_DEPTH       "/depth"
 #define OSC_SOURCE_GRAB        "/grab"
@@ -69,12 +71,12 @@ protected:
     void receiveOutputAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
 
-    void receiveSourceAttribute(Source *target, const std::string &attribute,
+    bool receiveSourceAttribute(Source *target, const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
 
     void sendCurrentSourceAttibutes(const IpEndpointName& remoteEndpoint);
-    void sendSourcesStatus(const IpEndpointName& remoteEndpoint, float max_count = 0.f);
-    void sendStatus(const IpEndpointName& remoteEndpoint);
+    void sendSourcesStatus(const IpEndpointName& remoteEndpoint, osc::ReceivedMessageArgumentStream arguments);
+    void sendOutputStatus(const IpEndpointName& remoteEndpoint);
 
 private:
 

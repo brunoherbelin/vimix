@@ -68,18 +68,11 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Log target: just print text in log window
             if ( target.compare(OSC_INFO) == 0 )
             {
-                if ( attribute.compare(OSC_INFO_SYNC) == 0) {
+                if ( attribute.compare(OSC_SYNC) == 0) {
                     // send the global status
-                    Control::manager().sendStatus(remoteEndpoint);
-                    //
+                    Control::manager().sendOutputStatus(remoteEndpoint);
                     // send the status of all sources
-                    //
-                    //  (if an argument is given, it indicates the number of sources to update)
-                    float N = 0.f;
-                    if ( !m.ArgumentStream().Eos())
-                        m.ArgumentStream() >> N >> osc::EndMessage;
-                    // send the status of all sources
-                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( attribute.compare(OSC_INFO_LOG) == 0) {
                     Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
@@ -88,7 +81,12 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Output target: concerns attributes of the rendering output
             else if ( target.compare(OSC_OUTPUT) == 0 )
             {
-                Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream());
+                if ( attribute.compare(OSC_SYNC) == 0) {
+                    // send the global status
+                    Control::manager().sendOutputStatus(remoteEndpoint);
+                }
+                else
+                    Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream());
             }
             // ALL sources target: apply attribute to all sources of the session
             else if ( target.compare(OSC_ALL) == 0 )
@@ -112,51 +110,36 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
                 int sourceid = -1;
-                if ( attribute.compare(OSC_NEXT) == 0) {
+                if ( attribute.compare(OSC_SYNC) == 0) {
+                    // send the status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                }
+                else if ( attribute.compare(OSC_NEXT) == 0) {
                     // set current to NEXT
                     Mixer::manager().setCurrentNext();
-                    // confirm by sending back the current source attributes
-                    Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                    //
                     // send the status of all sources
-                    //
-                    //  (if an argument is given, it indicates the number of sources to update)
-                    float N = 0.f;
-                    if ( !m.ArgumentStream().Eos())
-                        m.ArgumentStream() >> N >> osc::EndMessage;
-                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( attribute.compare(OSC_PREVIOUS) == 0) {
                     // set current to PREVIOUS
                     Mixer::manager().setCurrentPrevious();
-                    // confirm by sending back the current source attributes
-                    Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                    //
                     // send the status of all sources
-                    //
-                    //  (if an argument is given, it indicates the number of sources to update)
-                    float N = 0.f;
-                    if ( !m.ArgumentStream().Eos())
-                        m.ArgumentStream() >> N >> osc::EndMessage;
-                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
                     // set current to given INDEX
                     Mixer::manager().setCurrentIndex(sourceid);
-                    // confirm by sending back the current source attributes
-                    Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-                    //
                     // send the status of all sources
-                    //
-                    //  (if an argument is given, it indicates the number of sources to update)
-                    float N = 0.f;
-                    if ( !m.ArgumentStream().Eos())
-                        m.ArgumentStream() >> N >> osc::EndMessage;
-                    Control::manager().sendSourcesStatus(remoteEndpoint, N);
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 // all other attributes operate on current source
-                else
-                    Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream());
+                else {
+                    // apply attributes
+                    if ( Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream()) )
+                        // and send back feedback if needed
+                        Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+
+                }
             }
             // General case: try to identify the target
             else {
@@ -329,11 +312,13 @@ void Control::receiveOutputAttribute(const std::string &attribute,
     }
 }
 
-void Control::receiveSourceAttribute(Source *target, const std::string &attribute,
+bool Control::receiveSourceAttribute(Source *target, const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
+    bool send_feedback = false;
+
     if (target == nullptr)
-        return;
+        return send_feedback;
 
     try {
         /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
@@ -362,6 +347,14 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> x >> osc::EndMessage;
             target->call( new SetAlpha(x), true );
         }
+        /// e.g. '/vimix/current/alpha f 0.3'
+        else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
+            float x = 1.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new Loom(x), true );
+            // this will require to send feedback status about source
+            send_feedback = true;
+        }
         /// e.g. '/vimix/current/transparency f 0.7'
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
             float x = 0.f;
@@ -388,8 +381,12 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
-            float x = 0.f;
-            arguments >> x >> osc::EndMessage;
+            float x = 0.f, y = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else // ignore second argument
+                arguments >> y >> osc::EndMessage;
             target->call( new Turn( x ), true );
         }
         /// e.g. '/vimix/current/reset'
@@ -412,6 +409,8 @@ void Control::receiveSourceAttribute(Source *target, const std::string &attribut
     catch (osc::WrongArgumentTypeException &e) {
         Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
     }
+
+    return send_feedback;
 }
 
 
@@ -458,8 +457,13 @@ void Control::sendCurrentSourceAttibutes(const IpEndpointName &remoteEndpoint)
 }
 
 
-void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, float max_count)
+void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::ReceivedMessageArgumentStream arguments)
 {
+    //  (if an argument is given, it indicates the number of sources to update)
+    float N = 0.f;
+    if ( !arguments.Eos())
+        arguments >> N >> osc::EndMessage;
+
     // build socket to send message to indicated endpoint
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
 
@@ -483,7 +487,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, float max_
         p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
     }
 
-    for (; i < max_count; ++i) {
+    for (; i < (int) N ; ++i) {
         // reset status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
@@ -495,10 +499,13 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, float max_
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
+
+    // send status of current source
+    sendCurrentSourceAttibutes(remoteEndpoint);
 }
 
 
-void Control::sendStatus(const IpEndpointName &remoteEndpoint)
+void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 {
     // build socket to send message to indicated endpoint
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
@@ -510,12 +517,6 @@ void Control::sendStatus(const IpEndpointName &remoteEndpoint)
     p.Clear();
     p << osc::BeginBundle();
 
-    ///
-    /// messages
-    ///
-    /// Agree to test
-    p << osc::BeginMessage( OSC_PREFIX OSC_INFO OSC_INFO_SYNC );
-    p << osc::EndMessage;
     /// output attributes
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_ENABLE );
     p << (Settings::application.render.disabled ? 0.f : 1.f);

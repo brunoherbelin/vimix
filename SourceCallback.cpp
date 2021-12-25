@@ -39,6 +39,7 @@ void ResetGeometry::update(Source *s, float)
 
 SetAlpha::SetAlpha(float alpha) : SourceCallback(), alpha_(CLAMP(alpha, 0.f, 1.f))
 {
+    pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
 
@@ -49,7 +50,6 @@ void SetAlpha::update(Source *s, float)
         if (!initialized_){
             // initial position
             pos_ = glm::vec2(s->group(View::MIXING)->translation_);
-
             // step in direction of source translation if possible
             if ( glm::length(pos_) > DELTA_ALPHA)
                 step_ = glm::normalize(pos_);
@@ -72,6 +72,53 @@ void SetAlpha::update(Source *s, float)
     else
         finished_ = true;
 }
+
+
+Loom::Loom(float da, float duration) : SourceCallback(), speed_(da),
+    duration_(duration), progress_(0.f)
+{
+    pos_  = glm::vec2();
+    step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
+}
+
+void Loom::update(Source *s, float dt)
+{
+    if (s && !s->locked()) {
+        // reset on first run or upon call of reset()
+        if (!initialized_){
+            // start animation
+            progress_ = 0.f;
+            // initial position
+            pos_ = glm::vec2(s->group(View::MIXING)->translation_);
+            // step in direction of source translation if possible
+            if ( glm::length(pos_) > DELTA_ALPHA)
+                step_ = glm::normalize(pos_);
+
+            initialized_ = true;
+        }
+
+        // calculate amplitude of movement
+        progress_ += dt;
+
+        // perform movement
+        pos_ += step_ * ( speed_ * dt * 0.001f);
+
+        // apply alpha if valid in range [0 1]
+        float alpha = SourceCore::alphaFromCordinates(pos_.x, pos_.y);
+        if ( alpha > DELTA_ALPHA && alpha < 1.0 - DELTA_ALPHA )
+            s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
+
+        // timeout
+        if ( progress_ > duration_ ) {
+            // done
+            finished_ = true;
+        }
+    }
+    else
+        finished_ = true;
+}
+
+
 
 SetDepth::SetDepth(float target, float duration) : SourceCallback(),
     duration_(duration), progress_(0.f), start_(0.f), target_(CLAMP(target, MIN_DEPTH, MAX_DEPTH))
@@ -194,8 +241,8 @@ void Resize::update(Source *s, float dt)
         progress_ += dt;
 
         // perform movement
-        glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
-        s->group(View::GEOMETRY)->scale_ = glm::vec3(pos, s->group(View::GEOMETRY)->scale_.z);
+        glm::vec2 scale = start_ + speed_ * ( dt * 0.001f);
+        s->group(View::GEOMETRY)->scale_ = glm::vec3(scale, s->group(View::GEOMETRY)->scale_.z);
 
         // timeout
         if ( progress_ > duration_ ) {
