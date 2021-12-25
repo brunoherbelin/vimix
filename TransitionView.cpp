@@ -134,7 +134,7 @@ void TransitionView::update(float dt)
             transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
             // no fading when cross fading
-            Mixer::manager().session()->setFading( 0.f );
+            Mixer::manager().session()->setFadingTarget( 0.f );
         }
         // fade to black
         else
@@ -151,7 +151,7 @@ void TransitionView::update(float dt)
                 f = ( 2.f * d + 1.f);  // quadratic
                 f *= f;
             }
-            Mixer::manager().session()->setFading( 1.f - f );
+            Mixer::manager().session()->setFadingTarget( 1.f - f );
         }
 
         // request update

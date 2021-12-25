@@ -620,12 +620,12 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::SameLine();
     ImGui::Text("Sources");
 
-    if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFading(0.f);
+    if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFadingTarget(0.f);
     float f = s.session()->fading();
     ImGui::SameLine(0, 10);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
-        s.session()->setFading(f);
+        s.session()->setFadingTarget(f);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << s.name() << ": Fading " << std::setprecision(2) << f;

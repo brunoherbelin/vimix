@@ -86,7 +86,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     Control::manager().sendOutputStatus(remoteEndpoint);
                 }
                 else
-                    Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream());
+                    if ( Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream()) )
+                         Control::manager().sendOutputStatus(remoteEndpoint);
             }
             // ALL sources target: apply attribute to all sources of the session
             else if ( target.compare(OSC_ALL) == 0 )
@@ -268,11 +269,13 @@ void Control::terminate()
 }
 
 
-void Control::receiveOutputAttribute(const std::string &attribute,
+bool Control::receiveOutputAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
+    bool send_feedback = false;
+
     try {
-        /// e.g. '/vimix/output/enable' or '/vimix/output/enable T' or '/vimix/output/enable F'
+        /// e.g. '/vimix/output/enable' or '/vimix/output/enable 1.0' or '/vimix/output/enable 0.0'
         if ( attribute.compare(OSC_OUTPUT_ENABLE) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -280,7 +283,7 @@ void Control::receiveOutputAttribute(const std::string &attribute,
             }
             Settings::application.render.disabled = on < 0.5f;
         }
-        /// e.g. '/vimix/output/disable' or '/vimix/output/disable T' or '/vimix/output/disable F'
+        /// e.g. '/vimix/output/disable' or '/vimix/output/disable 1.0' or '/vimix/output/disable 0.0'
         else if ( attribute.compare(OSC_OUTPUT_DISABLE) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -288,11 +291,34 @@ void Control::receiveOutputAttribute(const std::string &attribute,
             }
             Settings::application.render.disabled = on > 0.5f;
         }
-        /// e.g. '/vimix/output/fading f 0.2'
+        /// e.g. '/vimix/output/fading f 0.2' or '/vimix/output/fading ff 1.0 300.f'
         else if ( attribute.compare(OSC_OUTPUT_FADING) == 0) {
-            float fading = 0.f;
-            arguments >> fading >> osc::EndMessage;
-            Mixer::manager().session()->setFading(fading); // TODO move cursor when in Mixing view
+            float f = 0.f, d = 0.f;
+            // first argument is fading value
+            arguments >> f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            // if a second argument is given, it is a duration
+            else
+                arguments >> d >> osc::EndMessage;
+            Mixer::manager().session()->setFadingTarget(f, d);
+        }
+        /// e.g. '/vimix/output/fadein' or '/vimix/output/fadein f 300.f'
+        else if ( attribute.compare(OSC_OUTPUT_FADE_IN) == 0) {
+            float f = 0.f;
+            // if argument is given, it is a duration
+            if (!arguments.Eos())
+                arguments >> f >> osc::EndMessage;
+            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.001);
+            send_feedback = true;
+        }
+        else if ( attribute.compare(OSC_OUTPUT_FADE_OUT) == 0) {
+            float f = 0.f;
+            // if argument is given, it is a duration
+            if (!arguments.Eos())
+                arguments >> f >> osc::EndMessage;
+            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.001);
+            send_feedback = true;
         }
 #ifdef CONTROL_DEBUG
         else {
@@ -310,6 +336,8 @@ void Control::receiveOutputAttribute(const std::string &attribute,
     catch (osc::WrongArgumentTypeException &e) {
         Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'output'", attribute.c_str());
     }
+
+    return send_feedback;
 }
 
 bool Control::receiveSourceAttribute(Source *target, const std::string &attribute,

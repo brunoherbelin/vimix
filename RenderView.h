@@ -8,6 +8,8 @@
 
 class RenderView : public View
 {
+    friend class Session;
+
     // rendering FBO
     FrameBuffer *frame_buffer_;
     Surface *fading_overlay_;
@@ -26,11 +28,14 @@ public:
     void setResolution (glm::vec3 resolution = glm::vec3(0.f), bool useAlpha = false);
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
 
-    void setFading(float f = 0.f);
-    float fading() const;
 
     // current frame
     inline FrameBuffer *frame () const { return frame_buffer_; }
+
+protected:
+
+    void setFading(float f = 0.f);
+    float fading() const;
 
     // get a thumbnail outside of opengl context; wait for a promise to be fullfiled after draw
     void drawThumbnail();

@@ -922,7 +922,7 @@ void SessionLoader::visit (SessionFileSource& s)
     // set fading
     float f = 0.f;
     xmlCurrent_->QueryFloatAttribute("fading", &f);
-    s.session()->setFading(f);
+    s.session()->setFadingTarget(f);
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {

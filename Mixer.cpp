@@ -1240,7 +1240,7 @@ void Mixer::swap()
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
     // transfer fading
-    session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
+    session_->setFadingTarget( MAX(back_session_->fadingTarget(), session_->fadingTarget()));
 
     // no current source
     current_source_ = session_->end();

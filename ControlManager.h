@@ -12,6 +12,8 @@
 #define OSC_OUTPUT_ENABLE      "/enable"
 #define OSC_OUTPUT_DISABLE     "/disable"
 #define OSC_OUTPUT_FADING      "/fading"
+#define OSC_OUTPUT_FADE_IN     "/fadein"
+#define OSC_OUTPUT_FADE_OUT    "/fadeout"
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTED           "/selected"
@@ -68,7 +70,7 @@ protected:
         std::string FullMessage( const osc::ReceivedMessage& m );
     };
 
-    void receiveOutputAttribute(const std::string &attribute,
+    bool receiveOutputAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
 
     bool receiveSourceAttribute(Source *target, const std::string &attribute,

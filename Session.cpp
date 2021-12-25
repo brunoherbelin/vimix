@@ -38,7 +38,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session() : active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), failedSource_(nullptr), fading_target_(0.f), thumbnail_(nullptr)
+    filename_(""), failedSource_(nullptr), thumbnail_(nullptr)
 {
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
@@ -150,10 +150,28 @@ void Session::update(float dt)
             group_iter = deleteMixingGroup(group_iter);
     }
 
-    // apply fading (smooth dicotomic reaching)
-    float f = render_.fading();
-    if ( ABS_DIFF(f, fading_target_) > EPSILON) {
-        render_.setFading( f + ( fading_target_ - f ) / 2.f);
+    // update fading requested
+    if (fading_.active) {
+
+        // animate
+        fading_.progress += dt;
+
+        // update animation
+        if ( fading_.duration > 0.f && fading_.progress < fading_.duration ) {
+            // interpolation
+            float f =  fading_.progress / fading_.duration;
+            f = ( 1.f - f ) * fading_.start + f * fading_.target;
+            render_.setFading( f );
+        }
+        // arrived at target
+        else {
+            // set precise value
+            render_.setFading( fading_.target );
+            // fading finished
+            fading_.active = false;
+            fading_.start  = fading_.target;
+            fading_.duration = fading_.progress = 0.f;
+        }
     }
 
     // update the scene tree
@@ -292,12 +310,17 @@ void Session::setResolution(glm::vec3 resolution, bool useAlpha)
     config_[View::RENDERING]->scale_ = render_.resolution();
 }
 
-void Session::setFading(float f, bool forcenow)
+void Session::setFadingTarget(float f, float duration)
 {
-    if (forcenow)
-        render_.setFading( f );
-
-    fading_target_ = CLAMP(f, 0.f, 1.f);
+    // targetted fading value
+    fading_.target = CLAMP(f, 0.f, 1.f);
+    // starting point for interpolation
+    fading_.start  = fading();
+    // initiate animation
+    fading_.progress = 0.f;
+    fading_.duration = duration;
+    // activate update
+    fading_.active = true;
 }
 
 SourceList::iterator Session::begin()
