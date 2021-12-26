@@ -69,11 +69,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Log target: just print text in log window
             if ( target.compare(OSC_INFO) == 0 )
             {
-                if ( attribute.compare(OSC_SYNC) == 0) {
-                    // send the global status
-                    Control::manager().sendOutputStatus(remoteEndpoint);
-                    // send the status of all sources
-                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                if ( attribute.compare(OSC_INFO_NOTIFY) == 0) {
+                    Log::Notify(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
                 }
                 else if ( attribute.compare(OSC_INFO_LOG) == 0) {
                     Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
@@ -96,7 +93,6 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
-
             }
             // ALL sources target: apply attribute to all sources of the session
             else if ( target.compare(OSC_ALL) == 0 )
@@ -318,7 +314,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.001);
+            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.01);
             need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_FADE_OUT) == 0) {
@@ -326,7 +322,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.001);
+            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
             need_feedback = true;
         }
 #ifdef CONTROL_DEBUG
@@ -402,7 +398,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetDepth(x) );
+            target->call( new SetDepth(x), true );
         }
         /// e.g. '/vimix/current/translation ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {

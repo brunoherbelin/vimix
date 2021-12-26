@@ -7,13 +7,14 @@
 
 #define OSC_INFO               "/info"
 #define OSC_INFO_LOG           "/log"
+#define OSC_INFO_NOTIFY        "/notify"
 
 #define OSC_OUTPUT             "/output"
 #define OSC_OUTPUT_ENABLE      "/enable"
 #define OSC_OUTPUT_DISABLE     "/disable"
 #define OSC_OUTPUT_FADING      "/fading"
-#define OSC_OUTPUT_FADE_IN     "/fadein"
-#define OSC_OUTPUT_FADE_OUT    "/fadeout"
+#define OSC_OUTPUT_FADE_IN     "/fade-in"
+#define OSC_OUTPUT_FADE_OUT    "/fade-out"
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTED           "/selected"
