@@ -29,6 +29,7 @@
 #include "BaseToolkit.h"
 #include "Mixer.h"
 #include "Source.h"
+#include "ActionManager.h"
 
 #include "ControlManager.h"
 
@@ -81,13 +82,21 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Output target: concerns attributes of the rendering output
             else if ( target.compare(OSC_OUTPUT) == 0 )
             {
-                if ( attribute.compare(OSC_SYNC) == 0) {
+                if ( attribute.compare(OSC_SYNC) == 0 || Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream())) {
                     // send the global status
                     Control::manager().sendOutputStatus(remoteEndpoint);
                 }
-                else
-                    if ( Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream()) )
-                         Control::manager().sendOutputStatus(remoteEndpoint);
+            }
+            // Session target: concerns attributes of the session
+            else if ( target.compare(OSC_SESSION) == 0 )
+            {
+                if ( attribute.compare(OSC_SYNC) == 0 || Control::manager().receiveSessionAttribute(attribute, m.ArgumentStream()) ) {
+                    // send the global status
+                    Control::manager().sendOutputStatus(remoteEndpoint);
+                    // send the status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                }
+
             }
             // ALL sources target: apply attribute to all sources of the session
             else if ( target.compare(OSC_ALL) == 0 )
@@ -272,7 +281,7 @@ void Control::terminate()
 bool Control::receiveOutputAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
-    bool send_feedback = false;
+    bool need_feedback = false;
 
     try {
         /// e.g. '/vimix/output/enable' or '/vimix/output/enable 1.0' or '/vimix/output/enable 0.0'
@@ -310,7 +319,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
             Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.001);
-            send_feedback = true;
+            need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_FADE_OUT) == 0) {
             float f = 0.f;
@@ -318,7 +327,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
             Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.001);
-            send_feedback = true;
+            need_feedback = true;
         }
 #ifdef CONTROL_DEBUG
         else {
@@ -337,7 +346,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
         Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'output'", attribute.c_str());
     }
 
-    return send_feedback;
+    return need_feedback;
 }
 
 bool Control::receiveSourceAttribute(Source *target, const std::string &attribute,
@@ -441,6 +450,46 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
     return send_feedback;
 }
 
+
+
+bool Control::receiveSessionAttribute(const std::string &attribute,
+                       osc::ReceivedMessageArgumentStream arguments)
+{
+    bool need_feedback = false;
+
+    try {
+        if ( attribute.compare(OSC_SESSION_VERSION) == 0) {
+            float v = 0.f;
+            arguments >> v >> osc::EndMessage;
+            size_t id = (int) ceil(v);
+            std::list<uint64_t> snapshots = Action::manager().snapshots();
+            if ( id <  snapshots.size() ) {
+                for (size_t i = 0; i < id; ++i)
+                    snapshots.pop_back();
+                uint64_t snap = snapshots.back();
+                Action::manager().restore(snap);
+            }
+            need_feedback = true;
+        }
+#ifdef CONTROL_DEBUG
+        else {
+            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'output'", attribute.c_str());
+        }
+#endif
+
+    }
+    catch (osc::MissingArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target 'output'", attribute.c_str());
+    }
+    catch (osc::ExcessArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Too many arguments for attribute '%s' for target 'output'", attribute.c_str());
+    }
+    catch (osc::WrongArgumentTypeException &e) {
+        Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'output'", attribute.c_str());
+    }
+
+    return need_feedback;
+}
 
 void Control::sendCurrentSourceAttibutes(const IpEndpointName &remoteEndpoint)
 {

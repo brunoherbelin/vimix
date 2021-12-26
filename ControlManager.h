@@ -18,7 +18,6 @@
 #define OSC_ALL                "/all"
 #define OSC_SELECTED           "/selected"
 #define OSC_CURRENT            "/current"
-#define OSC_VERSION            "/version"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
 
@@ -35,6 +34,8 @@
 #define OSC_SOURCE_TURN        "/turn"
 #define OSC_SOURCE_RESET       "/reset"
 
+#define OSC_SESSION            "/session"
+#define OSC_SESSION_VERSION    "/version"
 
 class Session;
 class Source;
@@ -74,6 +75,9 @@ protected:
                             osc::ReceivedMessageArgumentStream arguments);
 
     bool receiveSourceAttribute(Source *target, const std::string &attribute,
+                            osc::ReceivedMessageArgumentStream arguments);
+
+    bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
 
     void sendCurrentSourceAttibutes(const IpEndpointName& remoteEndpoint);
