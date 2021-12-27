@@ -73,6 +73,17 @@ void SetAlpha::update(Source *s, float)
         finished_ = true;
 }
 
+SetLock::SetLock(bool on) : SourceCallback(), lock_(on)
+{
+}
+
+void SetLock::update(Source *s, float)
+{
+    if (s)
+        s->setLocked(lock_);
+
+    finished_ = true;
+}
 
 Loom::Loom(float da, float duration) : SourceCallback(), speed_(da),
     duration_(duration), progress_(0.f)

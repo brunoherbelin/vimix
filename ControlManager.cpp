@@ -74,10 +74,10 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             if ( target.compare(OSC_INFO) == 0 )
             {
                 if ( attribute.compare(OSC_INFO_NOTIFY) == 0) {
-                    Log::Notify(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
+                    Log::Notify(CONTROL_OSC_MSG "Received '%s' from %s", FullMessage(m).c_str(), sender);
                 }
                 else if ( attribute.compare(OSC_INFO_LOG) == 0) {
-                    Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
+                    Log::Info(CONTROL_OSC_MSG "Received '%s' from %s", FullMessage(m).c_str(), sender);
                 }
             }
             // Output target: concerns attributes of the rendering output
@@ -103,8 +103,10 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             {
                 // Loop over selected sources
                 for (SourceList::iterator it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it) {
-                    // attributes operate on current source
-                    Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream());
+                    // apply attributes
+                    if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                        // and send back feedback if needed
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
             // Selected sources target: apply attribute to all sources of the selection
@@ -112,8 +114,10 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             {
                 // Loop over selected sources
                 for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                    // attributes operate on current source
-                    Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream());
+                    // apply attributes
+                    if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                        // and send back feedback if needed
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
             // Current source target: apply attribute to the current sources
@@ -147,41 +151,35 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // apply attributes to current source
                     if ( Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream()) )
                         // and send back feedback if needed
-                        Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
-
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
             // General case: try to identify the target
             else {
-                // remove osc separator from the target string
-                target.erase(0,1);
-
                 // try to find source by index
                 Source *s = nullptr;
                 int sourceid = -1;
-                if ( BaseToolkit::is_a_number(target, &sourceid) )
+                if ( BaseToolkit::is_a_number(target.substr(1), &sourceid) )
                     s = Mixer::manager().sourceAtIndex(sourceid);
 
                 // if failed, try to find source by name
                 if (s == nullptr)
-                    s = Mixer::manager().findSource(target);
+                    s = Mixer::manager().findSource(target.substr(1));
 
                 // if a source with the given target name or index was found
                 if (s) {
                     // apply attributes to source
                     if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
                         // and send back feedback if needed
-                        Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
                 }
                 else
                     Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
             }
         }
-#ifdef CONTROL_DEBUG
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring malformed message '%s' from %s.", m.AddressPattern(), sender);
+            Log::Info(CONTROL_OSC_MSG "Unknown osc message '%s' sent by %s.", m.AddressPattern(), sender);
         }
-#endif
     }
     catch( osc::Exception& e ){
         // any parsing errors such as unexpected argument types, or
@@ -250,13 +248,11 @@ Control::~Control()
 
 std::string Control::translate (std::string addresspattern)
 {
-    std::string translation = addresspattern;
-
-    auto it_translation = translation_.find(addresspattern);
+    auto it_translation  = translation_.find(addresspattern);
     if ( it_translation != translation_.end() )
-        translation = it_translation->second;
-
-    return translation;
+        return it_translation->second;
+    else
+        return addresspattern;
 }
 
 void Control::loadOscConfig()
@@ -361,7 +357,6 @@ bool Control::init()
                                                                          Settings::application.control.osc_port_receive ));
         static char *addresseip = (char *)malloc(IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH);
         ip.AddressAndPortAsString(addresseip);
-
         Log::Info(CONTROL_OSC_MSG "Listening to UDP messages sent to %s", addresseip);
     }
     catch (const std::runtime_error &e) {
@@ -507,6 +502,12 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             target->call( new RePlay() );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
+        else if ( attribute.compare(OSC_SOURCE_LOCK) == 0) {
+            float x = 1.f;
+            arguments >> x >> osc::EndMessage;
+            target->call( new SetLock(x > 0.5f ? true : false) );
+        }
+        /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
@@ -564,6 +565,10 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
 #endif
 
+        // overwrite value if source locked
+        if (target->locked())
+            send_feedback = true;
+
     }
     catch (osc::MissingArgumentException &e) {
         Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
@@ -583,11 +588,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
 bool Control::receiveSessionAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
-    bool need_feedback = false;
+    bool send_feedback = false;
 
     try {
         if ( attribute.compare(OSC_SYNC) == 0) {
-            need_feedback = true;
+            send_feedback = true;
         }
         else if ( attribute.compare(OSC_SESSION_VERSION) == 0) {
             float v = 0.f;
@@ -600,11 +605,11 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
                 uint64_t snap = snapshots.back();
                 Action::manager().restore(snap);
             }
-            need_feedback = true;
+            send_feedback = true;
         }
 #ifdef CONTROL_DEBUG
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'output'", attribute.c_str());
+            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'session'", attribute.c_str());
         }
 #endif
 
@@ -619,24 +624,30 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
         Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'session'", attribute.c_str());
     }
 
-    return need_feedback;
+    return send_feedback;
 }
 
-void Control::sendCurrentSourceAttibutes(const IpEndpointName &remoteEndpoint)
+void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
 {
     // default values
     char name[21] = {"\0"};
+    float lock = 0.f;
     float play = 0.f;
     float depth = 0.f;
     float alpha = 0.f;
 
-    // fill values if the current source is valid
-    Source *s = Mixer::manager().currentSource();
-    if (s!=nullptr) {
-        strncpy(name, s->name().c_str(), 20);
-        play  = s->playing() ? 1.f : 0.f;
-        depth = s->depth();
-        alpha = s->alpha();
+    // get source or current source
+    Source *_s = s;
+    if ( target.compare(OSC_CURRENT) == 0 )
+        _s = Mixer::manager().currentSource();
+
+    // fill values if the source is valid
+    if (_s!=nullptr) {
+        strncpy(name, _s->name().c_str(), 20);
+        lock  = _s->locked() ? 1.f : 0.f;
+        play  = _s->playing() ? 1.f : 0.f;
+        depth = _s->depth();
+        alpha = _s->alpha();
     }
 
     // build socket to send message to indicated endpoint
@@ -651,13 +662,20 @@ void Control::sendCurrentSourceAttibutes(const IpEndpointName &remoteEndpoint)
     p << osc::BeginBundle();
 
     /// name
-    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_NAME ) << name << osc::EndMessage;
+    std::string address = std::string(OSC_PREFIX) + target + OSC_SOURCE_NAME;
+    p << osc::BeginMessage( address.c_str() ) << name << osc::EndMessage;
     /// Play status
-    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_PLAY ) << play << osc::EndMessage;
+    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_LOCK;
+    p << osc::BeginMessage( address.c_str() ) << lock << osc::EndMessage;
+    /// Play status
+    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_PLAY;
+    p << osc::BeginMessage( address.c_str() ) << play << osc::EndMessage;
     /// Depth
-    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_DEPTH ) << depth << osc::EndMessage;
+    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_DEPTH;
+    p << osc::BeginMessage( address.c_str() ) << depth << osc::EndMessage;
     /// Alpha
-    p << osc::BeginMessage( OSC_PREFIX OSC_CURRENT OSC_SOURCE_ALPHA ) << alpha << osc::EndMessage;
+    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_ALPHA;
+    p << osc::BeginMessage( address.c_str() ) << alpha << osc::EndMessage;
 
     // send bundle
     p << osc::EndBundle;
@@ -709,7 +727,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     socket.Send( p.Data(), p.Size() );
 
     // send status of current source
-    sendCurrentSourceAttibutes(remoteEndpoint);
+    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
 }
 
 

@@ -26,6 +26,7 @@
 #define OSC_PREVIOUS           "/previous"
 
 #define OSC_SOURCE_NAME        "/name"
+#define OSC_SOURCE_LOCK        "/lock"
 #define OSC_SOURCE_PLAY        "/play"
 #define OSC_SOURCE_PAUSE       "/pause"
 #define OSC_SOURCE_REPLAY      "/replay"
@@ -84,7 +85,7 @@ protected:
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
 
-    void sendCurrentSourceAttibutes(const IpEndpointName& remoteEndpoint);
+    void sendSourceAttibutes(const IpEndpointName& remoteEndpoint, std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint, osc::ReceivedMessageArgumentStream arguments);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
 

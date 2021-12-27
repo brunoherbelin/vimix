@@ -12,6 +12,7 @@ public:
     typedef  enum {
         CALLBACK_GENERIC = 0,
         CALLBACK_ALPHA,
+        CALLBACK_LOCK,
         CALLBACK_LOOM,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
@@ -69,6 +70,16 @@ public:
     Loom(float da, float duration = 0.f);
     void update(Source *s, float) override;
     CallbackType type () override { return CALLBACK_LOOM; }
+};
+
+class SetLock : public SourceCallback
+{
+    bool lock_;
+
+public:
+    SetLock(bool on);
+    void update(Source *s, float) override;
+    CallbackType type () override { return CALLBACK_LOCK; }
 };
 
 class SetDepth : public SourceCallback
