@@ -393,7 +393,7 @@ bool Session::empty() const
 
 SourceList::iterator Session::at(int index)
 {
-    if (index<0)
+    if ( index < 0 || index > (int) sources_.size())
         return sources_.end();
 
     int i = 0;

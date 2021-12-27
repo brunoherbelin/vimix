@@ -96,8 +96,8 @@ private:
     UdpListeningReceiveSocket *receiver_;
 
     std::map<std::string, std::string> translation_;
-    bool configOscLoad();
-    void configOscReset();
+    void loadOscConfig();
+    void resetOscConfig();
 
 };
 

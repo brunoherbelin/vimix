@@ -83,7 +83,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Output target: concerns attributes of the rendering output
             else if ( target.compare(OSC_OUTPUT) == 0 )
             {
-                if ( attribute.compare(OSC_SYNC) == 0 || Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream())) {
+                if ( Control::manager().receiveOutputAttribute(attribute, m.ArgumentStream())) {
                     // send the global status
                     Control::manager().sendOutputStatus(remoteEndpoint);
                 }
@@ -91,7 +91,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Session target: concerns attributes of the session
             else if ( target.compare(OSC_SESSION) == 0 )
             {
-                if ( attribute.compare(OSC_SYNC) == 0 || Control::manager().receiveSessionAttribute(attribute, m.ArgumentStream()) ) {
+                if ( Control::manager().receiveSessionAttribute(attribute, m.ArgumentStream()) ) {
                     // send the global status
                     Control::manager().sendOutputStatus(remoteEndpoint);
                     // send the status of all sources
@@ -144,7 +144,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 }
                 // all other attributes operate on current source
                 else {
-                    // apply attributes
+                    // apply attributes to current source
                     if ( Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream()) )
                         // and send back feedback if needed
                         Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
@@ -153,17 +153,26 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             }
             // General case: try to identify the target
             else {
-                // remove osc separator
+                // remove osc separator from the target string
                 target.erase(0,1);
-                // try to find source by name
-                Source *s = Mixer::manager().findSource(target);
-                // if failed, try to find source by index
+
+                // try to find source by index
+                Source *s = nullptr;
                 int sourceid = -1;
-                if (s == nullptr && BaseToolkit::is_a_number(target, &sourceid) )
+                if ( BaseToolkit::is_a_number(target, &sourceid) )
                     s = Mixer::manager().sourceAtIndex(sourceid);
-                // if a source with the given target nameor index was found
-                if (s)
-                    Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream());
+
+                // if failed, try to find source by name
+                if (s == nullptr)
+                    s = Mixer::manager().findSource(target);
+
+                // if a source with the given target name or index was found
+                if (s) {
+                    // apply attributes to source
+                    if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                        // and send back feedback if needed
+                        Control::manager().sendCurrentSourceAttibutes(remoteEndpoint);
+                }
                 else
                     Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
             }
@@ -250,7 +259,7 @@ std::string Control::translate (std::string addresspattern)
     return translation;
 }
 
-bool Control::configOscLoad()
+void Control::loadOscConfig()
 {
     // reset translations
     translation_.clear();
@@ -259,55 +268,69 @@ bool Control::configOscLoad()
     tinyxml2::XMLDocument xmlDoc;
     tinyxml2::XMLError eResult = xmlDoc.LoadFile(Settings::application.control.osc_filename.c_str());
 
-    // found the file & managed to open it
-    if (eResult == tinyxml2::XML_SUCCESS) {
+    // the only reason to return false is if the file does not exist or is empty
+    if (eResult == tinyxml2::XML_ERROR_FILE_NOT_FOUND
+      | eResult == tinyxml2::XML_ERROR_FILE_COULD_NOT_BE_OPENED
+      | eResult == tinyxml2::XML_ERROR_FILE_READ_ERROR
+      | eResult == tinyxml2::XML_ERROR_EMPTY_DOCUMENT )
+        resetOscConfig();
+
+    // found the file, could open and read it
+    else if (eResult != tinyxml2::XML_SUCCESS)
+        Log::Warning(CONTROL_OSC_MSG "Error while parsing Translator: %s", xmlDoc.ErrorIDToName(eResult));
+
+    // no XML parsing error
+    else {
         // parse all entries 'osc'
         tinyxml2::XMLElement* osc = xmlDoc.FirstChildElement("osc");
         for( ; osc ; osc=osc->NextSiblingElement())  {
             // get the 'from' entry
             tinyxml2::XMLElement* from = osc->FirstChildElement("from");
-            const char *str_from = from->GetText();
-            // get the 'to' entry
-            tinyxml2::XMLElement* to = osc->FirstChildElement("to");
-            const char *str_to = to->GetText();
-            // if could get both, add to translator
-            if (str_from && str_to)
-                translation_[str_from] = str_to;
+            if (from) {
+                const char *str_from = from->GetText();
+                if (str_from) {
+                    // get the 'to' entry
+                    tinyxml2::XMLElement* to = osc->FirstChildElement("to");
+                    if (to) {
+                        const char *str_to = to->GetText();
+                        // if could get both; add to translator
+                        if (str_to)
+                            translation_[str_from] = str_to;
+                    }
+                }
+            }
         }
-        return true;
     }
-    else
-        return false;
+
+    Log::Info(CONTROL_OSC_MSG "Loaded %d translation%s.", translation_.size(), translation_.size()>1?"s":"");
 }
 
-void Control::configOscReset()
+void Control::resetOscConfig()
 {
-    // create and save a new configOscFilename_
+    // generate a template xml translation dictionnary
     tinyxml2::XMLDocument xmlDoc;
     tinyxml2::XMLDeclaration *pDec = xmlDoc.NewDeclaration();
     xmlDoc.InsertFirstChild(pDec);
-    tinyxml2::XMLComment *pComment = xmlDoc.NewComment("Complete the OSC message translator by adding as many <osc> blocs as you want.\n"
-                                                       "Each <osc> should contain one <from> osc address to translate into a <to> osc address.");
+    tinyxml2::XMLComment *pComment = xmlDoc.NewComment("The OSC translator converts OSC address patterns into other ones.\n"
+                                                       "Complete the dictionnary by adding as many <osc> translations as you want.\n"
+                                                       "Each <osc> should contain a <from> pattern to translate into a <to> pattern.\n"
+                                                       "More at https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API.");
     xmlDoc.InsertEndChild(pComment);
-
-    tinyxml2::XMLElement *osc = xmlDoc.NewElement("osc");
-
     tinyxml2::XMLElement *from = xmlDoc.NewElement( "from" );
-    tinyxml2::XMLText *text = xmlDoc.NewText("/example/osc/message");
-    from->InsertEndChild(text);
-    osc->InsertEndChild(from);
-
+    from->InsertFirstChild( xmlDoc.NewText("/example/osc/message") );
     tinyxml2::XMLElement *to = xmlDoc.NewElement( "to" );
-    text = xmlDoc.NewText("/vimix/log/info");
-    to->InsertEndChild(text);
+    to->InsertFirstChild( xmlDoc.NewText("/vimix/info/log") );
+    tinyxml2::XMLElement *osc = xmlDoc.NewElement("osc");
+    osc->InsertEndChild(from);
     osc->InsertEndChild(to);
-
     xmlDoc.InsertEndChild(osc);
+
+    // save xml in osc config file
     xmlDoc.SaveFile(Settings::application.control.osc_filename.c_str());
 
     // reset and fill translation with default example
     translation_.clear();
-    translation_["/example/osc/message"] = "/vimix/log/info";
+    translation_["/example/osc/message"] = "/vimix/info/log";
 }
 
 bool Control::init()
@@ -320,10 +343,7 @@ bool Control::init()
     //
     // load OSC Translator
     //
-    if (configOscLoad())
-        Log::Info(CONTROL_OSC_MSG "Loaded %d translations.", translation_.size());
-    else
-        configOscReset();
+    loadOscConfig();
 
     //
     // launch OSC listener
@@ -339,10 +359,10 @@ bool Control::init()
         // inform user
         IpEndpointName ip = receiver_->LocalEndpointFor( IpEndpointName( NetworkToolkit::hostname().c_str(),
                                                                          Settings::application.control.osc_port_receive ));
-        char *addresseip = (char *)malloc(IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH);
+        static char *addresseip = (char *)malloc(IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH);
         ip.AddressAndPortAsString(addresseip);
 
-        Log::Info(CONTROL_OSC_MSG "Listening to UDP on %s", addresseip);
+        Log::Info(CONTROL_OSC_MSG "Listening to UDP messages sent to %s", addresseip);
     }
     catch (const std::runtime_error &e) {
         // arg, the receiver could not be initialized
@@ -374,7 +394,7 @@ void Control::terminate()
         std::unique_lock<std::mutex> lck(mtx);
         // if waited more than 2 seconds, its dead :(
         if ( receiver_end_.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
-            Log::Warning(CONTROL_OSC_MSG "Failed to terminate.");
+            Log::Warning(CONTROL_OSC_MSG "Failed to terminate; try again.");
 
         // delete receiver and ready to initialize
         delete receiver_;
@@ -389,8 +409,11 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
     bool need_feedback = false;
 
     try {
+        if ( attribute.compare(OSC_SYNC) == 0) {
+            need_feedback = true;
+        }
         /// e.g. '/vimix/output/enable' or '/vimix/output/enable 1.0' or '/vimix/output/enable 0.0'
-        if ( attribute.compare(OSC_OUTPUT_ENABLE) == 0) {
+        else if ( attribute.compare(OSC_OUTPUT_ENABLE) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
@@ -563,7 +586,10 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
     bool need_feedback = false;
 
     try {
-        if ( attribute.compare(OSC_SESSION_VERSION) == 0) {
+        if ( attribute.compare(OSC_SYNC) == 0) {
+            need_feedback = true;
+        }
+        else if ( attribute.compare(OSC_SESSION_VERSION) == 0) {
             float v = 0.f;
             arguments >> v >> osc::EndMessage;
             size_t id = (int) ceil(v);
@@ -584,13 +610,13 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
 
     }
     catch (osc::MissingArgumentException &e) {
-        Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target 'output'", attribute.c_str());
+        Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target 'session'", attribute.c_str());
     }
     catch (osc::ExcessArgumentException &e) {
-        Log::Info(CONTROL_OSC_MSG "Too many arguments for attribute '%s' for target 'output'", attribute.c_str());
+        Log::Info(CONTROL_OSC_MSG "Too many arguments for attribute '%s' for target 'session'", attribute.c_str());
     }
     catch (osc::WrongArgumentTypeException &e) {
-        Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'output'", attribute.c_str());
+        Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target 'session'", attribute.c_str());
     }
 
     return need_feedback;
