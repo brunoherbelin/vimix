@@ -1,6 +1,9 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <map>
+#include <string>
+#include <condition_variable>
 #include "NetworkToolkit.h"
 
 #define OSC_SYNC               "/sync"
@@ -61,7 +64,7 @@ public:
     bool init();
     void terminate();
 
-    // void setOscPort(int P);
+    std::string translate (std::string addresspattern);
 
 protected:
 
@@ -89,7 +92,12 @@ private:
 
     static void listen();
     RequestListener listener_;
+    std::condition_variable receiver_end_;
     UdpListeningReceiveSocket *receiver_;
+
+    std::map<std::string, std::string> translation_;
+    bool configOscLoad();
+    void configOscReset();
 
 };
 

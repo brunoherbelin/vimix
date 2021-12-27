@@ -97,10 +97,10 @@ void Loom::update(Source *s, float dt)
             initialized_ = true;
         }
 
-        // calculate amplitude of movement
+        // time passed
         progress_ += dt;
 
-        // perform movement
+        // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
         pos_ += step_ * ( speed_ * dt * 0.001f);
 
         // apply alpha if valid in range [0 1]
@@ -108,7 +108,7 @@ void Loom::update(Source *s, float dt)
         if ( alpha > DELTA_ALPHA && alpha < 1.0 - DELTA_ALPHA )
             s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
 
-        // timeout
+        // time-out
         if ( progress_ > duration_ ) {
             // done
             finished_ = true;
@@ -135,14 +135,14 @@ void SetDepth::update(Source *s, float dt)
             initialized_ = true;
         }
 
-        // calculate amplitude of movement
+        // time passed
         progress_ += dt;
 
         // perform movement
         if ( ABS(duration_) > 0.f)
             s->group(View::LAYER)->translation_.z = start_ + (progress_/duration_) * (target_ - start_);
 
-        // end of movement
+        // time-out
         if ( progress_ > duration_ ) {
             // apply depth to target
             s->group(View::LAYER)->translation_.z = target_;
@@ -203,14 +203,14 @@ void Grab::update(Source *s, float dt)
             initialized_ = true;
         }
 
-        // calculate amplitude of movement
+        // time passed
         progress_ += dt;
 
-        // perform movement
+        // move target by speed vector * time (in second)
         glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
         s->group(View::GEOMETRY)->translation_ = glm::vec3(pos, s->group(View::GEOMETRY)->translation_.z);
 
-        // timeout
+        // time-out
         if ( progress_ > duration_ ) {
             // done
             finished_ = true;
@@ -237,14 +237,14 @@ void Resize::update(Source *s, float dt)
             initialized_ = true;
         }
 
-        // calculate amplitude of movement
+        // time passed
         progress_ += dt;
 
-        // perform movement
+        // move target by speed vector * time (in second)
         glm::vec2 scale = start_ + speed_ * ( dt * 0.001f);
         s->group(View::GEOMETRY)->scale_ = glm::vec3(scale, s->group(View::GEOMETRY)->scale_.z);
 
-        // timeout
+        // time-out
         if ( progress_ > duration_ ) {
             // done
             finished_ = true;

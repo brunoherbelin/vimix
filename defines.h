@@ -107,5 +107,6 @@
 
 #define OSC_PORT_RECV_DEFAULT 7000
 #define OSC_PORT_SEND_DEFAULT 3000
+#define OSC_CONFIG_FILE "osc.xml"
 
 #endif // VMIX_DEFINES_H

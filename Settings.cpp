@@ -258,7 +258,13 @@ void Settings::Save(uint64_t runtime)
     timerConfNode->SetAttribute("link_quantum", application.timer.link_quantum);
     timerConfNode->SetAttribute("link_start_stop_sync", application.timer.link_start_stop_sync);
     timerConfNode->SetAttribute("stopwatch_duration", application.timer.stopwatch_duration);
-    pRoot->InsertEndChild(timerConfNode);
+    pRoot->InsertEndChild(timerConfNode);    
+
+    // Controller
+    XMLElement *controlConfNode = xmlDoc.NewElement( "Control" );
+    controlConfNode->SetAttribute("osc_port_receive", application.control.osc_port_receive);
+    controlConfNode->SetAttribute("osc_port_send", application.control.osc_port_send);
+
 
     // First save : create filename
     if (settingsFilename.empty())
@@ -302,9 +308,12 @@ void Settings::Load()
     // impose C locale for all app
     setlocale(LC_ALL, "C");
 
+    // set filenames from settings path
+    application.control.osc_filename = SystemToolkit::full_filename(SystemToolkit::settings_path(), OSC_CONFIG_FILE);
+    settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
+
+    // try to load settings file
     XMLDocument xmlDoc;
-    if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
@@ -314,8 +323,10 @@ void Settings::Load()
     else if (XMLResultError(eResult))
         return;
 
+    // first element should be called by the application name
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
-    if (pRoot == nullptr) return;
+    if (pRoot == nullptr)
+        return;
 
     // cancel on different root name
     if (application.name.compare( string( pRoot->Value() ) ) != 0 )
@@ -533,6 +544,13 @@ void Settings::Load()
         timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
         timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
         timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
+    }
+
+    // bloc Controller
+    XMLElement *controlconfnode = pRoot->FirstChildElement("Control");
+    if (controlconfnode != nullptr) {
+        controlconfnode->QueryIntAttribute("osc_port_receive", &application.control.osc_port_receive);
+        controlconfnode->QueryIntAttribute("osc_port_send", &application.control.osc_port_send);
     }
 
 }

@@ -193,6 +193,7 @@ struct ControllerConfig
 {
     int osc_port_receive;
     int osc_port_send;
+    std::string osc_filename;
 
     ControllerConfig() {
         osc_port_receive = OSC_PORT_RECV_DEFAULT;

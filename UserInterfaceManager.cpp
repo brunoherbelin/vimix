@@ -62,6 +62,7 @@ using namespace std;
 #include "ImGuiToolkit.h"
 #include "ImGuiVisitor.h"
 #include "RenderingManager.h"
+#include "ControlManager.h"
 #include "Connection.h"
 #include "ActionManager.h"
 #include "Resource.h"
@@ -5409,7 +5410,7 @@ void Navigator::RenderMainPannelSettings()
         // Recording preferences
         //
         ImGuiToolkit::Spacing();
-        ImGui::Text("Recording");
+        ImGui::Text("Record");
 
         // select CODEC and FPS
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
@@ -5436,22 +5437,62 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
-        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder skips frames;\n"
-                                 ICON_FA_CARET_RIGHT " Clock: variable framerate, correct duration.\n"
-                                 ICON_FA_CARET_RIGHT " Framerate: correct framerate,  shorter duration.");
+        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder has to skip frames;\n"
+                                 ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
+                                 ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.");
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Clock\0Framerate\0");
+        ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+
+        //
+        // OSC preferences
+        //
+        ImGuiToolkit::Spacing();
+        ImGui::Text("OSC");
+
+        char msg[256];
+        sprintf(msg, "You can send OSC messages via UDP to the IP address %s", NetworkToolkit::host_ips()[1].c_str());
+        ImGuiToolkit::HelpMarker(msg, ICON_FA_INFO_CIRCLE);
+        ImGui::SameLine(0);
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        char bufreceive[7] = "";
+        sprintf(bufreceive, "%d", Settings::application.control.osc_port_receive);
+        ImGui::InputTextWithHint("Port in", "UDP Port to receive", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive))
+                Control::manager().init();
+        }
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        char bufsend[7] = "";
+        sprintf(bufsend, "%d", Settings::application.control.osc_port_send);
+        ImGui::InputTextWithHint("Port out", "UDP Port to send", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send))
+                Control::manager().init();
+        }
+
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
+        ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
+        ImGui::SameLine(0, 6);
+        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
+            Control::manager().init();
+        ImGui::SameLine();
+        ImGui::Text("Translator");
 
         //
         // System preferences
         //
         ImGuiToolkit::Spacing();
+//        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
+//                                 "you can try to disable some of the OpenGL optimizations below.");
+//        ImGui::SameLine();
         ImGui::Text("System");
-        ImGui::SameLine( ImGui::GetContentRegionAvailWidth() IMGUI_RIGHT_ALIGN * 0.8);
-        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
-                                 "you can try to disable some of the OpenGL optimizations below.");
 
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
@@ -5463,10 +5504,10 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
         // hardware support deserves more explanation
-        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware accelerated "
+        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware-accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
         ImGui::SameLine(0);
-        change |= ImGuiToolkit::ButtonSwitch( "Hardware video de/encoding", &gpu);
+        change |= ImGuiToolkit::ButtonSwitch( "Hardware video en/decoding", &gpu);
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||

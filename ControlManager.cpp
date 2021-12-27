@@ -24,12 +24,15 @@
 
 #include "osc/OscOutboundPacketStream.h"
 
+#include "defines.h"
 #include "Log.h"
 #include "Settings.h"
 #include "BaseToolkit.h"
 #include "Mixer.h"
 #include "Source.h"
 #include "ActionManager.h"
+#include "SystemToolkit.h"
+#include "tinyxml2Toolkit.h"
 
 #include "ControlManager.h"
 
@@ -50,10 +53,11 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 #ifdef CONTROL_DEBUG
         Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
 #endif
-        // TODO Preprocessing with Translator
+        // Preprocessing with Translator
+        std::string address_pattern = Control::manager().translate(m.AddressPattern());
 
         // structured OSC address
-        std::list<std::string> address = BaseToolkit::splitted(m.AddressPattern(), OSC_SEPARATOR);
+        std::list<std::string> address = BaseToolkit::splitted(address_pattern, OSC_SEPARATOR);
         //
         // A wellformed OSC address is in the form '/vimix/target/attribute {arguments}'
         // First test: should have 3 elements and start with APP_NAME ('vimix')
@@ -224,15 +228,6 @@ std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m
     return message.str();
 }
 
-void Control::listen()
-{
-#ifdef CONTROL_DEBUG
-    Log::Info(CONTROL_OSC_MSG "Accepting messages on port %d", Settings::application.control.osc_port_receive);
-#endif
-    if (Control::manager().receiver_)
-        Control::manager().receiver_->Run();
-}
-
 
 Control::Control() : receiver_(nullptr)
 {
@@ -240,37 +235,151 @@ Control::Control() : receiver_(nullptr)
 
 Control::~Control()
 {
-    if (receiver_!=nullptr) {
-        receiver_->Break();
-        delete receiver_;
-    }
+    terminate();
+}
 
+
+std::string Control::translate (std::string addresspattern)
+{
+    std::string translation = addresspattern;
+
+    auto it_translation = translation_.find(addresspattern);
+    if ( it_translation != translation_.end() )
+        translation = it_translation->second;
+
+    return translation;
+}
+
+bool Control::configOscLoad()
+{
+    // reset translations
+    translation_.clear();
+
+    // load osc config file
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError eResult = xmlDoc.LoadFile(Settings::application.control.osc_filename.c_str());
+
+    // found the file & managed to open it
+    if (eResult == tinyxml2::XML_SUCCESS) {
+        // parse all entries 'osc'
+        tinyxml2::XMLElement* osc = xmlDoc.FirstChildElement("osc");
+        for( ; osc ; osc=osc->NextSiblingElement())  {
+            // get the 'from' entry
+            tinyxml2::XMLElement* from = osc->FirstChildElement("from");
+            const char *str_from = from->GetText();
+            // get the 'to' entry
+            tinyxml2::XMLElement* to = osc->FirstChildElement("to");
+            const char *str_to = to->GetText();
+            // if could get both, add to translator
+            if (str_from && str_to)
+                translation_[str_from] = str_to;
+        }
+        return true;
+    }
+    else
+        return false;
+}
+
+void Control::configOscReset()
+{
+    // create and save a new configOscFilename_
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLDeclaration *pDec = xmlDoc.NewDeclaration();
+    xmlDoc.InsertFirstChild(pDec);
+    tinyxml2::XMLComment *pComment = xmlDoc.NewComment("Complete the OSC message translator by adding as many <osc> blocs as you want.\n"
+                                                       "Each <osc> should contain one <from> osc address to translate into a <to> osc address.");
+    xmlDoc.InsertEndChild(pComment);
+
+    tinyxml2::XMLElement *osc = xmlDoc.NewElement("osc");
+
+    tinyxml2::XMLElement *from = xmlDoc.NewElement( "from" );
+    tinyxml2::XMLText *text = xmlDoc.NewText("/example/osc/message");
+    from->InsertEndChild(text);
+    osc->InsertEndChild(from);
+
+    tinyxml2::XMLElement *to = xmlDoc.NewElement( "to" );
+    text = xmlDoc.NewText("/vimix/log/info");
+    to->InsertEndChild(text);
+    osc->InsertEndChild(to);
+
+    xmlDoc.InsertEndChild(osc);
+    xmlDoc.SaveFile(Settings::application.control.osc_filename.c_str());
+
+    // reset and fill translation with default example
+    translation_.clear();
+    translation_["/example/osc/message"] = "/vimix/log/info";
 }
 
 bool Control::init()
 {
+    //
+    // terminate before init (allows calling init() multiple times)
+    //
+    terminate();
+
+    //
+    // load OSC Translator
+    //
+    if (configOscLoad())
+        Log::Info(CONTROL_OSC_MSG "Loaded %d translations.", translation_.size());
+    else
+        configOscReset();
+
+    //
+    // launch OSC listener
+    //
     try {
         // try to create listenning socket
         // through exception runtime if fails
         receiver_ = new UdpListeningReceiveSocket( IpEndpointName( IpEndpointName::ANY_ADDRESS,
                                                                    Settings::application.control.osc_port_receive ), &listener_ );
-    }
-    catch (const std::runtime_error&) {
-        // arg, the receiver could not be initialized
-        // because the port was not available
-        receiver_ = nullptr;
-    }
+        // listen for answers in a separate thread
+        std::thread(listen).detach();
 
-    // listen for answers
-    std::thread(listen).detach();
+        // inform user
+        IpEndpointName ip = receiver_->LocalEndpointFor( IpEndpointName( NetworkToolkit::hostname().c_str(),
+                                                                         Settings::application.control.osc_port_receive ));
+        char *addresseip = (char *)malloc(IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH);
+        ip.AddressAndPortAsString(addresseip);
+
+        Log::Info(CONTROL_OSC_MSG "Listening to UDP on %s", addresseip);
+    }
+    catch (const std::runtime_error &e) {
+        // arg, the receiver could not be initialized
+        // (often because the port was not available)
+        receiver_ = nullptr;
+        Log::Warning(CONTROL_OSC_MSG "Failed to init listener on port %d; %s", Settings::application.control.osc_port_receive, e.what());
+    }
 
     return receiver_ != nullptr;
 }
 
+void Control::listen()
+{
+    if (Control::manager().receiver_)
+        Control::manager().receiver_->Run();
+
+    Control::manager().receiver_end_.notify_all();
+}
+
 void Control::terminate()
 {
-    if (receiver_!=nullptr)
+    if ( receiver_ != nullptr ) {
+
+        // request termination of receiver
         receiver_->AsynchronousBreak();
+
+        // wait for the receiver_end_ notification
+        std::mutex mtx;
+        std::unique_lock<std::mutex> lck(mtx);
+        // if waited more than 2 seconds, its dead :(
+        if ( receiver_end_.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
+            Log::Warning(CONTROL_OSC_MSG "Failed to terminate.");
+
+        // delete receiver and ready to initialize
+        delete receiver_;
+        receiver_ = nullptr;
+    }
 }
 
 
