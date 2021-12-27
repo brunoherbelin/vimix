@@ -28,6 +28,10 @@ Download package from [Github Releases](https://github.com/brunoherbelin/vimix/r
 
 *Please consider helping by compiling & providing packages for Windows.*
 
+## Control vimix with OSC
+
+You can control remotely vimix with [OSC](https://en.wikipedia.org/wiki/Open_Sound_Control), using [TouchOSC Mk1](https://github.com/brunoherbelin/vimix/wiki/TouchOSC-companion)
+or using the [vimix OSC API](https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API) from your other OSC applications.
 
 ## About
 
