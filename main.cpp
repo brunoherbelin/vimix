@@ -106,8 +106,7 @@ int main(int argc, char *argv[])
     ///
     /// CONTROLLER INIT
     ///
-    if ( !Control::manager().init() )
-        return 1;
+    Control::manager().init();
 
     ///
     /// METRONOME INIT
