@@ -261,22 +261,34 @@ void NetworkStream::update()
             // general case : create pipeline and open
             if (!failed_) {
                 // build the pipeline depending on stream info
-                std::ostringstream pipeline;
-                // get generic pipeline string
                 std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
-                // find placeholder for PORT
-                int xxxx = pipelinestring.find("XXXX");
-                // keep beginning of pipeline
-                pipeline << pipelinestring.substr(0, xxxx);
-                // Replace 'XXXX' by info on port config
-                pipeline << parameter;
-                // keep ending of pipeline
-                pipeline << pipelinestring.substr(xxxx + 4);
-                // add a videoconverter
-                pipeline << " ! videoconvert";
 
+                // find placeholder for PORT or SHH socket
+                size_t xxxx = pipelinestring.find("XXXX");
+                if (xxxx != std::string::npos)
+                    // Replace 'XXXX' by info on port config
+                    pipelinestring.replace(xxxx, 4, parameter);
+
+                // find placeholder for WIDTH
+                size_t wwww = pipelinestring.find("WWWW");
+                if (wwww != std::string::npos)
+                    // Replace 'WWWW' by width
+                    pipelinestring.replace(wwww, 4, std::to_string(config_.width) );
+
+                // find placeholder for HEIGHT
+                size_t hhhh = pipelinestring.find("HHHH");
+                if (hhhh != std::string::npos)
+                    // Replace 'WWWW' by height
+                    pipelinestring.replace(hhhh, 4, std::to_string(config_.height) );
+
+                // add a videoconverter
+                pipelinestring.append(" ! videoconvert ");
+
+#ifdef NETWORK_DEBUG
+            Log::Info("Openning pipeline %s", pipelinestring.c_str());
+#endif
                 // open the pipeline with generic stream class
-                Stream::open(pipeline.str(), config_.width, config_.height);
+                Stream::open(pipelinestring, config_.width, config_.height);
             }
         }
         else {

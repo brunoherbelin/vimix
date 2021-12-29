@@ -23,11 +23,12 @@ namespace NetworkToolkit
 {
 
 typedef enum {
-    SHM_RAW = 0,
+    UDP_RAW = 0,
     UDP_JPEG,
     UDP_H264,
     TCP_JPEG,
     TCP_H264,
+    SHM_RAW,
     DEFAULT
 } Protocol;
 

@@ -1449,10 +1449,15 @@ void UserInterface::RenderPreview()
                 ImGui::PopStyleColor(1);
                 if (Settings::application.accept_connections)
                 {
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::Combo("Format", &Settings::application.stream_protocol, NetworkToolkit::protocol_name, 3);
+
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                     ImGui::InputText("My ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleColor(1);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {

@@ -267,14 +267,15 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     conf.width = FrameGrabbing::manager().width();
     conf.height = FrameGrabbing::manager().height();
 
-    // TEMP DISABLED : TODO Fix snap to allow system wide shared access
+    // set protocol according to settings
+    conf.protocol = NetworkToolkit::UDP_RAW;
+    if (Settings::application.stream_protocol >= 0 && Settings::application.stream_protocol < NetworkToolkit::DEFAULT)
+        conf.protocol = (NetworkToolkit::Protocol) Settings::application.stream_protocol;
 
-    // offer SHM if same IP that our host IP (i.e. on the same machine)
-    //    if( NetworkToolkit::is_host_ip(conf.client_address) )
-    //        conf.protocol = NetworkToolkit::SHM_RAW;
-    //    //  any other IP : offer network streaming
-    //    else
-        conf.protocol = NetworkToolkit::UDP_JPEG;
+// TODO : ideal would be Shared Memory, but does not work with linux snap package...
+//    // offer SHM stream if same IP that our host IP (i.e. on the same machine)
+//    if( conf.protocol == NetworkToolkit::UDP_RAW && NetworkToolkit::is_host_ip(conf.client_address) )
+//        conf.protocol = NetworkToolkit::SHM_RAW;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -330,7 +331,7 @@ std::string VideoStreamer::init(GstCaps *caps)
 
     // prevent eroneous protocol values
     if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
-        config_.protocol = NetworkToolkit::UDP_JPEG;
+        config_.protocol = NetworkToolkit::UDP_RAW;
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! ";
@@ -346,16 +347,16 @@ std::string VideoStreamer::init(GstCaps *caps)
     }
 
     // setup streaming sink
-    if (config_.protocol == NetworkToolkit::UDP_JPEG || config_.protocol == NetworkToolkit::UDP_H264) {
-        g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                      "host", config_.client_address.c_str(),
-                      "port", config_.port,  NULL);
-    }
-    else if (config_.protocol == NetworkToolkit::SHM_RAW) {
+    if (config_.protocol == NetworkToolkit::SHM_RAW) {
         std::string path = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
         path += std::to_string(config_.port);
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                       "socket-path", path.c_str(),  NULL);
+    }
+    else {
+        g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                      "host", config_.client_address.c_str(),
+                      "port", config_.port,  NULL);
     }
 
     // setup custom app source
