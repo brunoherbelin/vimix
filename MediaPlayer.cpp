@@ -282,8 +282,8 @@ void MediaPlayer::reopen()
     }
 }
 
-void MediaPlayer::execute_open() 
-{   
+void MediaPlayer::execute_open()
+{
     // Create gstreamer pipeline :
     //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to command line
@@ -341,7 +341,7 @@ void MediaPlayer::execute_open()
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
     gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
-    // GstCaps *caps = gst_static_caps_get (&frame_render_caps);    
+    // GstCaps *caps = gst_static_caps_get (&frame_render_caps);
     std::string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
             ",height=" + std::to_string(media_.height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
@@ -403,7 +403,7 @@ void MediaPlayer::execute_open()
     gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // capture bus signals to force a unique opengl context for all GST elements 
+    // capture bus signals to force a unique opengl context for all GST elements
     Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
 #endif
 
@@ -684,7 +684,7 @@ MediaPlayer::LoopMode MediaPlayer::loop() const
 {
     return loop_;
 }
-    
+
 void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
 {
     loop_ = mode;
@@ -1034,7 +1034,7 @@ void MediaPlayer::execute_loop_command()
 {
     if (loop_==LOOP_REWIND) {
         rewind();
-    } 
+    }
     else if (loop_==LOOP_BIDIRECTIONAL) {
         rate_ *= - 1.f;
         execute_seek_command();
@@ -1053,7 +1053,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     GstClockTime seek_pos = target;
 
     // no target given
-    if (target == GST_CLOCK_TIME_NONE) 
+    if (target == GST_CLOCK_TIME_NONE)
         // create seek event with current position (rate changed ?)
         seek_pos = position_;
     // target is given but useless
@@ -1106,12 +1106,12 @@ void MediaPlayer::setPlaySpeed(double s)
     if (media_.isimage)
         return;
 
-    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED] 
+    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED]
     rate_ = CLAMP(s, -MAX_PLAY_SPEED, MAX_PLAY_SPEED);
     // skip interval [-MIN_PLAY_SPEED MIN_PLAY_SPEED]
     if (ABS(rate_) < MIN_PLAY_SPEED)
         rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
-        
+
     // apply with seek
     execute_seek_command();
 }

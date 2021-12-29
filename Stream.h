@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <future>
+#include <condition_variable>
 
 // GStreamer
 #include <gst/pbutils/pbutils.h>
@@ -14,6 +15,23 @@
 class Visitor;
 
 #define N_FRAME 3
+
+struct StreamInfo {
+
+    guint width;
+    guint height;
+    std::condition_variable discovered;
+
+    StreamInfo() {
+        width = 640;
+        height = 480;
+    }
+
+    StreamInfo(const StreamInfo& b) {
+        width = b.width;
+        height = b.height;
+    }
+};
 
 class Stream {
 
@@ -33,7 +51,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, guint w = 1024, guint h = 576);
+    void open(const std::string &gstreamer_description, guint w = 0, guint h = 0);
     /**
      * Get description string
      * */
@@ -132,6 +150,7 @@ protected:
     guint height_;
     bool single_frame_;
     bool live_;
+    std::future<StreamInfo> discoverer_;
 
     // GST & Play status
     GstClockTime position_;

@@ -92,23 +92,107 @@ guint Stream::texture() const
     return textureindex_;
 }
 
+GstFlowReturn callback_stream_discoverer (GstAppSink *sink, gpointer p)
+{
+    GstFlowReturn ret = GST_FLOW_OK;
+
+    // blocking read pre-roll sample
+    GstSample *sample = gst_app_sink_pull_preroll(sink);
+    if (sample != NULL) {
+        // access info structure
+        StreamInfo *info = static_cast<StreamInfo *>(p);
+        // get caps of the sample
+        GstVideoInfo v_frame_video_info_;
+        GstCaps *caps = gst_sample_get_caps(sample);
+        if (gst_video_info_from_caps (&v_frame_video_info_, caps)) {
+            // fill the info
+            info->width = v_frame_video_info_.width;
+            info->height = v_frame_video_info_.height;
+            // release info to let StreamDiscoverer go forward
+            info->discovered.notify_all();
+        }
+        gst_caps_unref(caps);
+    }
+    else
+        ret = GST_FLOW_FLUSHING;
+
+    gst_sample_unref (sample);
+
+    return ret;
+}
+
+StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
+{
+    // the stream info to return
+    StreamInfo info;
+
+    // obvious fast answer: valid values are provided in argument
+    if (w > 0 && h > 0 ) {
+        info.width = w;
+        info.height = h;
+    }
+    // otherwise, run a test pipeline to discover the size of the stream
+    else {
+        // complete the pipeline description with an appsink (to add a callback)
+        std::string _description = description;
+        _description += " ! appsink name=sink";
+
+        // try to launch the pipeline
+        GError *error = NULL;
+        GstElement *_pipeline = gst_parse_launch (_description.c_str(), &error);
+        if (error == NULL) {
+
+            // some sanity config
+            gst_pipeline_set_auto_flush_bus( GST_PIPELINE(_pipeline), true);
+
+            // get the appsink
+            GstElement *sink = gst_bin_get_by_name (GST_BIN (_pipeline), "sink");
+            if (sink) {
+
+                // add a preroll callback
+                GstAppSinkCallbacks callbacks;
+                callbacks.new_preroll = callback_stream_discoverer;
+                gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, &info, NULL);
+
+                // start to play the pipeline
+                gst_element_set_state (_pipeline, GST_STATE_PLAYING);
+
+                // wait for the callback_stream_discoverer to return
+                std::mutex mtx;
+                std::unique_lock<std::mutex> lck(mtx);
+                // if waited more than 2 seconds, its dead :(
+                if ( info.discovered.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
+                    Log::Warning("Failed to discover stream size.");
+
+                // stop and delete pipeline
+                GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);
+                if (ret == GST_STATE_CHANGE_ASYNC) {
+                    GstState state;
+                    gst_element_get_state (_pipeline, &state, NULL, GST_CLOCK_TIME_NONE);
+                }
+                gst_object_unref (_pipeline);
+            }
+        }
+    }
+    // at this point, the info should be filled
+    return info;
+}
 
 void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
-    if (w != width_ || h != height_ )
+    if ( w != width_ || h != height_ )
         textureinitialized_ = false;
 
     // set gstreamer pipeline source
     description_ = gstreamer_description;
-    width_ = w;
-    height_ = h;
 
     // close before re-openning
     if (isOpen())
         close();
 
-    // open the stream
-    execute_open();
+    // open when ready
+    discoverer_ = std::async(StreamDiscoverer, description_, w, h);
+
 }
 
 
@@ -233,8 +317,13 @@ void Stream::Frame::unmap()
 void Stream::close()
 {
     // not openned?
-    if (!opened_)
+    if (!opened_) {
+        // wait for loading to finish
+        if (discoverer_.valid())
+            discoverer_.wait();
+        // nothing else to change
         return;
+    }
 
     // un-ready
     opened_ = false;
@@ -523,6 +612,17 @@ void Stream::update()
 
     // not ready yet
     if (!opened_){
+        if (discoverer_.valid()) {
+            // try to get info from discoverer
+            if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+            {
+                // got all info needed for openning !
+                StreamInfo i(discoverer_.get());
+                width_ = i.width;
+                height_ = i.height;
+                execute_open();
+            }
+        }
         // wait next frame to display
         return;
     }

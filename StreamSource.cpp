@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <string>
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -45,8 +46,11 @@ void GenericStreamSource::setDescription(const std::string &desc)
 {
     Log::Notify("Creating Source with Stream description '%s'", desc.c_str());
 
+    std::string pipeline = desc;
+    pipeline.append(" ! queue max-size-buffers=10 ! videoconvert");
+
     // open gstreamer
-    stream_->open(desc);
+    stream_->open(pipeline);
     stream_->play(true);
 
     // will be ready after init and one frame rendered

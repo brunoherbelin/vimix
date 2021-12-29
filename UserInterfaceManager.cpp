@@ -5819,13 +5819,24 @@ void ShowSandbox(bool* p_open)
 
     ImGui::Separator();
 
-    static char buf1[1280] = "videotestsrc pattern=smpte";
+    static Source *tmp = nullptr;
+//        static char buf1[1280] = "videotestsrc pattern=smpte";
+//        static char buf1[1280] = "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264";
+    static char buf1[1280] = "srtsrc uri=\"srt://192.168.0.37:5000?mode=listener\" ! decodebin ";
     ImGui::InputText("gstreamer pipeline", buf1, 1280);
     if (ImGui::Button("Create Generic Stream Source") )
     {
-        Mixer::manager().addSource(Mixer::manager().createSourceStream(buf1));
+        tmp = Mixer::manager().createSourceStream(buf1);
+        Mixer::manager().addSource( tmp );
+    }
+    ImGui::SameLine();
+    if ( tmp && ImGui::Button("delete") )
+    {
+        Mixer::manager().deleteSource( tmp );
+        tmp = nullptr;
     }
 
+    ImGui::Separator();
     static char str[128] = "";
     ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
     if ( ImGui::Button("Execute") )
