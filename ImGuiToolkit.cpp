@@ -1721,3 +1721,15 @@ bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const
 }
 
 
+void ImGuiToolkit::ShowTextMultiline(const char* label, const std::string &str, float width)
+{
+    size_t numlines = std::count(str.begin(), str.end(), '\n') + 1;
+
+    ImGuiContext& g = *GImGui;
+    ImVec2 size(width, numlines * (g.FontSize + g.Style.ItemSpacing.y) + g.Style.FramePadding.y * 2.0f);
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, g.Style.Colors[ImGuiCol_FrameBgHovered]);
+    ImGui::InputTextMultiline(label, (char*)str.c_str(), str.capacity() + 1, size, ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor();
+
+}
