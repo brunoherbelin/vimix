@@ -15,6 +15,7 @@
 class Visitor;
 
 #define N_FRAME 3
+#define TIMEOUT 4
 
 struct StreamInfo {
 
@@ -22,15 +23,17 @@ struct StreamInfo {
     guint height;
     std::condition_variable discovered;
 
-    StreamInfo() {
-        width = 640;
-        height = 480;
+    StreamInfo(guint w=0, guint h=0) {
+        width = w;
+        height = h;
     }
 
     StreamInfo(const StreamInfo& b) {
         width = b.width;
         height = b.height;
     }
+
+    inline bool valid() { return width > 0 && height > 0; }
 };
 
 class Stream {
@@ -207,9 +210,11 @@ protected:
 
     // gst pipeline control
     virtual void execute_open();
+    virtual void fail(const std::string &message);
+    static void timeout_open(Stream *str);
 
     // gst frame filling
-    bool textureinitialized_;
+    std::atomic<bool> textureinitialized_;
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);

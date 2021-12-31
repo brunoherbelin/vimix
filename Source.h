@@ -23,7 +23,8 @@
 #define ICON_SOURCE_GROUP 10, 6
 #define ICON_SOURCE_RENDER 0, 2
 #define ICON_SOURCE_CLONE 9, 2
-#define ICON_SOURCE 12, 11
+#define ICON_SOURCE_GSTREAMER 16, 16
+#define ICON_SOURCE 13, 11
 
 class SourceCallback;
 class ImageShader;

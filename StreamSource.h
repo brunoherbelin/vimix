@@ -59,6 +59,9 @@ protected:
  */
 class GenericStreamSource : public StreamSource
 {
+    std::string gst_description_;
+    std::list<std::string> gst_elements_;
+
 public:
     GenericStreamSource();
 
@@ -70,6 +73,11 @@ public:
 
     // specific interface
     void setDescription(const std::string &desc);
+    std::string description() const;
+    std::list<std::string> gstElements() const;
+
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 };
 
 #endif // STREAMSOURCE_H
