@@ -114,7 +114,6 @@ GstFlowReturn callback_stream_discoverer (GstAppSink *sink, gpointer p)
             // release info to let StreamDiscoverer go forward
             info->discovered.notify_all();
         }
-        gst_caps_unref(caps);
     }
     else
         ret = GST_FLOW_FLUSHING;
@@ -287,7 +286,7 @@ void Stream::execute_open()
     opened_ = true;
 
     // launch a timeout to check on open status
-    std::thread( timeout_open, this ).detach();
+    std::thread( timeout_initialize, this ).detach();
 }
 
 void Stream::fail(const std::string &message)
@@ -296,12 +295,13 @@ void Stream::fail(const std::string &message)
     failed_ = true;
 }
 
-void Stream::timeout_open(Stream *str)
+void Stream::timeout_initialize(Stream *str)
 {
-    // vait for timeout
-    std::this_thread::sleep_for(std::chrono::seconds(TIMEOUT));
-
-    if (!str->textureinitialized_)
+    // wait for the condition that source was initialized successfully in
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    if ( str->initialized_.wait_for(lck,std::chrono::seconds(TIMEOUT)) == std::cv_status::timeout )
+        // if waited more than TIMEOUT, its dead :(
         str->fail("Failed to initialize");
 }
 
@@ -552,7 +552,9 @@ void Stream::init_texture(guint index)
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    // done
     textureinitialized_ = true;
+    initialized_.notify_all();
 }
 
 

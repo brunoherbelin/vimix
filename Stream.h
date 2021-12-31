@@ -211,13 +211,14 @@ protected:
     // gst pipeline control
     virtual void execute_open();
     virtual void fail(const std::string &message);
-    static void timeout_open(Stream *str);
 
     // gst frame filling
-    std::atomic<bool> textureinitialized_;
+    bool textureinitialized_;
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);
+    std::condition_variable initialized_;
+    static void timeout_initialize(Stream *str);
 
     // gst callbacks
     static void callback_end_of_stream (GstAppSink *, gpointer);
