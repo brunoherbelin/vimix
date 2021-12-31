@@ -19,6 +19,9 @@ std::string transliterate(const std::string &input);
 // replaces spaces by underscores in a string
 std::string unspace(const std::string &input);
 
+// get a wrapped version of the input
+std::string wrapped(const std::string &input, unsigned per_line);
+
 // get a string to display memory size with unit KB, MB, GB, TB
 std::string byte_to_string(long b);
 
@@ -30,6 +33,9 @@ std::string truncated(const std::string& str, int N);
 
 // split a string into list of strings separated by delimitor (e.g. /home/me/toto.mpg -> {home, me, toto.mpg} )
 std::list<std::string> splitted(const std::string& str, char delim);
+
+// rebuilds a splitted string
+std::string joinned(std::list<std::string> strlist, char separator = ' ');
 
 // returns true if the string
 bool is_a_number(const std::string& str, int *val = nullptr);

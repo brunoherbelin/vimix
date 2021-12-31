@@ -114,6 +114,44 @@ std::string BaseToolkit::unspace(const std::string &input)
     return output;
 }
 
+std::string BaseToolkit::wrapped(const std::string &input, unsigned per_line)
+{
+    std::string text(input);
+    unsigned line_begin = 0;
+
+    while (line_begin < text.size())
+    {
+        const unsigned ideal_end = line_begin + per_line ;
+        unsigned line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
+
+        if (line_end == text.size() - 1)
+            ++line_end;
+        else if (std::isspace(text[line_end]))
+        {
+            text[line_end] = '\n';
+            ++line_end;
+        }
+        else    // backtrack
+        {
+            unsigned end = line_end;
+            while ( end > line_begin && !std::isspace(text[end]))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                text[line_end++] = '\n';
+            }
+            else
+                text.insert(line_end++, 1, '\n');
+        }
+
+        line_begin = line_end;
+    }
+
+    return text;
+}
+
 std::string BaseToolkit::byte_to_string(long b)
 {
     double numbytes = static_cast<double>(b);
@@ -161,15 +199,27 @@ std::string BaseToolkit::truncated(const std::string& str, int N)
     return trunc;
 }
 
-std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim) {
+std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim)
+{
     std::list<std::string> strings;
     size_t start = 0;
     size_t end = 0;
     while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
         end = str.find(delim, start);
-        strings.push_back(str.substr(start - 1, end - start + 1));
+        size_t delta = start > 0 ? 1 : 0;
+        strings.push_back(str.substr( start -delta, end - start + delta));
     }
     return strings;
+}
+
+
+std::string BaseToolkit::joinned(std::list<std::string> strlist, char separator)
+{
+    std::string str;
+    for (auto it = strlist.cbegin(); it != strlist.cend(); ++it)
+        str += (*it) + separator;
+
+    return str;
 }
 
 bool BaseToolkit::is_a_number(const std::string& str, int *val)
