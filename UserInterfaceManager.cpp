@@ -2351,37 +2351,37 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, 10);ImGui::Text("Video"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
         ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, 10);ImGui::Text("Image"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image"); ImGui::NextColumn();
         ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, 10);ImGui::Text("Session"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
         ImGui::Text ("Render a session (*.mix) as a source.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, 10);ImGui::Text("Sequence"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
         ImGui::Text ("Serie of images (*.jpg, *.png, etc.) numbered sequentially.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, 10);ImGui::Text("Device"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
         ImGui::Text ("Connected webcam or frame grabber.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, 10);ImGui::Text("Screen"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
         ImGui::Text ("Screen capture.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, 10);ImGui::Text("Network"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Network"); ImGui::NextColumn();
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, 10);ImGui::Text("Pattern"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
         ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, 10);ImGui::Text("Rendering"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Rendering"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, 10);ImGui::Text("Clone"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
         ImGui::Text ("Clone a source (original images) into another source.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, 10);ImGui::Text("Group"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Group"); ImGui::NextColumn();
         ImGui::Text ("Group of sources rendered together after flatten in Layers view.");
 
         ImGui::Columns(1);
@@ -5562,11 +5562,11 @@ void Navigator::RenderTransitionPannel()
         ImGuiToolkit::Spacing();
         ImGui::Text("Animation");
         if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
-        ImGui::SameLine(0, 10);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::SliderFloat("Duration", &Settings::application.transition.duration, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
         if (ImGuiToolkit::ButtonIcon(9, 1)) Settings::application.transition.profile = 0;
-        ImGui::SameLine(0, 10);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
@@ -5716,7 +5716,7 @@ void SourcePreview::Render(float width)
             }
             // information text
             ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
-            ImGui::SameLine(0, 10);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::Text("%s", label_.c_str());
             if (source_->ready())
                 ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
@@ -5820,20 +5820,14 @@ void ShowSandbox(bool* p_open)
     ImGui::Separator();
 
     static Source *tmp = nullptr;
-//        static char buf1[1280] = "videotestsrc pattern=smpte";
+        static char buf1[1280] = "videotestsrc pattern=smpte ! queue ! videoconvert";
 //        static char buf1[1280] = "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264";
-    static char buf1[1280] = "srtsrc uri=\"srt://192.168.0.37:5000?mode=listener\" ! decodebin ";
+//    static char buf1[1280] = "srtsrc uri=\"srt://192.168.0.37:5000?mode=listener\" ! decodebin ";
     ImGui::InputText("gstreamer pipeline", buf1, 1280);
     if (ImGui::Button("Create Generic Stream Source") )
     {
         tmp = Mixer::manager().createSourceStream(buf1);
         Mixer::manager().addSource( tmp );
-    }
-    ImGui::SameLine();
-    if ( tmp && ImGui::Button("delete") )
-    {
-        Mixer::manager().deleteSource( tmp );
-        tmp = nullptr;
     }
 
     ImGui::Separator();

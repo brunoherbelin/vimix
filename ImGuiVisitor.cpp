@@ -81,7 +81,7 @@ void ImGuiVisitor::visit(Group &n)
         n.scale_.y = 1.f;
         Action::manager().store("Geometry Reset");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Geometry");
 
     if (ImGuiToolkit::ButtonIcon(6, 15)) {
@@ -89,7 +89,7 @@ void ImGuiVisitor::visit(Group &n)
         n.translation_.y = 0.f;
         Action::manager().store("Position 0.0, 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     float translation[2] = { n.translation_.x, n.translation_.y};
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if ( ImGui::SliderFloat2("Position", translation, -5.0, 5.0) )
@@ -107,7 +107,7 @@ void ImGuiVisitor::visit(Group &n)
         n.scale_.y = 1.f;
         Action::manager().store("Scale 1.0 x 1.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     float scale[2] = { n.scale_.x, n.scale_.y} ;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if ( ImGui::SliderFloat2("Scale", scale, -MAX_SCALE, MAX_SCALE, "%.2f") )
@@ -125,7 +125,7 @@ void ImGuiVisitor::visit(Group &n)
         n.rotation_.z = 0.f;
         Action::manager().store("Angle 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
     if (ImGui::IsItemDeactivatedAfterEdit()) {
@@ -185,7 +185,7 @@ void ImGuiVisitor::visit(Shader &n)
 //        n.blending = Shader::BLEND_OPACITY;
 //        n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 //    }
-//    ImGui::SameLine(0, 10);
+//    ImGui::SameLine(0, IMGUI_SAME_LINE);
 //    ImGui::ColorEdit3("Color", glm::value_ptr(n.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel ) ;
 //    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -237,7 +237,7 @@ void ImGuiVisitor::visit(Shader &n)
 //    // get index of the mask used in this ImageShader
 //    int item_current = n.mask;
 ////    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
-////    ImGui::SameLine(0, 10);
+////    ImGui::SameLine(0, IMGUI_SAME_LINE);
 //    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 //    // combo list of masks
 //    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
@@ -257,14 +257,14 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::PushID(std::to_string(n.id()).c_str());
 
     ImGuiToolkit::Icon(6, 2);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Filters");
 
     if (ImGuiToolkit::ButtonIcon(6, 4)) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
         Action::manager().store("Gamma & Color");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::ColorEdit3("Gamma Color", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
     if (ImGui::IsItemDeactivatedAfterEdit())
         Action::manager().store("Gamma Color changed");
@@ -286,7 +286,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.contrast = 0.f;
         Action::manager().store("B & C  0.0 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float bc[2] = { n.brightness, n.contrast};
     if ( ImGui::SliderFloat2("B & C", bc, -1.0, 1.0) )
@@ -304,7 +304,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.saturation = 0.f;
         Action::manager().store("Saturation 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -317,7 +317,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.hueshift = 0.f;
         Action::manager().store("Hue shift 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -330,7 +330,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.nbColors = 0;
         Action::manager().store("Posterize None");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
     if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -344,7 +344,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.threshold = 0.f;
         Action::manager().store("Threshold None");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
     if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -358,7 +358,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.lumakey = 0.f;
         Action::manager().store("Lumakey 0.0");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -372,7 +372,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.chromadelta = 0.f;
         Action::manager().store("Chromakey & Color Reset");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;    
     if (ImGui::IsItemDeactivatedAfterEdit())
         Action::manager().store("Chroma color changed");
@@ -390,7 +390,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.invert = 0;
         Action::manager().store("Invert None");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0"))
         Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
@@ -399,7 +399,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         n.filterid = 0;
         Action::manager().store("Filter None");
     }
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
         Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]));
@@ -541,7 +541,7 @@ void ImGuiVisitor::visit (Source& s)
 
         if (s.processingshader_link_.connected()) {
             ImGuiToolkit::Icon(6, 2);
-            ImGui::SameLine(0, 10);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::Text("Filters");
             Source *target = s.processingshader_link_.source();
             ImGui::Text("Following");
@@ -558,7 +558,7 @@ void ImGuiVisitor::visit (Source& s)
 void ImGuiVisitor::visit (MediaSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     if ( s.mediaplayer()->isImage() )
         ImGui::Text("Image File");
     else
@@ -596,7 +596,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         return;
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Session File");
 
     // info
@@ -622,7 +622,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
     if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFadingTarget(0.f);
     float f = s.session()->fading();
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
         s.session()->setFadingTarget(f);
@@ -651,7 +651,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
         return;
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Flat Sesion group");
 
     // info
@@ -678,7 +678,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 void ImGuiVisitor::visit (RenderSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Rendering Output");
     if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.preview = true;
@@ -687,7 +687,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 void ImGuiVisitor::visit (CloneSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Clone");
     if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
@@ -698,7 +698,7 @@ void ImGuiVisitor::visit (CloneSource& s)
 void ImGuiVisitor::visit (PatternSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Pattern");
 
     // stream info
@@ -711,7 +711,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -738,7 +738,7 @@ void ImGuiVisitor::visit (PatternSource& s)
 void ImGuiVisitor::visit (DeviceSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Device");
 
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -750,7 +750,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -777,7 +777,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
 void ImGuiVisitor::visit (NetworkSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Network stream");
 
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
@@ -794,7 +794,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
@@ -811,7 +811,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
 void ImGuiVisitor::visit (MultiFileSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Images sequence");
     static uint64_t id = 0;
 
@@ -825,7 +825,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     if ( s.playable() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
             UserInterface::manager().showSourceEditor(&s);
         ImGui::SetCursorPos(pos);
