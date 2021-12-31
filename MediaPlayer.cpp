@@ -470,14 +470,13 @@ void MediaPlayer::close()
     if (pipeline_ != nullptr) {
 
         // force flush
-        GstState state;
         gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
                     GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
 
         // end pipeline
         gst_element_set_state (pipeline_, GST_STATE_NULL);
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
 
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
@@ -992,8 +991,7 @@ void MediaPlayer::update()
     // if already seeking (asynch)
     if (seeking_) {
         // request status update to pipeline (re-sync gst thread)
-        GstState state;
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
         // seek should be resolved next frame
         seeking_ = false;
         // do NOT do another seek yet
@@ -1094,8 +1092,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 
     // Force update
     if (force) {
-        GstState state;
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
+        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
         force_update_ = true;
     }
 
