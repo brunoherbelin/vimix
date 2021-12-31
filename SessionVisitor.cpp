@@ -703,6 +703,19 @@ void SessionVisitor::visit (MultiFileSource& s)
     xmlCurrent_->InsertEndChild(sequence);
 }
 
+
+void SessionVisitor::visit (GenericStreamSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "GenericStreamSource");
+
+    XMLElement *desc = xmlDoc_->NewElement("Description");
+
+    XMLText *text = xmlDoc_->NewText( s.description().c_str() );
+    desc->InsertEndChild( text );
+
+    xmlCurrent_->InsertEndChild(desc);
+}
+
 std::string SessionVisitor::getClipboard(const SourceList &list)
 {
     std::string x = "";

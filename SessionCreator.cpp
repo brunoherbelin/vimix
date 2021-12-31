@@ -32,6 +32,7 @@
 #include "DeviceSource.h"
 #include "NetworkSource.h"
 #include "MultiFileSource.h"
+#include "StreamSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -346,6 +347,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "MultiFileSource") {
                     load_source = new MultiFileSource(id_xml_);
                 }
+                else if ( std::string(pType) == "GenericStreamSource") {
+                    load_source = new GenericStreamSource(id_xml_);
+                }
 
                 // skip failed (including clones)
                 if (!load_source)
@@ -470,6 +474,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "MultiFileSource") {
                 load_source = new MultiFileSource(id__);
+            }
+            else if ( std::string(pType) == "GenericStreamSource") {
+                load_source = new GenericStreamSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -1063,4 +1070,14 @@ void SessionLoader::visit (MultiFileSource& s)
 
 }
 
+void SessionLoader::visit (GenericStreamSource& s)
+{
+    XMLElement* desc = xmlCurrent_->FirstChildElement("Description");
+
+    if (desc) {
+        const char * text = desc->GetText();
+        if (text)
+            s.setDescription(text);
+    }
+}
 

@@ -63,7 +63,7 @@ class GenericStreamSource : public StreamSource
     std::list<std::string> gst_elements_;
 
 public:
-    GenericStreamSource();
+    GenericStreamSource(uint64_t id = 0);
 
     // Source interface
     void accept (Visitor& v) override;

@@ -33,7 +33,7 @@
 #include "StreamSource.h"
 
 
-GenericStreamSource::GenericStreamSource() : StreamSource()
+GenericStreamSource::GenericStreamSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = new Stream;
