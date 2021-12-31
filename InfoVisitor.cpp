@@ -60,23 +60,23 @@ InfoVisitor::InfoVisitor() : brief_(true), current_id_(0)
 {
 }
 
-void InfoVisitor::visit(Node &n)
+void InfoVisitor::visit(Node &)
 {
 }
 
-void InfoVisitor::visit(Group &n)
+void InfoVisitor::visit(Group &)
 {
 }
 
-void InfoVisitor::visit(Switch &n)
+void InfoVisitor::visit(Switch &)
 {
 }
 
-void InfoVisitor::visit(Scene &n)
+void InfoVisitor::visit(Scene &)
 {
 }
 
-void InfoVisitor::visit(Primitive &n)
+void InfoVisitor::visit(Primitive &)
 {
 }
 
@@ -114,10 +114,10 @@ void InfoVisitor::visit(Stream &n)
 {
     std::ostringstream oss;
     if (brief_) {
-
+        oss << BaseToolkit::splitted(n.description(), '!').front();
     }
     else {
-
+        oss << n.description();
     }
     information_ = oss.str();
 }
@@ -272,6 +272,26 @@ void InfoVisitor::visit (MultiFileSource& s)
         oss << s.sequence().codec << " (";
         oss << s.sequence().max - s.sequence().min + 1 << " images)";
     }
+
+    information_ = oss.str();
+    current_id_ = s.id();
+}
+
+void InfoVisitor::visit (GenericStreamSource& s)
+{
+    if (current_id_ == s.id())
+        return;
+
+    std::ostringstream oss;
+    if (s.stream()) {
+        std::string src_element = s.gstElements().front();
+        src_element = src_element.substr(0, src_element.find(" "));
+        oss << "gstreamer '" <<  src_element << "'" << std::endl;
+        oss << s.stream()->width() << " x " << s.stream()->height();
+        oss << ", RGB";
+    }
+    else
+        oss << "Undefined";
 
     information_ = oss.str();
     current_id_ = s.id();

@@ -873,3 +873,38 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     if (id != s.id())
         id = s.id();
 }
+
+void ImGuiVisitor::visit (GenericStreamSource& s)
+{
+    float w = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Custom");
+
+    // stream info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+
+    // icon (>) to open player
+    if ( s.playable() ) {
+        ImVec2 pos = ImGui::GetCursorPos();
+        ImGui::SameLine(0, 0);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            UserInterface::manager().showSourceEditor(&s);
+        ImGui::SetCursorPos(pos);
+    }
+
+    // display pipeline text
+    std::string pipelinetxt = BaseToolkit::wrapped( s.description(), 30);
+    ImGuiToolkit::ShowTextMultiline("##pipeline", pipelinetxt, w);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Pipeline");
+
+    //    // TODO allow editing pipeline
+
+
+}
