@@ -71,7 +71,7 @@ namespace ImGuiToolkit
     bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
     void TextMultiline(const char* label, const std::string &str, float width);
 
-    bool InputCodeMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
+    bool InputCodeMultiline(const char* label, std::string *str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void CodeMultiline(const char* label, const std::string &str, float width);
 
     // accent color of UI

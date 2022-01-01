@@ -4619,7 +4619,7 @@ void Navigator::RenderNewPannel()
                     pattern_type = -1;
                 }
                 for (int p = 0; p < (int) Pattern::count(); ++p){
-                    if (Pattern::get(p).available && ImGui::Selectable( Pattern::get(p).label.c_str() )) {
+                    if (Pattern::get(p).available && ImGui::Selectable( Pattern::get(p).label.c_str(), p == pattern_type )) {
                         update_new_source = true;
                         custom_pipeline = false;
                         pattern_type = p;
@@ -4633,20 +4633,44 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpMarker("Create a source with graphics generated algorithmically.");
 
             if (custom_pipeline) {
-                static std::string description = "videotestsrc pattern=smpte";
+                static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 " },
+                                                                                         {"Checker", "videotestsrc pattern=checkers-8 ! video/x-raw, width=64, height=64 "},
+                                                                                         {"Color", "videotestsrc pattern=gradient foreground-color= 0xff55f54f background-color= 0x000000 "},
+                                                                                         {"Text", "videotestsrc pattern=black ! textoverlay text=\"vimix\" halignment=center valignment=center font-desc=\"Sans,72\" "},
+                                                                                         {"GStreamer Webcam", "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264 "},
+                                                                                         {"SRT listener", "srtsrc uri=\"srt://:5000?mode=listener\" ! decodebin "}
+                                                                                       };
+                static std::string _description = _examples[0].second;
                 static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
+                static int numlines = 0;
+                const ImGuiContext& g = *GImGui;
+                fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
 
-                size_t numlines = std::count(description.begin(), description.end(), '\n') + 1;
-                fieldsize.y = MAX( 100, numlines * ImGui::GetTextLineHeightWithSpacing() );
-
-                if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &description, fieldsize) )  {
-
+                // Editor
+                if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) )
                     update_new_source = true;
-                }
 
-                if (update_new_source) {
-                    new_source_preview_.setSource( Mixer::manager().createSourceStream(description), description.substr(0, description.find(" ")));
+                // Local menu for list of examples
+                ImVec2 pos_bot = ImGui::GetCursorPos();
+                ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
+                if ( ImGuiToolkit::ButtonIcon(16,10) )
+                    ImGui::OpenPopup( "MenuGstExamples" );
+                ImGui::SetCursorPos(pos_bot);
+                if ( ImGui::BeginPopup( "MenuGstExamples" ) )  {
+                    ImGui::TextDisabled("Gstreamer examples");
+                    ImGui::Separator();
+                    for (auto it = _examples.begin(); it != _examples.end(); ++it) {
+                        if (ImGui::Selectable( it->first.c_str() ) ) {
+                            _description = it->second;
+                            update_new_source = true;
+                        }
+                    }
+                    ImGui::EndPopup();
                 }
+                // take action
+                if (update_new_source)
+                    new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), _description.substr(0, _description.find(" ")));
+
             }
             // if pattern selected
             else {
@@ -5868,14 +5892,6 @@ void ShowSandbox(bool* p_open)
 
     ImGui::Separator();
 
-    static std::string description = "A long string can always be wrapped into many pieces";
-
-
-    if ( ImGuiToolkit::InputCodeMultiline("Wrapped", &description, ImVec2(ImGui::GetContentRegionAvail().x, 200)))  {
-
-    }
-
-    ImGui::Text(description.c_str());
 
     ImGui::End();
 }

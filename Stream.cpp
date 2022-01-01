@@ -158,7 +158,7 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
                 std::mutex mtx;
                 std::unique_lock<std::mutex> lck(mtx);
                 if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT))  == std::cv_status::timeout)
-                    info.message = "Time out.";
+                    info.message = "Time out";
 
                 // stop and delete pipeline
                 GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);

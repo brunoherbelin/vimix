@@ -111,51 +111,6 @@ std::string BaseToolkit::unspace(const std::string &input)
     return output;
 }
 
-std::string BaseToolkit::unwrapped(const std::string &input)
-{
-    std::string output = input;
-    std::replace( output.begin(), output.end(), '\n', ' ');
-    return output;
-}
-
-std::string BaseToolkit::wrapped(const std::string &input, size_t per_line)
-{
-    std::string text(input);
-    size_t line_begin = 0;
-
-    while (line_begin < text.size())
-    {
-        const size_t ideal_end = line_begin + per_line ;
-        size_t line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
-
-        if (line_end == text.size() - 1)
-            ++line_end;
-        else if (std::isspace(text[line_end]))
-        {
-            text[line_end] = '\n';
-            ++line_end;
-        }
-        else    // backtrack
-        {
-            size_t end = line_end;
-            while ( end > line_begin && !std::isspace(text[end]))
-                --end;
-
-            if (end != line_begin)
-            {
-                line_end = end;
-                text[line_end++] = '\n';
-            }
-            else
-                text.insert(line_end++, 1, '\n');
-        }
-
-        line_begin = line_end;
-    }
-
-    return text;
-}
-
 std::string BaseToolkit::byte_to_string(long b)
 {
     double numbytes = static_cast<double>(b);

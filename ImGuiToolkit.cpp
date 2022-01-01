@@ -1677,41 +1677,6 @@ void word_wrap(std::string *str, unsigned per_line)
 }
 
 
-void wrap(std::string *text, size_t per_line)
-{
-    size_t line_begin = 0;
-
-    while (line_begin < text->size())
-    {
-        const size_t ideal_end = line_begin + per_line ;
-        size_t line_end = ideal_end <= text->size() ? ideal_end : text->size()-1;
-
-        if (line_end == text->size() - 1)
-            ++line_end;
-        else if (std::isspace(text->at(line_end)))
-        {
-            text->replace(line_end, 1, 1, '\n');
-            ++line_end;
-        }
-        else    // backtrack
-        {
-            size_t end = line_end;
-            while ( end > line_begin && !std::isspace(text->at(end)))
-                --end;
-
-            if (end != line_begin)
-            {
-                line_end = end;
-                text->replace(line_end++, 1, 1, '\n');
-            }
-            else
-                text->insert(line_end++, 1, '\n');
-        }
-
-        line_begin = line_end;
-    }
-}
-
 
 static int InputTextCallback(ImGuiInputTextCallbackData* data)
 {
@@ -1746,8 +1711,8 @@ void ImGuiToolkit::TextMultiline(const char* label, const std::string &str, floa
 {
     size_t numlines = std::count(str.begin(), str.end(), '\n') + 1;
 
-    ImGuiContext& g = *GImGui;
-    ImVec2 size(width, numlines * (g.FontSize + g.Style.ItemSpacing.y) + g.Style.FramePadding.y * 2.0f);
+    const ImGuiContext& g = *GImGui;
+    ImVec2 size(width, numlines * g.FontSize + 2 * (g.Style.ItemSpacing.y + g.Style.FramePadding.y) );
 
     ImGui::PushStyleColor(ImGuiCol_FrameBg, g.Style.Colors[ImGuiCol_FrameBgHovered]);
     ImGui::InputTextMultiline(label, (char*)str.c_str(), str.capacity() + 1, size, ImGuiInputTextFlags_ReadOnly);
@@ -1755,7 +1720,48 @@ void ImGuiToolkit::TextMultiline(const char* label, const std::string &str, floa
 }
 
 
-bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string* str, const ImVec2& size)
+std::string unwrapp(const std::string &input)
+{
+    std::string output = input;
+    output.erase( std::remove( output.begin(), output.end(), '\n'), output.end());
+    return output;
+}
+
+std::string wrapp(const std::string &input, size_t per_line)
+{
+    std::string text(input);
+    size_t line_begin = 0;
+
+    while (line_begin < text.size())
+    {
+        const size_t ideal_end = line_begin + per_line ;
+        size_t line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
+
+        if (line_end == text.size() - 1)
+            ++line_end;
+        else if (std::isspace(text[line_end]))
+            text.insert(++line_end, 1, '\n');
+        else    // backtrack
+        {
+            size_t end = line_end;
+            while ( end > line_begin && !std::isspace(text[end]))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                text.insert(++line_end, 1, '\n');
+            }
+            else
+                text.insert(line_end++, 1, '\n');
+        }
+        line_begin = line_end;
+    }
+
+    return text;
+}
+
+bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const ImVec2& size, int *numline)
 {
     bool ret = false;
     char hiddenlabel[256];
@@ -1767,12 +1773,21 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string* str, const
     // prepare input multiline
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CtrlEnterForNewLine;
 
+    // work on a string wrapped to the number of chars in a line
+    std::string edited = wrapp( *str, (size_t) floor(size.x / onechar.x) - 1);
+
     // Input text into std::string with callback
-    ImGui::InputTextMultiline(hiddenlabel, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+    ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited);
     if (ImGui::IsItemDeactivatedAfterEdit() ){
-        wrap(str, (size_t) ceil(size.x / onechar.x) - 1);
+        // unwrap after edit
+        *str = unwrapp(edited);
+        // return number of lines
         ret = true;
     }
+
+    // number of lines
+    if (numline)
+        *numline = std::count(edited.begin(), edited.end(), '\n') + 1;
 
     ImGui::PopFont();
 
@@ -1789,7 +1804,11 @@ void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, floa
     sprintf(hiddenlabel, "##%s", label);
 
     ImGuiToolkit::PushFont(FONT_MONO);
-    ImGuiToolkit::TextMultiline(hiddenlabel, str, width);
+    static ImVec2 onechar = ImGui::CalcTextSize("C");
+
+    std::string displayed_text = wrapp( str, (size_t) floor(width / onechar.x) - 1);
+
+    ImGuiToolkit::TextMultiline(hiddenlabel, displayed_text, width);
     ImGui::PopFont();
 
     ImGui::SameLine();

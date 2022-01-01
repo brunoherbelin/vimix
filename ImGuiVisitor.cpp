@@ -898,11 +898,16 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
         ImGui::SetCursorPos(pos);
     }
 
-    // display pipeline text
-    std::string pipelinetxt = BaseToolkit::wrapped( s.description(), 20);
-    ImGuiToolkit::CodeMultiline("Pipeline", pipelinetxt, w);
+    // Prepare display pipeline text
+    static int numlines = 0;
+    const ImGuiContext& g = *GImGui;
+    ImVec2 fieldsize(w,  MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
 
-    //    // TODO allow editing pipeline
-
+    // Editor
+    std::string _description = s.description();
+    if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
+        s.setDescription(_description);
+        Action::manager().store( s.name() + ": Change pipeline");
+    }
 
 }
