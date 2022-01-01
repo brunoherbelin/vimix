@@ -15,13 +15,14 @@
 class Visitor;
 
 #define N_FRAME 3
-#define TIMEOUT 4
+#define TIMEOUT 5
 
 struct StreamInfo {
 
     guint width;
     guint height;
     std::condition_variable discovered;
+    std::string message;
 
     StreamInfo(guint w=0, guint h=0) {
         width = w;
@@ -31,6 +32,7 @@ struct StreamInfo {
     StreamInfo(const StreamInfo& b) {
         width = b.width;
         height = b.height;
+        message = b.message;
     }
 
     inline bool valid() { return width > 0 && height > 0; }

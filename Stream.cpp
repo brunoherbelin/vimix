@@ -157,7 +157,8 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
                 // wait for the callback_stream_discoverer to return, no more than 4 sec
                 std::mutex mtx;
                 std::unique_lock<std::mutex> lck(mtx);
-                info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT));
+                if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT))  == std::cv_status::timeout)
+                    info.message = "Time out.";
 
                 // stop and delete pipeline
                 GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);
@@ -166,6 +167,8 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
                 gst_object_unref (_pipeline);
             }
         }
+        else
+            info.message = error->message;
     }
     // at this point, the info should be filled
     return info;
@@ -631,7 +634,7 @@ void Stream::update()
                 }
                 // invalid info; fail
                 else
-                    fail("Failed to determine resolution");
+                    fail("Could not create stream: " + i.message);
             }
         }
         // wait next frame to display

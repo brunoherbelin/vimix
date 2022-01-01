@@ -45,7 +45,7 @@ GenericStreamSource::GenericStreamSource(uint64_t id) : StreamSource(id)
 
 void GenericStreamSource::setDescription(const std::string &desc)
 {
-    gst_description_ = desc;
+    gst_description_ = BaseToolkit::unwrapped(desc);
     gst_elements_ = BaseToolkit::splitted(desc, '!');
     Log::Notify("Creating Source with Stream description '%s'", gst_description_.c_str());
 
