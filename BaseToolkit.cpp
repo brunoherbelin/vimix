@@ -107,22 +107,26 @@ std::string BaseToolkit::transliterate(const std::string &input)
 std::string BaseToolkit::unspace(const std::string &input)
 {
     std::string output = input;
-    for(std::size_t i = 0; i < output.length(); ++i) {
-        if( isspace(output[i]) )
-            output[i] = '_';
-    }
+    std::replace( output.begin(), output.end(), ' ', '_');
     return output;
 }
 
-std::string BaseToolkit::wrapped(const std::string &input, unsigned per_line)
+std::string BaseToolkit::unwrapped(const std::string &input)
+{
+    std::string output = input;
+    std::replace( output.begin(), output.end(), '\n', ' ');
+    return output;
+}
+
+std::string BaseToolkit::wrapped(const std::string &input, size_t per_line)
 {
     std::string text(input);
-    unsigned line_begin = 0;
+    size_t line_begin = 0;
 
     while (line_begin < text.size())
     {
-        const unsigned ideal_end = line_begin + per_line ;
-        unsigned line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
+        const size_t ideal_end = line_begin + per_line ;
+        size_t line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
 
         if (line_end == text.size() - 1)
             ++line_end;
@@ -133,7 +137,7 @@ std::string BaseToolkit::wrapped(const std::string &input, unsigned per_line)
         }
         else    // backtrack
         {
-            unsigned end = line_end;
+            size_t end = line_end;
             while ( end > line_begin && !std::isspace(text[end]))
                 --end;
 
