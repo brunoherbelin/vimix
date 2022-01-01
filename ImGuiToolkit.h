@@ -68,8 +68,11 @@ namespace ImGuiToolkit
 
     // text input
     bool InputText(const char* label, std::string* str);
-    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int linesize = 0);
-    void ShowTextMultiline(const char* label, const std::string &str, float width);
+    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
+    void TextMultiline(const char* label, const std::string &str, float width);
+
+    bool InputCodeMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
+    void CodeMultiline(const char* label, const std::string &str, float width);
 
     // accent color of UI
     typedef enum {

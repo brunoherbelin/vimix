@@ -1677,22 +1677,47 @@ void word_wrap(std::string *str, unsigned per_line)
 }
 
 
-struct InputTextCallback_UserData
+void wrap(std::string *text, size_t per_line)
 {
-    std::string*      Str;
-    int               WordWrap;
-};
+    size_t line_begin = 0;
+
+    while (line_begin < text->size())
+    {
+        const size_t ideal_end = line_begin + per_line ;
+        size_t line_end = ideal_end <= text->size() ? ideal_end : text->size()-1;
+
+        if (line_end == text->size() - 1)
+            ++line_end;
+        else if (std::isspace(text->at(line_end)))
+        {
+            text->replace(line_end, 1, 1, '\n');
+            ++line_end;
+        }
+        else    // backtrack
+        {
+            size_t end = line_end;
+            while ( end > line_begin && !std::isspace(text->at(end)))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                text->replace(line_end++, 1, 1, '\n');
+            }
+            else
+                text->insert(line_end++, 1, '\n');
+        }
+
+        line_begin = line_end;
+    }
+}
+
 
 static int InputTextCallback(ImGuiInputTextCallbackData* data)
 {
-    InputTextCallback_UserData* user_data = static_cast<InputTextCallback_UserData*>(data->UserData);
+    std::string* str = static_cast<std::string*>(data->UserData);
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
     {
-//        if (user_data->WordWrap > 1)
-//            word_wrap(user_data->Str, user_data->WordWrap );
-
-        // Resize string callback
-        std::string* str = user_data->Str;
         IM_ASSERT(data->Buf == str->c_str());
         str->resize(data->BufTextLen);
         data->Buf = (char*)str->c_str();
@@ -1704,24 +1729,20 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
 bool ImGuiToolkit::InputText(const char* label, std::string* str)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CharsNoBlank;
-    InputTextCallback_UserData cb_user_data;
-    cb_user_data.Str = str;
 
-    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, str);
 }
 
-bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
-    InputTextCallback_UserData cb_user_data;
-    cb_user_data.Str = str;
-    cb_user_data.WordWrap = linesize;
 
-    return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
+    ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+
+    return ImGui::IsItemDeactivatedAfterEdit();
 }
 
-
-void ImGuiToolkit::ShowTextMultiline(const char* label, const std::string &str, float width)
+void ImGuiToolkit::TextMultiline(const char* label, const std::string &str, float width)
 {
     size_t numlines = std::count(str.begin(), str.end(), '\n') + 1;
 
@@ -1731,5 +1752,46 @@ void ImGuiToolkit::ShowTextMultiline(const char* label, const std::string &str, 
     ImGui::PushStyleColor(ImGuiCol_FrameBg, g.Style.Colors[ImGuiCol_FrameBgHovered]);
     ImGui::InputTextMultiline(label, (char*)str.c_str(), str.capacity() + 1, size, ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor();
+}
 
+
+bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string* str, const ImVec2& size)
+{
+    bool ret = false;
+    char hiddenlabel[256];
+    sprintf(hiddenlabel, "##%s", label);
+
+    ImGuiToolkit::PushFont(FONT_MONO);
+    static ImVec2 onechar = ImGui::CalcTextSize("C");
+
+    // prepare input multiline
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CtrlEnterForNewLine;
+
+    // Input text into std::string with callback
+    ImGui::InputTextMultiline(hiddenlabel, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+    if (ImGui::IsItemDeactivatedAfterEdit() ){
+        wrap(str, (size_t) ceil(size.x / onechar.x) - 1);
+        ret = true;
+    }
+
+    ImGui::PopFont();
+
+    // show label
+    ImGui::SameLine();
+    ImGui::Text(label);
+
+    return ret;
+}
+
+void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, float width)
+{
+    char hiddenlabel[256];
+    sprintf(hiddenlabel, "##%s", label);
+
+    ImGuiToolkit::PushFont(FONT_MONO);
+    ImGuiToolkit::TextMultiline(hiddenlabel, str, width);
+    ImGui::PopFont();
+
+    ImGui::SameLine();
+    ImGui::Text(label);
 }

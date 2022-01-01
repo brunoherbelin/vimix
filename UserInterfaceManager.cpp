@@ -3936,6 +3936,7 @@ void Navigator::clearButtonSelection()
     // clear new source pannel
     new_source_preview_.setSource();
     pattern_type = -1;
+    custom_pipeline = false;
     sourceSequenceFiles.clear();
     sourceMediaFileCurrent.clear();
     new_media_mode_changed = true;
@@ -4612,10 +4613,16 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select generator"))
             {
+                if ( ImGui::Selectable("Custom") ) {
+                    update_new_source = true;
+                    custom_pipeline = true;
+                    pattern_type = -1;
+                }
                 for (int p = 0; p < (int) Pattern::count(); ++p){
                     if (Pattern::get(p).available && ImGui::Selectable( Pattern::get(p).label.c_str() )) {
-                        pattern_type = p;
                         update_new_source = true;
+                        custom_pipeline = false;
+                        pattern_type = p;
                     }
                 }
                 ImGui::EndCombo();
@@ -4625,25 +4632,42 @@ void Navigator::RenderNewPannel()
             ImGui::SameLine();
             ImGuiToolkit::HelpMarker("Create a source with graphics generated algorithmically.");
 
-            // resolution (if pattern selected)
-            if (pattern_type > 0) {
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
-                                 GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
-                    update_new_source = true;
+            if (custom_pipeline) {
+                static std::string description = "videotestsrc pattern=smpte";
+                static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
 
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::Combo("Height", &Settings::application.source.res,
-                                 GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
+                size_t numlines = std::count(description.begin(), description.end(), '\n') + 1;
+                fieldsize.y = MAX( 100, numlines * ImGui::GetTextLineHeightWithSpacing() );
+
+                if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &description, fieldsize) )  {
+
                     update_new_source = true;
+                }
+
+                if (update_new_source) {
+                    new_source_preview_.setSource( Mixer::manager().createSourceStream(description), description.substr(0, description.find(" ")));
+                }
             }
+            // if pattern selected
+            else {
+                // resolution
+                if (pattern_type >= 0) {
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
+                                     GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
+                        update_new_source = true;
 
-            // create preview
-            if (update_new_source)
-            {
-                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
-                new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res),
-                                               Pattern::get(pattern_type).label);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::Combo("Height", &Settings::application.source.res,
+                                     GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
+                        update_new_source = true;
+                }
+                // create preview
+                if (update_new_source) {
+                    glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                    new_source_preview_.setSource( Mixer::manager().createSourcePattern(pattern_type, res),
+                                                   Pattern::get(pattern_type).label);
+                }
             }
         }
         // External source creator
@@ -5820,8 +5844,8 @@ void ShowSandbox(bool* p_open)
     ImGui::Separator();
 
     static Source *tmp = nullptr;
-        static char buf1[1280] = "videotestsrc pattern=smpte ! queue ! videoconvert";
-//        static char buf1[1280] = "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264";
+//        static char buf1[1280] = "videotestsrc pattern=smpte ! queue ! videoconvert";
+        static char buf1[1280] = "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264";
 //    static char buf1[1280] = "srtsrc uri=\"srt://192.168.0.37:5000?mode=listener\" ! decodebin ";
     ImGui::InputText("gstreamer pipeline", buf1, 1280);
     if (ImGui::Button("Create Generic Stream Source") )
@@ -5840,6 +5864,18 @@ void ShowSandbox(bool* p_open)
     ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));
     std::string tra = BaseToolkit::transliterate(std::string(str0));
     ImGui::Text("Transliteration: '%s'", tra.c_str());
+
+
+    ImGui::Separator();
+
+    static std::string description = "A long string can always be wrapped into many pieces";
+
+
+    if ( ImGuiToolkit::InputCodeMultiline("Wrapped", &description, ImVec2(ImGui::GetContentRegionAvail().x, 200)))  {
+
+    }
+
+    ImGui::Text(description.c_str());
 
     ImGui::End();
 }

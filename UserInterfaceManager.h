@@ -126,6 +126,7 @@ class Navigator
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
+    bool custom_pipeline;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 

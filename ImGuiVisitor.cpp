@@ -899,10 +899,8 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     }
 
     // display pipeline text
-    std::string pipelinetxt = BaseToolkit::wrapped( s.description(), 30);
-    ImGuiToolkit::ShowTextMultiline("##pipeline", pipelinetxt, w);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Pipeline");
+    std::string pipelinetxt = BaseToolkit::wrapped( s.description(), 20);
+    ImGuiToolkit::CodeMultiline("Pipeline", pipelinetxt, w);
 
     //    // TODO allow editing pipeline
 
