@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1969,7 +1969,7 @@ void UserInterface::RenderAbout(bool* p_open)
 
     ImGui::Separator();
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2021 Bruno Herbelin.");
+    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2022 Bruno Herbelin.");
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -4635,7 +4635,7 @@ void Navigator::RenderNewPannel()
             bool update_new_source = false;
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Pattern", "Select generator"))
+            if (ImGui::BeginCombo("##Pattern", "Select generator", ImGuiComboFlags_HeightLarge))
             {
                 if ( ImGui::Selectable("Custom") ) {
                     update_new_source = true;
@@ -4677,10 +4677,7 @@ void Navigator::RenderNewPannel()
                 // Local menu for list of examples
                 ImVec2 pos_bot = ImGui::GetCursorPos();
                 ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
-                if ( ImGuiToolkit::ButtonIcon(16,10) )
-                    ImGui::OpenPopup( "MenuGstExamples" );
-                ImGui::SetCursorPos(pos_bot);
-                if ( ImGui::BeginPopup( "MenuGstExamples" ) )  {
+                if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview))  {
                     ImGui::TextDisabled("Gstreamer examples");
                     ImGui::Separator();
                     for (auto it = _examples.begin(); it != _examples.end(); ++it) {
@@ -4689,11 +4686,12 @@ void Navigator::RenderNewPannel()
                             update_new_source = true;
                         }
                     }
-                    ImGui::EndPopup();
+                    ImGui::EndCombo();
                 }
+                ImGui::SetCursorPos(pos_bot);
                 // take action
                 if (update_new_source)
-                    new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), _description.substr(0, _description.find(" ")));
+                    new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), "Custom");
 
             }
             // if pattern selected

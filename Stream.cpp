@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -159,13 +159,14 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
                 std::unique_lock<std::mutex> lck(mtx);
                 if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT))  == std::cv_status::timeout)
                     info.message = "Time out";
-
-                // stop and delete pipeline
-                GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);
-                if (ret == GST_STATE_CHANGE_ASYNC)
-                    gst_element_get_state (_pipeline, NULL, NULL, 1000000);
-                gst_object_unref (_pipeline);
             }
+
+            // stop and delete pipeline
+            GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);
+            if (ret == GST_STATE_CHANGE_ASYNC)
+                gst_element_get_state (_pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+            gst_object_unref (_pipeline);
+
         }
         else
             info.message = error->message;
