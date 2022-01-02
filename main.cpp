@@ -30,6 +30,7 @@
 #include "ControlManager.h"
 #include "Connection.h"
 #include "Metronome.h"
+#include "DeviceSource.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -119,6 +120,11 @@ int main(int argc, char *argv[])
     ///
     if ( !Rendering::manager().init() )
         return 1;
+
+    ///
+    /// DEVICES INIT
+    ///
+    Device::manager().init();
 
     ///
     /// UI INIT
