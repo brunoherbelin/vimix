@@ -322,7 +322,7 @@ void FrameBuffer::checkFramebufferStatus()
             break;
         case GL_FRAMEBUFFER_COMPLETE:
 #ifndef NDEBUG
-            Log::Info("Framebuffer created %d x %d.", width(), height());
+            g_print("Framebuffer created %d x %d\n", width(), height());
 #endif
             break;
     }

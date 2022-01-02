@@ -953,7 +953,7 @@ void UserInterface::showMenuFile()
     ImGui::MenuItem( ICON_FA_LEVEL_DOWN_ALT "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
-    if (ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP))
+    if (ImGui::MenuItem( IMGUI_TITLE_HELP, SHORTCUT_HELP))
         Settings::application.widget.help = true;
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT))
         Rendering::manager().close();
@@ -2351,6 +2351,9 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_PHOTO_VIDEO "  File"); ImGui::PopFont();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
         ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.).");
         ImGui::NextColumn();
@@ -2360,8 +2363,16 @@ void HelperToolbox::Render()
         ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
         ImGui::Text ("Render a session (*.mix) as a source.");
         ImGui::NextColumn();
+        ImGui::Separator();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_SORT_NUMERIC_DOWN "    Sequence"); ImGui::PopFont();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
-        ImGui::Text ("Serie of images (*.jpg, *.png, etc.) numbered sequentially.");
+        ImGui::Text ("Set of images numbered sequentially (*.jpg, *.png, etc.).");
+        ImGui::NextColumn();
+        ImGui::Separator();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_PLUG "    Connected"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
         ImGui::Text ("Connected webcam or frame grabber.");
@@ -2372,8 +2383,19 @@ void HelperToolbox::Render()
         ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Network"); ImGui::NextColumn();
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
         ImGui::NextColumn();
+        ImGui::Separator();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_COG "   Generated"); ImGui::PopFont();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
         ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_GSTREAMER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("GStreamer"); ImGui::NextColumn();
+        ImGui::Text ("Custom gstreamer pipeline, as described in command line for gst-launch-1.0 (without the target sink).");
+        ImGui::NextColumn();
+        ImGui::Separator();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_SYNC "   Internal"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Rendering"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source.");
@@ -2388,7 +2410,7 @@ void HelperToolbox::Render()
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Keyboard shortcuts"))
+    if (ImGui::CollapsingHeader("Keyboard shortcuts", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::Columns(2, "keyscolumns", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -2461,8 +2483,10 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_ARROW_LEFT ICON_FA_ARROW_UP ICON_FA_ARROW_DOWN ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the source in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
+        ImGui::Text(SHORTCUT_LOGS); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_HELP); ImGui::NextColumn();
-        ImGui::Text(MENU_HELP " window"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_HELP " window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_QUIT); ImGui::NextColumn();
         ImGui::Text(MENU_QUIT); ImGui::NextColumn();
 
@@ -4366,7 +4390,7 @@ void Navigator::RenderNewPannel()
                      setNewMedia(MEDIA_RECENT);
                 }
                 // Mode MEDIA_RECORDING : recent recordings
-                if (ImGui::Selectable( ICON_FA_LIST_UL IMGUI_LABEL_RECENT_RECORDS) ) {
+                if (ImGui::Selectable( ICON_FA_LIST IMGUI_LABEL_RECENT_RECORDS) ) {
                     setNewMedia(MEDIA_RECORDING);
                 }
                 // Mode MEDIA_FOLDER : known folders

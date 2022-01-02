@@ -79,7 +79,7 @@ struct AppLog
         //  window
         ImGui::SameLine(0, 0);
         static bool numbering = true;
-        ImGuiToolkit::ButtonToggle( ICON_FA_SORT_NUMERIC_DOWN, &numbering );
+        ImGuiToolkit::ButtonIconToggle(4, 12, 4, 12, &numbering );
         ImGui::SameLine();
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();
@@ -176,7 +176,7 @@ void Log::Info(const char* fmt, ...)
 void Log::ShowLogWindow(bool* p_open)
 {
     ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
-    logs.Draw( ICON_FA_LIST_UL " Logs", p_open);
+    logs.Draw( IMGUI_TITLE_LOGS, p_open);
 }
 
 void Log::Notify(const char* fmt, ...)
