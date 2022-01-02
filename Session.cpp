@@ -198,9 +198,9 @@ SourceList::iterator Session::addSource(Source *s)
         // insert the source in the rendering
         render_.scene.ws()->attach(s->group(View::RENDERING));
         // insert the source to the beginning of the list
-        sources_.push_front(s);
+        sources_.push_back(s);
         // return the iterator to the source created at the beginning
-        its = sources_.begin();
+        its = sources_.end()--;
     }
 
     // unlock access
