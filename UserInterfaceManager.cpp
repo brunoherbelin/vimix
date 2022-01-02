@@ -4734,7 +4734,12 @@ void Navigator::RenderNewPannel()
             // ask to import the source in the mixer
             ImGui::NewLine();
             if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
-                Mixer::manager().addSource(new_source_preview_.getSource());
+                // take out the source from the preview
+                Source *s = new_source_preview_.getSource();
+                // restart and add the source.
+                Mixer::manager().addSource(s);
+                s->replay();
+                // close NEW pannel
                 selected_button[NAV_NEW] = false;
             }
         }
