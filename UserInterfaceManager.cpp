@@ -91,7 +91,7 @@ TextEditor editor;
 
 #include "UserInterfaceManager.h"
 #define PLOT_ARRAY_SIZE 180
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_ARROW_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 
@@ -2351,8 +2351,8 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_PHOTO_VIDEO "  File"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PHOTO_VIDEO); ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("File");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
         ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.).");
@@ -2364,15 +2364,15 @@ void HelperToolbox::Render()
         ImGui::Text ("Render a session (*.mix) as a source.");
         ImGui::NextColumn();
         ImGui::Separator();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_SORT_NUMERIC_DOWN "    Sequence"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_SORT_NUMERIC_DOWN); ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Sequence");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
         ImGui::Text ("Set of images numbered sequentially (*.jpg, *.png, etc.).");
         ImGui::NextColumn();
         ImGui::Separator();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_PLUG "    Connected"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLUG); ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Connected");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
         ImGui::Text ("Connected webcam or frame grabber.");
@@ -2384,8 +2384,8 @@ void HelperToolbox::Render()
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
         ImGui::NextColumn();
         ImGui::Separator();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_COG "   Generated"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_COG); ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Generated");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
         ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
@@ -2394,8 +2394,8 @@ void HelperToolbox::Render()
         ImGui::Text ("Custom gstreamer pipeline, as described in command line for gst-launch-1.0 (without the target sink).");
         ImGui::NextColumn();
         ImGui::Separator();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text(ICON_FA_SYNC "   Internal"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_SYNC); ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Internal");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Rendering"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source.");
@@ -2480,8 +2480,8 @@ void HelperToolbox::Render()
         ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
         ImGui::Text("B"); ImGui::NextColumn();
         ImGui::Text("Back restart selected videos"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_ARROW_LEFT ICON_FA_ARROW_UP ICON_FA_ARROW_DOWN ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
-        ImGui::Text("Move the source in the canvas"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
+        ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_LOGS); ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
@@ -3260,7 +3260,7 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), ImGui::GetColorU32(ImGuiCol_Text), 0, 0, 3.f);
         frame_top.x += (framesize.x  - ImGui::GetTextLineHeight()) / 2.f;
         frame_top.y += (framesize.y  - ImGui::GetTextLineHeight()) / 2.f;
-        draw_list->AddText(frame_top, ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_CARET_SQUARE_RIGHT);
+        draw_list->AddText(frame_top, ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_ARROW_RIGHT);
     }
     ImGui::PopID();
 
@@ -3598,7 +3598,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         if (Settings::application.widget.timeline_editmode) {
             // action cut
             if (mediaplayer_active_->isPlaying()) {
-                ImGuiToolkit::HelpIcon("Pause video to enable cut options", 9, 3);
+                ImGuiToolkit::Indication("Pause video to enable cut options", 9, 3);
             }
             else if (ImGuiToolkit::IconButton(9, 3, "Cut at cursor")) {
                 ImGui::OpenPopup("timeline_cut_context_menu");
@@ -4359,7 +4359,7 @@ void Navigator::RenderNewPannel()
                 fileimportdialog.open();
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source from a file:\n"
+            ImGuiToolkit::HelpToolTip("Create a source from a file:\n"
                                                  ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
@@ -4521,7 +4521,7 @@ void Navigator::RenderNewPannel()
                 // Bottom Right side of the list: helper and options
                 ImVec2 pos_bot = ImGui::GetCursorPos();
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-                ImGuiToolkit::HelpMarker("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
+                ImGuiToolkit::HelpToolTip("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
                                          ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
                                          "most recent recording after 'Stop Record' or 'Save & continue'.");
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
@@ -4553,7 +4553,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source from a sequence of numbered images.");
+            ImGuiToolkit::HelpToolTip("Create a source from a sequence of numbered images.");
 
             // return from thread for folder openning
             if (_selectImagesDialog.closed()) {
@@ -4623,7 +4623,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source replicating internal vimix objects.\n"
+            ImGuiToolkit::HelpToolTip("Create a source replicating internal vimix objects.\n"
                                      ICON_FA_CARET_RIGHT " Loopback from output\n"
                                      ICON_FA_CARET_RIGHT " Clone other sources");
         }
@@ -4652,7 +4652,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source with graphics generated algorithmically.");
+            ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.");
 
             if (custom_pipeline) {
                 static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 " },
@@ -4738,7 +4738,7 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpMarker("Create a source getting images from connected devices or machines;\n"
+            ImGuiToolkit::HelpToolTip("Create a source getting images from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
                                      ICON_FA_CARET_RIGHT " stream from connected vimix");
@@ -4987,7 +4987,7 @@ void Navigator::RenderMainPannelVimix()
         ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpMarker("Select the history of recently opened files or a folder. "
+    ImGuiToolkit::HelpToolTip("Select the history of recently opened files or a folder. "
                              "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
                              "performs cross fading to the openned session.");
@@ -5378,7 +5378,7 @@ void Navigator::RenderMainPannelVimix()
             ImGuiToolkit::ToolTip("Save & Keep version");
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpMarker("Previous versions of the session (latest on top). "
+        ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
                                  "Double-clic on a version to restore it.\n\n"
                                  ICON_FA_CODE_BRANCH "  Iterative saving automatically "
                                  "keeps a version each time a session is saved.");
@@ -5500,7 +5500,7 @@ void Navigator::RenderMainPannelSettings()
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
             char buf[256]; sprintf(buf, "Buffer can contain %ld frames (%dx%d), %.1f sec", nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
-            ImGuiToolkit::HelpMarker(buf, ICON_FA_INFO_CIRCLE);
+            ImGuiToolkit::Indication(buf, ICON_FA_MEMORY);
             ImGui::SameLine(0);
         }
 
@@ -5509,7 +5509,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
-        ImGuiToolkit::HelpMarker("Priority when buffer is full and recorder has to skip frames;\n"
+        ImGuiToolkit::HelpToolTip("Priority when buffer is full and recorder has to skip frames;\n"
                                  ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
                                  ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.");
         ImGui::SameLine(0);
@@ -5525,7 +5525,7 @@ void Navigator::RenderMainPannelSettings()
 
         char msg[256];
         sprintf(msg, "You can send OSC messages via UDP to the IP address %s", NetworkToolkit::host_ips()[1].c_str());
-        ImGuiToolkit::HelpMarker(msg, ICON_FA_INFO_CIRCLE);
+        ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
         ImGui::SameLine(0);
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
@@ -5576,7 +5576,7 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
         // hardware support deserves more explanation
-        ImGuiToolkit::HelpMarker("If enabled, tries to find a platform adapted hardware-accelerated "
+        ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
         ImGui::SameLine(0);
         change |= ImGuiToolkit::ButtonSwitch( "Hardware video en/decoding", &gpu);

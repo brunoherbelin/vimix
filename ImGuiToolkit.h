@@ -40,8 +40,9 @@ namespace ImGuiToolkit
     void setToolTipsEnabled (bool on);
     bool toolTipsEnabled ();
     void ToolTip    (const char* desc, const char* shortcut = nullptr);
-    void HelpMarker (const char* desc, const char* icon = ICON_FA_QUESTION_CIRCLE, const char* shortcut = nullptr);
-    void HelpIcon   (const char* desc, int i = 19, int j = 5, const char* shortcut = nullptr);
+    void HelpToolTip(const char* desc, const char* shortcut = nullptr);
+    void Indication (const char* desc, const char* icon, const char* shortcut = nullptr);
+    void Indication (const char* desc, int i, int j, const char* shortcut = nullptr);
 
     // sliders
     bool SliderTiming (const char* label, uint *ms, uint v_min, uint v_max, uint v_step, const char* text_max = nullptr);

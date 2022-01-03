@@ -607,11 +607,11 @@ void TextureView::draw()
             if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
 
                 ImGui::SameLine();
-                ImGuiToolkit::HelpMarker( ICON_FA_EDIT "\tMask paint \n\n"
+                ImGuiToolkit::HelpToolTip( ICON_FA_EDIT "\tMask paint \n\n"
                                           ICON_FA_MOUSE_POINTER "\t  Edit texture\n"
                                           ICON_FA_PAINT_BRUSH "\tBrush\n"
                                           ICON_FA_ERASER "\tEraser\n\n"
-                                          ICON_FA_CARET_SQUARE_DOWN "\tBrush shape\n"
+                                          ICON_FA_ARROW_DOWN "\tBrush shape\n"
                                           ICON_FA_DOT_CIRCLE  "\tBrush size\n"
                                           ICON_FA_FEATHER_ALT "\tBrush Pressure\n\n"
                                           ICON_FA_MAGIC "\tEffects\n"
@@ -662,7 +662,7 @@ void TextureView::draw()
                         int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::HelpIcon("Large  ", 16, 1, ICON_FA_CARET_SQUARE_RIGHT);
+                        ImGuiToolkit::Indication("Large  ", 16, 1, ICON_FA_ARROW_RIGHT);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
@@ -671,7 +671,7 @@ void TextureView::draw()
                             ImGui::Text("%d px", pixel_size);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::HelpIcon("Small  ", 15, 1, ICON_FA_CARET_SQUARE_LEFT);
+                        ImGuiToolkit::Indication("Small  ", 15, 1, ICON_FA_ARROW_LEFT);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -686,14 +686,14 @@ void TextureView::draw()
                     if (ImGui::BeginPopup("brush_pressure_popup", ImGuiWindowFlags_NoMove))
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::HelpMarker("Light  ", ICON_FA_FEATHER_ALT, ICON_FA_CARET_SQUARE_UP);
+                        ImGuiToolkit::Indication("Light  ", ICON_FA_FEATHER_ALT, ICON_FA_ARROW_UP);
                         ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::HelpMarker("Heavy  ", ICON_FA_WEIGHT_HANGING, ICON_FA_CARET_SQUARE_DOWN);
+                        ImGuiToolkit::Indication("Heavy  ", ICON_FA_WEIGHT_HANGING, ICON_FA_ARROW_DOWN);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -765,10 +765,10 @@ void TextureView::draw()
             else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
 
                 ImGui::SameLine();
-                ImGuiToolkit::HelpMarker( ICON_FA_SHAPES "\tMask shape\n\n"
+                ImGuiToolkit::HelpToolTip( ICON_FA_SHAPES "\tMask shape\n\n"
                                           ICON_FA_MOUSE_POINTER "\t  Edit texture\n"
                                           ICON_FA_CROP_ALT "\tCrop & Edit shape\n\n"
-                                          ICON_FA_CARET_SQUARE_DOWN "\tShape of the mask\n"
+                                          ICON_FA_ARROW_DOWN "\tShape of the mask\n"
                                           ICON_FA_RADIATION_ALT "\tShape blur");
 
                 // select cursor
@@ -813,7 +813,7 @@ void TextureView::draw()
                     {
                         static bool smoothchanged = false;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::HelpIcon("Blur  ", 7, 16, ICON_FA_CARET_SQUARE_UP);
+                        ImGuiToolkit::Indication("Blur  ", 7, 16, ICON_FA_ARROW_UP);
                         if (ImGui::VSliderInt("##shapeblur", ImVec2(30,260), &blur_percent, 0, 100, "") ){
                             edit_source_->maskShader()->blur = float(blur_percent) / 100.f;
                             edit_source_->touch();
@@ -832,7 +832,7 @@ void TextureView::draw()
                             ImGui::Text("%.d%%", blur_percent);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::HelpIcon("Sharp ", 8, 16, ICON_FA_CARET_SQUARE_DOWN);
+                        ImGuiToolkit::Indication("Sharp ", 8, 16, ICON_FA_ARROW_DOWN);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -848,7 +848,7 @@ void TextureView::draw()
             }
             else {// mode == MaskShader::NONE
                 ImGui::SameLine();
-                ImGuiToolkit::HelpMarker( ICON_FA_EXPAND "\tNo mask\n\n"
+                ImGuiToolkit::HelpToolTip( ICON_FA_EXPAND "\tNo mask\n\n"
                                           ICON_FA_MOUSE_POINTER "\t  Edit texture\n");
                 // always active mouse pointer
                 ImGui::SameLine(0, 60);

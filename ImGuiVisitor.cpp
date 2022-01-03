@@ -260,7 +260,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Filters");
 
-    if (ImGuiToolkit::ButtonIcon(6, 4)) {
+    if (ImGuiToolkit::IconButton(6, 4)) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
         Action::manager().store("Gamma & Color");
     }
@@ -281,7 +281,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 //    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
 //    ImGui::SliderFloat4("Levels", glm::value_ptr(n.levels), 0.0, 1.0);
 
-    if (ImGuiToolkit::ButtonIcon(5, 16)) {
+    if (ImGuiToolkit::IconButton(5, 16)) {
         n.brightness = 0.f;
         n.contrast = 0.f;
         Action::manager().store("B & C  0.0 0.0");
@@ -300,7 +300,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(9, 16)) {
+    if (ImGuiToolkit::IconButton(9, 16)) {
         n.saturation = 0.f;
         Action::manager().store("Saturation 0.0");
     }
@@ -313,7 +313,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(12, 4)) {
+    if (ImGuiToolkit::IconButton(12, 4)) {
         n.hueshift = 0.f;
         Action::manager().store("Hue shift 0.0");
     }
@@ -326,7 +326,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(18, 1)) {
+    if (ImGuiToolkit::IconButton(18, 1)) {
         n.nbColors = 0;
         Action::manager().store("Posterize None");
     }
@@ -340,7 +340,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(8, 1)) {
+    if (ImGuiToolkit::IconButton(8, 1)) {
         n.threshold = 0.f;
         Action::manager().store("Threshold None");
     }
@@ -354,7 +354,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(3, 1)) {
+    if (ImGuiToolkit::IconButton(3, 1)) {
         n.lumakey = 0.f;
         Action::manager().store("Lumakey 0.0");
     }
@@ -367,7 +367,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(13, 4)) {
+    if (ImGuiToolkit::IconButton(13, 4)) {
         n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
         n.chromadelta = 0.f;
         Action::manager().store("Chromakey & Color Reset");
@@ -386,7 +386,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(6, 16)) {
+    if (ImGuiToolkit::IconButton(6, 16)) {
         n.invert = 0;
         Action::manager().store("Invert None");
     }
@@ -395,7 +395,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0"))
         Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
 
-    if (ImGuiToolkit::ButtonIcon(1, 7)) {
+    if (ImGuiToolkit::IconButton(1, 7)) {
         n.filterid = 0;
         Action::manager().store("Filter None");
     }
@@ -435,21 +435,21 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
     if (s.active()) {
         if (s.blendingShader()->color.a > 0.f)
-            ImGuiToolkit::HelpMarker("Visible", ICON_FA_EYE);
+            ImGuiToolkit::Indication("Visible", ICON_FA_EYE);
         else
-            ImGuiToolkit::HelpMarker("Not visible", ICON_FA_EYE_SLASH);
+            ImGuiToolkit::Indication("Not visible", ICON_FA_EYE_SLASH);
     }
     else
-        ImGuiToolkit::HelpMarker("Inactive", ICON_FA_SNOWFLAKE);
+        ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
 
     // Inform on workspace
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
     if (s.workspace() == Source::BACKGROUND)
-        ImGuiToolkit::HelpIcon("in Background",10, 16);
+        ImGuiToolkit::Indication("in Background",10, 16);
     else if (s.workspace() == Source::FOREGROUND)
-        ImGuiToolkit::HelpIcon("in Foreground",12, 16);
+        ImGuiToolkit::Indication("in Foreground",12, 16);
     else
-        ImGuiToolkit::HelpIcon("in Workspace",11, 16);
+        ImGuiToolkit::Indication("in Workspace",11, 16);
 
     // locking
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.f * ImGui::GetFrameHeightWithSpacing()) );
