@@ -574,7 +574,7 @@ void Disk::accept(Visitor& v)
 
 Surface *Glyph::font_ = nullptr;
 
-Glyph::Glyph(int imgui_font_index) : Node(), character_(' '), font_index_(imgui_font_index), ar_(1.f)
+Glyph::Glyph(int imgui_font_index) : Node(), character_(' '), font_index_(imgui_font_index), baseline_(0.f), shape_(1.f, 1.f)
 {
     if (Glyph::font_ == nullptr)
         Glyph::font_ = new Surface;
@@ -619,14 +619,14 @@ void Glyph::draw(glm::mat4 modelview, glm::mat4 projection)
         // extract scaling
         ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
         vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
-        glm::vec3 sca = glm::vec3(vec.y, vec.y, 1.f) * glm::vec3(scale_.y * ar_, scale_.y, 1.f);
+        glm::vec2 sca = glm::vec2(vec.y) * glm::vec2(scale_.y) * shape_;
         // extract translation
         glm::vec3 tran = glm::vec3(modelview[3][0], modelview[3][1], modelview[3][2]) ;
-        tran += translation_ * glm::vec3(vec);
+        tran += (translation_  + glm::vec3(0.f, baseline_ * scale_.y, 0.f) ) * glm::vec3(vec);
         // apply local rotation
         rot.z += rotation_.z;
         // generate matrix
-        ctm = GlmToolkit::transform(tran, rot, sca);
+        ctm = GlmToolkit::transform(tran, rot, glm::vec3(sca, 1.f));
 
         Glyph::font_->draw( ctm, projection);
     }
@@ -644,13 +644,16 @@ void Glyph::setChar(char c)
             myfont = io.Fonts->Fonts[font_index_];
         const ImFontGlyph* glyph = myfont->FindGlyph(character_);
 
-        // create a texture UV transform to get the UV coordinates of the glyph
-        const glm::vec3 uv_t = glm::vec3( glyph->U0, glyph->V0, 0.f);
-        const glm::vec3 uv_s = glm::vec3( glyph->U1 - glyph->U0, glyph->V1 - glyph->V0, 1.f);
-        const glm::vec3 uv_r = glm::vec3(0.f, 0.f, 0.f);
-        uvTransform_ = GlmToolkit::transform(uv_t, uv_r, uv_s);
+        if (glyph) {
+            // create a texture UV transform to get the UV coordinates of the glyph
+            const glm::vec3 uv_t = glm::vec3( glyph->U0, glyph->V0, 0.f);
+            const glm::vec3 uv_s = glm::vec3( glyph->U1 - glyph->U0, glyph->V1 - glyph->V0, 1.f);
+            const glm::vec3 uv_r = glm::vec3(0.f, 0.f, 0.f);
+            uvTransform_ = GlmToolkit::transform(uv_t, uv_r, uv_s);
 
-        // remember aspect ratio
-        ar_ = (glyph->X1 - glyph->X0) / (glyph->Y1 - glyph->Y0);
+            // remember glyph shape
+            shape_ = glm::vec2(glyph->X1 - glyph->X0, glyph->Y1 - glyph->Y0) / myfont->FontSize;
+            baseline_ = -glyph->Y0 / myfont->FontSize;
+        }
     }
 }

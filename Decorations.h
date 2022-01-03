@@ -107,7 +107,8 @@ protected:
 
     char character_;
     int  font_index_;
-    float ar_;
+    float baseline_;
+    glm::vec2 shape_;
     glm::mat4 uvTransform_;
     static Surface *font_;
 

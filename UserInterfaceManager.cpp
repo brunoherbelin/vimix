@@ -4251,13 +4251,11 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::Text("Source");
         ImGui::PopFont();
 
-//        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
-//        const char *tooltip[2] = {"Pin pannel\nCurrent: double-clic on source", "Un-pin Pannel\nCurrent: single-clic on source"};
-//        ImGuiToolkit::IconToggle(5,2,4,2, &Settings::application.pannel_stick, tooltip );
-
+        // index indicator
         ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
-        ImGui::Text("#%d", Mixer::manager().indexCurrentSource());
+        ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
+        // name
         std::string sname = s->name();
         ImGui::SetCursorPosY(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5480,12 +5478,6 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
         ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
-#ifndef NDEBUG
-        ImGui::Text("Expert");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, CTRL_MOD  "E");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox, CTRL_MOD  "G");
-        ImGuiToolkit::ButtonSwitch( IMGUI_TITLE_LOGS, &Settings::application.widget.logs, CTRL_MOD "L");
-#endif
         //
         // Recording preferences
         //

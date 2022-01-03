@@ -145,12 +145,12 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // Glyphs show letters from the intials, with Font index 4 (LARGE)
     initial_0_ = new Glyph(4);
-    initial_0_->translation_ = glm::vec3(0.2f, 0.75f, 0.1f);
-    initial_0_->scale_.y =  0.15f;
+    initial_0_->translation_ = glm::vec3(0.2f, 0.8f, 0.1f);
+    initial_0_->scale_.y =  0.2f;
     groups_[View::MIXING]->attach(initial_0_);
     initial_1_ = new Glyph(4);
-    initial_1_->translation_ = glm::vec3(0.45f, 0.75f, 0.1f);
-    initial_1_->scale_.y = 0.15f;
+    initial_1_->translation_ = glm::vec3(0.4f, 0.8f, 0.1f);
+    initial_1_->scale_.y = 0.2f;
     groups_[View::MIXING]->attach(initial_1_);
 
     overlays_[View::MIXING] = new Group;
