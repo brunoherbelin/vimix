@@ -258,14 +258,10 @@ void MixingView::draw()
         if (ImGui::Selectable( ICON_FA_ELLIPSIS_V "     Align & Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
-            float mini = 1000.f;
-            float maxi = -1000.f;
             for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                 list.push_back(*it);
                 // compute barycenter (1)
                 center += glm::vec2((*it)->group(View::MIXING)->translation_);
-                mini = glm::min((*it)->group(View::MIXING)->translation_.y, mini);
-                maxi = glm::max((*it)->group(View::MIXING)->translation_.y, maxi);
             }
             // compute barycenter (2)
             center /= list.size();
