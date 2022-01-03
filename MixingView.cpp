@@ -212,7 +212,21 @@ void MixingView::draw()
             }
             Action::manager().store(std::string("Selection: Mixing Center"));
         }
-        if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
+        if (ImGui::Selectable( ICON_FA_HAYKAL "  Dispatch" )){
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            // distribute with equal angle
+            float angle = 0.f;
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+
+                glm::vec2 P = center + glm::rotate(glm::vec2(0.f, 1.2), angle);
+                (*it)->group(View::MIXING)->translation_.x = P.x;
+                (*it)->group(View::MIXING)->translation_.y = P.y;
+                (*it)->touch();
+                angle -= glm::two_pi<float>() / float(Mixer::selection().size());
+            }
+            Action::manager().store(std::string("Selection: Mixing Dispatch"));
+        }
+        if (ImGui::Selectable( ICON_FA_FAN "  Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
             for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
@@ -239,7 +253,32 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(list.size());
             }
-            Action::manager().store(std::string("Selection: Mixing Distribute"));
+            Action::manager().store(std::string("Selection: Mixing Distribute in circle"));
+        }
+        if (ImGui::Selectable( ICON_FA_ELLIPSIS_V "     Align & Distribute" )){
+            SourceList list;
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            float mini = 1000.f;
+            float maxi = -1000.f;
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                list.push_back(*it);
+                // compute barycenter (1)
+                center += glm::vec2((*it)->group(View::MIXING)->translation_);
+                mini = glm::min((*it)->group(View::MIXING)->translation_.y, mini);
+                maxi = glm::max((*it)->group(View::MIXING)->translation_.y, maxi);
+            }
+            // compute barycenter (2)
+            center /= list.size();
+            // distribute with equal angle
+            float i = 0.f;
+            float sign = -1.f;
+            for (SourceList::iterator it = list.begin(); it != list.end(); ++it, sign*=-1.f) {
+                (*it)->group(View::MIXING)->translation_.x = center.x;
+                (*it)->group(View::MIXING)->translation_.y = center.y + sign * i;
+                if (sign<0) i+=0.32f;
+                (*it)->touch();
+            }
+            Action::manager().store(std::string("Selection: Mixing Align & Distribute"));
         }
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
