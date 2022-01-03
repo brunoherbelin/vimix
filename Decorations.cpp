@@ -547,11 +547,6 @@ Disk::Disk() : Node()
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
-Disk::~Disk()
-{
-
-}
-
 void Disk::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
@@ -577,77 +572,85 @@ void Disk::accept(Visitor& v)
     v.visit(*this);
 }
 
+Surface *Glyph::font_ = nullptr;
 
+Glyph::Glyph(int imgui_font_index) : Node(), character_(' '), font_index_(imgui_font_index), ar_(1.f)
+{
+    if (Glyph::font_ == nullptr)
+        Glyph::font_ = new Surface;
 
-//FrameBuffer *textToFrameBuffer(const std::string &text, font_style type, uint h)
-//{
-//    FrameBuffer *fb = nullptr;
+    uvTransform_ = glm::identity<glm::mat4>();
+    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+}
 
-//    uint w = 0;
-//    for (auto i = 0; i < text.size(); ++i) {
-//        const ImFontGlyph* glyph = fontmap[type]->FindGlyph( text[i] );
-//        w += h * (uint) ceil( (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0) );
-//    }
-//    if (w > 0) {
+void Glyph::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() ) {
 
-//        // create and fill a FrameBuffer with the ImGui Font texture (once)
-//        static uint framebufferFont_ = 0;
-//        static uint textureFont_ = 0;
-//        static int widthFont_ =0;
-//        static int heightFont_ =0;
-//        if (framebufferFont_ == 0) {
-//            glGenTextures(1, &textureFont_);
-//            glBindTexture(GL_TEXTURE_2D, textureFont_);
-//            unsigned char *pixels;
-//            int bpp = 0;
-//            ImGuiIO& io = ImGui::GetIO();
-//            io.Fonts->GetTexDataAsRGBA32(&pixels, &widthFont_, &heightFont_, &bpp);
-//            glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA, widthFont_, heightFont_);
-//            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, widthFont_, heightFont_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-//            glBindTexture(GL_TEXTURE_2D, 0);
-//            glGenFramebuffers(1, &framebufferFont_);
-//            glBindFramebuffer(GL_FRAMEBUFFER, framebufferFont_);
-//            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureFont_, 0);
-//        }
+        if (!Glyph::font_->initialized()) {
 
-//        // create an empty FrameBuffer for the target glyphs
-//        fb = new FrameBuffer(w, h, true);
+            uint tex = (uint)(intptr_t)ImGui::GetIO().Fonts->TexID;
+            if ( tex > 0) {
+                Glyph::font_->init();
+                font_->setTextureIndex(tex);
+            }
+        }
 
-////        uint textureGlyphs_ = 0;
-////        glGenTextures(1, &textureGlyphs_);
-////        glBindTexture(GL_TEXTURE_2D, textureGlyphs_);
-////        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA, w, h);
-////        glBindTexture(GL_TEXTURE_2D, 0);
-////        uint framebufferGlyphs_ = 0;
-////        glGenFramebuffers(1, &framebufferGlyphs_);
-////        glBindFramebuffer(GL_FRAMEBUFFER, framebufferGlyphs_);
-////        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureGlyphs_, 0);
+        if (Glyph::font_->initialized()) {
+            init();
+            setChar(character_);
+        }
+    }
 
-////        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebufferGlyphs_);
+    if ( visible_ ) {
 
+        // set color
+        Glyph::font_->shader()->color = color;
 
-//        // blit glyphs from framebufferFont_ to framebuffer target
-//        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferFont_);
-//        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb->opengl_id() );
+        // modify the shader iTransform to select UVs of the desired glyph
+        Glyph::font_->shader()->iTransform = uvTransform_;
 
-//        GLint write_x = 0;
-//        for (auto i = 0; i < text.size(); ++i) {
-//            const ImFontGlyph* glyph = fontmap[type]->FindGlyph( text[i] );
-//            w = h * (uint) ceil( (glyph->X1 - glyph->X0) /  (glyph->Y1 - glyph->Y0) );
+        // rebuild a matrix with rotation (see handles) and translation from modelview + translation_
+        // and define scale to be 1, 1
+        glm::mat4 ctm;
+        glm::vec3 rot(0.f);
+        glm::vec4 vec = modelview * glm::vec4(1.f, 0.f, 0.f, 0.f);
+        rot.z = glm::orientedAngle( glm::vec3(1.f, 0.f, 0.f), glm::normalize(glm::vec3(vec)), glm::vec3(0.f, 0.f, 1.f) );
+        // extract scaling
+        ctm = glm::rotate(glm::identity<glm::mat4>(), -rot.z, glm::vec3(0.f, 0.f, 1.f)) * modelview ;
+        vec = ctm * glm::vec4(1.f, 1.f, 0.f, 0.f);
+        glm::vec3 sca = glm::vec3(vec.y, vec.y, 1.f) * glm::vec3(scale_.y * ar_, scale_.y, 1.f);
+        // extract translation
+        glm::vec3 tran = glm::vec3(modelview[3][0], modelview[3][1], modelview[3][2]) ;
+        tran += translation_ * glm::vec3(vec);
+        // apply local rotation
+        rot.z += rotation_.z;
+        // generate matrix
+        ctm = GlmToolkit::transform(tran, rot, sca);
 
-//            GLint read_x0 = (GLint) ( glyph->U0 * (float) widthFont_ );
-//            GLint read_y0 = (GLint) ( glyph->V0 * (float) heightFont_ );
-//            GLint read_x1 = (GLint) ( glyph->U1 * (float) widthFont_ );
-//            GLint read_y1 = (GLint) ( glyph->V1 * (float) heightFont_ );
-//            glBlitFramebuffer(read_x0, read_y0, read_x1, read_y1,
-//                              write_x, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        Glyph::font_->draw( ctm, projection);
+    }
+}
 
-//            write_x += w;
-//        }
+void Glyph::setChar(char c)
+{
+    character_ = c;
 
-//    }
+    if (initialized()) {
+        // get from imgui the UVs of the given char
+        const ImGuiIO& io = ImGui::GetIO();
+        ImFont* myfont = io.Fonts->Fonts[0];
+        if (font_index_ > 0 && font_index_ < io.Fonts->Fonts.size() )
+            myfont = io.Fonts->Fonts[font_index_];
+        const ImFontGlyph* glyph = myfont->FindGlyph(character_);
 
-//    return fb;
-//}
+        // create a texture UV transform to get the UV coordinates of the glyph
+        const glm::vec3 uv_t = glm::vec3( glyph->U0, glyph->V0, 0.f);
+        const glm::vec3 uv_s = glm::vec3( glyph->U1 - glyph->U0, glyph->V1 - glyph->V0, 1.f);
+        const glm::vec3 uv_r = glm::vec3(0.f, 0.f, 0.f);
+        uvTransform_ = GlmToolkit::transform(uv_t, uv_r, uv_s);
 
-
+        // remember aspect ratio
+        ar_ = (glyph->X1 - glyph->X0) / (glyph->Y1 - glyph->Y0);
+    }
+}

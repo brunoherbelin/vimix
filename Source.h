@@ -35,6 +35,7 @@ class FrameBufferSurface;
 class Frame;
 class Handles;
 class Symbol;
+class Glyph;
 class CloneSource;
 class MixingGroup;
 
@@ -303,6 +304,7 @@ protected:
     Handles *lock_, *unlock_;
     Switch *locker_;
     Symbol *symbol_;
+    Glyph  *initial_0_, *initial_1_;
 
     // update
     bool  active_;

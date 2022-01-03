@@ -143,6 +143,16 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     frames_[View::MIXING]->attach(frame);
     groups_[View::MIXING]->attach(frames_[View::MIXING]);
 
+    // Glyphs show letters from the intials, with Font index 4 (LARGE)
+    initial_0_ = new Glyph(4);
+    initial_0_->translation_ = glm::vec3(0.2f, 0.75f, 0.1f);
+    initial_0_->scale_.y =  0.15f;
+    groups_[View::MIXING]->attach(initial_0_);
+    initial_1_ = new Glyph(4);
+    initial_1_->translation_ = glm::vec3(0.45f, 0.75f, 0.1f);
+    initial_1_->scale_.y = 0.15f;
+    groups_[View::MIXING]->attach(initial_1_);
+
     overlays_[View::MIXING] = new Group;
     overlays_[View::MIXING]->translation_.z = 0.1;
     overlays_[View::MIXING]->visible_ = false;
@@ -225,6 +235,9 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::LAYER]->attach(frame);
     groups_[View::LAYER]->attach(frames_[View::LAYER]);
+
+    groups_[View::LAYER]->attach(initial_0_);
+    groups_[View::LAYER]->attach(initial_1_);
 
     overlays_[View::LAYER] = new Group;
     overlays_[View::LAYER]->translation_.z = 0.15;
@@ -351,6 +364,9 @@ void Source::setName (const std::string &name)
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );
+
+    initial_0_->setChar(initials_[0]);
+    initial_1_->setChar(initials_[1]);
 }
 
 void Source::accept(Visitor& v)
@@ -380,6 +396,10 @@ void Source::setMode(Source::Mode m)
     bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
+
+    // the opacity of the initials changes if current
+    initial_0_->color.w = current ? 1.0 : 0.7;
+    initial_1_->color.w = current ? 1.0 : 0.7;
 
     // the lock icon
     locker_->setActive( locked_ ? 0 : 1);
@@ -494,6 +514,10 @@ void Source::attach(FrameBuffer *renderbuffer)
         // hack to place the symbols in the corner independently of aspect ratio
         symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
     }
+
+    // hack to place the initials in the corner independently of aspect ratio
+    initial_0_->translation_.x -= renderbuffer_->aspectRatio();
+    initial_1_->translation_.x -= renderbuffer_->aspectRatio();
 
     // add lock icon to views (displayed on front)
     groups_[View::LAYER]->attach( locker_ );
