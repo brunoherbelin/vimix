@@ -13,9 +13,6 @@
 [submodule "ext/Dirent"]
 	path = ext/Dirent
 	url = https://github.com/tronkko/dirent.git
-[submodule "ext/tfd"]
-	path = ext/tfd
-	url = https://git.code.sf.net/p/tinyfiledialogs/code
 [submodule "ext/glm"]
 	path = ext/glm
 	url = https://github.com/g-truc/glm.git
