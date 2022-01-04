@@ -348,7 +348,7 @@ std::string VideoStreamer::init(GstCaps *caps)
             if ( GstToolkit::has_feature(config->first) ) {
                 description += config->second;
                 found_harware_acceleration = true;
-                Log::Info("Video Streamer : Hardware accelerated encoder (%s)", config->first.c_str());
+                Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
                 break;
             }
         }

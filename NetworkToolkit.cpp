@@ -100,7 +100,7 @@ const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 
     "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=3 ! rtpvrawpay ! application/x-rtp,sampling=RGB ! udpsink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc quality=85 ! rtpjpegpay ! udpsink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! rtph264pay ! udpsink name=sink",
+    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! rtph264pay aggregate-mode=1 ! udpsink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
     "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink"
@@ -117,9 +117,9 @@ const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 };
 
 const std::vector< std::pair<std::string, std::string> > NetworkToolkit::protocol_h264_send_pipeline {
-    {"vtenc_h264_hw", "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay ! udpsink name=sink"},
-    {"nvh264enc", "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! rtph264pay ! udpsink name=sink"},
-    {"vaapih264enc", "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! rtph264pay ! udpsink name=sink"}
+//    {"vtenc_h264_hw", "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
+    {"nvh264enc",     "video/x-raw, format=RGBA, framerate=30/1 ! queue max-size-buffers=10 ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
+    {"vaapih264enc",  "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
 };
 
 bool initialized_ = false;

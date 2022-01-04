@@ -15,7 +15,7 @@
 class Visitor;
 
 #define N_FRAME 3
-#define TIMEOUT 5
+#define TIMEOUT 10
 
 struct StreamInfo {
 
