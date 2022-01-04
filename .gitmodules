@@ -19,3 +19,6 @@
 [submodule "ext/link"]
 	path = ext/link
 	url = https://github.com/Ableton/link.git
+[submodule "ext/tfd"]
+	path = ext/tfd
+	url = https://git.code.sf.net/p/tinyfiledialogs/code
