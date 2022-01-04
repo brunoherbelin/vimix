@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ struct AppLog
         //  window
         ImGui::SameLine(0, 0);
         static bool numbering = true;
-        ImGuiToolkit::ButtonToggle( ICON_FA_SORT_NUMERIC_DOWN, &numbering );
+        ImGuiToolkit::ButtonIconToggle(4, 12, 4, 12, &numbering );
         ImGui::SameLine();
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();
@@ -176,7 +176,7 @@ void Log::Info(const char* fmt, ...)
 void Log::ShowLogWindow(bool* p_open)
 {
     ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
-    logs.Draw( ICON_FA_LIST_UL " Logs", p_open);
+    logs.Draw( IMGUI_TITLE_LOGS, p_open);
 }
 
 void Log::Notify(const char* fmt, ...)
@@ -261,7 +261,7 @@ void Log::Render(bool *showWarnings)
         if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGuiToolkit::Icon(9, 4);
-            ImGui::SameLine(0, 10);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(width);
             ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", warnings.size());
             ImGui::Dummy(ImVec2(width, 0));

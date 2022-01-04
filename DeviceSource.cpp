@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG
-//#define GST_DEVICE_DEBUG
+#define GST_DEVICE_DEBUG
 #endif
 
 
@@ -120,69 +120,82 @@ gboolean
 Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
 {
    GstDevice *device;
-   gchar *name;
 
    switch (GST_MESSAGE_TYPE (message)) {
-     case GST_MESSAGE_DEVICE_ADDED: {
+   case GST_MESSAGE_DEVICE_ADDED:
+   {
        gst_message_parse_device_added (message, &device);
-       name = gst_device_get_display_name (device);
-
-       // ignore if already in the list
-       if ( std::find(manager().src_name_.begin(), manager().src_name_.end(), name) != manager().src_name_.end())
-        break;
-
-       manager().src_name_.push_back(name);
-#ifdef GST_DEVICE_DEBUG
-       gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
-       g_print("\nDevice %s plugged : %s\n", name, stru);
-       g_free (stru);
-#endif
-       g_free (name);
-
-       std::string p = pipelineForDevice(device, manager().src_description_.size());
-       manager().src_description_.push_back(p);
-
-       DeviceConfigSet confs = getDeviceConfigs(p);
-       manager().src_config_.push_back(confs);
-
-       manager().list_uptodate_ = false;
-
+       manager().add(device);
        gst_object_unref (device);
+
    }
        break;
-     case GST_MESSAGE_DEVICE_REMOVED: {
+   case GST_MESSAGE_DEVICE_REMOVED:
+   {
        gst_message_parse_device_removed (message, &device);
-       name = gst_device_get_display_name (device);
-       manager().remove(name);
-#ifdef GST_DEVICE_DEBUG
-       g_print("\nDevice %s unplugged\n", name);
-#endif
-       g_free (name);
-
-       manager().list_uptodate_ = false;
-
+       manager().remove(device);
        gst_object_unref (device);
    }
        break;
-     default:
+   default:
        break;
    }
 
    return G_SOURCE_CONTINUE;
 }
 
-void Device::remove(const char *device)
+
+void Device::add(GstDevice *device)
 {
+    if (device==nullptr)
+        return;
+
+    gchar *device_name = gst_device_get_display_name (device);
+
+    if ( std::find(manager().src_name_.begin(), manager().src_name_.end(), device_name) == manager().src_name_.end())   {
+
+        std::string p = pipelineForDevice(device, manager().src_description_.size());
+        DeviceConfigSet confs = getDeviceConfigs(p);
+
+        // add if not in the list and valid
+        if (!p.empty() && !confs.empty()) {
+            src_name_.push_back(device_name);
+            src_description_.push_back(p);
+            src_config_.push_back(confs);
+#ifdef GST_DEVICE_DEBUG
+            gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
+            g_print("\nDevice %s plugged : %s\n", device_name, stru);
+            g_free (stru);
+#endif
+        }
+        list_uptodate_ = false;
+    }
+    g_free (device_name);
+}
+
+void Device::remove(GstDevice *device)
+{    
+    if (device==nullptr)
+        return;
+
+    gchar *device_name = gst_device_get_display_name (device);
+
     std::vector< std::string >::iterator nameit   = src_name_.begin();
     std::vector< std::string >::iterator descit   = src_description_.begin();
     std::vector< DeviceConfigSet >::iterator coit = src_config_.begin();
     while (nameit != src_name_.end()){
 
-        if ( (*nameit).compare(device) == 0 )
+        if ( (*nameit).compare(device_name) == 0 )
         {
             src_name_.erase(nameit);
             src_description_.erase(descit);
             src_config_.erase(coit);
+
+            list_uptodate_ = false;
+
+#ifdef GST_DEVICE_DEBUG
+       g_print("\nDevice %s unplugged\n", device_name);
+#endif
             break;
         }
 
@@ -190,10 +203,16 @@ void Device::remove(const char *device)
         ++descit;
         ++coit;
     }
+    g_free (device_name);
 }
 
 
-Device::Device()
+Device::Device(): list_uptodate_(false)
+{
+
+}
+
+void Device::init()
 {
     GstBus *bus;
     GstCaps *caps;
@@ -217,24 +236,9 @@ Device::Device()
     GList *devices = gst_device_monitor_get_devices(monitor_);
     GList *tmp;
     for (tmp = devices; tmp ; tmp = tmp->next ) {
-
         GstDevice *device = (GstDevice *) tmp->data;
-
-        gchar *name = gst_device_get_display_name (device);
-        src_name_.push_back(name);
-        g_free (name);
-
-#ifdef GST_DEVICE_DEBUG
-       gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
-       g_print("\nDevice %s already plugged : %s", name, stru);
-       g_free (stru);
-#endif
-
-        std::string p = pipelineForDevice(device, src_description_.size());
-        src_description_.push_back(p);
-
-        DeviceConfigSet confs = getDeviceConfigs(p);
-        src_config_.push_back(confs);
+        add(device);
+        gst_object_unref (device);
     }
     g_list_free(devices);
 
@@ -383,32 +387,34 @@ void DeviceSource::setDevice(const std::string &devicename)
             Log::Info(" - %s %s %d x %d  %.1f fps", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
         }
 #endif
-        DeviceConfig best = *confs.rbegin();
-        float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
-        Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
+        if (!confs.empty()) {
+            DeviceConfig best = *confs.rbegin();
+            float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
+            Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
-        pipeline << " ! " << best.stream;
-        if (!best.format.empty())
-            pipeline << ",format=" << best.format;
-        pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
-        pipeline << ",width=" << best.width;
-        pipeline << ",height=" << best.height;
+            pipeline << " ! " << best.stream;
+            if (!best.format.empty())
+                pipeline << ",format=" << best.format;
+            pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+            pipeline << ",width=" << best.width;
+            pipeline << ",height=" << best.height;
 
-        if ( best.stream.find("jpeg") != std::string::npos )
-            pipeline << " ! jpegdec";
+            if ( best.stream.find("jpeg") != std::string::npos )
+                pipeline << " ! jpegdec";
 
-        if ( device_.find("Screen") != std::string::npos )
-            pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue max-size-buffers=3";
+            if ( device_.find("Screen") != std::string::npos )
+                pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue max-size-buffers=3";
 
-        pipeline << " ! videoconvert";
+            pipeline << " ! videoconvert";
 
-        // resize render buffer
-        if (renderbuffer_)
-            renderbuffer_->resize(best.width, best.height);
+            // resize render buffer
+            if (renderbuffer_)
+                renderbuffer_->resize(best.width, best.height);
 
-        // open gstreamer
-        stream_->open( pipeline.str(), best.width, best.height);
-        stream_->play(true);
+            // open gstreamer
+            stream_->open( pipeline.str(), best.width, best.height);
+            stream_->play(true);
+        }
 
         // will be ready after init and one frame rendered
         ready_ = false;

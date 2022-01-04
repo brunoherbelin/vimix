@@ -292,6 +292,7 @@ set(VMIX_SRCS
     TextureView.cpp
     TransitionView.cpp
     Source.cpp
+    SourceCallback.cpp
     SourceList.cpp
     Session.cpp
     Selection.cpp
@@ -337,6 +338,7 @@ set(VMIX_SRCS
     ActionManager.cpp
     Overlay.cpp
     Metronome.cpp
+    ControlManager.cpp
 )
 
 

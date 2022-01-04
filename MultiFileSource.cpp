@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
     // sanity check: the location pattern looks like a filename and seems consecutive numbered
     if ( SystemToolkit::extension_filename(location).empty() ||
          SystemToolkit::path_filename(location) != SystemToolkit::path_filename(list_files.front()) ||
-         list_files.size() != max - min + 1 ) {
+         list_files.size() != (size_t) (max - min) + 1 ) {
         Log::Info("MultiFileSequence '%s' invalid.", location.c_str());
         location.clear();
     }

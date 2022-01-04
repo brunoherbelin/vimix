@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -110,6 +110,7 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
+    applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -258,7 +259,13 @@ void Settings::Save(uint64_t runtime)
     timerConfNode->SetAttribute("link_quantum", application.timer.link_quantum);
     timerConfNode->SetAttribute("link_start_stop_sync", application.timer.link_start_stop_sync);
     timerConfNode->SetAttribute("stopwatch_duration", application.timer.stopwatch_duration);
-    pRoot->InsertEndChild(timerConfNode);
+    pRoot->InsertEndChild(timerConfNode);    
+
+    // Controller
+    XMLElement *controlConfNode = xmlDoc.NewElement( "Control" );
+    controlConfNode->SetAttribute("osc_port_receive", application.control.osc_port_receive);
+    controlConfNode->SetAttribute("osc_port_send", application.control.osc_port_send);
+
 
     // First save : create filename
     if (settingsFilename.empty())
@@ -302,9 +309,12 @@ void Settings::Load()
     // impose C locale for all app
     setlocale(LC_ALL, "C");
 
+    // set filenames from settings path
+    application.control.osc_filename = SystemToolkit::full_filename(SystemToolkit::settings_path(), OSC_CONFIG_FILE);
+    settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
+
+    // try to load settings file
     XMLDocument xmlDoc;
-    if (settingsFilename.empty())
-        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
     XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
@@ -314,8 +324,10 @@ void Settings::Load()
     else if (XMLResultError(eResult))
         return;
 
+    // first element should be called by the application name
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
-    if (pRoot == nullptr) return;
+    if (pRoot == nullptr)
+        return;
 
     // cancel on different root name
     if (application.name.compare( string( pRoot->Value() ) ) != 0 )
@@ -343,6 +355,7 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
+        applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
     }
 
     // Widgets
@@ -533,6 +546,13 @@ void Settings::Load()
         timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
         timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
         timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
+    }
+
+    // bloc Controller
+    XMLElement *controlconfnode = pRoot->FirstChildElement("Control");
+    if (controlconfnode != nullptr) {
+        controlconfnode->QueryIntAttribute("osc_port_receive", &application.control.osc_port_receive);
+        controlconfnode->QueryIntAttribute("osc_port_send", &application.control.osc_port_send);
     }
 
 }

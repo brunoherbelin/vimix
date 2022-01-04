@@ -30,6 +30,7 @@ public:
     Interpolator();
     ~Interpolator();
 
+    void clear ();
     void add (Source *s, const SourceCore &target );
 
     void apply (float percent);

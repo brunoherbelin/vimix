@@ -26,8 +26,8 @@
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
-#define MENU_HELP             ICON_FA_LIFE_RING " Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
+#define SHORTCUT_LOGS         CTRL_MOD "L"
 #define MENU_QUIT             ICON_FA_POWER_OFF " Quit"
 #define SHORTCUT_QUIT         CTRL_MOD "Q"
 #define MENU_CUT              ICON_FA_CUT "  Cut"
@@ -38,7 +38,7 @@
 #define SHORTCUT_DELETE       "Del"
 #define MENU_PASTE            ICON_FA_PASTE "  Paste"
 #define SHORTCUT_PASTE        CTRL_MOD "V"
-#define MENU_SELECTALL        ICON_FA_LIST "  Select all"
+#define MENU_SELECTALL        ICON_FA_TH_LIST "  Select all"
 #define SHORTCUT_SELECTALL    CTRL_MOD "A"
 #define MENU_UNDO             ICON_FA_UNDO "  Undo"
 #define SHORTCUT_UNDO         CTRL_MOD "Z"
@@ -126,6 +126,7 @@ class Navigator
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
+    bool custom_pipeline;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 
@@ -255,6 +256,7 @@ public:
 
     void resetActiveSelection();
     void Render();
+    void setVisible(bool on);
     bool Visible() const;
     inline bool Foccused() const { return focused_; }
 };

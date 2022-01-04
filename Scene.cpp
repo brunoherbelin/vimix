@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,21 +91,18 @@ void Node::copyTransform(const Node *other)
 
 void Node::update( float dt)
 {
-    std::list<UpdateCallback *>::iterator iter;
-    for (iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
+    for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {
         UpdateCallback *callback = *iter;
 
-        if (callback->enabled())
-            callback->update(this, dt);
+        callback->update(this, dt);
 
         if (callback->finished()) {
             iter = update_callbacks_.erase(iter);
             delete callback;
         }
-        else {
+        else
             ++iter;
-        }
     }
 
     // update transform matrix from attributes

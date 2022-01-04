@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -831,6 +831,14 @@ void Mixer::setCurrentSource(Source *s)
         setCurrentSource( session_->find(s) );
 }
 
+Source *Mixer::sourceAtIndex (int index)
+{
+    SourceList::iterator s = session_->at(index);
+    if (s!=session_->end())
+        return *s;
+    return nullptr;
+}
+
 void Mixer::setCurrentIndex(int index)
 {
     setCurrentSource( session_->at(index) );
@@ -901,9 +909,14 @@ void Mixer::unsetCurrentSource()
     }
 }
 
-int Mixer::indexCurrentSource()
+int Mixer::indexCurrentSource() const
 {
     return current_source_index_;
+}
+
+int  Mixer::count() const
+{
+    return (int) session_->numSource();
 }
 
 Source *Mixer::currentSource()
@@ -1133,7 +1146,7 @@ void Mixer::merge(SessionSource *source)
                 SourceList::iterator  it = to_be_moved.begin();
                 for (; it != to_be_moved.end(); ++it) {
                     float scale_depth = (MAX_DEPTH-(*it)->depth()) / (MAX_DEPTH-next_depth);
-                    (*it)->setDepth( (*it)->depth() + scale_depth );
+                    (*it)->call( new SetDepth( (*it)->depth() + scale_depth ) );
                 }
             }
         }
@@ -1145,10 +1158,10 @@ void Mixer::merge(SessionSource *source)
             renameSource(s);
 
             // scale alpha
-            s->setAlpha( s->alpha() * source->alpha() );
+            s->call( new SetAlpha(s->alpha() * source->alpha()));
 
             // set depth (proportional to depth of s, adjusted by needed space)
-            s->setDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) );
+            s->call( new SetDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) ) );
 
             // set location
             // a. transform of node to import
@@ -1227,7 +1240,7 @@ void Mixer::swap()
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
     // transfer fading
-    session_->setFading( MAX(back_session_->fading(), session_->fading()), true );
+    session_->setFadingTarget( MAX(back_session_->fadingTarget(), session_->fadingTarget()));
 
     // no current source
     current_source_ = session_->end();

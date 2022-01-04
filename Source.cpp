@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -143,6 +143,16 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     frames_[View::MIXING]->attach(frame);
     groups_[View::MIXING]->attach(frames_[View::MIXING]);
 
+    // Glyphs show letters from the intials, with Font index 4 (LARGE)
+    initial_0_ = new Glyph(4);
+    initial_0_->translation_ = glm::vec3(0.2f, 0.8f, 0.1f);
+    initial_0_->scale_.y =  0.2f;
+    groups_[View::MIXING]->attach(initial_0_);
+    initial_1_ = new Glyph(4);
+    initial_1_->translation_ = glm::vec3(0.4f, 0.8f, 0.1f);
+    initial_1_->scale_.y = 0.2f;
+    groups_[View::MIXING]->attach(initial_1_);
+
     overlays_[View::MIXING] = new Group;
     overlays_[View::MIXING]->translation_.z = 0.1;
     overlays_[View::MIXING]->visible_ = false;
@@ -225,6 +235,9 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::LAYER]->attach(frame);
     groups_[View::LAYER]->attach(frames_[View::LAYER]);
+
+    groups_[View::LAYER]->attach(initial_0_);
+    groups_[View::LAYER]->attach(initial_1_);
 
     overlays_[View::LAYER] = new Group;
     overlays_[View::LAYER]->translation_.z = 0.15;
@@ -335,15 +348,25 @@ Source::~Source()
     overlays_.clear();
     frames_.clear();
     handles_.clear();
+
+    // clear and delete callbacks
+    for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )  {
+        SourceCallback *callback = *iter;
+        iter = update_callbacks_.erase(iter);
+        delete callback;
+    }
 }
 
 void Source::setName (const std::string &name)
 {
     if (!name.empty())
-        name_ = BaseToolkit::transliterate(name);
+        name_ = BaseToolkit::unspace( BaseToolkit::transliterate(name) );
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
     initials_[1] = std::toupper( name_.back(), std::locale("C") );
+
+    initial_0_->setChar(initials_[0]);
+    initial_1_->setChar(initials_[1]);
 }
 
 void Source::accept(Visitor& v)
@@ -373,6 +396,10 @@ void Source::setMode(Source::Mode m)
     bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
+
+    // the opacity of the initials changes if current
+    initial_0_->color.w = current ? 1.0 : 0.7;
+    initial_1_->color.w = current ? 1.0 : 0.7;
 
     // the lock icon
     locker_->setActive( locked_ ? 0 : 1);
@@ -488,6 +515,10 @@ void Source::attach(FrameBuffer *renderbuffer)
         symbol_->translation_.x += 0.1f * (renderbuffer_->aspectRatio()-1.f);
     }
 
+    // hack to place the initials in the corner independently of aspect ratio
+    initial_0_->translation_.x -= renderbuffer_->aspectRatio();
+    initial_1_->translation_.x -= renderbuffer_->aspectRatio();
+
     // add lock icon to views (displayed on front)
     groups_[View::LAYER]->attach( locker_ );
     groups_[View::MIXING]->attach( locker_ );
@@ -537,6 +568,11 @@ void Source::setActive (bool on)
     groups_[View::LAYER]->visible_ = active_;
 }
 
+void Source::setActive (float threshold)
+{
+    setActive( glm::length( glm::vec2(groups_[View::MIXING]->translation_) ) < threshold );
+}
+
 void Source::setLocked (bool on)
 {
     locked_ = on;
@@ -546,21 +582,27 @@ void Source::setLocked (bool on)
 
 // Transfer functions from coordinates to alpha (1 - transparency)
 
-// linear distance
-float linear_(float x, float y) {
-    return 1.f - CLAMP( sqrt( ( x * x ) + ( y * y ) ), 0.f, 1.f );
-}
+//// linear distance
+//float linear_(float x, float y) {
+//    return 1.f - CLAMP( sqrt( ( x * x ) + ( y * y ) ), 0.f, 1.f );
+//}
 
-// quadratic distance
-float quad_(float x, float y) {
-    return 1.f - CLAMP( ( x * x ) + ( y * y ), 0.f, 1.f );
-}
+//// quadratic distance
+//float quad_(float x, float y) {
+//    return 1.f - CLAMP( ( x * x ) + ( y * y ), 0.f, 1.f );
+//}
 
-// best alpha transfer function: quadratic sinusoidal shape
-float sin_quad_(float x, float y) {
+//// best alpha transfer function: quadratic sinusoidal shape
+//float sin_quad_(float x, float y) {
+//    float D = sqrt( ( x * x ) + ( y * y ) );
+//    return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
+////    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
+//}
+
+float SourceCore::alphaFromCordinates(float x, float y)
+{
     float D = sqrt( ( x * x ) + ( y * y ) );
     return 0.5f + 0.5f * cos( M_PI * CLAMP( D * sqrt(D), 0.f, 1.f ) );
-//    return 0.5f + 0.5f * cos( M_PI * CLAMP( ( ( x * x ) + ( y * y ) ), 0.f, 1.f ) );
 }
 
 
@@ -569,44 +611,41 @@ float Source::depth() const
     return group(View::RENDERING)->translation_.z;
 }
 
-void Source::setDepth(float d)
-{
-    groups_[View::LAYER]->translation_.z = CLAMP(d, MIN_DEPTH, MAX_DEPTH);
-    touch();
-}
-
-float Source::mix_distance()
-{
-    return glm::length( glm::vec2(groups_[View::MIXING]->translation_) );
-}
 
 float Source::alpha() const
 {
     return blendingShader()->color.a;
 }
 
-void Source::setAlpha(float a)
+void Source::call(SourceCallback *callback, bool override)
 {
-    a = CLAMP(a, 0.f, 1.f);
-    glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-    glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));// step in diagonal by default
+    if (callback != nullptr) {
 
-    // step in direction of source translation if possible
-    if ( glm::length(dist) > DELTA_ALPHA)
-        step = glm::normalize(dist);
+        // lock access to callbacks list
+        access_callbacks_.lock();
 
-    // converge to reduce the difference of alpha
-    // using dichotomic algorithm
-    float delta = sin_quad_(dist.x, dist.y) - a;
-    while ( glm::abs(delta) > DELTA_ALPHA ){
-        dist += step * (delta / 2.f);
-        delta = sin_quad_(dist.x, dist.y) - a;
+        // remove similar callbacks if override
+        if (override) {
+            for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
+            {
+                // remove and delete all callbacks of same type
+                SourceCallback *c = *iter;
+                if (callback->type() == c->type() ) {
+                    iter = update_callbacks_.erase(iter);
+                    delete c;
+                }
+                // iterate
+                else
+                    ++iter;
+            }
+        }
+
+        // add callback to callbacks list
+        update_callbacks_.push_back(callback);
+
+        // release access to callbacks list
+        access_callbacks_.unlock();
     }
-
-    // apply new mixing coordinates
-    groups_[View::MIXING]->translation_.x = dist.x;
-    groups_[View::MIXING]->translation_.y = dist.y;
-    touch();
 }
 
 void Source::update(float dt)
@@ -614,122 +653,153 @@ void Source::update(float dt)
     // keep delta-t
     dt_ = dt;
 
-    // update nodes if needed
-    if (renderbuffer_ && mixingsurface_ && maskbuffer_ && need_update_)
+    // if update is possible
+    if (renderbuffer_ && mixingsurface_ && maskbuffer_)
     {
-        // ADJUST alpha based on MIXING node
-        // read position of the mixing node and interpret this as transparency of render output
-        glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-        // use the sinusoidal transfer function
-        blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, sin_quad_( dist.x, dist.y ));
-        mixingshader_->color = blendingshader_->color;
-        // adjust scale of mixing icon : smaller if not active
-        groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
-
-        // MODIFY geometry based on GEOMETRY node
-        groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
-        groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
-        glm::vec3 s = groups_[View::GEOMETRY]->scale_;
-        // avoid any null scale
-        s.x = CLAMP_SCALE(s.x);
-        s.y = CLAMP_SCALE(s.y);
-        s.z = 1.f;
-        groups_[View::GEOMETRY]->scale_ = s;
-        groups_[View::RENDERING]->scale_ = s;
-
-        // MODIFY CROP projection based on GEOMETRY crop
-        renderbuffer_->setProjectionArea( glm::vec2(groups_[View::GEOMETRY]->crop_) );
-
-        // Mixing and layer icons scaled based on GEOMETRY crop
-        mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
-        mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
-        mixingsurface_->update(dt_);
-
-        // Layers icons are displayed in Perspective (diagonal)
-        groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
-        groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
-
-        // Update workspace based on depth, and
-        // adjust vertical position of icon depending on workspace
-        if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
-            groups_[View::LAYER]->translation_.y -= 0.3f;
-            workspace_ = Source::FOREGROUND;
-        }
-        else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
-            groups_[View::LAYER]->translation_.y -= 0.15f;
-            workspace_ = Source::STAGE;
-        }
-        else
-            workspace_ = Source::BACKGROUND;
-
-        // MODIFY depth based on LAYER node
-        groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
-        groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
-        groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
-
-        // MODIFY texture projection based on APPEARANCE node
-        // UV to node coordinates
-        static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
-                                                           glm::vec3(0.f, 0.f, 0.f),
-                                                           glm::vec3(-2.f, 2.f, 1.f));
-        // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
-        glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
-        // Translation : same as Appearance Frame (modified by Ar)
-        glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->translation_);
-        // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-        glm::vec2 scale =  glm::vec2(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y);
-        scale = glm::sign(scale) * glm::max( glm::vec2(glm::epsilon<float>()), glm::abs(scale));
-        glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, 1.f));
-        // Rotation : same angle than Appearance Frame, inverted axis
-        glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
-        // Combine transformations (non transitive) in this order:
-        // 1. switch to Scene coordinate system
-        // 2. Apply the aspect ratio correction
-        // 3. Apply the translation
-        // 4. Apply the rotation (centered after translation)
-        // 5. Revert aspect ration correction
-        // 6. Apply the Scaling (independent of aspect ratio)
-        // 7. switch back to UV coordinate system
-        texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
-
-        // if a mask image was given to be updated
-        if (mask_need_update_) {
-            // fill the mask buffer (once)
-            if (maskbuffer_->fill(maskimage_) )
-                mask_need_update_ = false;
-        }
-        // otherwise, render the mask buffer
-        else
+        // lock access to callbacks list
+        access_callbacks_.lock();
+        // call all callbacks
+        for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
         {
-            // draw mask in mask frame buffer
-            maskbuffer_->begin(false);
-            // loopback maskbuffer texture for painting
-            masksurface_->setTextureIndex(maskbuffer_->texture());
-            // fill surface with mask texture
-            masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
-            maskbuffer_->end();
-        }
+            SourceCallback *callback = *iter;
 
-        // set the rendered mask as mask for blending
-        blendingshader_->mask_texture = maskbuffer_->texture();
+            // call update for active callbacks
+            if (callback->active()) {
+                callback->update(this, dt);
+                need_update_ = true;
+            }
 
-        // inform mixing group
-        if (mixinggroup_)
-            mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
-
-        // do not update next frame
-        need_update_ = false;
-    }
-
-    if (processingshader_link_.connected() && imageProcessingEnabled()) {
-        Source *ref_source = processingshader_link_.source();
-        if (ref_source!=nullptr) {
-            if (ref_source->imageProcessingEnabled())
-                processingshader_->copy( *ref_source->processingShader() );
+            // remove and delete finished callbacks
+            if (callback->finished()) {
+                iter = update_callbacks_.erase(iter);
+                delete callback;
+            }
+            // iterate
             else
-                processingshader_link_.disconnect();
+                ++iter;
         }
+        // release access to callbacks list
+        access_callbacks_.unlock();
+
+        // update nodes if needed
+        if (need_update_)
+        {
+            // ADJUST alpha based on MIXING node
+            // read position of the mixing node and interpret this as transparency of render output
+            glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
+            // use the sinusoidal transfer function
+            blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, SourceCore::alphaFromCordinates( dist.x, dist.y ));
+            mixingshader_->color = blendingshader_->color;
+            // adjust scale of mixing icon : smaller if not active
+            groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
+
+            // MODIFY geometry based on GEOMETRY node
+            groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
+            groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
+            glm::vec3 s = groups_[View::GEOMETRY]->scale_;
+            // avoid any null scale
+            s.x = CLAMP_SCALE(s.x);
+            s.y = CLAMP_SCALE(s.y);
+            s.z = 1.f;
+            groups_[View::GEOMETRY]->scale_ = s;
+            groups_[View::RENDERING]->scale_ = s;
+
+            // MODIFY CROP projection based on GEOMETRY crop
+            renderbuffer_->setProjectionArea( glm::vec2(groups_[View::GEOMETRY]->crop_) );
+
+            // Mixing and layer icons scaled based on GEOMETRY crop
+            mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
+            mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
+            mixingsurface_->update(dt_);
+
+            // Layers icons are displayed in Perspective (diagonal)
+            groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
+            groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
+
+            // Update workspace based on depth, and
+            // adjust vertical position of icon depending on workspace
+            if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
+                groups_[View::LAYER]->translation_.y -= 0.3f;
+                workspace_ = Source::FOREGROUND;
+            }
+            else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
+                groups_[View::LAYER]->translation_.y -= 0.15f;
+                workspace_ = Source::STAGE;
+            }
+            else
+                workspace_ = Source::BACKGROUND;
+
+            // MODIFY depth based on LAYER node
+            groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
+            groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
+            groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
+
+            // MODIFY texture projection based on APPEARANCE node
+            // UV to node coordinates
+            static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
+                                                               glm::vec3(0.f, 0.f, 0.f),
+                                                               glm::vec3(-2.f, 2.f, 1.f));
+            // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
+            glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
+            // Translation : same as Appearance Frame (modified by Ar)
+            glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->translation_);
+            // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
+            glm::vec2 scale =  glm::vec2(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y);
+            scale = glm::sign(scale) * glm::max( glm::vec2(glm::epsilon<float>()), glm::abs(scale));
+            glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, 1.f));
+            // Rotation : same angle than Appearance Frame, inverted axis
+            glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
+            // Combine transformations (non transitive) in this order:
+            // 1. switch to Scene coordinate system
+            // 2. Apply the aspect ratio correction
+            // 3. Apply the translation
+            // 4. Apply the rotation (centered after translation)
+            // 5. Revert aspect ration correction
+            // 6. Apply the Scaling (independent of aspect ratio)
+            // 7. switch back to UV coordinate system
+            texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
+
+            // if a mask image was given to be updated
+            if (mask_need_update_) {
+                // fill the mask buffer (once)
+                if (maskbuffer_->fill(maskimage_) )
+                    mask_need_update_ = false;
+            }
+            // otherwise, render the mask buffer
+            else
+            {
+                // draw mask in mask frame buffer
+                maskbuffer_->begin(false);
+                // loopback maskbuffer texture for painting
+                masksurface_->setTextureIndex(maskbuffer_->texture());
+                // fill surface with mask texture
+                masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
+                maskbuffer_->end();
+            }
+
+            // set the rendered mask as mask for blending
+            blendingshader_->mask_texture = maskbuffer_->texture();
+
+            // inform mixing group
+            if (mixinggroup_)
+                mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
+
+            // do not update next frame
+            need_update_ = false;
+        }
+
+        if (processingshader_link_.connected() && imageProcessingEnabled()) {
+            Source *ref_source = processingshader_link_.source();
+            if (ref_source!=nullptr) {
+                if (ref_source->imageProcessingEnabled())
+                    processingshader_->copy( *ref_source->processingShader() );
+                else
+                    processingshader_link_.disconnect();
+            }
+        }
+
     }
+
 }
 
 FrameBuffer *Source::frame() const

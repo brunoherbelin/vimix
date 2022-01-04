@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,32 +78,42 @@
  * RCV
  * gst-launch-1.0 shmsrc is-live=true socket-path=/tmp/blah ! video/x-raw, format=RGB, framerate=30/1, width=320, height=240 ! videoconvert ! autovideosink
  *
+ *       RTP UDP JPEG
+ *
+ * SND
+ * gst-launch-1.0 videotestsrc is-live=true ! video/x-raw, format=RGB, framerate=30/1 ! videoconvert ! video/x-raw, format=I420 ! jpegenc quality=95 ! rtpjpegpay ! udpsink port=5000 host=127.0.0
+ * RCV
+ * gst-launch-1.0 udpsrc buffer-size=200000 port=5000 ! application/x-rtp,encoding-name=JPEG ! rtpjpegdepay ! queue max-size-buffers=10 ! jpegdec ! videoconvert ! video/x-raw, format=RGB ! autovideosink
+ *
  * */
 
 const char* NetworkToolkit::protocol_name[NetworkToolkit::DEFAULT] = {
-    "Shared Memory",
-    "RTP JPEG Stream",
-    "RTP H264 Stream",
-    "RTP JPEG Broadcast",
-    "RTP H264 Broadcast"
+    "RGB Stream",
+    "JPEG Stream",
+    "H264 Stream",
+    "JPEG Broadcast",
+    "H264 Broadcast",
+    "RGB Shared Memory"
 };
 
 const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
 
-    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc idct-method=float ! rtpjpegpay ! udpsink name=sink",
+    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=3 ! rtpvrawpay ! application/x-rtp,sampling=RGB ! udpsink name=sink",
+    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc quality=95 ! rtpjpegpay ! udpsink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! udpsink name=sink",
     "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink"
+    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
+    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink"
 };
 
 const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
 
+    "udpsrc buffer-size=200000 port=XXXX caps=\"application/x-rtp,media=(string)video,encoding-name=(string)RAW,sampling=(string)RGB,width=(string)WWWW,height=(string)HHHH\" ! rtpvrawdepay ! queue max-size-buffers=10",
+    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG ! rtpjpegdepay ! queue max-size-buffers=10 ! jpegdec",
+    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=H264 ! rtph264depay ! queue max-size-buffers=10 ! avdec_h264",
+    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=JPEG ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
+    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=H264 ! rtpstreamdepay ! rtph264depay ! avdec_h264",
     "shmsrc socket-path=XXXX ! video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG,payload=26,clock-rate=90000 ! queue max-size-buffers=10 ! rtpjpegdepay ! jpegdec",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=H264,payload=96,clock-rate=90000 ! queue ! rtph264depay ! avdec_h264",
-    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=JPEG,payload=26,clock-rate=90000 ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
-    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=H264,payload=96,clock-rate=90000 ! rtpstreamdepay ! rtph264depay ! avdec_h264"
 };
 
 bool initialized_ = false;

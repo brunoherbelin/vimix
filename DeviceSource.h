@@ -100,6 +100,7 @@ public:
         return _instance;
     }
 
+    void init();
     int numDevices () const;
     std::string name (int index) const;
     std::string description (int index) const;
@@ -116,7 +117,8 @@ public:
 
 private:
 
-    void remove(const char *device);
+    void remove(GstDevice *device);
+    void add(GstDevice *device);
 
     std::vector< std::string > src_name_;
     std::vector< std::string > src_description_;

@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
+
+#include <thread>
+#include <chrono>
 
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -92,23 +95,101 @@ guint Stream::texture() const
     return textureindex_;
 }
 
+GstFlowReturn callback_stream_discoverer (GstAppSink *sink, gpointer p)
+{
+    GstFlowReturn ret = GST_FLOW_OK;
+
+    // blocking read pre-roll sample
+    GstSample *sample = gst_app_sink_pull_preroll(sink);
+    if (sample != NULL) {
+        // access info structure
+        StreamInfo *info = static_cast<StreamInfo *>(p);
+        // get caps of the sample
+        GstVideoInfo v_frame_video_info_;
+        GstCaps *caps = gst_sample_get_caps(sample);
+        if (gst_video_info_from_caps (&v_frame_video_info_, caps)) {
+            // fill the info
+            info->width = v_frame_video_info_.width;
+            info->height = v_frame_video_info_.height;
+            // release info to let StreamDiscoverer go forward
+            info->discovered.notify_all();
+        }
+    }
+    else
+        ret = GST_FLOW_FLUSHING;
+
+    gst_sample_unref (sample);
+
+    return ret;
+}
+
+StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
+{
+    // the stream info to return
+    StreamInfo info(w, h);
+
+    // no valid info, run a test pipeline to discover the size of the stream
+    if ( !info.valid() ) {
+        // complete the pipeline description with an appsink (to add a callback)
+        std::string _description = description;
+        _description += " ! appsink name=sink";
+
+        // try to launch the pipeline
+        GError *error = NULL;
+        GstElement *_pipeline = gst_parse_launch (_description.c_str(), &error);
+        if (error == NULL) {
+
+            // some sanity config
+            gst_pipeline_set_auto_flush_bus( GST_PIPELINE(_pipeline), true);
+
+            // get the appsink
+            GstElement *sink = gst_bin_get_by_name (GST_BIN (_pipeline), "sink");
+            if (sink) {
+
+                // add a preroll callback
+                GstAppSinkCallbacks callbacks;
+                callbacks.new_preroll = callback_stream_discoverer;
+                gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, &info, NULL);
+
+                // start to play the pipeline
+                gst_element_set_state (_pipeline, GST_STATE_PLAYING);
+
+                // wait for the callback_stream_discoverer to return, no more than 4 sec
+                std::mutex mtx;
+                std::unique_lock<std::mutex> lck(mtx);
+                if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT))  == std::cv_status::timeout)
+                    info.message = "Time out";
+            }
+
+            // stop and delete pipeline
+            GstStateChangeReturn ret = gst_element_set_state (_pipeline, GST_STATE_NULL);
+            if (ret == GST_STATE_CHANGE_ASYNC)
+                gst_element_get_state (_pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+            gst_object_unref (_pipeline);
+
+        }
+        else
+            info.message = error->message;
+    }
+    // at this point, the info should be filled
+    return info;
+}
 
 void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
-    if (w != width_ || h != height_ )
+    if ( w != width_ || h != height_ )
         textureinitialized_ = false;
 
     // set gstreamer pipeline source
     description_ = gstreamer_description;
-    width_ = w;
-    height_ = h;
 
     // close before re-openning
     if (isOpen())
         close();
 
-    // open the stream
-    execute_open();
+    // open when ready
+    discoverer_ = std::async(StreamDiscoverer, description_, w, h);
+
 }
 
 
@@ -130,9 +211,8 @@ void Stream::execute_open()
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        Log::Warning("Stream %s Could not construct pipeline %s:\n%s", std::to_string(id_).c_str(), description.c_str(), error->message);
+        fail(std::string("Could not construct pipeline: ") + error->message + "\n" + description);
         g_clear_error (&error);
-        failed_ = true;
         return;
     }
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
@@ -143,16 +223,14 @@ void Stream::execute_open()
             ",height=" + std::to_string(height_);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
     if (!caps || !gst_video_info_from_caps (&v_frame_video_info_, caps)) {
-        Log::Warning("Stream %d Could not configure video frame info", id_);
-        failed_ = true;
+        fail("Could not configure video frame info");
         return;
     }
 
     // setup appsink
     GstElement *sink = gst_bin_get_by_name (GST_BIN (pipeline_), "sink");
     if (!sink) {
-        Log::Warning("Stream %s Could not configure  sink", std::to_string(id_).c_str());
-        failed_ = true;
+        fail("Could not configure pipeline sink.");
         return;
     }
 
@@ -192,8 +270,7 @@ void Stream::execute_open()
     live_ = false;
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Stream %s Could not open '%s'", std::to_string(id_).c_str(), description_.c_str());
-        failed_ = true;
+        fail(std::string("Could not open ") + description_);
         return;
     }
     else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
@@ -211,6 +288,25 @@ void Stream::execute_open()
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
     opened_ = true;
+
+    // launch a timeout to check on open status
+    std::thread( timeout_initialize, this ).detach();
+}
+
+void Stream::fail(const std::string &message)
+{
+    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), message.c_str() );
+    failed_ = true;
+}
+
+void Stream::timeout_initialize(Stream *str)
+{
+    // wait for the condition that source was initialized successfully in
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    if ( str->initialized_.wait_for(lck,std::chrono::seconds(TIMEOUT)) == std::cv_status::timeout )
+        // if waited more than TIMEOUT, its dead :(
+        str->fail("Failed to initialize");
 }
 
 bool Stream::isOpen() const
@@ -233,8 +329,13 @@ void Stream::Frame::unmap()
 void Stream::close()
 {
     // not openned?
-    if (!opened_)
+    if (!opened_) {
+        // wait for loading to finish
+        if (discoverer_.valid())
+            discoverer_.wait();
+        // nothing else to change
         return;
+    }
 
     // un-ready
     opened_ = false;
@@ -243,15 +344,13 @@ void Stream::close()
     // clean up GST
     if (pipeline_ != nullptr) {
         // force flush
-        GstState state;
         gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
                     GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
-        gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-
+        gst_element_get_state (pipeline_, NULL, NULL, 1000000);
+        // force end
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
-        if (ret == GST_STATE_CHANGE_ASYNC) {
-            gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
-        }
+        if (ret == GST_STATE_CHANGE_ASYNC)
+            gst_element_get_state (pipeline_, NULL, NULL, 1000000);
         gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
@@ -302,10 +401,8 @@ void Stream::enable(bool on)
 
         //  apply state change
         GstStateChangeReturn ret = gst_element_set_state (pipeline_, requested_state);
-        if (ret == GST_STATE_CHANGE_FAILURE) {
-            Log::Warning("Stream %s Failed to enable", std::to_string(id_).c_str());
-            failed_ = true;
-        }
+        if (ret == GST_STATE_CHANGE_FAILURE)
+            fail("Failed to enable");
 
     }
 }
@@ -347,10 +444,9 @@ void Stream::play(bool on)
 
     // all ready, apply state change immediately
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("Stream %s Failed to play", std::to_string(id_).c_str());
-        failed_ = true;
-    }
+    if (ret == GST_STATE_CHANGE_FAILURE)
+        fail("Failed to play");
+
 #ifdef STREAM_DEBUG
     else if (on)
         Log::Info("Stream %s Start", std::to_string(id_).c_str());
@@ -460,7 +556,9 @@ void Stream::init_texture(guint index)
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    // done
     textureinitialized_ = true;
+    initialized_.notify_all();
 }
 
 
@@ -523,6 +621,23 @@ void Stream::update()
 
     // not ready yet
     if (!opened_){
+        if (discoverer_.valid()) {
+            // try to get info from discoverer
+            if (discoverer_.wait_for( std::chrono::milliseconds(4) ) == std::future_status::ready )
+            {
+                // get info
+                StreamInfo i(discoverer_.get());
+                if (i.valid()) {
+                    // got all info needed for openning !
+                    width_ = i.width;
+                    height_ = i.height;
+                    execute_open();
+                }
+                // invalid info; fail
+                else
+                    fail("Could not create stream: " + i.message);
+            }
+        }
         // wait next frame to display
         return;
     }

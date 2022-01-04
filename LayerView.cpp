@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,10 +138,9 @@ void LayerView::draw()
             float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
             for (++it; it != dsl.end(); ++it) {
                 depth += depth_inc;
-                (*it)->setDepth(depth);
+                (*it)->call( new SetDepth(depth, 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Distribute"));
-            ++View::need_deep_update_;
         }
         if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
@@ -149,20 +148,18 @@ void LayerView::draw()
             float depth = (*it)->depth();
             for (++it; it != dsl.end(); ++it) {
                 depth += LAYER_STEP;
-                (*it)->setDepth(depth);
+                (*it)->call( new SetDepth(depth, 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Compress"));
-            ++View::need_deep_update_;
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();
             for (; it != dsl.end(); ++it, ++rit) {
-                (*it)->setDepth((*rit)->depth());
+                (*it)->call( new SetDepth((*rit)->depth(), 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Reverse order"));
-            ++View::need_deep_update_;
         }
 
         ImGui::PopStyleColor(2);

@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -212,7 +212,21 @@ void MixingView::draw()
             }
             Action::manager().store(std::string("Selection: Mixing Center"));
         }
-        if (ImGui::Selectable( ICON_FA_HAYKAL "  Distribute" )){
+        if (ImGui::Selectable( ICON_FA_HAYKAL "  Dispatch" )){
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            // distribute with equal angle
+            float angle = 0.f;
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+
+                glm::vec2 P = center + glm::rotate(glm::vec2(0.f, 1.2), angle);
+                (*it)->group(View::MIXING)->translation_.x = P.x;
+                (*it)->group(View::MIXING)->translation_.y = P.y;
+                (*it)->touch();
+                angle -= glm::two_pi<float>() / float(Mixer::selection().size());
+            }
+            Action::manager().store(std::string("Selection: Mixing Dispatch"));
+        }
+        if (ImGui::Selectable( ICON_FA_FAN "  Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
             for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
@@ -239,19 +253,40 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(list.size());
             }
-            Action::manager().store(std::string("Selection: Mixing Distribute"));
+            Action::manager().store(std::string("Selection: Mixing Distribute in circle"));
+        }
+        if (ImGui::Selectable( ICON_FA_ELLIPSIS_V "     Align & Distribute" )){
+            SourceList list;
+            glm::vec2 center = glm::vec2(0.f, 0.f);
+            for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                list.push_back(*it);
+                // compute barycenter (1)
+                center += glm::vec2((*it)->group(View::MIXING)->translation_);
+            }
+            // compute barycenter (2)
+            center /= list.size();
+            // distribute with equal angle
+            float i = 0.f;
+            float sign = -1.f;
+            for (SourceList::iterator it = list.begin(); it != list.end(); ++it, sign*=-1.f) {
+                (*it)->group(View::MIXING)->translation_.x = center.x;
+                (*it)->group(View::MIXING)->translation_.y = center.y + sign * i;
+                if (sign<0) i+=0.32f;
+                (*it)->touch();
+            }
+            Action::manager().store(std::string("Selection: Mixing Align & Distribute"));
         }
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
-                (*it)->setAlpha(0.f);
+                (*it)->call( new SetAlpha(0.f) );
             }
             Action::manager().store(std::string("Selection: Mixing Expand & hide"));
         }
         if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
-                (*it)->setAlpha(0.99f);
+                (*it)->call( new SetAlpha(0.999f) );
             }
             Action::manager().store(std::string("Selection: Mixing Compress & show"));
         }
@@ -321,18 +356,8 @@ void MixingView::update(float dt)
         limbo_->scale_ = glm::vec3(p, p, 1.f);
 
         //
-        // Set slider to match the actual fading of the session
-        //
-        float f = Mixer::manager().session()->empty() ? 0.f : Mixer::manager().session()->fading();
-
-        // reverse calculate angle from fading & move slider
-        slider_root_->rotation_.z  = SIGN(slider_root_->rotation_.z) * asin(f) * 2.f;
-
-        // visual feedback on mixing circle
-        f = 1.f - f;
-        mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
-
         // prevent invalid scaling
+        //
         float s = CLAMP(scene.root()->scale_.x, MIXING_MIN_SCALE, MIXING_MAX_SCALE);
         scene.root()->scale_.x = s;
         scene.root()->scale_.y = s;
@@ -342,22 +367,16 @@ void MixingView::update(float dt)
     if (Mixer::manager().view() == this ){
 
         //
-        // Set session fading to match the slider angle (during animation)
+        // Set slider to match the actual fading of the session
         //
+        float f = Mixer::manager().session()->fading();
 
-        // calculate fading from angle
-        float f = sin( ABS(slider_root_->rotation_.z) * 0.5f);
+        // reverse calculate angle from fading & move slider
+        slider_root_->rotation_.z  = SIGN(-slider_root_->rotation_.z) * asin(f) * -2.f;
 
-        // apply fading
-        if ( ABS_DIFF( f, Mixer::manager().session()->fading()) > EPSILON )
-        {
-            // apply fading to session
-            Mixer::manager().session()->setFading(f);
-
-            // visual feedback on mixing circle
-            f = 1.f - f;
-            mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
-        }
+        // visual feedback on mixing circle
+        f = 1.f - f;
+        mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
         // update the selection overlay
         updateSelectionOverlay();
@@ -374,18 +393,14 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
     // deal with internal interactive objects
     if ( pick.first == button_white_ || pick.first == button_black_ ) {
 
-        RotateToCallback *anim = nullptr;
-        if (pick.first == button_white_)
-            anim = new RotateToCallback(0.f, 500.f);
-        else
-            anim = new RotateToCallback(SIGN(slider_root_->rotation_.z) * M_PI, 500.f);
-
         // animate clic
         pick.first->update_callbacks_.push_back(new BounceScaleCallback(0.3f));
 
-        // reset & start animation
-        slider_root_->update_callbacks_.clear();
-        slider_root_->update_callbacks_.push_back(anim);
+        // animated fading in session
+        if (pick.first == button_white_)
+            Mixer::manager().session()->setFadingTarget(0.f, 500.f);
+        else
+            Mixer::manager().session()->setFadingTarget(1.f, 500.f);
 
     }
     else if ( overlay_selection_icon_ != nullptr && pick.first == overlay_selection_icon_ ) {
@@ -470,10 +485,14 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             // animate slider (rotation angle on its parent)
             slider_root_->rotation_.z = angle;
 
+            // calculate fading from angle
+            float f = sin( ABS(angle) * 0.5f);
+            Mixer::manager().session()->setFadingTarget(f);
+
             // cursor feedback
             slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
             std::ostringstream info;
-            info  << "Global opacity " << 100 - int(Mixer::manager().session()->fading() * 100.0) << " %";
+            info  << "Output " << 100 - int(f * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
         }
         else if (pick.first == limbo_slider_) {

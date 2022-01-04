@@ -59,6 +59,7 @@ public:
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
     void visit (MultiFileSource& s) override;
+    void visit (GenericStreamSource& s) override;
 
     static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);

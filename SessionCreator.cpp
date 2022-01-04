@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "DeviceSource.h"
 #include "NetworkSource.h"
 #include "MultiFileSource.h"
+#include "StreamSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -346,6 +347,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "MultiFileSource") {
                     load_source = new MultiFileSource(id_xml_);
                 }
+                else if ( std::string(pType) == "GenericStreamSource") {
+                    load_source = new GenericStreamSource(id_xml_);
+                }
 
                 // skip failed (including clones)
                 if (!load_source)
@@ -470,6 +474,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "MultiFileSource") {
                 load_source = new MultiFileSource(id__);
+            }
+            else if ( std::string(pType) == "GenericStreamSource") {
+                load_source = new GenericStreamSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -922,7 +929,7 @@ void SessionLoader::visit (SessionFileSource& s)
     // set fading
     float f = 0.f;
     xmlCurrent_->QueryFloatAttribute("fading", &f);
-    s.session()->setFading(f);
+    s.session()->setFadingTarget(f);
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
     if (pathNode) {
@@ -1063,4 +1070,14 @@ void SessionLoader::visit (MultiFileSource& s)
 
 }
 
+void SessionLoader::visit (GenericStreamSource& s)
+{
+    XMLElement* desc = xmlCurrent_->FirstChildElement("Description");
+
+    if (desc) {
+        const char * text = desc->GetText();
+        if (text)
+            s.setDescription(text);
+    }
+}
 

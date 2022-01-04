@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -104,6 +104,13 @@ std::string BaseToolkit::transliterate(const std::string &input)
 }
 
 
+std::string BaseToolkit::unspace(const std::string &input)
+{
+    std::string output = input;
+    std::replace( output.begin(), output.end(), ' ', '_');
+    return output;
+}
+
 std::string BaseToolkit::byte_to_string(long b)
 {
     double numbytes = static_cast<double>(b);
@@ -141,16 +148,53 @@ std::string BaseToolkit::bits_to_string(long b)
 }
 
 
-std::string BaseToolkit::trunc_string(const std::string& path, int N)
+std::string BaseToolkit::truncated(const std::string& str, int N)
 {
-    std::string trunc = path;
-    int l = path.size();
+    std::string trunc = str;
+    int l = str.size();
     if ( l > N ) {
-        trunc = std::string("...") + path.substr( l - N + 3 );
+        trunc = std::string("...") + str.substr( l - N + 3 );
     }
     return trunc;
 }
 
+std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim)
+{
+    std::list<std::string> strings;
+    size_t start = 0;
+    size_t end = 0;
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
+        end = str.find(delim, start);
+        size_t delta = start > 0 ? 1 : 0;
+        strings.push_back(str.substr( start -delta, end - start + delta));
+    }
+    return strings;
+}
+
+
+std::string BaseToolkit::joinned(std::list<std::string> strlist, char separator)
+{
+    std::string str;
+    for (auto it = strlist.cbegin(); it != strlist.cend(); ++it)
+        str += (*it) + separator;
+
+    return str;
+}
+
+bool BaseToolkit::is_a_number(const std::string& str, int *val)
+{
+    bool isanumber = false;
+
+    try {
+        *val = std::stoi(str);
+        isanumber = true;
+    }
+    catch (const std::invalid_argument&) {
+        // avoids crash
+    }
+
+    return isanumber;
+}
 
 std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )
 {

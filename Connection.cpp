@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,27 +19,25 @@
 
 #include <thread>
 #include <chrono>
-#include <vector>
 #include <algorithm>
 
 #include "osc/OscOutboundPacketStream.h"
 
 #include "defines.h"
-#include "Connection.h"
 #include "Settings.h"
 #include "Streamer.h"
 #include "Log.h"
+
+#include "Connection.h"
 
 #ifndef NDEBUG
 #define CONNECTION_DEBUG
 #endif
 
 
-Connection::Connection()
+Connection::Connection() : receiver_(nullptr)
 {
-    receiver_ = nullptr;
 }
-
 
 Connection::~Connection()
 {
@@ -226,7 +224,7 @@ void Connection::ask()
 
 }
 
-void ConnectionRequestListener::ProcessMessage( const osc::ReceivedMessage& m,
+void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                 const IpEndpointName& remoteEndpoint )
 {
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];

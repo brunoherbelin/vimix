@@ -1,33 +1,13 @@
 #ifndef NETWORKSOURCE_H
 #define NETWORKSOURCE_H
 
-#include "osc/OscReceivedElements.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscOutboundPacketStream.h"
-#include "ip/UdpSocket.h"
-
 #include "NetworkToolkit.h"
 #include "Connection.h"
 #include "StreamSource.h"
 
-class NetworkStream;
-
-class StreamerResponseListener : public osc::OscPacketListener
-{
-protected:
-    class NetworkStream *parent_;
-    virtual void ProcessMessage( const osc::ReceivedMessage& m,
-                                 const IpEndpointName& remoteEndpoint );
-public:
-    inline void setParent(NetworkStream *s) { parent_ = s; }
-    StreamerResponseListener() : parent_(nullptr) {}
-};
-
 
 class NetworkStream : public Stream
 {
-    friend class StreamerResponseListener;
-
 public:
 
     NetworkStream();
@@ -43,10 +23,22 @@ public:
     std::string clientAddress() const;
     std::string serverAddress() const;
 
+protected:
+    class ResponseListener : public osc::OscPacketListener
+    {
+    protected:
+        class NetworkStream *parent_;
+        virtual void ProcessMessage( const osc::ReceivedMessage& m,
+                                     const IpEndpointName& remoteEndpoint );
+    public:
+        inline void setParent(NetworkStream *s) { parent_ = s; }
+        ResponseListener() : parent_(nullptr) {}
+    };
+
 private:
     // connection information
     ConnectionInfo streamer_;
-    StreamerResponseListener listener_;
+    ResponseListener listener_;
     UdpListeningReceiveSocket *receiver_;
     std::atomic<bool> received_config_;
     std::atomic<bool> connected_;

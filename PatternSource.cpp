@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,15 +32,15 @@
 #include "PatternSource.h"
 
 //
-//   Fill the list of patterns
+//   Fill the list of patterns videotestsrc
 //
 //    Label (for display), feature (for test), pipeline (for gstreamer), animated (true/false), available (false by default)
 std::vector<pattern_descriptor> Pattern::patterns_ = {
     { "Black", "videotestsrc", "videotestsrc pattern=black", false, false },
     { "White", "videotestsrc", "videotestsrc pattern=white", false, false },
     { "Gradient", "videotestsrc", "videotestsrc pattern=gradient", false, false },
-    { "Checkers 1x1 px", "videotestsrc", "videotestsrc pattern=checkers-1 ! video/x-raw,format=GRAY8 ! videoconvert", false, false },
-    { "Checkers 8x8 px", "videotestsrc", "videotestsrc pattern=checkers-8 ! video/x-raw,format=GRAY8 ! videoconvert", false, false },
+    { "Checkers 1x1 px", "videotestsrc", "videotestsrc pattern=checkers-1 ! videobalance saturation=0 contrast=1.5", false, false },
+    { "Checkers 8x8 px", "videotestsrc", "videotestsrc pattern=checkers-8 ! videobalance saturation=0 contrast=1.5", false, false },
     { "Circles", "videotestsrc", "videotestsrc pattern=circular", false, false },
     { "Lissajous", "frei0r-src-lissajous0r", "frei0r-src-lissajous0r ratiox=0.001 ratioy=0.999 ! videoconvert", false, false },
     { "Pinwheel", "videotestsrc", "videotestsrc pattern=pinwheel", false, false },
@@ -58,11 +58,11 @@ std::vector<pattern_descriptor> Pattern::patterns_ = {
     { "Bar moving", "videotestsrc", "videotestsrc pattern=bar horizontal-speed=5", true, false },
     { "Ball bouncing", "videotestsrc", "videotestsrc pattern=ball", true, false },
     { "Blob", "frei0r-src-ising0r", "frei0r-src-ising0r", true, false },
-    { "Timer", "timeoverlay",  "videotestsrc pattern=black ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
-    { "Clock", "clockoverlay", "videotestsrc pattern=black ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
-    { "Resolution", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"XXXX x YYYY px\" halignment=center valignment=center font-desc=\"Sans, 52\" ", false, false },
-    { "Frame", "videobox", "videotestsrc pattern=black ! videobox fill=white top=-10 bottom=-10 left=-10 right=-10", false, false },
-    { "Cross", "textoverlay", "videotestsrc pattern=black ! textoverlay text=\"+\" halignment=center valignment=center font-desc=\"Sans, 22\" ", false, false },
+    { "Timer", "timeoverlay",  "videotestsrc pattern=solid-color foreground-color=0 ! timeoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
+    { "Clock", "clockoverlay", "videotestsrc pattern=solid-color foreground-color=0 ! clockoverlay halignment=center valignment=center font-desc=\"Sans, 72\" ", true, false },
+    { "Resolution", "textoverlay", "videotestsrc pattern=solid-color foreground-color=0 ! textoverlay text=\"XXXX x YYYY px\" halignment=center valignment=center font-desc=\"Sans, 52\" ", false, false },
+    { "Frame", "videobox", "videotestsrc pattern=solid-color foreground-color=0 ! videobox fill=white top=-10 bottom=-10 left=-10 right=-10", false, false },
+    { "Cross", "textoverlay", "videotestsrc pattern=solid-color foreground-color=0 ! textoverlay text=\"+\" halignment=center valignment=center font-desc=\"Sans, 22\" ", false, false },
     { "Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.35", false, false },
     { "Point Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.4", false, false },
     { "Ruler", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.9", false, false },

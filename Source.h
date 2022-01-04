@@ -4,9 +4,11 @@
 #include <string>
 #include <map>
 #include <atomic>
+#include <mutex>
 #include <list>
 
 #include "View.h"
+#include "SourceCallback.h"
 
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
 
@@ -21,8 +23,10 @@
 #define ICON_SOURCE_GROUP 10, 6
 #define ICON_SOURCE_RENDER 0, 2
 #define ICON_SOURCE_CLONE 9, 2
-#define ICON_SOURCE 12, 11
+#define ICON_SOURCE_GSTREAMER 16, 16
+#define ICON_SOURCE 13, 11
 
+class SourceCallback;
 class ImageShader;
 class MaskShader;
 class ImageProcessingShader;
@@ -31,6 +35,7 @@ class FrameBufferSurface;
 class Frame;
 class Handles;
 class Symbol;
+class Glyph;
 class CloneSource;
 class MixingGroup;
 
@@ -55,6 +60,9 @@ public:
     inline ImageProcessingShader *processingShader () const { return processingshader_; }
 
     void copy(SourceCore const& other);
+
+    // alpha transfer function
+    static float alphaFromCordinates(float x, float y);
 
 protected:
     // nodes
@@ -136,9 +144,13 @@ public:
     // a Source shall be updated before displayed (Mixing, Geometry and Layer)
     virtual void update (float dt);
 
+    // add callback to each update
+    void call(SourceCallback *callback, bool override = false);
+
     // update mode
     inline  bool active () const { return active_; }
     virtual void setActive (bool on);
+    void setActive (float threshold);
 
     // lock mode
     inline  bool locked () const { return locked_; }
@@ -178,14 +190,9 @@ public:
     void setMask (FrameBufferImage *img);
     void storeMask (FrameBufferImage *img = nullptr);
 
-    // operations on depth
+    // get properties
     float depth () const;
-    void  setDepth (float d);
-
-    // operations on alpha
-    float mix_distance ();
     float alpha () const;
-    void  setAlpha (float a);
 
     // groups for mixing
     MixingGroup *mixingGroup() const { return mixinggroup_; }
@@ -297,6 +304,7 @@ protected:
     Handles *lock_, *unlock_;
     Switch *locker_;
     Symbol *symbol_;
+    Glyph  *initial_0_, *initial_1_;
 
     // update
     bool  active_;
@@ -304,6 +312,8 @@ protected:
     bool  need_update_;
     float dt_;
     Workspace  workspace_;
+    std::list<SourceCallback *> update_callbacks_;
+    std::mutex access_callbacks_;
 
     // clones
     CloneList clones_;

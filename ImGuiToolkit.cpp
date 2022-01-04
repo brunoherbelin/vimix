@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -232,13 +232,16 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
     bool hovered, held;
     bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
 
-    // tooltip
-    if (tooltip != nullptr && hovered)
-        ImGuiToolkit::ToolTip(tooltip);
+    const ImVec4* colors = ImGui::GetStyle().Colors;
 
-    // draw icon
+    // draw with hovered color
+    ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
     ImGui::SetCursorScreenPos(draw_pos);
     Icon(i, j, !pressed);
+    ImGui::PopStyleColor();
+
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip);
 
     ImGui::PopID();
     return pressed;
@@ -260,8 +263,12 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
     if (ImGui::IsItemClicked())
         ret = true;
 
+    // draw with hovered color
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
     ImGui::SetCursorScreenPos(draw_pos);
     ImGui::Text(icon);
+    ImGui::PopStyleColor();
 
     if (tooltip != nullptr && ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip(tooltip);
@@ -287,6 +294,9 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
         ret = true;
     }
 
+    // draw with hovered color
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
     ImGui::SetCursorScreenPos(draw_pos);
     if (*toggle) {
         Icon(i_toggle, j_toggle, !ret);
@@ -294,6 +304,7 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
     else {
         Icon(i, j, !ret);
     }
+    ImGui::PopStyleColor();
 
     int tooltipid = *toggle ? 1 : 0;
     if (tooltips != nullptr && tooltips[tooltipid] != nullptr && ImGui::IsItemHovered())
@@ -510,11 +521,8 @@ bool ImGuiToolkit::toolTipsEnabled ()
     return tooltips_enabled;
 }
 
-void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
+void showToolTip(const char* desc, const char* shortcut)
 {
-    if (!tooltips_enabled)
-        return;
-
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     ImGui::BeginTooltip();
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 14.0f);
@@ -527,31 +535,38 @@ void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
         ImGui::Text(shortcut);
         ImGui::PopStyleColor();
     }
-    ImGui::EndTooltip();
     ImGui::PopFont();
+    ImGui::EndTooltip();
+}
+
+void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
+{
+    if (tooltips_enabled)
+        showToolTip(desc, shortcut);
 }
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
-void ImGuiToolkit::HelpMarker(const char* desc, const char* icon, const char* shortcut)
+void ImGuiToolkit::HelpToolTip(const char* desc, const char* shortcut)
 {
-    if (tooltips_enabled) {
-        ImGui::TextDisabled( icon );
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip(desc, shortcut);
-    }
+    if (tooltips_enabled)
+        ImGuiToolkit::Indication( desc, ICON_FA_QUESTION_CIRCLE, shortcut);
     else
         ImGui::Text(" ");
 }
 
-void ImGuiToolkit::HelpIcon(const char* desc, int i, int j, const char* shortcut)
+// Helper to display a little (?) mark which shows a tooltip when hovered.
+void ImGuiToolkit::Indication(const char* desc, const char* icon, const char* shortcut)
 {
-    if (tooltips_enabled) {
-        ImGuiToolkit::Icon(i, j, false);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip(desc, shortcut);
-    }
-    else
-        ImGui::Text(" ");
+    ImGui::TextDisabled( icon );
+    if (ImGui::IsItemHovered())
+        showToolTip(desc, shortcut);
+}
+
+void ImGuiToolkit::Indication(const char* desc, int i, int j, const char* shortcut)
+{
+    ImGuiToolkit::Icon(i, j, false);
+    if (ImGui::IsItemHovered())
+        showToolTip(desc, shortcut);
 }
 
 
@@ -1677,22 +1692,12 @@ void word_wrap(std::string *str, unsigned per_line)
 }
 
 
-struct InputTextCallback_UserData
-{
-    std::string*      Str;
-    int               WordWrap;
-};
 
 static int InputTextCallback(ImGuiInputTextCallbackData* data)
 {
-    InputTextCallback_UserData* user_data = static_cast<InputTextCallback_UserData*>(data->UserData);
+    std::string* str = static_cast<std::string*>(data->UserData);
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
     {
-//        if (user_data->WordWrap > 1)
-//            word_wrap(user_data->Str, user_data->WordWrap );
-
-        // Resize string callback
-        std::string* str = user_data->Str;
         IM_ASSERT(data->Buf == str->c_str());
         str->resize(data->BufTextLen);
         data->Buf = (char*)str->c_str();
@@ -1704,20 +1709,123 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
 bool ImGuiToolkit::InputText(const char* label, std::string* str)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CharsNoBlank;
-    InputTextCallback_UserData cb_user_data;
-    cb_user_data.Str = str;
 
-    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+    return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, str);
 }
 
-bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int linesize)
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
-    InputTextCallback_UserData cb_user_data;
-    cb_user_data.Str = str;
-    cb_user_data.WordWrap = linesize;
 
-    return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
+    ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+
+    return ImGui::IsItemDeactivatedAfterEdit();
+}
+
+void ImGuiToolkit::TextMultiline(const char* label, const std::string &str, float width)
+{
+    size_t numlines = std::count(str.begin(), str.end(), '\n') + 1;
+
+    const ImGuiContext& g = *GImGui;
+    ImVec2 size(width, numlines * g.FontSize + 2 * (g.Style.ItemSpacing.y + g.Style.FramePadding.y) );
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, g.Style.Colors[ImGuiCol_FrameBgHovered]);
+    ImGui::InputTextMultiline(label, (char*)str.c_str(), str.capacity() + 1, size, ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor();
 }
 
 
+std::string unwrapp(const std::string &input)
+{
+    std::string output = input;
+    output.erase( std::remove( output.begin(), output.end(), '\n'), output.end());
+    return output;
+}
+
+std::string wrapp(const std::string &input, size_t per_line)
+{
+    std::string text(input);
+    size_t line_begin = 0;
+
+    while (line_begin < text.size())
+    {
+        const size_t ideal_end = line_begin + per_line ;
+        size_t line_end = ideal_end <= text.size() ? ideal_end : text.size()-1;
+
+        if (line_end == text.size() - 1)
+            ++line_end;
+        else if (std::isspace(text[line_end]))
+            text.insert(++line_end, 1, '\n');
+        else    // backtrack
+        {
+            size_t end = line_end;
+            while ( end > line_begin && !std::isspace(text[end]))
+                --end;
+
+            if (end != line_begin)
+            {
+                line_end = end;
+                text.insert(++line_end, 1, '\n');
+            }
+            else
+                text.insert(line_end++, 1, '\n');
+        }
+        line_begin = line_end;
+    }
+
+    return text;
+}
+
+bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const ImVec2& size, int *numline)
+{
+    bool ret = false;
+    char hiddenlabel[256];
+    sprintf(hiddenlabel, "##%s", label);
+
+    ImGuiToolkit::PushFont(FONT_MONO);
+    static ImVec2 onechar = ImGui::CalcTextSize("C");
+
+    // prepare input multiline
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CtrlEnterForNewLine;
+
+    // work on a string wrapped to the number of chars in a line
+    std::string edited = wrapp( *str, (size_t) floor(size.x / onechar.x) - 1);
+
+    // Input text into std::string with callback
+    ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited);
+    if (ImGui::IsItemDeactivatedAfterEdit() ){
+        // unwrap after edit
+        *str = unwrapp(edited);
+        // return number of lines
+        ret = true;
+    }
+
+    // number of lines
+    if (numline)
+        *numline = std::count(edited.begin(), edited.end(), '\n') + 1;
+
+    ImGui::PopFont();
+
+    // show label
+    ImGui::SameLine();
+    ImGui::Text(label);
+
+    return ret;
+}
+
+void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, float width)
+{
+    char hiddenlabel[256];
+    sprintf(hiddenlabel, "##%s", label);
+
+    ImGuiToolkit::PushFont(FONT_MONO);
+    static ImVec2 onechar = ImGui::CalcTextSize("C");
+
+    std::string displayed_text = wrapp( str, (size_t) floor(width / onechar.x) - 1);
+
+    ImGuiToolkit::TextMultiline(hiddenlabel, displayed_text, width);
+    ImGui::PopFont();
+
+    ImGui::SameLine();
+    ImGui::Text(label);
+}

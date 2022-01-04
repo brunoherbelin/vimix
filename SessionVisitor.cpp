@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -701,6 +701,19 @@ void SessionVisitor::visit (MultiFileSource& s)
     sequence->InsertEndChild( location );
 
     xmlCurrent_->InsertEndChild(sequence);
+}
+
+
+void SessionVisitor::visit (GenericStreamSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "GenericStreamSource");
+
+    XMLElement *desc = xmlDoc_->NewElement("Description");
+
+    XMLText *text = xmlDoc_->NewText( s.description().c_str() );
+    desc->InsertEndChild( text );
+
+    xmlCurrent_->InsertEndChild(desc);
 }
 
 std::string SessionVisitor::getClipboard(const SourceList &list)

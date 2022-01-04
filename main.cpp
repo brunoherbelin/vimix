@@ -1,7 +1,7 @@
 /*
  * vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,10 @@
 #include "Mixer.h"
 #include "RenderingManager.h"
 #include "UserInterfaceManager.h"
+#include "ControlManager.h"
 #include "Connection.h"
 #include "Metronome.h"
+#include "DeviceSource.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -39,9 +41,20 @@ extern "C"{
 #endif
 
 
+void prepare()
+{
+    Mixer::manager().update();
+    UserInterface::manager().NewFrame();
+}
+
 void drawScene()
 {
     Mixer::manager().draw();
+}
+
+void renderGUI()
+{
+    UserInterface::manager().Render();
 }
 
 int main(int argc, char *argv[])
@@ -92,6 +105,11 @@ int main(int argc, char *argv[])
         return 1;
 
     ///
+    /// CONTROLLER INIT
+    ///
+    Control::manager().init();
+
+    ///
     /// METRONOME INIT
     ///
     if ( !Metronome::manager().init() )
@@ -102,6 +120,11 @@ int main(int argc, char *argv[])
     ///
     if ( !Rendering::manager().init() )
         return 1;
+
+    ///
+    /// DEVICES INIT
+    ///
+    Device::manager().init();
 
     ///
     /// UI INIT
@@ -120,8 +143,10 @@ int main(int argc, char *argv[])
     gst_debug_set_active(FALSE);
 #endif
 
-    // draw the scene
-    Rendering::manager().pushFrontDrawCallback(drawScene);
+    // callbacks to draw
+    Rendering::manager().pushBackDrawCallback(prepare);
+    Rendering::manager().pushBackDrawCallback(drawScene);
+    Rendering::manager().pushBackDrawCallback(renderGUI);
 
     // show all windows
     Rendering::manager().show();
@@ -130,11 +155,7 @@ int main(int argc, char *argv[])
     /// Main LOOP
     ///
     while ( Rendering::manager().isActive() )
-    {
-        Mixer::manager().update();
-
         Rendering::manager().draw();
-    }
 
     ///
     /// UI TERMINATE
@@ -150,6 +171,11 @@ int main(int argc, char *argv[])
     /// METRONOME TERMINATE
     ///
     Metronome::manager().terminate();
+
+    ///
+    /// CONTROLLER TERMINATE
+    ///
+    Control::manager().terminate();
 
     ///
     /// CONNECTION TERMINATE

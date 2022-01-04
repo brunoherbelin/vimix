@@ -66,6 +66,7 @@ public:
     void visit (NetworkSource& s) override;
     void visit (MixingGroup& s) override;
     void visit (MultiFileSource& s) override;
+    void visit (GenericStreamSource& s) override;
 
     static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
     static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);

@@ -98,8 +98,9 @@ public:
     void setResolution (glm::vec3 resolution, bool useAlpha = false);
 
     // manipulate fading of output
-    void setFading (float f, bool forcenow = false);
-    inline float fading () const { return fading_target_; }
+    void setFadingTarget (float f, float duration = 0.f);
+    inline float fadingTarget () const { return fading_.target; }
+    inline float fading () const { return render_.fading(); }
 
     // activation threshold for source (mixing distance)
     inline void setActivationThreshold(float t) { activation_threshold_ = t; }
@@ -162,10 +163,27 @@ protected:
     std::map<View::Mode, Group*> config_;
     SessionSnapshots snapshots_;
     std::vector<SourceIdList> play_groups_;
-    float fading_target_;
     std::mutex access_;
     FrameBufferImage *thumbnail_;
     uint64_t start_time_;
+
+    struct Fading
+    {
+        bool  active;
+        float start;
+        float target;
+        float duration;
+        float progress;
+
+        Fading() {
+            active = false;
+            start  = 0.f;
+            target = 0.f;
+            duration = 0.f;
+            progress = 0.f;
+        }
+    };
+    Fading fading_;
 };
 
 

@@ -83,7 +83,6 @@ class Disk : public Node
 {
 public:
     Disk();
-    ~Disk();
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
@@ -94,21 +93,26 @@ protected:
     static Mesh *disk_;
 };
 
-//class TextSurface : public Node
-//{
-//public:
-//    TextSurface();
+class Glyph : public Node
+{
+public:
+    Glyph(int imgui_font_index = 0);
+    void setChar(char c);
 
-//    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
 
-//    void setText(const std::string &t);
-//    glm::vec4 color;
+    glm::vec4 color;
 
-//protected:
+protected:
 
-//    std::string text_;
+    char character_;
+    int  font_index_;
+    float baseline_;
+    glm::vec2 shape_;
+    glm::mat4 uvTransform_;
+    static Surface *font_;
 
-//};
+};
 
 
 #endif // DECORATIONS_H

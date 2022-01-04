@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <string>
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -27,11 +28,12 @@
 #include "Stream.h"
 #include "Visitor.h"
 #include "Log.h"
+#include "BaseToolkit.h"
 
 #include "StreamSource.h"
 
 
-GenericStreamSource::GenericStreamSource() : StreamSource()
+GenericStreamSource::GenericStreamSource(uint64_t id) : StreamSource(id)
 {
     // create stream
     stream_ = new Stream;
@@ -43,14 +45,27 @@ GenericStreamSource::GenericStreamSource() : StreamSource()
 
 void GenericStreamSource::setDescription(const std::string &desc)
 {
-    Log::Notify("Creating Source with Stream description '%s'", desc.c_str());
+    gst_description_ = desc;
+    gst_elements_ = BaseToolkit::splitted(desc, '!');
+    Log::Notify("Creating Source with Stream description '%s'", gst_description_.c_str());
 
     // open gstreamer
-    stream_->open(desc);
+    stream_->open(gst_description_ + " ! queue max-size-buffers=10 ! videoconvert" );
     stream_->play(true);
 
     // will be ready after init and one frame rendered
     ready_ = false;
+}
+
+
+std::string GenericStreamSource::description() const
+{
+    return gst_description_;
+}
+
+std::list<std::string> GenericStreamSource::gstElements() const
+{
+    return gst_elements_;
 }
 
 void GenericStreamSource::accept(Visitor& v)
@@ -58,6 +73,20 @@ void GenericStreamSource::accept(Visitor& v)
     Source::accept(v);
     if (!failed())
         v.visit(*this);
+}
+
+glm::ivec2 GenericStreamSource::icon() const
+{
+    return glm::ivec2(ICON_SOURCE_GSTREAMER);
+}
+
+std::string GenericStreamSource::info() const
+{
+    if (gst_elements_.empty())
+        return "Gstreamer custom pipeline without source";
+    std::string src_element = gst_elements_.front();
+    src_element = src_element.substr(0, src_element.find(" "));
+    return std::string("Gstreamer custom pipeline with source '")+src_element+"'";
 }
 
 StreamSource::StreamSource(uint64_t id) : Source(id), stream_(nullptr)

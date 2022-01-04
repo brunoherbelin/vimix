@@ -1,7 +1,7 @@
 ﻿/*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -206,7 +206,7 @@ bool Rendering::init()
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
     // additional window callbacks for main window
-//    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
+    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
     //
@@ -316,18 +316,12 @@ void Rendering::draw()
     // operate on main window context
     main_.makeCurrent();
 
-    // User Interface step 1
-    UserInterface::manager().NewFrame();
-
-    // Custom draw
+    // draw
     std::list<Rendering::RenderingCallback>::iterator iter;
     for (iter=draw_callbacks_.begin(); iter != draw_callbacks_.end(); ++iter)
     {
         (*iter)();
     }
-
-    // User Interface step 2
-    UserInterface::manager().Render();
 
     // perform screenshot if requested
     if (request_screenshot_) {
@@ -358,10 +352,8 @@ void Rendering::draw()
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
 
-#ifndef USE_GST_APPSINK_CALLBACKS
     // no g_main_loop_run(loop) : update global GMainContext
     g_main_context_iteration(NULL, FALSE);
-#endif
 
 }
 

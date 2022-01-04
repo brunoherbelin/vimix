@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2020-2021 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,15 +17,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "UpdateCallback.h"
+#include <glm/gtc/type_ptr.hpp>
 
-#include "defines.h"
 #include "Scene.h"
 #include "Log.h"
 
-#include <glm/gtc/type_ptr.hpp>
+#include "UpdateCallback.h"
 
-UpdateCallback::UpdateCallback() : enabled_(true), finished_(false)
+
+UpdateCallback::UpdateCallback() : finished_(false), initialized_(false)
 {
 
 }
@@ -43,7 +43,7 @@ void CopyCallback::update(Node *n, float)
 
 
 MoveToCallback::MoveToCallback(glm::vec3 target, float duration) : UpdateCallback(),
-    duration_(duration), progress_(0.f), initialized_(false), target_(target)
+    duration_(duration), progress_(0.f), target_(target)
 {
 
 }
@@ -71,7 +71,7 @@ void MoveToCallback::update(Node *n, float dt)
 }
 
 RotateToCallback::RotateToCallback(float target, float duration) : UpdateCallback(),
-    duration_(duration), progress_(0.f), initialized_(false), startingangle_(0.f), target_(target)
+    duration_(duration), progress_(0.f), startingangle_(0.f), target_(target)
 {
 
 }
@@ -101,7 +101,7 @@ void RotateToCallback::update(Node *n, float dt)
 }
 
 BounceScaleCallback::BounceScaleCallback(float scale) : UpdateCallback(),
-    initialized_(false), duration_(100.f), scale_(scale), progress_(0.f)
+    duration_(100.f), scale_(scale), progress_(0.f)
 {
 
 }
@@ -128,7 +128,7 @@ void BounceScaleCallback::update(Node *n, float dt)
 }
 
 InfiniteGlowCallback::InfiniteGlowCallback(float amplitude) : UpdateCallback(),
-    amplitude_(amplitude), time_(0.f), initialized_(false)
+    amplitude_(amplitude), time_(0.f)
 {
 
 }

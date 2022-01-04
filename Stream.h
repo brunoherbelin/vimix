@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <future>
+#include <condition_variable>
 
 // GStreamer
 #include <gst/pbutils/pbutils.h>
@@ -14,6 +15,28 @@
 class Visitor;
 
 #define N_FRAME 3
+#define TIMEOUT 5
+
+struct StreamInfo {
+
+    guint width;
+    guint height;
+    std::condition_variable discovered;
+    std::string message;
+
+    StreamInfo(guint w=0, guint h=0) {
+        width = w;
+        height = h;
+    }
+
+    StreamInfo(const StreamInfo& b) {
+        width = b.width;
+        height = b.height;
+        message = b.message;
+    }
+
+    inline bool valid() { return width > 0 && height > 0; }
+};
 
 class Stream {
 
@@ -33,7 +56,7 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, guint w = 1024, guint h = 576);
+    void open(const std::string &gstreamer_description, guint w = 0, guint h = 0);
     /**
      * Get description string
      * */
@@ -132,6 +155,7 @@ protected:
     guint height_;
     bool single_frame_;
     bool live_;
+    std::future<StreamInfo> discoverer_;
 
     // GST & Play status
     GstClockTime position_;
@@ -188,12 +212,15 @@ protected:
 
     // gst pipeline control
     virtual void execute_open();
+    virtual void fail(const std::string &message);
 
     // gst frame filling
     bool textureinitialized_;
     void init_texture(guint index);
     void fill_texture(guint index);
     bool fill_frame(GstBuffer *buf, FrameStatus status);
+    std::condition_variable initialized_;
+    static void timeout_initialize(Stream *str);
 
     // gst callbacks
     static void callback_end_of_stream (GstAppSink *, gpointer);
