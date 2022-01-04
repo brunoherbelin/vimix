@@ -267,10 +267,14 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     conf.width = FrameGrabbing::manager().width();
     conf.height = FrameGrabbing::manager().height();
 
-    // set protocol according to settings
-    conf.protocol = NetworkToolkit::UDP_RAW;
-    if (Settings::application.stream_protocol >= 0 && Settings::application.stream_protocol < NetworkToolkit::DEFAULT)
-        conf.protocol = (NetworkToolkit::Protocol) Settings::application.stream_protocol;
+    // without indication, the JPEG stream is default
+    conf.protocol = NetworkToolkit::UDP_JPEG;
+    // on localhost sharing, use RAW
+    if ( NetworkToolkit::is_host_ip(conf.client_address) )
+        conf.protocol = NetworkToolkit::UDP_RAW;
+    // for non-localhost, if low bandwidth is requested, use H264 codec
+    else if (Settings::application.stream_low_bandwidth)
+        conf.protocol = NetworkToolkit::UDP_H264;
 
 // TODO : ideal would be Shared Memory, but does not work with linux snap package...
 //    // offer SHM stream if same IP that our host IP (i.e. on the same machine)
@@ -329,13 +333,29 @@ std::string VideoStreamer::init(GstCaps *caps)
                 ") are incompatible with stream (" + std::to_string(config_.width) + " x " + std::to_string(config_.height) + ")";
     }
 
+    // create a gstreamer pipeline
+    std::string description = "appsrc name=src ! videoconvert ! ";
+
     // prevent eroneous protocol values
     if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
         config_.protocol = NetworkToolkit::UDP_RAW;
 
-    // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! ";
-    description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
+    // special case H264: can be Hardware accelerated
+    bool found_harware_acceleration = false;
+    if (config_.protocol == NetworkToolkit::UDP_H264 && Settings::application.render.gpu_decoding) {
+        for (auto config = NetworkToolkit::protocol_h264_send_pipeline.cbegin();
+             config != NetworkToolkit::protocol_h264_send_pipeline.cend(); ++config) {
+            if ( GstToolkit::has_feature(config->first) ) {
+                description += config->second;
+                found_harware_acceleration = true;
+                Log::Info("Video Streamer : Hardware accelerated encoder (%s)", config->first.c_str());
+                break;
+            }
+        }
+    }
+    // general case: use defined protocols
+    if (!found_harware_acceleration)
+        description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
 
     // parse pipeline descriptor
     GError *error = NULL;

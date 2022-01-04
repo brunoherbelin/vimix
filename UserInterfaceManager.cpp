@@ -91,7 +91,7 @@ TextEditor editor;
 
 #include "UserInterfaceManager.h"
 #define PLOT_ARRAY_SIZE 180
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_ARROW_RIGHT "  Dynamic selection"
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 
@@ -1450,7 +1450,7 @@ void UserInterface::RenderPreview()
                 if (Settings::application.accept_connections)
                 {
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::Combo("Format", &Settings::application.stream_protocol, NetworkToolkit::protocol_name, 3);
+                    ImGui::MenuItem( "Lower bandwidth (H264)", NULL, &Settings::application.stream_low_bandwidth);
 
                     static char dummy_str[512];
                     sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
@@ -5498,7 +5498,7 @@ void Navigator::RenderMainPannelSettings()
         if (output) {
             guint64 nb = 0;
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-            char buf[256]; sprintf(buf, "Buffer can contain %ld frames (%dx%d), %.1f sec", nb, output->width(), output->height(),
+            char buf[256]; sprintf(buf, "Buffer can contain %ld frames (%dx%d), %.1f sec", (unsigned long)nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
             ImGuiToolkit::Indication(buf, ICON_FA_MEMORY);
             ImGui::SameLine(0);

@@ -67,6 +67,7 @@ struct StreamConfig {
 
 extern const char* protocol_name[DEFAULT];
 extern const std::vector<std::string> protocol_send_pipeline;
+extern const std::vector< std::pair<std::string, std::string> > protocol_h264_send_pipeline;
 extern const std::vector<std::string> protocol_receive_pipeline;
 
 std::string hostname();
