@@ -157,7 +157,7 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
                 // wait for the callback_stream_discoverer to return, no more than 4 sec
                 std::mutex mtx;
                 std::unique_lock<std::mutex> lck(mtx);
-                if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT*2))  == std::cv_status::timeout)
+                if ( info.discovered.wait_for(lck,std::chrono::seconds(TIMEOUT))  == std::cv_status::timeout)
                     info.message = "Time out";
             }
 
