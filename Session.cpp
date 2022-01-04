@@ -200,7 +200,7 @@ SourceList::iterator Session::addSource(Source *s)
         // insert the source to the beginning of the list
         sources_.push_back(s);
         // return the iterator to the source created at the beginning
-        its = sources_.end()--;
+        its = --sources_.end();
     }
 
     // unlock access
