@@ -111,7 +111,7 @@ struct History
         path = IMGUI_LABEL_RECENT_FILES;
         front_is_valid = false;
         load_at_start = false;
-        save_on_exit = false;
+        save_on_exit = true;
         changed = false;
     }
     void push(const std::string &filename);

@@ -800,33 +800,30 @@ void UserInterface::NewFrame()
         ImGui::OpenPopup(MENU_SAVE_ON_EXIT);
     if (ImGui::BeginPopupModal(MENU_SAVE_ON_EXIT, NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        const ImVec2 area = ImGui::GetContentRegionAvail();
         ImGui::Spacing();
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
         ImGui::Text("Looks like you started some work");
         ImGui::Text("but didn't save the session.");
-        ImGui::Text("");
-        ImGui::Text("");
-        ImGui::Text("");
+        ImGui::Spacing();
         ImGui::PopFont();
 
+        bool save = false;
+        if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+            pending_save_on_exit = false;
+            save = true;
+            saveOrSaveAs();
+        }
+
         bool quit = false;
-        ImGui::SetCursorPos( area - ImVec2(area.x - 10.f, ImGui::GetFrameHeightWithSpacing()) );
-        if (ImGui::Button(ICON_FA_POWER_OFF " Quit anyway !", ImVec2(area.x, 0))) {
+        if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
             Rendering::manager().close();
             quit = true;
         }
 
-        bool cancel = false;
-        ImGui::SetCursorPos( area - ImVec2(area.x - 10.f, 0) );
-        if (ImGui::Button(ICON_FA_FILE_DOWNLOAD "  Save", ImVec2(area.x, 0))) {
-            pending_save_on_exit = false;
-            cancel = true;
-            saveOrSaveAs();
-        }
-
-        if (cancel || quit)
+        if (save || quit)
             ImGui::CloseCurrentPopup();
+
+        ImGui::Spacing();
         ImGui::EndPopup();
     }
 
