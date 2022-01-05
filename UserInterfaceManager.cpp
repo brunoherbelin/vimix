@@ -298,20 +298,14 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
             // Display output
-            Settings::application.widget.preview = !Settings::application.widget.preview;
-            if (Settings::application.widget.preview_view != Settings::application.current_view) {
+            bool on = !Settings::application.widget.preview;
+            if (on && Settings::application.widget.preview_view != Settings::application.current_view)
                 Settings::application.widget.preview_view = -1;
-                Settings::application.widget.preview = true;
-            }
+            Settings::application.widget.preview = on;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
             // Media player
             sourcecontrol.setVisible(!Settings::application.widget.media_player);
-//            Settings::application.widget.media_player = !Settings::application.widget.media_player;
-//            if (Settings::application.widget.media_player_view != Settings::application.current_view) {
-//                Settings::application.widget.media_player_view = -1;
-//                Settings::application.widget.media_player = true;
-//            }
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
             if (shift_modifier_active)
@@ -3260,7 +3254,7 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), ImGui::GetColorU32(ImGuiCol_Text), 0, 0, 3.f);
         frame_top.x += (framesize.x  - ImGui::GetTextLineHeight()) / 2.f;
         frame_top.y += (framesize.y  - ImGui::GetTextLineHeight()) / 2.f;
-        draw_list->AddText(frame_top, ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_ARROW_RIGHT);
+        draw_list->AddText(frame_top, ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_CARET_SQUARE_RIGHT);
     }
     ImGui::PopID();
 

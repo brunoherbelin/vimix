@@ -611,7 +611,7 @@ void TextureView::draw()
                                           ICON_FA_MOUSE_POINTER "\t  Edit texture\n"
                                           ICON_FA_PAINT_BRUSH "\tBrush\n"
                                           ICON_FA_ERASER "\tEraser\n\n"
-                                          ICON_FA_ARROW_DOWN "\tBrush shape\n"
+                                          ICON_FA_CIRCLE "\tBrush shape\n"
                                           ICON_FA_DOT_CIRCLE  "\tBrush size\n"
                                           ICON_FA_FEATHER_ALT "\tBrush Pressure\n\n"
                                           ICON_FA_MAGIC "\tEffects\n"
@@ -768,7 +768,7 @@ void TextureView::draw()
                 ImGuiToolkit::HelpToolTip( ICON_FA_SHAPES "\tMask shape\n\n"
                                           ICON_FA_MOUSE_POINTER "\t  Edit texture\n"
                                           ICON_FA_CROP_ALT "\tCrop & Edit shape\n\n"
-                                          ICON_FA_ARROW_DOWN "\tShape of the mask\n"
+                                          ICON_FA_CARET_DOWN "  \tShape of the mask\n"
                                           ICON_FA_RADIATION_ALT "\tShape blur");
 
                 // select cursor
