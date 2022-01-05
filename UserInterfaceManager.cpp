@@ -4799,7 +4799,7 @@ void Navigator::RenderNewPannel()
                 Mixer::manager().addSource(s);
                 s->replay();
                 // close NEW pannel
-                selected_button[NAV_NEW] = false;
+                togglePannelNew();
             }
         }
 
