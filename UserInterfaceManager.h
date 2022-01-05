@@ -25,6 +25,7 @@
 #define MENU_SAVE_FILE        ICON_FA_FILE_DOWNLOAD "  Save"
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
+#define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define SHORTCUT_LOGS         CTRL_MOD "L"
@@ -281,6 +282,7 @@ class UserInterface
     int  show_view_navigator;
     int  target_view_navigator;
     unsigned int screenshot_step;
+    bool pending_save_on_exit;
 
     // frame grabbers
     VideoRecorder *video_recorder_;
@@ -314,6 +316,8 @@ public:
     void NewFrame();
     // loop update rendering
     void Render();
+    // try to close, return false if cannot
+    bool TryClose();
     // Post-loop termination
     void Terminate();
     // Runtime

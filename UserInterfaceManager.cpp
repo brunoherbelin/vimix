@@ -145,6 +145,7 @@ UserInterface::UserInterface()
     target_view_navigator = 1;
     currentTextEdit.clear();
     screenshot_step = 0;
+    pending_save_on_exit = false;
 
     // keep hold on frame grabbers
     video_recorder_ = nullptr;
@@ -240,7 +241,6 @@ void UserInterface::handleKeyboard()
     alt_modifier_active = io.KeyAlt;
     shift_modifier_active = io.KeyShift;
     bool ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
-    bool confirm_quit_popup = false;
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl ) {
@@ -248,9 +248,8 @@ void UserInterface::handleKeyboard()
         ctrl_modifier_active = true;
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
-            // offer to Quit
-            ImGui::OpenPopup("confirm_quit_popup");
-            confirm_quit_popup = true;
+            // try quit
+            TryClose();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // SHIFT + CTRL + O : reopen current session
@@ -382,7 +381,6 @@ void UserInterface::handleKeyboard()
     // No CTRL modifier
     else {
         ctrl_modifier_active = false;
-//        Source *_cs = Mixer::manager().currentSource();
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -476,17 +474,6 @@ void UserInterface::handleKeyboard()
     else if (show_view_navigator > 0) {
         show_view_navigator  = 0;
         Mixer::manager().setView((View::Mode) target_view_navigator);
-    }
-
-    // confirmation for leaving vimix: prevent un-wanted Ctrl+Q, but make it easy to confirm
-    if (ImGui::BeginPopup("confirm_quit_popup"))
-    {
-        ImGui::Text(" Leave vimix? [Q to confirm]");
-        // Clic Quit or press Q to confirm exit
-        if (ImGui::Button( MENU_QUIT, ImVec2(250,0)) ||
-            ( !confirm_quit_popup && ImGui::IsKeyPressed( GLFW_KEY_Q )) )
-            Rendering::manager().close();
-        ImGui::EndPopup();
     }
 
 }
@@ -733,6 +720,32 @@ bool UserInterface::saveOrSaveAs(bool force_versioning)
     return finished;
 }
 
+
+bool UserInterface::TryClose()
+{
+    // cannot close if a file dialog is pending
+    if (DialogToolkit::FileDialog::busy())
+        return false;
+
+    // force close if trying to close again although it is already pending for save
+    if (pending_save_on_exit) {
+        Rendering::manager().close();
+        return true;
+    }
+
+    // general case: determine if a pending save of session is required
+    pending_save_on_exit = ( Settings::application.recentSessions.save_on_exit
+                          && !Mixer::manager().session()->empty()
+                          && Mixer::manager().session()->filename().empty() );
+
+    // if no pending save of session is needed, close
+    if (!pending_save_on_exit)
+        Rendering::manager().close();
+
+    // say we can close if no pending save of session is needed
+    return !pending_save_on_exit;
+}
+
 void UserInterface::selectSaveFilename()
 {
     if (sessionsavedialog)
@@ -780,6 +793,41 @@ void UserInterface::NewFrame()
             ImGui::Text("Close file dialog box to resume.");
             ImGui::EndPopup();
         }
+    }
+
+    // popup to inform to save before close
+    if (pending_save_on_exit && !ImGui::IsPopupOpen(MENU_SAVE_ON_EXIT))
+        ImGui::OpenPopup(MENU_SAVE_ON_EXIT);
+    if (ImGui::BeginPopupModal(MENU_SAVE_ON_EXIT, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+        ImGui::Spacing();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+        ImGui::Text("Looks like you started some work");
+        ImGui::Text("but didn't save the session.");
+        ImGui::Text("");
+        ImGui::Text("");
+        ImGui::Text("");
+        ImGui::PopFont();
+
+        bool quit = false;
+        ImGui::SetCursorPos( area - ImVec2(area.x - 10.f, ImGui::GetFrameHeightWithSpacing()) );
+        if (ImGui::Button(ICON_FA_POWER_OFF " Quit anyway !", ImVec2(area.x, 0))) {
+            Rendering::manager().close();
+            quit = true;
+        }
+
+        bool cancel = false;
+        ImGui::SetCursorPos( area - ImVec2(area.x - 10.f, 0) );
+        if (ImGui::Button(ICON_FA_FILE_DOWNLOAD "  Save", ImVec2(area.x, 0))) {
+            pending_save_on_exit = false;
+            cancel = true;
+            saveOrSaveAs();
+        }
+
+        if (cancel || quit)
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
 
     // navigator bar first
@@ -944,13 +992,13 @@ void UserInterface::showMenuFile()
     if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
 
-    ImGui::MenuItem( ICON_FA_LEVEL_DOWN_ALT "  Save on exit", nullptr, &Settings::application.recentSessions.save_on_exit);
+    ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
     ImGui::Separator();
     if (ImGui::MenuItem( IMGUI_TITLE_HELP, SHORTCUT_HELP))
         Settings::application.widget.help = true;
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT))
-        Rendering::manager().close();
+        TryClose();
 
 }
 
@@ -5456,7 +5504,7 @@ void Navigator::RenderMainPannelSettings()
         //
         ImGui::Text("Appearance");
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01, 0.5f, 2.0f, "%.1f"))
+        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01f, 0.5f, 2.0f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
         bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
@@ -5588,7 +5636,7 @@ void Navigator::RenderMainPannelSettings()
                 Settings::application.render.blit = blit;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gpu_decoding = gpu;
-                Rendering::manager().close();
+                UserInterface::manager().TryClose();
             }
         }
 

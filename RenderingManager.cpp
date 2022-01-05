@@ -174,6 +174,17 @@ static void WindowToggleFullscreen( GLFWwindow *w, int button, int action, int)
     }
 }
 
+static void WindowCloseCallback( GLFWwindow* w )
+{
+    if (!UserInterface::manager().TryClose())
+        glfwSetWindowShouldClose(w, GLFW_FALSE);
+}
+
+void Rendering::close()
+{
+    glfwSetWindowShouldClose(main_.window(), GLFW_TRUE);
+}
+
 Rendering::Rendering()
 {
 //    main_window_ = nullptr;
@@ -206,6 +217,7 @@ bool Rendering::init()
     // set application icon
     main_.setIcon("images/vimix_256x256.png");
     // additional window callbacks for main window
+    glfwSetWindowCloseCallback( main_.window(), WindowCloseCallback );
     glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
@@ -357,7 +369,6 @@ void Rendering::draw()
 
 }
 
-
 void Rendering::terminate()
 {
     // close window
@@ -365,13 +376,6 @@ void Rendering::terminate()
     glfwDestroyWindow(main_.window());
 //    glfwTerminate();
 }
-
-
-void Rendering::close()
-{
-    glfwSetWindowShouldClose(main_.window(), true);
-}
-
 
 void Rendering::pushAttrib(RenderingAttrib ra)
 {
