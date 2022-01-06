@@ -4,6 +4,8 @@
 #include <string>
 #include <list>
 
+#include <gst/gstutils.h>
+
 #define NAV_COUNT 68
 #define NAV_MAX   64
 #define NAV_NEW   65
@@ -204,19 +206,23 @@ public:
 
 class WorkspaceWindow
 {
-    static bool clear_workspace_enabled;
     static std::list<WorkspaceWindow *> windows_;
 
 public:
     WorkspaceWindow(const char* name);
 
+    // global access to Workspace control
     static void toggleClearRestoreWorkspace();
     static void clearWorkspace();
     static void restoreWorkspace(bool instantaneous = false);
 
+    // for inherited classes
+    virtual void Update();
+    virtual bool Visible() const { return true; }
+
 protected:
 
-    virtual void Update();
+    static bool clear_workspace_enabled;
 
     const char *name_;
     struct ImGuiProperties *impl_;
@@ -275,11 +281,11 @@ public:
     void resetActiveSelection();
 
     void setVisible(bool on);
-    bool Visible() const;
     void Render();
 
     // from WorkspaceWindow
     void Update() override;
+    bool Visible() const override;
 };
 
 class OutputPreview : public WorkspaceWindow
@@ -304,11 +310,30 @@ public:
 
     void Render();
     void setVisible(bool on);
-    bool Visible() const;
 
     // from WorkspaceWindow
     void Update() override;
+    bool Visible() const override;
 };
+
+class TimerMetronome : public WorkspaceWindow
+{
+    std::array< std::string, 2 > timer_menu;
+    // clock times
+    guint64 start_time_;
+    guint64 start_time_hand_;
+    guint64 duration_hand_;
+
+public:
+    TimerMetronome();
+
+    void Render();
+    void setVisible(bool on);
+
+    // from WorkspaceWindow
+    bool Visible() const override;
+};
+
 
 class UserInterface
 {
@@ -382,6 +407,7 @@ protected:
     ToolBox toolbox;
     SourceController sourcecontrol;
     OutputPreview outputcontrol;
+    TimerMetronome timercontrol;
     HelperToolbox sessiontoolbox;
 
     void showMenuFile();
@@ -391,7 +417,6 @@ protected:
     void selectOpenFilename();
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
-    void RenderTimer();
     void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);
     void RenderAbout(bool* p_open);
