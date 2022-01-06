@@ -150,6 +150,9 @@ void Device::add(GstDevice *device)
     if (device==nullptr)
         return;
 
+    // lock before change
+    access_.lock();
+
     gchar *device_name = gst_device_get_display_name (device);
 
     if ( std::find(manager().src_name_.begin(), manager().src_name_.end(), device_name) == manager().src_name_.end())   {
@@ -171,12 +174,18 @@ void Device::add(GstDevice *device)
         list_uptodate_ = false;
     }
     g_free (device_name);
+
+    // unlock access
+    access_.unlock();
 }
 
 void Device::remove(GstDevice *device)
 {    
     if (device==nullptr)
         return;
+
+    // lock before change
+    access_.lock();
 
     gchar *device_name = gst_device_get_display_name (device);
 
@@ -204,47 +213,42 @@ void Device::remove(GstDevice *device)
         ++coit;
     }
     g_free (device_name);
+
+    // unlock access
+    access_.unlock();
 }
 
 
 Device::Device(): list_uptodate_(false)
 {
-
+    std::thread(launchMonitoring, this).detach();
 }
 
-void Device::init()
+void Device::launchMonitoring(Device *d)
 {
-    GstBus *bus;
-    GstCaps *caps;
+    d->monitor_ = gst_device_monitor_new ();
 
-    // create GStreamer device monitor to capture
-    // when a device is plugged in or out
-    monitor_ = gst_device_monitor_new ();
-
-    bus = gst_device_monitor_get_bus (monitor_);
-    gst_bus_add_watch (bus, callback_device_monitor, NULL);
-    gst_object_unref (bus);
-
-    caps = gst_caps_new_empty_simple ("video/x-raw");
-    gst_device_monitor_add_filter (monitor_, "Video/Source", caps);
+    GstCaps *caps = gst_caps_new_empty_simple ("video/x-raw");
+    gst_device_monitor_add_filter (d->monitor_, "Video/Source", caps);
     gst_caps_unref (caps);
 
-    gst_device_monitor_set_show_all_devices(monitor_, true);
-    gst_device_monitor_start (monitor_);
+    gst_device_monitor_set_show_all_devices(d->monitor_, true);
+    gst_device_monitor_start (d->monitor_);
 
-    // initial fill of the list
-    GList *devices = gst_device_monitor_get_devices(monitor_);
+    // Add configs for plugged devices
+    GList *devices = gst_device_monitor_get_devices(d->monitor_);
     GList *tmp;
     for (tmp = devices; tmp ; tmp = tmp->next ) {
         GstDevice *device = (GstDevice *) tmp->data;
-        add(device);
+        d->add(device);
         gst_object_unref (device);
     }
     g_list_free(devices);
 
     // Add config for plugged screen
-    src_name_.push_back("Screen capture");
-    src_description_.push_back(gst_plugin_vidcap);
+    d->access_.lock();
+    d->src_name_.push_back("Screen capture");
+    d->src_description_.push_back(gst_plugin_vidcap);
 
     // Try to auto find resolution
     DeviceConfigSet confs = getDeviceConfigs(gst_plugin_vidcap);
@@ -254,25 +258,48 @@ void Device::init()
         DeviceConfigSet confscreen;
         best.fps_numerator = 15;
         confscreen.insert(best);
-        src_config_.push_back(confscreen);
+        d->src_config_.push_back(confscreen);
     }
+    d->access_.unlock();
 
-    // TODO Use lib glfw to get monitors
-    // TODO Detect auto removal of monitors
+    d->list_uptodate_ = true;
 
-    list_uptodate_ = true;
+    // create a local g_main_context for this threaded monitor
+    GMainContext *_gcontext_device = g_main_context_new();
+    if (g_main_context_acquire(_gcontext_device))
+        g_printerr("Starting Device monitoring... \n");
+
+    // temporarily push as default the default g_main_context for add_watch
+    g_main_context_push_thread_default(_gcontext_device);
+
+    GstBus *bus = gst_device_monitor_get_bus (d->monitor_);
+    gst_bus_add_watch (bus, callback_device_monitor, NULL);
+    gst_object_unref (bus);
+
+    g_main_context_pop_thread_default(_gcontext_device);
+
+    // start main loop for this context (blocking infinitely)
+    g_main_loop_run( g_main_loop_new (_gcontext_device, true) );
+
 }
 
-
-int Device::numDevices() const
+int Device::numDevices()
 {
-    return src_name_.size();
+    access_.lock();
+    int ret = src_name_.size();
+    access_.unlock();
+
+    return ret;
 }
 
-bool Device::exists(const std::string &device) const
+bool Device::exists(const std::string &device)
 {
+    access_.lock();
     std::vector< std::string >::const_iterator d = std::find(src_name_.begin(), src_name_.end(), device);
-    return d != src_name_.end();
+    bool  ret = (d != src_name_.end());
+    access_.unlock();
+
+    return ret;
 }
 
 struct hasDevice: public std::unary_function<DeviceSource*, bool>
@@ -307,43 +334,57 @@ Source *Device::createSource(const std::string &device) const
     return s;
 }
 
-bool Device::unplugged(const std::string &device) const
+bool Device::unplugged(const std::string &device)
 {
     if (list_uptodate_)
         return false;
     return !exists(device);
 }
 
-std::string Device::name(int index) const
+std::string Device::name(int index)
 {
+    std::string ret = "";
+
+    access_.lock();
     if (index > -1 && index < (int) src_name_.size())
-        return src_name_[index];
-    else
-        return "";
+        ret = src_name_[index];
+    access_.unlock();
+
+    return ret;
 }
 
-std::string Device::description(int index) const
+std::string Device::description(int index)
 {
+    std::string ret = "";
+
+    access_.lock();
     if (index > -1 && index < (int) src_description_.size())
-        return src_description_[index];
-    else
-        return "";
+        ret = src_description_[index];
+    access_.unlock();
+
+    return ret;
 }
 
-DeviceConfigSet Device::config(int index) const
+DeviceConfigSet Device::config(int index)
 {
+    DeviceConfigSet ret;
+
+    access_.lock();
     if (index > -1 && index < (int) src_config_.size())
-        return src_config_[index];
-    else
-        return DeviceConfigSet();
+        ret = src_config_[index];
+    access_.unlock();
+
+    return ret;
 }
 
-int  Device::index(const std::string &device) const
+int  Device::index(const std::string &device)
 {
     int i = -1;
-    std::vector< std::string >::const_iterator p = std::find(src_name_.begin(), src_name_.end(), device);
+    access_.lock();
+    std::vector< std::string >::iterator p = std::find(src_name_.begin(), src_name_.end(), device);
     if (p != src_name_.end())
         i = std::distance(src_name_.begin(), p);
+    access_.unlock();
 
     return i;
 }

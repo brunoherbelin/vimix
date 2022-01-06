@@ -241,7 +241,6 @@ void Stream::execute_open()
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 30);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
 
-#ifdef USE_GST_APPSINK_CALLBACKS
     // set the callbacks
     GstAppSinkCallbacks callbacks;
     callbacks.new_preroll = callback_new_preroll;
@@ -256,15 +255,6 @@ void Stream::execute_open()
     }
     gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
     gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-#else
-    // connect signals callbacks
-    g_signal_connect(G_OBJECT(sink), "new-preroll", G_CALLBACK (callback_new_preroll), this);
-    if (!single_frame_) {
-        g_signal_connect(G_OBJECT(sink), "new-sample", G_CALLBACK (callback_new_sample), this);
-        g_signal_connect(G_OBJECT(sink), "eos", G_CALLBACK (callback_end_of_stream), this);
-    }
-    gst_app_sink_set_emit_signals (GST_APP_SINK(sink), true);
-#endif
 
     // set to desired state (PLAY or PAUSE)
     live_ = false;

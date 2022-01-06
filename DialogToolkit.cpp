@@ -254,9 +254,10 @@ std::string saveSessionFileDialog(const std::string &label, const std::string &p
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
 
         char *save_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        if (save_file_name)
+        if (save_file_name) {
             filename = std::string(save_file_name);
-        g_free( save_file_name );
+            g_free( save_file_name );
+        }
     }
 
     // remember position
@@ -314,9 +315,10 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
 
         char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        if (open_file_name)
+        if (open_file_name) {
             filename = std::string(open_file_name);
-        g_free( open_file_name );
+            g_free( open_file_name );
+        }
     }
 
     // remember position
@@ -371,9 +373,10 @@ std::string openMediaFileDialog(const std::string &label, const std::string &pat
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
 
         char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        if (open_file_name)
+        if (open_file_name) {
             filename = std::string(open_file_name);
-        g_free( open_file_name );
+            g_free( open_file_name );
+        }
     }
 
     // remember position
@@ -428,9 +431,10 @@ std::string openImageFileDialog(const std::string &label, const std::string &pat
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
 
         char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        if (open_file_name)
+        if (open_file_name) {
             filename = std::string(open_file_name);
-        g_free( open_file_name );
+            g_free( open_file_name );
+        }
     }
 
     // remember position
@@ -480,9 +484,10 @@ std::string openFolderDialog(const std::string &label, const std::string &path)
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
 
         char *open_folder_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        if (open_folder_name)
+        if (open_folder_name) {
             foldername = std::string(open_folder_name);
-        g_free( open_folder_name );
+            g_free( open_folder_name );
+        }
     }
 
     // remember position

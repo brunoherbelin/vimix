@@ -30,7 +30,6 @@
 #include "ControlManager.h"
 #include "Connection.h"
 #include "Metronome.h"
-#include "DeviceSource.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -105,29 +104,24 @@ int main(int argc, char *argv[])
         return 1;
 
     ///
-    /// CONTROLLER INIT
+    /// CONTROLLER INIT (OSC)
     ///
     Control::manager().init();
 
     ///
-    /// METRONOME INIT
+    /// METRONOME INIT (Ableton Link)
     ///
     if ( !Metronome::manager().init() )
         return 1;
 
     ///
-    /// RENDERING INIT
+    /// RENDERING & GST INIT
     ///
     if ( !Rendering::manager().init() )
         return 1;
 
     ///
-    /// DEVICES INIT
-    ///
-    Device::manager().init();
-
-    ///
-    /// UI INIT
+    /// IMGUI INIT
     ///
     if ( !UserInterface::manager().Init() )
         return 1;

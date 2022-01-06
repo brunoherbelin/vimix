@@ -100,15 +100,14 @@ public:
         return _instance;
     }
 
-    void init();
-    int numDevices () const;
-    std::string name (int index) const;
-    std::string description (int index) const;
-    DeviceConfigSet config (int index) const;
+    int numDevices () ;
+    std::string name (int index) ;
+    std::string description (int index) ;
+    DeviceConfigSet config (int index) ;
 
-    int  index  (const std::string &device) const;
-    bool exists (const std::string &device) const;
-    bool unplugged (const std::string &device) const;
+    int  index  (const std::string &device);
+    bool exists (const std::string &device) ;
+    bool unplugged (const std::string &device) ;
 
     Source *createSource(const std::string &device) const;
 
@@ -117,9 +116,11 @@ public:
 
 private:
 
+    static void launchMonitoring(Device *d);
     void remove(GstDevice *device);
     void add(GstDevice *device);
 
+    std::mutex access_;
     std::vector< std::string > src_name_;
     std::vector< std::string > src_description_;
     std::vector< DeviceConfigSet > src_config_;
