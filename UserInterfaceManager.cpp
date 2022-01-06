@@ -69,6 +69,7 @@ using namespace std;
 #include "Settings.h"
 #include "SessionCreator.h"
 #include "Mixer.h"
+#include "MixingGroup.h"
 #include "Recorder.h"
 #include "Streamer.h"
 #include "Loopback.h"
@@ -387,13 +388,13 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().deleteSelection();
             // button tab to select next
             else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+                // cancel selection
+                if (!Mixer::selection().empty())
+                    Mixer::selection().clear();
                 if (shift_modifier_active)
                     Mixer::manager().setCurrentPrevious();
                 else
                     Mixer::manager().setCurrentNext();
-                // cancel selection
-                if (!Mixer::selection().empty())
-                    Mixer::selection().clear();
             }
             // arrow keys to act on current view
             else if (ImGui::IsKeyDown( GLFW_KEY_LEFT ))
@@ -564,6 +565,12 @@ void UserInterface::handleMouse()
                     // discard current to select front most source
                     // (because single clic maintains same source active)
                     Mixer::manager().unsetCurrentSource();
+                else {
+                    MixingGroup *g = Mixer::manager().currentSource()->mixingGroup();
+                    if (g != nullptr){
+                        Mixer::selection().set( g->getCopy() );
+                    }
+                }
                 // display source in left pannel
                 navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
