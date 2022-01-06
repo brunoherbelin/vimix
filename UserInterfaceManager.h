@@ -202,9 +202,28 @@ public:
 
 };
 
-class SourceController
+class WorkspaceWindow
 {
-    bool focused_;
+    static bool clear_workspace_enabled;
+    static std::list<WorkspaceWindow *> windows_;
+
+public:
+    WorkspaceWindow(const char* name);
+
+    static void toggleClearRestoreWorkspace();
+    static void clearWorkspace();
+    static void restoreWorkspace(bool instantaneous = false);
+
+protected:
+
+    virtual void Update();
+
+    const char *name_;
+    struct ImGuiProperties *impl_;
+};
+
+class SourceController : public WorkspaceWindow
+{
     float min_width_;
     float h_space_;
     float v_space_;
@@ -253,48 +272,48 @@ public:
 
     inline void Play()   { play_toggle_request_  = true; }
     inline void Replay() { replay_request_= true; }
-    void Update();
-
     void resetActiveSelection();
-    void Render();
+
     void setVisible(bool on);
     bool Visible() const;
-    inline bool Foccused() const { return focused_; }
+    void Render();
+
+    // from WorkspaceWindow
+    void Update() override;
 };
 
-
-class UserInterface
+class OutputPreview : public WorkspaceWindow
 {
-    friend class Navigator;
-    Navigator navigator;
-    ToolBox toolbox;
-    SourceController sourcecontrol;
-    HelperToolbox sessiontoolbox;
-
-    uint64_t start_time;
-    bool ctrl_modifier_active;
-    bool alt_modifier_active;
-    bool shift_modifier_active;
-    bool show_vimix_about;
-    bool show_imgui_about;
-    bool show_gst_about;
-    bool show_opengl_about;
-    int  show_view_navigator;
-    int  target_view_navigator;
-    unsigned int screenshot_step;
-    bool pending_save_on_exit;
-
     // frame grabbers
     VideoRecorder *video_recorder_;
+    // delayed trigger for recording
+    std::vector< std::future<VideoRecorder *> > _video_recorders;
 
 #if defined(LINUX)
     FrameGrabber *webcam_emulator_;
 #endif
 
-    // Dialogs
-    DialogToolkit::OpenSessionDialog *sessionopendialog;
-    DialogToolkit::OpenSessionDialog *sessionimportdialog;
-    DialogToolkit::SaveSessionDialog *sessionsavedialog;
+    // dialog to select record location
+    DialogToolkit::OpenFolderDialog *recordFolderDialog;
+
+public:
+    OutputPreview();
+
+    void ToggleRecord(bool save_and_continue = false);
+    inline bool isRecording() const { return video_recorder_ != nullptr; }
+
+    void Render();
+    void setVisible(bool on);
+    bool Visible() const;
+
+    // from WorkspaceWindow
+    void Update() override;
+};
+
+class UserInterface
+{
+    friend class Navigator;
+    friend class OutputPreview;
 
     // Private Constructor
     UserInterface();
@@ -336,9 +355,34 @@ public:
     void fillShaderEditor(const std::string &text);
 
     void StartScreenshot();
-    inline bool isRecording() const { return video_recorder_ != nullptr; }
 
 protected:
+
+    // internal
+    uint64_t start_time;
+    bool ctrl_modifier_active;
+    bool alt_modifier_active;
+    bool shift_modifier_active;
+    bool show_vimix_about;
+    bool show_imgui_about;
+    bool show_gst_about;
+    bool show_opengl_about;
+    int  show_view_navigator;
+    int  target_view_navigator;
+    unsigned int screenshot_step;
+    bool pending_save_on_exit;
+
+    // Dialogs
+    DialogToolkit::OpenSessionDialog *sessionopendialog;
+    DialogToolkit::OpenSessionDialog *sessionimportdialog;
+    DialogToolkit::SaveSessionDialog *sessionsavedialog;
+
+    // objects and windows
+    Navigator navigator;
+    ToolBox toolbox;
+    SourceController sourcecontrol;
+    OutputPreview outputcontrol;
+    HelperToolbox sessiontoolbox;
 
     void showMenuFile();
     void showMenuEdit();
@@ -347,7 +391,6 @@ protected:
     void selectOpenFilename();
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
-    void RenderPreview();
     void RenderTimer();
     void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);

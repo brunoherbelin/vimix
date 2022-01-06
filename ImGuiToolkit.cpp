@@ -38,6 +38,7 @@
 #include "SystemToolkit.h"
 
 #include "ImGuiToolkit.h"
+#include "imgui_internal.h"
 
 bool tooltips_enabled = true;
 unsigned int textureicons = 0;
@@ -77,7 +78,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
     bool ret = false;
 
     // utility style
-    ImVec4* colors = ImGui::GetStyle().Colors;
+    const ImVec4* colors = ImGui::GetStyle().Colors;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     // draw position when entering
@@ -622,9 +623,10 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 #define LARGE_TICK_INCREMENT 1
 #define LABEL_TICK_INCREMENT 3
 
-void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox,
-                                   guint64 begin, guint64 end, guint64 step, bool verticalflip)
+void ImGuiToolkit::RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
+    const ImRect timeline_bbox(min_bbox, max_bbox);
+    const ImGuiWindow* window = ImGui::GetCurrentWindow();
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
 
     const ImGuiContext& g = *GImGui;
@@ -759,13 +761,14 @@ void ImGuiToolkit::RenderTimeline (ImGuiWindow* window, ImRect timeline_bbox,
 }
 
 
-void ImGuiToolkit::RenderTimelineBPM (ImGuiWindow* window, ImRect timeline_bbox, double tempo, double quantum,
+void ImGuiToolkit::RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double tempo, double quantum,
                                       guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
     if (tempo<1.)
         return;
 
-
+    const ImRect timeline_bbox(min_bbox, max_bbox);
+    const ImGuiWindow* window = ImGui::GetCurrentWindow();
     const ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const float fontsize = g.FontSize;
@@ -986,9 +989,9 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
 
     // render the timeline
     if (tempo > 0 && quantum > 0)
-        RenderTimelineBPM(window, timeline_bbox, tempo, quantum, begin, end, step);
+        RenderTimelineBPM(timeline_bbox.Min, timeline_bbox.Max, tempo, quantum, begin, end, step);
     else
-        RenderTimeline(window, timeline_bbox, begin, end, step);
+        RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, begin, end, step);
 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {

@@ -31,6 +31,9 @@
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
 
+#include "imgui.h"
+#include "imgui_internal.h"
+
 #include "defines.h"
 #include "Log.h"
 #include "Scene.h"
