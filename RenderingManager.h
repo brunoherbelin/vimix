@@ -85,6 +85,8 @@ public:
     static GLFWmonitor *monitorAt(int x, int y);
     // get which monitor has this name
     static GLFWmonitor *monitorNamed(const std::string &name);
+
+    glm::vec2 previous_size;
 };
 
 class Rendering

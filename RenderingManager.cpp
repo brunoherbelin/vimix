@@ -134,6 +134,10 @@ static void WindowRefreshCallback( GLFWwindow * )
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
+    // UI manager tries to keep windows in the workspace
+    WorkspaceWindow::notifyWorkspaceSizeChanged(GLFW_window_[w]->previous_size.x,  GLFW_window_[w]->previous_size.y, width, height);
+    GLFW_window_[w]->previous_size = glm::vec2(width, height);
+
     int id = GLFW_window_[w]->index();
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].w = width;
@@ -723,6 +727,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     // ensure minimal window size
     glfwSetWindowSizeLimits(window_, 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
+
+    previous_size = glm::vec2(winset.w, winset.h);
 
     // set initial position
     glfwSetWindowPos(window_, winset.x, winset.y);

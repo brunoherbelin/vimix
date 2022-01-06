@@ -215,6 +215,7 @@ public:
     static void toggleClearRestoreWorkspace();
     static void clearWorkspace();
     static void restoreWorkspace(bool instantaneous = false);
+    static void notifyWorkspaceSizeChanged(int prev_width, int prev_height, int curr_width, int curr_height);
 
     // for inherited classes
     virtual void Update();
