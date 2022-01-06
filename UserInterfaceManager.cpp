@@ -5063,7 +5063,7 @@ void Navigator::RenderMainPannelVimix()
     //
     ImGui::Text("Sessions");
     static bool selection_session_mode_changed = true;
-    static int selection_session_mode = 0;
+    static int selection_session_mode = (Settings::application.recentFolders.path == IMGUI_LABEL_RECENT_FILES) ? 0 : 1;
     static DialogToolkit::OpenFolderDialog customFolder("Open Folder");
 
     // Show combo box of quick selection modes
@@ -5133,7 +5133,7 @@ void Navigator::RenderMainPannelVimix()
     // fill the session list depending on the mode
     static std::list<std::string> sessions_list;
     // change session list if changed
-    if (selection_session_mode_changed || Settings::application.recentSessions.changed) {
+    if (selection_session_mode_changed || Settings::application.recentSessions.changed || Settings::application.recentFolders.changed) {
 
         // selection MODE 0 ; RECENT sessions
         if ( selection_session_mode == 0) {
