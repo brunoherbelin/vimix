@@ -1800,6 +1800,10 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_LAYER_GROUP " Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_BACKSPACE " DEL"); ImGui::NextColumn();
+        ImGui::Text("Delete Current source"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EXCHANGE_ALT "  TAB"); ImGui::NextColumn();
+        ImGui::Text("Switch Current source"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Separator();
@@ -1813,6 +1817,8 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_DESKTOP TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CLOCK TOOLTIP_TIMER "window"); ImGui::NextColumn();
+        ImGui::Text("ESC"); ImGui::NextColumn();
+        ImGui::Text("Hide / Show windows"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
