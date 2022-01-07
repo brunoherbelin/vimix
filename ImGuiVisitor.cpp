@@ -51,6 +51,7 @@
 #include "SessionVisitor.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "MixingGroup.h"
 #include "ActionManager.h"
 
 #include "imgui.h"
@@ -259,9 +260,9 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-    ImGuiToolkit::Icon(6, 2);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Filters");
+//    ImGuiToolkit::Icon(6, 2);
+//    ImGui::SameLine(0, IMGUI_SAME_LINE);
+//    ImGui::Text("Filters");
 
     if (ImGuiToolkit::IconButton(6, 4)) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
@@ -454,8 +455,19 @@ void ImGuiVisitor::visit (Source& s)
     else
         ImGuiToolkit::Indication("in Workspace",11, 16);
 
-    // locking
+    // Inform on link
     ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.f * ImGui::GetFrameHeightWithSpacing()) );
+    if (s.mixingGroup() != nullptr) {
+        if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
+            Mixer::selection().clear();
+            Mixer::selection().add( s.mixingGroup()->getCopy() );
+        }
+    }
+    else
+        ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
+
+    // locking
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 3.f * ImGui::GetFrameHeightWithSpacing()) );
     const char *tooltip[2] = {"Unlocked", "Locked"};
     bool l = s.locked();
     if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
@@ -472,19 +484,23 @@ void ImGuiVisitor::visit (Source& s)
 
     // toggle enable/disable image processing
     bool on = s.imageProcessingEnabled();
-    ImGui::SetCursorPos( ImVec2(preview_width + 15, pos.y + 3.5f * ImGui::GetFrameHeightWithSpacing()) );
-    if ( ImGuiToolkit::ButtonIconToggle(6, 2, 6, 2, &on, "Filters") ){
+    ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+    if ( ImGuiToolkit::ButtonIconToggle(6, 2, 6, 2, &on) ){
         std::ostringstream oss;
         oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
         Action::manager().store(oss.str());
     }
     s.setImageProcessingEnabled(on);
 
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Filters");
+    pos = ImGui::GetCursorPos();
+
     // image processing pannel
     if (s.imageProcessingEnabled()) {
 
         // menu icon for image processing
-        ImGui::SetCursorPos( ImVec2( preview_width - ImGui::GetTextLineHeight(), pos.y + 4.5f * ImGui::GetFrameHeightWithSpacing())); // ...come back
+        ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
         if (ImGuiToolkit::IconButton(5, 8))
             ImGui::OpenPopup( "MenuImageProcessing" );
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
@@ -540,7 +556,7 @@ void ImGuiVisitor::visit (Source& s)
         }
 
         // full panel for image processing
-        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height)); // ...come back
+        ImGui::SetCursorPos( pos );
 
         if (s.processingshader_link_.connected()) {
             ImGuiToolkit::Icon(6, 2);
@@ -554,6 +570,8 @@ void ImGuiVisitor::visit (Source& s)
         else
             s.processingShader()->accept(*this);
     }
+
+    ImGui::Spacing();
 
     ImGui::PopID();
 }
