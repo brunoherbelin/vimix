@@ -321,9 +321,9 @@ void FrameBuffer::checkFramebufferStatus()
             Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
             break;
         case GL_FRAMEBUFFER_COMPLETE:
-#ifndef NDEBUG
-            g_print("Framebuffer created %d x %d\n", width(), height());
-#endif
+//#ifndef NDEBUG
+//            g_print("Framebuffer created %d x %d\n", width(), height());
+//#endif
             break;
     }
 }
