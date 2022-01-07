@@ -122,13 +122,11 @@ struct History
 struct TransitionConfig
 {
     bool cross_fade;
-    bool hide_windows;
     float duration;
     int profile;
 
     TransitionConfig() {
         cross_fade = true;
-        hide_windows = true;
         duration = 1.f;
         profile = 0;
     }

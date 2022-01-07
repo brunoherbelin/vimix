@@ -456,7 +456,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGuiToolkit::Indication("in Workspace",11, 16);
 
     // Inform on link
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.f * ImGui::GetFrameHeightWithSpacing()) );
+    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
     if (s.mixingGroup() != nullptr) {
         if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
             Mixer::selection().clear();

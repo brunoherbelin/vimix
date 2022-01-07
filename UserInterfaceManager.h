@@ -213,6 +213,7 @@ public:
     WorkspaceWindow(const char* name);
 
     // global access to Workspace control
+    static bool clear() { return clear_workspace_enabled; }
     static void toggleClearRestoreWorkspace();
     static void clearWorkspace();
     static void restoreWorkspace(bool instantaneous = false);
@@ -410,7 +411,7 @@ protected:
     SourceController sourcecontrol;
     OutputPreview outputcontrol;
     TimerMetronome timercontrol;
-    HelperToolbox sessiontoolbox;
+    HelperToolbox helpwindow;
 
     void showMenuFile();
     void showMenuEdit();

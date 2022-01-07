@@ -366,7 +366,9 @@ void UserInterface::handleKeyboard()
             navigator.togglePannelNew();
         // button esc
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
+            // hide pannel
             navigator.hidePannel();
+            // toggle clear workspace
             WorkspaceWindow::toggleClearRestoreWorkspace();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_END )) {
@@ -780,40 +782,41 @@ void UserInterface::Render()
     sourcecontrol.Update();
     timercontrol.Update();
 
-    // warning modal dialog
+    // warnings and notifications
     Log::Render(&Settings::application.widget.logs);
 
-    // clear view mode in Transition view
-    if ( !Settings::application.transition.hide_windows || Settings::application.current_view < View::TRANSITION) {
+    // Output controller
+    if (outputcontrol.Visible())
+        outputcontrol.Render();
 
+    // Source controller
+    if (sourcecontrol.Visible())
+        sourcecontrol.Render();
+
+    // Timer controller
+    if (timercontrol.Visible())
+        timercontrol.Render();
+
+    // Notes
+    RenderNotes();
+
+    // Navigator
+    if (show_view_navigator > 0)
+        target_view_navigator = RenderViewNavigator( &show_view_navigator );
+
+    // All other windows are simply not rendered if workspace is clear
+    if ( !WorkspaceWindow::clear()) {
         // windows
-        if (Settings::application.widget.toolbox)
-            toolbox.Render();
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
+        if (Settings::application.widget.help)
+            helpwindow.Render();
+        if (Settings::application.widget.toolbox)
+            toolbox.Render();
         if (Settings::application.widget.logs)
             Log::ShowLogWindow(&Settings::application.widget.logs);
-        if (Settings::application.widget.help)
-            sessiontoolbox.Render();
 
-        // Output controller
-        if (outputcontrol.Visible())
-            outputcontrol.Render();
-
-        // Source controller
-        if (sourcecontrol.Visible())
-            sourcecontrol.Render();
-
-        // Timer controller
-        if (timercontrol.Visible())
-            timercontrol.Render();
-
-        // Notes
-        RenderNotes();
-
-        // dialogs
-        if (show_view_navigator > 0)
-            target_view_navigator = RenderViewNavigator( &show_view_navigator );
+        // About
         if (show_vimix_about)
             RenderAbout(&show_vimix_about);
         if (show_imgui_about)
@@ -1392,7 +1395,7 @@ void UserInterface::showPannel(int id)
 void UserInterface::RenderNotes()
 {
     Session *se = Mixer::manager().session();
-    if (se!=nullptr) {
+    if (se!=nullptr && se->beginNotes() != se->endNotes()) {
 
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ResizeGripHovered];
         color.w = 0.35f;
@@ -5182,6 +5185,8 @@ void Navigator::RenderMainPannelVimix()
                     // open on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) /*|| file_selected == it*/) {
                         Mixer::manager().open( *it, Settings::application.smooth_transition );
+                        if (Settings::application.smooth_transition)
+                            WorkspaceWindow::clearWorkspace();
                         done = true;
                     }
                     else
@@ -5254,6 +5259,8 @@ void Navigator::RenderMainPannelVimix()
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
     if ( ImGuiToolkit::IconButton( ICON_FA_FILE " +" )) {
         Mixer::manager().close(Settings::application.smooth_transition );
+        if (Settings::application.smooth_transition)
+            WorkspaceWindow::clearWorkspace();
         hidePannel();
     }
     if (ImGui::IsItemHovered())
@@ -5880,26 +5887,31 @@ void Navigator::RenderTransitionPannel()
         ImGui::Text("Transition");
         ImGui::PopFont();
 
-        // Session menu
-        ImGui::SetCursorPosY(width_);
-        ImGui::Text("Behavior");
-        ImGuiToolkit::ButtonSwitch( ICON_FA_RANDOM " Cross fading", &Settings::application.transition.cross_fade);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_CLOUD_SUN " Clear view", &Settings::application.transition.hide_windows);
-
         // Transition options
         ImGuiToolkit::Spacing();
-        ImGui::Text("Animation");
-        if (ImGuiToolkit::ButtonIcon(4, 13)) Settings::application.transition.duration = 1.f;
+        ImGui::Text("Transition");
+        if (ImGuiToolkit::IconButton(0, 8)) Settings::application.transition.cross_fade = true;
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        int mode = Settings::application.transition.cross_fade ? 0 : 1;
+        if (ImGui::Combo("Fading", &mode, "Cross fading\0Fade to black\0") )
+            Settings::application.transition.cross_fade = mode < 1;
+        if (ImGuiToolkit::IconButton(4, 13)) Settings::application.transition.duration = 1.f;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::SliderFloat("Duration", &Settings::application.transition.duration, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
-        if (ImGuiToolkit::ButtonIcon(9, 1)) Settings::application.transition.profile = 0;
+        if (ImGuiToolkit::IconButton(9, 1)) Settings::application.transition.profile = 0;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
         // specific transition actions
-        ImGui::Text(" ");
+        ImGuiToolkit::Spacing();
+        ImGui::Text("Actions");
+        if ( ImGui::Button( ICON_FA_TIMES "  Cancel ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->cancel();
+        }
         if ( ImGui::Button( ICON_FA_PLAY "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->play(false);
