@@ -51,66 +51,34 @@ std::string gst_plugin_device = "v4l2src";
 std::string gst_plugin_vidcap = "ximagesrc";
 #endif
 
-////EXAMPLE :
-///
-//v4l2deviceprovider, udev-probed=(boolean)true,
-//device.bus_path=(string)pci-0000:00:14.0-usb-0:2:1.0,
-//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/video4linux/video0,
-//device.bus=(string)usb,
-//device.subsystem=(string)video4linux,
-//device.vendor.id=(string)1bcf,
-//device.vendor.name=(string)"Sunplus\\x20IT\\x20Co\\x20",
-//device.product.id=(string)2286,
-//device.product.name=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
-//device.serial=(string)Sunplus_IT_Co_AUSDOM_FHD_Camera,
-//device.capabilities=(string):capture:,
-//device.api=(string)v4l2,
-//device.path=(string)/dev/video0,
-//v4l2.device.driver=(string)uvcvideo,
-//v4l2.device.card=(string)"AUSDOM\ FHD\ Camera:\ AUSDOM\ FHD\ C",
-//v4l2.device.bus_info=(string)usb-0000:00:14.0-2,
-//v4l2.device.version=(uint)328748,
-//v4l2.device.capabilities=(uint)2225078273,
-//v4l2.device.device_caps=(uint)69206017;
-//Device added: AUSDOM FHD Camera: AUSDOM FHD C - v4l2src device=/dev/video0
-
-//v4l2deviceprovider, udev-probed=(boolean)true,
-//device.bus_path=(string)pci-0000:00:14.0-usb-0:4:1.0,
-//sysfs.path=(string)/sys/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4:1.0/video4linux/video2,
-//device.bus=(string)usb,
-//device.subsystem=(string)video4linux,
-//device.vendor.id=(string)046d,
-//device.vendor.name=(string)046d,
-//device.product.id=(string)080f,
-//device.product.name=(string)"UVC\ Camera\ \(046d:080f\)",
-//device.serial=(string)046d_080f_3EA77580,
-//device.capabilities=(string):capture:,
-//device.api=(string)v4l2,
-//device.path=(string)/dev/video2,
-//v4l2.device.driver=(string)uvcvideo,
-//v4l2.device.card=(string)"UVC\ Camera\ \(046d:080f\)",
-//v4l2.device.bus_info=(string)usb-0000:00:14.0-4,
-//v4l2.device.version=(uint)328748,
-//v4l2.device.capabilities=(uint)2225078273,
-//v4l2.device.device_caps=(uint)69206017; // decimal of hexadecimal v4l code Device Caps      : 0x04200001
-//Device added: UVC Camera (046d:080f) - v4l2src device=/dev/video2
-
 std::string pipelineForDevice(GstDevice *device, uint index)
 {
     std::ostringstream pipe;
-    const gchar *str = gst_structure_get_string(gst_device_get_properties(device), "device.api");
+    GstStructure *stru = gst_device_get_properties(device);
 
-    if (str && gst_plugin_device.find(str) != std::string::npos)
-    {
-        pipe << gst_plugin_device;
+    if (stru) {
+        const gchar *api = gst_structure_get_string(stru, "device.api");
+
+        // check that the api is supported by vimix
+        if (api && gst_plugin_device.find(api) != std::string::npos)
+        {
+            pipe << gst_plugin_device;
 
 #if defined(APPLE)
-        pipe << " device-index=" << index;
+            pipe << " device-index=" << index;
 #else
-        str = gst_structure_get_string(gst_device_get_properties(device), "device.path");
-        if (str)
-            pipe << " device=" << str;
+            (void) index; // prevent compilatin warning unused argument
+
+            // get the path: either "device.path" or "api.v4l2.path"
+            // (GStreamer has different ways depending on version)
+            const gchar *path;
+            if ( gst_structure_has_field (stru, "device.path"))
+                path = gst_structure_get_string(stru, "device.path");
+            else
+                path = gst_structure_get_string(stru, "api.v4l2.path");
+            pipe << " device=" << path;
 #endif
+        }
     }
 
     return pipe.str();
@@ -253,10 +221,11 @@ void Device::launchMonitoring(Device *d)
     // Try to auto find resolution
     DeviceConfigSet confs = getDeviceConfigs(gst_plugin_vidcap);
     if (!confs.empty()) {
-        // fix the framerate (otherwise at 1 FPS
         DeviceConfig best = *confs.rbegin();
         DeviceConfigSet confscreen;
-        best.fps_numerator = 15;
+        // limit framerate to 30fps
+        best.fps_numerator = MIN( best.fps_numerator, 30);
+        best.fps_denominator = 1;
         confscreen.insert(best);
         d->src_config_.push_back(confscreen);
     }

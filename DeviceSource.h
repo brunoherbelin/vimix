@@ -43,7 +43,7 @@ struct DeviceConfig {
     DeviceConfig() {
         width = 0;
         height = 0;
-        fps_numerator = 1;
+        fps_numerator = 30;
         fps_denominator = 1;
         stream = "";
         format = "";
