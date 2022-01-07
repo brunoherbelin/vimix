@@ -700,8 +700,12 @@ bool UserInterface::TryClose()
 
 void UserInterface::selectSaveFilename()
 {
-    if (sessionsavedialog)
+    if (sessionsavedialog) {
+        if (!Mixer::manager().session()->filename().empty())
+            sessionsavedialog->setFolder( Mixer::manager().session()->filename() );
+
         sessionsavedialog->open();
+    }
 
     navigator.hidePannel();
 }

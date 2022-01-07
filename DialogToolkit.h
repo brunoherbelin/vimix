@@ -62,6 +62,7 @@ class SaveSessionDialog : public FileDialog
 {
 public:
     SaveSessionDialog(const std::string &name) : FileDialog(name) {}
+    void setFolder(std::string path);
     void open();
 };
 

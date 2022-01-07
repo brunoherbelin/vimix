@@ -160,6 +160,11 @@ void DialogToolkit::SaveSessionDialog::open()
     }
 }
 
+void DialogToolkit::SaveSessionDialog::setFolder(std::string path)
+{
+    Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename( path );
+}
+
 std::string openFolderDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenFolderDialog::open()
 {
