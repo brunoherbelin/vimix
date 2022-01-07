@@ -442,8 +442,15 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
                 if (UserInterface::manager().ctrlModifier()) {
                     SourceList linked = s->mixinggroup_->getCopy();
                     linked.remove(s);
-                    if (Mixer::selection().empty())
-                        Mixer::selection().add(linked);
+                    if (linked.size() > 0) {
+                        // avoid de-selection of current source if in a mixing group
+                        if (Mixer::selection().contains(s) && Mixer::selection().size() < 2)
+                            Mixer::selection().clear();
+                        // instead, select all sources linked
+                        if (Mixer::selection().empty())
+                            Mixer::selection().add(linked);
+                        // the source will be re-selected in UserInterface::handleMouse()
+                    }
                 }
                 else if (UserInterface::manager().shiftModifier())
                     s->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ONE );

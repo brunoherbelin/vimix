@@ -565,12 +565,7 @@ void UserInterface::handleMouse()
                     // discard current to select front most source
                     // (because single clic maintains same source active)
                     Mixer::manager().unsetCurrentSource();
-                else {
-                    MixingGroup *g = Mixer::manager().currentSource()->mixingGroup();
-                    if (g != nullptr){
-                        Mixer::selection().set( g->getCopy() );
-                    }
-                }
+
                 // display source in left pannel
                 navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
