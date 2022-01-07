@@ -58,6 +58,8 @@ void renderGUI()
 
 int main(int argc, char *argv[])
 {
+    std::string _openfile;
+
     // one extra argument is given
     if (argc == 2) {
         std::string argument(argv[1]);
@@ -84,7 +86,8 @@ int main(int argc, char *argv[])
         }
         else {
             // try to open the file
-            Mixer::manager().load(argument);
+            _openfile = argument;
+            fprintf(stderr, "Loading %s %s\n", argv[0], _openfile.c_str());
         }
     }
 
@@ -144,6 +147,9 @@ int main(int argc, char *argv[])
 
     // show all windows
     Rendering::manager().show();
+
+    // try to load file given in argument
+    Mixer::manager().load(_openfile);
 
     ///
     /// Main LOOP

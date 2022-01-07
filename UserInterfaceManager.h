@@ -2,6 +2,7 @@
 #define __UI_MANAGER_H_
 
 #include <string>
+#include <array>
 #include <list>
 
 #include <gst/gstutils.h>
