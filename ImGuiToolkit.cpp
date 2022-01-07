@@ -208,14 +208,15 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 
 bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
 {
-    ImGui::PushID( i * 20 + j );
-
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
         return false;
 
+    ImGui::PushID( i * 20 + j );
+
     // duplicate of ImGui::InvisibleButton to handle ImGuiButtonFlags_Repeat
     const ImGuiID id = window->GetID("##iconijbutton");
+
     float h = ImGui::GetFrameHeight();
     ImVec2 size = ImGui::CalcItemSize(ImVec2(h, h), 0.0f, 0.0f);
     ImVec2 draw_pos = window->DC.CursorPos;
@@ -233,16 +234,16 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip)
     bool hovered, held;
     bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
 
-    const ImVec4* colors = ImGui::GetStyle().Colors;
+    if (tooltip != nullptr && hovered)
+        ImGuiToolkit::ToolTip(tooltip);
 
-    // draw with hovered color
-    ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
     ImGui::SetCursorScreenPos(draw_pos);
+
+    // draw icon with hovered color
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
     Icon(i, j, !pressed);
     ImGui::PopStyleColor();
-
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(tooltip);
 
     ImGui::PopID();
     return pressed;
@@ -255,24 +256,22 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
     ImGui::PushID( icon );
 
     float frame_height = ImGui::GetFrameHeight();
-    float frame_width = frame_height;
-
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
     // toggle action : operate on the whole area
-    ImGui::InvisibleButton("##iconcharbutton", ImVec2(frame_width, frame_height));
+    ImGui::InvisibleButton("##iconcharbutton", ImVec2(frame_height, frame_height));
     if (ImGui::IsItemClicked())
         ret = true;
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip);
+
+    ImGui::SetCursorScreenPos(draw_pos);
 
     // draw with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
     ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
-    ImGui::SetCursorScreenPos(draw_pos);
     ImGui::Text(icon);
     ImGui::PopStyleColor();
-
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(tooltip);
 
     ImGui::PopID();
     return ret;

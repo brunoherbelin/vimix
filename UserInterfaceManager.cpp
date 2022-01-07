@@ -5355,8 +5355,14 @@ void Navigator::RenderMainPannelVimix()
                     ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
                 }
-                // offer to change ratio and resolution
+                // offer to change filename, ratio and resolution
                 else {
+                    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+                    ImGui::SameLine();
+                    if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as" )) {
+                        UserInterface::manager().selectSaveFilename();
+                    }
+                    ImGui::SetCursorScreenPos(draw_pos);
                     // combo boxes to select Rario and Height
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Ratio", &p.x, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) ) )

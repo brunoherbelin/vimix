@@ -260,10 +260,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-//    ImGuiToolkit::Icon(6, 2);
-//    ImGui::SameLine(0, IMGUI_SAME_LINE);
-//    ImGui::Text("Filters");
-
     if (ImGuiToolkit::IconButton(6, 4)) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
         Action::manager().store("Gamma & Color");
@@ -482,86 +478,89 @@ void ImGuiVisitor::visit (Source& s)
         }
     }
 
-    // toggle enable/disable image processing
+    // Filter
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
-    if ( ImGuiToolkit::ButtonIconToggle(6, 2, 6, 2, &on) ){
-        std::ostringstream oss;
-        oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
-        Action::manager().store(oss.str());
+    if (on) {
+        ImGuiToolkit::Icon(6, 2); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Filters");
     }
-    s.setImageProcessingEnabled(on);
-
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Filters");
+    else {
+        ImGuiToolkit::Indication("Filters disabled", 6, 2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::TextDisabled("Filters");
+    }
     pos = ImGui::GetCursorPos();
 
-    // image processing pannel
-    if (s.imageProcessingEnabled()) {
+    // menu icon for image processing
+    ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
+    if (ImGuiToolkit::IconButton(5, 8))
+        ImGui::OpenPopup( "MenuImageProcessing" );
 
-        // menu icon for image processing
-        ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
-        if (ImGuiToolkit::IconButton(5, 8))
-            ImGui::OpenPopup( "MenuImageProcessing" );
-        if (ImGui::BeginPopup( "MenuImageProcessing" ))
-        {
-            if (s.processingshader_link_.connected()) {
-                if (ImGui::MenuItem( "Unfollow" )){
-                    s.processingshader_link_.disconnect();
-                }
+    if (ImGui::BeginPopup( "MenuImageProcessing" ))
+    {
+        if (ImGui::MenuItem("Enable", NULL, &on)) {
+            std::ostringstream oss;
+            oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
+            Action::manager().store(oss.str());
+            s.setImageProcessingEnabled(on);
+        }
+
+        if (s.processingshader_link_.connected()) {
+            if (ImGui::MenuItem( "Unfollow", NULL, false, on)){
+                s.processingshader_link_.disconnect();
             }
-            else {
-                if (ImGui::MenuItem("Reset" )){
-                    ImageProcessingShader defaultvalues;
-                    s.processingShader()->copy(defaultvalues);
-                    s.processingshader_link_.disconnect();
-                    std::ostringstream oss;
-                    oss << s.name() << ": " << "Reset Filter";
-                    Action::manager().store(oss.str());
-                }
-                if (ImGui::MenuItem("Copy" )){
-                    std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
-                    if (!clipboard.empty())
-                        ImGui::SetClipboardText(clipboard.c_str());
-                }
-                const char *clipboard = ImGui::GetClipboardText();
-                const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
-                if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
-                    SessionLoader::applyImageProcessing(s, clipboard);
-                    std::ostringstream oss;
-                    oss << s.name() << ": " << "Change Filter";
-                    Action::manager().store(oss.str());
-                }
-//                ImGui::Separator();
-//                if (ImGui::BeginMenu("Follow"))
+        }
+        else {
+            if (ImGui::MenuItem("Reset", NULL, false, on )){
+                ImageProcessingShader defaultvalues;
+                s.processingShader()->copy(defaultvalues);
+                s.processingshader_link_.disconnect();
+                std::ostringstream oss;
+                oss << s.name() << ": " << "Reset Filter";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::MenuItem("Copy", NULL, false, on )){
+                std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
+                if (!clipboard.empty())
+                    ImGui::SetClipboardText(clipboard.c_str());
+            }
+            const char *clipboard = ImGui::GetClipboardText();
+            const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
+            if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
+                SessionLoader::applyImageProcessing(s, clipboard);
+                std::ostringstream oss;
+                oss << s.name() << ": " << "Change Filter";
+                Action::manager().store(oss.str());
+            }
+//            // NON-stable style follow mechanism
+//            ImGui::Separator();
+//            if (ImGui::BeginMenu("Follow", on))
+//            {
+//                for (auto mpit = Mixer::manager().session()->begin();
+//                     mpit != Mixer::manager().session()->end(); mpit++ )
 //                {
-//                    for (auto mpit = Mixer::manager().session()->begin();
-//                         mpit != Mixer::manager().session()->end(); mpit++ )
-//                    {
-//                        std::string label = (*mpit)->name();
-//                        if ( (*mpit)->id() != s.id() &&
-//                             (*mpit)->imageProcessingEnabled() &&
-//                             !(*mpit)->processingshader_link_.connected()) {
-//                            if (ImGui::MenuItem( label.c_str() )){
-//                                s.processingshader_link_.connect(*mpit);
-//                                s.touch();
-//                            }
+//                    std::string label = (*mpit)->name();
+//                    if ( (*mpit)->id() != s.id() &&
+//                         (*mpit)->imageProcessingEnabled() &&
+//                         !(*mpit)->processingshader_link_.connected()) {
+//                        if (ImGui::MenuItem( label.c_str() )){
+//                            s.processingshader_link_.connect(*mpit);
+//                            s.touch();
 //                        }
 //                    }
-//                    ImGui::EndMenu();
 //                }
-            }
-
-            ImGui::EndPopup();
+//                ImGui::EndMenu();
+//            }
         }
+
+        ImGui::EndPopup();
+    }
+
+    if (s.imageProcessingEnabled()) {
 
         // full panel for image processing
         ImGui::SetCursorPos( pos );
 
         if (s.processingshader_link_.connected()) {
-            ImGuiToolkit::Icon(6, 2);
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::Text("Filters");
             Source *target = s.processingshader_link_.source();
             ImGui::Text("Following");
             if ( target != nullptr && ImGui::Button(target->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
