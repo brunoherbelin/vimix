@@ -558,7 +558,7 @@ void UserInterface::handleMouse()
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
             // double clic in Transition view means quit
-            if (Mixer::manager().view() == Mixer::manager().view(View::TRANSITION)) {
+            if (Settings::application.current_view == View::TRANSITION) {
                 Mixer::manager().setView(View::MIXING);
             }
             // double clic in other views means toggle pannel
@@ -1039,27 +1039,13 @@ int UserInterface::RenderViewNavigator(int *shift)
         ImGui::PopFont();
 
         // 4 subtitles (text centered in column)
-        ImGui::NextColumn();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Mixing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-
-        ImGuiToolkit::PushFont(Settings::application.current_view == 1 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-        ImGui::Text("Mixing");
-        ImGui::PopFont();
-        ImGui::NextColumn();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Geometry").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-        ImGuiToolkit::PushFont(Settings::application.current_view == 2 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-        ImGui::Text("Geometry");
-        ImGui::PopFont();
-        ImGui::NextColumn();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Layers").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-        ImGuiToolkit::PushFont(Settings::application.current_view == 3 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-        ImGui::Text("Layers");
-        ImGui::PopFont();
-        ImGui::NextColumn();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize("Texturing").x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-        ImGuiToolkit::PushFont(Settings::application.current_view == 4 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-        ImGui::Text("Texturing");
-        ImGui::PopFont();
+        for (int v = View::MIXING; v < View::TRANSITION; ++v) {
+            ImGui::NextColumn();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+            ImGuiToolkit::PushFont(Settings::application.current_view == 4 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
+            ImGui::Text(Settings::application.views[v].name.c_str());
+            ImGui::PopFont();
+        }
 
         ImGui::Columns(1);
         ImGui::PopStyleVar();
@@ -2230,13 +2216,13 @@ void SourceController::Render()
             // Menu section for window management
             ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
-            if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
+            std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
+            if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
                 if (pinned)
                     Settings::application.widget.media_player_view = Settings::application.current_view;
                 else
                     Settings::application.widget.media_player_view = -1;
             }
-
             if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_PLAYER) ) {
                 Settings::application.widget.media_player = false;
                 selection_.clear();
@@ -3146,13 +3132,13 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
                 bool released = false;
                 if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", tl->gapsArray(), tl->fadingArray(),
                                                       MAX_TIMELINE_ARRAY, 0.f, 1.f, tl->begin(), tl->end(),
-                                                      Settings::application.widget.timeline_editmode, &released, size) ) {
+                                                      Settings::application.widget.media_player_timeline_editmode, &released, size) ) {
                     tl->update();
                 }
                 else if (released)
                 {
                     tl->refresh();
-                    if (Settings::application.widget.timeline_editmode)
+                    if (Settings::application.widget.media_player_timeline_editmode)
                         oss << ": Timeline cut";
                     else
                         oss << ": Timeline opacity";
@@ -3177,10 +3163,10 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, timeline_height_ -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
         const char *tooltip[2] = {"Draw opacity tool", "Cut tool"};
-        ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.timeline_editmode, tooltip);
+        ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
 
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
-        if (Settings::application.widget.timeline_editmode) {
+        if (Settings::application.widget.media_player_timeline_editmode) {
             // action cut
             if (mediaplayer_active_->isPlaying()) {
                 ImGuiToolkit::Indication("Pause video to enable cut options", 9, 3);
@@ -3638,7 +3624,8 @@ void OutputPreview::Render()
                 // output manager menu
                 ImGui::Separator();
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
-                if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
+                std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
+                if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
                     if (pinned)
                         Settings::application.widget.preview_view = Settings::application.current_view;
                     else
@@ -3974,14 +3961,15 @@ void TimerMetronome::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_TIMER))
         {
             // Enable/Disable Ableton Link
-            if ( ImGui::MenuItem( ICON_FA_USER_CLOCK "  Ableton Link", nullptr, &Settings::application.timer.link_enabled) ) {
+            if ( ImGui::MenuItem( ICON_FA_USER_CLOCK " Ableton Link", nullptr, &Settings::application.timer.link_enabled) ) {
                 Metronome::manager().setEnabled(Settings::application.timer.link_enabled);
             }
 
             // output manager menu
             ImGui::Separator();
             bool pinned = Settings::application.widget.timer_view == Settings::application.current_view;
-            if ( ImGui::MenuItem( MENU_PINWINDOW, nullptr, &pinned) ){
+            std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
+            if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
                 if (pinned)
                     Settings::application.widget.timer_view = Settings::application.current_view;
                 else
@@ -4293,10 +4281,9 @@ void Navigator::hidePannel()
 
 void Navigator::Render()
 {
-    std::string tooltip_ = "";
+    std::pair<std::string, std::string> tooltip = {"", ""};
     static uint _timeout_tooltip = 0;
 
-    const ImGuiIO& io = ImGui::GetIO();
     const ImGuiStyle& style = ImGui::GetStyle();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0);
@@ -4310,10 +4297,10 @@ void Navigator::Render()
     width_ = 2.f *  ImGui::GetTextLineHeightWithSpacing();           // dimension of left bar depends on FONT_LARGE
     pannel_width_ = 5.f * width_;                                    // pannel is 5x the bar
     padding_width_ = 2.f * style.WindowPadding.x;                    // panning for alighment
-    height_ = io.DisplaySize.y;                                      // cover vertically
-    float sourcelist_height_ = height_ - 8.f * ImGui::GetTextLineHeight(); // space for 4 icons of view
+    height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     ImVec2 iconsize(icon_width, icon_width);
+    float sourcelist_height_ = height_ - 4.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
 
     // Left bar top
     ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
@@ -4327,7 +4314,7 @@ void Navigator::Render()
             if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
                 applyButtonSelection(NAV_MENU);
             if (ImGui::IsItemHovered())
-                tooltip_ = "Main menu  HOME";
+                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
 
             // the list of INITIALS for sources
             int index = 0;
@@ -4386,7 +4373,7 @@ void Navigator::Render()
             if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
                 applyButtonSelection(NAV_NEW);
             if (ImGui::IsItemHovered())
-                tooltip_ = "New Source   INS";
+                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
         }
         else {
             // the ">" icon for transition menu
@@ -4414,37 +4401,53 @@ void Navigator::Render()
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Mixing    F1";
+            tooltip = {"Mixing ", "F1"};
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Geometry    F2";
+            tooltip = {"Geometry ", "F2"};
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Layers    F3";
+            tooltip = {"Layers ", "F3"};
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
             Mixer::manager().setView(View::TEXTURE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
-            tooltip_ = "Texturing    F4";
+            tooltip = {"Texturing ", "F4"};
+
+        ImVec2 pos = ImGui::GetCursorPos();
+        ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
+            Rendering::manager().mainWindow().toggleFullscreen();
+        if (ImGui::IsItemHovered())
+            tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
+
+        ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
+        if ( ImGuiToolkit::IconButton( WorkspaceWindow::clear() ? ICON_FA_WINDOW_MAXIMIZE : ICON_FA_WINDOW_MINIMIZE ) )
+            WorkspaceWindow::toggleClearRestoreWorkspace();
+        if (ImGui::IsItemHovered())
+            tooltip = { WorkspaceWindow::clear() ? TOOLTIP_SHOW : TOOLTIP_HIDE, SHORTCUT_HIDE};
+
+        ImGui::PopFont();
 
         ImGui::End();
     }
 
     // show tooltip
-    if (!tooltip_.empty()) {
+    if (!tooltip.first.empty()) {
         // pseudo timeout for showing tooltip
         if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT)
-            ImGuiToolkit::ToolTip(tooltip_.substr(0, tooltip_.size()-6).c_str(), tooltip_.substr(tooltip_.size()-6, 6).c_str());
+            ImGuiToolkit::ToolTip(tooltip.first.c_str(), tooltip.second.c_str());
         else
             ++_timeout_tooltip;
     }
@@ -5695,12 +5698,6 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     std::pair<std::string, std::string> tooltip_;
 
-    ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
-        Rendering::manager().mainWindow().toggleFullscreen();
-    if (ImGui::IsItemHovered())
-        tooltip_ = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
-
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
         Mixer::manager().session()->addNote();
@@ -5765,7 +5762,6 @@ void Navigator::RenderMainPannelSettings()
         //
         // Recording preferences
         //
-        ImGuiToolkit::Spacing();
         ImGui::Text("Record");
 
         // select CODEC and FPS
@@ -5971,23 +5967,26 @@ void Navigator::RenderMainPannel()
             RenderMainPannelVimix();
 
         // Bottom aligned Logo (if enougth room)
+
+        ImGuiContext& g = *GImGui;
+        float h = g.FontSize + g.Style.ItemSpacing.y;
         static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-        static float height_about = 1.6f * ImGui::GetTextLineHeightWithSpacing();
+        static float height_about = 1.6f * h;
         bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
         if ( show_icon ) {
-            ImGui::SetCursorPos(ImVec2((pannel_width_ -1.5f * ImGui::GetTextLineHeightWithSpacing()) / 2.f - 64.f, height_ -height_about - 128.f));
+            ImGui::SetCursorPos(ImVec2((pannel_width_ -1.5f * h) / 2.f - 64.f, height_ -height_about - 128.f));
             ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
         }
         else {
-            ImGui::SetCursorPosY(height_ -height_about);
+            ImGui::SetCursorPosY(height_ -height_about + g.Style.ItemSpacing.y);
         }
 
         // About & System config toggle
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4());
-        const char *button_label[2] = {ICON_FA_CROW " About vimix", "About vimix"};
+        const char *button_label[2] = {ICON_FA_CROW "  About vimix", "      About vimix"};
         if ( ImGui::Button( button_label[show_icon], ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, 0)) )
             UserInterface::manager().show_vimix_about = true;
-        ImGui::SameLine(0,  ImGui::GetTextLineHeightWithSpacing());
+        ImGui::SameLine(0, h);
         const char *tooltip[2] = {"Settings", "Settings"};
         ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
         ImGui::PopStyleColor();

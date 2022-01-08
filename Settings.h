@@ -25,9 +25,9 @@ struct WidgetsConfig
     int  preview_view;
     bool media_player;
     int  media_player_view;
+    bool media_player_timeline_editmode;
     bool timer;
     int  timer_view;
-    bool timeline_editmode;
     bool shader_editor;
     bool toolbox;
     bool help;
@@ -41,7 +41,7 @@ struct WidgetsConfig
         preview_view = -1;
         media_player = false;
         media_player_view = -1;
-        timeline_editmode = false;
+        media_player_timeline_editmode = false;
         shader_editor = false;
         toolbox = false;
         help = false;

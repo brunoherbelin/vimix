@@ -121,7 +121,7 @@ void Settings::Save(uint64_t runtime)
     widgetsNode->SetAttribute("timer_view", application.widget.timer_view);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
     widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
-    widgetsNode->SetAttribute("timeline_editmode", application.widget.timeline_editmode);
+    widgetsNode->SetAttribute("timeline_editmode", application.widget.media_player_timeline_editmode);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("stats", application.widget.stats);
     widgetsNode->SetAttribute("stats_mode", application.widget.stats_mode);
@@ -366,7 +366,7 @@ void Settings::Load()
         widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
         widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
-        widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.timeline_editmode);
+        widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
         widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
         widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
         widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
