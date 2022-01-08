@@ -1317,7 +1317,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
 void UserInterface::RenderAbout(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(1000, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(1100, 20), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
@@ -1623,8 +1623,8 @@ HelperToolbox::HelperToolbox()
 void HelperToolbox::Render()
 {
     // first run
-    ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(520, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(460, 800), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
 
     if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
@@ -5966,31 +5966,41 @@ void Navigator::RenderMainPannel()
         else
             RenderMainPannelVimix();
 
-        // Bottom aligned Logo (if enougth room)
-
+        //
+        // Icon and About vimix
+        //
         ImGuiContext& g = *GImGui;
-        float h = g.FontSize + g.Style.ItemSpacing.y;
-        static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-        static float height_about = 1.6f * h;
-        bool show_icon = ImGui::GetCursorPosY() + height_about + 128.f < height_ ;
-        if ( show_icon ) {
-            ImGui::SetCursorPos(ImVec2((pannel_width_ -1.5f * h) / 2.f - 64.f, height_ -height_about - 128.f));
-            ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(128, 128));
-        }
-        else {
-            ImGui::SetCursorPosY(height_ -height_about + g.Style.ItemSpacing.y);
+        const ImVec2 rightcorner(pannel_width_ + width_, height_);
+        const float remaining_height = height_ - ImGui::GetCursorPosY();
+        const float button_height = g.FontSize + g.Style.FramePadding.y * 2.0f + g.Style.ItemSpacing.y;
+        const float icon_height = 128;
+        // About vimix button (if enough room)
+        if (remaining_height > button_height + g.Style.ItemSpacing.y)  {
+            int index_label = 0;
+            const char *button_label[2] = {ICON_FA_CROW " About vimix", "About vimix"};
+            // Logo (if enougth room)
+            if (remaining_height > icon_height + button_height + g.Style.ItemSpacing.y)  {
+                static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
+                ImGui::SetCursorScreenPos( rightcorner - ImVec2( (icon_height + pannel_width_) * 0.5f, icon_height + button_height + g.Style.ItemSpacing.y) );
+                ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(icon_height, icon_height));
+                index_label = 1;
+            }
+            // Button About
+            ImGui::SetCursorScreenPos( rightcorner - ImVec2(pannel_width_ * 0.75f, button_height) );
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4());
+            if ( ImGui::Button( button_label[index_label], ImVec2(pannel_width_ * 0.5f, 0)) ) {
+                UserInterface::manager().show_vimix_about = true;
+                WorkspaceWindow::restoreWorkspace(true);
+            }
+            ImGui::PopStyleColor();
         }
 
-        // About & System config toggle
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4());
-        const char *button_label[2] = {ICON_FA_CROW "  About vimix", "      About vimix"};
-        if ( ImGui::Button( button_label[show_icon], ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, 0)) )
-            UserInterface::manager().show_vimix_about = true;
-        ImGui::SameLine(0, h);
+        //
+        // Settings icon (non scollable) in Bottom-right corner
+        //
+        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, button_height));
         const char *tooltip[2] = {"Settings", "Settings"};
         ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
-        ImGui::PopStyleColor();
-
 
         ImGui::End();
     }
@@ -6205,7 +6215,7 @@ void ShowSandbox(bool* p_open)
 
 void ShowAboutOpengl(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(430, 640), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(520, 320), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About OpenGL", p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();

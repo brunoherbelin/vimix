@@ -92,7 +92,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
     float radius = height * 0.50f;
 
     // toggle action : operate on the whole area
-    ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
+    ImGui::InvisibleButton(label, ImVec2(frame_width - frame_height, frame_height));
     if (ImGui::IsItemClicked()) {
         *toggle = !*toggle;
         ret = true;
