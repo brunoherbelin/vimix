@@ -35,6 +35,7 @@ struct AppLog
     ImGuiTextBuffer     Buf;
     ImGuiTextFilter     Filter;
     ImVector<int>       LineOffsets; 
+    bool                LogInTitle;
 
     AppLog()
     {
@@ -47,6 +48,7 @@ struct AppLog
         Buf.clear();
         LineOffsets.clear();
         LineOffsets.push_back(0);
+        LogInTitle = false;
         mtx.unlock();
     }
 
@@ -70,11 +72,30 @@ struct AppLog
         ImGui::SetNextWindowPos(ImVec2(430, 660), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(1150, 220), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(600, 180), ImVec2(FLT_MAX, FLT_MAX));
-        if ( !ImGui::Begin(title, p_open))
+
+        // normal title
+        char window_title[1024];
+        sprintf(window_title, "%s ###LOGVIMIX", title);
+
+        if (*p_open) {
+            // if open but Collapsed, create title of window with last line of logs
+            if (LogInTitle) {
+                char lastlogline[128];
+                size_t lenght =  LineOffsets[LineOffsets.Size-1] - LineOffsets[LineOffsets.Size-2] - 1;
+                memset(lastlogline, '\0', 128);
+                memcpy(lastlogline, Buf.begin() + LineOffsets[LineOffsets.Size-2], MIN(127, lenght));
+                sprintf(window_title, "%s - %s ###LOGVIMIX", title, lastlogline);
+            }
+        }
+
+        if ( !ImGui::Begin(window_title, p_open))
         {
+            LogInTitle = true;
             ImGui::End();
             return;
         }
+
+        LogInTitle = false;
 
         //  window
         ImGui::SameLine(0, 0);
