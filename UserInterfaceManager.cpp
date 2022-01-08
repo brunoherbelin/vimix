@@ -789,6 +789,9 @@ void UserInterface::Render()
     // warnings and notifications
     Log::Render(&Settings::application.widget.logs);
 
+    if ( WorkspaceWindow::clear())
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4);
+
     // Output controller
     if (outputcontrol.Visible())
         outputcontrol.Render();
@@ -801,15 +804,13 @@ void UserInterface::Render()
     if (timercontrol.Visible())
         timercontrol.Render();
 
-    // Notes
-    RenderNotes();
+    if (Settings::application.widget.logs)
+        Log::ShowLogWindow(&Settings::application.widget.logs);
 
-    // Navigator
-    if (show_view_navigator > 0)
-        target_view_navigator = RenderViewNavigator( &show_view_navigator );
-
+    if ( WorkspaceWindow::clear())
+        ImGui::PopStyleVar();
     // All other windows are simply not rendered if workspace is clear
-    if ( !WorkspaceWindow::clear()) {
+    else {
         // windows
         if (Settings::application.widget.shader_editor)
             RenderShaderEditor();
@@ -817,8 +818,6 @@ void UserInterface::Render()
             helpwindow.Render();
         if (Settings::application.widget.toolbox)
             toolbox.Render();
-        if (Settings::application.widget.logs)
-            Log::ShowLogWindow(&Settings::application.widget.logs);
 
         // About
         if (show_vimix_about)
@@ -830,6 +829,13 @@ void UserInterface::Render()
         if (show_opengl_about)
             ShowAboutOpengl(&show_opengl_about);
     }
+
+    // Notes
+    RenderNotes();
+
+    // Navigator
+    if (show_view_navigator > 0)
+        target_view_navigator = RenderViewNavigator( &show_view_navigator );
 
     // stats in the corner
     if (Settings::application.widget.stats)
@@ -2051,7 +2057,7 @@ void WorkspaceWindow::Update()
             ImVec2 pos = impl_->ptr->Pos + delta * 0.5f;
             ImGui::SetWindowPos(impl_->ptr, pos);
         }
-        // dimm window if clear mode is fullly enabled
+        // Restore if clic on overlay
         if (clear_workspace_enabled)
         {
             // draw another window on top of the WorkspaceWindow, at exact same position and size
@@ -2060,7 +2066,7 @@ void WorkspaceWindow::Update()
             ImGui::SetNextWindowSize(window->Size, ImGuiCond_Always);
             char nameoverlay[64];
             sprintf(nameoverlay, "%sOverlay", name_);
-            if (ImGui::Begin(nameoverlay, NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings ))
+            if (ImGui::Begin(nameoverlay, NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings ))
             {
                 // exit workspace clear mode if user clics on the window
                 ImGui::InvisibleButton("##dummy", window->Size);
