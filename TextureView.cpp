@@ -50,13 +50,12 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
     scene.root()->translation_ = glm::vec3(0.8f, 0.f, 0.0f);
     // read default settings
-    if ( Settings::application.views[mode_].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() )
         // no settings found: store application default
-        Settings::application.views[mode_].name = "Texture";
         saveSettings();
-    }
     else
         restoreSettings();
+    Settings::application.views[mode_].name = "Texturing";
 
     //
     // Scene background

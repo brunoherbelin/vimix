@@ -48,13 +48,12 @@ GeometryView::GeometryView() : View(GEOMETRY)
 {
     scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
     // read default settings
-    if ( Settings::application.views[mode_].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() )
         // no settings found: store application default
-        Settings::application.views[mode_].name = "Geometry";
         saveSettings();
-    }
     else
         restoreSettings();
+    Settings::application.views[mode_].name = "Geometry";
 
     // Geometry Scene foreground
     output_surface_ = new Surface;

@@ -46,14 +46,12 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     scene.root()->scale_ = glm::vec3(LAYER_DEFAULT_SCALE, LAYER_DEFAULT_SCALE, 1.0f);
     scene.root()->translation_ = glm::vec3(2.2f, 1.2f, 0.0f);
     // read default settings
-    if ( Settings::application.views[mode_].name.empty() ) {
+    if ( Settings::application.views[mode_].name.empty() )
         // no settings found: store application default
-        Settings::application.views[mode_].name = "Layer";
         saveSettings();
-    }
-    else {
+    else
         restoreSettings();
-    }
+    Settings::application.views[mode_].name = "Layer";
 
     // Geometry Scene background
     frame_ = new Group;
