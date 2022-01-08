@@ -535,8 +535,8 @@ void showToolTip(const char* desc, const char* shortcut)
         ImGui::Text(shortcut);
         ImGui::PopStyleColor();
     }
-    ImGui::PopFont();
     ImGui::EndTooltip();
+    ImGui::PopFont();
 }
 
 void ImGuiToolkit::ToolTip(const char* desc, const char* shortcut)
