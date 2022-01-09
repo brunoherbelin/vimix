@@ -1982,9 +1982,12 @@ void WorkspaceWindow::clearWorkspace()
 
 void WorkspaceWindow::notifyWorkspaceSizeChanged(int prev_width, int prev_height, int curr_width, int curr_height)
 {
+    // restore windows pos before rescale
+    restoreWorkspace(true);
+
     for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
         ImGuiProperties *impl = (*it)->impl_;
-        if ((*it)->Visible() && impl && impl->ptr)
+        if ( impl && impl->ptr)
         {
             ImVec2 distance_to_corner = ImVec2(prev_width, prev_height) - impl->ptr->Pos - impl->ptr->SizeFull;
 
@@ -2014,22 +2017,42 @@ void WorkspaceWindow::Update()
             impl_->user_pos = w->Pos;
         }
     }
-    // if an animation is requested
-    else if (Visible()){
-        // perform animation for clear/restore workspace
-        if (impl_->animation) {
-            // increment animation progress by small steps
-            impl_->progress += SIGN(impl_->target -impl_->progress) * 0.1f;
-            // finished animation : apply full target position
-            if (ABS_DIFF(impl_->target, impl_->progress) < 0.05f) {
-                impl_->animation = false;
-                ImVec2 pos = impl_->user_pos * (1.f -impl_->target) + impl_->outside_pos * impl_->target;
-                ImGui::SetWindowPos(impl_->ptr, pos);
+    else
+    {
+        if ( Visible() ) {
+            // perform animation for clear/restore workspace
+            if (impl_->animation) {
+                // increment animation progress by small steps
+                impl_->progress += SIGN(impl_->target -impl_->progress) * 0.1f;
+                // finished animation : apply full target position
+                if (ABS_DIFF(impl_->target, impl_->progress) < 0.05f) {
+                    impl_->animation = false;
+                    ImVec2 pos = impl_->user_pos * (1.f -impl_->target) + impl_->outside_pos * impl_->target;
+                    ImGui::SetWindowPos(impl_->ptr, pos);
+                }
+                // move window by interpolation between user position and outside target position
+                else {
+                    ImVec2 pos = impl_->user_pos * (1.f -impl_->progress) + impl_->outside_pos * impl_->progress;
+                    ImGui::SetWindowPos(impl_->ptr, pos);
+                }
             }
-            // move window by interpolation between user position and outside target position
-            else {
-                ImVec2 pos = impl_->user_pos * (1.f -impl_->progress) + impl_->outside_pos * impl_->progress;
-                ImGui::SetWindowPos(impl_->ptr, pos);
+            // Restore if clic on overlay
+            if (clear_workspace_enabled)
+            {
+                // draw another window on top of the WorkspaceWindow, at exact same position and size
+                ImGuiWindow* window = impl_->ptr;
+                ImGui::SetNextWindowPos(window->Pos, ImGuiCond_Always);
+                ImGui::SetNextWindowSize(window->Size, ImGuiCond_Always);
+                char nameoverlay[64];
+                sprintf(nameoverlay, "%sOverlay", name_);
+                if (ImGui::Begin(nameoverlay, NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings ))
+                {
+                    // exit workspace clear mode if user clics on the window
+                    ImGui::InvisibleButton("##dummy", window->Size);
+                    if (ImGui::IsItemClicked())
+                        WorkspaceWindow::restoreWorkspace();
+                    ImGui::End();
+                }
             }
         }
         // move windows because workspace was resized
@@ -2043,25 +2066,6 @@ void WorkspaceWindow::Update()
             ImVec2 pos = impl_->ptr->Pos + delta * 0.5f;
             ImGui::SetWindowPos(impl_->ptr, pos);
         }
-        // Restore if clic on overlay
-        if (clear_workspace_enabled)
-        {
-            // draw another window on top of the WorkspaceWindow, at exact same position and size
-            ImGuiWindow* window = impl_->ptr;
-            ImGui::SetNextWindowPos(window->Pos, ImGuiCond_Always);
-            ImGui::SetNextWindowSize(window->Size, ImGuiCond_Always);
-            char nameoverlay[64];
-            sprintf(nameoverlay, "%sOverlay", name_);
-            if (ImGui::Begin(nameoverlay, NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings ))
-            {
-                // exit workspace clear mode if user clics on the window
-                ImGui::InvisibleButton("##dummy", window->Size);
-                if (ImGui::IsItemClicked())
-                    WorkspaceWindow::restoreWorkspace();
-                ImGui::End();
-            }
-        }
-
     }
 }
 
@@ -4285,7 +4289,6 @@ void Navigator::Render()
     static uint _timeout_tooltip = 0;
 
     const ImGuiStyle& style = ImGui::GetStyle();
-
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(COLOR_NAVIGATOR, 1.f));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(COLOR_NAVIGATOR, 1.f));
@@ -4298,16 +4301,23 @@ void Navigator::Render()
     pannel_width_ = 5.f * width_;                                    // pannel is 5x the bar
     padding_width_ = 2.f * style.WindowPadding.x;                    // panning for alighment
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
-    float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
-    ImVec2 iconsize(icon_width, icon_width);
-    float sourcelist_height_ = height_ - 4.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
+    const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
+    const ImVec2 iconsize(icon_width, icon_width);
+    const float sourcelist_height = height_ - 4.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
+
+    // hack to show more sources if not enough space; make source icons smaller...
+    ImVec2 sourceiconsize(icon_width, icon_width);
+    if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->numSource() * icon_width )
+        sourceiconsize.y *= 0.75f;
 
     // Left bar top
     ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height_), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
     if (ImGui::Begin( ICON_FA_BARS " Navigator", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
     {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
         if (Settings::application.current_view < View::TRANSITION) {
 
             // the "=" icon for menu
@@ -4324,19 +4334,18 @@ void Navigator::Render()
                 Source *s = (*iter);
                 // draw an indicator for current source
                 if ( s->mode() >= Source::SELECTED ){
-                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                    ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * icon_width);
+                    ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * sourceiconsize.y);
                     ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
                     const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
                     if ((*iter)->mode() == Source::CURRENT)  {
                         p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
-                        p2 = ImVec2(p1.x + 2.f, p1.y + icon_width);
+                        p2 = ImVec2(p1.x + 2.f, p1.y + sourceiconsize.y);
                     }
                     draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
                 }
                 // draw select box
                 ImGui::PushID(std::to_string(s->group(View::RENDERING)->id()).c_str());
-                if (ImGui::Selectable(s->initials(), &selected_button[index], 0, iconsize))
+                if (ImGui::Selectable(s->initials(), &selected_button[index], 0, sourceiconsize))
                 {
                     applyButtonSelection(index);
                     if (selected_button[index])
@@ -4387,10 +4396,11 @@ void Navigator::Render()
     }
 
     // Left bar bottom
-    ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height_), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2(width_, height_ - sourcelist_height_), ImGuiCond_Always );
+    ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(width_, height_ - sourcelist_height), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-    if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
         bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
@@ -4455,7 +4465,7 @@ void Navigator::Render()
         _timeout_tooltip = 0;
 
     if ( view_pannel_visible && !pannel_visible_ )
-        RenderViewPannel( ImVec2(width_, sourcelist_height_), ImVec2(width_*0.8f, height_ - sourcelist_height_) );
+        RenderViewPannel( ImVec2(width_, sourcelist_height), ImVec2(width_*0.8f, height_ - sourcelist_height) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
