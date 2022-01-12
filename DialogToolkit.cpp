@@ -222,7 +222,7 @@ bool DialogToolkit::MultipleImagesDialog::closed()
 std::string saveSessionFileDialog(const std::string &label, const std::string &path)
 {
     std::string filename = "";
-    char const * save_pattern[1] = { VIMIX_FILES_PATTERN };
+    char const * save_pattern[1] = { VIMIX_FILE_PATTERN };
 
 #if USE_TINYFILEDIALOG
     char const * save_file_name;
@@ -273,9 +273,8 @@ std::string saveSessionFileDialog(const std::string &label, const std::string &p
     wait_for_event();
 #endif
 
-    std::string extension = filename.substr(filename.find_last_of(".") + 1);
-    if (!filename.empty() && extension != "mix")
-        filename += ".mix";
+    if (!filename.empty() && !SystemToolkit::has_extension(filename, VIMIX_FILE_EXT ) )
+        filename += std::string(".") + VIMIX_FILE_EXT;
 
     return filename;
 }
@@ -285,7 +284,7 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
 {
     std::string filename = "";
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[1] = { VIMIX_FILES_PATTERN };
+    char const * open_pattern[1] = { VIMIX_FILE_PATTERN };
 
 #if USE_TINYFILEDIALOG
     char const * open_file_name;

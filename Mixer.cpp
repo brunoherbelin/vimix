@@ -244,8 +244,7 @@ Source * Mixer::createSourceFile(const std::string &path)
     if ( SystemToolkit::file_exists( path ) ) {
 
         // test type of file by extension
-        std::string ext = SystemToolkit::extension_filename(path);
-        if ( ext == "mix" )
+        if ( SystemToolkit::has_extension(path, VIMIX_FILE_EXT ) )
         {
             // create a session source
             SessionFileSource *ss = new SessionFileSource;

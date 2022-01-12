@@ -5166,6 +5166,9 @@ void Navigator::RenderMainPannelVimix()
 
     // fill the session list depending on the mode
     static std::list<std::string> sessions_list;
+    static std::list<std::string>::iterator _file_over = sessions_list.end();
+    static std::list<std::string>::iterator _displayed_over = sessions_list.end();
+
     // change session list if changed
     if (selection_session_mode_changed || Settings::application.recentSessions.changed || Settings::application.recentFolders.changed) {
 
@@ -5179,15 +5182,15 @@ void Navigator::RenderMainPannelVimix()
         // selection MODE 1 : LIST FOLDER
         else if ( selection_session_mode == 1) {
             // show list of vimix files in folder
-            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILES_PATTERN });
+            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILE_PATTERN });
         }
         // indicate the list changed (do not change at every frame)
         selection_session_mode_changed = false;
+        _file_over = sessions_list.end();
+        _displayed_over = sessions_list.end();
     }
 
     {
-        static std::list<std::string>::iterator _file_over = sessions_list.end();
-        static std::list<std::string>::iterator _displayed_over = sessions_list.end();
         static bool _tooltip = 0;
 
         // display the sessions list and detect if one was selected (double clic)

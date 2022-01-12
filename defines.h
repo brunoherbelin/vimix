@@ -9,6 +9,14 @@
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
 
+#define VIMIX_FILE_EXT "mix"
+#define VIMIX_FILE_PATTERN "*.mix"
+#define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
+    "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
+    "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
+    "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
+#define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
+
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))

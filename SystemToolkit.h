@@ -44,6 +44,7 @@ namespace SystemToolkit
 
     // extract the extension of a filename
     std::string extension_filename(const std::string& filename);
+    bool has_extension(const std::string& filename, const std::string& extension);
 
     // tests if dir is a directory and return its path, empty string otherwise
     std::string path_directory(const std::string& path);

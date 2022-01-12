@@ -163,6 +163,14 @@ string SystemToolkit::extension_filename(const string& filename)
     return ext;
 }
 
+bool SystemToolkit::has_extension(const std::string& filename, const std::string& extension)
+{
+    std::string ext = extension_filename(filename);
+    std::transform (ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    return ext.compare(extension) == 0;
+}
+
 std::string SystemToolkit::home_path()
 {
     string homePath;
