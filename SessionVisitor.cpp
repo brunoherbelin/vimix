@@ -28,6 +28,7 @@ using namespace tinyxml2;
 #include "Scene.h"
 #include "Decorations.h"
 #include "Source.h"
+#include "CloneSource.h"
 #include "MediaSource.h"
 #include "Session.h"
 #include "SessionSource.h"

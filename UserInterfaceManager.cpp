@@ -76,6 +76,7 @@ using namespace std;
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
+#include "CloneSource.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"

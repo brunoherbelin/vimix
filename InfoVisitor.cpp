@@ -38,6 +38,7 @@
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
+#include "CloneSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"

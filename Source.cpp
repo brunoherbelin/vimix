@@ -24,6 +24,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
+#include "Log.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
 #include "Resource.h"
@@ -32,9 +33,9 @@
 #include "ImageProcessingShader.h"
 #include "BaseToolkit.h"
 #include "SystemToolkit.h"
-#include "Log.h"
 #include "MixingGroup.h"
 
+#include "CloneSource.h"
 #include "Source.h"
 
 SourceCore::SourceCore()
@@ -901,104 +902,4 @@ void Source::clearMixingGroup()
 }
 
 
-CloneSource *Source::clone(uint64_t id)
-{
-    CloneSource *s = new CloneSource(this, id);
-
-    clones_.push_back(s);
-
-    return s;
-}
-
-
-CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin)
-{
-    name_ = origin->name();
-    // set symbol
-    symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
-    symbol_->scale_.y = 1.5f;
-}
-
-CloneSource::~CloneSource()
-{
-    if (origin_)
-        origin_->clones_.remove(this);
-}
-
-CloneSource *CloneSource::clone(uint64_t id)
-{
-    // do not clone a clone : clone the original instead
-    if (origin_)
-        return origin_->clone(id);
-    else
-        return nullptr;
-}
-
-void CloneSource::init()
-{
-    if (origin_ && origin_->mode_ > Source::UNINITIALIZED) {
-
-        // get the texture index from framebuffer of view, apply it to the surface
-        texturesurface_->setTextureIndex( origin_->texture() );
-
-        // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), true);
-
-        // set the renderbuffer of the source and attach rendering nodes
-        attach(renderbuffer);
-
-        // deep update to reorder
-        ++View::need_deep_update_;
-
-        // done init
-        Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
-    }
-}
-
-void CloneSource::setActive (bool on)
-{
-    active_ = on;
-
-    groups_[View::RENDERING]->visible_ = active_;
-    groups_[View::GEOMETRY]->visible_ = active_;
-    groups_[View::LAYER]->visible_ = active_;
-
-    if (origin_) {
-        if ( mode_ > Source::UNINITIALIZED)
-            origin_->touch();
-
-        // change visibility of active surface (show preview of origin when inactive)
-        if (activesurface_) {
-            if (active_)
-                activesurface_->setTextureIndex(Resource::getTextureTransparent());
-            else
-                activesurface_->setTextureIndex(origin_->texture());
-        }
-    }
-}
-
-uint CloneSource::texture() const
-{
-    if (origin_ != nullptr)
-        return origin_->texture();
-    else
-        return Resource::getTextureBlack();
-}
-
-void CloneSource::accept(Visitor& v)
-{
-    Source::accept(v);
-    if (!failed())
-        v.visit(*this);
-}
-
-glm::ivec2 CloneSource::icon() const
-{
-    return glm::ivec2(ICON_SOURCE_CLONE);
-}
-
-std::string CloneSource::info() const
-{
-    return std::string("clone of '") + origin_->name() + "'";
-}
 

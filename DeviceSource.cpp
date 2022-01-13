@@ -25,16 +25,18 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/gst.h>
 
-#include "DeviceSource.h"
 
 #include "defines.h"
+#include "Log.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
 #include "Visitor.h"
-#include "Log.h"
+#include "CloneSource.h"
+
+#include "DeviceSource.h"
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG

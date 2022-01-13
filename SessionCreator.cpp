@@ -25,6 +25,7 @@
 #include "Primitives.h"
 #include "Mesh.h"
 #include "Source.h"
+#include "CloneSource.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "StreamSource.h"
