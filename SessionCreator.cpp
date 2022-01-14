@@ -407,7 +407,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                         // found the orign source
                         if (origin != session_->end()) {
                             // create a new source of type Clone
-                            Source *clone_source = (*origin)->clone(id_xml_);
+                            CloneSource *clone_source = (*origin)->clone(id_xml_);
 
                             // add source to session
                             session_->addSource(clone_source);
@@ -1080,5 +1080,18 @@ void SessionLoader::visit (GenericStreamSource& s)
         if (text)
             s.setDescription(text);
     }
+}
+
+
+void SessionLoader::visit (CloneSource& s)
+{
+    // set attributes
+    int imagemode = 0;
+    xmlCurrent_->QueryIntAttribute("imageMode", &imagemode);
+    s.setImageMode((CloneSource::CloneImageMode)imagemode);
+
+    double delay = 0.0;
+    xmlCurrent_->QueryDoubleAttribute("delay", &delay);
+    s.setDelay(delay);
 }
 

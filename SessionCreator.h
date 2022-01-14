@@ -55,6 +55,7 @@ public:
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;
+    void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;

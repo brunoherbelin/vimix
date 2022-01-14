@@ -178,10 +178,18 @@ void InfoVisitor::visit (RenderSource& s)
 
 void InfoVisitor::visit (CloneSource& s)
 {
-    if (current_id_ == s.id())
+    if (current_id_ == s.id() || s.origin() == nullptr)
         return;
 
-    information_ = "Clone of " + s.origin()->name();
+    std::ostringstream oss;
+    oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
+
+    if (s.frame()){
+        oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
+        oss << "RGBA";
+    }
+
+    information_ = oss.str();
     current_id_ = s.id();
 }
 

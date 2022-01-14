@@ -649,6 +649,17 @@ void Source::call(SourceCallback *callback, bool override)
     }
 }
 
+
+CloneSource *Source::clone(uint64_t id)
+{
+    CloneSource *s = new CloneSource(this, id);
+
+    clones_.push_back(s);
+
+    return s;
+}
+
+
 void Source::update(float dt)
 {
     // keep delta-t

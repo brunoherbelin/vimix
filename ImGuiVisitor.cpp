@@ -714,6 +714,20 @@ void ImGuiVisitor::visit (CloneSource& s)
         Mixer::manager().setCurrentSource(s.origin());
     ImGui::SameLine();
     ImGui::Text("Source");
+
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) s.imageMode();
+    if (ImGui::Combo("Image", &m, "Original\0Post-processed\0") )
+        s.setImageMode((CloneSource::CloneImageMode)m);
+
+
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    float d = s.delay();
+//    if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, "%.2f s")){
+        if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, d < 0.01f ? "None" : "%.2f s")){
+        s.setDelay(d);
+    }
+
 }
 
 void ImGuiVisitor::visit (PatternSource& s)

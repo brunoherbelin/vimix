@@ -634,12 +634,16 @@ void SessionVisitor::visit (RenderSource&)
 void SessionVisitor::visit (CloneSource& s)
 {
     xmlCurrent_->SetAttribute("type", "CloneSource");
+    xmlCurrent_->SetAttribute("imageMode", (int) s.imageMode());
+    xmlCurrent_->SetAttribute("delay", (double) s.delay());
 
     XMLElement *origin = xmlDoc_->NewElement("origin");
     origin->SetAttribute("id", s.origin()->id());
+
     xmlCurrent_->InsertEndChild(origin);
     XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
     origin->InsertEndChild( text );
+
 }
 
 void SessionVisitor::visit (PatternSource& s)
