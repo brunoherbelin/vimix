@@ -102,14 +102,15 @@ void RenderSource::init()
 
 void RenderSource::update(float dt)
 {
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
+    Source::update(dt);
 
-    if (active_ && !paused_ && session_ && rendered_output_) {
+    if (!paused_ && session_ && rendered_output_) {
 
         if (provenance_ == RENDER_EXCLUSIVE) {
             // temporarily exclude this RenderSource from the rendering
             groups_[View::RENDERING]->visible_ = false;
             // simulate a rendering of the session in a framebuffer
+            static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
             glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
             rendered_output_->begin();
             // access to private RenderView in the session to call draw on the root of the scene
@@ -128,7 +129,6 @@ void RenderSource::update(float dt)
         //        rendered_output_->end();
     }
 
-    Source::update(dt);
 }
 
 void RenderSource::play (bool on)

@@ -702,10 +702,23 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Rendering Output");
-    if ( ImGui::Button(ICON_FA_DESKTOP " Show window", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+
+    // info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+
+    // icon (>) to open player
+    ImVec2 pos = ImGui::GetCursorPos();
+    ImGui::SameLine(0, 0);
+    ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+        UserInterface::manager().showSourceEditor(&s);
+    ImGui::SameLine();
+    if (ImGuiToolkit::IconButton(ICON_FA_DESKTOP, "Show Output"))
         Settings::application.widget.preview = true;
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Output");
+    ImGui::SetCursorPos(pos);
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) s.renderingProvenance();
@@ -719,10 +732,25 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Clone");
+
+    // info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+
+    // icon (>) to open player
+    ImVec2 pos = ImGui::GetCursorPos();
+    ImGui::SameLine(0, 0);
+    ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+        UserInterface::manager().showSourceEditor(&s);
+    ImGui::SetCursorPos(pos);
+
     if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Source");
+    ImGui::Text("Origin");
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) s.cloningProvenance();

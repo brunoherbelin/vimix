@@ -616,15 +616,15 @@ void SessionVisitor::visit (SessionGroupSource& s)
     xmlCurrent_->SetAttribute("type", "GroupSource");
 
     Session *se = s.session();
+    if (se) {
+        XMLElement *sessionNode = xmlDoc_->NewElement("Session");
+        xmlCurrent_->InsertEndChild(sessionNode);
 
-    XMLElement *sessionNode = xmlDoc_->NewElement("Session");
-    xmlCurrent_->InsertEndChild(sessionNode);
-
-    for (auto iter = se->begin(); iter != se->end(); ++iter){
-        setRoot(sessionNode);
-        (*iter)->accept(*this);
+        for (auto iter = se->begin(); iter != se->end(); ++iter){
+            setRoot(sessionNode);
+            (*iter)->accept(*this);
+        }
     }
-
 }
 
 void SessionVisitor::visit (RenderSource& s)
@@ -636,16 +636,18 @@ void SessionVisitor::visit (RenderSource& s)
 void SessionVisitor::visit (CloneSource& s)
 {
     xmlCurrent_->SetAttribute("type", "CloneSource");
-    xmlCurrent_->SetAttribute("provenance", (int) s.cloningProvenance());
-    xmlCurrent_->SetAttribute("delay", (double) s.delay());
 
-    XMLElement *origin = xmlDoc_->NewElement("origin");
-    origin->SetAttribute("id", s.origin()->id());
+    if (s.origin()) {
+        xmlCurrent_->SetAttribute("provenance", (int) s.cloningProvenance());
+        xmlCurrent_->SetAttribute("delay", (double) s.delay());
 
-    xmlCurrent_->InsertEndChild(origin);
-    XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
-    origin->InsertEndChild( text );
+        XMLElement *origin = xmlDoc_->NewElement("origin");
+        origin->SetAttribute("id", s.origin()->id());
 
+        xmlCurrent_->InsertEndChild(origin);
+        XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
+        origin->InsertEndChild( text );
+    }
 }
 
 void SessionVisitor::visit (PatternSource& s)

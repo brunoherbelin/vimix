@@ -98,6 +98,8 @@ void SessionSource::setActive (bool on)
 
 void SessionSource::update(float dt)
 {
+    Source::update(dt);
+
     if (session_ == nullptr)
         return;
 
@@ -115,7 +117,6 @@ void SessionSource::update(float dt)
             failed_ = true;
     }
 
-    Source::update(dt);
 }
 
 void SessionSource::replay ()

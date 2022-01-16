@@ -174,16 +174,15 @@ void InfoVisitor::visit (RenderSource& s)
         return;
 
     std::ostringstream oss;
-    oss << "Rendering Output (";
-    oss << RenderSource::rendering_provenance_label[s.renderingProvenance()];
-    oss << ") " << std::endl;
+    if (!brief_) {
+        oss << "Rendering Output (";
+        oss << RenderSource::rendering_provenance_label[s.renderingProvenance()];
+        oss << ") " << std::endl;
+    }
 
     if (s.frame()){
         oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
-        if (s.frame()->use_alpha())
-            oss << "RGBA";
-        else
-            oss << "RGB";
+        oss << (s.frame()->use_alpha() ? "RGBA" : "RGB");
     }
 
     information_ = oss.str();
@@ -196,16 +195,15 @@ void InfoVisitor::visit (CloneSource& s)
         return;
 
     std::ostringstream oss;
-    oss << "Clone of '" << s.origin()->name() << "' (";
-    oss << CloneSource::cloning_provenance_label[s.cloningProvenance()];
-    oss << ") " << std::endl;
+    if (!brief_) {
+        oss << "Clone of '" << s.origin()->name() << "' (";
+        oss << CloneSource::cloning_provenance_label[s.cloningProvenance()];
+        oss << ") " << std::endl;
+    }
 
     if (s.frame()){
         oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
-        if (s.frame()->use_alpha())
-            oss << "RGBA";
-        else
-            oss << "RGB";
+        oss << (s.frame()->use_alpha() ? "RGBA" : "RGB");
     }
 
     information_ = oss.str();
@@ -218,10 +216,12 @@ void InfoVisitor::visit (PatternSource& s)
         return;
 
     std::ostringstream oss;
-    oss << Pattern::get(s.pattern()->type()).label << std::endl;
+    if (!brief_)
+        oss << Pattern::get(s.pattern()->type()).label << " pattern" << std::endl;
+
     if (s.pattern()) {
         oss << s.pattern()->width() << " x " << s.pattern()->height();
-        oss << ", RGB";
+        oss << ", RGBA";
     }
 
     information_ = oss.str();
@@ -313,10 +313,13 @@ void InfoVisitor::visit (GenericStreamSource& s)
     std::ostringstream oss;
     if (s.stream()) {
         std::string src_element = s.gstElements().front();
-        src_element = src_element.substr(0, src_element.find(" "));
+
+        if (brief_)
+            src_element = src_element.substr(0, src_element.find(" "));
+
         oss << "gstreamer '" <<  src_element << "'" << std::endl;
         oss << s.stream()->width() << " x " << s.stream()->height();
-        oss << ", RGB";
+        oss << ", RGBA";
     }
     else
         oss << "Undefined";

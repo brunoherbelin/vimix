@@ -133,7 +133,7 @@ void Session::update(float dt)
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
-            // render the source // TODO: verify ok to render after update
+            // render the source
             (*it)->render();
         }
     }

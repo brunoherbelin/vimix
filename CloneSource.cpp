@@ -141,7 +141,9 @@ void CloneSource::setActive (bool on)
 
 void CloneSource::update(float dt)
 {
-    if (active_ && !paused_ &&  origin_ && cloningsurface_ != nullptr) {
+    Source::update(dt);
+
+    if (!paused_ && origin_ && cloningsurface_ != nullptr) {
 
         double now = g_timer_elapsed (timer_, NULL) ;
 
@@ -179,10 +181,7 @@ void CloneSource::update(float dt)
 
         // update the source surface to be rendered
         texturesurface_->setTextureIndex( stack_[read_index_]->texture() );
-
     }
-
-    Source::update(dt);
 }
 
 
