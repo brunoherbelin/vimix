@@ -293,6 +293,7 @@ set(VMIX_SRCS
     TransitionView.cpp
     Source.cpp
     CloneSource.cpp
+    RenderSource.cpp
     SourceCallback.cpp
     SourceList.cpp
     Session.cpp

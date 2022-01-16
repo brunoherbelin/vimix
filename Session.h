@@ -32,6 +32,8 @@ struct SessionSnapshots {
 
 class Session
 {
+    friend class RenderSource;
+
 public:
     Session();
     ~Session();

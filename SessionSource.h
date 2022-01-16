@@ -83,33 +83,4 @@ protected:
     glm::vec3 resolution_;
 };
 
-
-class RenderSource : public Source
-{
-public:
-    RenderSource(uint64_t id = 0);
-
-    // implementation of source API
-    bool playing () const override { return true; }
-    void play (bool) override {}
-    bool playable () const  override { return false; }
-    bool failed () const override;
-    uint texture() const override;
-    void accept (Visitor& v) override;
-
-    inline Session *session () const { return session_; }
-    inline void setSession (Session *se) { session_ = se; }
-
-    glm::vec3 resolution() const;
-
-    glm::ivec2 icon() const override;
-    std::string info() const override;
-
-protected:
-
-    void init() override;
-    Session *session_;
-};
-
-
 #endif // SESSIONSOURCE_H

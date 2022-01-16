@@ -77,6 +77,7 @@ using namespace std;
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
 #include "CloneSource.h"
+#include "RenderSource.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"

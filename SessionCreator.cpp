@@ -34,6 +34,7 @@
 #include "NetworkSource.h"
 #include "MultiFileSource.h"
 #include "StreamSource.h"
+#include "RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -973,6 +974,12 @@ void SessionLoader::visit (SessionGroupSource& s)
 
 void SessionLoader::visit (RenderSource& s)
 {
+    // set attributes
+    int mode = 0;
+    xmlCurrent_->QueryIntAttribute("renderMode", &mode);
+    s.setRenderMode((RenderSource::RenderSourceMode)mode);
+
+    // set session
     s.setSession( session_ );
 }
 

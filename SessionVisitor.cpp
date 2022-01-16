@@ -29,6 +29,7 @@ using namespace tinyxml2;
 #include "Decorations.h"
 #include "Source.h"
 #include "CloneSource.h"
+#include "RenderSource.h"
 #include "MediaSource.h"
 #include "Session.h"
 #include "SessionSource.h"
@@ -626,9 +627,10 @@ void SessionVisitor::visit (SessionGroupSource& s)
 
 }
 
-void SessionVisitor::visit (RenderSource&)
+void SessionVisitor::visit (RenderSource& s)
 {
     xmlCurrent_->SetAttribute("type", "RenderSource");
+    xmlCurrent_->SetAttribute("renderMode", (int) s.renderMode());
 }
 
 void SessionVisitor::visit (CloneSource& s)

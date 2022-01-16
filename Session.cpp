@@ -27,6 +27,7 @@
 #include "FrameGrabber.h"
 #include "SessionCreator.h"
 #include "SessionSource.h"
+#include "RenderSource.h"
 #include "MixingGroup.h"
 #include "Log.h"
 
@@ -129,11 +130,11 @@ void Session::update(float dt)
         else {
             if ( !(*it)->ready() )
                 ready = false;
-            // render the source
-            (*it)->render();
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
+            // render the source // TODO: verify ok to render after update
+            (*it)->render();
         }
     }
 

@@ -39,6 +39,7 @@
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "CloneSource.h"
+#include "RenderSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -172,7 +173,19 @@ void InfoVisitor::visit (RenderSource& s)
     if (current_id_ == s.id())
         return;
 
-    information_ = "Rendering Output";
+    std::ostringstream oss;
+    oss << "Rendering Output (" << RenderSource::render_mode_label[s.renderMode()];
+    oss << ") " << std::endl;
+
+    if (s.frame()){
+        oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
+        if (s.frame()->use_alpha())
+            oss << "RGBA";
+        else
+            oss << "RGB";
+    }
+
+    information_ = oss.str();
     current_id_ = s.id();
 }
 
@@ -186,7 +199,10 @@ void InfoVisitor::visit (CloneSource& s)
 
     if (s.frame()){
         oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
-        oss << "RGBA";
+        if (s.frame()->use_alpha())
+            oss << "RGBA";
+        else
+            oss << "RGB";
     }
 
     information_ = oss.str();

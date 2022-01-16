@@ -43,6 +43,7 @@
 #include "SessionVisitor.h"
 #include "SessionSource.h"
 #include "CloneSource.h"
+#include "RenderSource.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"

@@ -43,6 +43,7 @@
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "CloneSource.h"
+#include "RenderSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -703,6 +704,12 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGui::Text("Rendering Output");
     if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.preview = true;
+
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) s.renderMode();
+    if (ImGui::Combo("Rendering", &m, RenderSource::render_mode_label, IM_ARRAYSIZE(RenderSource::render_mode_label)) )
+        s.setRenderMode((RenderSource::RenderSourceMode)m);
+
 }
 
 void ImGuiVisitor::visit (CloneSource& s)
@@ -720,13 +727,10 @@ void ImGuiVisitor::visit (CloneSource& s)
     if (ImGui::Combo("Image", &m, "Original\0Post-processed\0") )
         s.setImageMode((CloneSource::CloneImageMode)m);
 
-
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = s.delay();
-//    if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, "%.2f s")){
-        if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, d < 0.01f ? "None" : "%.2f s")){
+    if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, d < 0.01f ? "None" : "%.2f s"))
         s.setDelay(d);
-    }
 
 }
 
