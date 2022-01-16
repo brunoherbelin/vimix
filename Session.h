@@ -39,6 +39,7 @@ public:
     ~Session();
 
     static Session *load(const std::string& filename, uint recursion = 0);
+    static std::string save(const std::string& filename, Session *session, const std::string& snapshot_name = "");
 
     // add given source into the session
     SourceList::iterator addSource (Source *s);
@@ -147,11 +148,6 @@ public:
     void addToPlayGroup(size_t i, Source *s);
     void removeFromPlayGroup(size_t i, Source *s);
     std::vector<SourceIdList> getPlayGroups() { return play_groups_; }
-
-    // lock and unlock access (e.g. while saving)
-    void lock ();
-    void unlock ();
-    bool locked ();
 
 protected:
     bool active_;

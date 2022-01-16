@@ -57,43 +57,15 @@
 #include "Mixer.h"
 
 #define THREADED_LOADING
+std::vector< std::future<std::string> > sessionSavers_;
 std::vector< std::future<Session *> > sessionLoaders_;
 std::vector< std::future<Session *> > sessionImporters_;
 std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
-// static multithreaded session saving
-static void saveSession(const std::string& filename, Session *session, bool with_version)
-{
-    // lock access while saving
-    session->lock();
-
-    // capture a snapshot of current version if requested
-    if (with_version)
-        Action::manager().snapshot( SystemToolkit::date_time_string());
-
-    // save file to disk
-    if ( SessionVisitor::saveSession(filename, session) ) {
-        // all ok
-        // set session filename
-        session->setFilename(filename);
-        // cosmetics saved ok
-        Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
-        Settings::application.recentSessions.push(filename);
-        Log::Notify("Session %s saved.", filename.c_str());
-
-    }
-    else {
-        // error
-        Log::Warning("Failed to save Session file %s.", filename.c_str());
-    }
-
-    session->unlock();
-}
-
 Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested_(false),
-    current_view_(nullptr), dt_(16.f), dt__(16.f)
+    current_view_(nullptr), busy_(false), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
     session_ = new Session;
@@ -129,11 +101,13 @@ void Mixer::update()
     if (!sessionImporters_.empty()) {
         // check status of loader: did it finish ?
         if (sessionImporters_.back().wait_for(timeout_) == std::future_status::ready ) {
-            // get the session loaded by this loader
-            merge( sessionImporters_.back().get() );
-            // FIXME: shouldn't we delete the imported session?
-            // done with this session loader
-            sessionImporters_.pop_back();
+            if (sessionImporters_.back().valid()) {
+                // get the session loaded by this loader
+                merge( sessionImporters_.back().get() );
+                // FIXME: shouldn't we delete the imported session?
+                // done with this session loader
+                sessionImporters_.pop_back();
+            }
         }
     }
 
@@ -142,13 +116,42 @@ void Mixer::update()
         // check status of loader: did it finish ?
         if (sessionLoaders_.back().wait_for(timeout_) == std::future_status::ready ) {
             // get the session loaded by this loader
-            if (sessionLoaders_.back().valid())
+            if (sessionLoaders_.back().valid()) {
+                // get the session loaded by this loader
                 set( sessionLoaders_.back().get() );
-            // done with this session loader
-            sessionLoaders_.pop_back();
+                // done with this session loader
+                sessionLoaders_.pop_back();
+            }
+            busy_ = false;
         }
     }
 #endif
+
+    // if there is a session saving pending
+    if (!sessionSavers_.empty()) {
+        // check status of saver: did it finish ?
+        if (sessionSavers_.back().wait_for(timeout_) == std::future_status::ready ) {
+            std::string filename;
+            // did we get a filename in return?
+            if (sessionSavers_.back().valid()) {
+                filename = sessionSavers_.back().get();
+                // done with this session saver
+                sessionSavers_.pop_back();
+            }
+            if (filename.empty())
+                Log::Warning("Failed to save Session.");
+            // all ok
+            else {
+                // set session filename
+                session_->setFilename(filename);
+                // cosmetics saved ok
+                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
+                Settings::application.recentSessions.push(filename);
+                Log::Notify("Session %s saved.", filename.c_str());
+            }
+            busy_ = false;
+        }
+    }
 
     // if there is a session source to import
     if (!sessionSourceToImport_.empty()) {
@@ -1006,8 +1009,18 @@ void Mixer::saveas(const std::string& filename, bool with_version)
     session_->config(View::LAYER)->copyTransform( layer_.scene.root() );
     session_->config(View::TEXTURE)->copyTransform( appearance_.scene.root() );
 
-    // launch a thread to save the session
-    std::thread (saveSession, filename, session_, with_version).detach();
+    // save only one at a time
+    if (sessionSavers_.empty()) {
+        // will be busy for saving
+        busy_ = true;
+        // prepare argument for saving a version (if requested)
+        std::string versionname;
+        if (with_version)
+            versionname = SystemToolkit::date_time_string();
+        // launch a thread to save the session
+        // Will be captured in the future in update()
+        sessionSavers_.emplace_back( std::async(std::launch::async, Session::save, filename, session_, versionname) );
+    }
 }
 
 void Mixer::load(const std::string& filename)
@@ -1018,6 +1031,7 @@ void Mixer::load(const std::string& filename)
 #ifdef THREADED_LOADING
     // load only one at a time
     if (sessionLoaders_.empty()) {
+        busy_ = true;
         // Start async thread for loading the session
         // Will be obtained in the future in update()
         sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );

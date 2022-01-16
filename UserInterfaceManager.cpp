@@ -760,8 +760,7 @@ void UserInterface::NewFrame()
     if (DialogToolkit::FileDialog::busy()){
         if (!ImGui::IsPopupOpen("Busy"))
             ImGui::OpenPopup("Busy");
-        if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-        {
+        if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Close file dialog box to resume.");
             ImGui::EndPopup();
         }
@@ -798,17 +797,13 @@ void UserInterface::NewFrame()
     if (close_and_exit){
         if (!ImGui::IsPopupOpen("Closing"))
             ImGui::OpenPopup("Closing");
-        if (ImGui::BeginPopupModal("Closing", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-        {
+        if (ImGui::BeginPopupModal("Closing", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Please wait...");
-            if (FrameGrabbing::manager().busy())
-                ImGui::Text(" - Stop recordings.");
-            if (Settings::application.recentSessions.save_on_exit)
-                ImGui::Text(" - Save session.");
             ImGui::EndPopup();
         }
+
         // exit only after everything is closed
-        if (!FrameGrabbing::manager().busy() && !Mixer::manager().session()->locked()) {
+        if (!FrameGrabbing::manager().busy() && !Mixer::manager().busy()) {
             Rendering::manager().close();
         }
     }

@@ -7,6 +7,7 @@
 
 #include <tinyxml2.h>
 
+class Session;
 class Interpolator;
 class FrameBufferImage;
 
@@ -39,7 +40,8 @@ public:
     FrameBufferImage *thumbnail (uint s) const;
 
     // Snapshots
-    void snapshot (const std::string &label = "", bool threaded = false);
+    static void takeSnapshot (Session *se, const std::string &label, bool create_thread);
+    void snapshot (const std::string &label = "");
     void clearSnapshots ();
     std::list<uint64_t> snapshots () const;
     uint64_t currentSnapshot () const { return snapshot_id_; }

@@ -110,6 +110,7 @@ public:
     void merge  (SessionSource *source);
     void set    (Session *session);
     void setResolution(glm::vec3 res);
+    bool busy   () const { return busy_; }
 
     // operations depending on transition mode
     void close  (bool smooth = false);
@@ -146,6 +147,7 @@ protected:
     TextureView appearance_;
     TransitionView transition_;
 
+    bool busy_;
     float dt_;
     float dt__;
 };

@@ -45,40 +45,6 @@
 
 using namespace tinyxml2;
 
-void captureMixerSession(tinyxml2::XMLDocument *doc, std::string node, std::string label)
-{
-    // create node
-    XMLElement *sessionNode = doc->NewElement( node.c_str() );
-    doc->InsertEndChild(sessionNode);
-    // label describes the action
-    sessionNode->SetAttribute("label", label.c_str() );
-    // label describes the action
-    sessionNode->SetAttribute("date", SystemToolkit::date_time_string().c_str() );
-    // view indicates the view when this action occured
-    sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
-
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-
-    // get the thumbnail (requires one opengl update to render)
-    FrameBufferImage *thumbnail = se->renderThumbnail();
-    if (thumbnail) {
-        XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
-        if (imageelement)
-            sessionNode->InsertEndChild(imageelement);
-        delete thumbnail;
-    }
-
-    // save session attributes
-    sessionNode->SetAttribute("activationThreshold", se->activationThreshold());
-
-    // save all sources using source visitor
-    SessionVisitor sv(doc, sessionNode);
-    for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
-        (*iter)->accept(sv);
-
-}
-
 
 Action::Action(): history_step_(0), history_max_step_(0), locked_(false),
     snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
@@ -100,6 +66,40 @@ void Action::init()
     store("Session start");
 }
 
+void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string node, std::string label)
+{
+    if (se != nullptr) {
+
+        // create node
+        XMLElement *sessionNode = doc->NewElement( node.c_str() );
+        doc->InsertEndChild(sessionNode);
+        // label describes the action
+        sessionNode->SetAttribute("label", label.c_str() );
+        // label describes the action
+        sessionNode->SetAttribute("date", SystemToolkit::date_time_string().c_str() );
+        // view indicates the view when this action occured
+        sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+
+        // get the thumbnail (requires one opengl update to render)
+        FrameBufferImage *thumbnail = se->renderThumbnail();
+        if (thumbnail) {
+            XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
+            if (imageelement)
+                sessionNode->InsertEndChild(imageelement);
+            delete thumbnail;
+        }
+
+        // save session attributes
+        sessionNode->SetAttribute("activationThreshold", se->activationThreshold());
+
+        // save all sources using source visitor
+        SessionVisitor sv(doc, sessionNode);
+        for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
+            (*iter)->accept(sv);
+
+    }
+}
+
 void Action::store(const std::string &label)
 {
     // ignore if locked or if no label is given
@@ -118,7 +118,7 @@ void Action::store(const std::string &label)
     history_max_step_ = history_step_;
 
     // threaded capturing state of current session
-    std::thread(captureMixerSession, &history_doc_, HISTORY_NODE(history_step_), label).detach();
+    std::thread(captureMixerSession, Mixer::manager().session(), &history_doc_, HISTORY_NODE(history_step_), label).detach();
 
 #ifdef ACTION_DEBUG
     Log::Info("Action stored %d '%s'", history_step_, label.c_str());
@@ -208,31 +208,40 @@ void Action::restore(uint target)
 }
 
 
+void Action::takeSnapshot(Session *se, const std::string &label, bool create_thread)
+{
+    if (se !=nullptr) {
 
-void Action::snapshot(const std::string &label, bool threaded)
+        // create snapshot id
+        u_int64_t id = BaseToolkit::uniqueId();
+
+        // inform session of its new snapshot
+        se->snapshots()->keys_.push_back(id);
+
+        if (create_thread)
+            // threaded capture state of current session
+            std::thread(captureMixerSession, se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label).detach();
+        else
+            captureMixerSession(se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label);
+
+#ifdef ACTION_DEBUG
+        Log::Info("Snapshot stored %d '%s'", id, label.c_str());
+#endif
+    }
+}
+
+void Action::snapshot(const std::string &label)
 {
     // ignore if locked
     if (locked_)
         return;
 
+    // ensure label is unique
     std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
-    // create snapshot id
-    u_int64_t id = BaseToolkit::uniqueId();
+    // take the snapshot on current session
+    takeSnapshot(Mixer::manager().session(), snap_label, true);
 
-    // get session to operate on
-    Session *se = Mixer::manager().session();
-    se->snapshots()->keys_.push_back(id);
-
-    if (threaded)
-        // threaded capture state of current session
-        std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label).detach();
-    else
-        captureMixerSession(se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), snap_label);
-
-#ifdef ACTION_DEBUG
-    Log::Info("Snapshot stored %d '%s'", id, snap_label.c_str());
-#endif
 }
 
 void Action::open(uint64_t snapshotid)
@@ -267,14 +276,16 @@ void Action::replace(uint64_t snapshotid)
 
         // remove previous node
         Session *se = Mixer::manager().session();
-        se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
+        if (se) {
+            se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
 
-        // threaded capture state of current session
-        std::thread(captureMixerSession, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(snapshot_id_), label).detach();
+            // threaded capture state of current session
+            std::thread(captureMixerSession, se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(snapshot_id_), label).detach();
 
 #ifdef ACTION_DEBUG
-        Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
+            Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
 #endif
+        }
     }
 }
 
@@ -329,8 +340,12 @@ void Action::setLabel (uint64_t snapshotid, const std::string &label)
 {
     open(snapshotid);
 
-    if (snapshot_node_)
-        snapshot_node_->SetAttribute("label", label.c_str());
+    if (snapshot_node_){
+        // ensure unique snapshot label
+        std::string snap_label = BaseToolkit::uniqueName(label, labels());
+        // change attribute
+        snapshot_node_->SetAttribute("label", snap_label.c_str());
+    }
 }
 
 FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const

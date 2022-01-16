@@ -26,6 +26,8 @@
 #include "FrameBuffer.h"
 #include "FrameGrabber.h"
 #include "SessionCreator.h"
+#include "SessionVisitor.h"
+#include "ActionManager.h"
 #include "SessionSource.h"
 #include "RenderSource.h"
 #include "MixingGroup.h"
@@ -592,24 +594,6 @@ SourceList Session::playGroup(size_t i) const
     return list;
 }
 
-void Session::lock()
-{
-    access_.lock();
-}
-
-void Session::unlock()
-{
-    access_.unlock();
-}
-
-bool Session::locked()
-{
-    bool l = access_.try_lock();
-    if (l)
-        access_.unlock();
-    return !l;
-}
-
 void Session::validate (SourceList &sources)
 {
     // verify that all sources given are valid in the sesion
@@ -633,3 +617,26 @@ Session *Session::load(const std::string& filename, uint recursion)
     return creator.session();
 }
 
+std::string Session::save(const std::string& filename, Session *session, const std::string& snapshot_name)
+{
+    std::string ret;
+
+    if (session) {
+        // lock access while saving
+        session->access_.lock();
+
+        // capture a snapshot of current version if requested (do not create thread)
+        if (!snapshot_name.empty())
+            Action::takeSnapshot(session, snapshot_name, false );
+
+        // save file to disk
+        if (SessionVisitor::saveSession(filename, session))
+            // return filename string on success
+            ret = filename;
+
+        // unlock access after saving
+        session->access_.unlock();
+    }
+
+    return ret;
+}
