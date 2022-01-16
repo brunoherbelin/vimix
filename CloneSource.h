@@ -21,21 +21,25 @@ public:
     void play (bool on) override;
     bool playable () const  override { return true; }
     void replay () override;
+    guint64 playtime () const override;
     uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
 
+    // implementation of cloning mechanism
     CloneSource *clone(uint64_t id = 0) override;
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
+    // Clone properties
     typedef enum {
         CLONE_TEXTURE = 0,
         CLONE_RENDER
-    } CloneImageMode;
+    } CloneSourceProvenance;
+    static const char* cloning_provenance_label[2];
 
-    void setImageMode(CloneImageMode m) { image_mode_ = m; }
-    CloneImageMode imageMode() const { return image_mode_; }
+    void setCloningProvenance(CloneSourceProvenance m) { provenance_ = m; }
+    CloneSourceProvenance cloningProvenance() const { return provenance_; }
 
     void setDelay(double second);
     double delay() const { return delay_; }
@@ -50,18 +54,20 @@ protected:
     void init() override;
     Source *origin_;
 
-    // cloning
+    // cloning & stack of past frames
     std::array<FrameBuffer *, DELAY_ARRAY_SIZE> stack_;
     Surface *cloningsurface_;
     size_t read_index_, write_index_;
 
+    // time management
     GTimer *timer_;
-    std::array<double, DELAY_ARRAY_SIZE> timestamp_;
+    std::array<double, DELAY_ARRAY_SIZE> elapsed_stack_;
+    std::array<guint64, DELAY_ARRAY_SIZE> timestamps_;
     double delay_;
 
     // control
     bool paused_;
-    CloneImageMode image_mode_;
+    CloneSourceProvenance provenance_;
 };
 
 

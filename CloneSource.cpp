@@ -30,10 +30,11 @@
 
 #include "CloneSource.h"
 
+const char* CloneSource::cloning_provenance_label[2] = { "Original texture", "Post-processed image" };
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    read_index_(0), write_index_(0), delay_(0.0), paused_(false), image_mode_(CLONE_TEXTURE)
+    read_index_(0), write_index_(0), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -44,7 +45,8 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
 
     // init array
     stack_.fill(nullptr);
-    timestamp_.fill(0.0);
+    elapsed_stack_.fill(0.0);
+    timestamps_.fill(0);
 
     timer_ = g_timer_new ();
 }
@@ -79,21 +81,23 @@ void CloneSource::init()
 {
     if (origin_ && origin_->mode_ > Source::UNINITIALIZED) {
 
-        // create frame buffers where to copy frames of the origin source
+        // internal surface to draw the original texture
+        cloningsurface_ = new Surface;
+        cloningsurface_->setTextureIndex( origin()->texture() );
+
+        // frame buffers where to draw frames from the origin source
         glm::vec3 res = origin_->frame()->resolution();
         for (size_t i = 0; i < stack_.size(); ++i){
             stack_[i] = new FrameBuffer( res, origin_->frame()->use_alpha() );
         }
 
-        g_timer_start(timer_);
-
-        cloningsurface_ = new Surface;
-        cloningsurface_->setTextureIndex( origin()->texture() );
-
         // set initial texture surface
         texturesurface_->setTextureIndex( stack_[read_index_]->texture() );
 
-        // create Frame buffer matching size of images
+        // activate elapsed-timer
+        g_timer_start(timer_);
+
+        // create render Frame buffer matching size of images
         FrameBuffer *renderbuffer = new FrameBuffer( res, true);
 
         // set the renderbuffer of the source and attach rendering nodes
@@ -135,23 +139,19 @@ void CloneSource::setActive (bool on)
     }
 }
 
-void CloneSource::replay()
-{
-    read_index_ = (write_index_ + 1 )%(stack_.size());
-}
-
 void CloneSource::update(float dt)
 {
-    if (active_ && !paused_ && cloningsurface_ != nullptr) {
+    if (active_ && !paused_ &&  origin_ && cloningsurface_ != nullptr) {
 
         double now = g_timer_elapsed (timer_, NULL) ;
 
         // increment enplacement of write index
         write_index_ = (write_index_+1)%(stack_.size());
-        timestamp_[write_index_] = now;
+        elapsed_stack_[write_index_] = now;
+        timestamps_[write_index_] = origin_->playtime();
 
         // CLONE_RENDER : blit rendered framebuffer in the stack
-        if (image_mode_ == CLONE_RENDER)
+        if (provenance_ == CLONE_RENDER)
             origin_->frame()->blit(stack_[write_index_]);
         // CLONE_TEXTURE : render origin texture in the stack
         else {
@@ -168,7 +168,7 @@ void CloneSource::update(float dt)
         {
             // starting where we are at, get the next index that satisfies the delay
             size_t previous_index = read_index_;
-            while ( now - timestamp_[read_index_] > delay_)  {
+            while ( now - elapsed_stack_[read_index_] > delay_)  {
                 // usually, one frame increment suffice
                 read_index_ = (read_index_ + 1 )%(stack_.size());
                 // break the loop if running infinite (never happens)
@@ -197,16 +197,26 @@ void CloneSource::play (bool on)
     if (paused_ == on) {
 
         // restart clean if was paused
-        if (paused_) {
-            g_timer_reset(timer_);
-            timestamp_.fill(0.0);
-            write_index_ = 0;
-            read_index_ = 1;
-        }
+        if (paused_)
+            replay();
         // toggle state
         paused_ = !on;
     }
 }
+
+void CloneSource::replay()
+{
+    g_timer_reset(timer_);
+    elapsed_stack_.fill(0.0);
+    write_index_ = 0;
+    read_index_ = 1;
+}
+
+guint64 CloneSource::playtime () const
+{
+    return timestamps_[read_index_];
+}
+
 
 uint CloneSource::texture() const
 {

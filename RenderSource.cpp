@@ -29,10 +29,10 @@
 
 #include "RenderSource.h"
 
-const char* RenderSource::render_mode_label[2] = { "Loopback", "Non recursive" };
+const char* RenderSource::rendering_provenance_label[2] = { "Loopback", "Non-recursive" };
 
-RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), rendered_output_(nullptr), rendered_surface_(nullptr),
-    paused_(false), render_mode_(RENDER_TEXTURE)
+RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
+    paused_(false), provenance_(RENDER_TEXTURE)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -106,7 +106,7 @@ void RenderSource::update(float dt)
 
     if (active_ && !paused_ && session_ && rendered_output_) {
 
-        if (render_mode_ == RENDER_EXCLUSIVE) {
+        if (provenance_ == RENDER_EXCLUSIVE) {
             // temporarily exclude this RenderSource from the rendering
             groups_[View::RENDERING]->visible_ = false;
             // simulate a rendering of the session in a framebuffer
@@ -121,6 +121,7 @@ void RenderSource::update(float dt)
         else
             session_->frame()->blit(rendered_output_);
 
+        runtime_ = session_->runtime();
 
         //        rendered_output_->begin(true); // if not blit
         //        rendered_surface_->draw(glm::identity<glm::mat4>(), rendered_output_->projection());
@@ -136,12 +137,6 @@ void RenderSource::play (bool on)
     paused_ = !on;
 }
 
-void RenderSource::replay()
-{
-
-}
-
-
 glm::vec3 RenderSource::resolution() const
 {
     if (rendered_output_ != nullptr)
@@ -155,7 +150,7 @@ glm::vec3 RenderSource::resolution() const
 void RenderSource::accept(Visitor& v)
 {
     Source::accept(v);
-//    if (!failed())
+    if (!failed())
         v.visit(*this);
 }
 

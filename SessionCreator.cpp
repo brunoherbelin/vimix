@@ -975,9 +975,9 @@ void SessionLoader::visit (SessionGroupSource& s)
 void SessionLoader::visit (RenderSource& s)
 {
     // set attributes
-    int mode = 0;
-    xmlCurrent_->QueryIntAttribute("renderMode", &mode);
-    s.setRenderMode((RenderSource::RenderSourceMode)mode);
+    int p = 0;
+    xmlCurrent_->QueryIntAttribute("provenance", &p);
+    s.setRenderingProvenance((RenderSource::RenderSourceProvenance)p);
 
     // set session
     s.setSession( session_ );
@@ -1093,12 +1093,12 @@ void SessionLoader::visit (GenericStreamSource& s)
 void SessionLoader::visit (CloneSource& s)
 {
     // set attributes
-    int imagemode = 0;
-    xmlCurrent_->QueryIntAttribute("imageMode", &imagemode);
-    s.setImageMode((CloneSource::CloneImageMode)imagemode);
+    int p = 0;
+    xmlCurrent_->QueryIntAttribute("provenance", &p);
+    s.setCloningProvenance((CloneSource::CloneSourceProvenance)p);
 
-    double delay = 0.0;
-    xmlCurrent_->QueryDoubleAttribute("delay", &delay);
-    s.setDelay(delay);
+    double d = 0.0;
+    xmlCurrent_->QueryDoubleAttribute("delay", &d);
+    s.setDelay(d);
 }
 

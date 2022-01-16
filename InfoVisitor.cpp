@@ -174,7 +174,8 @@ void InfoVisitor::visit (RenderSource& s)
         return;
 
     std::ostringstream oss;
-    oss << "Rendering Output (" << RenderSource::render_mode_label[s.renderMode()];
+    oss << "Rendering Output (";
+    oss << RenderSource::rendering_provenance_label[s.renderingProvenance()];
     oss << ") " << std::endl;
 
     if (s.frame()){
@@ -195,7 +196,9 @@ void InfoVisitor::visit (CloneSource& s)
         return;
 
     std::ostringstream oss;
-    oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
+    oss << "Clone of '" << s.origin()->name() << "' (";
+    oss << CloneSource::cloning_provenance_label[s.cloningProvenance()];
+    oss << ") " << std::endl;
 
     if (s.frame()){
         oss << s.frame()->width() << " x " << s.frame()->height() << ", ";

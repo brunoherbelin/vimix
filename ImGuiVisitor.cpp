@@ -702,13 +702,15 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Rendering Output");
-    if ( ImGui::Button(IMGUI_TITLE_PREVIEW, ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button(ICON_FA_DESKTOP " Show window", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.preview = true;
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Output");
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) s.renderMode();
-    if (ImGui::Combo("Rendering", &m, RenderSource::render_mode_label, IM_ARRAYSIZE(RenderSource::render_mode_label)) )
-        s.setRenderMode((RenderSource::RenderSourceMode)m);
+    int m = (int) s.renderingProvenance();
+    if (ImGui::Combo("Render", &m, RenderSource::rendering_provenance_label, IM_ARRAYSIZE(RenderSource::rendering_provenance_label)) )
+        s.setRenderingProvenance((RenderSource::RenderSourceProvenance)m);
 
 }
 
@@ -719,13 +721,13 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGui::Text("Clone");
     if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Source");
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) s.imageMode();
-    if (ImGui::Combo("Image", &m, "Original\0Post-processed\0") )
-        s.setImageMode((CloneSource::CloneImageMode)m);
+    int m = (int) s.cloningProvenance();
+    if (ImGui::Combo("Render", &m, CloneSource::cloning_provenance_label, IM_ARRAYSIZE(CloneSource::cloning_provenance_label)) )
+        s.setCloningProvenance((CloneSource::CloneSourceProvenance)m);
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = s.delay();

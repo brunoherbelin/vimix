@@ -630,13 +630,13 @@ void SessionVisitor::visit (SessionGroupSource& s)
 void SessionVisitor::visit (RenderSource& s)
 {
     xmlCurrent_->SetAttribute("type", "RenderSource");
-    xmlCurrent_->SetAttribute("renderMode", (int) s.renderMode());
+    xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
 }
 
 void SessionVisitor::visit (CloneSource& s)
 {
     xmlCurrent_->SetAttribute("type", "CloneSource");
-    xmlCurrent_->SetAttribute("imageMode", (int) s.imageMode());
+    xmlCurrent_->SetAttribute("provenance", (int) s.cloningProvenance());
     xmlCurrent_->SetAttribute("delay", (double) s.delay());
 
     XMLElement *origin = xmlDoc_->NewElement("origin");

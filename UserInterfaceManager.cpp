@@ -3007,20 +3007,26 @@ void SourceController::RenderSingleSource(Source *s)
         if (ImGui::IsItemHovered()){
             // fill info string
             s->accept(info_);
-
+            // draw overlay frame and text
             float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(top + ImVec2(h_space_, v_space_));
             ImGui::Text("%s", info_.str().c_str());
-
+            // special case Streams: print framerate
             StreamSource *sts = dynamic_cast<StreamSource*>(s);
             if (sts && s->playing()) {
                 ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * buttons_height_, 0.5f * tooltip_height));
                 ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
             }
         }
-        // Play icon lower left corner
+        else
+            // make sure next ItemHovered refreshes the info_
+            info_.reset();
+
+        ///
+        /// Play icon lower left corner
+        ///
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::SetCursorScreenPos(bottom + ImVec2(h_space_, -ImGui::GetTextLineHeightWithSpacing()));
         ImGui::Text("%s %s", SourcePlayIcon(s), GstToolkit::time_to_string(s->playtime()).c_str() );

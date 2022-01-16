@@ -13,11 +13,11 @@ public:
 
     // implementation of source API
     void update (float dt) override;
-//    void setActive (bool on) override;
     bool playing () const override { return !paused_; }
     void play (bool) override;
-    void replay () override;
+    void replay () override {}
     bool playable () const  override { return true; }
+    guint64 playtime () const override { return runtime_; }
     bool failed () const override;
     uint texture() const override;
     void accept (Visitor& v) override;
@@ -27,29 +27,30 @@ public:
 
     glm::vec3 resolution() const;
 
-    glm::ivec2 icon() const override;
-    std::string info() const override;
-
     typedef enum {
         RENDER_TEXTURE = 0,
         RENDER_EXCLUSIVE
-    } RenderSourceMode;
-    static const char* render_mode_label[2];
+    } RenderSourceProvenance;
+    static const char* rendering_provenance_label[2];
 
-    void setRenderMode(RenderSourceMode m) { render_mode_ = m; }
-    RenderSourceMode renderMode() const { return render_mode_; }
+    void setRenderingProvenance(RenderSourceProvenance m) { provenance_ = m; }
+    RenderSourceProvenance renderingProvenance() const { return provenance_; }
+
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
 protected:
 
     void init() override;
     Session *session_;
+    uint64_t runtime_;
 
     FrameBuffer *rendered_output_;
     Surface *rendered_surface_;
 
     // control
     bool paused_;
-    RenderSourceMode render_mode_;
+    RenderSourceProvenance provenance_;
 };
 
 
