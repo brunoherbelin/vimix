@@ -119,7 +119,7 @@ public:
     void add(FrameGrabber *rec);
     void chain(FrameGrabber *rec, FrameGrabber *new_rec);
     void verify(FrameGrabber **rec);
-    FrameGrabber *front();
+    bool busy() const;
     FrameGrabber *get(uint64_t id);
     void stopAll();
     void clearAll();

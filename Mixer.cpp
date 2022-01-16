@@ -66,12 +66,12 @@ const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 // static multithreaded session saving
 static void saveSession(const std::string& filename, Session *session, bool with_version)
 {
+    // lock access while saving
+    session->lock();
+
     // capture a snapshot of current version if requested
     if (with_version)
         Action::manager().snapshot( SystemToolkit::date_time_string());
-
-    // lock access while saving
-    session->lock();
 
     // save file to disk
     if ( SessionVisitor::saveSession(filename, session) ) {

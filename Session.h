@@ -151,6 +151,7 @@ public:
     // lock and unlock access (e.g. while saving)
     void lock ();
     void unlock ();
+    bool locked ();
 
 protected:
     bool active_;

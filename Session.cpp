@@ -602,6 +602,14 @@ void Session::unlock()
     access_.unlock();
 }
 
+bool Session::locked()
+{
+    bool l = access_.try_lock();
+    if (l)
+        access_.unlock();
+    return !l;
+}
+
 void Session::validate (SourceList &sources)
 {
     // verify that all sources given are valid in the sesion

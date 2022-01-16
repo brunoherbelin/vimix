@@ -141,6 +141,7 @@ UserInterface::UserInterface()
     currentTextEdit.clear();
     screenshot_step = 0;
     pending_save_on_exit = false;
+    close_and_exit = false;
 
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
@@ -151,6 +152,9 @@ bool UserInterface::Init()
 {
     if (Rendering::manager().mainWindow().window()== nullptr)
         return false;
+
+    pending_save_on_exit = false;
+    close_and_exit = false;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -683,18 +687,27 @@ bool UserInterface::TryClose()
 
     // force close if trying to close again although it is already pending for save
     if (pending_save_on_exit) {
-        Rendering::manager().close();
+        close_and_exit = true;
         return true;
     }
 
-    // general case: determine if a pending save of session is required
+    // determine if a pending save of session is required
     pending_save_on_exit = ( Settings::application.recentSessions.save_on_exit
                           && !Mixer::manager().session()->empty()
                           && Mixer::manager().session()->filename().empty() );
 
     // if no pending save of session is needed, close
     if (!pending_save_on_exit)
-        Rendering::manager().close();
+    {
+        // stop all recordings
+        FrameGrabbing::manager().stopAll();
+
+        // save on exit
+        if (Settings::application.recentSessions.save_on_exit)
+            Mixer::manager().save(false);
+
+        close_and_exit = true;
+    }
 
     // say we can close if no pending save of session is needed
     return !pending_save_on_exit;
@@ -745,7 +758,8 @@ void UserInterface::NewFrame()
 
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
-        ImGui::OpenPopup("Busy");
+        if (!ImGui::IsPopupOpen("Busy"))
+            ImGui::OpenPopup("Busy");
         if (ImGui::BeginPopupModal("Busy", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::Text("Close file dialog box to resume.");
@@ -754,27 +768,49 @@ void UserInterface::NewFrame()
     }
 
     // popup to inform to save before close
-    if (pending_save_on_exit && !ImGui::IsPopupOpen(MENU_SAVE_ON_EXIT))
-        ImGui::OpenPopup(MENU_SAVE_ON_EXIT);
-    if (ImGui::BeginPopupModal(MENU_SAVE_ON_EXIT, NULL, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::Spacing();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-        ImGui::Text("Looks like you started some work");
-        ImGui::Text("but didn't save the session.");
-        ImGui::PopFont();
-        ImGui::Spacing();
-        if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-            pending_save_on_exit = false;
-            saveOrSaveAs();
-            ImGui::CloseCurrentPopup();
+    if (pending_save_on_exit) {
+        if (!ImGui::IsPopupOpen(MENU_SAVE_ON_EXIT))
+            ImGui::OpenPopup(MENU_SAVE_ON_EXIT);
+        if (ImGui::BeginPopupModal(MENU_SAVE_ON_EXIT, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Spacing();
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+            ImGui::Text("Looks like you started some work");
+            ImGui::Text("but didn't save the session.");
+            ImGui::PopFont();
+            ImGui::Spacing();
+            if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                pending_save_on_exit = false;
+                saveOrSaveAs();
+                ImGui::CloseCurrentPopup();
+            }
+            if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                pending_save_on_exit = false;
+                close_and_exit = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
+            ImGui::EndPopup();
         }
-        if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-            ImGui::CloseCurrentPopup();
+    }
+
+    // Asked to close_and_exit
+    if (close_and_exit){
+        if (!ImGui::IsPopupOpen("Closing"))
+            ImGui::OpenPopup("Closing");
+        if (ImGui::BeginPopupModal("Closing", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Please wait...");
+            if (FrameGrabbing::manager().busy())
+                ImGui::Text(" - Stop recordings.");
+            if (Settings::application.recentSessions.save_on_exit)
+                ImGui::Text(" - Save session.");
+            ImGui::EndPopup();
+        }
+        // exit only after everything is closed
+        if (!FrameGrabbing::manager().busy() && !Mixer::manager().session()->locked()) {
             Rendering::manager().close();
         }
-        ImGui::Spacing();
-        ImGui::EndPopup();
     }
 
     // navigator bar first
@@ -855,10 +891,6 @@ void UserInterface::Terminate()
 {
     // restore windows position for saving
     WorkspaceWindow::restoreWorkspace(true);
-
-    // save on exit
-    if (Settings::application.recentSessions.save_on_exit)
-        Mixer::manager().save(false);
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

@@ -79,12 +79,9 @@ void FrameGrabbing::verify(FrameGrabber **rec)
         *rec = nullptr;
 }
 
-FrameGrabber *FrameGrabbing::front()
+bool FrameGrabbing::busy() const
 {
-    if (grabbers_.empty())
-        return nullptr;
-
-    return grabbers_.front();
+    return !grabbers_.empty();
 }
 
 struct fgId: public std::unary_function<FrameGrabber*, bool>
