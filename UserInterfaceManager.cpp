@@ -239,7 +239,8 @@ void UserInterface::handleKeyboard()
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
             // try quit
-            TryClose();
+            if ( TryClose() )
+                Rendering::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
             // SHIFT + CTRL + O : reopen current session
