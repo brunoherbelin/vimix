@@ -163,6 +163,12 @@ int main(int argc, char *argv[])
     UserInterface::manager().Terminate();
 
     ///
+    /// MIXER TERMINATE
+    ///
+    while (Mixer::manager().busy())
+        Mixer::manager().update();
+
+    ///
     /// RENDERING TERMINATE
     ///
     Rendering::manager().terminate();

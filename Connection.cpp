@@ -35,16 +35,12 @@
 #endif
 
 
-Connection::Connection() : receiver_(nullptr)
+Connection::Connection() : asking_(false), receiver_(nullptr)
 {
 }
 
 Connection::~Connection()
 {
-    if (receiver_!=nullptr) {
-        receiver_->Break();
-        delete receiver_;
-    }
 }
 
 bool Connection::init()
@@ -52,39 +48,43 @@ bool Connection::init()
     // add default info for myself
     connections_.push_back(ConnectionInfo());
 
-    // try to open a socket at base handshake port
-    int trial = 0;
-    while (trial < MAX_HANDSHAKE) {
-        try {
-            // increment the port to have unique ports
-            connections_[0].port_handshake = HANDSHAKE_PORT + trial;
-            connections_[0].port_stream_request = STREAM_REQUEST_PORT + trial;
-            connections_[0].port_osc = OSC_DIALOG_PORT + trial;
+    if (receiver_ == nullptr) {
+        // try to open a socket at base handshake port
+        int trial = 0;
+        while (trial < MAX_HANDSHAKE) {
+            try {
+                // increment the port to have unique ports
+                connections_[0].port_handshake = HANDSHAKE_PORT + trial;
+                connections_[0].port_stream_request = STREAM_REQUEST_PORT + trial;
+                connections_[0].port_osc = OSC_DIALOG_PORT + trial;
 
-            // try to create listenning socket
-            // through exception runtime if fails
-            receiver_ = new UdpListeningReceiveSocket( IpEndpointName( IpEndpointName::ANY_ADDRESS,
-                                                                       connections_[0].port_handshake ), &listener_ );
-            // validate hostname
-            connections_[0].name = APP_NAME "@" + NetworkToolkit::hostname() +
-                    "." + std::to_string(connections_[0].port_handshake-HANDSHAKE_PORT);
-            // all good
-            trial = MAX_HANDSHAKE;
+                // try to create listenning socket
+                // through exception runtime if fails
+                receiver_ = new UdpListeningReceiveSocket( IpEndpointName( IpEndpointName::ANY_ADDRESS,
+                                                                           connections_[0].port_handshake ), &listener_ );
+                // validate hostname
+                connections_[0].name = APP_NAME "@" + NetworkToolkit::hostname() +
+                        "." + std::to_string(connections_[0].port_handshake-HANDSHAKE_PORT);
+                // all good
+                trial = MAX_HANDSHAKE;
+            }
+            catch (const std::runtime_error&) {
+                // arg, the receiver could not be initialized
+                // because the port was not available
+                receiver_ = nullptr;
+            }
+            // try again
+            trial++;
         }
-        catch (const std::runtime_error&) {
-            // arg, the receiver could not be initialized
-            // because the port was not available
-            receiver_ = nullptr;
-        }
-        // try again
-        trial++;
     }
 
     // perfect, we could initialize the receiver
     if (receiver_!=nullptr) {
         // listen for answers
         std::thread(listen).detach();
+
         // regularly check for available streaming hosts
+        asking_ = true;
         std::thread(ask).detach();
 
         // inform the application settings of our id
@@ -104,10 +104,31 @@ bool Connection::init()
 
 void Connection::terminate()
 {
-    if (receiver_!=nullptr)
+    // end ask loop
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    asking_ = false;
+    if ( ask_end_.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
+        g_printerr("Failed to terminate Connection manager (asker).");
+
+    // end receiver
+    if (receiver_!=nullptr) {
+
+        // request termination of receiver
         receiver_->AsynchronousBreak();
 
-    // restore state of Streamer
+        // wait for the listenner end notification
+        std::mutex mtx;
+        std::unique_lock<std::mutex> lck(mtx);
+        if ( listen_end_.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
+            g_printerr("Failed to terminate Connection manager (listener).");
+
+        // delete receiver and ready to initialize
+        delete receiver_;
+        receiver_ = nullptr;
+    }
+
+    // end Streamers
     Streaming::manager().enable( false );
 }
 
@@ -175,6 +196,8 @@ void Connection::listen()
 #endif
     if (Connection::manager().receiver_)
         Connection::manager().receiver_->Run();
+
+    Connection::manager().listen_end_.notify_all();
 }
 
 void Connection::ask()
@@ -191,7 +214,7 @@ void Connection::ask()
     socket.SetEnableBroadcast(true);
 
     // loop infinitely
-    while(true)
+    while(Connection::manager().asking_)
     {
         // broadcast on several ports
         for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++)
@@ -208,7 +231,7 @@ void Connection::ask()
             // erase connection if its life score is negative (not responding too many times)
             if ( (*it).alive < 0 ) {
                 // inform streamer to cancel streaming to this client
-                Streaming::manager().removeStreams( (*it).name );
+//                Streaming::manager().removeStreams( (*it).name );
                 // remove from list
                 it = Connection::manager().connections_.erase(it);
 #ifdef CONNECTION_DEBUG
@@ -222,6 +245,7 @@ void Connection::ask()
         }
     }
 
+    Connection::manager().ask_end_.notify_all();
 }
 
 void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
