@@ -231,7 +231,7 @@ void Connection::ask()
             // erase connection if its life score is negative (not responding too many times)
             if ( (*it).alive < 0 ) {
                 // inform streamer to cancel streaming to this client
-                Streaming::manager().removeStreams( (*it).name );
+//                Streaming::manager().removeStreams( (*it).name );
                 // remove from list
                 it = Connection::manager().connections_.erase(it);
 #ifdef CONNECTION_DEBUG
