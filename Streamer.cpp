@@ -118,11 +118,12 @@ bool Streaming::busy()
 {
     bool b = false;
 
-    streamers_lock_.lock();
-    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-    for (; sit != streamers_.end() && !b; ++sit)
-        b = (*sit)->busy() ;
-    streamers_lock_.unlock();
+    if (streamers_lock_.try_lock()) {
+        std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+        for (; sit != streamers_.end() && !b; ++sit)
+            b = (*sit)->busy() ;
+        streamers_lock_.unlock();
+    }
 
     return b;
 }
@@ -132,11 +133,12 @@ std::vector<std::string> Streaming::listStreams()
 {
     std::vector<std::string>  ls;
 
-    streamers_lock_.lock();
-    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-    for (; sit != streamers_.end(); ++sit)
-        ls.push_back( (*sit)->info() );
-    streamers_lock_.unlock();
+    if (streamers_lock_.try_lock()) {
+        std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+        for (; sit != streamers_.end(); ++sit)
+            ls.push_back( (*sit)->info() );
+        streamers_lock_.unlock();
+    }
 
     return ls;
 }

@@ -141,7 +141,6 @@ UserInterface::UserInterface()
     currentTextEdit.clear();
     screenshot_step = 0;
     pending_save_on_exit = false;
-    close_and_exit = false;
 
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
@@ -154,7 +153,6 @@ bool UserInterface::Init()
         return false;
 
     pending_save_on_exit = false;
-    close_and_exit = false;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -685,28 +683,24 @@ bool UserInterface::TryClose()
     if (DialogToolkit::FileDialog::busy())
         return false;
 
+    // always stop all recordings
+    FrameGrabbing::manager().stopAll();
+
     // force close if trying to close again although it is already pending for save
-    if (pending_save_on_exit) {
-        close_and_exit = true;
+    if (pending_save_on_exit)
         return true;
-    }
 
-    // determine if a pending save of session is required
-    pending_save_on_exit = ( Settings::application.recentSessions.save_on_exit
-                          && !Mixer::manager().session()->empty()
-                          && Mixer::manager().session()->filename().empty() );
-
-    // if no pending save of session is needed, close
-    if (!pending_save_on_exit)
+    // save on exit
+    pending_save_on_exit = false;
+    if (Settings::application.recentSessions.save_on_exit && !Mixer::manager().session()->empty())
     {
-        // stop all recordings
-        FrameGrabbing::manager().stopAll();
-
-        // save on exit
-        if (Settings::application.recentSessions.save_on_exit)
+        // determine if a pending save of session is required
+        if (Mixer::manager().session()->filename().empty())
+            // need to wait for user to give a filename
+            pending_save_on_exit = true;
+        else
+            // ok to save the session
             Mixer::manager().save(false);
-
-        close_and_exit = true;
     }
 
     // say we can close if no pending save of session is needed
@@ -784,27 +778,11 @@ void UserInterface::NewFrame()
                 ImGui::CloseCurrentPopup();
             }
             if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-                pending_save_on_exit = false;
-                close_and_exit = true;
+                Rendering::manager().close();
                 ImGui::CloseCurrentPopup();
             }
             ImGui::Spacing();
             ImGui::EndPopup();
-        }
-    }
-
-    // Asked to close_and_exit
-    if (close_and_exit){
-        if (!ImGui::IsPopupOpen("Closing"))
-            ImGui::OpenPopup("Closing");
-        if (ImGui::BeginPopupModal("Closing", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Please wait...");
-            ImGui::EndPopup();
-        }
-
-        // exit only after everything is closed
-        if (!FrameGrabbing::manager().busy() && !Mixer::manager().busy()) {
-            Rendering::manager().close();
         }
     }
 

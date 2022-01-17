@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <condition_variable>
 
 #include "NetworkToolkit.h"
 
@@ -86,8 +87,11 @@ protected:
 private:
 
     static void ask();
+    std::atomic<bool> asking_;
+    std::condition_variable ask_end_;
     static void listen();
     RequestListener listener_;
+    std::condition_variable listen_end_;
     UdpListeningReceiveSocket *receiver_;
 
     std::vector< ConnectionInfo > connections_;

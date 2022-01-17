@@ -405,7 +405,6 @@ protected:
     int  target_view_navigator;
     unsigned int screenshot_step;
     bool pending_save_on_exit;
-    bool close_and_exit;
 
     // Dialogs
     DialogToolkit::OpenSessionDialog *sessionopendialog;

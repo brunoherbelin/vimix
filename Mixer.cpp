@@ -105,9 +105,9 @@ void Mixer::update()
                 // get the session loaded by this loader
                 merge( sessionImporters_.back().get() );
                 // FIXME: shouldn't we delete the imported session?
-                // done with this session loader
-                sessionImporters_.pop_back();
             }
+            // done with this session loader
+            sessionImporters_.pop_back();
         }
     }
 
@@ -119,9 +119,9 @@ void Mixer::update()
             if (sessionLoaders_.back().valid()) {
                 // get the session loaded by this loader
                 set( sessionLoaders_.back().get() );
-                // done with this session loader
-                sessionLoaders_.pop_back();
             }
+            // done with this session loader
+            sessionLoaders_.pop_back();
             busy_ = false;
         }
     }
@@ -135,9 +135,9 @@ void Mixer::update()
             // did we get a filename in return?
             if (sessionSavers_.back().valid()) {
                 filename = sessionSavers_.back().get();
-                // done with this session saver
-                sessionSavers_.pop_back();
             }
+            // done with this session saver
+            sessionSavers_.pop_back();
             if (filename.empty())
                 Log::Warning("Failed to save Session.");
             // all ok
