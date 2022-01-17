@@ -107,7 +107,6 @@ public:
 
     int  index  (const std::string &device);
     bool exists (const std::string &device) ;
-    bool unplugged (const std::string &device) ;
 
     Source *createSource(const std::string &device) const;
 
@@ -117,6 +116,7 @@ public:
 private:
 
     static void launchMonitoring(Device *d);
+    static bool initialized();
     void remove(GstDevice *device);
     void add(GstDevice *device);
 
@@ -124,8 +124,10 @@ private:
     std::vector< std::string > src_name_;
     std::vector< std::string > src_description_;
     std::vector< DeviceConfigSet > src_config_;
-    bool list_uptodate_;
     GstDeviceMonitor *monitor_;
+    std::condition_variable monitor_initialization_;
+    bool monitor_initialized_;
+    bool monitor_unplug_event_;
 
     std::list< DeviceSource * > device_sources_;
 };

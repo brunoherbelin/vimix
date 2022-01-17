@@ -141,7 +141,7 @@ void Device::add(GstDevice *device)
             g_free (stru);
 #endif
         }
-        list_uptodate_ = false;
+
     }
     g_free (device_name);
 
@@ -169,9 +169,7 @@ void Device::remove(GstDevice *device)
             src_name_.erase(nameit);
             src_description_.erase(descit);
             src_config_.erase(coit);
-
-            list_uptodate_ = false;
-
+            monitor_unplug_event_ = true;
 #ifdef GST_DEVICE_DEBUG
        g_print("\nDevice %s unplugged\n", device_name);
 #endif
@@ -189,23 +187,25 @@ void Device::remove(GstDevice *device)
 }
 
 
-Device::Device(): list_uptodate_(false)
+
+Device::Device(): monitor_initialized_(false), monitor_unplug_event_(false)
 {
     std::thread(launchMonitoring, this).detach();
 }
 
 void Device::launchMonitoring(Device *d)
 {
+    // gstreamer monitoring of devices
     d->monitor_ = gst_device_monitor_new ();
 
+    // watching all video stream sources
     GstCaps *caps = gst_caps_new_empty_simple ("video/x-raw");
     gst_device_monitor_add_filter (d->monitor_, "Video/Source", caps);
     gst_caps_unref (caps);
-
     gst_device_monitor_set_show_all_devices(d->monitor_, true);
     gst_device_monitor_start (d->monitor_);
 
-    // Add configs for plugged devices
+    // Add configs for already plugged devices
     GList *devices = gst_device_monitor_get_devices(d->monitor_);
     GList *tmp;
     for (tmp = devices; tmp ; tmp = tmp->next ) {
@@ -215,12 +215,7 @@ void Device::launchMonitoring(Device *d)
     }
     g_list_free(devices);
 
-    // Add config for plugged screen
-    d->access_.lock();
-    d->src_name_.push_back("Screen capture");
-    d->src_description_.push_back(gst_plugin_vidcap);
-
-    // Try to auto find resolution
+    // Try to get captrure screen
     DeviceConfigSet confs = getDeviceConfigs(gst_plugin_vidcap);
     if (!confs.empty()) {
         DeviceConfig best = *confs.rbegin();
@@ -229,29 +224,40 @@ void Device::launchMonitoring(Device *d)
         best.fps_numerator = MIN( best.fps_numerator, 30);
         best.fps_denominator = 1;
         confscreen.insert(best);
+        // add to config list
+        d->access_.lock();
+        d->src_name_.push_back("Screen capture");
+        d->src_description_.push_back(gst_plugin_vidcap);
         d->src_config_.push_back(confscreen);
+        d->access_.unlock();
     }
-    d->access_.unlock();
 
-    d->list_uptodate_ = true;
+    // monitor is initialized
+    d->monitor_initialized_ = true;
+    d->monitor_initialization_.notify_all();
 
-    // create a local g_main_context for this threaded monitor
+    // create a local g_main_context to launch monitoring in this thread
     GMainContext *_gcontext_device = g_main_context_new();
-    if (g_main_context_acquire(_gcontext_device))
-        g_printerr("Starting Device monitoring... \n");
+    g_main_context_acquire(_gcontext_device);
 
     // temporarily push as default the default g_main_context for add_watch
     g_main_context_push_thread_default(_gcontext_device);
 
+    // add a bus watch on the device monitoring using the main loop we created
     GstBus *bus = gst_device_monitor_get_bus (d->monitor_);
     gst_bus_add_watch (bus, callback_device_monitor, NULL);
     gst_object_unref (bus);
 
+    // restore g_main_context
     g_main_context_pop_thread_default(_gcontext_device);
 
     // start main loop for this context (blocking infinitely)
     g_main_loop_run( g_main_loop_new (_gcontext_device, true) );
+}
 
+bool Device::initialized()
+{
+    return Device::manager().monitor_initialized_;
 }
 
 int Device::numDevices()
@@ -303,13 +309,6 @@ Source *Device::createSource(const std::string &device) const
     }
 
     return s;
-}
-
-bool Device::unplugged(const std::string &device)
-{
-    if (list_uptodate_)
-        return false;
-    return !exists(device);
 }
 
 std::string Device::name(int index)
@@ -378,8 +377,15 @@ DeviceSource::~DeviceSource()
 
 void DeviceSource::setDevice(const std::string &devicename)
 {
+    // instanciate and wait for monitor initialization if not already initialized
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    Device::manager().monitor_initialization_.wait(lck, Device::initialized);
+
+    // remember device name
     device_ = devicename;
 
+    // check existence of a device with that name
     int index = Device::manager().index(device_);
     if (index > -1) {
 
@@ -444,7 +450,23 @@ void DeviceSource::accept(Visitor& v)
 
 bool DeviceSource::failed() const
 {
-    return stream_->failed() || Device::manager().unplugged(device_);
+    // fail if stream openned and failed
+    if (stream_ && stream_->failed())
+        return true;
+
+    // if there was a unplug event
+    if (Device::manager().monitor_unplug_event_) {
+        // check if it was this device that was unplugged
+        if (!Device::manager().exists(device_)){
+            // the unplug event is resolved
+            Device::manager().monitor_unplug_event_ = false;
+            // this device source fail
+            return true;
+        }
+    }
+
+    // no other reason to fail
+    return false;
 }
 
 DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
@@ -569,6 +591,11 @@ DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
                                 }
                             }
                         }
+                    }
+                    else {
+                        // default
+                        config.fps_numerator = 30;
+                        config.fps_denominator = 1;
                     }
 
                     // WIDTH and HEIGHT
