@@ -469,6 +469,7 @@ void DeviceSource::setDevice(const std::string &devicename)
         ready_ = false;
     }
     else {
+        unplugged_ = true;
         Log::Warning("No such device '%s'", device_.c_str());
     }
 }
