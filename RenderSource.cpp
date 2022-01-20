@@ -161,5 +161,5 @@ glm::ivec2 RenderSource::icon() const
 
 std::string RenderSource::info() const
 {
-    return std::string("Render loopback");
+    return std::string("Render ") + RenderSource::rendering_provenance_label[provenance_];
 }

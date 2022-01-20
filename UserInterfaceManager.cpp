@@ -3762,14 +3762,14 @@ void OutputPreview::Render()
                 }
 #endif
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "  Accept connections            ", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Accept connections      ", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
                 if (Settings::application.accept_connections)
                 {
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::MenuItem( "Lower bandwidth (H264)", NULL, &Settings::application.stream_low_bandwidth);
+                    ImGui::MenuItem( ICON_FA_LESS_THAN_EQUAL  "  Low bandwidth (H264)", NULL, &Settings::application.stream_low_bandwidth);
 
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
@@ -3809,7 +3809,7 @@ void OutputPreview::Render()
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections){
-                ImGui::Text( " " ICON_FA_SHARE_ALT "  %s", Connection::manager().info().name.c_str() );
+                ImGui::Text( " " ICON_FA_SHARE_ALT_SQUARE "  %s", Connection::manager().info().name.c_str() );
             }
         }
 
