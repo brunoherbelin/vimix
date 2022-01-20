@@ -196,9 +196,9 @@ void InfoVisitor::visit (CloneSource& s)
 
     std::ostringstream oss;
     if (!brief_) {
-        oss << "Clone of '" << s.origin()->name() << "' (";
+        oss << "Clone of '" << s.origin()->name() << "'" << std::endl;
         oss << CloneSource::cloning_provenance_label[s.cloningProvenance()];
-        oss << ") " << std::endl;
+        oss << ", " << (int)(s.delay()*100.0) << "ms delay " << std::endl;
     }
 
     if (s.frame()){
@@ -235,7 +235,7 @@ void InfoVisitor::visit (DeviceSource& s)
 
     std::ostringstream oss;
 
-    DeviceConfigSet confs = Device::manager().config( Device::manager().index(s.device().c_str()));
+    DeviceConfigSet confs = Device::manager().config( Device::manager().index(s.device()));
     if ( !confs.empty()) {
         DeviceConfig best = *confs.rbegin();
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
@@ -247,6 +247,7 @@ void InfoVisitor::visit (DeviceSource& s)
         }
         else {
             oss << s.device() << std::endl;
+            oss << Device::manager().description( Device::manager().index(s.device())) << std::endl;
             oss << best.width << " x " << best.height << ", ";
             oss << best.stream << " " << best.format << ", ";
             oss << std::fixed << std::setprecision(1) << fps << " fps";
@@ -271,9 +272,10 @@ void InfoVisitor::visit (NetworkSource& s)
         oss << "IP " << ns->serverAddress();
     }
     else {
-        oss << s.connection() << " (IP " << ns->serverAddress() << ")" << std::endl;
-        oss << ns->resolution().x << " x " << ns->resolution().y << ", ";
+        oss << s.connection() << std::endl;
         oss << NetworkToolkit::protocol_name[ns->protocol()];
+        oss << ", IP " << ns->serverAddress() << std::endl;
+        oss << ns->resolution().x << " x " << ns->resolution().y << " ";
     }
 
     information_ = oss.str();

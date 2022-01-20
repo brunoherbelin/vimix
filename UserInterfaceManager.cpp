@@ -3771,13 +3771,6 @@ void OutputPreview::Render()
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     ImGui::MenuItem( "Lower bandwidth (H264)", NULL, &Settings::application.stream_low_bandwidth);
 
-                    static char dummy_str[512];
-                    sprintf(dummy_str, "%s", Connection::manager().info().name.c_str());
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                    ImGui::InputText("My ID", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(1);
-
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
                         ImGui::Separator();
@@ -3799,18 +3792,27 @@ void OutputPreview::Render()
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
-        // tooltip overlay
+        // raise window on double clic
+        if (ImGui::IsMouseDoubleClicked(0) )
+            Rendering::manager().outputWindow().show();
+
+        ///
+        /// Info overlays
+        ///
+        ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - ImGui::GetTextLineHeightWithSpacing(), 6));
+        ImGui::Text(ICON_FA_INFO_CIRCLE);
         if (ImGui::IsItemHovered())
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
+            const float h = (Settings::application.accept_connections ? 2.f : 1.f) * ImGui::GetTextLineHeightWithSpacing();
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + h), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
-
-            // raise window on double clic
-            if (ImGui::IsMouseDoubleClicked(0) )
-                Rendering::manager().outputWindow().show();
+            if (Settings::application.accept_connections){
+                ImGui::Text( " " ICON_FA_SHARE_ALT "  %s", Connection::manager().info().name.c_str() );
+            }
         }
+
         const float r = ImGui::GetTextLineHeightWithSpacing();
         // recording indicator overlay
         if (video_recorder_)
