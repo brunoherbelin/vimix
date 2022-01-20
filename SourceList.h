@@ -33,6 +33,7 @@ class SourceLink {
 
 public:
     SourceLink(): host_(nullptr), target_(nullptr), id_(0) { }
+    SourceLink(Source *s);
     ~SourceLink();
 
     void connect(uint64_t id, Session *se);

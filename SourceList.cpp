@@ -153,6 +153,10 @@ SourceList join (const SourceList &first, const SourceList &second)
 
 
 
+SourceLink::SourceLink(Source *s): host_(nullptr), target_(nullptr), id_(0)
+{
+    connect(s);
+}
 
 void SourceLink::connect(uint64_t id, Session *se)
 {

@@ -1,6 +1,7 @@
 #ifndef DEVICESOURCE_H
 #define DEVICESOURCE_H
 
+#include <string>
 #include <vector>
 #include <set>
 
@@ -16,6 +17,7 @@ public:
     // Source interface
     bool failed() const override;
     void accept (Visitor& v) override;
+    void setActive (bool on) override;
 
     // StreamSource interface
     Stream *stream() const override { return stream_; }
@@ -23,13 +25,14 @@ public:
     // specific interface
     void setDevice(const std::string &devicename);
     inline std::string device() const { return device_; }
+    void unplug() { unplugged_ = true; }
 
     glm::ivec2 icon() const override;
     std::string info() const override;
 
 private:
     std::string device_;
-
+    std::atomic<bool> unplugged_;
 };
 
 struct DeviceConfig {
@@ -82,6 +85,19 @@ struct better_device_comparator
 
 typedef std::set<DeviceConfig, better_device_comparator> DeviceConfigSet;
 
+struct DeviceHandle {
+
+    std::string name;
+    std::string pipeline;
+    DeviceConfigSet configs;
+
+    Stream *stream;
+    std::list<DeviceSource *> connected_sources;
+
+    DeviceHandle() {
+        stream = nullptr;
+    }
+};
 
 class Device
 {
@@ -108,8 +124,6 @@ public:
     int  index  (const std::string &device);
     bool exists (const std::string &device) ;
 
-    Source *createSource(const std::string &device) const;
-
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
     static DeviceConfigSet getDeviceConfigs(const std::string &src_description);
 
@@ -121,15 +135,13 @@ private:
     void add(GstDevice *device);
 
     std::mutex access_;
-    std::vector< std::string > src_name_;
-    std::vector< std::string > src_description_;
-    std::vector< DeviceConfigSet > src_config_;
+    std::vector< DeviceHandle > handles_;
+
     GstDeviceMonitor *monitor_;
     std::condition_variable monitor_initialization_;
     bool monitor_initialized_;
     bool monitor_unplug_event_;
 
-    std::list< DeviceSource * > device_sources_;
 };
 
 

@@ -374,7 +374,7 @@ float Stream::aspectRatio() const
 
 void Stream::enable(bool on)
 {
-    if ( !opened_ || pipeline_ == nullptr)
+    if ( !opened_ || pipeline_ == nullptr || !textureinitialized_)
         return;
 
     if ( enabled_ != on ) {

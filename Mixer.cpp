@@ -346,7 +346,8 @@ Source * Mixer::createSourcePattern(uint pattern, glm::ivec2 res)
 Source * Mixer::createSourceDevice(const std::string &namedevice)
 {
     // ready to create a source
-    Source *s = Device::manager().createSource(namedevice);
+    DeviceSource *s = new DeviceSource;
+    s->setDevice(namedevice);
 
     // propose a new name based on pattern name
     s->setName( namedevice.substr(0, namedevice.find(" ")) );
