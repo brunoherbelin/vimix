@@ -379,11 +379,6 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
     if (buffer == nullptr)
         return;
 
-    // first time initialization
-    if (pipeline_ == nullptr) {
-        initializer_ = std::async( FrameGrabber::initialize, this, caps);
-    }
-
     // initializer ongoing in separate thread
     if (initializer_.valid()) {
         // try to get info from initializer
@@ -411,6 +406,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 Log::Warning("%s", msg.c_str());
             }
         }
+    }
+    // first time initialization
+    else if (pipeline_ == nullptr) {
+        initializer_ = std::async( FrameGrabber::initialize, this, caps);
     }
 
     // stop if an incompatilble frame buffer given after initialization
