@@ -19,7 +19,7 @@ public:
     void update() override;
 
     glm::ivec2 resolution() const;
-    inline NetworkToolkit::Protocol protocol() const { return config_.protocol; }
+    inline NetworkToolkit::StreamProtocol protocol() const { return config_.protocol; }
     std::string clientAddress() const;
     std::string serverAddress() const;
 

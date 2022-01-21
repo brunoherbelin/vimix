@@ -268,12 +268,12 @@ void InfoVisitor::visit (NetworkSource& s)
     std::ostringstream oss;
     if (brief_) {
         oss << ns->resolution().x << " x " << ns->resolution().y << ", ";
-        oss << NetworkToolkit::protocol_name[ns->protocol()] << std::endl;
+        oss << NetworkToolkit::stream_protocol_label[ns->protocol()] << std::endl;
         oss << "IP " << ns->serverAddress();
     }
     else {
         oss << s.connection() << std::endl;
-        oss << NetworkToolkit::protocol_name[ns->protocol()];
+        oss << NetworkToolkit::stream_protocol_label[ns->protocol()];
         oss << ", IP " << ns->serverAddress() << std::endl;
         oss << ns->resolution().x << " x " << ns->resolution().y << " ";
     }

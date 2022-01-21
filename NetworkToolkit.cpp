@@ -87,40 +87,43 @@
  *
  * */
 
-const char* NetworkToolkit::protocol_name[NetworkToolkit::DEFAULT] = {
+const char* NetworkToolkit::stream_protocol_label[NetworkToolkit::DEFAULT] = {
     "RAW Images",
     "JPEG Stream",
     "H264 Stream",
-    "JPEG Broadcast",
-    "H264 Broadcast",
     "RGB Shared Memory"
 };
 
-const std::vector<std::string> NetworkToolkit::protocol_send_pipeline {
-
-    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=3 ! rtpvrawpay ! application/x-rtp,sampling=RGB ! udpsink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc quality=85 ! rtpjpegpay ! udpsink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! rtph264pay aggregate-mode=1 ! udpsink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
-    "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
-    "video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink"
+const std::vector<std::string> NetworkToolkit::stream_send_pipeline {
+    "video/x-raw, format=RGB,  framerate=30/1 ! queue max-size-buffers=10 ! rtpvrawpay ! application/x-rtp,sampling=RGB ! udpsink name=sink",
+    "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc ! rtpjpegpay ! udpsink name=sink",
+    "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=zerolatency pass=4 quantizer=22 speed-preset=2 ! rtph264pay aggregate-mode=1 ! udpsink name=sink",
+    "video/x-raw, format=RGB,  framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=100000 wait-for-connection=true name=sink"
 };
 
-const std::vector<std::string> NetworkToolkit::protocol_receive_pipeline {
-
-    "udpsrc buffer-size=200000 port=XXXX caps=\"application/x-rtp,media=(string)video,encoding-name=(string)RAW,sampling=(string)RGB,width=(string)WWWW,height=(string)HHHH\" ! rtpvrawdepay ! queue max-size-buffers=10",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=JPEG ! rtpjpegdepay ! queue max-size-buffers=10 ! jpegdec",
-    "udpsrc buffer-size=200000 port=XXXX ! application/x-rtp,encoding-name=H264 ! rtph264depay ! queue max-size-buffers=10 ! avdec_h264",
-    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=JPEG ! rtpstreamdepay ! rtpjpegdepay ! jpegdec",
-    "tcpclientsrc timeout=1 port=XXXX ! queue max-size-buffers=30 ! application/x-rtp-stream,media=video,encoding-name=H264 ! rtpstreamdepay ! rtph264depay ! avdec_h264",
+const std::vector<std::string> NetworkToolkit::stream_receive_pipeline {
+    "udpsrc port=XXXX caps=\"application/x-rtp,media=(string)video,encoding-name=(string)RAW,sampling=(string)RGB,width=(string)WWWW,height=(string)HHHH\" ! rtpvrawdepay ! queue max-size-buffers=10",
+    "udpsrc port=XXXX caps=\"application/x-rtp,media=(string)video,encoding-name=(string)JPEG\" ! rtpjpegdepay ! queue max-size-buffers=10 ! jpegdec",
+    "udpsrc port=XXXX caps=\"application/x-rtp,media=(string)video,encoding-name=(string)H264\" ! rtph264depay ! queue max-size-buffers=10 ! avdec_h264",
     "shmsrc socket-path=XXXX ! video/x-raw, format=RGB, framerate=30/1 ! queue max-size-buffers=10",
 };
 
-const std::vector< std::pair<std::string, std::string> > NetworkToolkit::protocol_h264_send_pipeline {
+const std::vector< std::pair<std::string, std::string> > NetworkToolkit::stream_h264_send_pipeline {
 //    {"vtenc_h264_hw", "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
     {"nvh264enc",     "video/x-raw, format=RGBA, framerate=30/1 ! queue max-size-buffers=10 ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
     {"vaapih264enc",  "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
 };
+
+
+const char* NetworkToolkit::broadcast_protocol_label[NetworkToolkit::BROADCAST_DEFAULT] = {
+    "SRT"
+};
+
+const std::vector<std::string> NetworkToolkit::broadcast_pipeline {
+    "videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! srtsink uri=srt://:XXXX/",
+};
+//"video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
+//"video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",
 
 bool initialized_ = false;
 std::vector<std::string> ipstrings_;

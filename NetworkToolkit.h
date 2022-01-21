@@ -26,16 +26,18 @@ typedef enum {
     UDP_RAW = 0,
     UDP_JPEG,
     UDP_H264,
-    TCP_JPEG,
-    TCP_H264,
     SHM_RAW,
     DEFAULT
-} Protocol;
+} StreamProtocol;
 
+extern const char* stream_protocol_label[DEFAULT];
+extern const std::vector<std::string> stream_send_pipeline;
+extern const std::vector< std::pair<std::string, std::string> > stream_h264_send_pipeline;
+extern const std::vector<std::string> stream_receive_pipeline;
 
 struct StreamConfig {
 
-    Protocol protocol;
+    StreamProtocol protocol;
     std::string client_name;
     std::string client_address;
     int port;
@@ -51,8 +53,7 @@ struct StreamConfig {
         height = 0;
     }
 
-    inline StreamConfig& operator = (const StreamConfig& o)
-    {
+    inline StreamConfig& operator = (const StreamConfig& o) {
         if (this != &o) {
             this->client_name = o.client_name;
             this->client_address = o.client_address;
@@ -65,10 +66,13 @@ struct StreamConfig {
     }
 };
 
-extern const char* protocol_name[DEFAULT];
-extern const std::vector<std::string> protocol_send_pipeline;
-extern const std::vector< std::pair<std::string, std::string> > protocol_h264_send_pipeline;
-extern const std::vector<std::string> protocol_receive_pipeline;
+typedef enum {
+    BROADCAST_SRT = 0,
+    BROADCAST_DEFAULT
+} BroadcastProtocol;
+
+extern const char* broadcast_protocol_label[BROADCAST_DEFAULT];
+extern const std::vector<std::string> broadcast_pipeline;
 
 std::string hostname();
 std::vector<std::string> host_ips();

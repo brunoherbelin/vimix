@@ -60,7 +60,7 @@ void NetworkStream::ResponseListener::ProcessMessage( const osc::ReceivedMessage
             // someone is offering a stream
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             conf.port     = (arg++)->AsInt32();
-            conf.protocol = (NetworkToolkit::Protocol) (arg++)->AsInt32();
+            conf.protocol = (NetworkToolkit::StreamProtocol) (arg++)->AsInt32();
             conf.width    = (arg++)->AsInt32();
             conf.height   = (arg++)->AsInt32();
 
@@ -261,7 +261,7 @@ void NetworkStream::update()
             // general case : create pipeline and open
             if (!failed_) {
                 // build the pipeline depending on stream info
-                std::string pipelinestring = NetworkToolkit::protocol_receive_pipeline[config_.protocol];
+                std::string pipelinestring = NetworkToolkit::stream_receive_pipeline[config_.protocol];
 
                 // find placeholder for PORT or SHH socket
                 size_t xxxx = pipelinestring.find("XXXX");

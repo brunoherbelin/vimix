@@ -25,10 +25,6 @@
 // Desktop OpenGL function loader
 #include <glad/glad.h>
 
-// standalone image loader
-#include <stb_image.h>
-#include <stb_image_write.h>
-
 // gstreamer
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
@@ -345,19 +341,18 @@ std::string VideoStreamer::init(GstCaps *caps)
     // special case H264: can be Hardware accelerated
     bool found_harware_acceleration = false;
     if (config_.protocol == NetworkToolkit::UDP_H264 && Settings::application.render.gpu_decoding) {
-        for (auto config = NetworkToolkit::protocol_h264_send_pipeline.cbegin();
-             config != NetworkToolkit::protocol_h264_send_pipeline.cend(); ++config) {
+        for (auto config = NetworkToolkit::stream_h264_send_pipeline.cbegin();
+             config != NetworkToolkit::stream_h264_send_pipeline.cend() && !found_harware_acceleration; ++config) {
             if ( GstToolkit::has_feature(config->first) ) {
                 description += config->second;
                 found_harware_acceleration = true;
                 Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
-                break;
             }
         }
     }
     // general case: use defined protocols
     if (!found_harware_acceleration)
-        description += NetworkToolkit::protocol_send_pipeline[config_.protocol];
+        description += NetworkToolkit::stream_send_pipeline[config_.protocol];
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -471,7 +466,7 @@ std::string VideoStreamer::info() const
     if (!initialized_)
         ret << "Connecting";
     else if (active_) {
-        ret << NetworkToolkit::protocol_name[config_.protocol];
+        ret << NetworkToolkit::stream_protocol_label[config_.protocol];
         ret << " to ";
         ret << config_.client_name;
     }
