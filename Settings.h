@@ -223,6 +223,8 @@ struct Application
 
     // connection settings
     bool accept_connections;
+    int stream_protocol;
+    int broadcast_port;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -240,7 +242,6 @@ struct Application
 
     // settings exporters
     RecordConfig record;
-    bool stream_low_bandwidth;
 
     // settings new source
     SourceConfig source;
@@ -274,11 +275,12 @@ struct Application
         action_history_follow_view = false;
         show_tooptips = true;
         accept_connections = false;
+        stream_protocol = 0;
+        broadcast_port = 8888;
         pannel_current_session_mode = 0;
         current_view = 1;
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
-        stream_low_bandwidth = false;
         windows = std::vector<WindowConfig>(3);
         windows[0].name = APP_TITLE;
         windows[0].w = 1600;

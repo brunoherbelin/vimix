@@ -235,7 +235,7 @@ void NetworkStream::update()
         if (connected_) {
 
 #ifdef NETWORK_DEBUG
-            Log::Info("Creating Network Stream %d (%d x %d)", config_.port, config_.width, config_.height);
+            Log::Info("Creating Shared Stream %d (%d x %d)", config_.port, config_.width, config_.height);
 #endif
             // prepare pipeline parameter with port given in config_
             std::string parameter = std::to_string(config_.port);
@@ -352,6 +352,6 @@ glm::ivec2 NetworkSource::icon() const
 
 std::string NetworkSource::info() const
 {
-    return std::string("connected to '") + connection_name_ + "'";
+    return std::string("shared by '") + connection_name_ + "'";
 }
 

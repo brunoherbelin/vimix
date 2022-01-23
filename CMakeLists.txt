@@ -341,6 +341,7 @@ set(VMIX_SRCS
     Overlay.cpp
     Metronome.cpp
     ControlManager.cpp
+    VideoBroadcast.cpp
 )
 
 

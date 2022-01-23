@@ -847,7 +847,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
 {
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Network stream");
+    ImGui::Text("Shared stream");
 
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
     ImGui::Text("%s", s.connection().c_str());

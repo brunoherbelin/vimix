@@ -271,7 +271,7 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     if ( NetworkToolkit::is_host_ip(conf.client_address) )
         conf.protocol = NetworkToolkit::UDP_RAW;
     // for non-localhost, if low bandwidth is requested, use H264 codec
-    else if (Settings::application.stream_low_bandwidth)
+    else if (Settings::application.stream_protocol > 0)
         conf.protocol = NetworkToolkit::UDP_H264;
 
 // TODO : ideal would be Shared Memory, but does not work with linux snap package...
@@ -456,7 +456,7 @@ void VideoStreamer::stop ()
     Streaming::manager().removeStream(this);
 
     // force finished
-    finished_ = true;
+    endofstream_ = true;
     active_ = false;
 }
 

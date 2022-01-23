@@ -62,6 +62,8 @@
 
 #define TOOLTIP_NOTE          "New note "
 #define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
+#define TOOLTIP_METRICS       "Metrics "
+#define SHORTCUT_METRICS      CTRL_MOD "M"
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
 #define TOOLTIP_OUTPUT        "Output "
@@ -89,6 +91,7 @@ class MediaPlayer;
 class FrameBufferImage;
 class FrameGrabber;
 class VideoRecorder;
+class VideoBroadcast;
 
 class SourcePreview {
 
@@ -301,6 +304,8 @@ class OutputPreview : public WorkspaceWindow
 {
     // frame grabbers
     VideoRecorder *video_recorder_;
+    VideoBroadcast *video_broadcaster_;
+
     // delayed trigger for recording
     std::vector< std::future<VideoRecorder *> > _video_recorders;
 
@@ -316,6 +321,9 @@ public:
 
     void ToggleRecord(bool save_and_continue = false);
     inline bool isRecording() const { return video_recorder_ != nullptr; }
+
+    void ToggleBroadcast();
+    inline bool isBroadcasting() const { return video_broadcaster_ != nullptr; }
 
     void Render();
     void setVisible(bool on);

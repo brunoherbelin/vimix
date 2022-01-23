@@ -8,21 +8,22 @@
 
 class VideoBroadcast : public FrameGrabber
 {
-    friend class Streaming;
-
-    std::string init(GstCaps *caps) override;
-    void terminate() override;
-    void stop() override;
-
-    // connection information
-    int port_;
-    std::atomic<bool> stopped_;
-
 public:
 
-    VideoBroadcast();
+    VideoBroadcast(NetworkToolkit::BroadcastProtocol p = NetworkToolkit::BROADCAST_DEFAULT, int port = 8888);
     virtual ~VideoBroadcast() {}
+
+    void stop() override;
     std::string info() const override;
+
+private:
+    std::string init(GstCaps *caps) override;
+    void terminate() override;
+
+    // connection information
+    NetworkToolkit::BroadcastProtocol protocol_;
+    int port_;
+    std::atomic<bool> stopped_;
 };
 
 #endif // VIDEOBROADCAST_H

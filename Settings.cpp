@@ -110,7 +110,8 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
-    applicationNode->SetAttribute("stream_low_bandwidth", application.stream_low_bandwidth);
+    applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
+    applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -354,7 +355,8 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
-        applicationNode->QueryBoolAttribute("stream_low_bandwidth", &application.stream_low_bandwidth);
+        applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
+        applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
     }
 
     // Widgets

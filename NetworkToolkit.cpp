@@ -120,7 +120,7 @@ const char* NetworkToolkit::broadcast_protocol_label[NetworkToolkit::BROADCAST_D
 };
 
 const std::vector<std::string> NetworkToolkit::broadcast_pipeline {
-    "videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! srtsink uri=srt://:XXXX/",
+    "x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! srtsink uri=srt://:XXXX/ name=sink",
 };
 //"video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! jpegenc idct-method=float ! rtpjpegpay ! rtpstreampay ! tcpserversink name=sink",
 //"video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=3 ! x264enc tune=\"zerolatency\" threads=2 ! rtph264pay ! rtpstreampay ! tcpserversink name=sink",

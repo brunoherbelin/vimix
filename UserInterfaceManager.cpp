@@ -88,6 +88,7 @@ using namespace std;
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Metronome.h"
+#include "VideoBroadcast.h"
 
 #include "TextEditor.h"
 TextEditor editor;
@@ -342,6 +343,9 @@ void UserInterface::handleKeyboard()
                 Rendering::manager().mainWindow().toggleFullscreen();
             else
                 Rendering::manager().outputWindow().toggleFullscreen();
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
+            Settings::application.widget.stats = !Settings::application.widget.stats;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
@@ -3504,7 +3508,8 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
 /// OUTPUT PREVIEW
 ///
 
-OutputPreview::OutputPreview() : WorkspaceWindow("OutputPreview"), video_recorder_(nullptr)
+OutputPreview::OutputPreview() : WorkspaceWindow("OutputPreview"),
+    video_recorder_(nullptr), video_broadcaster_(nullptr)
 {
 #if defined(LINUX)
     webcam_emulator_ = nullptr;
@@ -3557,6 +3562,9 @@ void OutputPreview::Update()
         video_recorder_->stop();
     }
 
+    // verify the video broadcaster is valid (change to nullptr if invalid)
+    FrameGrabbing::manager().verify( (FrameGrabber**) &video_broadcaster_);
+
 #if defined(LINUX)
     // verify the frame grabber for webcam emulator is valid
     FrameGrabbing::manager().verify(&webcam_emulator_);
@@ -3588,6 +3596,17 @@ void OutputPreview::ToggleRecord(bool save_and_continue)
     else {
         _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
                                                   std::chrono::seconds(Settings::application.record.delay)) );
+    }
+}
+
+void OutputPreview::ToggleBroadcast()
+{
+    if (video_broadcaster_) {
+        video_broadcaster_->stop();
+    }
+    else {
+        video_broadcaster_ = new VideoBroadcast;
+        FrameGrabbing::manager().add(video_broadcaster_);
     }
 }
 
@@ -3741,7 +3760,7 @@ void OutputPreview::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Share"))
+            if (ImGui::BeginMenu("Stream"))
             {
 
 #if defined(LINUX_NOT_YET_WORKING)
@@ -3761,20 +3780,34 @@ void OutputPreview::Render()
                     }
                 }
 #endif
+                // Broadcasting menu
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
+                // Stop broadcast menu (broadcaster already exists)
+                if (video_broadcaster_) {
+                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast") )
+                        video_broadcaster_->stop();
+                }
+                // start broadcast (broadcaster does not exists)
+                else {
+                    if ( ImGui::MenuItem( ICON_FA_GLOBE "  Broadcast") ) {
+                        video_broadcaster_ = new VideoBroadcast;
+                        FrameGrabbing::manager().add(video_broadcaster_);
+                    }
+                }
+                ImGui::PopStyleColor(1);
+
+                // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Accept connections      ", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Share on local network", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
                 if (Settings::application.accept_connections)
                 {
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::MenuItem( ICON_FA_LESS_THAN_EQUAL  "  Low bandwidth (H264)", NULL, &Settings::application.stream_low_bandwidth);
-
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
                         ImGui::Separator();
-                        ImGui::MenuItem("Active streams", nullptr, false, false);
+                        ImGui::MenuItem("Connected vimix", nullptr, false, false);
                         for (auto it = ls.begin(); it != ls.end(); ++it)
                             ImGui::Text(" %s", (*it).c_str() );
                     }
@@ -3797,24 +3830,15 @@ void OutputPreview::Render()
             Rendering::manager().outputWindow().show();
 
         ///
-        /// Info overlays
+        /// Icons overlays
         ///
-        ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - ImGui::GetTextLineHeightWithSpacing(), 6));
-        ImGui::Text(ICON_FA_INFO_CIRCLE);
-        if (ImGui::IsItemHovered())
-        {
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            const float h = (Settings::application.accept_connections ? 2.f : 1.f) * ImGui::GetTextLineHeightWithSpacing();
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + width, draw_pos.y + h), IMGUI_COLOR_OVERLAY);
-            ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
-            if (Settings::application.accept_connections){
-                ImGui::Text( " " ICON_FA_SHARE_ALT_SQUARE "  %s", Connection::manager().info().name.c_str() );
-            }
-        }
-
         const float r = ImGui::GetTextLineHeightWithSpacing();
-        // recording indicator overlay
+
+        // info indicator
+        ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
+        ImGui::Text(ICON_FA_INFO_CIRCLE);
+        bool drawoverlay = ImGui::IsItemHovered();
+        // recording indicator
         if (video_recorder_)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
@@ -3835,38 +3859,47 @@ void OutputPreview::Render()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
-        // streaming indicator overlay
+        // broadcast indicator
+        if (video_broadcaster_)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if (video_broadcaster_->busy())
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
+            else
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
+            ImGui::Text(ICON_FA_GLOBE);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
+        // streaming indicator
         if (Settings::application.accept_connections)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + r));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.4f * r, draw_pos.y + imagesize.y - 2.f*r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( Streaming::manager().busy())
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.8f));
             else
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.2f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.4f));
             ImGui::Text(ICON_FA_SHARE_ALT_SQUARE);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
-
-        // OUTPUT DISABLED indicator overlay
+        // OUTPUT DISABLED indicator
         if (Settings::application.render.disabled)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + (width / ar) - 2.f*r));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
-
-
 #if defined(LINUX)
-        // streaming indicator overlay
+        // streaming indicator
         if (webcam_emulator_)
         {
-            float r = ImGui::GetTextLineHeightWithSpacing();
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + width - 2.f * r, draw_pos.y + imagesize.y - 2.f * r));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + 2.f * r));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 0.8f));
             ImGui::Text(ICON_FA_CAMERA);
@@ -3874,6 +3907,26 @@ void OutputPreview::Render()
             ImGui::PopFont();
         }
 #endif
+
+        ///
+        /// Info overlay over image
+        ///
+        if (drawoverlay)
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            float h = 1.f;
+            h += (Settings::application.accept_connections ? 1.f : 0.f);
+            h += (video_broadcaster_ ? 1.f : 0.f);
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + imagesize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(draw_pos);
+            ImGui::Text(" " ICON_FA_TV "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
+            if (Settings::application.accept_connections)
+                ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   %s (%d peer)",
+                             Connection::manager().info().name.c_str(),
+                             Streaming::manager().listStreams().size() );
+            if (video_broadcaster_)
+                ImGui::Text( "  " ICON_FA_GLOBE "   %s", video_broadcaster_->info().c_str() );
+        }
 
         ImGui::End();
     }
@@ -5734,6 +5787,12 @@ void Navigator::RenderMainPannelVimix()
         tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
+    if ( ImGuiToolkit::IconButton( ICON_FA_TACHOMETER_ALT ) )
+        Settings::application.widget.stats = !Settings::application.widget.stats;
+    if (ImGui::IsItemHovered())
+        tooltip_ = { TOOLTIP_METRICS, SHORTCUT_METRICS};
+
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
         UserInterface::manager().sourcecontrol.setVisible(!Settings::application.widget.media_player);
     if (ImGui::IsItemHovered())
@@ -5770,23 +5829,21 @@ void Navigator::RenderMainPannelSettings()
         //
         // Appearance
         //
-        ImGui::Text("Appearance");
+        ImGui::Text("Interface");
+        int v = Settings::application.accent_color;
+        if (ImGui::RadioButton("##Color", &v, v)){
+            Settings::application.accent_color = (v+1)%3;
+            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+        }
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Change accent color");
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01f, 0.5f, 2.0f, "%.1f"))
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-        bool b = ImGui::RadioButton("Blue", &Settings::application.accent_color, 0); ImGui::SameLine();
-        bool o = ImGui::RadioButton("Orange", &Settings::application.accent_color, 1); ImGui::SameLine();
-        bool g = ImGui::RadioButton("Grey", &Settings::application.accent_color, 2);
-        if (b || o || g)
-            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-        //
-        // Options
-        //
-        ImGuiToolkit::Spacing();
-        ImGui::Text("Options");
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
-        ImGuiToolkit::ButtonSwitch( ICON_FA_TACHOMETER_ALT " Metrics", &Settings::application.widget.stats);
 
         //
         // Recording preferences
@@ -5827,13 +5884,40 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
 
         //
+        // Networking preferences
+        //
+        ImGui::Text("Stream");
+
+        char msg[256];
+        sprintf(msg, "Port for broadcasting on Secure Reliable Transport (SRT) protocol\n"
+                     "You can e.g. connect to:\n srt://%s:%d",
+                     NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port);
+        ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
+        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        char bufport[7] = "";
+        sprintf(bufport, "%d", Settings::application.broadcast_port);
+        ImGui::InputTextWithHint("Broadcast", "8888", bufport, 7, ImGuiInputTextFlags_CharsDecimal);
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
+                Control::manager().init();
+        }
+
+        ImGuiToolkit::Indication("Sharing H264 stream requires less bandwidth but more resources for encoding.", ICON_FA_SHARE_ALT_SQUARE);
+        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Share", &Settings::application.stream_protocol, "JPEG\0H264\0");
+
+        //
         // OSC preferences
         //
         ImGuiToolkit::Spacing();
         ImGui::Text("OSC");
 
-        char msg[256];
-        sprintf(msg, "You can send OSC messages via UDP to the IP address %s", NetworkToolkit::host_ips()[1].c_str());
+        sprintf(msg, "You can send OSC messages via UDP to the local IP address %s on Port %d",
+                NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive);
         ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
         ImGui::SameLine(0);
 
@@ -5841,7 +5925,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufreceive[7] = "";
         sprintf(bufreceive, "%d", Settings::application.control.osc_port_receive);
-        ImGui::InputTextWithHint("Port in", "UDP Port to receive", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
+        ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive))
                 Control::manager().init();
@@ -5851,7 +5935,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufsend[7] = "";
         sprintf(bufsend, "%d", Settings::application.control.osc_port_send);
-        ImGui::InputTextWithHint("Port out", "UDP Port to send", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
+        ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send))
                 Control::manager().init();
@@ -5883,7 +5967,9 @@ void Navigator::RenderMainPannelSettings()
         bool change = false;
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
+#ifndef NDEBUG
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+#endif
         // hardware support deserves more explanation
         ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);

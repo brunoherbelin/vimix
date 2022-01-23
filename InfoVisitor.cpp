@@ -274,7 +274,7 @@ void InfoVisitor::visit (NetworkSource& s)
     else {
         oss << s.connection() << std::endl;
         oss << NetworkToolkit::stream_protocol_label[ns->protocol()];
-        oss << ", IP " << ns->serverAddress() << std::endl;
+        oss << " shared from IP " << ns->serverAddress() << std::endl;
         oss << ns->resolution().x << " x " << ns->resolution().y << " ";
     }
 
