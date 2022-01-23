@@ -22,13 +22,13 @@ std::string VideoBroadcast::srt_sink_;
 std::string VideoBroadcast::h264_encoder_;
 
 std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
-    {"srtsink", "srtsink uri=srt://:XXXX/ name=sink"},
-    {"srtserversink", "srtserversink uri=srt://:XXXX/ name=sink"}
+    {"srtsink", "srtsink uri=srt://:XXXX name=sink"},
+    {"srtserversink", "srtserversink uri=srt://:XXXX name=sink"}
 };
 
 std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
-    {"nvh264enc", "nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=high ! mpegtsmux ! "},
-    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=high ! mpegtsmux ! "},
+    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! video/x-h264, profile=(string)high ! h264parse config-interval=1 ! mpegtsmux ! queue ! "},
+    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=high ! h264parse config-interval=1 ! mpegtsmux ! queue ! "},
     {"x264enc", "x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! "}
 };
 
@@ -51,7 +51,7 @@ bool VideoBroadcast::available()
             if ( GstToolkit::has_feature(config->first) ) {
                 h264_encoder_ = config->second;
                 if (config->first != pipeline_encoder_.back().first)
-                    Log::Info("VideoBroadcast using hardware accelerated encoder (%s)", config->first.c_str());
+                    Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
             }
         }
 
@@ -66,7 +66,6 @@ bool VideoBroadcast::available()
 VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port), stopped_(false)
 {
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, BROADCAST_FPS);  // fixed 30 FPS
-
 }
 
 std::string VideoBroadcast::init(GstCaps *caps)
@@ -79,7 +78,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
         return std::string("Video Broadcast : Not available (missing SRT or H264)");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! queue ! ";
+    std::string description = "appsrc name=src ! videoconvert ! ";
 
     // complement pipeline with encoder and sink
     description += VideoBroadcast::h264_encoder_;
@@ -105,6 +104,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
     // setup SRT streaming sink properties
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                   "latency", 500,
+                  "wait-for-connection", false,
                   NULL);
 
     // setup custom app source
