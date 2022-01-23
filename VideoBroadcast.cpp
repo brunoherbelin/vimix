@@ -18,8 +18,52 @@
 #define BROADCAST_DEBUG
 #endif
 
+std::string VideoBroadcast::srt_sink_;
+std::string VideoBroadcast::h264_encoder_;
 
-VideoBroadcast::VideoBroadcast(NetworkToolkit::BroadcastProtocol proto, int port): FrameGrabber(), protocol_(proto), port_(port), stopped_(false)
+std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
+    {"srtsink", "srtsink uri=srt://:XXXX/ name=sink"},
+    {"srtserversink", "srtserversink uri=srt://:XXXX/ name=sink"}
+};
+
+std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
+    {"nvh264enc", "nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=high ! mpegtsmux ! "},
+    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=high ! mpegtsmux ! "},
+    {"x264enc", "x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! "}
+};
+
+bool VideoBroadcast::available()
+{
+    // test for installation on first run
+    static bool _tested = false;
+    if (!_tested) {
+        srt_sink_.clear();
+        for (auto config = pipeline_sink_.cbegin();
+             config != pipeline_sink_.cend() && srt_sink_.empty(); ++config) {
+            if ( GstToolkit::has_feature(config->first) ) {
+                srt_sink_ = config->second;
+            }
+        }
+
+        h264_encoder_.clear();
+        for (auto config = pipeline_encoder_.cbegin();
+             config != pipeline_encoder_.cend() && h264_encoder_.empty(); ++config) {
+            if ( GstToolkit::has_feature(config->first) ) {
+                h264_encoder_ = config->second;
+                if (config->first != pipeline_encoder_.back().first)
+                    Log::Info("VideoBroadcast using hardware accelerated encoder (%s)", config->first.c_str());
+            }
+        }
+
+        // perform test only once
+        _tested = true;
+    }
+
+    // video broadcast is installed if both srt and h264 are available
+    return (!srt_sink_.empty() && !h264_encoder_.empty());
+}
+
+VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port), stopped_(false)
 {
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, BROADCAST_FPS);  // fixed 30 FPS
 
@@ -29,25 +73,24 @@ std::string VideoBroadcast::init(GstCaps *caps)
 {
     // ignore
     if (caps == nullptr)
-        return std::string("Invalid caps");
+        return std::string("Video Broadcast : Invalid caps");
+
+    if (!VideoBroadcast::available())
+        return std::string("Video Broadcast : Not available (missing SRT or H264)");
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! queue ! ";
 
-    // choose pipeline for protocol
-    if (protocol_ == NetworkToolkit::BROADCAST_DEFAULT)
-        protocol_ = NetworkToolkit::BROADCAST_SRT;
-    description += NetworkToolkit::broadcast_pipeline[protocol_];
+    // complement pipeline with encoder and sink
+    description += VideoBroadcast::h264_encoder_;
+    description += VideoBroadcast::srt_sink_;
 
-    // setup streaming pipeline
-    if (protocol_ == NetworkToolkit::BROADCAST_SRT) {
-        // change the pipeline to include the broadcast port
-        std::string::size_type xxxx = description.find("XXXX");
-        if (xxxx != std::string::npos)
-            description = description.replace(xxxx, 4, std::to_string(port_));
-        else
-            return std::string("Video Broadcast : Failed to configure broadcast port.");
-    }
+    // change the placeholder to include the broadcast port
+    std::string::size_type xxxx = description.find("XXXX");
+    if (xxxx != std::string::npos)
+        description.replace(xxxx, 4, std::to_string(port_));
+    else
+        return std::string("Video Broadcast : Failed to configure broadcast port.");
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -58,14 +101,11 @@ std::string VideoBroadcast::init(GstCaps *caps)
         return msg;
     }
 
-    // setup streaming sink
-    if (protocol_ == NetworkToolkit::BROADCAST_SRT) {
-        g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                      "latency", 500,
-                      NULL);
-    }
-
     // TODO Configure options
+    // setup SRT streaming sink properties
+    g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                  "latency", 500,
+                  NULL);
 
     // setup custom app source
     src_ = GST_APP_SRC( gst_bin_get_by_name (GST_BIN (pipeline_), "src") );
@@ -117,7 +157,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
     // all good
     initialized_ = true;
 
-    return std::string("Video Broadcast started.");
+    return std::string("Video Broadcast started SRT on port ") + std::to_string(port_);
 }
 
 
@@ -127,7 +167,7 @@ void VideoBroadcast::terminate()
     // send EOS
     gst_app_src_end_of_stream (src_);
 
-    Log::Notify("Broadcast terminated after %s s.",
+    Log::Notify("Video Broadcast terminated after %s s.",
                 GstToolkit::time_to_string(duration_).c_str());
 }
 
@@ -147,12 +187,10 @@ std::string VideoBroadcast::info() const
 
     if (!initialized_)
         ret << "Starting";
-    else if (active_) {
-        ret << NetworkToolkit::broadcast_protocol_label[protocol_];
-        ret << " ( Port " << port_ << " )";
-    }
+    else if (active_)
+        ret << "Streaming SRT on Port " << port_;
     else
-        ret <<  "Terminated";
+        ret << "Terminated";
 
     return ret.str();
 }

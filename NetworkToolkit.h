@@ -66,13 +66,13 @@ struct StreamConfig {
     }
 };
 
-typedef enum {
-    BROADCAST_SRT = 0,
-    BROADCAST_DEFAULT
-} BroadcastProtocol;
+//typedef enum {
+//    BROADCAST_SRT = 0,
+//    BROADCAST_DEFAULT
+//} BroadcastProtocol;
 
-extern const char* broadcast_protocol_label[BROADCAST_DEFAULT];
-extern const std::vector<std::string> broadcast_pipeline;
+//extern const char* broadcast_protocol_label[BROADCAST_DEFAULT];
+//extern const std::vector<std::string> broadcast_pipeline;
 
 std::string hostname();
 std::vector<std::string> host_ips();

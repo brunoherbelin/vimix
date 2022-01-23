@@ -3780,21 +3780,24 @@ void OutputPreview::Render()
                     }
                 }
 #endif
-                // Broadcasting menu
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
-                // Stop broadcast menu (broadcaster already exists)
-                if (video_broadcaster_) {
-                    if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast") )
-                        video_broadcaster_->stop();
-                }
-                // start broadcast (broadcaster does not exists)
-                else {
-                    if ( ImGui::MenuItem( ICON_FA_GLOBE "  Broadcast") ) {
-                        video_broadcaster_ = new VideoBroadcast;
-                        FrameGrabbing::manager().add(video_broadcaster_);
+
+                if (VideoBroadcast::available()) {
+                    // Broadcasting menu
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
+                    // Stop broadcast menu (broadcaster already exists)
+                    if (video_broadcaster_) {
+                        if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast") )
+                            video_broadcaster_->stop();
                     }
+                    // start broadcast (broadcaster does not exists)
+                    else {
+                        if ( ImGui::MenuItem( ICON_FA_GLOBE "  Broadcast") ) {
+                            video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
+                            FrameGrabbing::manager().add(video_broadcaster_);
+                        }
+                    }
+                    ImGui::PopStyleColor(1);
                 }
-                ImGui::PopStyleColor(1);
 
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));

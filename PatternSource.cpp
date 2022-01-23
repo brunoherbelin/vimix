@@ -111,19 +111,19 @@ void Pattern::open( uint pattern, glm::ivec2 res )
     // if there is a XXXX parameter to enter
     std::string::size_type xxxx = gstreamer_pattern.find("XXXX");
     if (xxxx != std::string::npos)
-        gstreamer_pattern = gstreamer_pattern.replace(xxxx, 4, std::to_string(res.x));
+        gstreamer_pattern.replace(xxxx, 4, std::to_string(res.x));
     // if there is a YYYY parameter to enter
     std::string::size_type yyyy = gstreamer_pattern.find("YYYY");
     if (yyyy != std::string::npos)
-        gstreamer_pattern = gstreamer_pattern.replace(yyyy, 4, std::to_string(res.y));
+        gstreamer_pattern.replace(yyyy, 4, std::to_string(res.y));
     // if there is a XXX parameter to enter
     std::string::size_type xxx = gstreamer_pattern.find("XXX");
     if (xxx != std::string::npos)
-        gstreamer_pattern = gstreamer_pattern.replace(xxx, 3, std::to_string(res.x/10));
+        gstreamer_pattern.replace(xxx, 3, std::to_string(res.x/10));
     // if there is a YYY parameter to enter
     std::string::size_type yyy = gstreamer_pattern.find("YYY");
     if (yyy != std::string::npos)
-        gstreamer_pattern = gstreamer_pattern.replace(yyy, 3, std::to_string(res.y/10));
+        gstreamer_pattern.replace(yyy, 3, std::to_string(res.y/10));
 
     // remember if the pattern is to be updated once or animated
     single_frame_ = !Pattern::patterns_[type_].animated;

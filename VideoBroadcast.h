@@ -10,8 +10,10 @@ class VideoBroadcast : public FrameGrabber
 {
 public:
 
-    VideoBroadcast(NetworkToolkit::BroadcastProtocol p = NetworkToolkit::BROADCAST_DEFAULT, int port = 8888);
+    VideoBroadcast(int port = 8888);
     virtual ~VideoBroadcast() {}
+
+    static bool available();
 
     void stop() override;
     std::string info() const override;
@@ -21,9 +23,12 @@ private:
     void terminate() override;
 
     // connection information
-    NetworkToolkit::BroadcastProtocol protocol_;
     int port_;
     std::atomic<bool> stopped_;
+
+    // pipeline elements
+    static std::string srt_sink_;
+    static std::string h264_encoder_;
 };
 
 #endif // VIDEOBROADCAST_H
