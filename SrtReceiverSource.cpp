@@ -11,7 +11,7 @@ SrtReceiverSource::SrtReceiverSource(uint64_t id) : StreamSource(id)
     stream_ = new Stream;
 
     // set symbol
-    symbol_ = new Symbol(Symbol::SHARE, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_ = new Symbol(Symbol::RECEIVE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 }
 

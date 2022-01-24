@@ -36,6 +36,7 @@ using namespace tinyxml2;
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
@@ -723,6 +724,22 @@ void SessionVisitor::visit (GenericStreamSource& s)
     desc->InsertEndChild( text );
 
     xmlCurrent_->InsertEndChild(desc);
+}
+
+
+void SessionVisitor::visit (SrtReceiverSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "SrtReceiverSource");
+
+    XMLElement *ip = xmlDoc_->NewElement("ip");
+    XMLText *iptext = xmlDoc_->NewText( s.ip().c_str() );
+    ip->InsertEndChild( iptext );
+    xmlCurrent_->InsertEndChild(ip);
+
+    XMLElement *port = xmlDoc_->NewElement("port");
+    XMLText *porttext = xmlDoc_->NewText( s.port().c_str() );
+    port->InsertEndChild( porttext );
+    xmlCurrent_->InsertEndChild(port);
 }
 
 std::string SessionVisitor::getClipboard(const SourceList &list)

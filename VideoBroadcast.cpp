@@ -188,7 +188,7 @@ std::string VideoBroadcast::info() const
     if (!initialized_)
         ret << "Starting";
     else if (active_)
-        ret << "Streaming SRT on Port " << port_;
+        ret << "SRT Broadcast on Port " << port_;
     else
         ret << "Terminated";
 

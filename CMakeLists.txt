@@ -447,6 +447,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_vector_square_slash.ply
     ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/icon_sequence.ply
+    ./rsc/mesh/icon_receive.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
 )

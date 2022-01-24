@@ -441,10 +441,12 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[PATTERN]= shadow;
         icons[CAMERA]   = new Mesh("mesh/icon_camera.ply");
         shadows[CAMERA] = shadow;
-        icons[CUBE]    = new Mesh("mesh/icon_cube.ply");
-        shadows[CUBE]  = shadow;
+        icons[CUBE]     = new Mesh("mesh/icon_cube.ply");
+        shadows[CUBE]   = shadow;
         icons[SHARE]    = new Mesh("mesh/icon_share.ply");
         shadows[SHARE]  = shadow;
+        icons[RECEIVE]  = new Mesh("mesh/icon_receive.ply");
+        shadows[RECEIVE]= shadow;
         icons[DOTS]     = new Mesh("mesh/icon_dots.ply");
         shadows[DOTS]   = nullptr;
         icons[BUSY]     = new Mesh("mesh/icon_circles.ply");

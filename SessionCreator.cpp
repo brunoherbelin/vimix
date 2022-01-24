@@ -32,6 +32,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "RenderSource.h"
@@ -352,6 +353,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "GenericStreamSource") {
                     load_source = new GenericStreamSource(id_xml_);
                 }
+                else if ( std::string(pType) == "SrtReceiverSource") {
+                    load_source = new SrtReceiverSource(id_xml_);
+                }
 
                 // skip failed (including clones)
                 if (!load_source)
@@ -479,6 +483,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "GenericStreamSource") {
                 load_source = new GenericStreamSource(id__);
+            }
+            else if ( std::string(pType) == "SrtReceiverSource") {
+                load_source = new SrtReceiverSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -1086,6 +1093,18 @@ void SessionLoader::visit (GenericStreamSource& s)
         const char * text = desc->GetText();
         if (text)
             s.setDescription(text);
+    }
+}
+
+void SessionLoader::visit (SrtReceiverSource& s)
+{
+    XMLElement* ip = xmlCurrent_->FirstChildElement("ip");
+    XMLElement* port = xmlCurrent_->FirstChildElement("port");
+    if (ip && port) {
+        const char * textip = ip->GetText();
+        const char * textport = port->GetText();
+        if (textip && textport)
+            s.setConnection(textip, textport);
     }
 }
 

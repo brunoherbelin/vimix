@@ -3792,7 +3792,7 @@ void OutputPreview::Render()
                     }
                     // start broadcast (broadcaster does not exists)
                     else {
-                        if ( ImGui::MenuItem( ICON_FA_GLOBE "  Broadcast") ) {
+                        if ( ImGui::MenuItem( ICON_FA_PODCAST "  Broadcast") ) {
                             video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
                             FrameGrabbing::manager().add(video_broadcaster_);
                         }
@@ -3872,7 +3872,7 @@ void OutputPreview::Render()
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
-            ImGui::Text(ICON_FA_GLOBE);
+            ImGui::Text(ICON_FA_PODCAST);
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
@@ -3929,7 +3929,7 @@ void OutputPreview::Render()
                              Connection::manager().info().name.c_str(),
                              Streaming::manager().listStreams().size() );
             if (video_broadcaster_)
-                ImGui::Text( "  " ICON_FA_GLOBE "   %s", video_broadcaster_->info().c_str() );
+                ImGui::Text( "  " ICON_FA_PODCAST "   %s", video_broadcaster_->info().c_str() );
         }
 
         ImGui::End();
@@ -5107,7 +5107,7 @@ void Navigator::RenderNewPannel()
                     }
                 }
 
-                if ( ImGui::Selectable("Custom SRT") ) {
+                if ( ImGui::Selectable("SRT Broadcaster") ) {
                     new_source_preview_.setSource();
                     custom_connected = true;
                 }
@@ -5120,11 +5120,12 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpToolTip("Create a source getting images from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
-                                     ICON_FA_CARET_RIGHT " stream shared by vimix");
+                                     ICON_FA_CARET_RIGHT " stream shared by vimix on local network\n"
+                                     ICON_FA_CARET_RIGHT " SRT stream (e.g. broadcasted by vimix)");
 
             if (custom_connected) {
 
-                ImGui::Text("\nCustom network SRT stream:");
+                ImGui::Text("\nConnect to SRT broadcaster:");
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGuiToolkit::InputText("IP", &Settings::application.custom_connect_ip, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
@@ -5141,7 +5142,7 @@ void Navigator::RenderNewPannel()
                 ImGui::InputText("##url", bufurl, IM_ARRAYSIZE(bufurl), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
 
-                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol", ICON_FA_GLOBE);
+                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol", ICON_SOURCE_SRT);
 
                 if ( ImGui::Button("Try to connect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                     new_source_preview_.setSource( Mixer::manager().createSourceSrt(Settings::application.custom_connect_ip, Settings::application.custom_connect_port), bufurl);
@@ -5929,7 +5930,7 @@ void Navigator::RenderMainPannelSettings()
         ImFormatString(msg, IM_ARRAYSIZE(msg),"Port for broadcasting on Secure Reliable Transport (SRT) protocol\n"
                      "You can e.g. connect to:\n srt://%s:%d",
                      NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port);
-        ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
+        ImGuiToolkit::Indication(msg, ICON_FA_PODCAST);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
