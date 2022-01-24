@@ -134,9 +134,11 @@ static void WindowRefreshCallback( GLFWwindow * )
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
-    // UI manager tries to keep windows in the workspace
-    WorkspaceWindow::notifyWorkspaceSizeChanged(GLFW_window_[w]->previous_size.x,  GLFW_window_[w]->previous_size.y, width, height);
-    GLFW_window_[w]->previous_size = glm::vec2(width, height);
+    if (Rendering::manager().mainWindow().window() == w) {
+        // UI manager tries to keep windows in the workspace
+        WorkspaceWindow::notifyWorkspaceSizeChanged(GLFW_window_[w]->previous_size.x,  GLFW_window_[w]->previous_size.y, width, height);
+        GLFW_window_[w]->previous_size = glm::vec2(width, height);
+    }
 
     int id = GLFW_window_[w]->index();
     if (!Settings::application.windows[id].fullscreen) {
