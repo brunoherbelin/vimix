@@ -48,6 +48,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -826,7 +827,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
     }
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##Hardware", s.device().c_str()))
+    if (ImGui::BeginCombo("Device", s.device().c_str()))
     {
         for (int d = 0; d < Device::manager().numDevices(); ++d){
             std::string namedev = Device::manager().name(d);
@@ -979,4 +980,34 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
         Action::manager().store( s.name() + ": Change pipeline");
     }
 
+}
+
+
+void ImGuiVisitor::visit (SrtReceiverSource& s)
+{
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("SRT Receiver");
+
+    // network info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+
+    // icon (>) to open player
+    if ( s.playable() ) {
+        ImVec2 pos = ImGui::GetCursorPos();
+        ImGui::SameLine(0, 0);
+        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            UserInterface::manager().showSourceEditor(&s);
+        ImGui::SetCursorPos(pos);
+    }
+
+//    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+//    {
+//        s.setConnection(s.connection());
+//        info.reset();
+//    }
 }

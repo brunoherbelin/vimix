@@ -560,13 +560,15 @@ bool MediaPlayer::isImage() const
 
 std::string MediaPlayer::decoderName()
 {
-    // decoder_name_ not initialized
-    if (decoder_name_.empty()) {
-        // try to know if it is a hardware decoder
-        decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
-        // nope, then it is a sofware decoder
-        if (decoder_name_.empty())
-            decoder_name_ = "software";
+    if (pipeline_) {
+        // decoder_name_ not initialized
+        if (decoder_name_.empty()) {
+            // try to know if it is a hardware decoder
+            decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
+            // nope, then it is a sofware decoder
+            if (decoder_name_.empty())
+                decoder_name_ = "software";
+        }
     }
 
     return decoder_name_;

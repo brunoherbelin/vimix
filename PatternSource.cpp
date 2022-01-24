@@ -50,7 +50,7 @@ std::vector<pattern_descriptor> Pattern::patterns_ = {
     { "Blue", "videotestsrc", "videotestsrc pattern=blue", false, false },
     { "Color bars", "videotestsrc", "videotestsrc pattern=smpte100", false, false },
     { "RGB grid", "videotestsrc", "videotestsrc pattern=colors", false, false },
-    { "SMPTE test pattern", "videotestsrc", "videotestsrc pattern=smpte", true, false },
+    { "SMPTE test", "videotestsrc", "videotestsrc pattern=smpte", true, false },
     { "Television snow", "videotestsrc", "videotestsrc pattern=snow", true, false },
     { "Blink", "videotestsrc", "videotestsrc pattern=blink", true, false },
     { "Fresnel zone plate", "videotestsrc", "videotestsrc pattern=zone-plate kx2=XXX ky2=YYY kt=4", true, false },
@@ -67,7 +67,7 @@ std::vector<pattern_descriptor> Pattern::patterns_ = {
     { "Point Grid", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.4", false, false },
     { "Ruler", "frei0r-src-test-pat-g", "frei0r-src-test-pat-g type=0.9", false, false },
     { "RGB noise", "frei0r-filter-rgbnoise", "videotestsrc pattern=black ! frei0r-filter-rgbnoise noise=0.6", true, false },
-    { "Philips test pattern", "frei0r-src-test-pat-b", "frei0r-src-test-pat-b type=0.7 ", false, false }
+    { "Philips test", "frei0r-src-test-pat-b", "frei0r-src-test-pat-b type=0.7 ", false, false }
 };
 
 

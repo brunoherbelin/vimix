@@ -36,6 +36,7 @@ public:
     void visit (NetworkSource& s) override;
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
+    void visit (SrtReceiverSource& s) override;
 };
 
 #endif // INFOVISITOR_H

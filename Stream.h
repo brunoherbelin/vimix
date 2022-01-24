@@ -138,6 +138,12 @@ public:
      * */
     guint texture() const;
     /**
+     * Get the name of the decoder used,
+     * return 'software' if no hardware decoder is used
+     * NB: perform request on pipeline on first call
+     * */
+    std::string decoderName();
+    /**
      * Accept visitors
      * Used for saving session file
      * */
@@ -165,6 +171,7 @@ protected:
     std::atomic<bool> opened_;
     std::atomic<bool> failed_;
     bool enabled_;
+    std::string decoder_name_;
 
     // fps counter
     struct TimeCounter {

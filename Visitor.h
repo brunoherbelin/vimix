@@ -31,6 +31,7 @@ class MediaSource;
 class PatternSource;
 class DeviceSource;
 class GenericStreamSource;
+class SrtReceiverSource;
 class SessionFileSource;
 class SessionGroupSource;
 class RenderSource;
@@ -73,6 +74,7 @@ public:
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
     virtual void visit (NetworkSource&) {}
+    virtual void visit (SrtReceiverSource&) {}
     virtual void visit (GenericStreamSource&) {}
     virtual void visit (DeviceSource&) {}
     virtual void visit (PatternSource&) {}

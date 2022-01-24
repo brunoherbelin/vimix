@@ -67,7 +67,7 @@ namespace ImGuiToolkit
     void Spacing();
 
     // text input
-    bool InputText(const char* label, std::string* str);
+    bool InputText(const char* label, std::string* str, ImGuiInputTextFlags flag = ImGuiInputTextFlags_CharsNoBlank);
     bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
     void TextMultiline(const char* label, const std::string &str, float width);
 

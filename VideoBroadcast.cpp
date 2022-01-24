@@ -194,3 +194,4 @@ std::string VideoBroadcast::info() const
 
     return ret.str();
 }
+

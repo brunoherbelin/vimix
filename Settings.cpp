@@ -112,6 +112,8 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
+    applicationNode->SetAttribute("custom_connect_ip", application.custom_connect_ip.c_str());
+    applicationNode->SetAttribute("custom_connect_port", application.custom_connect_port.c_str());
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -266,7 +268,6 @@ void Settings::Save(uint64_t runtime)
     controlConfNode->SetAttribute("osc_port_receive", application.control.osc_port_receive);
     controlConfNode->SetAttribute("osc_port_send", application.control.osc_port_send);
 
-
     // First save : create filename
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
@@ -357,6 +358,16 @@ void Settings::Load()
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
         applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
         applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
+        const char *ip = applicationNode->Attribute("custom_connect_ip");
+        if (ip)
+            application.custom_connect_ip = std::string(ip);
+        else
+            application.custom_connect_ip = "127.0.0.1";
+        const char *p = applicationNode->Attribute("custom_connect_port");
+        if (p)
+            application.custom_connect_port = std::string(p);
+        else
+            application.custom_connect_port = "8888";
     }
 
     // Widgets

@@ -83,6 +83,7 @@ using namespace std;
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
 #include "StreamSource.h"
 #include "PickingVisitor.h"
 #include "ImageShader.h"
@@ -5094,16 +5095,23 @@ void Navigator::RenderNewPannel()
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
                     if (ImGui::Selectable( namedev.c_str() )) {
-
+                        custom_connected = false;
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
                 for (int d = 1; d < Connection::manager().numHosts(); ++d){
                     std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
+                        custom_connected = false;
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
                 }
+
+                if ( ImGui::Selectable("Custom SRT") ) {
+                    new_source_preview_.setSource();
+                    custom_connected = true;
+                }
+
                 ImGui::EndCombo();
             }
 
@@ -5112,7 +5120,33 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpToolTip("Create a source getting images from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
-                                     ICON_FA_CARET_RIGHT " stream from connected vimix");
+                                     ICON_FA_CARET_RIGHT " stream shared by vimix");
+
+            if (custom_connected) {
+
+                ImGui::Text("\nCustom network SRT stream:");
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGuiToolkit::InputText("IP", &Settings::application.custom_connect_ip, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGuiToolkit::InputText("Port", &Settings::application.custom_connect_port, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
+
+                static char bufurl[32];
+                ImFormatString(bufurl, IM_ARRAYSIZE(bufurl), "srt://%s:%s",
+                               Settings::application.custom_connect_ip.c_str(),
+                               Settings::application.custom_connect_port.c_str() );
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.8f));
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::InputText("##url", bufurl, IM_ARRAYSIZE(bufurl), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+
+                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol", ICON_FA_GLOBE);
+
+                if ( ImGui::Button("Try to connect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                    new_source_preview_.setSource( Mixer::manager().createSourceSrt(Settings::application.custom_connect_ip, Settings::application.custom_connect_port), bufurl);
+                }
+            }
 
         }
 
@@ -5892,7 +5926,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Text("Stream");
 
         char msg[256];
-        sprintf(msg, "Port for broadcasting on Secure Reliable Transport (SRT) protocol\n"
+        ImFormatString(msg, IM_ARRAYSIZE(msg),"Port for broadcasting on Secure Reliable Transport (SRT) protocol\n"
                      "You can e.g. connect to:\n srt://%s:%d",
                      NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port);
         ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);

@@ -50,6 +50,8 @@
 #include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
+
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "Streamer.h"
@@ -355,7 +357,6 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
     return s;
 }
 
-
 Source * Mixer::createSourceNetwork(const std::string &nameconnection)
 {
     // ready to create a source
@@ -368,6 +369,17 @@ Source * Mixer::createSourceNetwork(const std::string &nameconnection)
     return s;
 }
 
+Source * Mixer::createSourceSrt(const std::string &ip, const std::string &port)
+{
+    // ready to create a source
+    SrtReceiverSource *s = new SrtReceiverSource;
+    s->setConnection(ip, port);
+
+    // propose a new name based on address
+    s->setName(s->uri());
+
+    return s;
+}
 
 Source * Mixer::createSourceGroup()
 {

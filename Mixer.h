@@ -55,6 +55,7 @@ public:
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
     Source * createSourceNetwork(const std::string &nameconnection);
+    Source * createSourceSrt    (const std::string &ip, const std::string &port);
     Source * createSourceGroup  ();
 
     // operations on sources

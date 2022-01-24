@@ -44,6 +44,7 @@
 #include "PatternSource.h"
 #include "DeviceSource.h"
 #include "NetworkSource.h"
+#include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
@@ -92,8 +93,8 @@ void InfoVisitor::visit(MediaPlayer &mp)
     std::ostringstream oss;
     if (brief_) {
         oss << SystemToolkit::filename(mp.filename()) << std::endl;
-        oss << mp.width() << " x " << mp.height() << ", ";
-        oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,"));
+        oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,")) << ", ";
+        oss << mp.width() << " x " << mp.height();
         if (!mp.isImage())
             oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
     }
@@ -136,16 +137,19 @@ void InfoVisitor::visit (SessionFileSource& s)
         return;
 
     std::ostringstream oss;
-    if (brief_) {
-        oss << SystemToolkit::filename(s.path()) << " (";
-        oss << s.session()->numSource() << " sources)" << std::endl;
-    }
-    else
-        oss << s.path() << std::endl;
 
     if (s.session()->frame()){
-        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
-        oss << "RGB";
+        if (brief_) {
+            oss << SystemToolkit::filename(s.path()) << " (";
+            oss << s.session()->numSource() << " sources)" << std::endl;
+            oss << "RGB, ";
+            oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+        }
+        else {
+            oss << s.path() << std::endl;
+            oss << "RGB" << std::endl;
+            oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+        }
     }
 
     information_ = oss.str();
@@ -160,8 +164,8 @@ void InfoVisitor::visit (SessionGroupSource& s)
     std::ostringstream oss;
     oss << s.session()->numSource() << " sources in group" << std::endl;
     if (s.session()->frame()){
-        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height() << ", ";
-        oss << "RGB";
+        oss << "RGB, ";
+        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
     }
 
     information_ = oss.str();
@@ -174,15 +178,18 @@ void InfoVisitor::visit (RenderSource& s)
         return;
 
     std::ostringstream oss;
-    if (!brief_) {
-        oss << "Rendering Output (";
-        oss << RenderSource::rendering_provenance_label[s.renderingProvenance()];
-        oss << ") " << std::endl;
-    }
 
     if (s.frame()){
-        oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
-        oss << (s.frame()->use_alpha() ? "RGBA" : "RGB");
+        if (brief_) {
+            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << s.frame()->width() << " x " << s.frame()->height();
+        }
+        else {
+            oss << "Rendering Output (";
+            oss << RenderSource::rendering_provenance_label[s.renderingProvenance()] << ") " << std::endl;
+            oss << (s.frame()->use_alpha() ? "RGBA" : "RGB") << std::endl;
+            oss << s.frame()->width() << " x " << s.frame()->height();
+        }
     }
 
     information_ = oss.str();
@@ -195,15 +202,20 @@ void InfoVisitor::visit (CloneSource& s)
         return;
 
     std::ostringstream oss;
-    if (!brief_) {
-        oss << "Clone of '" << s.origin()->name() << "'" << std::endl;
-        oss << CloneSource::cloning_provenance_label[s.cloningProvenance()];
-        oss << ", " << (int)(s.delay()*100.0) << "ms delay " << std::endl;
-    }
 
     if (s.frame()){
-        oss << s.frame()->width() << " x " << s.frame()->height() << ", ";
-        oss << (s.frame()->use_alpha() ? "RGBA" : "RGB");
+        if (brief_) {
+            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << s.frame()->width() << " x " << s.frame()->height();
+        }
+        else {
+            if (s.origin())
+                oss << "Clone of '" << s.origin()->name() << "' ";
+            oss << CloneSource::cloning_provenance_label[s.cloningProvenance()] << std::endl;
+            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << (int)(s.delay()*100.0) << " ms delay " << std::endl;
+            oss << s.frame()->width() << " x " << s.frame()->height();
+        }
     }
 
     information_ = oss.str();
@@ -216,12 +228,15 @@ void InfoVisitor::visit (PatternSource& s)
         return;
 
     std::ostringstream oss;
-    if (!brief_)
-        oss << Pattern::get(s.pattern()->type()).label << " pattern" << std::endl;
-
     if (s.pattern()) {
-        oss << s.pattern()->width() << " x " << s.pattern()->height();
-        oss << ", RGBA";
+        if (brief_) {
+            oss << "RGBA, " << s.pattern()->width() << " x " << s.pattern()->height();
+        }
+        else {
+            oss << Pattern::get(s.pattern()->type()).label << " pattern" << std::endl;
+            oss << "RGBA" << std::endl;
+            oss << s.pattern()->width() << " x " << s.pattern()->height();
+        }
     }
 
     information_ = oss.str();
@@ -241,15 +256,15 @@ void InfoVisitor::visit (DeviceSource& s)
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
 
         if (brief_) {
+            oss << best.stream << " " << best.format  << ", ";
             oss << best.width << " x " << best.height << ", ";
-            oss << best.stream << " " << best.format << ", ";
             oss << std::fixed << std::setprecision(1) << fps << " fps";
         }
         else {
             oss << s.device() << std::endl;
-            oss << Device::manager().description( Device::manager().index(s.device())) << std::endl;
+            oss << Device::manager().description( Device::manager().index(s.device()));
+            oss << ", " << best.stream << " " << best.format  << std::endl;
             oss << best.width << " x " << best.height << ", ";
-            oss << best.stream << " " << best.format << ", ";
             oss << std::fixed << std::setprecision(1) << fps << " fps";
         }
     }
@@ -267,15 +282,15 @@ void InfoVisitor::visit (NetworkSource& s)
 
     std::ostringstream oss;
     if (brief_) {
-        oss << ns->resolution().x << " x " << ns->resolution().y << ", ";
         oss << NetworkToolkit::stream_protocol_label[ns->protocol()] << std::endl;
-        oss << "IP " << ns->serverAddress();
+        oss << "IP " << ns->serverAddress() << std::endl;
+        oss << ns->resolution().x << " x " << ns->resolution().y;
     }
     else {
         oss << s.connection() << std::endl;
         oss << NetworkToolkit::stream_protocol_label[ns->protocol()];
         oss << " shared from IP " << ns->serverAddress() << std::endl;
-        oss << ns->resolution().x << " x " << ns->resolution().y << " ";
+        oss << ns->resolution().x << " x " << ns->resolution().y;
     }
 
     information_ = oss.str();
@@ -290,17 +305,17 @@ void InfoVisitor::visit (MultiFileSource& s)
 
     std::ostringstream oss;
     if (brief_) {
-        oss << s.sequence().width << " x " << s.sequence().height << ", ";
-        oss << s.sequence().codec << std::endl;
         oss << s.sequence().max - s.sequence().min + 1 << " images [";
-        oss << s.sequence().min << " - " << s.sequence().max << "]";
+        oss << s.sequence().min << " - " << s.sequence().max << "]" << std::endl;
+        oss << s.sequence().codec << ", ";
+        oss << s.sequence().width << " x " << s.sequence().height;
     }
     else {
         oss << s.sequence().location << " [";
         oss << s.sequence().min << " - " << s.sequence().max << "]" << std::endl;
-        oss << s.sequence().width << " x " << s.sequence().height << ", ";
-        oss << s.sequence().codec << " (";
-        oss << s.sequence().max - s.sequence().min + 1 << " images)";
+        oss << s.sequence().max - s.sequence().min + 1 << " ";
+        oss << s.sequence().codec << " images" << std::endl;
+        oss << s.sequence().width << " x " << s.sequence().height << ", " << s.framerate() << " fps";
     }
 
     information_ = oss.str();
@@ -316,12 +331,39 @@ void InfoVisitor::visit (GenericStreamSource& s)
     if (s.stream()) {
         std::string src_element = s.gstElements().front();
 
-        if (brief_)
+        if (brief_) {
             src_element = src_element.substr(0, src_element.find(" "));
+            oss << "gstreamer '" <<  src_element << "'" << std::endl;
+            oss << "RGBA, " << s.stream()->width() << " x " << s.stream()->height();
+        }
+        else {
+            oss << "gstreamer '" <<  src_element << "'" << std::endl;
+            oss << "RGBA" << std::endl;
+            oss << s.stream()->width() << " x " << s.stream()->height();
+        }
+    }
+    else
+        oss << "Undefined";
 
-        oss << "gstreamer '" <<  src_element << "'" << std::endl;
-        oss << s.stream()->width() << " x " << s.stream()->height();
-        oss << ", RGBA";
+    information_ = oss.str();
+    current_id_ = s.id();
+}
+
+void InfoVisitor::visit (SrtReceiverSource& s)
+{
+    if (current_id_ == s.id())
+        return;
+
+    std::ostringstream oss;
+
+    if (s.stream()) {
+        if (brief_)
+            oss << s.uri() << std::endl;
+        else {
+            oss << "SRT Receiver " << s.uri() << std::endl;
+            oss << "H264 (" << s.stream()->decoderName() << ")" << std::endl;
+            oss << s.stream()->width() << " x " << s.stream()->height();
+        }
     }
     else
         oss << "Undefined";

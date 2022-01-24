@@ -1708,9 +1708,9 @@ static int InputTextCallback(ImGuiInputTextCallbackData* data)
     return 0;
 }
 
-bool ImGuiToolkit::InputText(const char* label, std::string* str)
+bool ImGuiToolkit::InputText(const char* label, std::string* str, ImGuiInputTextFlags flag)
 {
-    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CharsNoBlank;
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize | flag;
 
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, str);
 }

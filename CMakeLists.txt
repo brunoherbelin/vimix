@@ -342,6 +342,7 @@ set(VMIX_SRCS
     Metronome.cpp
     ControlManager.cpp
     VideoBroadcast.cpp
+    SrtReceiverSource.cpp
 )
 
 

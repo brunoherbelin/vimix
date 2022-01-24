@@ -29,6 +29,7 @@
 #include "Visitor.h"
 #include "SystemToolkit.h"
 #include "BaseToolkit.h"
+#include "GstToolkit.h"
 
 #include "Stream.h"
 
@@ -54,6 +55,7 @@ Stream::Stream()
     single_frame_ = false;
     live_ = false;
     failed_ = false;
+    decoder_name_ = "";
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -85,6 +87,22 @@ Stream::~Stream()
 
 void Stream::accept(Visitor& v) {
     v.visit(*this);
+}
+
+std::string Stream::decoderName()
+{
+    if (pipeline_) {
+        // decoder_name_ not initialized
+        if (decoder_name_.empty()) {
+            // try to know if it is a hardware decoder
+            decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
+            // nope, then it is a sofware decoder
+            if (decoder_name_.empty())
+                decoder_name_ = "software";
+        }
+    }
+
+    return decoder_name_;
 }
 
 guint Stream::texture() const

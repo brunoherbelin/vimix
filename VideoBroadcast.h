@@ -3,6 +3,7 @@
 
 #include "NetworkToolkit.h"
 #include "FrameGrabber.h"
+#include "StreamSource.h"
 
 #define BROADCAST_FPS 30
 
@@ -10,7 +11,7 @@ class VideoBroadcast : public FrameGrabber
 {
 public:
 
-    VideoBroadcast(int port = 8888);
+    VideoBroadcast(int port = 7070);
     virtual ~VideoBroadcast() {}
 
     static bool available();
@@ -30,5 +31,6 @@ private:
     static std::string srt_sink_;
     static std::string h264_encoder_;
 };
+
 
 #endif // VIDEOBROADCAST_H

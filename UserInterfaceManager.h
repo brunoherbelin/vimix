@@ -140,6 +140,7 @@ class Navigator
     bool selected_button[NAV_COUNT];
     int  pattern_type;
     bool custom_pipeline;
+    bool custom_connected;
     void clearButtonSelection();
     void applyButtonSelection(int index);
 
