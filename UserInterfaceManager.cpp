@@ -265,8 +265,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().close();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
-            // Suspend / unsuspend session
-            Mixer::manager().session()->setActive( !Mixer::manager().session()->active() );
+            // restart media player
+            sourcecontrol.Replay();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
             // Logs
@@ -384,13 +384,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_END )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
-
-        // Space bar to toggle play / pause
-        if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
+        // Space bar
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
+            // Space bar to toggle play / pause
             sourcecontrol.Play();
-        // B to rewind to Beginning
-        else if (ImGui::IsKeyPressed( GLFW_KEY_B ))
-            sourcecontrol.Replay();
 
         // normal keys in workspace // make sure no entry / window box is active        
         if ( !ImGui::IsAnyWindowFocused() )
@@ -1234,7 +1231,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     ImGui::SetNextItemWidth(200);
     ImGui::Combo("##mode", p_mode,
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
-                 ICON_FA_HOURGLASS_HALF "  Runtime\0"
+                 ICON_FA_HOURGLASS_HALF "   Runtime\0"
                  ICON_FA_VECTOR_SQUARE  "  Source\0");
 
     ImGui::SameLine();
@@ -1711,6 +1708,9 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_STICKY_NOTE "  Notes"); ImGui::NextColumn();
         ImGui::Text ("Place sticky notes into your session.");
         ImGui::NextColumn();
+        ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
+        ImGui::Text ("Utility monitoring of metrics on the system (FPS, RAM), the runtime (session duration), or the current source.");
+        ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLAY_CIRCLE "  Player"); ImGui::NextColumn();
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
         ImGui::NextColumn();
@@ -1760,8 +1760,11 @@ void HelperToolbox::Render()
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
         ImGui::Text ("Screen capture.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Network"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
+        ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emmitted on the network (e.g. broadcasted by vimix).");
         ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(ICON_FA_COG); ImGui::NextColumn();
@@ -1778,13 +1781,13 @@ void HelperToolbox::Render()
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Internal");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Rendering"); ImGui::NextColumn();
-        ImGui::Text ("Loopback the rendering output as a source.");
+        ImGui::Text ("Displays the rendering output as a source, with or without loopback.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
-        ImGui::Text ("Clone a source (original images) into another source.");
+        ImGui::Text ("Clone a source into another source, possibly with a short delay.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Group"); ImGui::NextColumn();
-        ImGui::Text ("Group of sources rendered together after flatten in Layers view.");
+        ImGui::Text ("Group of sources rendered together after flattenning them in Layers view.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -1864,7 +1867,7 @@ void HelperToolbox::Render()
         ImGui::Separator();
         ImGui::Text("Space"); ImGui::NextColumn();
         ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
-        ImGui::Text("B"); ImGui::NextColumn();
+        ImGui::Text(CTRL_MOD "Space"); ImGui::NextColumn();
         ImGui::Text("Back restart selected videos"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
@@ -2210,7 +2213,7 @@ void SourceController::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             // Menu section for play control
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Back", "B"))
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD"Space"))
                 replay_request_ = true;
             if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space"))
                 play_toggle_request_ = true;
@@ -6027,7 +6030,8 @@ void Navigator::RenderMainPannelSettings()
                 Settings::application.render.blit = blit;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gpu_decoding = gpu;
-                UserInterface::manager().TryClose();
+                if (UserInterface::manager().TryClose())
+                    Rendering::manager().close();
             }
         }
 
