@@ -818,8 +818,15 @@ void UserInterface::Render()
     if (timercontrol.Visible())
         timercontrol.Render();
 
+    // Logs
     if (Settings::application.widget.logs)
         Log::ShowLogWindow(&Settings::application.widget.logs);
+
+    // stats in the corner
+    if (Settings::application.widget.stats)
+        RenderMetrics(&Settings::application.widget.stats,
+                  &Settings::application.widget.stats_corner,
+                  &Settings::application.widget.stats_mode);
 
     if ( WorkspaceWindow::clear())
         ImGui::PopStyleVar();
@@ -850,12 +857,6 @@ void UserInterface::Render()
     // Navigator
     if (show_view_navigator > 0)
         target_view_navigator = RenderViewNavigator( &show_view_navigator );
-
-    // stats in the corner
-    if (Settings::application.widget.stats)
-        RenderMetrics(&Settings::application.widget.stats,
-                  &Settings::application.widget.stats_corner,
-                  &Settings::application.widget.stats_mode);
 
     // all IMGUI Rendering
     ImGui::Render();
