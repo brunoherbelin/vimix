@@ -1391,6 +1391,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
         static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
         font_config.MergeMode = true; // Merging glyphs into current font
         font_config.PixelSnapH = true;
+        font_config.GlyphOffset.y = pointsize/20;
         fontname = "icons" + fontname;
         fontname.copy(font_config.Name, 40);  
         // load FontAwesome only once
