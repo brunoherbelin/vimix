@@ -6192,6 +6192,8 @@ Source * SourcePreview::getSource()
 
 void SourcePreview::Render(float width)
 {
+    static InfoVisitor _info;
+
     if(source_) {
         // cancel if failed
         if (source_->failed()) {
@@ -6241,8 +6243,10 @@ void SourcePreview::Render(float width)
             ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::Text("%s", label_.c_str());
-            if (source_->ready())
-                ImGui::Text("%d x %d %s", frame->width(), frame->height(), frame->use_alpha() ? "RGBA" : "RGB");
+            if (source_->ready()) {
+                source_->accept(_info);
+                ImGui::Text("%s", _info.str().c_str());
+            }
             else
                 ImGui::Text("loading...");
         }
