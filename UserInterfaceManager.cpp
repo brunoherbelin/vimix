@@ -5940,10 +5940,10 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufport[7] = "";
         sprintf(bufport, "%d", Settings::application.broadcast_port);
-        ImGui::InputTextWithHint("Broadcast", "8888", bufport, 7, ImGuiInputTextFlags_CharsDecimal);
+        ImGui::InputTextWithHint("Broadcast", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
-                Control::manager().init();
+                Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
         }
 
         ImGuiToolkit::Indication("Sharing H264 stream requires less bandwidth but more resources for encoding.", ICON_FA_SHARE_ALT_SQUARE);
@@ -5969,8 +5969,10 @@ void Navigator::RenderMainPannelSettings()
         sprintf(bufreceive, "%d", Settings::application.control.osc_port_receive);
         ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
-            if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive))
+            if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive)){
+                Settings::application.control.osc_port_receive = CLAMP(Settings::application.control.osc_port_receive, 1029, 49150);
                 Control::manager().init();
+            }
         }
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
@@ -5979,8 +5981,10 @@ void Navigator::RenderMainPannelSettings()
         sprintf(bufsend, "%d", Settings::application.control.osc_port_send);
         ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
-            if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send))
+            if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send)){
+                Settings::application.control.osc_port_send = CLAMP(Settings::application.control.osc_port_send, 1029, 49150);
                 Control::manager().init();
+            }
         }
 
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
