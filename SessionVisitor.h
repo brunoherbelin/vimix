@@ -69,6 +69,15 @@ public:
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
 
+    // callbacks
+    void visit (SourceCallback&) override;
+    void visit (GotoAlpha&) override;
+    void visit (GotoDepth&) override;
+    void visit (Loom&) override;
+    void visit (Grab&) override;
+    void visit (Resize&) override;
+    void visit (Turn&) override;
+
     static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
     static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);
 };

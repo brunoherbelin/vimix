@@ -1,4 +1,4 @@
-#ifndef VISITOR_H
+﻿#ifndef VISITOR_H
 #define VISITOR_H
 
 #include <string>
@@ -26,6 +26,7 @@ class Shader;
 class ImageShader;
 class MaskShader;
 class ImageProcessingShader;
+
 class Source;
 class MediaSource;
 class PatternSource;
@@ -39,6 +40,15 @@ class CloneSource;
 class NetworkSource;
 class MixingGroup;
 class MultiFileSource;
+
+class SourceCallback;
+class GotoAlpha;
+class GotoDepth;
+class Loom;
+class Grab;
+class Resize;
+class Turn;
+
 
 // Declares the interface for the visitors
 class Visitor {
@@ -84,6 +94,13 @@ public:
     virtual void visit (CloneSource&) {}
     virtual void visit (MultiFileSource&) {}
 
+    virtual void visit (SourceCallback&) {}
+    virtual void visit (GotoAlpha&) {}
+    virtual void visit (GotoDepth&) {}
+    virtual void visit (Loom&) {}
+    virtual void visit (Grab&) {}
+    virtual void visit (Resize&) {}
+    virtual void visit (Turn&) {}
 };
 
 

@@ -33,6 +33,7 @@ class SourceLink {
 
 public:
     SourceLink(): host_(nullptr), target_(nullptr), id_(0) { }
+    SourceLink(const SourceLink &);
     SourceLink(Source *s);
     ~SourceLink();
 
@@ -51,6 +52,8 @@ protected:
 };
 
 typedef std::list<SourceLink*> SourceLinkList;
-SourceList validate (const SourceLinkList &list);
+SourceLinkList getLinkList (const SourceList &list);
+void clearLinkList (SourceLinkList list);
+SourceList validateLinkList (const SourceLinkList &list);
 
 #endif // SOURCELIST_H

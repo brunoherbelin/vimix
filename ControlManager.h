@@ -2,8 +2,12 @@
 #define CONTROL_H
 
 #include <map>
+#include <list>
 #include <string>
 #include <condition_variable>
+
+#include "SourceList.h"
+#include "BaseToolkit.h"
 #include "NetworkToolkit.h"
 
 #define OSC_SYNC               "/sync"
@@ -44,6 +48,7 @@
 
 class Session;
 class Source;
+class SourceCallback;
 
 class Control
 {
@@ -65,10 +70,12 @@ public:
     bool init();
     void terminate();
 
-    std::string translate (std::string addresspattern);
+    // OSC translation
+    std::string translate (std::string addresspqattern);
 
 protected:
 
+    // OSC management
     class RequestListener : public osc::OscPacketListener {
     protected:
         virtual void ProcessMessage( const osc::ReceivedMessage& m,
@@ -78,15 +85,14 @@ protected:
 
     bool receiveOutputAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
-
     bool receiveSourceAttribute(Source *target, const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
-
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
-
-    void sendSourceAttibutes(const IpEndpointName& remoteEndpoint, std::string target, Source *s = nullptr);
-    void sendSourcesStatus(const IpEndpointName& remoteEndpoint, osc::ReceivedMessageArgumentStream arguments);
+    void sendSourceAttibutes(const IpEndpointName& remoteEndpoint,
+                             std::string target, Source *s = nullptr);
+    void sendSourcesStatus(const IpEndpointName& remoteEndpoint,
+                           osc::ReceivedMessageArgumentStream arguments);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
 
 private:

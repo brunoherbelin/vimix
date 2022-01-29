@@ -158,6 +158,15 @@ SourceLink::SourceLink(Source *s): host_(nullptr), target_(nullptr), id_(0)
     connect(s);
 }
 
+SourceLink::SourceLink(const SourceLink &l)
+{
+    if (l.target_ != nullptr)
+        connect(l.target_);
+    else
+        host_ = l.host_;
+    id_ = l.id_;
+}
+
 void SourceLink::connect(uint64_t id, Session *se)
 {
     if (connected())
@@ -220,7 +229,7 @@ Source *SourceLink::source()
 }
 
 
-SourceList validate (const SourceLinkList &list)
+SourceList validateLinkList (const SourceLinkList &list)
 {
     SourceList sourcelist;
 
@@ -236,4 +245,24 @@ SourceList validate (const SourceLinkList &list)
     sourcelist.unique();
 
     return sourcelist;
+}
+
+
+SourceLinkList getLinkList (const SourceList &list)
+{
+    SourceLinkList linklist;
+
+    for( auto sit = list.begin(); sit != list.end(); ++sit)
+        linklist.push_back( new SourceLink(*sit) );
+
+    return linklist;
+}
+
+
+void clearLinkList (SourceLinkList list)
+{
+    for( auto sit = list.begin(); sit != list.end(); ) {
+        delete (*sit);
+        sit = list.erase(sit);
+    }
 }

@@ -76,6 +76,7 @@ using namespace std;
 #include "Selection.h"
 #include "FrameBuffer.h"
 #include "MediaPlayer.h"
+#include "SourceCallback.h"
 #include "CloneSource.h"
 #include "RenderSource.h"
 #include "MediaSource.h"
@@ -388,6 +389,17 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
             // Space bar to toggle play / pause
             sourcecontrol.Play();
+
+        // keys for source callbacks
+        else
+        {
+            ImGuiContext& g = *GImGui;
+            for( auto sit = Mixer::manager().session()->begin();
+                 sit != Mixer::manager().session()->end(); ++sit) {
+                (*sit)->updateCallbacks(g.IO.KeysDown);
+            }
+        }
+
 
         // normal keys in workspace // make sure no entry / window box is active        
         if ( !ImGui::IsAnyWindowFocused() )
@@ -1251,7 +1263,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             float v = s->alpha();
             ImGui::SetNextItemWidth(rightalign);
             if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
-                s->call(new SetAlpha(v));
+                s->call(new GotoAlpha(v));
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
                 Action::manager().store(info.str());

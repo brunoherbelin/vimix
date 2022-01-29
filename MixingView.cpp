@@ -32,6 +32,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include "Source.h"
+#include "SourceCallback.h"
 #include "Settings.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
@@ -278,14 +279,14 @@ void MixingView::draw()
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
-                (*it)->call( new SetAlpha(0.f) );
+                (*it)->call( new GotoAlpha(0.f) );
             }
             Action::manager().store(std::string("Selection: Mixing Expand & hide"));
         }
         if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
-                (*it)->call( new SetAlpha(0.999f) );
+                (*it)->call( new GotoAlpha(0.999f) );
             }
             Action::manager().store(std::string("Selection: Mixing Compress & show"));
         }

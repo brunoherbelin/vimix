@@ -28,6 +28,7 @@ using namespace tinyxml2;
 #include "Scene.h"
 #include "Decorations.h"
 #include "Source.h"
+#include "SourceCallback.h"
 #include "CloneSource.h"
 #include "RenderSource.h"
 #include "MediaSource.h"
@@ -579,6 +580,19 @@ void SessionVisitor::visit (Source& s)
         s.mixingGroup()->accept(*this);
     }
 
+    std::vector<int> keys = s.callbackKeys();
+    if (!keys.empty()) {
+        // list of callbacks
+        XMLElement *callbackselement = xmlDoc_->NewElement( "Callbacks" );
+        sourceNode->InsertEndChild(callbackselement);
+        for (auto k = keys.begin(); k != keys.end(); ++k) {
+            xmlCurrent_ = xmlDoc_->NewElement( "Callback" );
+            xmlCurrent_->SetAttribute("key", *k);
+            s.keyCallback(*k)->accept(*this);
+            callbackselement->InsertEndChild(xmlCurrent_);
+        }
+    }
+
     xmlCurrent_ = sourceNode;  // parent for next visits (other subtypes of Source)
 }
 
@@ -828,3 +842,48 @@ std::string SessionVisitor::getClipboard(ImageProcessingShader * const s)
 
     return x;
 }
+
+void SessionVisitor::visit (SourceCallback &c)
+{
+    xmlCurrent_->SetAttribute("type", (uint) c.type());
+}
+
+void SessionVisitor::visit (GotoAlpha &c)
+{
+    xmlCurrent_->SetAttribute("alpha", c.alpha());
+}
+
+void SessionVisitor::visit (GotoDepth &c)
+{
+    xmlCurrent_->SetAttribute("depth", c.depth());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Loom &c)
+{
+    xmlCurrent_->SetAttribute("delta", c.delta());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Grab &c)
+{
+    xmlCurrent_->SetAttribute("delta.x", c.delta().x);
+    xmlCurrent_->SetAttribute("delta.y", c.delta().y);
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Resize &c)
+{
+    xmlCurrent_->SetAttribute("delta.x", c.delta().x);
+    xmlCurrent_->SetAttribute("delta.y", c.delta().y);
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Turn &c)
+{
+    xmlCurrent_->SetAttribute("delta", c.delta());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+
+

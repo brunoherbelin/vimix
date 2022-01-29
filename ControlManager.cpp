@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -20,6 +20,7 @@
 #include <thread>
 #include <mutex>
 #include <sstream>
+#include <algorithm>
 #include <iomanip>
 
 #include "osc/OscOutboundPacketStream.h"
@@ -30,6 +31,7 @@
 #include "BaseToolkit.h"
 #include "Mixer.h"
 #include "Source.h"
+#include "SourceCallback.h"
 #include "ActionManager.h"
 #include "SystemToolkit.h"
 #include "tinyxml2Toolkit.h"
@@ -238,13 +240,13 @@ std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m
 
 Control::Control() : receiver_(nullptr)
 {
+
 }
 
 Control::~Control()
 {
     terminate();
 }
-
 
 std::string Control::translate (std::string addresspattern)
 {
@@ -363,7 +365,7 @@ bool Control::init()
         // arg, the receiver could not be initialized
         // (often because the port was not available)
         receiver_ = nullptr;
-        Log::Warning(CONTROL_OSC_MSG "Failed to init listener on port %d; %s", Settings::application.control.osc_port_receive, e.what());
+        Log::Warning(CONTROL_OSC_MSG "The port %d is already used by another program; %s", Settings::application.control.osc_port_receive, e.what());
     }
 
     return receiver_ != nullptr;
@@ -511,7 +513,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(x), true );
+            target->call( new GotoAlpha(x), true );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
@@ -525,13 +527,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(1.f - x), true );
+            target->call( new GotoAlpha(1.f - x), true );
         }
         /// e.g. '/vimix/current/depth f 5.0'
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetDepth(x), true );
+            target->call( new GotoDepth(x), true );
         }
         /// e.g. '/vimix/current/translation ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {

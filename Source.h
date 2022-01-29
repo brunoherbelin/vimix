@@ -8,7 +8,6 @@
 #include <list>
 
 #include "View.h"
-#include "SourceCallback.h"
 
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f
 
@@ -27,6 +26,7 @@
 #define ICON_SOURCE_SRT 11, 8
 #define ICON_SOURCE 13, 11
 
+class Visitor;
 class SourceCallback;
 class ImageShader;
 class MaskShader;
@@ -147,6 +147,10 @@ public:
 
     // add callback to each update
     void call(SourceCallback *callback, bool override = false);
+    void setKeyCallback(int key, SourceCallback *callback);
+    SourceCallback *keyCallback(int key);
+    std::vector<int> callbackKeys();
+    void updateCallbacks(bool *keys_status);
 
     // update mode
     inline  bool active () const { return active_; }
@@ -313,8 +317,21 @@ protected:
     bool  need_update_;
     float dt_;
     Workspace  workspace_;
+
+    // callbacks
     std::list<SourceCallback *> update_callbacks_;
     std::mutex access_callbacks_;
+    struct CallbackListener {
+        bool was_pressed_;
+        SourceCallback *model_;
+        SourceCallback *reverse_;
+        CallbackListener() {
+            was_pressed_ = false;
+            model_   = nullptr;
+            reverse_ = nullptr;
+        }
+    };
+    std::map<int, CallbackListener> key_callbacks_;
 
     // clones
     CloneList clones_;

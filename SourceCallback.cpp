@@ -19,12 +19,18 @@
 
 #include "defines.h"
 #include "Source.h"
+#include "Visitor.h"
 #include "Log.h"
 
 #include "SourceCallback.h"
 
 SourceCallback::SourceCallback(): active_(true), finished_(false), initialized_(false)
 {
+}
+
+void SourceCallback::accept(Visitor& v)
+{
+    v.visit(*this);
 }
 
 void ResetGeometry::update(Source *s, float)
@@ -37,13 +43,23 @@ void ResetGeometry::update(Source *s, float)
     finished_ = true;
 }
 
-SetAlpha::SetAlpha(float alpha) : SourceCallback(), alpha_(CLAMP(alpha, 0.f, 1.f))
+SourceCallback *ResetGeometry::clone() const
+{
+    return new ResetGeometry;
+}
+
+GotoAlpha::GotoAlpha() : SourceCallback(), alpha_(0.f)
 {
     pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
 
-void SetAlpha::update(Source *s, float)
+GotoAlpha::GotoAlpha(float alpha) : GotoAlpha()
+{
+    alpha_ = CLAMP(alpha, 0.f, 1.f);
+}
+
+void GotoAlpha::update(Source *s, float)
 {
     if (s && !s->locked()) {
         // set start position on first run or upon call of reset()
@@ -65,12 +81,29 @@ void SetAlpha::update(Source *s, float)
             pos_ += step_ * (delta / 2.f);
             s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
         }
-        // done
-        else
+        // reached alpha target
+        else {
             finished_ = true;
+        }
     }
     else
         finished_ = true;
+}
+
+SourceCallback *GotoAlpha::clone() const
+{
+    return new GotoAlpha(alpha_);
+}
+
+SourceCallback *GotoAlpha::reverse(Source *s) const
+{
+    return new GotoAlpha(s->alpha());
+}
+
+void GotoAlpha::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
 }
 
 SetLock::SetLock(bool on) : SourceCallback(), lock_(on)
@@ -85,9 +118,21 @@ void SetLock::update(Source *s, float)
     finished_ = true;
 }
 
-Loom::Loom(float da, float duration) : SourceCallback(), speed_(da),
-    duration_(duration), progress_(0.f)
+SourceCallback *SetLock::clone() const
 {
+    return new SetLock(lock_);
+}
+
+Loom::Loom() : SourceCallback(), speed_(0), duration_(0), progress_(0.f)
+{
+    pos_  = glm::vec2();
+    step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
+}
+
+Loom::Loom(float d, float duration) : Loom()
+{
+    speed_ = d;
+    duration_ = duration;
     pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
@@ -129,14 +174,30 @@ void Loom::update(Source *s, float dt)
         finished_ = true;
 }
 
+SourceCallback *Loom::clone() const
+{
+    return new Loom(speed_, duration_);
+}
+
+void Loom::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
 
 
-SetDepth::SetDepth(float target, float duration) : SourceCallback(),
-    duration_(duration), progress_(0.f), start_(0.f), target_(CLAMP(target, MIN_DEPTH, MAX_DEPTH))
+GotoDepth::GotoDepth() : SourceCallback(),
+    duration_(0), progress_(0.f), start_(0.f), target_(MIN_DEPTH)
 {
 }
 
-void SetDepth::update(Source *s, float dt)
+GotoDepth::GotoDepth(float target, float duration) : GotoDepth()
+{
+    target_ = CLAMP(target, MIN_DEPTH, MAX_DEPTH);
+    duration_ = duration;
+}
+
+void GotoDepth::update(Source *s, float dt)
 {
     if (s && !s->locked()) {
         // set start position on first run or upon call of reset()
@@ -167,6 +228,21 @@ void SetDepth::update(Source *s, float dt)
         finished_ = true;
 }
 
+SourceCallback *GotoDepth::clone() const
+{
+    return new GotoDepth(target_, duration_);
+}
+
+SourceCallback *GotoDepth::reverse(Source *s) const
+{
+    return new GotoDepth(s->depth(), duration_);
+}
+
+void GotoDepth::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
 
 SetPlay::SetPlay(bool on) : SourceCallback(), play_(on)
 {
@@ -180,6 +256,11 @@ void SetPlay::update(Source *s, float)
     }
 
     finished_ = true;
+}
+
+SourceCallback *SetPlay::clone() const
+{
+    return new SetPlay(play_);
 }
 
 RePlay::RePlay() : SourceCallback()
@@ -196,10 +277,19 @@ void RePlay::update(Source *s, float)
     finished_ = true;
 }
 
-
-Grab::Grab(float dx, float dy, float duration) : SourceCallback(), speed_(glm::vec2(dx,dy)),
-    duration_(duration), progress_(0.f)
+SourceCallback *RePlay::clone() const
 {
+    return new RePlay;
+}
+
+Grab::Grab() : SourceCallback(), speed_(glm::vec2(0.f)), duration_(0.f), progress_(0.f)
+{
+}
+
+Grab::Grab(float dx, float dy, float duration) : Grab()
+{
+    speed_ = glm::vec2(dx,dy);
+    duration_ = duration;
 }
 
 void Grab::update(Source *s, float dt)
@@ -231,9 +321,25 @@ void Grab::update(Source *s, float dt)
         finished_ = true;
 }
 
-Resize::Resize(float dx, float dy, float duration) : SourceCallback(), speed_(glm::vec2(dx,dy)),
-    duration_(duration), progress_(0.f)
+SourceCallback *Grab::clone() const
 {
+    return new Grab(speed_.x, speed_.y, duration_);
+}
+
+void Grab::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+Resize::Resize() : SourceCallback(), speed_(glm::vec2(0.f)), duration_(0.f), progress_(0.f)
+{
+}
+
+Resize::Resize(float dx, float dy, float duration) : Resize()
+{
+    speed_ = glm::vec2(dx,dy);
+    duration_ = duration;
 }
 
 void Resize::update(Source *s, float dt)
@@ -265,9 +371,25 @@ void Resize::update(Source *s, float dt)
         finished_ = true;
 }
 
-Turn::Turn(float da, float duration) : SourceCallback(), speed_(da),
-    duration_(duration), progress_(0.f)
+SourceCallback *Resize::clone() const
 {
+    return new Resize(speed_.x, speed_.y, duration_);
+}
+
+void Resize::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+Turn::Turn() : SourceCallback(), speed_(0.f), duration_(0.f), progress_(0.f)
+{
+}
+
+Turn::Turn(float da, float duration) : Turn()
+{
+    speed_ = da;
+    duration_ = duration;
 }
 
 void Turn::update(Source *s, float dt)
@@ -296,4 +418,15 @@ void Turn::update(Source *s, float dt)
     }
     else
         finished_ = true;
+}
+
+SourceCallback *Turn::clone() const
+{
+    return new Turn(speed_, duration_);
+}
+
+void Turn::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
 }
