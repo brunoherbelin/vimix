@@ -28,6 +28,8 @@ struct WidgetsConfig
     bool media_player_timeline_editmode;
     bool timer;
     int  timer_view;
+    bool inputs;
+    int  inputs_view;
     bool shader_editor;
     bool toolbox;
     bool help;
@@ -47,6 +49,8 @@ struct WidgetsConfig
         help = false;
         timer = false;
         timer_view = -1;
+        inputs = false;
+        inputs_view = -1;
     }
 };
 
@@ -187,6 +191,19 @@ struct TimerConfig
     }
 };
 
+struct InputMappingConfig
+{
+    uint64_t mode;
+    uint current;
+    bool disabled;
+
+    InputMappingConfig() {
+        mode = 0;
+        current = 0;
+        disabled = false;
+    }
+};
+
 struct ControllerConfig
 {
     int osc_port_receive;
@@ -267,6 +284,9 @@ struct Application
 
     // Metronome & stopwatch
     TimerConfig timer;
+
+    // Inputs mapping (callbacks)
+    InputMappingConfig mapping;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;

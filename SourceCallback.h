@@ -10,18 +10,21 @@ class SourceCallback
 {
 public:
 
-    typedef  enum {
+    typedef enum {
         CALLBACK_GENERIC = 0,
         CALLBACK_ALPHA,
-        CALLBACK_LOCK,
         CALLBACK_LOOM,
+        CALLBACK_GRAB,
+        CALLBACK_RESIZE,
+        CALLBACK_TURN,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
         CALLBACK_REPLAY,
-        CALLBACK_GRAB,
-        CALLBACK_RESIZE,
-        CALLBACK_TURN
+        CALLBACK_RESETGEO,
+        CALLBACK_LOCK
     } CallbackType;
+
+    static SourceCallback *create(CallbackType type);
 
     SourceCallback();
     virtual ~SourceCallback() {}
@@ -42,27 +45,27 @@ protected:
     bool initialized_;
 };
 
-
 class ResetGeometry : public SourceCallback
 {
 public:
     ResetGeometry () : SourceCallback() {}
     void update (Source *s, float) override;
     SourceCallback *clone () const override;
+    CallbackType type () override { return CALLBACK_RESETGEO; }
 };
 
-class GotoAlpha : public SourceCallback
+class SetAlpha : public SourceCallback
 {
     float alpha_;
     glm::vec2 pos_;
     glm::vec2 step_;
 
 public:
-    GotoAlpha ();
-    GotoAlpha (float alpha);
+    SetAlpha ();
+    SetAlpha (float alpha);
 
-    float alpha () const { return alpha_;}
-    void  setAlpha (float a) { alpha_ = a; }
+    float value () const { return alpha_;}
+    void  setValue (float a) { alpha_ = a; }
 
     void update (Source *s, float) override;
     SourceCallback *clone () const override;
@@ -83,8 +86,8 @@ public:
     Loom ();
     Loom (float d, float duration = 0.f);
 
-    float delta () const { return speed_;}
-    void  setDelta (float d) { speed_ = d; }
+    float value () const { return speed_;}
+    void  setValue (float d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
 
@@ -94,19 +97,23 @@ public:
     void accept (Visitor& v) override;
 };
 
-class SetLock : public SourceCallback
+class Lock : public SourceCallback
 {
     bool lock_;
 
 public:
-    SetLock (bool on);
+    Lock ();
+    Lock (bool on);
+
+    bool value () const { return lock_;}
+    void setValue (bool l) { lock_ = l;}
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
     CallbackType type () override { return CALLBACK_LOCK; }
 };
 
-class GotoDepth : public SourceCallback
+class SetDepth : public SourceCallback
 {
     float duration_;
     float progress_;
@@ -114,11 +121,11 @@ class GotoDepth : public SourceCallback
     float target_;
 
 public:
-    GotoDepth ();
-    GotoDepth (float depth, float duration = 0.f);
+    SetDepth ();
+    SetDepth (float depth, float duration = 0.f);
 
-    float depth () const { return target_;}
-    void  setDepth (float d) { target_ = d; }
+    float value () const { return target_;}
+    void  setValue (float d) { target_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
 
@@ -129,16 +136,20 @@ public:
     void accept (Visitor& v) override;
 };
 
-class SetPlay : public SourceCallback
+class Play : public SourceCallback
 {
     bool play_;
 
 public:
-    SetPlay (bool on);
-    bool play () const { return play_;}
+    Play ();
+    Play (bool on);
+
+    bool value () const { return play_;}
+    void setValue (bool on) { play_ = on; }
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
+    SourceCallback *reverse(Source *s) const override;
     CallbackType type () override { return CALLBACK_PLAY; }
 };
 
@@ -163,8 +174,8 @@ public:
     Grab();
     Grab(float dx, float dy, float duration = 0.f);
 
-    glm::vec2 delta () { return speed_;}
-    void  setDelta (glm::vec2 d) { speed_ = d; }
+    glm::vec2 value () { return speed_;}
+    void  setValue (glm::vec2 d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
 
@@ -185,8 +196,8 @@ public:
     Resize();
     Resize(float dx, float dy, float duration = 0.f);
 
-    glm::vec2 delta () { return speed_;}
-    void  setDelta (glm::vec2 d) { speed_ = d; }
+    glm::vec2 value () { return speed_;}
+    void  setValue (glm::vec2 d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
 
@@ -207,8 +218,8 @@ public:
     Turn();
     Turn(float da, float duration = 0.f);
 
-    float delta () { return speed_;}
-    void  setDelta (float d) { speed_ = d; }
+    float value () { return speed_;}
+    void  setValue (float d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
 

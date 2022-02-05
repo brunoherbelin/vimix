@@ -36,6 +36,10 @@
 #include "SystemToolkit.h"
 #include "tinyxml2Toolkit.h"
 
+#include "UserInterfaceManager.h"
+#include "RenderingManager.h"
+#include <GLFW/glfw3.h>
+
 #include "ControlManager.h"
 
 #ifndef NDEBUG
@@ -43,6 +47,8 @@
 #endif
 
 #define CONTROL_OSC_MSG "OSC: "
+
+bool Control::input_active[INPUT_MAX]{};
 
 
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
@@ -339,6 +345,14 @@ bool Control::init()
     terminate();
 
     //
+    // set keyboard callback
+    //
+    GLFWwindow *main = Rendering::manager().mainWindow().window();
+    GLFWwindow *output = Rendering::manager().outputWindow().window();
+    glfwSetKeyCallback( main, Control::keyboardCalback);
+    glfwSetKeyCallback( output, Control::keyboardCalback);
+
+    //
     // load OSC Translator
     //
     loadOscConfig();
@@ -489,7 +503,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->call( new SetPlay(on > 0.5f) );
+            target->call( new Play(on > 0.5f) );
         }
         /// e.g. '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
         else if ( attribute.compare(OSC_SOURCE_PAUSE) == 0) {
@@ -497,7 +511,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
             }
-            target->call( new SetPlay(on < 0.5f) );
+            target->call( new Play(on < 0.5f) );
         }
         /// e.g. '/vimix/current/replay'
         else if ( attribute.compare(OSC_SOURCE_REPLAY) == 0) {
@@ -507,13 +521,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_LOCK) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new SetLock(x > 0.5f ? true : false) );
+            target->call( new Lock(x > 0.5f ? true : false) );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new GotoAlpha(x), true );
+            target->call( new SetAlpha(x), true );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
@@ -527,13 +541,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new GotoAlpha(1.f - x), true );
+            target->call( new SetAlpha(1.f - x), true );
         }
         /// e.g. '/vimix/current/depth f 5.0'
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
             float x = 0.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new GotoDepth(x), true );
+            target->call( new SetDepth(x), true );
         }
         /// e.g. '/vimix/current/translation ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
@@ -755,4 +769,76 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
+}
+
+
+
+void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int mods)
+{
+    if (UserInterface::manager().keyboardAvailable() && !mods )
+    {
+        if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z)
+            Control::input_active[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE;
+        else if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL)
+            Control::input_active[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
+        else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
+        {
+            static GLFWwindow *output = Rendering::manager().outputWindow().window();
+            if (window==output)
+                Rendering::manager().outputWindow().exitFullscreen();
+        }
+    }
+}
+
+
+bool Control::inputActive(uint id)
+{
+    return Control::input_active[MIN(id,INPUT_MAX)];
+}
+
+
+float Control::inputValue(uint id)
+{
+    float value = 0.f;
+
+    if ( id >= INPUT_KEYBOARD_FIRST && id <= INPUT_NUMPAD_LAST )
+    {
+        value = inputActive(id) ? 1.0f : 0.f;
+    }
+    else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
+    {
+
+    }
+    else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
+    {
+
+    }
+
+    return value;
+}
+
+std::string Control::inputLabel(uint id)
+{
+    std::string label;
+
+    if ( id >= INPUT_KEYBOARD_FIRST && id <= INPUT_KEYBOARD_LAST )
+    {
+        int k = GLFW_KEY_A + id -INPUT_KEYBOARD_FIRST;
+        label = std::string( glfwGetKeyName( k, glfwGetKeyScancode(k) ) );
+    }
+    else if ( id >= INPUT_NUMPAD_FIRST && id <= INPUT_NUMPAD_LAST )
+    {
+        int k = GLFW_KEY_KP_0 + id -INPUT_NUMPAD_FIRST;
+        label = std::string( glfwGetKeyName( k, glfwGetKeyScancode(k) ) );
+    }
+    else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
+    {
+
+    }
+    else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
+    {
+
+    }
+
+    return label;
 }

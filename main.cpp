@@ -107,11 +107,6 @@ int main(int argc, char *argv[])
         return 1;
 
     ///
-    /// CONTROLLER INIT (OSC)
-    ///
-    Control::manager().init();
-
-    ///
     /// METRONOME INIT (Ableton Link)
     ///
     if ( !Metronome::manager().init() )
@@ -122,6 +117,11 @@ int main(int argc, char *argv[])
     ///
     if ( !Rendering::manager().init() )
         return 1;
+
+    ///
+    /// CONTROLLER INIT (OSC)
+    ///
+    Control::manager().init();
 
     ///
     /// IMGUI INIT

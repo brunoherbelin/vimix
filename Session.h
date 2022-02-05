@@ -11,6 +11,8 @@ class XMLDocument;
 }
 class FrameGrabber;
 class MixingGroup;
+class SourceCallback;
+class CallbackGenerator;
 
 struct SessionNote
 {
@@ -183,6 +185,9 @@ protected:
         }
     };
     Fading fading_;
+
+//    std::map<uint64_t,
+
 };
 
 

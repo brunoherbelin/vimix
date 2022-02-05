@@ -46,9 +46,22 @@
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
 
+#define INPUT_UNDEFINED        0
+#define INPUT_KEYBOARD_FIRST   1
+#define INPUT_KEYBOARD_LAST    26
+#define INPUT_NUMPAD_FIRST     27
+#define INPUT_NUMPAD_LAST      43
+#define INPUT_JOYSTICK_FIRST   44
+#define INPUT_JOYSTICK_LAST    65
+#define INPUT_CUSTOM_FIRST     66
+#define INPUT_CUSTOM_LAST      99
+#define INPUT_MAX              100
+
+
 class Session;
 class Source;
 class SourceCallback;
+class GLFWwindow;
 
 class Control
 {
@@ -72,6 +85,10 @@ public:
 
     // OSC translation
     std::string translate (std::string addresspqattern);
+
+    static bool inputActive(uint id);
+    float inputValue(uint id);
+    std::string inputLabel(uint id);
 
 protected:
 
@@ -106,6 +123,8 @@ private:
     void loadOscConfig();
     void resetOscConfig();
 
+    static bool input_active[INPUT_MAX];
+    static void keyboardCalback(GLFWwindow*, int, int, int, int);
 };
 
 #endif // CONTROL_H

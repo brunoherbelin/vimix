@@ -156,15 +156,6 @@ static void WindowMoveCallback( GLFWwindow *w, int x, int y)
     }
 }
 
-static void WindowEscapeFullscreen( GLFWwindow *w, int key, int, int action, int)
-{
-    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
-    {
-        // escape fullscreen
-        GLFW_window_[w]->exitFullscreen();
-    }
-}
-
 static void WindowToggleFullscreen( GLFWwindow *w, int button, int action, int)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -284,7 +275,6 @@ bool Rendering::init()
     output_.init(1, main_.window());
     output_.setIcon("images/vimix_256x256.png");
     // special callbacks for user input in output window
-    glfwSetKeyCallback( output_.window(), WindowEscapeFullscreen);
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
 
     return true;

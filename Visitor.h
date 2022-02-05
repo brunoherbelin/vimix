@@ -42,8 +42,8 @@ class MixingGroup;
 class MultiFileSource;
 
 class SourceCallback;
-class GotoAlpha;
-class GotoDepth;
+class SetAlpha;
+class SetDepth;
 class Loom;
 class Grab;
 class Resize;
@@ -95,8 +95,8 @@ public:
     virtual void visit (MultiFileSource&) {}
 
     virtual void visit (SourceCallback&) {}
-    virtual void visit (GotoAlpha&) {}
-    virtual void visit (GotoDepth&) {}
+    virtual void visit (SetAlpha&) {}
+    virtual void visit (SetDepth&) {}
     virtual void visit (Loom&) {}
     virtual void visit (Grab&) {}
     virtual void visit (Resize&) {}

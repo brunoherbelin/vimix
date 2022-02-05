@@ -1175,7 +1175,7 @@ void Mixer::merge(SessionSource *source)
                 SourceList::iterator  it = to_be_moved.begin();
                 for (; it != to_be_moved.end(); ++it) {
                     float scale_depth = (MAX_DEPTH-(*it)->depth()) / (MAX_DEPTH-next_depth);
-                    (*it)->call( new GotoDepth( (*it)->depth() + scale_depth ) );
+                    (*it)->call( new SetDepth( (*it)->depth() + scale_depth ) );
                 }
             }
         }
@@ -1187,10 +1187,10 @@ void Mixer::merge(SessionSource *source)
             renameSource(s);
 
             // scale alpha
-            s->call( new GotoAlpha(s->alpha() * source->alpha()));
+            s->call( new SetAlpha(s->alpha() * source->alpha()));
 
             // set depth (proportional to depth of s, adjusted by needed space)
-            s->call( new GotoDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) ) );
+            s->call( new SetDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) ) );
 
             // set location
             // a. transform of node to import

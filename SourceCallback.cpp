@@ -24,6 +24,49 @@
 
 #include "SourceCallback.h"
 
+
+SourceCallback *SourceCallback::create(CallbackType type)
+{
+    SourceCallback *loadedcallback = nullptr;
+
+    switch (type) {
+    case SourceCallback::CALLBACK_ALPHA:
+        loadedcallback = new SetAlpha;
+        break;
+    case SourceCallback::CALLBACK_LOOM:
+        loadedcallback = new Loom;
+        break;
+    case SourceCallback::CALLBACK_DEPTH:
+        loadedcallback = new SetDepth;
+        break;
+    case SourceCallback::CALLBACK_GRAB:
+        loadedcallback = new Grab;
+        break;
+    case SourceCallback::CALLBACK_RESIZE:
+        loadedcallback = new Resize;
+        break;
+    case SourceCallback::CALLBACK_TURN:
+        loadedcallback = new Turn;
+        break;
+    case SourceCallback::CALLBACK_PLAY:
+        loadedcallback = new Play;
+        break;
+    case SourceCallback::CALLBACK_REPLAY:
+        loadedcallback = new RePlay;
+        break;
+    case SourceCallback::CALLBACK_RESETGEO:
+        loadedcallback = new ResetGeometry;
+        break;
+    case SourceCallback::CALLBACK_LOCK:
+        loadedcallback = new Lock;
+        break;
+    default:
+        break;
+    }
+
+    return loadedcallback;
+}
+
 SourceCallback::SourceCallback(): active_(true), finished_(false), initialized_(false)
 {
 }
@@ -48,18 +91,18 @@ SourceCallback *ResetGeometry::clone() const
     return new ResetGeometry;
 }
 
-GotoAlpha::GotoAlpha() : SourceCallback(), alpha_(0.f)
+SetAlpha::SetAlpha() : SourceCallback(), alpha_(0.f)
 {
     pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
 
-GotoAlpha::GotoAlpha(float alpha) : GotoAlpha()
+SetAlpha::SetAlpha(float alpha) : SetAlpha()
 {
     alpha_ = CLAMP(alpha, 0.f, 1.f);
 }
 
-void GotoAlpha::update(Source *s, float)
+void SetAlpha::update(Source *s, float)
 {
     if (s && !s->locked()) {
         // set start position on first run or upon call of reset()
@@ -90,27 +133,32 @@ void GotoAlpha::update(Source *s, float)
         finished_ = true;
 }
 
-SourceCallback *GotoAlpha::clone() const
+SourceCallback *SetAlpha::clone() const
 {
-    return new GotoAlpha(alpha_);
+    return new SetAlpha(alpha_);
 }
 
-SourceCallback *GotoAlpha::reverse(Source *s) const
+SourceCallback *SetAlpha::reverse(Source *s) const
 {
-    return new GotoAlpha(s->alpha());
+    return new SetAlpha(s->alpha());
 }
 
-void GotoAlpha::accept(Visitor& v)
+void SetAlpha::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);
 }
 
-SetLock::SetLock(bool on) : SourceCallback(), lock_(on)
+Lock::Lock() : SourceCallback(), lock_(true)
 {
 }
 
-void SetLock::update(Source *s, float)
+Lock::Lock(bool on) : Lock()
+{
+    lock_ = on;
+}
+
+void Lock::update(Source *s, float)
 {
     if (s)
         s->setLocked(lock_);
@@ -118,9 +166,9 @@ void SetLock::update(Source *s, float)
     finished_ = true;
 }
 
-SourceCallback *SetLock::clone() const
+SourceCallback *Lock::clone() const
 {
-    return new SetLock(lock_);
+    return new Lock(lock_);
 }
 
 Loom::Loom() : SourceCallback(), speed_(0), duration_(0), progress_(0.f)
@@ -186,18 +234,18 @@ void Loom::accept(Visitor& v)
 }
 
 
-GotoDepth::GotoDepth() : SourceCallback(),
+SetDepth::SetDepth() : SourceCallback(),
     duration_(0), progress_(0.f), start_(0.f), target_(MIN_DEPTH)
 {
 }
 
-GotoDepth::GotoDepth(float target, float duration) : GotoDepth()
+SetDepth::SetDepth(float target, float duration) : SetDepth()
 {
     target_ = CLAMP(target, MIN_DEPTH, MAX_DEPTH);
     duration_ = duration;
 }
 
-void GotoDepth::update(Source *s, float dt)
+void SetDepth::update(Source *s, float dt)
 {
     if (s && !s->locked()) {
         // set start position on first run or upon call of reset()
@@ -228,27 +276,32 @@ void GotoDepth::update(Source *s, float dt)
         finished_ = true;
 }
 
-SourceCallback *GotoDepth::clone() const
+SourceCallback *SetDepth::clone() const
 {
-    return new GotoDepth(target_, duration_);
+    return new SetDepth(target_, duration_);
 }
 
-SourceCallback *GotoDepth::reverse(Source *s) const
+SourceCallback *SetDepth::reverse(Source *s) const
 {
-    return new GotoDepth(s->depth(), duration_);
+    return new SetDepth(s->depth(), duration_);
 }
 
-void GotoDepth::accept(Visitor& v)
+void SetDepth::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);
 }
 
-SetPlay::SetPlay(bool on) : SourceCallback(), play_(on)
+Play::Play() : SourceCallback(), play_(true)
 {
 }
 
-void SetPlay::update(Source *s, float)
+Play::Play(bool on) : Play()
+{
+    play_ = on;
+}
+
+void Play::update(Source *s, float)
 {
     if (s && s->playing() != play_) {
         // call play function
@@ -258,9 +311,14 @@ void SetPlay::update(Source *s, float)
     finished_ = true;
 }
 
-SourceCallback *SetPlay::clone() const
+SourceCallback *Play::clone() const
 {
-    return new SetPlay(play_);
+    return new Play(play_);
+}
+
+SourceCallback *Play::reverse(Source *s) const
+{
+    return new Play(s->playing());
 }
 
 RePlay::RePlay() : SourceCallback()

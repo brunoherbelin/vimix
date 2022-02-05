@@ -71,8 +71,8 @@ public:
 
     // callbacks
     void visit (SourceCallback&) override;
-    void visit (GotoAlpha&) override;
-    void visit (GotoDepth&) override;
+    void visit (SetAlpha&) override;
+    void visit (SetDepth&) override;
     void visit (Loom&) override;
     void visit (Grab&) override;
     void visit (Resize&) override;

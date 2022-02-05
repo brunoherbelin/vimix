@@ -137,7 +137,7 @@ void LayerView::draw()
             float depth_inc   = (dsl.back()->depth() - depth) / static_cast<float>(Mixer::selection().size()-1);
             for (++it; it != dsl.end(); ++it) {
                 depth += depth_inc;
-                (*it)->call( new GotoDepth(depth, 80.f) );
+                (*it)->call( new SetDepth(depth, 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Distribute"));
         }
@@ -147,7 +147,7 @@ void LayerView::draw()
             float depth = (*it)->depth();
             for (++it; it != dsl.end(); ++it) {
                 depth += LAYER_STEP;
-                (*it)->call( new GotoDepth(depth, 80.f) );
+                (*it)->call( new SetDepth(depth, 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Compress"));
         }
@@ -156,7 +156,7 @@ void LayerView::draw()
             SourceList::iterator  it = dsl.begin();
             SourceList::reverse_iterator  rit = dsl.rbegin();
             for (; it != dsl.end(); ++it, ++rit) {
-                (*it)->call( new GotoDepth((*rit)->depth(), 80.f) );
+                (*it)->call( new SetDepth((*rit)->depth(), 80.f) );
             }
             Action::manager().store(std::string("Selection: Layer Reverse order"));
         }

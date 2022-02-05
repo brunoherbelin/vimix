@@ -72,6 +72,8 @@
 #define SHORTCUT_OUTPUT       CTRL_MOD "D"
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
+#define TOOLTIP_INPUTS        "Inputs mapping"
+#define SHORTCUT_INPUTS       CTRL_MOD "I"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "Shift+F"
 #define TOOLTIP_MAIN          "Main menu "
@@ -354,6 +356,28 @@ public:
     bool Visible() const override;
 };
 
+class InputMappingInterface : public WorkspaceWindow
+{
+    std::array< std::string, 2 > input_mode;
+    std::array< uint, 2 > current_input_for_mode;
+
+    uint current_input_;
+
+    Source *ComboSelectSource(Source *current = nullptr);
+    uint ComboSelectCallback(uint current);
+    void SliderParametersCallback(SourceCallback *callback);
+
+public:
+    InputMappingInterface();
+
+    void Render();
+    void setVisible(bool on);
+
+    // from WorkspaceWindow
+    bool Visible() const override;
+};
+
+
 
 class UserInterface
 {
@@ -388,6 +412,7 @@ public:
     uint64_t Runtime() const;
 
     // status querries
+    inline bool keyboardAvailable() const { return keyboard_available; }
     inline bool ctrlModifier() const { return ctrl_modifier_active; }
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
@@ -408,6 +433,7 @@ protected:
     bool ctrl_modifier_active;
     bool alt_modifier_active;
     bool shift_modifier_active;
+    bool keyboard_available;
     bool show_vimix_about;
     bool show_imgui_about;
     bool show_gst_about;
@@ -428,6 +454,7 @@ protected:
     SourceController sourcecontrol;
     OutputPreview outputcontrol;
     TimerMetronome timercontrol;
+    InputMappingInterface inputscontrol;
     HelperToolbox helpwindow;
 
     void showMenuFile();

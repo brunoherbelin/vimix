@@ -906,39 +906,19 @@ void SessionLoader::visit (Source& s)
         xmlCurrent_ = callbacksNode->FirstChildElement("Callback");
         for ( ; xmlCurrent_ ; xmlCurrent_ = xmlCurrent_->NextSiblingElement()) {
             // what key triggers the callback ?
-            int key = 0;
-            xmlCurrent_->QueryIntAttribute("key", &key);
+            uint input = 0;
+            xmlCurrent_->QueryUnsignedAttribute("input", &input);
             // what type is the callback ?
             uint type = 0;
             xmlCurrent_->QueryUnsignedAttribute("type", &type);
             // instanciate the callback of that type
-            SourceCallback *loadedcallback = nullptr;
-            switch (type) {
-            case SourceCallback::CALLBACK_ALPHA:
-                loadedcallback = new GotoAlpha;
-                break;
-            case SourceCallback::CALLBACK_LOOM:
-                loadedcallback = new Loom;
-                break;
-            case SourceCallback::CALLBACK_DEPTH:
-                loadedcallback = new GotoDepth;
-                break;
-            case SourceCallback::CALLBACK_GRAB:
-                loadedcallback = new Grab;
-                break;
-            case SourceCallback::CALLBACK_RESIZE:
-                loadedcallback = new Resize;
-                break;
-            case SourceCallback::CALLBACK_TURN:
-                loadedcallback = new Turn;
-                break;
-            }
+            SourceCallback *loadedcallback = SourceCallback::create((SourceCallback::CallbackType)type);
             // successfully created a callback of saved type
             if (loadedcallback) {
                 // apply specific parameters
                 loadedcallback->accept(*this);
                 // add callback to source
-                s.setKeyCallback(key, loadedcallback);
+                s.addInputCallback(input, loadedcallback);
             }
         }
 
@@ -1171,18 +1151,18 @@ void SessionLoader::visit (SourceCallback &)
 {
 }
 
-void SessionLoader::visit (GotoAlpha &c)
+void SessionLoader::visit (SetAlpha &c)
 {
     float a = 0.f;
     xmlCurrent_->QueryFloatAttribute("alpha", &a);
-    c.setAlpha(a);
+    c.setValue(a);
 }
 
-void SessionLoader::visit (GotoDepth &c)
+void SessionLoader::visit (SetDepth &c)
 {
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("depth", &d);
-    c.setDepth(d);
+    c.setValue(d);
 
     d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
@@ -1193,7 +1173,7 @@ void SessionLoader::visit (Loom &c)
 {
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("delta", &d);
-    c.setDelta(d);
+    c.setValue(d);
 
     d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
@@ -1205,7 +1185,7 @@ void SessionLoader::visit (Grab &c)
     float dx = 0.f, dy = 0.f;
     xmlCurrent_->QueryFloatAttribute("delta.x", &dx);
     xmlCurrent_->QueryFloatAttribute("delta.y", &dy);
-    c.setDelta( glm::vec2(dx, dy) );
+    c.setValue( glm::vec2(dx, dy) );
 
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
@@ -1217,7 +1197,7 @@ void SessionLoader::visit (Resize &c)
     float dx = 0.f, dy = 0.f;
     xmlCurrent_->QueryFloatAttribute("delta.x", &dx);
     xmlCurrent_->QueryFloatAttribute("delta.y", &dy);
-    c.setDelta( glm::vec2(dx, dy) );
+    c.setValue( glm::vec2(dx, dy) );
 
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
@@ -1228,7 +1208,7 @@ void SessionLoader::visit (Turn &c)
 {
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("delta", &d);
-    c.setDelta(d);
+    c.setValue(d);
 
     d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);

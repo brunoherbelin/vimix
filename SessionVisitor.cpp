@@ -580,16 +580,19 @@ void SessionVisitor::visit (Source& s)
         s.mixingGroup()->accept(*this);
     }
 
-    std::vector<int> keys = s.callbackKeys();
-    if (!keys.empty()) {
+    std::list<uint> inputs = s.callbackInputs();
+    if (!inputs.empty()) {
         // list of callbacks
         XMLElement *callbackselement = xmlDoc_->NewElement( "Callbacks" );
         sourceNode->InsertEndChild(callbackselement);
-        for (auto k = keys.begin(); k != keys.end(); ++k) {
-            xmlCurrent_ = xmlDoc_->NewElement( "Callback" );
-            xmlCurrent_->SetAttribute("key", *k);
-            s.keyCallback(*k)->accept(*this);
-            callbackselement->InsertEndChild(xmlCurrent_);
+        for (auto i = inputs.begin(); i != inputs.end(); ++i) {
+            std::list<SourceCallback *> callbacks = s.inputCallbacks(*i);
+            for (auto c = callbacks.begin(); c != callbacks.end(); ++c) {
+                xmlCurrent_ = xmlDoc_->NewElement( "Callback" );
+                xmlCurrent_->SetAttribute("input", *i);
+                (*c)->accept(*this);
+                callbackselement->InsertEndChild(xmlCurrent_);
+            }
         }
     }
 
@@ -756,6 +759,49 @@ void SessionVisitor::visit (SrtReceiverSource& s)
     xmlCurrent_->InsertEndChild(port);
 }
 
+void SessionVisitor::visit (SourceCallback &c)
+{
+    xmlCurrent_->SetAttribute("type", (uint) c.type());
+}
+
+void SessionVisitor::visit (SetAlpha &c)
+{
+    xmlCurrent_->SetAttribute("alpha", c.value());
+}
+
+void SessionVisitor::visit (SetDepth &c)
+{
+    xmlCurrent_->SetAttribute("depth", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Loom &c)
+{
+    xmlCurrent_->SetAttribute("delta", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Grab &c)
+{
+    xmlCurrent_->SetAttribute("delta.x", c.value().x);
+    xmlCurrent_->SetAttribute("delta.y", c.value().y);
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Resize &c)
+{
+    xmlCurrent_->SetAttribute("delta.x", c.value().x);
+    xmlCurrent_->SetAttribute("delta.y", c.value().y);
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Turn &c)
+{
+    xmlCurrent_->SetAttribute("delta", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+
 std::string SessionVisitor::getClipboard(const SourceList &list)
 {
     std::string x = "";
@@ -842,48 +888,5 @@ std::string SessionVisitor::getClipboard(ImageProcessingShader * const s)
 
     return x;
 }
-
-void SessionVisitor::visit (SourceCallback &c)
-{
-    xmlCurrent_->SetAttribute("type", (uint) c.type());
-}
-
-void SessionVisitor::visit (GotoAlpha &c)
-{
-    xmlCurrent_->SetAttribute("alpha", c.alpha());
-}
-
-void SessionVisitor::visit (GotoDepth &c)
-{
-    xmlCurrent_->SetAttribute("depth", c.depth());
-    xmlCurrent_->SetAttribute("duration", c.duration());
-}
-
-void SessionVisitor::visit (Loom &c)
-{
-    xmlCurrent_->SetAttribute("delta", c.delta());
-    xmlCurrent_->SetAttribute("duration", c.duration());
-}
-
-void SessionVisitor::visit (Grab &c)
-{
-    xmlCurrent_->SetAttribute("delta.x", c.delta().x);
-    xmlCurrent_->SetAttribute("delta.y", c.delta().y);
-    xmlCurrent_->SetAttribute("duration", c.duration());
-}
-
-void SessionVisitor::visit (Resize &c)
-{
-    xmlCurrent_->SetAttribute("delta.x", c.delta().x);
-    xmlCurrent_->SetAttribute("delta.y", c.delta().y);
-    xmlCurrent_->SetAttribute("duration", c.duration());
-}
-
-void SessionVisitor::visit (Turn &c)
-{
-    xmlCurrent_->SetAttribute("delta", c.delta());
-    xmlCurrent_->SetAttribute("duration", c.duration());
-}
-
 
 

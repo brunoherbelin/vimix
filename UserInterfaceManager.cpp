@@ -22,6 +22,7 @@
 #include <sstream>
 #include <thread>
 #include <algorithm>
+#include <array>
 #include <map>
 #include <iomanip>
 #include <fstream>
@@ -125,8 +126,7 @@ struct CustomConstraints
     }
     static void Square(ImGuiSizeCallbackData* data) {
         data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y);
-    }
-
+    }    
 };
 
 UserInterface::UserInterface()
@@ -228,17 +228,17 @@ uint64_t UserInterface::Runtime() const
     return gst_util_get_timestamp () - start_time;
 }
 
+
 void UserInterface::handleKeyboard()
 {
     const ImGuiIO& io = ImGui::GetIO();
     alt_modifier_active = io.KeyAlt;
     shift_modifier_active = io.KeyShift;
-    bool ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
+    ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
+    keyboard_available = !io.WantCaptureKeyboard;
 
     // Application "CTRL +"" Shortcuts
-    if ( ctrl ) {
-
-        ctrl_modifier_active = true;
+    if ( ctrl_modifier_active ) {
 
         if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
             // try quit
@@ -349,6 +349,9 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_K )) {
+            Settings::application.widget.inputs = !Settings::application.widget.inputs;
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
         }
@@ -356,7 +359,6 @@ void UserInterface::handleKeyboard()
     }
     // No CTRL modifier
     else {
-        ctrl_modifier_active = false;
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
@@ -390,19 +392,8 @@ void UserInterface::handleKeyboard()
             // Space bar to toggle play / pause
             sourcecontrol.Play();
 
-        // keys for source callbacks
-        else
-        {
-            ImGuiContext& g = *GImGui;
-            for( auto sit = Mixer::manager().session()->begin();
-                 sit != Mixer::manager().session()->end(); ++sit) {
-                (*sit)->updateCallbacks(g.IO.KeysDown);
-            }
-        }
-
-
         // normal keys in workspace // make sure no entry / window box is active        
-        if ( !ImGui::IsAnyWindowFocused() )
+        if ( keyboard_available )
         {
             // Backspace to delete source
             if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
@@ -811,6 +802,7 @@ void UserInterface::Render()
     outputcontrol.Update();
     sourcecontrol.Update();
     timercontrol.Update();
+    inputscontrol.Update();
 
     // warnings and notifications
     Log::Render(&Settings::application.widget.logs);
@@ -829,6 +821,10 @@ void UserInterface::Render()
     // Timer controller
     if (timercontrol.Visible())
         timercontrol.Render();
+
+    // Keyboards controller
+    if (inputscontrol.Visible())
+        inputscontrol.Render();
 
     // Logs
     if (Settings::application.widget.logs)
@@ -1263,7 +1259,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             float v = s->alpha();
             ImGui::SetNextItemWidth(rightalign);
             if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
-                s->call(new GotoAlpha(v));
+                s->call(new SetAlpha(v));
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
                 Action::manager().store(info.str());
@@ -4278,6 +4274,494 @@ void TimerMetronome::Render()
     ImGui::End();
 }
 
+
+///
+/// KEYBOARDS
+///
+
+InputMappingInterface::InputMappingInterface() : WorkspaceWindow("InputMappingInterface")
+{
+    input_mode = { ICON_FA_KEYBOARD " Keyboard", ICON_FA_CALCULATOR "  Numpad" };
+    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST };
+    current_input_ = current_input_for_mode[Settings::application.mapping.mode];
+}
+
+void InputMappingInterface::setVisible(bool on)
+{
+    // restore workspace to show the window
+    if (WorkspaceWindow::clear_workspace_enabled) {
+        WorkspaceWindow::restoreWorkspace(on);
+        // do not change status if ask to hide (consider user asked to toggle because the window was not visible)
+        if (!on)  return;
+    }
+
+    if (on && Settings::application.widget.inputs_view != Settings::application.current_view)
+        Settings::application.widget.inputs_view = -1;
+
+    Settings::application.widget.inputs = on;
+}
+
+bool InputMappingInterface::Visible() const
+{
+    return ( Settings::application.widget.inputs
+             && (Settings::application.widget.inputs_view < 0 || Settings::application.widget.inputs_view == Settings::application.current_view )
+             );
+}
+
+
+Source *InputMappingInterface::ComboSelectSource(Source *current)
+{
+    Source *selected = nullptr;
+    std::string label = "Select";
+    if (current)
+        label = current->name();
+
+    if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
+    {
+        Session *ses = Mixer::manager().session();
+        for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
+            if (ImGui::Selectable( (*sit)->name().c_str() )) {
+                selected = *sit;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    return selected;
+}
+
+uint InputMappingInterface::ComboSelectCallback(uint current)
+{
+    uint selected = SourceCallback::CALLBACK_GENERIC;
+
+    const char* callback_names[9] = { "Select",
+                                       ICON_FA_BULLSEYE "  Alpha",
+                                       ICON_FA_BULLSEYE "  Loom",
+                                       ICON_FA_OBJECT_UNGROUP "  Grab",
+                                       ICON_FA_OBJECT_UNGROUP "  Resize",
+                                       ICON_FA_OBJECT_UNGROUP "  Turn",
+                                       ICON_FA_LAYER_GROUP "  Depth",
+                                       ICON_FA_PLAY_CIRCLE "  Play",
+                                       ICON_FA_PLAY_CIRCLE "  Replay"
+                                     };
+
+    ImGui::SetNextItemWidth(-1.1f * ImGui::GetTextLineHeightWithSpacing());
+    if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
+        for (uint i = SourceCallback::CALLBACK_ALPHA; i < SourceCallback::CALLBACK_REPLAY; ++i){
+            if ( ImGui::Selectable( callback_names[i]) ) {
+                selected = i;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (current == 1 || current == 6 || current == 7)
+        ImGuiToolkit::Indication("* On Press *\nApply target value on key press,\nrevert on key up.", 2, 13);
+    else
+        ImGuiToolkit::Indication("* Repeat *\nMaintain key down to loop action and animate.", 18, 5);
+
+    return selected;
+}
+
+void InputMappingInterface::SliderParametersCallback(SourceCallback *callback)
+{
+    const float right_align = -1.1f * ImGui::GetTextLineHeightWithSpacing();
+
+    switch ( callback->type() ) {
+    case SourceCallback::CALLBACK_ALPHA:
+    {
+        SetAlpha *edited = static_cast<SetAlpha*>(callback);
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat("##CALLBACK_ALPHA", &val, 0.f, 1.f, "%.2f"))
+            edited->setValue(val);
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Target alpha to make the source\nvisible (1.0) or transparent (0.0)", 18, 12);
+    }
+        break;
+    case SourceCallback::CALLBACK_LOOM:
+    {
+        Loom *edited = static_cast<Loom*>(callback);
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat("##CALLBACK_LOOM", &val, -1.f, 1.f, "%.2f", 2.f))
+            edited->setValue(val);
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Change alpha to make source more visible (<0) or more transparent (>0)", 19, 12);
+    }
+        break;
+    case SourceCallback::CALLBACK_GRAB:
+    {
+        Grab *edited = static_cast<Grab*>(callback);
+        float val[2] = {edited->value().x, edited->value().y};
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat2("##CALLBACK_GRAB", val, -2.f, 2.f, "%.2f"))
+            edited->setValue( glm::vec2(val[0], val[1]));
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Vector (x,y) to move the source horizontally and vertically.", 6, 15);
+    }
+        break;
+    case SourceCallback::CALLBACK_RESIZE:
+    {
+        Resize *edited = static_cast<Resize*>(callback);
+        float val[2] = {edited->value().x, edited->value().y};
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat2("##CALLBACK_RESIZE", val, -2.f, 2.f, "%.2f"))
+            edited->setValue( glm::vec2(val[0], val[1]));
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Vector (x,y) to scale the source horizontally and vertically.", 2, 15);
+
+    }
+        break;
+    case SourceCallback::CALLBACK_TURN:
+    {
+        Turn *edited = static_cast<Turn*>(callback);
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat("##CALLBACK_TURN", &val, -2.f, 2.f, "%.2f")) // 18.9
+            edited->setValue(val);
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Angle of rotation of the source, clockwise (>0) or counter-clockwise (<0).", 18, 9);
+    }
+        break;
+    case SourceCallback::CALLBACK_DEPTH:
+    {
+        SetDepth *edited = static_cast<SetDepth*>(callback);
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderFloat("##CALLBACK_DEPTH", &val, 11.9f, 0.1f, "%.1f"))
+            edited->setValue(val);
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Target depth to bring the source\nfront (12) or back (0).", 6, 6);
+    }
+    case SourceCallback::CALLBACK_PLAY:
+    {
+        Play *edited = static_cast<Play*>(callback);
+        int val = edited->value() ? 1 : 0;
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, val ? "Play" : "Pause"))
+            edited->setValue(val>0);
+        ImGui::SameLine(0, 6);
+        ImGuiToolkit::Indication("Play or pause the source.", 16, 7);
+    }
+        break;
+    default:
+        break;
+    }
+}
+
+void InputMappingInterface::Render()
+{
+    const ImGuiContext& g = *GImGui;
+    static ImVec2 keyLetterIconSize = ImVec2(60, 60);
+    static ImVec2 keyLetterItemSize = keyLetterIconSize + g.Style.ItemSpacing;
+    static ImVec2 keyNumpadIconSize = ImVec2(75, 75);
+    static ImVec2 keyNumpadItemSize = keyNumpadIconSize + g.Style.ItemSpacing;
+    static float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + g.Style.ItemSpacing.y * 2.0f ;
+    static float  inputarea_width = keyLetterItemSize.x * 5.f;
+
+    ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(1000, fixed_height), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(900, fixed_height), ImVec2(FLT_MAX, fixed_height));
+
+    if ( !ImGui::Begin(name_, &Settings::application.widget.inputs,
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+    {
+        ImGui::End();
+        return;
+    }
+
+    // menu (no title bar)
+    if (ImGui::BeginMenuBar())
+    {
+        // Close and widget menu
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.inputs = false;
+        if (ImGui::BeginMenu(IMGUI_TITLE_INPUT_MAPPING))
+        {
+            // Enable/Disable
+            ImGui::MenuItem( ICON_FA_BAN "  Disable all", nullptr, &Settings::application.mapping.disabled);
+
+            // output manager menu
+            ImGui::Separator();
+            bool pinned = Settings::application.widget.inputs_view == Settings::application.current_view;
+            std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
+            if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
+                if (pinned)
+                    Settings::application.widget.inputs_view = Settings::application.current_view;
+                else
+                    Settings::application.widget.inputs_view = -1;
+            }
+            if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_INPUTS) )
+                Settings::application.widget.inputs = false;
+
+            ImGui::EndMenu();
+        }
+
+        // Selection of the keyboard mode
+        if (ImGui::BeginMenu( input_mode[Settings::application.mapping.mode].c_str() ))
+        {
+            for (size_t i = 0; i < input_mode.size(); ++i) {
+                if (ImGui::MenuItem(input_mode[i].c_str(), NULL, Settings::application.mapping.mode==i)) {
+                    current_input_for_mode[Settings::application.mapping.mode] = current_input_;
+                    Settings::application.mapping.mode = i;
+                    current_input_ = current_input_for_mode[i];
+                }
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    // current windowdraw parameters
+    const ImGuiWindow* window = ImGui::GetCurrentWindow();
+    ImDrawList* draw_list = window->DrawList;
+    ImVec2 frame_top = ImGui::GetCursorScreenPos();
+    Session *ses = Mixer::manager().session();
+
+
+    // create data structures more adapted for display
+    std::multimap< uint, std::pair<Source *, SourceCallback*> > input_sources_callbacks;
+    bool input_assigned[INPUT_MAX]{};
+    // loop over sources of the session
+    for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
+        // loop over registered keys
+        std::list<uint> inputs = (*sit)->callbackInputs();
+        for (auto k = inputs.begin(); k != inputs.end(); ++k) {
+            // add entry in input map
+            std::list<SourceCallback *> callbacks = (*sit)->inputCallbacks(*k);
+            for (auto c = callbacks.begin(); c != callbacks.end(); ++c )
+                input_sources_callbacks.emplace( *k, std::pair<Source *, SourceCallback*>(*sit, *c) );
+            input_assigned[*k] = true;
+        }
+    }
+
+    //
+    // KEYBOARD
+    //
+    if ( Settings::application.mapping.mode == 0 ) {
+
+        // Draw table of letter keys [A] to [Y]
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+        ImGui::PushStyleColor(ImGuiCol_Header, color);
+
+        for (uint ik = INPUT_KEYBOARD_FIRST; ik < INPUT_KEYBOARD_LAST; ++ik){
+            int i = ik - INPUT_KEYBOARD_FIRST;
+            // draw overlay on active keys
+            if ( Control::inputActive(ik) ) {
+                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( i % 5, i / 5);
+                draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
+                // set current
+                current_input_ = ik;
+            }
+            // draw key button
+            ImGui::PushID(i);
+            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, keyLetterIconSize)) {
+
+                current_input_ = ik;
+            }
+            ImGui::PopID();
+            if ((i % 5) < 4) ImGui::SameLine();
+
+            // Draw frame around current keyboard letter
+            if (current_input_ == ik) {
+                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( i % 5, i / 5);
+                draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+            }
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+    }
+    //
+    // NUMPAD
+    //
+    else if ( Settings::application.mapping.mode == 1 ) {
+        // custom layout of numerical keypad
+        std::vector<uint> numpad_inputs = { INPUT_NUMPAD_FIRST+7, INPUT_NUMPAD_FIRST+8, INPUT_NUMPAD_FIRST+9, INPUT_NUMPAD_FIRST+11,
+                                            INPUT_NUMPAD_FIRST+4, INPUT_NUMPAD_FIRST+5, INPUT_NUMPAD_FIRST+6, INPUT_NUMPAD_FIRST+12,
+                                            INPUT_NUMPAD_FIRST+1, INPUT_NUMPAD_FIRST+2, INPUT_NUMPAD_FIRST+3, INPUT_NUMPAD_FIRST+13,
+                                            INPUT_NUMPAD_FIRST+0, INPUT_NUMPAD_FIRST+10, INPUT_NUMPAD_FIRST+14 };
+
+        // Draw table of keypad keys
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+        ImGui::PushStyleColor(ImGuiCol_Header, color);
+
+        for (size_t p = 0; p < numpad_inputs.size(); ++p){
+            uint ik = numpad_inputs[p];
+            ImVec2 iconsize = p == 12 ? keyNumpadIconSize + ImVec2(keyNumpadIconSize.x+ g.Style.ItemSpacing.x, 0.f) : keyNumpadIconSize;
+            ImVec2 itemsize = p == 12 ? keyNumpadItemSize + ImVec2(keyNumpadItemSize.x+ g.Style.ItemSpacing.x, 0.f) : keyNumpadItemSize;
+            // draw overlay on active keys
+            if ( Control::inputActive(ik) ) {
+                ImVec2 pos = frame_top + itemsize * ImVec2( p % 4, p / 4);
+                pos += p > 12 ? ImVec2(keyNumpadIconSize.x+ g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
+                draw_list->AddRectFilled(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
+                // set current
+                current_input_ = ik;
+            }
+            // draw key button
+            ImGui::PushID(p);
+            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, iconsize)) {
+                current_input_ = ik;
+            }
+            ImGui::PopID();
+            if ((p % 4) < 3) ImGui::SameLine();
+
+            // Draw frame around current
+            if (ik == current_input_){
+                ImVec2 pos = frame_top + itemsize * ImVec2( p % 4, p / 4);
+                pos += p > 12 ? ImVec2(keyNumpadIconSize.x + g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
+                draw_list->AddRect(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+            }
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+    }
+
+    // Draw Indicator for current input
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    ImGui::SetCursorScreenPos(frame_top + ImVec2(inputarea_width, 0) + g.Style.FramePadding);
+    ImGui::Text( ICON_FA_CUBE " %s", Control::manager().inputLabel(current_input_).c_str() );
+    ImGui::PopFont();
+
+    // Draw child Window (rounded border) to list reactions to input
+    ImGui::SetCursorScreenPos(frame_top + ImVec2(inputarea_width, g.FontSize + g.Style.FramePadding.y * 2.0f + g.Style.ItemSpacing.y * 2.0f));
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
+        ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), true);
+
+        if (input_sources_callbacks.count(current_input_) < 1) {
+
+            ImGui::Text("No action associated to this input. Create a new one with '+'.");
+        }
+        else {
+
+            ImGui::Columns(3, "InputMapping", false);
+            auto result = input_sources_callbacks.equal_range(current_input_);
+            for (auto kit = result.first; kit != result.second; ++kit) {
+
+                Source *source = kit->second.first;
+                SourceCallback *callback = kit->second.second;
+
+                // push ID because we repeat the same UI
+                ImGui::PushID( (void*) callback);
+
+                // Delete interface
+                if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Delete") ){
+                    source->removeInputCallback(callback);
+                    // reload
+                    ImGui::PopID();
+                    break;
+                }
+
+                // Select Source
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth( -FLT_MIN);
+                Source *select = ComboSelectSource(source);
+                if (select != nullptr) {
+                    // copy callback to other source
+                    select->addInputCallback(current_input_, callback->clone());
+                    // remove previous callback
+                    source->removeInputCallback(callback);
+                    // reload
+                    ImGui::PopID();
+                    break;
+                }
+
+                // Select Reaction
+                ImGui::NextColumn();
+                ImGui::SetNextItemWidth( -FLT_MIN);
+                uint type = ComboSelectCallback( callback->type() );
+                if (type > 0) {
+                    // remove previous callback
+                    source->removeInputCallback(callback);
+                    // add callback
+                    source->addInputCallback(current_input_, SourceCallback::create((SourceCallback::CallbackType)type) );
+                    // reload
+                    ImGui::PopID();
+                    break;
+                }
+
+                // Adjust parameters
+                ImGui::NextColumn();
+                if (callback)
+                    SliderParametersCallback( callback );
+
+                ImGui::NextColumn();
+                ImGui::PopID();
+
+            }
+
+        }
+
+        // Add a new interface
+        static bool temp_new_input = false;
+        static Source *temp_new_source = nullptr;
+        static uint temp_new_callback = 0;
+
+        ImGui::Columns(3, "NewInputMapping", false);
+        // step 1 : press '+'
+        if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "New") )
+            temp_new_input = true;
+        if (temp_new_input) {
+            // step 2 : Get input for source
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth( -FLT_MIN);
+            Source *s = ComboSelectSource(temp_new_source);
+            // user selected a source (or changed selection)
+            if (s != nullptr) {
+                temp_new_source = s;
+                temp_new_callback = 0;
+            }
+            // possible new source
+            if (temp_new_source != nullptr) {
+                // step 3: Get input for callback type
+                ImGui::NextColumn();
+                ImGui::SetNextItemWidth( -FLT_MIN);
+                temp_new_callback = ComboSelectCallback( temp_new_callback );
+                // user selected a callback type
+                if (temp_new_callback > 0) {
+                    // step 4 : create new callback and add it to source
+                    temp_new_source->addInputCallback(current_input_, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
+                    // done
+                    temp_new_source = nullptr;
+                    temp_new_callback = 0;
+                    temp_new_input = false;
+                }
+            }
+        }
+        ImGui::Columns(1);
+
+        ImGui::EndChild();
+        ImGui::PopStyleVar(2);
+    }
+
+    // Clear all button
+    if (input_sources_callbacks.count(current_input_) > 0) {
+        ImGui::SetCursorScreenPos(frame_top + ImVec2(window->Size.x - g.FontSize - g.Style.FramePadding.x * 2.0f - g.Style.WindowPadding.x, g.Style.FramePadding.y));
+        if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove all") ){
+            auto result = input_sources_callbacks.equal_range(current_input_);
+            for (auto kit = result.first; kit != result.second; ++kit) {
+                kit->second.first->removeInputCallback(kit->second.second);
+            }
+        }
+    }
+
+    ImGui::End();
+}
+
+
 ///
 /// NAVIGATOR
 ///
@@ -5183,6 +5667,12 @@ void Navigator::RenderNewPannel()
                 s->replay();
                 // close NEW pannel
                 togglePannelNew();
+
+                /// BHBN TEST SOURCE CALLBACKS KEYaa
+//                s->setKeyCallback(GLFW_KEY_A, new GotoAlpha(0.9));
+////                s->setKeyCallback(GLFW_KEY_A, new GotoDepth(10.0));
+//                s->setKeyCallback(GLFW_KEY_L, new Loom(-0.1));
+
             }
         }
 
@@ -5831,21 +6321,9 @@ void Navigator::RenderMainPannelVimix()
     ImGui::Text("Windows");
     ImGui::Spacing();
 
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     std::pair<std::string, std::string> tooltip_;
 
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
-        Mixer::manager().session()->addNote();
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_TACHOMETER_ALT ) )
-        Settings::application.widget.stats = !Settings::application.widget.stats;
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_METRICS, SHORTCUT_METRICS};
-
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
         UserInterface::manager().sourcecontrol.setVisible(!Settings::application.widget.media_player);
@@ -5864,7 +6342,28 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_TIMER, SHORTCUT_TIMER};
 
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
+    if ( ImGuiToolkit::IconButton( ICON_FA_CUBES ) )
+        UserInterface::manager().inputscontrol.setVisible(!Settings::application.widget.inputs);
+    if (ImGui::IsItemHovered())
+        tooltip_ = { TOOLTIP_INPUTS, SHORTCUT_INPUTS};
     ImGui::PopFont();
+
+    ImGui::Spacing();
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
+    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
+        Mixer::manager().session()->addNote();
+    if (ImGui::IsItemHovered())
+        tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
+
+    ImGui::SameLine(0, ImGui::GetTextLineHeight());
+    if ( ImGuiToolkit::IconButton( ICON_FA_TACHOMETER_ALT ) )
+        Settings::application.widget.stats = !Settings::application.widget.stats;
+    if (ImGui::IsItemHovered())
+        tooltip_ = { TOOLTIP_METRICS, SHORTCUT_METRICS};
+    ImGui::PopFont();
+
     if (!tooltip_.first.empty()) {
         ImGuiToolkit::ToolTip(tooltip_.first.c_str(), tooltip_.second.c_str());
     }
@@ -6003,7 +6502,7 @@ void Navigator::RenderMainPannelSettings()
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
         ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
+        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
             Control::manager().init();
         ImGui::SameLine();
         ImGui::Text("Translator");
@@ -6361,19 +6860,6 @@ void ShowSandbox(bool* p_open)
     }
 
     ImGui::Separator();
-
-    static Source *tmp = nullptr;
-//        static char buf1[1280] = "videotestsrc pattern=smpte ! queue ! videoconvert";
-        static char buf1[1280] = "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264";
-//    static char buf1[1280] = "srtsrc uri=\"srt://192.168.0.37:5000?mode=listener\" ! decodebin ";
-    ImGui::InputText("gstreamer pipeline", buf1, 1280);
-    if (ImGui::Button("Create Generic Stream Source") )
-    {
-        tmp = Mixer::manager().createSourceStream(buf1);
-        Mixer::manager().addSource( tmp );
-    }
-
-    ImGui::Separator();
     static char str[128] = "";
     ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
     if ( ImGui::Button("Execute") )
@@ -6384,8 +6870,48 @@ void ShowSandbox(bool* p_open)
     std::string tra = BaseToolkit::transliterate(std::string(str0));
     ImGui::Text("Transliteration: '%s'", tra.c_str());
 
-
     ImGui::Separator();
+
+    static bool selected[25] = { true, false, false, false, false,
+                                 true, false, false, false, false,
+                                 true, false, false, true, false,
+                                 false, false, false, true, false,
+                                 false, false, false, true, false };
+
+    ImVec2 keyIconSize = ImVec2(60,60);
+
+    ImGuiContext& g = *GImGui;
+    ImVec2 itemsize = keyIconSize + g.Style.ItemSpacing;
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+    ImVec2 frame_top = ImGui::GetCursorScreenPos();
+
+
+    static int key = 0;
+    static ImVec2 current(-1.f, -1.f);
+
+    for (int i = 0; i < 25; ++i) {
+        ImGui::PushID(i);
+        char letter[2];
+        sprintf(letter, "%c", 'A' + i);
+        if (ImGui::Selectable(letter, selected[i], 0, keyIconSize))
+        {
+            current = ImVec2(i % 5, i / 5);
+            key = GLFW_KEY_A + i;
+        }
+        ImGui::PopID();
+        if ((i % 5) < 4) ImGui::SameLine();
+    }
+    ImGui::PopStyleVar();
+    ImGui::PopFont();
+
+    if (current.x > -1 && current.y > -1) {
+        ImVec2 pos = frame_top + itemsize * current;
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRect(pos, pos + keyIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+    }
+
 
 
     ImGui::End();

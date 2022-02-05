@@ -120,6 +120,8 @@ void Settings::Save(uint64_t runtime)
     XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
     widgetsNode->SetAttribute("preview", application.widget.preview);
     widgetsNode->SetAttribute("preview_view", application.widget.preview_view);
+    widgetsNode->SetAttribute("inputs", application.widget.inputs);
+    widgetsNode->SetAttribute("inputs_view", application.widget.inputs_view);
     widgetsNode->SetAttribute("timer", application.widget.timer);
     widgetsNode->SetAttribute("timer_view", application.widget.timer_view);
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
@@ -253,7 +255,7 @@ void Settings::Save(uint64_t runtime)
         pRoot->InsertEndChild(recent);
     }
 
-    // Metronome
+    // Timer Metronome
     XMLElement *timerConfNode = xmlDoc.NewElement( "Timer" );
     timerConfNode->SetAttribute("mode", application.timer.mode);
     timerConfNode->SetAttribute("link_enabled", application.timer.link_enabled);
@@ -262,6 +264,13 @@ void Settings::Save(uint64_t runtime)
     timerConfNode->SetAttribute("link_start_stop_sync", application.timer.link_start_stop_sync);
     timerConfNode->SetAttribute("stopwatch_duration", application.timer.stopwatch_duration);
     pRoot->InsertEndChild(timerConfNode);    
+
+    // Inputs mapping
+    XMLElement *mappingConfNode = xmlDoc.NewElement( "Mapping" );
+    timerConfNode->SetAttribute("mode", application.mapping.mode);
+    timerConfNode->SetAttribute("current", application.mapping.current);
+    timerConfNode->SetAttribute("disabled", application.mapping.disabled);
+    pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
     XMLElement *controlConfNode = xmlDoc.NewElement( "Control" );
@@ -377,6 +386,8 @@ void Settings::Load()
         widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
         widgetsNode->QueryBoolAttribute("timer", &application.widget.timer);
         widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
+        widgetsNode->QueryBoolAttribute("inputs", &application.widget.inputs);
+        widgetsNode->QueryIntAttribute("inputs_view", &application.widget.inputs_view);
         widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
         widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
         widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
@@ -548,7 +559,7 @@ void Settings::Load()
         }
     }
 
-    // bloc metronome
+    // Timer Metronome
     XMLElement * timerconfnode = pRoot->FirstChildElement("Timer");
     if (timerconfnode != nullptr) {
         timerconfnode->QueryUnsigned64Attribute("mode", &application.timer.mode);
@@ -557,6 +568,14 @@ void Settings::Load()
         timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
         timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
         timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
+    }
+
+    // Mapping
+    XMLElement * mappingconfnode = pRoot->FirstChildElement("Mapping");
+    if (mappingconfnode != nullptr) {
+        mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
+        mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
+        mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
     }
 
     // bloc Controller
