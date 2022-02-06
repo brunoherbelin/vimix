@@ -48,7 +48,9 @@
 
 #define CONTROL_OSC_MSG "OSC: "
 
-bool Control::input_active[INPUT_MAX]{};
+bool  Control::input_active[INPUT_MAX]{};
+float Control::input_values[INPUT_MAX]{};
+std::condition_variable  Control::joystick_end_;
 
 
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
@@ -352,6 +354,12 @@ bool Control::init()
     glfwSetKeyCallback( main, Control::keyboardCalback);
     glfwSetKeyCallback( output, Control::keyboardCalback);
 
+
+    //
+    // set joystick callback
+    //
+    std::thread(Control::joystickCallback).detach();
+
     //
     // load OSC Translator
     //
@@ -395,6 +403,8 @@ void Control::listen()
 
 void Control::terminate()
 {
+    Control::joystick_end_.notify_all();
+
     if ( receiver_ != nullptr ) {
 
         // request termination of receiver
@@ -411,6 +421,7 @@ void Control::terminate()
         delete receiver_;
         receiver_ = nullptr;
     }
+
 }
 
 
@@ -777,10 +788,14 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
     {
-        if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z)
+        if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
             Control::input_active[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE;
-        else if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL)
+            Control::input_values[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
+        }
+        else if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL) {
             Control::input_active[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
+            Control::input_values[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
+        }
         else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
         {
             static GLFWwindow *output = Rendering::manager().outputWindow().window();
@@ -790,31 +805,41 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
     }
 }
 
+void Control::joystickCallback()
+{
+    // wait for the joystick_end_ notification
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    while ( Control::joystick_end_.wait_for(lck,std::chrono::milliseconds(20) ) == std::cv_status::timeout ) {
+
+        // read joystick buttons
+        int num_buttons = 0;
+        const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
+        // map to Control input array
+        for (int b = 0; b < num_buttons; ++b) {
+            Control::input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
+            Control::input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        }
+
+        // read joystick axis
+        int num_axis = 0;
+        const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
+        for (int a = 0; a < num_axis; ++a) {
+            Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.01 ? true : false;
+            Control::input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        }
+    }
+}
 
 bool Control::inputActive(uint id)
 {
-    return Control::input_active[MIN(id,INPUT_MAX)];
+    return Control::input_active[MIN(id,INPUT_MAX)] && !Settings::application.mapping.disabled;
 }
 
 
 float Control::inputValue(uint id)
 {
-    float value = 0.f;
-
-    if ( id >= INPUT_KEYBOARD_FIRST && id <= INPUT_NUMPAD_LAST )
-    {
-        value = inputActive(id) ? 1.0f : 0.f;
-    }
-    else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
-    {
-
-    }
-    else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
-    {
-
-    }
-
-    return value;
+    return Control::input_values[MIN(id,INPUT_MAX)];
 }
 
 std::string Control::inputLabel(uint id)
@@ -833,7 +858,13 @@ std::string Control::inputLabel(uint id)
     }
     else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
     {
-
+        std::vector< std::string > joystick_labels = { "Button A", "Button B", "Button X", "Button Y",
+                                                       "Left bumper", "Right bumper", "Back", "Start",
+                                                       "Guide", "Left thumb", "Right thumb",
+                                                       "Up", "Right", "Down", "Left",
+                                                       "Left Axis X", "Left Axis Y", "Left Trigger",
+                                                       "Right Axis X", "Right Axis Y", "Right Trigger" };
+        label = joystick_labels[id - INPUT_JOYSTICK_FIRST];
     }
     else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
     {

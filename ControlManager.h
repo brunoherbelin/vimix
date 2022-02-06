@@ -4,6 +4,7 @@
 #include <map>
 #include <list>
 #include <string>
+#include <atomic>
 #include <condition_variable>
 
 #include "SourceList.h"
@@ -52,8 +53,12 @@
 #define INPUT_NUMPAD_FIRST     27
 #define INPUT_NUMPAD_LAST      43
 #define INPUT_JOYSTICK_FIRST   44
-#define INPUT_JOYSTICK_LAST    65
-#define INPUT_CUSTOM_FIRST     66
+#define INPUT_JOYSTICK_LAST    64
+#define INPUT_JOYSTICK_FIRST_BUTTON  44
+#define INPUT_JOYSTICK_LAST_BUTTON   58
+#define INPUT_JOYSTICK_FIRST_AXIS    59
+#define INPUT_JOYSTICK_LAST_AXIS     64
+#define INPUT_CUSTOM_FIRST     65
 #define INPUT_CUSTOM_LAST      99
 #define INPUT_MAX              100
 
@@ -87,8 +92,8 @@ public:
     std::string translate (std::string addresspqattern);
 
     static bool inputActive(uint id);
-    float inputValue(uint id);
-    std::string inputLabel(uint id);
+    static float inputValue(uint id);
+    static std::string inputLabel(uint id);
 
 protected:
 
@@ -123,8 +128,13 @@ private:
     void loadOscConfig();
     void resetOscConfig();
 
-    static bool input_active[INPUT_MAX];
+    static bool  input_active[INPUT_MAX];
+    static float input_values[INPUT_MAX];
+    static std::condition_variable  joystick_end_;
+    static std::mutex  access_;
+
     static void keyboardCalback(GLFWwindow*, int, int, int, int);
+    static void joystickCallback();
 };
 
 #endif // CONTROL_H

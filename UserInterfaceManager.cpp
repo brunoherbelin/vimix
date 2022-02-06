@@ -349,7 +349,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_K )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_I )) {
             Settings::application.widget.inputs = !Settings::application.widget.inputs;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
@@ -1714,21 +1714,26 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
+        ImGui::Text(ICON_FA_DESKTOP "  Output"); ImGui::NextColumn();
+        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and sharing to other vimix in local network.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLAY_CIRCLE "  Player"); ImGui::NextColumn();
+        ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CLOCK "  Timer"); ImGui::NextColumn();
+        ImGui::Text ("Keep track of time with a stopwatch or a metronome (Ableton Link).");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
+        ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
+        ImGui::NextColumn();
         ImGui::Text(ICON_FA_STICKY_NOTE "  Notes"); ImGui::NextColumn();
         ImGui::Text ("Place sticky notes into your session.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
         ImGui::Text ("Utility monitoring of metrics on the system (FPS, RAM), the runtime (session duration), or the current source.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_PLAY_CIRCLE "  Player"); ImGui::NextColumn();
-        ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
-        ImGui::NextColumn();
-        ImGui::Text(ICON_FA_DESKTOP "  Output"); ImGui::NextColumn();
-        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and sharing to other vimix in local network.");
-        ImGui::NextColumn();
-        ImGui::Text(ICON_FA_CLOCK "  Timer"); ImGui::NextColumn();
-        ImGui::Text ("Keep track of time with a stopwatch or a metronome (Ableton Link).");
-        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_COG "  Settings"); ImGui::NextColumn();
+        ImGui::Text ("Set user preferences and system settings.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -1825,19 +1830,21 @@ void HelperToolbox::Render()
         ImGui::Text("Switch Current source"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
-        ImGui::Separator();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_EXPAND_ALT TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_STICKY_NOTE TOOLTIP_NOTE); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_PLAY_CIRCLE TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
+        ImGui::Separator();
         ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_DESKTOP TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_DESKTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PLAY_CIRCLE " " TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_CLOCK TOOLTIP_TIMER "window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CLOCK " " TOOLTIP_TIMER "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_INPUTS); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_STICKY_NOTE " " TOOLTIP_NOTE); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text("Hide / Show windows"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_WINDOW_MINIMIZE " Hide / " ICON_FA_WINDOW_MAXIMIZE " Show windows"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -1877,7 +1884,7 @@ void HelperToolbox::Render()
         ImGui::Text("Space"); ImGui::NextColumn();
         ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "Space"); ImGui::NextColumn();
-        ImGui::Text("Back restart selected videos"); ImGui::NextColumn();
+        ImGui::Text("Restart selected videos"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
@@ -4281,8 +4288,8 @@ void TimerMetronome::Render()
 
 InputMappingInterface::InputMappingInterface() : WorkspaceWindow("InputMappingInterface")
 {
-    input_mode = { ICON_FA_KEYBOARD " Keyboard", ICON_FA_CALCULATOR "  Numpad" };
-    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST };
+    input_mode = { ICON_FA_KEYBOARD " Keyboard", ICON_FA_CALCULATOR "  Numpad" , ICON_FA_GAMEPAD "  Gamepad" };
+    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_JOYSTICK_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
 
@@ -4480,7 +4487,7 @@ void InputMappingInterface::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_INPUT_MAPPING))
         {
             // Enable/Disable
-            ImGui::MenuItem( ICON_FA_BAN "  Disable all", nullptr, &Settings::application.mapping.disabled);
+            ImGui::MenuItem( ICON_FA_BAN "  Disable", nullptr, &Settings::application.mapping.disabled);
 
             // output manager menu
             ImGui::Separator();
@@ -4548,6 +4555,9 @@ void InputMappingInterface::Render()
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
+        color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
 
         for (uint ik = INPUT_KEYBOARD_FIRST; ik < INPUT_KEYBOARD_LAST; ++ik){
             int i = ik - INPUT_KEYBOARD_FIRST;
@@ -4573,7 +4583,7 @@ void InputMappingInterface::Render()
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
             }
         }
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar();
         ImGui::PopFont();
 
@@ -4594,6 +4604,9 @@ void InputMappingInterface::Render()
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
+        color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
 
         for (size_t p = 0; p < numpad_inputs.size(); ++p){
             uint ik = numpad_inputs[p];
@@ -4622,7 +4635,70 @@ void InputMappingInterface::Render()
                 draw_list->AddRect(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
             }
         }
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+    }
+    //
+    // JOYSTICK
+    //
+    else if ( Settings::application.mapping.mode == 2 ) {
+
+        // custom layout of gamepad buttons
+        std::vector<uint> gamepad_inputs = { INPUT_JOYSTICK_FIRST_BUTTON+11, INPUT_JOYSTICK_FIRST_BUTTON+13,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+6,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+2, INPUT_JOYSTICK_FIRST_BUTTON+3,
+
+                                             INPUT_JOYSTICK_FIRST_BUTTON+14, INPUT_JOYSTICK_FIRST_BUTTON+12,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+7,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+0, INPUT_JOYSTICK_FIRST_BUTTON+1,
+
+                                             INPUT_JOYSTICK_FIRST_BUTTON+4, INPUT_JOYSTICK_FIRST_BUTTON+9,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+8,
+                                             INPUT_JOYSTICK_FIRST_BUTTON+10, INPUT_JOYSTICK_FIRST_BUTTON+5  };
+
+        std::vector< std::string > gamepad_labels = {  ICON_FA_CARET_SQUARE_UP,  ICON_FA_CARET_SQUARE_DOWN,
+                                                       ICON_FA_CHEVRON_CIRCLE_LEFT, "X", "Y",
+                                                       ICON_FA_CARET_SQUARE_LEFT, ICON_FA_CARET_SQUARE_RIGHT,
+                                                       ICON_FA_CHEVRON_CIRCLE_RIGHT, "A", "B",
+                                                       "L1", "LT", ICON_FA_DOT_CIRCLE, "RT", "R1" };
+
+        // Draw table of letter keys [A] to [Y]
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+        ImGui::PushStyleColor(ImGuiCol_Header, color);
+        color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+
+        for (size_t b = 0; b < gamepad_inputs.size(); ++b ){
+            uint ig = gamepad_inputs[b];
+            // draw overlay on active keys
+            if ( Control::inputActive(ig) ) {
+                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
+                draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
+                // set current
+                current_input_ = ig;
+            }
+            // draw key button
+            ImGui::PushID(ig);
+            if (ImGui::Selectable(gamepad_labels[b].c_str(), input_assigned[ig], 0, keyLetterIconSize)) {
+
+                current_input_ = ig;
+            }
+            ImGui::PopID();
+            if ((b % 5) < 4) ImGui::SameLine();
+
+            // Draw frame around current keyboard letter
+            if (current_input_ == ig) {
+                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
+                draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+            }
+        }
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar();
         ImGui::PopFont();
 
@@ -6324,17 +6400,18 @@ void Navigator::RenderMainPannelVimix()
     std::pair<std::string, std::string> tooltip_;
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+    ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
+    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+        UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
+    if (ImGui::IsItemHovered())
+        tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
+
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
         UserInterface::manager().sourcecontrol.setVisible(!Settings::application.widget.media_player);
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_PLAYER, SHORTCUT_PLAYER};
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
-        UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) )
@@ -6343,25 +6420,17 @@ void Navigator::RenderMainPannelVimix()
         tooltip_ = { TOOLTIP_TIMER, SHORTCUT_TIMER};
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_CUBES ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) )
         UserInterface::manager().inputscontrol.setVisible(!Settings::application.widget.inputs);
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_INPUTS, SHORTCUT_INPUTS};
-    ImGui::PopFont();
 
-    ImGui::Spacing();
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
         Mixer::manager().session()->addNote();
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
 
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_TACHOMETER_ALT ) )
-        Settings::application.widget.stats = !Settings::application.widget.stats;
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_METRICS, SHORTCUT_METRICS};
     ImGui::PopFont();
 
     if (!tooltip_.first.empty()) {
@@ -6674,6 +6743,11 @@ void Navigator::RenderMainPannel()
         ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, button_height));
         const char *tooltip[2] = {"Settings", "Settings"};
         ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
+        // Metrics icon just above
+        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, 2.1 * button_height));
+        if ( ImGuiToolkit::IconButton( 11, 3 , TOOLTIP_METRICS) )
+            Settings::application.widget.stats = !Settings::application.widget.stats;
+
 
         ImGui::End();
     }

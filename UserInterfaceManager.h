@@ -21,6 +21,14 @@
 #define ALT_MOD "Alt+"
 #endif
 
+#define IMGUI_TITLE_MEDIAPLAYER ICON_FA_PLAY_CIRCLE "  Player"
+#define IMGUI_TITLE_TIMER ICON_FA_CLOCK " Timer"
+#define IMGUI_TITLE_INPUT_MAPPING ICON_FA_HAND_PAPER " Inputs Mapping"
+#define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
+#define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
+#define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Code Editor"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Ouput"
+
 #define MENU_NEW_FILE         ICON_FA_FILE "  New"
 #define SHORTCUT_NEW_FILE     CTRL_MOD "W"
 #define MENU_OPEN_FILE        ICON_FA_FILE_UPLOAD "  Open"
@@ -62,7 +70,7 @@
 #define SHORTCUT_OUTPUTFULLSCREEN CTRL_MOD "F"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 
-#define TOOLTIP_NOTE          "New note "
+#define TOOLTIP_NOTE          "New sticky note "
 #define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
 #define TOOLTIP_METRICS       "Metrics "
 #define SHORTCUT_METRICS      CTRL_MOD "M"
@@ -72,7 +80,7 @@
 #define SHORTCUT_OUTPUT       CTRL_MOD "D"
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
-#define TOOLTIP_INPUTS        "Inputs mapping"
+#define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "Shift+F"
@@ -358,8 +366,8 @@ public:
 
 class InputMappingInterface : public WorkspaceWindow
 {
-    std::array< std::string, 2 > input_mode;
-    std::array< uint, 2 > current_input_for_mode;
+    std::array< std::string, 3 > input_mode;
+    std::array< uint, 3 > current_input_for_mode;
 
     uint current_input_;
 
