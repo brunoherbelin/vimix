@@ -690,9 +690,24 @@ void Source::removeInputCallback(SourceCallback *callback)
     {
         if ( k->second.model_ == callback) {
             delete callback;
+            if (k->second.reverse_)
+                delete k->second.reverse_;
             input_callbacks_.erase(k);
             break;
         }
+    }
+}
+
+void Source::clearInputCallbacks()
+{
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
+    {
+        if (k->second.model_)
+            delete k->second.model_;
+        if (k->second.reverse_)
+            delete k->second.reverse_;
+
+        k = input_callbacks_.erase(k);
     }
 }
 
@@ -741,15 +756,15 @@ void Source::updateCallbacks(float dt)
 
                 // ON PRESS
                 if (activate) {
-                    // delete the reverse if was not released
-                    if (k->second.reverse_ != nullptr)
-                        delete k->second.reverse_;
                     // generate a new callback from the model
                     SourceCallback *C = k->second.model_->clone();
                     // apply value multiplyer from input
                     C->multiply( Control::inputValue(k->first) );
                     // add callback to the source (force override)
                     call( C, true );
+                    // delete the reverse if was not released
+                    if (k->second.reverse_ != nullptr)
+                        delete k->second.reverse_;
                     // get the reverse if the callback, and remember it (can be null)
                     k->second.reverse_ = C->reverse(this);
                 }

@@ -153,6 +153,7 @@ public:
     void removeInputCallback(SourceCallback *callback);
     std::list<SourceCallback *> inputCallbacks(uint input);
     std::list<uint> callbackInputs();
+    void clearInputCallbacks();
 
     // update mode
     inline  bool active () const { return active_; }

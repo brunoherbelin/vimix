@@ -2243,7 +2243,7 @@ void SourceController::Render()
                 Mixer::selection().clear();
                 selection_ = playable_only( Mixer::manager().session()->getDepthSortedList() );
             }
-            if (ImGui::MenuItem( ICON_FA_WIND "  Clear")) {
+            if (ImGui::MenuItem( ICON_FA_ELLIPSIS_H "  List none")) {
                 selection_.clear();
                 resetActiveSelection();
                 Mixer::manager().unsetCurrentSource();
@@ -4288,7 +4288,7 @@ void TimerMetronome::Render()
 
 InputMappingInterface::InputMappingInterface() : WorkspaceWindow("InputMappingInterface")
 {
-    input_mode = { ICON_FA_KEYBOARD " Keyboard", ICON_FA_CALCULATOR "  Numpad" , ICON_FA_GAMEPAD "  Gamepad" };
+    input_mode = { ICON_FA_KEYBOARD "  Keyboard", ICON_FA_CALCULATOR "   Numpad" , ICON_FA_GAMEPAD " Gamepad" };
     current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_JOYSTICK_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
@@ -4459,6 +4459,8 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback)
 
 void InputMappingInterface::Render()
 {
+    Session *ses = Mixer::manager().session();
+
     const ImGuiContext& g = *GImGui;
     static ImVec2 keyLetterIconSize = ImVec2(60, 60);
     static ImVec2 keyLetterItemSize = keyLetterIconSize + g.Style.ItemSpacing;
@@ -4486,8 +4488,14 @@ void InputMappingInterface::Render()
             Settings::application.widget.inputs = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_INPUT_MAPPING))
         {
-            // Enable/Disable
+            // Disable
             ImGui::MenuItem( ICON_FA_BAN "  Disable", nullptr, &Settings::application.mapping.disabled);
+
+            // Clear
+            if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear" ) ){
+                for (auto sit = ses->begin(); sit != ses->end(); ++sit)
+                    (*sit)->clearInputCallbacks();
+            }
 
             // output manager menu
             ImGui::Separator();
@@ -4525,8 +4533,6 @@ void InputMappingInterface::Render()
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImDrawList* draw_list = window->DrawList;
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
-    Session *ses = Mixer::manager().session();
-
 
     // create data structures more adapted for display
     std::multimap< uint, std::pair<Source *, SourceCallback*> > input_sources_callbacks;
@@ -4798,7 +4804,7 @@ void InputMappingInterface::Render()
 
         if (input_sources_callbacks.count(current_input_) < 1) {
 
-            ImGui::Text("No action associated to this input. Create a new one with '+'.");
+            ImGui::Text("No action mapped to this input. Add one with '+'.");
         }
         else {
 
@@ -4813,7 +4819,7 @@ void InputMappingInterface::Render()
                 ImGui::PushID( (void*) callback);
 
                 // Delete interface
-                if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Delete") ){
+                if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Remove") ){
                     source->removeInputCallback(callback);
                     // reload
                     ImGui::PopID();
@@ -4867,8 +4873,16 @@ void InputMappingInterface::Render()
 
         ImGui::Columns(3, "NewInputMapping", false);
         // step 1 : press '+'
-        if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "New") )
+        if (temp_new_input) {
+            if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
+                temp_new_source = nullptr;
+                temp_new_callback = 0;
+                temp_new_input = false;
+            }
+        }
+        else if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
             temp_new_input = true;
+
         if (temp_new_input) {
             // step 2 : Get input for source
             ImGui::SameLine(0, IMGUI_SAME_LINE);
