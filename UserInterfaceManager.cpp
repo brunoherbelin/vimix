@@ -1548,7 +1548,7 @@ void ToolBox::Render()
     // keep array of 180 values, i.e. approx 3 seconds of recording
     static float recorded_values[3][PLOT_ARRAY_SIZE] = {{}};
     static float recorded_sum[3] = { 0.f, 0.f, 0.f };
-    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {0.f, 50.f}, {0.f, 50.f} };
+    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {1.f, 50.f}, {0.f, 50.f} };
     static float refresh_rate = -1.f;
     static int   values_index = 0;
     float megabyte = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1048576.0 );
@@ -1568,7 +1568,7 @@ void ToolBox::Render()
         for(int i = 0; i<PLOT_ARRAY_SIZE; ++i) {
             recorded_values[0][i] = refresh_rate;
             recorded_sum[0] += recorded_values[0][i];
-            recorded_values[1][i] = 1.f / refresh_rate;
+            recorded_values[1][i] = 16.f;
             recorded_sum[1] += recorded_values[1][i];
             recorded_values[2][i] = megabyte;
             recorded_sum[2] += recorded_values[2][i];
@@ -1601,6 +1601,7 @@ void ToolBox::Render()
 
     recorded_bounds[2][0] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) - 400.f;
     recorded_bounds[2][1] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) + 300.f;
+
 
     // plot values, with title overlay to display the average
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
