@@ -67,7 +67,49 @@ SourceCallback *SourceCallback::create(CallbackType type)
     return loadedcallback;
 }
 
-SourceCallback::SourceCallback(): active_(true), finished_(false), initialized_(false)
+
+bool SourceCallback::overlap( SourceCallback *a,  SourceCallback *b)
+{
+    bool ret = false;
+
+    if (a->type() == b->type()) {
+
+        // same type means overlap
+        ret = true;
+
+        // but there are some exceptions..
+        switch (a->type()) {
+        case SourceCallback::CALLBACK_GRAB:
+        {
+            const Grab *_a = static_cast<Grab*>(a);
+            const Grab *_b = static_cast<Grab*>(b);
+            // there is no overlap if the X or Y of a vector is zero
+            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+                ret = false;
+            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
+                ret = false;
+        }
+            break;
+        case SourceCallback::CALLBACK_RESIZE:
+        {
+            const Resize *_a = static_cast<Resize*>(a);
+            const Resize *_b = static_cast<Resize*>(b);
+            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+                ret = false;
+            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
+                ret = false;
+        }
+            break;
+        default:
+            break;
+        }
+
+    }
+
+    return ret;
+}
+
+SourceCallback::SourceCallback(): finished_(false), initialized_(false)
 {
 }
 

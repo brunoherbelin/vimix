@@ -644,31 +644,31 @@ void Source::call(SourceCallback *callback, bool override)
         // look for callbacks of same type
         for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
         {
-            // there can be only one callback of same type in a source
+            // Test if the new callback would overlap an existing one
             SourceCallback *c = *iter;
-            if (callback->type() == c->type() ) {
+            if ( SourceCallback::overlap( callback, c) ) {
                 if (override) {
-                    // either remove and delete all callbacks of same type if override
+                    // either remove and delete all overlapping callbacks if override...
                     iter = update_callbacks_.erase(iter);
                     delete c;
                 }
                 else {
-                    // or cancel adding callbacks of same type if not override
+                    // ...or cancel adding overlapping callbacks if not override
                     add = false;
                     break;
                 }
             }
-            // iterate over other types
+            // iterate
             else
                 ++iter;
         }
 
-        // we can add the callback as there is none of that type or we override
+        // we can add the callback : its either not overlapping or we override it
         if (add) {
             // add callback to callbacks list
             update_callbacks_.push_back(callback);
         }
-        // or delete it if couln't be added (not override)
+        // or delete it if couln't be added (overlapping but not override)
         else
             delete callback;
 
@@ -772,11 +772,10 @@ void Source::updateCallbacks(float dt)
     for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {
         SourceCallback *callback = *iter;
-        // call update for active callbacks
-        if (callback->active()) {
-            callback->update(this, dt);
-            need_update_ = true;
-        }
+
+        // call update on callbacks
+        callback->update(this, dt);
+        need_update_ = true;
 
         // remove and delete finished callbacks
         if (callback->finished()) {

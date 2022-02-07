@@ -25,6 +25,7 @@ public:
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
+    static bool overlap(SourceCallback *a, SourceCallback *b);
 
     SourceCallback();
     virtual ~SourceCallback() {}
@@ -33,15 +34,13 @@ public:
     virtual void multiply (float) {};
     virtual SourceCallback *clone () const = 0;
     virtual SourceCallback *reverse (Source *) const { return nullptr; }
-    virtual CallbackType type () { return CALLBACK_GENERIC; }
+    virtual CallbackType type () const { return CALLBACK_GENERIC; }
     virtual void accept (Visitor& v);
 
     inline bool finished () const { return finished_; }
-    inline bool active () const { return active_; }
     inline void reset () { initialized_ = false; }
 
 protected:
-    bool active_;
     bool finished_;
     bool initialized_;
 };
@@ -52,7 +51,7 @@ public:
     ResetGeometry () : SourceCallback() {}
     void update (Source *s, float) override;
     SourceCallback *clone () const override;
-    CallbackType type () override { return CALLBACK_RESETGEO; }
+    CallbackType type () const override { return CALLBACK_RESETGEO; }
 };
 
 class SetAlpha : public SourceCallback
@@ -72,7 +71,7 @@ public:
     void multiply (float factor) override;
     SourceCallback *clone () const override;
     SourceCallback *reverse(Source *s) const override;
-    CallbackType type () override { return CALLBACK_ALPHA; }
+    CallbackType type () const override { return CALLBACK_ALPHA; }
     void accept (Visitor& v) override;
 };
 
@@ -96,7 +95,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone() const override;
-    CallbackType type () override { return CALLBACK_LOOM; }
+    CallbackType type () const override { return CALLBACK_LOOM; }
     void accept (Visitor& v) override;
 };
 
@@ -113,7 +112,7 @@ public:
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
-    CallbackType type () override { return CALLBACK_LOCK; }
+    CallbackType type () const override { return CALLBACK_LOCK; }
 };
 
 class SetDepth : public SourceCallback
@@ -136,7 +135,7 @@ public:
     void multiply (float factor) override;
     SourceCallback *clone () const override;
     SourceCallback *reverse(Source *s) const override;
-    CallbackType type () override { return CALLBACK_DEPTH; }
+    CallbackType type () const override { return CALLBACK_DEPTH; }
     void accept (Visitor& v) override;
 };
 
@@ -154,7 +153,7 @@ public:
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
     SourceCallback *reverse(Source *s) const override;
-    CallbackType type () override { return CALLBACK_PLAY; }
+    CallbackType type () const override { return CALLBACK_PLAY; }
 };
 
 class RePlay : public SourceCallback
@@ -164,7 +163,7 @@ public:
 
     void update(Source *s, float) override;
     SourceCallback *clone() const override;
-    CallbackType type () override { return CALLBACK_REPLAY; }
+    CallbackType type () const override { return CALLBACK_REPLAY; }
 };
 
 class Grab : public SourceCallback
@@ -178,7 +177,7 @@ public:
     Grab();
     Grab(float dx, float dy, float duration = 0.f);
 
-    glm::vec2 value () { return speed_;}
+    glm::vec2 value () const { return speed_;}
     void  setValue (glm::vec2 d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
@@ -186,7 +185,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    CallbackType type () override { return CALLBACK_GRAB; }
+    CallbackType type () const override { return CALLBACK_GRAB; }
     void accept (Visitor& v) override;
 };
 
@@ -201,7 +200,7 @@ public:
     Resize();
     Resize(float dx, float dy, float duration = 0.f);
 
-    glm::vec2 value () { return speed_;}
+    glm::vec2 value () const { return speed_;}
     void  setValue (glm::vec2 d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
@@ -209,7 +208,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    CallbackType type () override { return CALLBACK_RESIZE; }
+    CallbackType type () const override { return CALLBACK_RESIZE; }
     void accept (Visitor& v) override;
 };
 
@@ -224,7 +223,7 @@ public:
     Turn();
     Turn(float da, float duration = 0.f);
 
-    float value () { return speed_;}
+    float value () const { return speed_;}
     void  setValue (float d) { speed_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float d) { duration_ = d; }
@@ -232,7 +231,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    CallbackType type () override { return CALLBACK_TURN; }
+    CallbackType type () const override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;
 };
 
