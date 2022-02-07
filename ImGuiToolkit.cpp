@@ -1352,6 +1352,36 @@ void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array
 
 }
 
+void ImGuiToolkit::ValueBar(float fraction, const ImVec2& size_arg)
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImVec2 size = ImGui::CalcItemSize(size_arg, ImGui::CalcItemWidth(), g.FontSize + style.FramePadding.y*2.0f);
+    ImRect bb(pos, pos + size);
+    ImGui::ItemSize(size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bb, 0))
+        return;
+
+    // Render
+    ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
+    bb.Expand(ImVec2(-style.FrameBorderSize, -style.FrameBorderSize));
+
+    fraction = CLAMP(fraction, -1.f, 1.f);
+    if (fraction>0.f) {
+        ImGui::RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0.5f, 0.5f+(fraction*0.5f), style.FrameRounding);
+    }
+    else {
+        ImGui::RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0.5f+(fraction*0.5f), 0.5f, style.FrameRounding);
+    }
+
+ }
+
 
 void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
 {

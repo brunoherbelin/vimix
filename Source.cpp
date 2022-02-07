@@ -746,6 +746,8 @@ void Source::updateCallbacks(float dt)
                         delete k->second.reverse_;
                     // generate a new callback from the model
                     SourceCallback *C = k->second.model_->clone();
+                    // apply value multiplyer from input
+                    C->multiply( Control::inputValue(k->first) );
                     // add callback to the source (force override)
                     call( C, true );
                     // get the reverse if the callback, and remember it (can be null)

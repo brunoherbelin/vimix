@@ -133,6 +133,11 @@ void SetAlpha::update(Source *s, float)
         finished_ = true;
 }
 
+void SetAlpha::multiply (float factor)
+{
+    alpha_ *= factor;
+}
+
 SourceCallback *SetAlpha::clone() const
 {
     return new SetAlpha(alpha_);
@@ -222,6 +227,11 @@ void Loom::update(Source *s, float dt)
         finished_ = true;
 }
 
+void Loom::multiply (float factor)
+{
+    speed_ *= factor;
+}
+
 SourceCallback *Loom::clone() const
 {
     return new Loom(speed_, duration_);
@@ -274,6 +284,11 @@ void SetDepth::update(Source *s, float dt)
     }
     else
         finished_ = true;
+}
+
+void SetDepth::multiply (float factor)
+{
+    target_ *= factor;
 }
 
 SourceCallback *SetDepth::clone() const
@@ -379,6 +394,11 @@ void Grab::update(Source *s, float dt)
         finished_ = true;
 }
 
+void Grab::multiply (float factor)
+{
+    speed_ *= factor;
+}
+
 SourceCallback *Grab::clone() const
 {
     return new Grab(speed_.x, speed_.y, duration_);
@@ -429,6 +449,11 @@ void Resize::update(Source *s, float dt)
         finished_ = true;
 }
 
+void Resize::multiply (float factor)
+{
+    speed_ *= factor;
+}
+
 SourceCallback *Resize::clone() const
 {
     return new Resize(speed_.x, speed_.y, duration_);
@@ -476,6 +501,11 @@ void Turn::update(Source *s, float dt)
     }
     else
         finished_ = true;
+}
+
+void Turn::multiply (float factor)
+{
+    speed_ *= factor;
 }
 
 SourceCallback *Turn::clone() const

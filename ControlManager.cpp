@@ -810,7 +810,8 @@ void Control::joystickCallback()
     // wait for the joystick_end_ notification
     std::mutex mtx;
     std::unique_lock<std::mutex> lck(mtx);
-    while ( Control::joystick_end_.wait_for(lck,std::chrono::milliseconds(20) ) == std::cv_status::timeout ) {
+    // loop with a fixed refresh rate (~ 30 Hz)
+    while ( Control::joystick_end_.wait_for(lck,std::chrono::milliseconds(33) ) == std::cv_status::timeout ) {
 
         // read joystick buttons
         int num_buttons = 0;
@@ -825,7 +826,7 @@ void Control::joystickCallback()
         int num_axis = 0;
         const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
         for (int a = 0; a < num_axis; ++a) {
-            Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.01 ? true : false;
+            Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
             Control::input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
         }
     }

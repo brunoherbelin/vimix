@@ -53,6 +53,8 @@ namespace ImGuiToolkit
     bool EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, guint64 begin, guint64 end, bool cut, bool *released, const ImVec2 size);
     void ShowPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size);
 
+    void ValueBar(float fraction, const ImVec2& size_arg);
+
     // fonts from ressources 'fonts/'
     typedef enum {
         FONT_DEFAULT =0,

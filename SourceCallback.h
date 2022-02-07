@@ -30,6 +30,7 @@ public:
     virtual ~SourceCallback() {}
 
     virtual void update (Source *, float) = 0;
+    virtual void multiply (float) {};
     virtual SourceCallback *clone () const = 0;
     virtual SourceCallback *reverse (Source *) const { return nullptr; }
     virtual CallbackType type () { return CALLBACK_GENERIC; }
@@ -68,6 +69,7 @@ public:
     void  setValue (float a) { alpha_ = a; }
 
     void update (Source *s, float) override;
+    void multiply (float factor) override;
     SourceCallback *clone () const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () override { return CALLBACK_ALPHA; }
@@ -92,6 +94,7 @@ public:
     void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float) override;
+    void multiply (float factor) override;
     SourceCallback *clone() const override;
     CallbackType type () override { return CALLBACK_LOOM; }
     void accept (Visitor& v) override;
@@ -130,6 +133,7 @@ public:
     void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float dt) override;
+    void multiply (float factor) override;
     SourceCallback *clone () const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () override { return CALLBACK_DEPTH; }
@@ -180,6 +184,7 @@ public:
     void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float) override;
+    void multiply (float factor) override;
     SourceCallback *clone () const override;
     CallbackType type () override { return CALLBACK_GRAB; }
     void accept (Visitor& v) override;
@@ -202,6 +207,7 @@ public:
     void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float) override;
+    void multiply (float factor) override;
     SourceCallback *clone () const override;
     CallbackType type () override { return CALLBACK_RESIZE; }
     void accept (Visitor& v) override;
@@ -224,6 +230,7 @@ public:
     void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float) override;
+    void multiply (float factor) override;
     SourceCallback *clone () const override;
     CallbackType type () override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;

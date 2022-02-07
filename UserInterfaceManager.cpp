@@ -4664,9 +4664,8 @@ void InputMappingInterface::Render()
                                                        ICON_FA_CHEVRON_CIRCLE_RIGHT, "A", "B",
                                                        "L1", "LT", ICON_FA_DOT_CIRCLE, "RT", "R1" };
 
-        // Draw table of letter keys [A] to [Y]
+        // Draw table of Gamepad Buttons
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
@@ -4674,6 +4673,8 @@ void InputMappingInterface::Render()
         color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
         ImGui::PushStyleColor(ImGuiCol_Text, color);
 
+        // CENTER text for button
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
         for (size_t b = 0; b < gamepad_inputs.size(); ++b ){
             uint ig = gamepad_inputs[b];
             // draw overlay on active keys
@@ -4692,14 +4693,92 @@ void InputMappingInterface::Render()
             ImGui::PopID();
             if ((b % 5) < 4) ImGui::SameLine();
 
-            // Draw frame around current keyboard letter
+            // Draw frame around current gamepad button
             if (current_input_ == ig) {
                 ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
             }
         }
-        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar();
+
+        // Table of Gamepad Axis
+        const ImVec2 axis_top = frame_top + ImVec2(0.f, 3.f * keyLetterItemSize.y);
+        const ImVec2 axis_item_size(inputarea_width / 2.f, (2.f * keyLetterItemSize.y) / 3.f);
+        const ImVec2 axis_icon_size = axis_item_size - g.Style.ItemSpacing;
+        const ImVec2 axis_bar_size = axis_icon_size * ImVec2(0.4f, 0.4f);
+        ImVec2 axis_bar_pos(axis_icon_size.x * 0.5f, axis_icon_size.y *0.3f );
+
+        // LEFT align for 3 axis on the left
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.09f, 0.5f));
+
+        // define top left screen cursor position
+        ImVec2 pos = axis_top;
+        // Draw a little bar showing activity on the gamepad axis
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS), axis_bar_size);
+        // Draw button to assign the axis to an action
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("LX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS;
+        // Draw frame around current gamepad axis
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        pos = axis_top + ImVec2( 0, axis_item_size.y);
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+1), axis_bar_size);
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("LY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+1], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+1;
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+1)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        pos = axis_top + ImVec2( 0, 2.f * axis_item_size.y);
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+2), axis_bar_size);
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("L2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+2], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+2;
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+2)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        ImGui::PopStyleVar();
+
+        // RIGHT align for 3 axis on the right
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.91f, 0.5f));
+        axis_bar_pos.x = g.Style.ItemSpacing.x;
+
+        pos = axis_top + ImVec2( axis_item_size.x, 0.f);
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+3), axis_bar_size);
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("RX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+3], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+3;
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+3)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        pos = axis_top + ImVec2( axis_item_size.x, axis_item_size.y);
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+4), axis_bar_size);
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("RY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+4], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+4;
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+4)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        pos = axis_top + ImVec2( axis_item_size.x, 2.f * axis_item_size.y);
+        ImGui::SetCursorScreenPos( pos + axis_bar_pos);
+        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+5), axis_bar_size);
+        ImGui::SetCursorScreenPos( pos );
+        if (ImGui::Selectable("R2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+5], 0, axis_icon_size))
+            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+5;
+        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+5)
+            draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+
+        ImGui::PopStyleVar();
+
+        // Done with color and font change
+        ImGui::PopStyleColor(2);
         ImGui::PopFont();
 
     }
