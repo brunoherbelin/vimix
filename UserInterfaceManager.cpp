@@ -4463,9 +4463,9 @@ void InputMappingInterface::Render()
     Session *ses = Mixer::manager().session();
 
     const ImGuiContext& g = *GImGui;
-    static ImVec2 keyLetterIconSize = ImVec2(60, 60);
+    static ImVec2 keyLetterIconSize = ImVec2(50, 52);
     static ImVec2 keyLetterItemSize = keyLetterIconSize + g.Style.ItemSpacing;
-    static ImVec2 keyNumpadIconSize = ImVec2(75, 75);
+    static ImVec2 keyNumpadIconSize = ImVec2(65, 66);
     static ImVec2 keyNumpadItemSize = keyNumpadIconSize + g.Style.ItemSpacing;
     static float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + g.Style.ItemSpacing.y * 2.0f ;
     static float  inputarea_width = keyLetterItemSize.x * 5.f;
@@ -4536,6 +4536,7 @@ void InputMappingInterface::Render()
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
 
     // create data structures more adapted for display
+    static uint copy_input_callback = INPUT_UNDEFINED;
     std::multimap< uint, std::pair<Source *, SourceCallback*> > input_sources_callbacks;
     bool input_assigned[INPUT_MAX]{};
     // loop over sources of the session
@@ -4578,10 +4579,34 @@ void InputMappingInterface::Render()
             // draw key button
             ImGui::PushID(i);
             if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, keyLetterIconSize)) {
-
                 current_input_ = ik;
             }
             ImGui::PopID();
+
+            // if user clics and drags an assigned key icon...
+            if (input_assigned[ik] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                ImGui::SetDragDropPayload("DND_KEYBOARD", &ik, sizeof(uint));
+                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
+                ImGui::EndDragDropSource();
+            }
+            // ...and drops it onto another key icon
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_KEYBOARD")) {
+                    if ( payload->DataSize == sizeof(uint) ) {
+                        // drop means change key of input callbacks
+                        uint previous_input_key = *(const int*)payload->Data;
+                        // index of current source changed;
+                        auto result = input_sources_callbacks.equal_range(previous_input_key);
+                        for (auto kit = result.first; kit != result.second; ++kit)
+                            kit->second.first->swapInputCallback(previous_input_key, ik);
+                        // switch to this key
+                        current_input_ = ik;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            // 5 elements in a row
             if ((i % 5) < 4) ImGui::SameLine();
 
             // Draw frame around current keyboard letter
@@ -4633,6 +4658,30 @@ void InputMappingInterface::Render()
                 current_input_ = ik;
             }
             ImGui::PopID();
+            // if user clics and drags an assigned key icon...
+            if (input_assigned[ik] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                ImGui::SetDragDropPayload("DND_NUMPAD", &ik, sizeof(uint));
+                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
+                ImGui::EndDragDropSource();
+            }
+            // ...and drops it onto another key icon
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_NUMPAD")) {
+                    if ( payload->DataSize == sizeof(uint) ) {
+                        // drop means change key of input callbacks
+                        uint previous_input_key = *(const int*)payload->Data;
+                        // index of current source changed;
+                        auto result = input_sources_callbacks.equal_range(previous_input_key);
+                        for (auto kit = result.first; kit != result.second; ++kit)
+                            kit->second.first->swapInputCallback(previous_input_key, ik);
+                        // switch to this key
+                        current_input_ = ik;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            // 4 elements in a row
             if ((p % 4) < 3) ImGui::SameLine();
 
             // Draw frame around current
@@ -4693,11 +4742,33 @@ void InputMappingInterface::Render()
             }
             // draw key button
             ImGui::PushID(ig);
-            if (ImGui::Selectable(gamepad_labels[b].c_str(), input_assigned[ig], 0, keyLetterIconSize)) {
-
+            if (ImGui::Selectable(gamepad_labels[b].c_str(), input_assigned[ig], 0, keyLetterIconSize))
                 current_input_ = ig;
-            }
             ImGui::PopID();
+
+            // if user clics and drags an assigned key icon...
+            if (input_assigned[ig] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                ImGui::SetDragDropPayload("DND_GAMEPAD", &ig, sizeof(uint));
+                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ig).c_str());
+                ImGui::EndDragDropSource();
+            }
+            // ...and drops it onto another key icon
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_GAMEPAD")) {
+                    if ( payload->DataSize == sizeof(uint) ) {
+                        // drop means change key of input callbacks
+                        uint previous_input_key = *(const int*)payload->Data;
+                        // index of current source changed;
+                        auto result = input_sources_callbacks.equal_range(previous_input_key);
+                        for (auto kit = result.first; kit != result.second; ++kit)
+                            kit->second.first->swapInputCallback(previous_input_key, ig);
+                        // switch to this key
+                        current_input_ = ig;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
             if ((b % 5) < 4) ImGui::SameLine();
 
             // Draw frame around current gamepad button
@@ -4803,11 +4874,7 @@ void InputMappingInterface::Render()
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
         ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), true);
 
-        if (input_sources_callbacks.count(current_input_) < 1) {
-
-            ImGui::Text("No action mapped to this input. Add one with '+'.");
-        }
-        else {
+        if (input_assigned[current_input_]) {
 
             ImGui::Columns(3, "InputMapping", false);
             auto result = input_sources_callbacks.equal_range(current_input_);
@@ -4866,6 +4933,10 @@ void InputMappingInterface::Render()
             }
 
         }
+        else {
+
+            ImGui::Text("No action mapped to this input. Add one with '+'.");
+        }
 
         // Add a new interface
         static bool temp_new_input = false;
@@ -4917,16 +4988,35 @@ void InputMappingInterface::Render()
         ImGui::PopStyleVar(2);
     }
 
-    // Clear all button
-    if (input_sources_callbacks.count(current_input_) > 0) {
-        ImGui::SetCursorScreenPos(frame_top + ImVec2(window->Size.x - g.FontSize - g.Style.FramePadding.x * 2.0f - g.Style.WindowPadding.x, g.Style.FramePadding.y));
-        if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove all") ){
-            auto result = input_sources_callbacks.equal_range(current_input_);
-            for (auto kit = result.first; kit != result.second; ++kit) {
+    // Custom popup menu for the current input actions (right aligned)
+    ImGui::SetCursorScreenPos(frame_top + ImVec2(window->Size.x - g.FontSize - g.Style.FramePadding.x * 2.0f - g.Style.WindowPadding.x, g.Style.FramePadding.y));
+    if (ImGuiToolkit::IconButton(5, 8))
+        ImGui::OpenPopup( "MenuInputMapping" );
+    if (ImGui::BeginPopup( "MenuInputMapping" ))
+    {
+        // 1) Reset (if there are callbacks assigned)
+        if (ImGui::MenuItem("Reset", NULL, false, input_assigned[current_input_] )) {
+            // remove all source callback of this input
+            auto current_source_callback = input_sources_callbacks.equal_range(current_input_);
+            for (auto kit = current_source_callback.first; kit != current_source_callback.second; ++kit)
                 kit->second.first->removeInputCallback(kit->second.second);
-            }
         }
+        // static var for the copy-paste mechanism
+        static uint _copy_current_input = INPUT_UNDEFINED;
+        // 2) Copy (if there are callbacks assigned)
+        if (ImGui::MenuItem("Copy", NULL, false, input_assigned[current_input_] ))
+             // Remember the index of the input to copy
+            _copy_current_input = current_input_;
+        // 3) Paste (if copied input index is assigned)
+        if (ImGui::MenuItem("Paste", NULL, false, input_assigned[_copy_current_input] )) {
+            // create source callbacks at current input cloning those of the copied index
+            auto copy_source_callback = input_sources_callbacks.equal_range(_copy_current_input);
+            for (auto kit = copy_source_callback.first; kit != copy_source_callback.second; ++kit)
+                kit->second.first->addInputCallback(current_input_, kit->second.second->clone());
+        }
+        ImGui::EndPopup();
     }
+
 
     ImGui::End();
 }

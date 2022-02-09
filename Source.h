@@ -153,6 +153,7 @@ public:
     void removeInputCallback(SourceCallback *callback);
     std::list<SourceCallback *> inputCallbacks(uint input);
     std::list<uint> callbackInputs();
+    void swapInputCallback(uint from, uint to);
     void clearInputCallbacks();
 
     // update mode

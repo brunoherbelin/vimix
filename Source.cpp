@@ -684,6 +684,22 @@ void Source::addInputCallback(uint input, SourceCallback *callback)
     added->second.model_ = callback;
 }
 
+void Source::swapInputCallback(uint from, uint to)
+{
+    std::multimap<uint, InputCallback> swapped_callbacks_;
+
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
+    {
+        if ( k->first == from )
+            swapped_callbacks_.emplace( to,  k->second);
+        else
+            swapped_callbacks_.emplace( k->first,  k->second);
+    }
+
+    input_callbacks_.swap(swapped_callbacks_);
+}
+
+
 void Source::removeInputCallback(SourceCallback *callback)
 {
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
