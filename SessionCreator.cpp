@@ -1151,11 +1151,22 @@ void SessionLoader::visit (SourceCallback &)
 {
 }
 
+void SessionLoader::visit (Play &c)
+{
+    bool p = true;
+    xmlCurrent_->QueryBoolAttribute("play", &p);
+    c.setValue(p);
+}
+
 void SessionLoader::visit (SetAlpha &c)
 {
     float a = 0.f;
     xmlCurrent_->QueryFloatAttribute("alpha", &a);
     c.setValue(a);
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
 }
 
 void SessionLoader::visit (SetDepth &c)

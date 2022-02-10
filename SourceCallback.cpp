@@ -133,43 +133,71 @@ SourceCallback *ResetGeometry::clone() const
     return new ResetGeometry;
 }
 
-SetAlpha::SetAlpha() : SourceCallback(), alpha_(0.f)
+SetAlpha::SetAlpha() : SourceCallback(), duration_(0.f), progress_(0.f), alpha_(0.f)
 {
-    pos_  = glm::vec2();
-    step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
+    start_  = glm::vec2();
+    target_  = glm::vec2();
 }
 
-SetAlpha::SetAlpha(float alpha) : SetAlpha()
+SetAlpha::SetAlpha(float alpha, float duration) : SetAlpha()
 {
     alpha_ = CLAMP(alpha, 0.f, 1.f);
+    duration_ = duration;
 }
 
-void SetAlpha::update(Source *s, float)
+void SetAlpha::update(Source *s, float dt)
 {
     if (s && !s->locked()) {
         // set start position on first run or upon call of reset()
         if (!initialized_){
-            // initial position
-            pos_ = glm::vec2(s->group(View::MIXING)->translation_);
+            // initial mixing view position
+            start_ = glm::vec2(s->group(View::MIXING)->translation_);
+
+            // step in diagonal by default
+            glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));
             // step in direction of source translation if possible
-            if ( glm::length(pos_) > DELTA_ALPHA)
-                step_ = glm::normalize(pos_);
+            if ( glm::length(start_) > DELTA_ALPHA)
+                step = glm::normalize(start_);
+            //
+            // target mixing view position
+            //
+            // special case Alpha = 0
+            if (alpha_ < DELTA_ALPHA) {
+                target_ = step;
+            }
+            // special case Alpha = 1
+            else if (alpha_ > 1.f - DELTA_ALPHA) {
+                target_ = step * 0.005f;
+            }
+            // general case
+            else {
+                // converge to reduce the difference of alpha using dichotomic algorithm
+                target_ = start_;
+                float delta = 1.f;
+                do {
+                    target_ += step * (delta / 2.f);
+                    delta = SourceCore::alphaFromCordinates(target_.x, target_.y) - alpha_;
+                } while (glm::abs(delta) > DELTA_ALPHA);
+            }
 
             initialized_ = true;
         }
 
-        // perform operation
-        float delta = SourceCore::alphaFromCordinates(pos_.x, pos_.y) - alpha_;
+        // time passed
+        progress_ += dt;
 
-        // converge to reduce the difference of alpha using dichotomic algorithm
-        if ( glm::abs(delta) > DELTA_ALPHA ){
-            pos_ += step_ * (delta / 2.f);
-            s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
-        }
-        // reached alpha target
-        else {
+        // perform movement
+        if ( ABS(duration_) > 0.f)
+            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress_/duration_) * target_, s->group(View::MIXING)->translation_.z);
+
+        // time-out
+        if ( progress_ > duration_ ) {
+            // apply depth to target
+            s->group(View::MIXING)->translation_ = glm::vec3(target_, s->group(View::MIXING)->translation_.z);
+            // done
             finished_ = true;
         }
+
     }
     else
         finished_ = true;
@@ -376,6 +404,12 @@ SourceCallback *Play::clone() const
 SourceCallback *Play::reverse(Source *s) const
 {
     return new Play(s->playing());
+}
+
+void Play::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
 }
 
 RePlay::RePlay() : SourceCallback()

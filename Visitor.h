@@ -48,6 +48,7 @@ class Loom;
 class Grab;
 class Resize;
 class Turn;
+class Play;
 
 
 // Declares the interface for the visitors
@@ -101,6 +102,7 @@ public:
     virtual void visit (Grab&) {}
     virtual void visit (Resize&) {}
     virtual void visit (Turn&) {}
+    virtual void visit (Play&) {}
 };
 
 

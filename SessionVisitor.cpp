@@ -764,9 +764,15 @@ void SessionVisitor::visit (SourceCallback &c)
     xmlCurrent_->SetAttribute("type", (uint) c.type());
 }
 
+void SessionVisitor::visit (Play &c)
+{
+    xmlCurrent_->SetAttribute("play", c.value());
+}
+
 void SessionVisitor::visit (SetAlpha &c)
 {
     xmlCurrent_->SetAttribute("alpha", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
 }
 
 void SessionVisitor::visit (SetDepth &c)

@@ -12,16 +12,16 @@ public:
 
     typedef enum {
         CALLBACK_GENERIC = 0,
-        CALLBACK_ALPHA,
-        CALLBACK_LOOM,
-        CALLBACK_GRAB,
-        CALLBACK_RESIZE,
-        CALLBACK_TURN,
-        CALLBACK_DEPTH,
-        CALLBACK_PLAY,
-        CALLBACK_REPLAY,
-        CALLBACK_RESETGEO,
-        CALLBACK_LOCK
+        CALLBACK_ALPHA = 1,
+        CALLBACK_LOOM = 2,
+        CALLBACK_GRAB = 3,
+        CALLBACK_RESIZE = 4,
+        CALLBACK_TURN = 5,
+        CALLBACK_DEPTH = 6,
+        CALLBACK_PLAY = 7,
+        CALLBACK_REPLAY = 8,
+        CALLBACK_RESETGEO = 9,
+        CALLBACK_LOCK = 10
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -56,16 +56,20 @@ public:
 
 class SetAlpha : public SourceCallback
 {
+    float duration_;
+    float progress_;
     float alpha_;
-    glm::vec2 pos_;
-    glm::vec2 step_;
+    glm::vec2 start_;
+    glm::vec2 target_;
 
 public:
     SetAlpha ();
-    SetAlpha (float alpha);
+    SetAlpha (float alpha, float duration = 0.f);
 
     float value () const { return alpha_;}
     void  setValue (float a) { alpha_ = a; }
+    float duration () const { return duration_;}
+    void  setDuration (float d) { duration_ = d; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -154,6 +158,7 @@ public:
     SourceCallback *clone() const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_PLAY; }
+    void accept (Visitor& v) override;
 };
 
 class RePlay : public SourceCallback
