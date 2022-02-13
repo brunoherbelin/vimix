@@ -42,6 +42,7 @@ extern "C"{
 
 void prepare()
 {
+    Control::manager().update();
     Mixer::manager().update();
     UserInterface::manager().NewFrame();
 }

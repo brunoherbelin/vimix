@@ -50,7 +50,6 @@
 
 bool  Control::input_active[INPUT_MAX]{};
 float Control::input_values[INPUT_MAX]{};
-std::condition_variable  Control::joystick_end_;
 
 
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
@@ -97,6 +96,11 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // send the global status
                     Control::manager().sendOutputStatus(remoteEndpoint);
                 }
+            }
+            // Multitouch target: user input on 'Multitouch' tab
+            else if ( target.compare(OSC_MULTITOUCH) == 0 )
+            {
+                Control::manager().receiveMultitouchAttribute(attribute, m.ArgumentStream());
             }
             // Session target: concerns attributes of the session
             else if ( target.compare(OSC_SESSION) == 0 )
@@ -248,7 +252,10 @@ std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m
 
 Control::Control() : receiver_(nullptr)
 {
-
+    for (size_t i = 0; i < INPUT_MULTITOUCH_COUNT; ++i) {
+        multitouch_active[i] = false;
+        multitouch_values[i] = glm::vec2(0.f);
+    }
 }
 
 Control::~Control()
@@ -354,12 +361,6 @@ bool Control::init()
     glfwSetKeyCallback( main, Control::keyboardCalback);
     glfwSetKeyCallback( output, Control::keyboardCalback);
 
-
-    //
-    // set joystick callback
-    //
-    std::thread(Control::joystickCallback).detach();
-
     //
     // load OSC Translator
     //
@@ -393,6 +394,38 @@ bool Control::init()
     return receiver_ != nullptr;
 }
 
+void Control::update()
+{
+    // read joystick buttons
+    int num_buttons = 0;
+    const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
+    // map to Control input array
+    for (int b = 0; b < num_buttons; ++b) {
+        Control::input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
+        Control::input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+    }
+
+    // read joystick axis
+    int num_axis = 0;
+    const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
+    for (int a = 0; a < num_axis; ++a) {
+        Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
+        Control::input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+    }
+
+    // multitouch input needs to be cleared when no more OSC input comes in
+    for (int m = 0; m < INPUT_MULTITOUCH_COUNT; ++m) {
+        if ( multitouch_active[m] > 0 )
+            multitouch_active[m] -= 1;
+        else {
+            Control::input_active[INPUT_MULTITOUCH_FIRST + m] = false;
+            Control::input_values[INPUT_MULTITOUCH_FIRST + m] = 0.f;
+            multitouch_values[m] = glm::vec2(0.f);
+        }
+    }
+
+}
+
 void Control::listen()
 {
     if (Control::manager().receiver_)
@@ -403,8 +436,6 @@ void Control::listen()
 
 void Control::terminate()
 {
-    Control::joystick_end_.notify_all();
-
     if ( receiver_ != nullptr ) {
 
         // request termination of receiver
@@ -610,8 +641,6 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
     return send_feedback;
 }
 
-
-
 bool Control::receiveSessionAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
@@ -652,6 +681,49 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
     }
 
     return send_feedback;
+}
+
+void Control::receiveMultitouchAttribute(const std::string &attribute,
+                        osc::ReceivedMessageArgumentStream arguments)
+{
+    try {
+        // address should be in the form /vimix/multitouch/i
+        int t = -1;
+        if ( BaseToolkit::is_a_number(attribute.substr(1), &t) && t >= 0 && t < INPUT_MULTITOUCH_COUNT )
+        {
+            // get value inputs
+            float x = 0.f, y = 0.f;
+            if ( !arguments.Eos())
+                arguments >> x >> y >> osc::EndMessage;
+
+            // if the touch was already pressed
+            if ( multitouch_active[t] > 0 ) {
+                // active value decreases with the distance from original press position
+                Control::input_values[INPUT_MULTITOUCH_FIRST + t]  = 1.f - glm::distance(Control::multitouch_values[t], glm::vec2(x, y)) / M_SQRT2;
+            }
+            // first time touch is pressed
+            else {
+                // store original press position
+                multitouch_values[t] = glm::vec2(x, y);
+                // active value is 1.f at first press (full)
+                Control::input_values[INPUT_MULTITOUCH_FIRST + t] = 1.f;
+            }
+            // keep track of button press
+            multitouch_active[t] = 3;
+            // set array of active input
+            Control::input_active[INPUT_MULTITOUCH_FIRST + t] = true;
+        }
+    }
+    catch (osc::MissingArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target %s.", attribute.c_str(), OSC_MULTITOUCH);
+    }
+    catch (osc::ExcessArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Too many arguments for attribute '%s' for target %s.", attribute.c_str(), OSC_MULTITOUCH);
+    }
+    catch (osc::WrongArgumentTypeException &e) {
+        Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target %s.", attribute.c_str(), OSC_MULTITOUCH);
+    }
+
 }
 
 void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
@@ -782,8 +854,6 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
     socket.Send( p.Data(), p.Size() );
 }
 
-
-
 void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int mods)
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
@@ -805,38 +875,10 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
     }
 }
 
-void Control::joystickCallback()
-{
-    // wait for the joystick_end_ notification
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lck(mtx);
-    // loop with a fixed refresh rate (~ 30 Hz)
-    while ( Control::joystick_end_.wait_for(lck,std::chrono::milliseconds(33) ) == std::cv_status::timeout ) {
-
-        // read joystick buttons
-        int num_buttons = 0;
-        const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
-        // map to Control input array
-        for (int b = 0; b < num_buttons; ++b) {
-            Control::input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
-            Control::input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
-        }
-
-        // read joystick axis
-        int num_axis = 0;
-        const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
-        for (int a = 0; a < num_axis; ++a) {
-            Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
-            Control::input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
-        }
-    }
-}
-
 bool Control::inputActive(uint id)
 {
     return Control::input_active[MIN(id,INPUT_MAX)] && !Settings::application.mapping.disabled;
 }
-
 
 float Control::inputValue(uint id)
 {
@@ -866,6 +908,10 @@ std::string Control::inputLabel(uint id)
                                                        "Left Axis X", "Left Axis Y", "Left Trigger",
                                                        "Right Axis X", "Right Axis Y", "Right Trigger" };
         label = joystick_labels[id - INPUT_JOYSTICK_FIRST];
+    }
+    else if ( id >= INPUT_MULTITOUCH_FIRST && id <= INPUT_MULTITOUCH_LAST )
+    {
+        label = std::string( "Multitouch ") + std::to_string(id - INPUT_MULTITOUCH_FIRST);
     }
     else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
     {

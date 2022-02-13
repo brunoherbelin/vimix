@@ -47,18 +47,26 @@
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
 
+#define OSC_MULTITOUCH         "/multitouch"
+
 #define INPUT_UNDEFINED        0
 #define INPUT_KEYBOARD_FIRST   1
+#define INPUT_KEYBOARD_COUNT   25
 #define INPUT_KEYBOARD_LAST    26
 #define INPUT_NUMPAD_FIRST     27
+#define INPUT_NUMPAD_COUNT     16
 #define INPUT_NUMPAD_LAST      43
 #define INPUT_JOYSTICK_FIRST   44
+#define INPUT_JOYSTICK_COUNT   20
 #define INPUT_JOYSTICK_LAST    64
 #define INPUT_JOYSTICK_FIRST_BUTTON  44
 #define INPUT_JOYSTICK_LAST_BUTTON   58
 #define INPUT_JOYSTICK_FIRST_AXIS    59
 #define INPUT_JOYSTICK_LAST_AXIS     64
-#define INPUT_CUSTOM_FIRST     65
+#define INPUT_MULTITOUCH_FIRST 65
+#define INPUT_MULTITOUCH_COUNT 16
+#define INPUT_MULTITOUCH_LAST  81
+#define INPUT_CUSTOM_FIRST     82
 #define INPUT_CUSTOM_LAST      99
 #define INPUT_MAX              100
 
@@ -86,6 +94,7 @@ public:
     ~Control();
 
     bool init();
+    void update();
     void terminate();
 
     // OSC translation
@@ -111,6 +120,8 @@ protected:
                             osc::ReceivedMessageArgumentStream arguments);
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
+    void receiveMultitouchAttribute(const std::string &attribute,
+                            osc::ReceivedMessageArgumentStream arguments);
     void sendSourceAttibutes(const IpEndpointName& remoteEndpoint,
                              std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint,
@@ -130,11 +141,11 @@ private:
 
     static bool  input_active[INPUT_MAX];
     static float input_values[INPUT_MAX];
-    static std::condition_variable  joystick_end_;
-    static std::mutex  access_;
+    int   multitouch_active[INPUT_MULTITOUCH_COUNT];
+    glm::vec2 multitouch_values[INPUT_MULTITOUCH_COUNT];
 
     static void keyboardCalback(GLFWwindow*, int, int, int, int);
-    static void joystickCallback();
+
 };
 
 #endif // CONTROL_H

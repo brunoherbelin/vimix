@@ -366,8 +366,8 @@ public:
 
 class InputMappingInterface : public WorkspaceWindow
 {
-    std::array< std::string, 3 > input_mode;
-    std::array< uint, 3 > current_input_for_mode;
+    std::array< std::string, 4 > input_mode;
+    std::array< uint, 4 > current_input_for_mode;
 
     uint current_input_;
 

@@ -4289,8 +4289,11 @@ void TimerMetronome::Render()
 
 InputMappingInterface::InputMappingInterface() : WorkspaceWindow("InputMappingInterface")
 {
-    input_mode = { ICON_FA_KEYBOARD "  Keyboard", ICON_FA_CALCULATOR "   Numpad" , ICON_FA_GAMEPAD " Gamepad" };
-    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_JOYSTICK_FIRST };
+    input_mode = { ICON_FA_KEYBOARD "  Keyboard",
+                   ICON_FA_CALCULATOR "   Numpad" ,
+                   ICON_FA_TABLET_ALT "   TouchOSC" ,
+                   ICON_FA_GAMEPAD " Gamepad" };
+    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST, INPUT_JOYSTICK_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
 
@@ -4536,7 +4539,6 @@ void InputMappingInterface::Render()
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
 
     // create data structures more adapted for display
-    static uint copy_input_callback = INPUT_UNDEFINED;
     std::multimap< uint, std::pair<Source *, SourceCallback*> > input_sources_callbacks;
     bool input_assigned[INPUT_MAX]{};
     // loop over sources of the session
@@ -4577,7 +4579,7 @@ void InputMappingInterface::Render()
                 current_input_ = ik;
             }
             // draw key button
-            ImGui::PushID(i);
+            ImGui::PushID(ik);
             if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, keyLetterIconSize)) {
                 current_input_ = ik;
             }
@@ -4653,7 +4655,7 @@ void InputMappingInterface::Render()
                 current_input_ = ik;
             }
             // draw key button
-            ImGui::PushID(p);
+            ImGui::PushID(ik);
             if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, iconsize)) {
                 current_input_ = ik;
             }
@@ -4697,9 +4699,66 @@ void InputMappingInterface::Render()
 
     }
     //
-    // JOYSTICK
+    // MULTITOUCH OSC
     //
     else if ( Settings::application.mapping.mode == 2 ) {
+
+        // Draw table of TouchOSC buttons
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+        ImGui::PushStyleColor(ImGuiCol_Header, color);
+        color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+
+        const ImVec2 touch_bar_size = keyNumpadItemSize * ImVec2(0.65f, 0.2f);
+        const ImVec2 touch_bar_pos  = keyNumpadItemSize * ImVec2(0.1f, 0.6f);
+
+        for (size_t t = 0; t < INPUT_MULTITOUCH_COUNT; ++t){
+            uint it = INPUT_MULTITOUCH_FIRST + t;
+            ImVec2 pos = frame_top + keyNumpadItemSize * ImVec2( t % 4, t / 4);
+
+            // draw overlay on active keys
+            if ( Control::inputActive(it) ) {
+                draw_list->AddRectFilled(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
+                // set current
+                current_input_ = it;
+            }
+
+            // draw key button
+            ImGui::PushID(it);
+            if (ImGui::Selectable(" ", input_assigned[it], 0, keyNumpadIconSize))
+                current_input_ = it;
+            ImGui::PopID();
+
+            // 4 elements in a row
+            if ((t % 4) < 3) ImGui::SameLine();
+
+            // Draw frame
+            if (it == current_input_)
+                draw_list->AddRect(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+            else
+                draw_list->AddRect(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_TextDisabled), 6.f, ImDrawCornerFlags_All, 0.2f);
+
+            // Draw value bar
+            ImVec2 prev = ImGui::GetCursorScreenPos();
+            ImGui::SetCursorScreenPos( pos + touch_bar_pos);
+            ImGui::ProgressBar(Control::inputValue(it), touch_bar_size, "");
+            ImGui::SetCursorScreenPos( prev );
+
+        }
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+    }
+    //
+    // JOYSTICK
+    //
+    else if ( Settings::application.mapping.mode == 3 ) {
 
         // custom layout of gamepad buttons
         std::vector<uint> gamepad_inputs = { INPUT_JOYSTICK_FIRST_BUTTON+11, INPUT_JOYSTICK_FIRST_BUTTON+13,
@@ -4714,9 +4773,9 @@ void InputMappingInterface::Render()
                                              INPUT_JOYSTICK_FIRST_BUTTON+8,
                                              INPUT_JOYSTICK_FIRST_BUTTON+10, INPUT_JOYSTICK_FIRST_BUTTON+5  };
 
-        std::vector< std::string > gamepad_labels = {  ICON_FA_CARET_SQUARE_UP,  ICON_FA_CARET_SQUARE_DOWN,
+        std::vector< std::string > gamepad_labels = {  ICON_FA_ARROW_UP,  ICON_FA_ARROW_DOWN,
                                                        ICON_FA_CHEVRON_CIRCLE_LEFT, "X", "Y",
-                                                       ICON_FA_CARET_SQUARE_LEFT, ICON_FA_CARET_SQUARE_RIGHT,
+                                                       ICON_FA_ARROW_LEFT, ICON_FA_ARROW_RIGHT,
                                                        ICON_FA_CHEVRON_CIRCLE_RIGHT, "A", "B",
                                                        "L1", "LT", ICON_FA_DOT_CIRCLE, "RT", "R1" };
 
@@ -5927,12 +5986,6 @@ void Navigator::RenderNewPannel()
                 s->replay();
                 // close NEW pannel
                 togglePannelNew();
-
-                /// BHBN TEST SOURCE CALLBACKS KEYaa
-//                s->setKeyCallback(GLFW_KEY_A, new GotoAlpha(0.9));
-////                s->setKeyCallback(GLFW_KEY_A, new GotoDepth(10.0));
-//                s->setKeyCallback(GLFW_KEY_L, new Loom(-0.1));
-
             }
         }
 

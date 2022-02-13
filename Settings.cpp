@@ -267,9 +267,9 @@ void Settings::Save(uint64_t runtime)
 
     // Inputs mapping
     XMLElement *mappingConfNode = xmlDoc.NewElement( "Mapping" );
-    timerConfNode->SetAttribute("mode", application.mapping.mode);
-    timerConfNode->SetAttribute("current", application.mapping.current);
-    timerConfNode->SetAttribute("disabled", application.mapping.disabled);
+    mappingConfNode->SetAttribute("mode", application.mapping.mode);
+    mappingConfNode->SetAttribute("current", application.mapping.current);
+    mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
     pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
