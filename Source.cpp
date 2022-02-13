@@ -764,7 +764,7 @@ void Source::updateCallbacks(float dt)
         // if the Reaction is valid
         if ( k->second.model_ != nullptr) {
 
-            bool activate = Control::inputActive(k->first);
+            bool activate = Control::manager().inputActive(k->first);
 
             // if the value referenced as pressed changed state
             // or repeat key if there is no reverse callback
@@ -775,7 +775,7 @@ void Source::updateCallbacks(float dt)
                     // generate a new callback from the model
                     SourceCallback *C = k->second.model_->clone();
                     // apply value multiplyer from input
-                    C->multiply( Control::inputValue(k->first) );
+                    C->multiply( Control::manager().inputValue(k->first) );
                     // add callback to the source (force override)
                     call( C, true );
                     // delete the reverse if was not released

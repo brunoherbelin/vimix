@@ -100,8 +100,8 @@ public:
     // OSC translation
     std::string translate (std::string addresspqattern);
 
-    static bool inputActive(uint id);
-    static float inputValue(uint id);
+    bool  inputActive (uint id);
+    float inputValue  (uint id);
     static std::string inputLabel(uint id);
 
 protected:
@@ -139,8 +139,10 @@ private:
     void loadOscConfig();
     void resetOscConfig();
 
-    static bool  input_active[INPUT_MAX];
-    static float input_values[INPUT_MAX];
+    bool  input_active[INPUT_MAX];
+    float input_values[INPUT_MAX];
+    std::mutex input_access_;
+
     int   multitouch_active[INPUT_MULTITOUCH_COUNT];
     glm::vec2 multitouch_values[INPUT_MULTITOUCH_COUNT];
 

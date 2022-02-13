@@ -4533,7 +4533,7 @@ void InputMappingInterface::Render()
         ImGui::EndMenuBar();
     }
 
-    // current windowdraw parameters
+    // current window draw parameters
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImDrawList* draw_list = window->DrawList;
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
@@ -4554,10 +4554,13 @@ void InputMappingInterface::Render()
         }
     }
 
+    // tooltip declined for each mode
+    std::string _tooltip;
     //
     // KEYBOARD
     //
     if ( Settings::application.mapping.mode == 0 ) {
+        _tooltip = "Key press on computer keyboard.";
 
         // Draw table of letter keys [A] to [Y]
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -4572,7 +4575,7 @@ void InputMappingInterface::Render()
         for (uint ik = INPUT_KEYBOARD_FIRST; ik < INPUT_KEYBOARD_LAST; ++ik){
             int i = ik - INPUT_KEYBOARD_FIRST;
             // draw overlay on active keys
-            if ( Control::inputActive(ik) ) {
+            if ( Control::manager().inputActive(ik) ) {
                 ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( i % 5, i / 5);
                 draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
@@ -4626,6 +4629,8 @@ void InputMappingInterface::Render()
     // NUMPAD
     //
     else if ( Settings::application.mapping.mode == 1 ) {
+        _tooltip = "Key press on computer numerical keypad.";
+
         // custom layout of numerical keypad
         std::vector<uint> numpad_inputs = { INPUT_NUMPAD_FIRST+7, INPUT_NUMPAD_FIRST+8, INPUT_NUMPAD_FIRST+9, INPUT_NUMPAD_FIRST+11,
                                             INPUT_NUMPAD_FIRST+4, INPUT_NUMPAD_FIRST+5, INPUT_NUMPAD_FIRST+6, INPUT_NUMPAD_FIRST+12,
@@ -4647,7 +4652,7 @@ void InputMappingInterface::Render()
             ImVec2 iconsize = p == 12 ? keyNumpadIconSize + ImVec2(keyNumpadIconSize.x+ g.Style.ItemSpacing.x, 0.f) : keyNumpadIconSize;
             ImVec2 itemsize = p == 12 ? keyNumpadItemSize + ImVec2(keyNumpadItemSize.x+ g.Style.ItemSpacing.x, 0.f) : keyNumpadItemSize;
             // draw overlay on active keys
-            if ( Control::inputActive(ik) ) {
+            if ( Control::manager().inputActive(ik) ) {
                 ImVec2 pos = frame_top + itemsize * ImVec2( p % 4, p / 4);
                 pos += p > 12 ? ImVec2(keyNumpadIconSize.x+ g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
                 draw_list->AddRectFilled(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
@@ -4702,6 +4707,7 @@ void InputMappingInterface::Render()
     // MULTITOUCH OSC
     //
     else if ( Settings::application.mapping.mode == 2 ) {
+        _tooltip = "Press and hold in the 'Multitouch' panel of the vimix TouchOSC companion.";
 
         // Draw table of TouchOSC buttons
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -4721,7 +4727,7 @@ void InputMappingInterface::Render()
             ImVec2 pos = frame_top + keyNumpadItemSize * ImVec2( t % 4, t / 4);
 
             // draw overlay on active keys
-            if ( Control::inputActive(it) ) {
+            if ( Control::manager().inputActive(it) ) {
                 draw_list->AddRectFilled(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
                 current_input_ = it;
@@ -4745,7 +4751,7 @@ void InputMappingInterface::Render()
             // Draw value bar
             ImVec2 prev = ImGui::GetCursorScreenPos();
             ImGui::SetCursorScreenPos( pos + touch_bar_pos);
-            ImGui::ProgressBar(Control::inputValue(it), touch_bar_size, "");
+            ImGui::ProgressBar(Control::manager().inputValue(it), touch_bar_size, "");
             ImGui::SetCursorScreenPos( prev );
 
         }
@@ -4759,6 +4765,7 @@ void InputMappingInterface::Render()
     // JOYSTICK
     //
     else if ( Settings::application.mapping.mode == 3 ) {
+        _tooltip = "Button press and axis movements on a connected gamepad or joystick.";
 
         // custom layout of gamepad buttons
         std::vector<uint> gamepad_inputs = { INPUT_JOYSTICK_FIRST_BUTTON+11, INPUT_JOYSTICK_FIRST_BUTTON+13,
@@ -4793,7 +4800,7 @@ void InputMappingInterface::Render()
         for (size_t b = 0; b < gamepad_inputs.size(); ++b ){
             uint ig = gamepad_inputs[b];
             // draw overlay on active keys
-            if ( Control::inputActive(ig) ) {
+            if ( Control::manager().inputActive(ig) ) {
                 ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
                 draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
@@ -4852,7 +4859,7 @@ void InputMappingInterface::Render()
         ImVec2 pos = axis_top;
         // Draw a little bar showing activity on the gamepad axis
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS), axis_bar_size);
         // Draw button to assign the axis to an action
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("LX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS], 0, axis_icon_size))
@@ -4863,7 +4870,7 @@ void InputMappingInterface::Render()
 
         pos = axis_top + ImVec2( 0, axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+1), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+1), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("LY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+1], 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+1;
@@ -4872,7 +4879,7 @@ void InputMappingInterface::Render()
 
         pos = axis_top + ImVec2( 0, 2.f * axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+2), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+2), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("L2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+2], 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+2;
@@ -4887,7 +4894,7 @@ void InputMappingInterface::Render()
 
         pos = axis_top + ImVec2( axis_item_size.x, 0.f);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+3), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+3), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("RX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+3], 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+3;
@@ -4896,7 +4903,7 @@ void InputMappingInterface::Render()
 
         pos = axis_top + ImVec2( axis_item_size.x, axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+4), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+4), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("RY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+4], 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+4;
@@ -4905,7 +4912,7 @@ void InputMappingInterface::Render()
 
         pos = axis_top + ImVec2( axis_item_size.x, 2.f * axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::inputValue(INPUT_JOYSTICK_FIRST_AXIS+5), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+5), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
         if (ImGui::Selectable("R2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+5], 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+5;
@@ -5048,7 +5055,9 @@ void InputMappingInterface::Render()
     }
 
     // Custom popup menu for the current input actions (right aligned)
-    ImGui::SetCursorScreenPos(frame_top + ImVec2(window->Size.x - g.FontSize - g.Style.FramePadding.x * 2.0f - g.Style.WindowPadding.x, g.Style.FramePadding.y));
+    ImGui::SetCursorScreenPos(frame_top + ImVec2(window->Size.x - 2.f * g.FontSize - g.Style.FramePadding.x * 3.0f - g.Style.WindowPadding.x, g.Style.FramePadding.y));
+    ImGuiToolkit::HelpToolTip(_tooltip.c_str());
+    ImGui::SameLine(0, g.Style.FramePadding.x);
     if (ImGuiToolkit::IconButton(5, 8))
         ImGui::OpenPopup( "MenuInputMapping" );
     if (ImGui::BeginPopup( "MenuInputMapping" ))

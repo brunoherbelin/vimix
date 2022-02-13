@@ -48,8 +48,9 @@
 
 #define CONTROL_OSC_MSG "OSC: "
 
-bool  Control::input_active[INPUT_MAX]{};
-float Control::input_values[INPUT_MAX]{};
+//bool  Control::input_active[INPUT_MAX]{};
+//float Control::input_values[INPUT_MAX]{};
+//std::mutex Control::input_access_;
 
 
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
@@ -256,6 +257,11 @@ Control::Control() : receiver_(nullptr)
         multitouch_active[i] = false;
         multitouch_values[i] = glm::vec2(0.f);
     }
+
+    for (size_t i = 0; i < INPUT_MAX; ++i) {
+        input_active[i] = false;
+        input_values[i] = 0.f;
+    }
 }
 
 Control::~Control()
@@ -396,21 +402,26 @@ bool Control::init()
 
 void Control::update()
 {
+
     // read joystick buttons
     int num_buttons = 0;
     const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
     // map to Control input array
     for (int b = 0; b < num_buttons; ++b) {
-        Control::input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
-        Control::input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        input_access_.lock();
+        input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
+        input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        input_access_.unlock();
     }
 
     // read joystick axis
     int num_axis = 0;
     const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
     for (int a = 0; a < num_axis; ++a) {
-        Control::input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
-        Control::input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        input_access_.lock();
+        input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
+        input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        input_access_.unlock();
     }
 
     // multitouch input needs to be cleared when no more OSC input comes in
@@ -418,9 +429,11 @@ void Control::update()
         if ( multitouch_active[m] > 0 )
             multitouch_active[m] -= 1;
         else {
-            Control::input_active[INPUT_MULTITOUCH_FIRST + m] = false;
-            Control::input_values[INPUT_MULTITOUCH_FIRST + m] = 0.f;
+            input_access_.lock();
+            input_active[INPUT_MULTITOUCH_FIRST + m] = false;
+            input_values[INPUT_MULTITOUCH_FIRST + m] = 0.f;
             multitouch_values[m] = glm::vec2(0.f);
+            input_access_.unlock();
         }
     }
 
@@ -696,22 +709,26 @@ void Control::receiveMultitouchAttribute(const std::string &attribute,
             if ( !arguments.Eos())
                 arguments >> x >> y >> osc::EndMessage;
 
+            input_access_.lock();
+
             // if the touch was already pressed
             if ( multitouch_active[t] > 0 ) {
                 // active value decreases with the distance from original press position
-                Control::input_values[INPUT_MULTITOUCH_FIRST + t]  = 1.f - glm::distance(Control::multitouch_values[t], glm::vec2(x, y)) / M_SQRT2;
+                input_values[INPUT_MULTITOUCH_FIRST + t]  = 1.f - glm::distance(Control::multitouch_values[t], glm::vec2(x, y)) / M_SQRT2;
             }
             // first time touch is pressed
             else {
                 // store original press position
                 multitouch_values[t] = glm::vec2(x, y);
                 // active value is 1.f at first press (full)
-                Control::input_values[INPUT_MULTITOUCH_FIRST + t] = 1.f;
+                input_values[INPUT_MULTITOUCH_FIRST + t] = 1.f;
             }
             // keep track of button press
             multitouch_active[t] = 3;
             // set array of active input
-            Control::input_active[INPUT_MULTITOUCH_FIRST + t] = true;
+            input_active[INPUT_MULTITOUCH_FIRST + t] = true;
+
+            input_access_.unlock();
         }
     }
     catch (osc::MissingArgumentException &e) {
@@ -858,13 +875,14 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
     {
+        Control::manager().input_access_.lock();
         if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
-            Control::input_active[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE;
-            Control::input_values[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
+            Control::manager().input_active[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE;
+            Control::manager().input_values[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
         }
         else if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL) {
-            Control::input_active[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
-            Control::input_values[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
+            Control::manager().input_active[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
+            Control::manager().input_values[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
         }
         else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
         {
@@ -872,17 +890,26 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
             if (window==output)
                 Rendering::manager().outputWindow().exitFullscreen();
         }
+        Control::manager().input_access_.unlock();
     }
 }
 
 bool Control::inputActive(uint id)
 {
-    return Control::input_active[MIN(id,INPUT_MAX)] && !Settings::application.mapping.disabled;
+    input_access_.lock();
+    const bool ret = input_active[MIN(id,INPUT_MAX)];
+    input_access_.unlock();
+
+    return ret && !Settings::application.mapping.disabled;
 }
 
 float Control::inputValue(uint id)
 {
-    return Control::input_values[MIN(id,INPUT_MAX)];
+    input_access_.lock();
+    const float ret = input_values[MIN(id,INPUT_MAX)];
+    input_access_.unlock();
+
+    return ret;
 }
 
 std::string Control::inputLabel(uint id)
