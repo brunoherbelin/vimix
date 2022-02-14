@@ -4466,11 +4466,12 @@ void InputMappingInterface::Render()
     Session *ses = Mixer::manager().session();
 
     const ImGuiContext& g = *GImGui;
-    static ImVec2 keyLetterIconSize = ImVec2(50, 52);
-    static ImVec2 keyLetterItemSize = keyLetterIconSize + g.Style.ItemSpacing;
-    static ImVec2 keyNumpadIconSize = ImVec2(65, 66);
-    static ImVec2 keyNumpadItemSize = keyNumpadIconSize + g.Style.ItemSpacing;
-    static float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + g.Style.ItemSpacing.y * 2.0f ;
+    static ImVec2 keyItemSpacing = ImVec2(6, 6);
+    static ImVec2 keyLetterIconSize = ImVec2(48, 48);
+    static ImVec2 keyLetterItemSize = keyLetterIconSize + keyItemSpacing;
+    static ImVec2 keyNumpadIconSize = ImVec2(60, 60);
+    static ImVec2 keyNumpadItemSize = keyNumpadIconSize + keyItemSpacing;
+    static float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + keyItemSpacing.y;
     static float  inputarea_width = keyLetterItemSize.x * 5.f;
 
     ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
@@ -4565,6 +4566,7 @@ void InputMappingInterface::Render()
         // Draw table of letter keys [A] to [Y]
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, keyItemSpacing);
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
@@ -4614,14 +4616,16 @@ void InputMappingInterface::Render()
             // 5 elements in a row
             if ((i % 5) < 4) ImGui::SameLine();
 
-            // Draw frame around current keyboard letter
-            if (current_input_ == ik) {
-                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( i % 5, i / 5);
+            // Draw frame
+            ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( i % 5, i / 5);
+            if (ik == current_input_)
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
-            }
+            else
+                draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
+
         }
         ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
     }
@@ -4640,6 +4644,7 @@ void InputMappingInterface::Render()
         // Draw table of keypad keys
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, keyItemSpacing);
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
@@ -4691,15 +4696,17 @@ void InputMappingInterface::Render()
             // 4 elements in a row
             if ((p % 4) < 3) ImGui::SameLine();
 
-            // Draw frame around current
-            if (ik == current_input_){
-                ImVec2 pos = frame_top + itemsize * ImVec2( p % 4, p / 4);
-                pos += p > 12 ? ImVec2(keyNumpadIconSize.x + g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
+            // Draw frame
+            ImVec2 pos = frame_top + itemsize * ImVec2( p % 4, p / 4);
+            pos += p > 12 ? ImVec2(keyNumpadIconSize.x + g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
+            if (ik == current_input_)
                 draw_list->AddRect(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
-            }
+            else
+                draw_list->AddRect(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
+
         }
         ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
     }
@@ -4711,7 +4718,8 @@ void InputMappingInterface::Render()
 
         // Draw table of TouchOSC buttons
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, keyItemSpacing);
         ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
         color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
         ImGui::PushStyleColor(ImGuiCol_Header, color);
@@ -4720,7 +4728,7 @@ void InputMappingInterface::Render()
         ImGui::PushStyleColor(ImGuiCol_Text, color);
 
         const ImVec2 touch_bar_size = keyNumpadItemSize * ImVec2(0.65f, 0.2f);
-        const ImVec2 touch_bar_pos  = keyNumpadItemSize * ImVec2(0.1f, 0.6f);
+        const ImVec2 touch_bar_pos  = keyNumpadItemSize * ImVec2(0.125f, 0.6f);
 
         for (size_t t = 0; t < INPUT_MULTITOUCH_COUNT; ++t){
             uint it = INPUT_MULTITOUCH_FIRST + t;
@@ -4746,7 +4754,7 @@ void InputMappingInterface::Render()
             if (it == current_input_)
                 draw_list->AddRect(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
             else
-                draw_list->AddRect(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_TextDisabled), 6.f, ImDrawCornerFlags_All, 0.2f);
+                draw_list->AddRect(pos, pos + keyNumpadIconSize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
 
             // Draw value bar
             ImVec2 prev = ImGui::GetCursorScreenPos();
@@ -4757,7 +4765,7 @@ void InputMappingInterface::Render()
         }
 
         ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
     }
@@ -4797,6 +4805,7 @@ void InputMappingInterface::Render()
 
         // CENTER text for button
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, keyItemSpacing);
         for (size_t b = 0; b < gamepad_inputs.size(); ++b ){
             uint ig = gamepad_inputs[b];
             // draw overlay on active keys
@@ -4837,13 +4846,16 @@ void InputMappingInterface::Render()
 
             if ((b % 5) < 4) ImGui::SameLine();
 
-            // Draw frame around current gamepad button
-            if (current_input_ == ig) {
-                ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
+            // Draw frame
+            ImVec2 pos = frame_top + keyLetterItemSize * ImVec2( b % 5, b / 5);
+            if (ig == current_input_)
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
-            }
+            else if ( b!= 2 && b!= 7 && b!=12 )
+                draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
+
         }
         ImGui::PopStyleVar();
+        ImGui::PopFont();
 
         // Table of Gamepad Axis
         const ImVec2 axis_top = frame_top + ImVec2(0.f, 3.f * keyLetterItemSize.y);
@@ -4919,11 +4931,10 @@ void InputMappingInterface::Render()
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+5)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
 
         // Done with color and font change
         ImGui::PopStyleColor(2);
-        ImGui::PopFont();
 
     }
 
@@ -5084,7 +5095,6 @@ void InputMappingInterface::Render()
         }
         ImGui::EndPopup();
     }
-
 
     ImGui::End();
 }
