@@ -2155,6 +2155,9 @@ void SourceController::Update()
 
     SourceList selectedsources;
 
+    if (Settings::application.widget.media_player == false)
+        selection_.clear();
+
     // get new selection or validate previous list if selection was not updated
     selectedsources = Mixer::manager().validate(selection_);
     if (selectedsources.empty() && !Mixer::selection().empty())
@@ -2225,7 +2228,6 @@ void SourceController::Render()
     {
         if (ImGuiToolkit::IconButton(4,16)){
             Settings::application.widget.media_player = false;
-            selection_.clear();
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
