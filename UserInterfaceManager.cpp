@@ -4400,7 +4400,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback)
         if (ImGui::SliderFloat("##CALLBACK_LOOM", &val, -1.f, 1.f, "%.2f", 2.f))
             edited->setValue(val);
         ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Change alpha to make source more visible (<0) or more transparent (>0)", 19, 12);
+        ImGuiToolkit::Indication("Change alpha to make source more visible (>0) or more transparent (<0)", 19, 12);
     }
         break;
     case SourceCallback::CALLBACK_GRAB:

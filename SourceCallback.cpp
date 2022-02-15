@@ -280,7 +280,7 @@ void Loom::update(Source *s, float dt)
         progress_ += dt;
 
         // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
-        pos_ += step_ * ( speed_ * dt * 0.001f);
+        pos_ -= step_ * ( speed_ * dt * 0.001f );
 
         // apply alpha if valid in range [0 1]
         float alpha = SourceCore::alphaFromCordinates(pos_.x, pos_.y);
