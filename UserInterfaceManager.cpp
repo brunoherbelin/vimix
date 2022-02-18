@@ -2139,6 +2139,10 @@ void SourceController::setVisible(bool on)
     if (on && Settings::application.widget.media_player_view != Settings::application.current_view)
         Settings::application.widget.media_player_view = -1;
 
+    // if no selection in the player and in the source selection, show all sources
+    if (on && selection_.empty() && Mixer::selection().empty() )
+        selection_ = playable_only( Mixer::manager().session()->getDepthSortedList() );
+
     Settings::application.widget.media_player = on;
 }
 
@@ -5965,7 +5969,7 @@ void Navigator::RenderNewPannel()
 
             if (custom_connected) {
 
-                ImGui::Text("\nConnect to SRT broadcaster:");
+                ImGui::Text("\nCall an SRT broadcaster:");
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGuiToolkit::InputText("IP", &Settings::application.custom_connect_ip, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
@@ -5982,9 +5986,9 @@ void Navigator::RenderNewPannel()
                 ImGui::InputText("##url", bufurl, IM_ARRAYSIZE(bufurl), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
 
-                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol", ICON_SOURCE_SRT);
+                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol, waiting for connections in listener mode.", ICON_SOURCE_SRT);
 
-                if ( ImGui::Button("Try to connect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                if ( ImGui::Button("Call", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                     new_source_preview_.setSource( Mixer::manager().createSourceSrt(Settings::application.custom_connect_ip, Settings::application.custom_connect_port), bufurl);
                 }
             }

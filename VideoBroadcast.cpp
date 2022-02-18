@@ -103,7 +103,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
     // TODO Configure options
     // setup SRT streaming sink properties
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                  "latency", 500,
+                  "latency", 1000,
                   "wait-for-connection", false,
                   NULL);
 
@@ -186,11 +186,11 @@ std::string VideoBroadcast::info() const
     std::ostringstream ret;
 
     if (!initialized_)
-        ret << "Starting";
+        ret << "Starting SRT";
     else if (active_)
-        ret << "SRT Broadcast on Port " << port_;
+        ret << "SRT Broadcast on Port " << port_ << " (listener mode)";
     else
-        ret << "Terminated";
+        ret << "SRT Terminated";
 
     return ret.str();
 }
