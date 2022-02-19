@@ -19,7 +19,7 @@ public:
     void setActive (bool on) override;
     bool playing () const override { return !paused_; }
     void play (bool on) override;
-    bool playable () const  override { return true; }
+    bool playable () const  override;
     void replay () override;
     guint64 playtime () const override;
     uint texture() const override;

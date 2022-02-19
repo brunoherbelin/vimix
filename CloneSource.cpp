@@ -203,6 +203,13 @@ void CloneSource::play (bool on)
     }
 }
 
+bool CloneSource::playable () const
+{
+    if (origin_)
+        return origin_->playable();
+    return true;
+}
+
 void CloneSource::replay()
 {
     g_timer_reset(timer_);
