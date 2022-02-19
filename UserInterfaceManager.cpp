@@ -3856,7 +3856,7 @@ void OutputPreview::Render()
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         // raise window on double clic
-        if (ImGui::IsMouseDoubleClicked(0) )
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
             Rendering::manager().outputWindow().show();
 
         ///
