@@ -4349,8 +4349,6 @@ Source *InputMappingInterface::ComboSelectSource(Source *current)
 
 uint InputMappingInterface::ComboSelectCallback(uint current)
 {
-    uint selected = SourceCallback::CALLBACK_GENERIC;
-
     const char* callback_names[9] = { "Select",
                                        ICON_FA_BULLSEYE "  Alpha",
                                        ICON_FA_BULLSEYE "  Loom",
@@ -4362,7 +4360,7 @@ uint InputMappingInterface::ComboSelectCallback(uint current)
                                        ICON_FA_PLAY_CIRCLE "  Replay"
                                      };
 
-    ImGui::SetNextItemWidth(-1.1f * ImGui::GetTextLineHeightWithSpacing());
+    int selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
         for (uint i = SourceCallback::CALLBACK_ALPHA; i < SourceCallback::CALLBACK_REPLAY; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
@@ -4371,94 +4369,145 @@ uint InputMappingInterface::ComboSelectCallback(uint current)
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
-    if (current == 1 || current == 6 || current == 7)
-        ImGuiToolkit::Indication("* On Press *\nApply target value on key press,\nrevert on key up.", 2, 13);
-    else
-        ImGuiToolkit::Indication("* Repeat *\nMaintain key down to loop action and animate.", 18, 5);
 
     return selected;
 }
 
+struct ClosestIndex
+{
+    int index;
+    float val;
+    ClosestIndex (float v) { val = v; index = 0; }
+    void operator()(float v) { if (v < val) ++index; }
+};
+
 void InputMappingInterface::SliderParametersCallback(SourceCallback *callback)
 {
-    const float right_align = -1.1f * ImGui::GetTextLineHeightWithSpacing();
+    const float right_align = -1.05f * ImGui::GetTextLineHeightWithSpacing();
+    static const char *press_tooltip[3] = {"Key Press\nApply value on key press",
+                              "Key Down\nApply value on key down,\nrevert on key up",
+                              "Repeat\nMaintain key down to repeat and iterate" };
+    static std::vector< std::pair<int,int> > speed_icon = { {18,15}, {17,15}, {16,15}, {15,15}, {14,15} };
+    static std::vector< std::string > speed_tooltip = { "Fastest\n0 ms", "Fast\n60 ms", "Smooth\n120 ms", "Slow\n240 ms", "Slowest\n500 ms" };
+    static std::vector< float > speed_values = { 0.f, 60.f, 120.f, 240.f, 500.f };
 
     switch ( callback->type() ) {
     case SourceCallback::CALLBACK_ALPHA:
     {
         SetAlpha *edited = static_cast<SetAlpha*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
         float val = edited->value();
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderFloat("##CALLBACK_ALPHA", &val, 0.f, 1.f, "%.2f"))
             edited->setValue(val);
-        ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Target alpha to make the source\nvisible (1.0) or transparent (0.0)", 18, 12);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Target alpha makes the source\nvisible (1.0) or transparent (0.0)", 18, 12);
+
     }
         break;
     case SourceCallback::CALLBACK_LOOM:
     {
+        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Loom *edited = static_cast<Loom*>(callback);
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderFloat("##CALLBACK_LOOM", &val, -1.f, 1.f, "%.2f", 2.f))
             edited->setValue(val);
-        ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Change alpha to make source more visible (>0) or more transparent (<0)", 19, 12);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Increment making the source more visible (>0) or more transparent (<0)", 19, 12);
     }
         break;
     case SourceCallback::CALLBACK_GRAB:
     {
+        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Grab *edited = static_cast<Grab*>(callback);
         float val[2] = {edited->value().x, edited->value().y};
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderFloat2("##CALLBACK_GRAB", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
-        ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Vector (x,y) to move the source horizontally and vertically.", 6, 15);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Vector (x,y) moving the source horizontally and vertically.", 6, 15);
     }
         break;
     case SourceCallback::CALLBACK_RESIZE:
     {
+        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Resize *edited = static_cast<Resize*>(callback);
         float val[2] = {edited->value().x, edited->value().y};
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderFloat2("##CALLBACK_RESIZE", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
-        ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Vector (x,y) to scale the source horizontally and vertically.", 2, 15);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Vector (x,y) scaling the source horizontally and vertically.", 2, 15);
 
     }
         break;
     case SourceCallback::CALLBACK_TURN:
     {
+        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Turn *edited = static_cast<Turn*>(callback);
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderFloat("##CALLBACK_TURN", &val, -2.f, 2.f, "%.2f")) // 18.9
             edited->setValue(val);
-        ImGui::SameLine(0, 6);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGuiToolkit::Indication("Angle of rotation of the source, clockwise (>0) or counter-clockwise (<0).", 18, 9);
     }
         break;
     case SourceCallback::CALLBACK_DEPTH:
     {
         SetDepth *edited = static_cast<SetDepth*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         if (ImGui::SliderFloat("##CALLBACK_DEPTH", &val, 11.9f, 0.1f, "%.1f"))
             edited->setValue(val);
-        ImGui::SameLine(0, 6);
-        ImGuiToolkit::Indication("Target depth to bring the source\nfront (12) or back (0).", 6, 6);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Target depth brings the source\nfront (12) or back (0).", 6, 6);
     }
+        break;
     case SourceCallback::CALLBACK_PLAY:
     {
         Play *edited = static_cast<Play*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+
         int val = edited->value() ? 1 : 0;
         ImGui::SetNextItemWidth(right_align);
         if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, val ? "Play" : "Pause"))
             edited->setValue(val>0);
-        ImGui::SameLine(0, 6);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGuiToolkit::Indication("Play or pause the source.", 16, 7);
     }
         break;
@@ -4957,9 +5006,10 @@ void InputMappingInterface::Render()
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
         ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), true);
 
+        float w = ImGui::GetWindowWidth() *0.25f;
+
         if (input_assigned[current_input_]) {
 
-            ImGui::Columns(3, "InputMapping", false);
             auto result = input_sources_callbacks.equal_range(current_input_);
             for (auto kit = result.first; kit != result.second; ++kit) {
 
@@ -4979,7 +5029,7 @@ void InputMappingInterface::Render()
 
                 // Select Source
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth( -FLT_MIN);
+                ImGui::SetNextItemWidth(w);
                 Source *select = ComboSelectSource(source);
                 if (select != nullptr) {
                     // copy callback to other source
@@ -4992,8 +5042,8 @@ void InputMappingInterface::Render()
                 }
 
                 // Select Reaction
-                ImGui::NextColumn();
-                ImGui::SetNextItemWidth( -FLT_MIN);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth(w);
                 uint type = ComboSelectCallback( callback->type() );
                 if (type > 0) {
                     // remove previous callback
@@ -5006,11 +5056,10 @@ void InputMappingInterface::Render()
                 }
 
                 // Adjust parameters
-                ImGui::NextColumn();
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (callback)
                     SliderParametersCallback( callback );
 
-                ImGui::NextColumn();
                 ImGui::PopID();
 
             }
@@ -5026,7 +5075,6 @@ void InputMappingInterface::Render()
         static Source *temp_new_source = nullptr;
         static uint temp_new_callback = 0;
 
-        ImGui::Columns(3, "NewInputMapping", false);
         // step 1 : press '+'
         if (temp_new_input) {
             if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
@@ -5041,7 +5089,7 @@ void InputMappingInterface::Render()
         if (temp_new_input) {
             // step 2 : Get input for source
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::SetNextItemWidth( -FLT_MIN);
+            ImGui::SetNextItemWidth(w);
             Source *s = ComboSelectSource(temp_new_source);
             // user selected a source (or changed selection)
             if (s != nullptr) {
@@ -5051,8 +5099,8 @@ void InputMappingInterface::Render()
             // possible new source
             if (temp_new_source != nullptr) {
                 // step 3: Get input for callback type
-                ImGui::NextColumn();
-                ImGui::SetNextItemWidth( -FLT_MIN);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth(w);
                 temp_new_callback = ComboSelectCallback( temp_new_callback );
                 // user selected a callback type
                 if (temp_new_callback > 0) {
@@ -5065,7 +5113,6 @@ void InputMappingInterface::Render()
                 }
             }
         }
-        ImGui::Columns(1);
 
         ImGui::EndChild();
         ImGui::PopStyleVar(2);

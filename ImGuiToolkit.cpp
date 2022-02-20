@@ -321,6 +321,30 @@ struct Sum
     int sum{0};
 };
 
+
+bool ImGuiToolkit::IconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips)
+{
+    bool ret = false;
+    Sum id = std::for_each(icons.begin(), icons.end(), Sum());
+    ImGui::PushID( id.sum );
+
+    int num_button = static_cast<int>(icons.size()) -1;
+    int s = CLAMP(*state, 0, num_button);
+    int num_tooltips = static_cast<int>(tooltips.size()) -1;
+    int t = CLAMP(*state, 0, num_tooltips);
+    if ( IconButton( icons[s].first, icons[s].second, tooltips[t].c_str() ) ){
+        ++s;
+        if (s > num_button)
+            *state = 0;
+        else
+            *state = s;
+        ret = true;
+    }
+
+    ImGui::PopID();
+    return ret;
+}
+
 bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state, const char* tooltip)
 {
     bool ret = false;

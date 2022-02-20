@@ -1156,6 +1156,10 @@ void SessionLoader::visit (Play &c)
     bool p = true;
     xmlCurrent_->QueryBoolAttribute("play", &p);
     c.setValue(p);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
 }
 
 void SessionLoader::visit (SetAlpha &c)
@@ -1167,6 +1171,10 @@ void SessionLoader::visit (SetAlpha &c)
     float d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
     c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
 }
 
 void SessionLoader::visit (SetDepth &c)
@@ -1178,6 +1186,10 @@ void SessionLoader::visit (SetDepth &c)
     d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
     c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
 }
 
 void SessionLoader::visit (Loom &c)

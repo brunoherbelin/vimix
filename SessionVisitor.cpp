@@ -767,18 +767,21 @@ void SessionVisitor::visit (SourceCallback &c)
 void SessionVisitor::visit (Play &c)
 {
     xmlCurrent_->SetAttribute("play", c.value());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
 void SessionVisitor::visit (SetAlpha &c)
 {
     xmlCurrent_->SetAttribute("alpha", c.value());
     xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
 void SessionVisitor::visit (SetDepth &c)
 {
     xmlCurrent_->SetAttribute("depth", c.value());
     xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
 void SessionVisitor::visit (Loom &c)

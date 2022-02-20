@@ -133,16 +133,12 @@ SourceCallback *ResetGeometry::clone() const
     return new ResetGeometry;
 }
 
-SetAlpha::SetAlpha() : SourceCallback(), duration_(0.f), progress_(0.f), alpha_(0.f)
+SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
+    duration_(ms), progress_(0.f), alpha_(alpha), bidirectional_(revert)
 {
+    alpha_ = CLAMP(alpha_, 0.f, 1.f);
     start_  = glm::vec2();
-    target_  = glm::vec2();
-}
-
-SetAlpha::SetAlpha(float alpha, float duration) : SetAlpha()
-{
-    alpha_ = CLAMP(alpha, 0.f, 1.f);
-    duration_ = duration;
+    target_ = glm::vec2();
 }
 
 void SetAlpha::update(Source *s, float dt)
@@ -188,7 +184,7 @@ void SetAlpha::update(Source *s, float dt)
 
         // perform movement
         if ( ABS(duration_) > 0.f)
-            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress_/duration_) * target_, s->group(View::MIXING)->translation_.z);
+            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress_/duration_)*(target_ - start_), s->group(View::MIXING)->translation_.z);
 
         // time-out
         if ( progress_ > duration_ ) {
@@ -210,12 +206,12 @@ void SetAlpha::multiply (float factor)
 
 SourceCallback *SetAlpha::clone() const
 {
-    return new SetAlpha(alpha_);
+    return new SetAlpha(alpha_, duration_, bidirectional_);
 }
 
 SourceCallback *SetAlpha::reverse(Source *s) const
 {
-    return new SetAlpha(s->alpha());
+    return bidirectional_ ? new SetAlpha(s->alpha(), duration_) : nullptr;
 }
 
 void SetAlpha::accept(Visitor& v)
@@ -224,13 +220,8 @@ void SetAlpha::accept(Visitor& v)
     v.visit(*this);
 }
 
-Lock::Lock() : SourceCallback(), lock_(true)
+Lock::Lock(bool on) : lock_(on)
 {
-}
-
-Lock::Lock(bool on) : Lock()
-{
-    lock_ = on;
 }
 
 void Lock::update(Source *s, float)
@@ -246,16 +237,10 @@ SourceCallback *Lock::clone() const
     return new Lock(lock_);
 }
 
-Loom::Loom() : SourceCallback(), speed_(0), duration_(0), progress_(0.f)
-{
-    pos_  = glm::vec2();
-    step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
-}
 
-Loom::Loom(float d, float duration) : Loom()
+Loom::Loom(float speed, float ms) : SourceCallback(),
+    speed_(speed), duration_(ms), progress_(0.f)
 {
-    speed_ = d;
-    duration_ = duration;
     pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
@@ -282,9 +267,9 @@ void Loom::update(Source *s, float dt)
         // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
         pos_ -= step_ * ( speed_ * dt * 0.001f );
 
-        // apply alpha if valid in range [0 1]
-        float alpha = SourceCore::alphaFromCordinates(pos_.x, pos_.y);
-        if ( alpha > DELTA_ALPHA && alpha < 1.0 - DELTA_ALPHA )
+        // apply alpha if pos in range [0 MIXING_MIN_THRESHOLD]
+        float l = glm::length( pos_ );
+        if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MIN_THRESHOLD && speed_ < 0.f ) )
             s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
 
         // time-out
@@ -314,15 +299,11 @@ void Loom::accept(Visitor& v)
 }
 
 
-SetDepth::SetDepth() : SourceCallback(),
-    duration_(0), progress_(0.f), start_(0.f), target_(MIN_DEPTH)
-{
-}
 
-SetDepth::SetDepth(float target, float duration) : SetDepth()
+SetDepth::SetDepth(float target, float ms, bool revert) : SourceCallback(),
+    duration_(ms), progress_(0.f), start_(0.f), target_(target), bidirectional_(revert)
 {
-    target_ = CLAMP(target, MIN_DEPTH, MAX_DEPTH);
-    duration_ = duration;
+    target_ = CLAMP(target_, MIN_DEPTH, MAX_DEPTH);
 }
 
 void SetDepth::update(Source *s, float dt)
@@ -363,12 +344,12 @@ void SetDepth::multiply (float factor)
 
 SourceCallback *SetDepth::clone() const
 {
-    return new SetDepth(target_, duration_);
+    return new SetDepth(target_, duration_, bidirectional_);
 }
 
 SourceCallback *SetDepth::reverse(Source *s) const
 {
-    return new SetDepth(s->depth(), duration_);
+    return bidirectional_ ? new SetDepth(s->depth(), duration_) : nullptr;
 }
 
 void SetDepth::accept(Visitor& v)
@@ -377,13 +358,8 @@ void SetDepth::accept(Visitor& v)
     v.visit(*this);
 }
 
-Play::Play() : SourceCallback(), play_(true)
+Play::Play(bool on, bool revert) : SourceCallback(), play_(on), bidirectional_(revert)
 {
-}
-
-Play::Play(bool on) : Play()
-{
-    play_ = on;
 }
 
 void Play::update(Source *s, float)
@@ -398,12 +374,12 @@ void Play::update(Source *s, float)
 
 SourceCallback *Play::clone() const
 {
-    return new Play(play_);
+    return new Play(play_, bidirectional_);
 }
 
 SourceCallback *Play::reverse(Source *s) const
 {
-    return new Play(s->playing());
+    return bidirectional_ ? new Play(s->playing()) : nullptr;
 }
 
 void Play::accept(Visitor& v)
@@ -431,14 +407,9 @@ SourceCallback *RePlay::clone() const
     return new RePlay;
 }
 
-Grab::Grab() : SourceCallback(), speed_(glm::vec2(0.f)), duration_(0.f), progress_(0.f)
+Grab::Grab(float dx, float dy, float ms) : SourceCallback(),
+    speed_(glm::vec2(dx, dy)), duration_(ms), progress_(0.f)
 {
-}
-
-Grab::Grab(float dx, float dy, float duration) : Grab()
-{
-    speed_ = glm::vec2(dx,dy);
-    duration_ = duration;
 }
 
 void Grab::update(Source *s, float dt)
@@ -486,14 +457,9 @@ void Grab::accept(Visitor& v)
     v.visit(*this);
 }
 
-Resize::Resize() : SourceCallback(), speed_(glm::vec2(0.f)), duration_(0.f), progress_(0.f)
+Resize::Resize(float dx, float dy, float ms) : SourceCallback(),
+    speed_(glm::vec2(dx, dy)), duration_(ms), progress_(0.f)
 {
-}
-
-Resize::Resize(float dx, float dy, float duration) : Resize()
-{
-    speed_ = glm::vec2(dx,dy);
-    duration_ = duration;
 }
 
 void Resize::update(Source *s, float dt)
@@ -541,14 +507,9 @@ void Resize::accept(Visitor& v)
     v.visit(*this);
 }
 
-Turn::Turn() : SourceCallback(), speed_(0.f), duration_(0.f), progress_(0.f)
+Turn::Turn(float speed, float ms) : SourceCallback(),
+    speed_(speed), duration_(ms), progress_(0.f)
 {
-}
-
-Turn::Turn(float da, float duration) : Turn()
-{
-    speed_ = da;
-    duration_ = duration;
 }
 
 void Turn::update(Source *s, float dt)

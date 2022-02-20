@@ -61,15 +61,17 @@ class SetAlpha : public SourceCallback
     float alpha_;
     glm::vec2 start_;
     glm::vec2 target_;
+    bool bidirectional_;
 
 public:
-    SetAlpha ();
-    SetAlpha (float alpha, float duration = 0.f);
+    SetAlpha (float alpha = 0.f, float ms = 0.f, bool revert = false);
 
-    float value () const { return alpha_;}
+    float value () const { return alpha_; }
     void  setValue (float a) { alpha_ = a; }
-    float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+    bool  bidirectional () const { return bidirectional_; }
+    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -88,13 +90,12 @@ class Loom : public SourceCallback
     float progress_;
 
 public:
-    Loom ();
-    Loom (float d, float duration = 0.f);
+    Loom (float speed = 0.f, float ms = 0.f);
 
-    float value () const { return speed_;}
+    float value () const { return speed_; }
     void  setValue (float d) { speed_ = d; }
-    float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -108,11 +109,10 @@ class Lock : public SourceCallback
     bool lock_;
 
 public:
-    Lock ();
-    Lock (bool on);
+    Lock (bool on = true);
 
     bool value () const { return lock_;}
-    void setValue (bool l) { lock_ = l;}
+    void setValue (bool on) { lock_ = on;}
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
@@ -125,15 +125,17 @@ class SetDepth : public SourceCallback
     float progress_;
     float start_;
     float target_;
+    bool bidirectional_;
 
 public:
-    SetDepth ();
-    SetDepth (float depth, float duration = 0.f);
+    SetDepth (float depth = 0.f, float ms = 0.f, bool revert = false);
 
     float value () const { return target_;}
     void  setValue (float d) { target_ = d; }
     float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    void  setDuration (float ms) { duration_ = ms; }
+    bool  bidirectional () const { return bidirectional_;}
+    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float dt) override;
     void multiply (float factor) override;
@@ -146,13 +148,15 @@ public:
 class Play : public SourceCallback
 {
     bool play_;
+    bool bidirectional_;
 
 public:
-    Play ();
-    Play (bool on);
+    Play (bool on = true, bool revert = false);
 
     bool value () const { return play_;}
     void setValue (bool on) { play_ = on; }
+    bool  bidirectional () const { return bidirectional_;}
+    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
@@ -179,13 +183,12 @@ class Grab : public SourceCallback
     float progress_;
 
 public:
-    Grab();
-    Grab(float dx, float dy, float duration = 0.f);
+    Grab(float dx = 0.f, float dy = 0.f, float ms = 0.f);
 
-    glm::vec2 value () const { return speed_;}
+    glm::vec2 value () const { return speed_; }
     void  setValue (glm::vec2 d) { speed_ = d; }
-    float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    float duration () const { return duration_; }
+    void  setDuration (float ns) { duration_ = ns; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -202,13 +205,12 @@ class Resize : public SourceCallback
     float progress_;
 
 public:
-    Resize();
-    Resize(float dx, float dy, float duration = 0.f);
+    Resize(float dx = 0.f, float dy = 0.f, float ms = 0.f);
 
-    glm::vec2 value () const { return speed_;}
+    glm::vec2 value () const { return speed_; }
     void  setValue (glm::vec2 d) { speed_ = d; }
-    float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -225,13 +227,12 @@ class Turn : public SourceCallback
     float progress_;
 
 public:
-    Turn();
-    Turn(float da, float duration = 0.f);
+    Turn(float speed = 0.f, float ms = 0.f);
 
-    float value () const { return speed_;}
+    float value () const { return speed_; }
     void  setValue (float d) { speed_ = d; }
-    float duration () const { return duration_;}
-    void  setDuration (float d) { duration_ = d; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
