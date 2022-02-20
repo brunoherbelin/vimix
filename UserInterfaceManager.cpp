@@ -3700,7 +3700,7 @@ void OutputPreview::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Record"))
+            if (ImGui::BeginMenu( ICON_FA_COMPACT_DISC " Record"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) )
@@ -3787,7 +3787,7 @@ void OutputPreview::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Stream"))
+            if (ImGui::BeginMenu(ICON_FA_WIFI  " Stream"))
             {
 
 #if defined(LINUX_NOT_YET_WORKING)
@@ -3813,12 +3813,12 @@ void OutputPreview::Render()
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
                     // Stop broadcast menu (broadcaster already exists)
                     if (video_broadcaster_) {
-                        if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast") )
+                        if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast SRT") )
                             video_broadcaster_->stop();
                     }
                     // start broadcast (broadcaster does not exists)
                     else {
-                        if ( ImGui::MenuItem( ICON_FA_PODCAST "  Broadcast") ) {
+                        if ( ImGui::MenuItem( ICON_FA_PODCAST "  Broadcast SRT") ) {
                             video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
                             FrameGrabbing::manager().add(video_broadcaster_);
                         }
