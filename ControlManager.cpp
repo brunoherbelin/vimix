@@ -918,8 +918,7 @@ std::string Control::inputLabel(uint id)
 
     if ( id >= INPUT_KEYBOARD_FIRST && id <= INPUT_KEYBOARD_LAST )
     {
-        int k = GLFW_KEY_A + id -INPUT_KEYBOARD_FIRST;
-        label = std::string( glfwGetKeyName( k, glfwGetKeyScancode(k) ) );
+        label = std::string( 1, 'A' + (char) (id -INPUT_KEYBOARD_FIRST) );
     }
     else if ( id >= INPUT_NUMPAD_FIRST && id <= INPUT_NUMPAD_LAST )
     {
