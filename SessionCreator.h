@@ -67,6 +67,7 @@ public:
     void visit (SourceCallback&) override;
     void visit (SetAlpha&) override;
     void visit (SetDepth&) override;
+    void visit (SetGeometry&) override;
     void visit (Loom&) override;
     void visit (Grab&) override;
     void visit (Resize&) override;

@@ -63,8 +63,19 @@ InfoVisitor::InfoVisitor() : brief_(true), current_id_(0)
 {
 }
 
-void InfoVisitor::visit(Node &)
+void InfoVisitor::visit(Node &n)
 {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1);
+    oss << "Pos    ( " << n.translation_.x << ", " << n.translation_.y << " )" << std::endl;
+    oss << "Scale ( " << n.scale_.x << ", " << n.scale_.y  << " )" << std::endl;
+    oss << "Angle " << std::setprecision(2) << n.rotation_.z * 180.f / M_PI << "\u00B0" << std::endl;
+
+    if (!brief_) {
+        oss << n.crop_.x << ", " << n.crop_.y << " Crop" << std::endl;
+    }
+
+    information_ = oss.str();
 }
 
 void InfoVisitor::visit(Group &)

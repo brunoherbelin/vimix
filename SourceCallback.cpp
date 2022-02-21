@@ -19,6 +19,7 @@
 
 #include "defines.h"
 #include "Source.h"
+#include "UpdateCallback.h"
 #include "Visitor.h"
 #include "Log.h"
 
@@ -36,8 +37,8 @@ SourceCallback *SourceCallback::create(CallbackType type)
     case SourceCallback::CALLBACK_LOOM:
         loadedcallback = new Loom;
         break;
-    case SourceCallback::CALLBACK_DEPTH:
-        loadedcallback = new SetDepth;
+    case SourceCallback::CALLBACK_GEOMETRY:
+        loadedcallback = new SetGeometry;
         break;
     case SourceCallback::CALLBACK_GRAB:
         loadedcallback = new Grab;
@@ -47,6 +48,9 @@ SourceCallback *SourceCallback::create(CallbackType type)
         break;
     case SourceCallback::CALLBACK_TURN:
         loadedcallback = new Turn;
+        break;
+    case SourceCallback::CALLBACK_DEPTH:
+        loadedcallback = new SetDepth;
         break;
     case SourceCallback::CALLBACK_PLAY:
         loadedcallback = new Play;
@@ -188,7 +192,7 @@ void SetAlpha::update(Source *s, float dt)
 
         // time-out
         if ( progress_ > duration_ ) {
-            // apply depth to target
+            // apply alpha to target
             s->group(View::MIXING)->translation_ = glm::vec3(target_, s->group(View::MIXING)->translation_.z);
             // done
             finished_ = true;
@@ -407,6 +411,87 @@ SourceCallback *RePlay::clone() const
     return new RePlay;
 }
 
+
+SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(),
+    duration_(ms), progress_(0.f), bidirectional_(revert)
+{
+    setTarget(g);
+}
+
+void  SetGeometry::getTarget (Group *g) const
+{
+    if (g!=nullptr)
+        g->copyTransform(&target_);
+}
+
+void  SetGeometry::setTarget (const Group *g)
+{
+    if (g!=nullptr)
+        target_.copyTransform(g);
+}
+
+void SetGeometry::update(Source *s, float dt)
+{
+    if (s && !s->locked()) {
+        // set start position on first run or upon call of reset()
+        if (!initialized_){
+            start_.copyTransform(s->group(View::GEOMETRY));
+            progress_ = 0.f;
+            initialized_ = true;
+        }
+
+        // time passed
+        progress_ += dt;
+
+        // perform movement
+        if ( ABS(duration_) > 0.f){
+            float ratio = progress_ / duration_;
+            Group intermediate;
+            intermediate.translation_ = (1.f - ratio) * start_.translation_ + ratio * target_.translation_;
+            intermediate.scale_ = (1.f - ratio) * start_.scale_ + ratio * target_.scale_;
+            intermediate.rotation_ = (1.f - ratio) * start_.rotation_ + ratio * target_.rotation_;
+            // apply geometry
+            s->group(View::GEOMETRY)->copyTransform(&intermediate);
+            s->touch();
+        }
+
+        // time-out
+        if ( progress_ > duration_ ) {
+            // apply  target
+            s->group(View::GEOMETRY)->copyTransform(&target_);
+            s->touch();
+            // done
+            finished_ = true;
+        }
+
+    }
+    else
+        finished_ = true;
+}
+
+void SetGeometry::multiply (float factor)
+{
+
+}
+
+SourceCallback *SetGeometry::clone() const
+{
+    return new SetGeometry(&target_, duration_, bidirectional_);
+}
+
+SourceCallback *SetGeometry::reverse(Source *s) const
+{
+    return bidirectional_ ? new SetGeometry( s->group(View::GEOMETRY), duration_) : nullptr;
+}
+
+void SetGeometry::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+
+
 Grab::Grab(float dx, float dy, float ms) : SourceCallback(),
     speed_(glm::vec2(dx, dy)), duration_(ms), progress_(0.f)
 {
@@ -528,7 +613,7 @@ void Turn::update(Source *s, float dt)
         progress_ += dt;
 
         // perform movement
-        s->group(View::GEOMETRY)->rotation_.z = start_ + speed_ * ( dt * -0.001f / M_PI);
+        s->group(View::GEOMETRY)->rotation_.z = start_ - speed_ * ( dt * 0.001f );
 
         // timeout
         if ( progress_ > duration_ ) {

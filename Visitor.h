@@ -44,6 +44,7 @@ class MultiFileSource;
 class SourceCallback;
 class SetAlpha;
 class SetDepth;
+class SetGeometry;
 class Loom;
 class Grab;
 class Resize;
@@ -98,6 +99,7 @@ public:
     virtual void visit (SourceCallback&) {}
     virtual void visit (SetAlpha&) {}
     virtual void visit (SetDepth&) {}
+    virtual void visit (SetGeometry&) {}
     virtual void visit (Loom&) {}
     virtual void visit (Grab&) {}
     virtual void visit (Resize&) {}

@@ -1192,6 +1192,28 @@ void SessionLoader::visit (SetDepth &c)
     c.setBidirectional(b);
 }
 
+void SessionLoader::visit (SetGeometry &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+
+    XMLElement* current = xmlCurrent_;
+
+    xmlCurrent_ = xmlCurrent_->FirstChildElement("Geometry");
+    if (xmlCurrent_) {
+        Group tmp;
+        tmp.accept(*this);
+        c.setTarget(&tmp);
+    }
+
+    xmlCurrent_ = current;
+}
+
 void SessionLoader::visit (Loom &c)
 {
     float d = 0.f;

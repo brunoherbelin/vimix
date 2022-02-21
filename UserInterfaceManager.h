@@ -369,11 +369,15 @@ class InputMappingInterface : public WorkspaceWindow
     std::array< std::string, 4 > input_mode;
     std::array< uint, 4 > current_input_for_mode;
 
+    // data structures more adapted for display
+    std::multimap< uint, std::pair<Source *, SourceCallback*> > input_sources_callbacks;
+    bool input_assigned[100]{};
     uint current_input_;
 
+    void readInputSource();
     Source *ComboSelectSource(Source *current = nullptr);
     uint ComboSelectCallback(uint current);
-    void SliderParametersCallback(SourceCallback *callback);
+    void SliderParametersCallback(SourceCallback *callback, Source *source);
 
 public:
     InputMappingInterface();

@@ -589,9 +589,9 @@ void SessionVisitor::visit (Source& s)
             std::list<SourceCallback *> callbacks = s.inputCallbacks(*i);
             for (auto c = callbacks.begin(); c != callbacks.end(); ++c) {
                 xmlCurrent_ = xmlDoc_->NewElement( "Callback" );
+                callbackselement->InsertEndChild(xmlCurrent_);
                 xmlCurrent_->SetAttribute("input", *i);
                 (*c)->accept(*this);
-                callbackselement->InsertEndChild(xmlCurrent_);
             }
         }
     }
@@ -782,6 +782,22 @@ void SessionVisitor::visit (SetDepth &c)
     xmlCurrent_->SetAttribute("depth", c.value());
     xmlCurrent_->SetAttribute("duration", c.duration());
     xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+}
+
+void SessionVisitor::visit (SetGeometry &c)
+{
+    xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+
+    // get geometry of target
+    Group g;
+    c.getTarget(&g);
+
+    XMLElement *geom = xmlDoc_->NewElement( "Geometry" );
+    xmlCurrent_->InsertEndChild(geom);
+    xmlCurrent_ = geom;
+    g.accept(*this);
+
 }
 
 void SessionVisitor::visit (Loom &c)

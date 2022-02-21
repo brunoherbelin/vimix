@@ -3,6 +3,8 @@
 
 #include <glm/glm.hpp>
 
+#include "Scene.h"
+
 class Visitor;
 class Source;
 
@@ -14,14 +16,15 @@ public:
         CALLBACK_GENERIC = 0,
         CALLBACK_ALPHA = 1,
         CALLBACK_LOOM = 2,
-        CALLBACK_GRAB = 3,
-        CALLBACK_RESIZE = 4,
-        CALLBACK_TURN = 5,
-        CALLBACK_DEPTH = 6,
-        CALLBACK_PLAY = 7,
-        CALLBACK_REPLAY = 8,
-        CALLBACK_RESETGEO = 9,
-        CALLBACK_LOCK = 10
+        CALLBACK_GEOMETRY = 3,
+        CALLBACK_GRAB = 4,
+        CALLBACK_RESIZE = 5,
+        CALLBACK_TURN = 6,
+        CALLBACK_DEPTH = 7,
+        CALLBACK_PLAY = 8,
+        CALLBACK_REPLAY = 9,
+        CALLBACK_RESETGEO = 10,
+        CALLBACK_LOCK = 11
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -43,15 +46,6 @@ public:
 protected:
     bool finished_;
     bool initialized_;
-};
-
-class ResetGeometry : public SourceCallback
-{
-public:
-    ResetGeometry () : SourceCallback() {}
-    void update (Source *s, float) override;
-    SourceCallback *clone () const override;
-    CallbackType type () const override { return CALLBACK_RESETGEO; }
 };
 
 class SetAlpha : public SourceCallback
@@ -173,6 +167,41 @@ public:
     void update(Source *s, float) override;
     SourceCallback *clone() const override;
     CallbackType type () const override { return CALLBACK_REPLAY; }
+};
+
+class ResetGeometry : public SourceCallback
+{
+public:
+    ResetGeometry () : SourceCallback() {}
+    void update (Source *s, float) override;
+    SourceCallback *clone () const override;
+    CallbackType type () const override { return CALLBACK_RESETGEO; }
+};
+
+class SetGeometry : public SourceCallback
+{
+    float duration_;
+    float progress_;
+    Group start_;
+    Group target_;
+    bool bidirectional_;
+
+public:
+    SetGeometry (const Group *g = nullptr, float ms = 0.f, bool revert = false);
+
+    void  getTarget (Group *g) const;
+    void  setTarget (const Group *g);
+    float duration () const { return duration_;}
+    void  setDuration (float ms) { duration_ = ms; }
+    bool  bidirectional () const { return bidirectional_;}
+    void  setBidirectional (bool on) { bidirectional_ = on; }
+
+    void update (Source *s, float dt) override;
+    void multiply (float factor) override;
+    SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *s) const override;
+    CallbackType type () const override { return CALLBACK_GEOMETRY; }
+    void accept (Visitor& v) override;
 };
 
 class Grab : public SourceCallback
