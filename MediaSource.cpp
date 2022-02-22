@@ -118,8 +118,8 @@ void MediaSource::init()
             // force update of activation mode
             active_ = true;
 
-            // deep update to reorder
-            ++View::need_deep_update_;
+            // deep update to reorder (two frames to give time to insert)
+            View::need_deep_update_ += 2;
 
             // done init
             Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());

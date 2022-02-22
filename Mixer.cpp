@@ -453,7 +453,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
 
             // switch to this view to show source created
             setView(m);
-            current_view_->update(0.f);
+            current_view_->update(dt_);
             current_view_->centerSource(s);
 
             // set this new source as current
