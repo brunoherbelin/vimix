@@ -1938,6 +1938,13 @@ WorkspaceWindow::WorkspaceWindow(const char* name): name_(name), impl_(nullptr)
 
 void WorkspaceWindow::toggleClearRestoreWorkspace()
 {
+    // repeated call should ensure all animations are done
+    for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
+        if ( (*it)->impl_ && (*it)->impl_->animation )
+            return;
+    }
+
+    // toggle
     if (clear_workspace_enabled)
         restoreWorkspace();
     else
