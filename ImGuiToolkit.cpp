@@ -345,7 +345,7 @@ bool ImGuiToolkit::IconMultistate (std::vector<std::pair<int, int> > icons, int*
     return ret;
 }
 
-bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state, const char* tooltip)
+bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips)
 {
     bool ret = false;
     Sum id = std::for_each(icons.begin(), icons.end(), Sum());
@@ -353,7 +353,9 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
 
     int num_button = static_cast<int>(icons.size()) -1;
     int s = CLAMP(*state, 0, num_button);
-    if ( ButtonIcon( icons[s].first, icons[s].second, tooltip ) ){
+    int num_tooltips = static_cast<int>(tooltips.size()) -1;
+    int t = CLAMP(*state, 0, num_tooltips);
+    if ( ButtonIcon( icons[s].first, icons[s].second, tooltips[t].c_str() ) ){
         ++s;
         if (s > num_button)
             *state = 0;
@@ -1011,10 +1013,7 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
     ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
 
     // render the timeline
-    if (tempo > 0 && quantum > 0)
-        RenderTimelineBPM(timeline_bbox.Min, timeline_bbox.Max, tempo, quantum, begin, end, step);
-    else
-        RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, begin, end, step);
+    RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, begin, end, step);
 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
@@ -1024,6 +1023,16 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
     // draw the cursor
     pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
     ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
+
+//    // draw metronome synchronization cursor
+//    if (tempo > 0 && quantum > 0) {
+
+//        static ImU32 circle_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+//        static float circle_radius = ImGui::GetFrameHeight();
+
+//        ImVec2 circle_center ;
+//        window->DrawList->AddCircleFilled(circle_center, circle_radius, circle_color, 32);
+//    }
 
     return left_mouse_press;
 }

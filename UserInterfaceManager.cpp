@@ -240,12 +240,12 @@ void UserInterface::handleKeyboard()
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
 
-        if (ImGui::IsKeyPressed( GLFW_KEY_Q ))  {
+        if (ImGui::IsKeyPressed( GLFW_KEY_Q, false ))  {
             // try quit
             if ( TryClose() )
                 Rendering::manager().close();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_O )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_O, false )) {
             // SHIFT + CTRL + O : reopen current session
             if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
                 Mixer::manager().load( Mixer::manager().session()->filename() );
@@ -253,7 +253,7 @@ void UserInterface::handleKeyboard()
             else
                 selectOpenFilename();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_S )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_S, false )) {
             // SHIFT + CTRL + S : save as
             if (shift_modifier_active)
                 selectSaveFilename();
@@ -261,43 +261,43 @@ void UserInterface::handleKeyboard()
             else
                 saveOrSaveAs();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_W )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_W, false )) {
             // New Session
             Mixer::manager().close();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
             // restart media player
             sourcecontrol.Replay();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_L )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_L, false )) {
             // Logs
             Settings::application.widget.logs = !Settings::application.widget.logs;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_T )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_T, false )) {
             // Timers
             timercontrol.setVisible(!Settings::application.widget.timer);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_G )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_G, false )) {
             // Developer toolbox
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_H )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_H, false )) {
             // Helper
             Settings::application.widget.help = !Settings::application.widget.help;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_E )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_E, false )) {
             // Shader Editor
             Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_D )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_D, false )) {
             // Display output
             outputcontrol.setVisible(!Settings::application.widget.preview);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_P )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_P, false )) {
             // Media player
             sourcecontrol.setVisible(!Settings::application.widget.media_player);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_A )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_A, false )) {
             if (shift_modifier_active)
             {
                 // clear selection
@@ -308,7 +308,7 @@ void UserInterface::handleKeyboard()
                 // select all
                 Mixer::manager().view()->selectAll();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_R )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_R, false )) {
             if (shift_modifier_active) {
                 FrameGrabbing::manager().add(new PNGRecorder);
             }
@@ -323,36 +323,36 @@ void UserInterface::handleKeyboard()
             else
                 Action::manager().undo();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_C )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_C, false )) {
             std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty())
                 ImGui::SetClipboardText(clipboard.c_str());
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_X )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_X, false )) {
             std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty()) {
                 ImGui::SetClipboardText(clipboard.c_str());
                 Mixer::manager().deleteSelection();
             }
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_V )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_V, false )) {
             auto clipboard = ImGui::GetClipboardText();
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F, false )) {
             if (shift_modifier_active)
                 Rendering::manager().mainWindow().toggleFullscreen();
             else
                 Rendering::manager().outputWindow().toggleFullscreen();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_M )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_M, false )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_I )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_I, false )) {
             Settings::application.widget.inputs = !Settings::application.widget.inputs;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_N ) && shift_modifier_active) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_N, false ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
         }
 
@@ -361,34 +361,38 @@ void UserInterface::handleKeyboard()
     else {
 
         // Application F-Keys
-        if (ImGui::IsKeyPressed( GLFW_KEY_F1 ))
+        if (ImGui::IsKeyPressed( GLFW_KEY_F1, false ))
             Mixer::manager().setView(View::MIXING);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F2 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F2, false ))
             Mixer::manager().setView(View::GEOMETRY);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F3 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F3, false ))
             Mixer::manager().setView(View::LAYER);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F4 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
             Mixer::manager().setView(View::TEXTURE);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F12 ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false ))
             StartScreenshot();
         // button home to toggle menu
-        else if (ImGui::IsKeyPressed( GLFW_KEY_HOME ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_HOME, false ))
             navigator.togglePannelMenu();
         // button home to toggle menu
-        else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT, false ))
             navigator.togglePannelNew();
-        // button esc
-        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE )) {
+        // button esc : react to press and to release
+        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
             // hide pannel
             navigator.hidePannel();
             // toggle clear workspace
             WorkspaceWindow::toggleClearRestoreWorkspace();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_END )) {
+        else if ( WorkspaceWindow::clear() && ImGui::IsKeyReleased( GLFW_KEY_ESCAPE )) {
+            // toggle clear workspace
+            WorkspaceWindow::toggleClearRestoreWorkspace();
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_END, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
         // Space bar
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
             // Space bar to toggle play / pause
             sourcecontrol.Play();
 
@@ -429,7 +433,7 @@ void UserInterface::handleKeyboard()
 
     // special case: CTRL + TAB is ALT + TAB in OSX
     if (io.ConfigMacOSXBehaviors ? io.KeyAlt : io.KeyCtrl) {
-        if (ImGui::IsKeyPressed( GLFW_KEY_TAB ))
+        if (ImGui::IsKeyPressed( GLFW_KEY_TAB, false ))
             show_view_navigator += shift_modifier_active ? 3 : 1;
     }
     else if (show_view_navigator > 0) {
@@ -1938,9 +1942,9 @@ WorkspaceWindow::WorkspaceWindow(const char* name): name_(name), impl_(nullptr)
 
 void WorkspaceWindow::toggleClearRestoreWorkspace()
 {
-    // repeated call should ensure all animations are done
+    // do not toggle if an animation is ongoing
     for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
-        if ( (*it)->impl_ && (*it)->impl_->animation )
+        if ( (*it)->Visible() && (*it)->impl_ && (*it)->impl_->animation )
             return;
     }
 
@@ -2505,10 +2509,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
         // render the timeline
-        if (tempo > 0 && quantum > 0)
-            ImGuiToolkit::RenderTimelineBPM(section_bbox_min, section_bbox_max, tempo, quantum, section->begin, section->end, timeline->step());
-        else
-            ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, section->begin, section->end, timeline->step());
+        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, section->begin, section->end, timeline->step());
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -2871,16 +2872,21 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
     frame_top.x += 1.f;
     ImGui::SetCursorScreenPos(frame_top);
 
+    // initials in up-left corner
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    const float H = ImGui::GetTextLineHeight();
+    draw_list->AddText(frame_top + ImVec2(H * 0.2f, H * 0.1f), ImGui::GetColorU32(ImGuiCol_Text), s->initials());
+
+    // interactive surface
     ImGui::PushID(s->id());
     ImGui::InvisibleButton("##sourcebutton", framesize);
     if (ImGui::IsItemClicked()) {
         ret = true;
     }
     if (ImGui::IsItemHovered()){
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), ImGui::GetColorU32(ImGuiCol_Text), 0, 0, 3.f);
-        frame_top.x += (framesize.x  - ImGui::GetTextLineHeight()) / 2.f;
-        frame_top.y += (framesize.y  - ImGui::GetTextLineHeight()) / 2.f;
+        frame_top.x += (framesize.x  - H) / 2.f;
+        frame_top.y += (framesize.y  - H) / 2.f;
         draw_list->AddText(frame_top, ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_CARET_SQUARE_RIGHT);
     }
     ImGui::PopID();
@@ -3147,22 +3153,42 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         }
     }
 
-    // Play icon lower left corner
+    ///
+    /// Play icon lower left corner
+    ///
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetCursorScreenPos(bottom + ImVec2(h_space_, -ImGui::GetTextLineHeightWithSpacing()));
+    ImVec2 S (h_space_, -ImGui::GetTextLineHeightWithSpacing() - h_space_);
+    ImGui::SetCursorScreenPos(bottom + S);
     if (mediaplayer_active_->isEnabled())
         ImGui::Text("%s %s", mediaplayer_active_->isPlaying() ? ICON_FA_PLAY : ICON_FA_PAUSE, GstToolkit::time_to_string(mediaplayer_active_->position()).c_str() );
     else
         ImGui::Text( ICON_FA_SNOWFLAKE " %s", GstToolkit::time_to_string(mediaplayer_active_->position()).c_str() );
+
+    ///
+    /// Sync info lower right corner
+    ///
+    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
+    if ( sync > Metronome::SYNC_NONE) {
+        static bool show = true;
+        if (mediaplayer_active_->pending())
+            show = !show;
+        else
+            show = true;
+        if (show) {
+            S.x = rendersize.x + S.y;
+            ImGui::SetCursorScreenPos(bottom + S);
+            ImGuiToolkit::Icon( sync > Metronome::SYNC_BEAT ? 7 : 6, 13);
+        }
+    }
+
     ImGui::PopFont();
-
-
-    const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
-                                 2.f * timeline_height_ + scrollbar_ );
 
     ///
     /// media player timelines
     ///
+    const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
+                                 2.f * timeline_height_ + scrollbar_ );
+
     if ( mediaplayer_active_->isEnabled() ) {
 
         // ignore actual play status of mediaplayer when slider is pressed
@@ -3177,6 +3203,7 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.f);
         ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.f, 0.f, 0.f, 0.0f));
 
+        ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
         ImGui::BeginChild("##scrolling", scrollwindow,  false, ImGuiWindowFlags_HorizontalScrollbar);
         {
             ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), timeline_height_ -1);
@@ -3317,24 +3344,27 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
         // loop modes button
         ImGui::SameLine(0, h_space_);
         static int current_loop = 0;
-        static std::vector< std::pair<int, int> > iconsloop = { {0,15}, {1,15}, {19,14} };
+        static std::vector< std::pair<int, int> > icons_loop = { {0,15}, {1,15}, {19,14} };
+        static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)" };
         current_loop = (int) mediaplayer_active_->loop();
-        if ( ImGuiToolkit::ButtonIconMultistate(iconsloop, &current_loop, "Loop mode") )
+        if ( ImGuiToolkit::ButtonIconMultistate(icons_loop, &current_loop, tooltips_loop) )
             mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
 
         // speed slider (if enough space)
-        if ( rendersize.x > min_width_ * 1.4f ) {
-            ImGui::SameLine(0, MAX(h_space_ * 2.f, rendersize.x - min_width_ * 1.6f) );
+        if ( rendersize.x > min_width_ * 1.2f ) {
+            ImGui::SameLine(0, MAX(h_space_ * 2.f, rendersize.x - min_width_ * 1.4f) );
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ );
             // speed slider
             float speed = static_cast<float>(mediaplayer_active_->playSpeed());
-            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, "Speed " UNICODE_MULTIPLY " %.1f", 2.f))
+            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.1f", 2.f))
                 mediaplayer_active_->setPlaySpeed( static_cast<double>(speed) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){
                 oss << ": Speed x" << std::setprecision(3) << speed;
                 Action::manager().store(oss.str());
             }
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Play speed");
         }
 
         ImGui::SameLine();
@@ -5956,13 +5986,15 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select generator", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom") ) {
+                if ( ImGui::Selectable("Custom " ICON_FA_CARET_RIGHT) ) {
                     update_new_source = true;
                     custom_pipeline = true;
                     pattern_type = -1;
                 }
                 for (int p = 0; p < (int) Pattern::count(); ++p){
-                    if (Pattern::get(p).available && ImGui::Selectable( Pattern::get(p).label.c_str(), p == pattern_type )) {
+                    pattern_descriptor pattern = Pattern::get(p);
+                    std::string label = pattern.label + (pattern.animated ? " " ICON_FA_CARET_RIGHT : " ");
+                    if (pattern.available && ImGui::Selectable( label.c_str(), p == pattern_type )) {
                         update_new_source = true;
                         custom_pipeline = false;
                         pattern_type = p;
