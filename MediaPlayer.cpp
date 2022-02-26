@@ -1013,9 +1013,8 @@ void MediaPlayer::update()
     }
 
     // manage loop mode
-    if (need_loop) {
+    if (need_loop)
         execute_loop_command();
-    }
 
     force_update_ = false;
 }
@@ -1030,7 +1029,8 @@ void MediaPlayer::execute_loop_command()
         execute_seek_command();
     }
     else { //LOOP_NONE
-        play(false);
+        if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call
+            play(false);
     }
 }
 
