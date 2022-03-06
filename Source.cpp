@@ -34,6 +34,7 @@
 #include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "MixingGroup.h"
+#include "Metronome.h"
 #include "ControlManager.h"
 #include "SourceCallback.h"
 
@@ -360,16 +361,6 @@ Source::~Source()
         delete callback;
     }
     access_callbacks_.unlock();
-
-    // clear and delete key_callbacks
-    for (auto iter = input_callbacks_.begin(); iter != input_callbacks_.end();
-         iter = input_callbacks_.erase(iter))  {
-        if ( iter->second.model_ != nullptr)
-            delete iter->second.model_;
-        if ( iter->second.reverse_ != nullptr)
-            delete iter->second.reverse_;
-    }
-
 }
 
 void Source::setName (const std::string &name)
@@ -678,125 +669,8 @@ void Source::call(SourceCallback *callback, bool override)
 
 }
 
-void Source::addInputCallback(uint input, SourceCallback *callback)
-{
-    std::multimap<uint, InputCallback>::iterator added = input_callbacks_.emplace(input, InputCallback() );
-    added->second.model_ = callback;
-}
-
-void Source::swapInputCallback(uint from, uint to)
-{
-    std::multimap<uint, InputCallback> swapped_callbacks_;
-
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-    {
-        if ( k->first == from )
-            swapped_callbacks_.emplace( to,  k->second);
-        else
-            swapped_callbacks_.emplace( k->first,  k->second);
-    }
-
-    input_callbacks_.swap(swapped_callbacks_);
-}
-
-
-void Source::removeInputCallback(SourceCallback *callback)
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-    {
-        if ( k->second.model_ == callback) {
-            delete callback;
-            if (k->second.reverse_)
-                delete k->second.reverse_;
-            input_callbacks_.erase(k);
-            break;
-        }
-    }
-}
-
-void Source::clearInputCallbacks()
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
-    {
-        if (k->second.model_)
-            delete k->second.model_;
-        if (k->second.reverse_)
-            delete k->second.reverse_;
-
-        k = input_callbacks_.erase(k);
-    }
-}
-
-std::list<SourceCallback *> Source::inputCallbacks(uint input)
-{
-    std::list<SourceCallback *> ret;
-
-    if ( input_callbacks_.count(input) > 0 ) {
-        auto result = input_callbacks_.equal_range(input);
-        for (auto it = result.first; it != result.second; ++it)
-            ret.push_back( it->second.model_ );
-    }
-
-    return ret;
-}
-
-
-std::list<uint> Source::callbackInputs()
-{
-    std::list<uint> inputs;
-
-    // fill with list of keys
-    for(const auto& [key, value] : input_callbacks_) {
-        inputs.push_back(key);
-    }
-
-    // remove duplicates
-    inputs.unique();
-
-    return inputs;
-}
-
 void Source::updateCallbacks(float dt)
 {
-    // add callbacks from listener
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-    {
-        // if the Reaction is valid
-        if ( k->second.model_ != nullptr) {
-
-            bool activate = Control::manager().inputActive(k->first);
-
-            // if the value referenced as pressed changed state
-            // or repeat key if there is no reverse callback
-            if ( activate != k->second.active_ || k->second.reverse_ == nullptr) {
-
-                // ON PRESS
-                if (activate) {
-                    // generate a new callback from the model
-                    SourceCallback *C = k->second.model_->clone();
-                    // apply value multiplyer from input
-                    C->multiply( Control::manager().inputValue(k->first) );
-                    // add callback to the source (force override)
-                    call( C, true );
-                    // delete the reverse if was not released
-                    if (k->second.reverse_ != nullptr)
-                        delete k->second.reverse_;
-                    // get the reverse if the callback, and remember it (can be null)
-                    k->second.reverse_ = C->reverse(this);
-                }
-                // ON RELEASE
-                else {
-                    // call the reverse (NB: invalid value tested in call)
-                    call( k->second.reverse_, true );
-                    // do not keep reference to reverse: will be deleted when terminated
-                    k->second.reverse_ = nullptr;
-                }
-
-                k->second.active_ = activate;
-            }
-        }
-    }
-
     // lock access to callbacks list
     access_callbacks_.lock();
     // call callback functions
@@ -819,6 +693,7 @@ void Source::updateCallbacks(float dt)
     }
     // release access to callbacks list
     access_callbacks_.unlock();
+
 }
 
 CloneSource *Source::clone(uint64_t id)
@@ -838,7 +713,7 @@ void Source::update(float dt)
     // if update is possible
     if (renderbuffer_ && mixingsurface_ && maskbuffer_)
     {
-        // react to input and call active callbacks
+        // call active callbacks
         updateCallbacks(dt);
 
         // update nodes if needed

@@ -112,6 +112,7 @@ class SessionCreator : public SessionLoader {
     void loadNotes(tinyxml2::XMLElement *notesNode);
     void loadPlayGroups(tinyxml2::XMLElement *playlistsNode);
     void loadSnapshots(tinyxml2::XMLElement *snapshotNode);
+    void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
 
 public:
     SessionCreator(int recursion = 0);

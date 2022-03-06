@@ -110,6 +110,9 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     // 5. optional playlists
     savePlayGroups( &xmlDoc, session );
 
+    // 5. optional playlists
+    saveInputCallbacks( &xmlDoc, session );
+
     // save file to disk
     return ( XMLSaveDoc(&xmlDoc, filename) );
 }
@@ -199,6 +202,47 @@ void SessionVisitor::savePlayGroups(tinyxml2::XMLDocument *doc, Session *session
             }
         }
         doc->InsertEndChild(playlistNode);
+    }
+}
+
+void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session)
+{
+    // invalid inputs
+    if (doc != nullptr && session != nullptr)
+    {
+        // create node
+        XMLElement *inputsNode = doc->NewElement("InputCallbacks");
+        doc->InsertEndChild(inputsNode);
+
+        // list of inputs assigned in the session
+        std::list<uint> inputs = session->assignedInputs();
+        if (!inputs.empty()) {
+            // loop over list of inputs
+            for (auto i = inputs.begin(); i != inputs.end(); ++i) {
+                // get all callbacks for this input
+                auto result = session->getSourceCallbacks(*i);
+                for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
+                    // create node for this callback
+                    XMLElement *cbNode = doc->NewElement("Callback");
+                    cbNode->SetAttribute("input", *i);
+                    cbNode->SetAttribute("id", kit->first->id());
+                    inputsNode->InsertEndChild(cbNode);
+                    // launch visitor to complete attributes
+                    SessionVisitor sv(doc, cbNode);
+                    kit->second->accept(sv);
+                }
+            }
+        }
+
+        // save array of synchronyzation mode for all inputs (CSV)
+        std::ostringstream oss;
+        std::vector<Metronome::Synchronicity> synch = session->getInputSynchrony();
+        for (auto token = synch.begin(); token != synch.end(); ++token)
+            oss << (int) *token << ';';
+        XMLElement *syncNode = doc->NewElement("Synchrony");
+        XMLText *text = doc->NewText( oss.str().c_str() );
+        syncNode->InsertEndChild(text);
+        inputsNode->InsertEndChild(syncNode);
     }
 }
 
@@ -578,22 +622,6 @@ void SessionVisitor::visit (Source& s)
         xmlCurrent_ = xmlDoc_->NewElement( "MixingGroup" );
         sourceNode->InsertEndChild(xmlCurrent_);
         s.mixingGroup()->accept(*this);
-    }
-
-    std::list<uint> inputs = s.callbackInputs();
-    if (!inputs.empty()) {
-        // list of callbacks
-        XMLElement *callbackselement = xmlDoc_->NewElement( "Callbacks" );
-        sourceNode->InsertEndChild(callbackselement);
-        for (auto i = inputs.begin(); i != inputs.end(); ++i) {
-            std::list<SourceCallback *> callbacks = s.inputCallbacks(*i);
-            for (auto c = callbacks.begin(); c != callbacks.end(); ++c) {
-                xmlCurrent_ = xmlDoc_->NewElement( "Callback" );
-                callbackselement->InsertEndChild(xmlCurrent_);
-                xmlCurrent_->SetAttribute("input", *i);
-                (*c)->accept(*this);
-            }
-        }
     }
 
     xmlCurrent_ = sourceNode;  // parent for next visits (other subtypes of Source)

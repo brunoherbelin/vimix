@@ -102,6 +102,7 @@ public:
 
     bool  inputActive (uint id);
     float inputValue  (uint id);
+    float inputDelay  (uint id);
     static std::string inputLabel(uint id);
 
 protected:

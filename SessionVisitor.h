@@ -19,6 +19,7 @@ class SessionVisitor : public Visitor {
     static void saveSnapshots(tinyxml2::XMLDocument *doc, Session *session);
     static void saveNotes(tinyxml2::XMLDocument *doc, Session *session);
     static void savePlayGroups(tinyxml2::XMLDocument *doc, Session *session);
+    static void saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session);
 
 public:
     SessionVisitor(tinyxml2::XMLDocument *doc = nullptr,

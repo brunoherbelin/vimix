@@ -247,6 +247,23 @@ void Metronome::executeAtPhase( std::function<void()> f )
     std::thread( delay, f, timeToPhase() ).detach();
 }
 
+float Metronome::timeToSync(Synchronicity sync)
+{
+    float ret = 0.f;
+    if ( sync > Metronome::SYNC_BEAT ) {
+        // SYNC TO PHASE
+        std::chrono::duration<float, std::milli> fp_ms = Metronome::manager().timeToPhase();
+        ret =  fp_ms.count();
+    }
+    else if ( sync > Metronome::SYNC_NONE ) {
+        // SYNC TO BEAT
+        std::chrono::duration<float, std::milli> fp_ms = Metronome::manager().timeToBeat();
+        ret =  fp_ms.count();
+    }
+    // SYNC NONE
+    return ret;
+}
+
 size_t Metronome::peers() const
 {
     return link_.numPeers();

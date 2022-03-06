@@ -54,6 +54,10 @@ public:
     std::chrono::microseconds timeToPhase();
     void executeAtPhase( std::function<void()> f );
 
+    // get time to sync, in milisecond
+    float timeToSync(Synchronicity sync);
+
+    // get number of connected peers
     size_t peers () const;
 
 };

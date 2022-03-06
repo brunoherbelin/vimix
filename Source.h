@@ -148,14 +148,6 @@ public:
     // add callback to each update
     void call(SourceCallback *callback, bool override = false);
 
-    // callbacks associated to keys
-    void addInputCallback(uint input, SourceCallback *callback);
-    void removeInputCallback(SourceCallback *callback);
-    std::list<SourceCallback *> inputCallbacks(uint input);
-    std::list<uint> callbackInputs();
-    void swapInputCallback(uint from, uint to);
-    void clearInputCallbacks();
-
     // update mode
     inline  bool active () const { return active_; }
     virtual void setActive (bool on);
@@ -325,17 +317,6 @@ protected:
     // callbacks
     std::list<SourceCallback *> update_callbacks_;
     std::mutex access_callbacks_;
-    struct InputCallback {
-        bool active_;
-        SourceCallback *model_;
-        SourceCallback *reverse_;
-        InputCallback() {
-            active_ = false;
-            model_   = nullptr;
-            reverse_ = nullptr;
-        }
-    };
-    std::multimap<uint, InputCallback> input_callbacks_;
     void updateCallbacks(float dt);
 
     // clones

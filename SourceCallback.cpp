@@ -113,7 +113,7 @@ bool SourceCallback::overlap( SourceCallback *a,  SourceCallback *b)
     return ret;
 }
 
-SourceCallback::SourceCallback(): finished_(false), initialized_(false)
+SourceCallback::SourceCallback(): status_(PENDING), delay_(0.f), elapsed_(0.f)
 {
 }
 
@@ -122,14 +122,39 @@ void SourceCallback::accept(Visitor& v)
     v.visit(*this);
 }
 
-void ResetGeometry::update(Source *s, float)
+void SourceCallback::update (Source *s, float dt)
 {
-    s->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
-    s->group(View::GEOMETRY)->rotation_.z = 0;
-    s->group(View::GEOMETRY)->crop_ = glm::vec3(1.f);
-    s->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
-    s->touch();
-    finished_ = true;
+    if (s != nullptr) {
+        // time passed
+        elapsed_ += dt;
+        // wait for delay to start
+        if ( status_ == PENDING && elapsed_ > delay_ )
+            status_ = READY;
+    }
+    // invalid
+    else
+        status_ = FINISHED;
+
+}
+
+void ResetGeometry::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    if (s->locked())
+        status_ = FINISHED;
+
+    // apply when ready
+    if ( status_ == READY ){
+
+        s->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
+        s->group(View::GEOMETRY)->rotation_.z = 0;
+        s->group(View::GEOMETRY)->crop_ = glm::vec3(1.f);
+        s->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
+        s->touch();
+
+        status_ = FINISHED;
+    }
 }
 
 SourceCallback *ResetGeometry::clone() const
@@ -137,8 +162,9 @@ SourceCallback *ResetGeometry::clone() const
     return new ResetGeometry;
 }
 
+
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
-    duration_(ms), progress_(0.f), alpha_(alpha), bidirectional_(revert)
+    duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
     alpha_ = CLAMP(alpha_, 0.f, 1.f);
     start_  = glm::vec2();
@@ -147,60 +173,63 @@ SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
 
 void SetAlpha::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // set start position on first run or upon call of reset()
-        if (!initialized_){
-            // initial mixing view position
-            start_ = glm::vec2(s->group(View::MIXING)->translation_);
+    SourceCallback::update(s, dt);
 
-            // step in diagonal by default
-            glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));
-            // step in direction of source translation if possible
-            if ( glm::length(start_) > DELTA_ALPHA)
-                step = glm::normalize(start_);
-            //
-            // target mixing view position
-            //
-            // special case Alpha = 0
-            if (alpha_ < DELTA_ALPHA) {
-                target_ = step;
-            }
-            // special case Alpha = 1
-            else if (alpha_ > 1.f - DELTA_ALPHA) {
-                target_ = step * 0.005f;
-            }
-            // general case
-            else {
-                // converge to reduce the difference of alpha using dichotomic algorithm
-                target_ = start_;
-                float delta = 1.f;
-                do {
-                    target_ += step * (delta / 2.f);
-                    delta = SourceCore::alphaFromCordinates(target_.x, target_.y) - alpha_;
-                } while (glm::abs(delta) > DELTA_ALPHA);
-            }
+    if (s->locked())
+        status_ = FINISHED;
 
-            initialized_ = true;
+    // set start position on first time it is ready
+    if ( status_ == READY ){
+        // initial mixing view position
+        start_ = glm::vec2(s->group(View::MIXING)->translation_);
+
+        // step in diagonal by default
+        glm::vec2 step = glm::normalize(glm::vec2(1.f, 1.f));
+        // step in direction of source translation if possible
+        if ( glm::length(start_) > DELTA_ALPHA)
+            step = glm::normalize(start_);
+        //
+        // target mixing view position
+        //
+        // special case Alpha = 0
+        if (alpha_ < DELTA_ALPHA) {
+            target_ = step;
+        }
+        // special case Alpha = 1
+        else if (alpha_ > 1.f - DELTA_ALPHA) {
+            target_ = step * 0.005f;
+        }
+        // general case
+        else {
+            // converge to reduce the difference of alpha using dichotomic algorithm
+            target_ = start_;
+            float delta = 1.f;
+            do {
+                target_ += step * (delta / 2.f);
+                delta = SourceCore::alphaFromCordinates(target_.x, target_.y) - alpha_;
+            } while (glm::abs(delta) > DELTA_ALPHA);
         }
 
-        // time passed
-        progress_ += dt;
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
+        // time passed since start
+        float progress = elapsed_ - delay_;
 
         // perform movement
         if ( ABS(duration_) > 0.f)
-            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress_/duration_)*(target_ - start_), s->group(View::MIXING)->translation_.z);
+            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress/duration_)*(target_ - start_), s->group(View::MIXING)->translation_.z);
 
         // time-out
-        if ( progress_ > duration_ ) {
+        if ( progress > duration_ ) {
             // apply alpha to target
             s->group(View::MIXING)->translation_ = glm::vec3(target_, s->group(View::MIXING)->translation_.z);
             // done
-            finished_ = true;
+            status_ = FINISHED;
         }
-
     }
-    else
-        finished_ = true;
+
 }
 
 void SetAlpha::multiply (float factor)
@@ -233,7 +262,7 @@ void Lock::update(Source *s, float)
     if (s)
         s->setLocked(lock_);
 
-    finished_ = true;
+    status_ = FINISHED;
 }
 
 SourceCallback *Lock::clone() const
@@ -243,7 +272,7 @@ SourceCallback *Lock::clone() const
 
 
 Loom::Loom(float speed, float ms) : SourceCallback(),
-    speed_(speed), duration_(ms), progress_(0.f)
+    speed_(speed), duration_(ms)
 {
     pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
@@ -251,22 +280,24 @@ Loom::Loom(float speed, float ms) : SourceCallback(),
 
 void Loom::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // reset on first run or upon call of reset()
-        if (!initialized_){
-            // start animation
-            progress_ = 0.f;
-            // initial position
-            pos_ = glm::vec2(s->group(View::MIXING)->translation_);
-            // step in direction of source translation if possible
-            if ( glm::length(pos_) > DELTA_ALPHA)
-                step_ = glm::normalize(pos_);
+    SourceCallback::update(s, dt);
 
-            initialized_ = true;
-        }
+    if (s->locked())
+        status_ = FINISHED;
 
-        // time passed
-        progress_ += dt;
+    // set start on first time it is ready
+    if ( status_ == READY ){
+        // initial position
+        pos_ = glm::vec2(s->group(View::MIXING)->translation_);
+        // step in direction of source translation if possible
+        if ( glm::length(pos_) > DELTA_ALPHA)
+            step_ = glm::normalize(pos_);
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
+        // time passed since start
+        float progress = elapsed_ - delay_;
 
         // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
         pos_ -= step_ * ( speed_ * dt * 0.001f );
@@ -275,15 +306,14 @@ void Loom::update(Source *s, float dt)
         float l = glm::length( pos_ );
         if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MIN_THRESHOLD && speed_ < 0.f ) )
             s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
+        else
+            status_ = FINISHED;
 
         // time-out
-        if ( progress_ > duration_ ) {
+        if ( progress > duration_ )
             // done
-            finished_ = true;
-        }
+            status_ = FINISHED;
     }
-    else
-        finished_ = true;
 }
 
 void Loom::multiply (float factor)
@@ -296,6 +326,11 @@ SourceCallback *Loom::clone() const
     return new Loom(speed_, duration_);
 }
 
+SourceCallback *Loom::reverse(Source *) const
+{
+    return new Loom(speed_, 0.f);
+}
+
 void Loom::accept(Visitor& v)
 {
     SourceCallback::accept(v);
@@ -303,42 +338,43 @@ void Loom::accept(Visitor& v)
 }
 
 
-
 SetDepth::SetDepth(float target, float ms, bool revert) : SourceCallback(),
-    duration_(ms), progress_(0.f), start_(0.f), target_(target), bidirectional_(revert)
+    duration_(ms), start_(0.f), target_(target), bidirectional_(revert)
 {
     target_ = CLAMP(target_, MIN_DEPTH, MAX_DEPTH);
 }
 
 void SetDepth::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // set start position on first run or upon call of reset()
-        if (!initialized_){
-            start_ = s->group(View::LAYER)->translation_.z;
-            progress_ = 0.f;
-            initialized_ = true;
-        }
+    SourceCallback::update(s, dt);
 
-        // time passed
-        progress_ += dt;
+    if (s->locked())
+        status_ = FINISHED;
+
+    // set start position on first time it is ready
+    if ( status_ == READY ){
+        start_ = s->group(View::LAYER)->translation_.z;
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
+        // time passed since start
+        float progress = elapsed_ - delay_;
 
         // perform movement
         if ( ABS(duration_) > 0.f)
-            s->group(View::LAYER)->translation_.z = start_ + (progress_/duration_) * (target_ - start_);
+            s->group(View::LAYER)->translation_.z = start_ + (progress/duration_) * (target_ - start_);
 
         // time-out
-        if ( progress_ > duration_ ) {
+        if ( progress > duration_ ) {
             // apply depth to target
             s->group(View::LAYER)->translation_.z = target_;
             // ensure reordering of view
             ++View::need_deep_update_;
             // done
-            finished_ = true;
+            status_ = FINISHED;
         }
     }
-    else
-        finished_ = true;
 }
 
 void SetDepth::multiply (float factor)
@@ -366,14 +402,20 @@ Play::Play(bool on, bool revert) : SourceCallback(), play_(on), bidirectional_(r
 {
 }
 
-void Play::update(Source *s, float)
+void Play::update(Source *s, float dt)
 {
-    if (s && s->playing() != play_) {
-        // call play function
-        s->play(play_);
+    SourceCallback::update(s, dt);
+
+    // toggle play status when ready
+    if ( status_ == READY ){
+
+        if (s->playing() != play_)
+            // call play function
+            s->play(play_);
+
+        status_ = FINISHED;
     }
 
-    finished_ = true;
 }
 
 SourceCallback *Play::clone() const
@@ -396,14 +438,18 @@ RePlay::RePlay() : SourceCallback()
 {
 }
 
-void RePlay::update(Source *s, float)
+void RePlay::update(Source *s, float dt)
 {
-    if (s) {
+    SourceCallback::update(s, dt);
+
+    // apply when ready
+    if ( status_ == READY ){
+
         // call replay function
         s->replay();
-    }
 
-    finished_ = true;
+        status_ = FINISHED;
+    }
 }
 
 SourceCallback *RePlay::clone() const
@@ -413,7 +459,7 @@ SourceCallback *RePlay::clone() const
 
 
 SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(),
-    duration_(ms), progress_(0.f), bidirectional_(revert)
+    duration_(ms), bidirectional_(revert)
 {
     setTarget(g);
 }
@@ -432,20 +478,24 @@ void  SetGeometry::setTarget (const Group *g)
 
 void SetGeometry::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // set start position on first run or upon call of reset()
-        if (!initialized_){
-            start_.copyTransform(s->group(View::GEOMETRY));
-            progress_ = 0.f;
-            initialized_ = true;
-        }
+    SourceCallback::update(s, dt);
 
-        // time passed
-        progress_ += dt;
+    if (s->locked())
+        status_ = FINISHED;
+
+    // set start position on first time it is ready
+    if ( status_ == READY ){
+        start_.copyTransform(s->group(View::GEOMETRY));
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
+        // time passed since start
+        float progress = elapsed_ - delay_;
 
         // perform movement
         if ( ABS(duration_) > 0.f){
-            float ratio = progress_ / duration_;
+            float ratio = progress / duration_;
             Group intermediate;
             intermediate.translation_ = (1.f - ratio) * start_.translation_ + ratio * target_.translation_;
             intermediate.scale_ = (1.f - ratio) * start_.scale_ + ratio * target_.scale_;
@@ -456,22 +506,19 @@ void SetGeometry::update(Source *s, float dt)
         }
 
         // time-out
-        if ( progress_ > duration_ ) {
+        if ( progress > duration_ ) {
             // apply  target
             s->group(View::GEOMETRY)->copyTransform(&target_);
             s->touch();
             // done
-            finished_ = true;
+            status_ = FINISHED;
         }
-
     }
-    else
-        finished_ = true;
 }
 
 void SetGeometry::multiply (float factor)
 {
-
+    // TODO
 }
 
 SourceCallback *SetGeometry::clone() const
@@ -493,37 +540,35 @@ void SetGeometry::accept(Visitor& v)
 
 
 Grab::Grab(float dx, float dy, float ms) : SourceCallback(),
-    speed_(glm::vec2(dx, dy)), duration_(ms), progress_(0.f)
+    speed_(glm::vec2(dx, dy)), duration_(ms)
 {
 }
 
 void Grab::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // reset on first run or upon call of reset()
-        if (!initialized_){
-            // start animation
-            progress_ = 0.f;
-            // initial position
-            start_ = glm::vec2(s->group(View::GEOMETRY)->translation_);
-            initialized_ = true;
-        }
+    SourceCallback::update(s, dt);
 
-        // time passed
-        progress_ += dt;
+    if (s->locked())
+        status_ = FINISHED;
+
+    // set start on first time it is ready
+    if ( status_ == READY ) {
+        // initial position
+        pos_ = glm::vec2(s->group(View::GEOMETRY)->translation_);
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
 
         // move target by speed vector * time (in second)
-        glm::vec2 pos = start_ + speed_ * ( dt * 0.001f);
-        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos, s->group(View::GEOMETRY)->translation_.z);
+        pos_ += speed_ * ( dt * 0.001f);
+        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos_, s->group(View::GEOMETRY)->translation_.z);
 
         // time-out
-        if ( progress_ > duration_ ) {
+        if ( (elapsed_ - delay_) > duration_ )
             // done
-            finished_ = true;
-        }
+            status_ = FINISHED;
     }
-    else
-        finished_ = true;
 }
 
 void Grab::multiply (float factor)
@@ -536,6 +581,11 @@ SourceCallback *Grab::clone() const
     return new Grab(speed_.x, speed_.y, duration_);
 }
 
+SourceCallback *Grab::reverse(Source *) const
+{
+    return new Grab(speed_.x, speed_.y, 0.f);
+}
+
 void Grab::accept(Visitor& v)
 {
     SourceCallback::accept(v);
@@ -543,37 +593,29 @@ void Grab::accept(Visitor& v)
 }
 
 Resize::Resize(float dx, float dy, float ms) : SourceCallback(),
-    speed_(glm::vec2(dx, dy)), duration_(ms), progress_(0.f)
+    speed_(glm::vec2(dx, dy)), duration_(ms)
 {
 }
 
 void Resize::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // reset on first run or upon call of reset()
-        if (!initialized_){
-            // start animation
-            progress_ = 0.f;
-            // initial position
-            start_ = glm::vec2(s->group(View::GEOMETRY)->scale_);
-            initialized_ = true;
-        }
+    SourceCallback::update(s, dt);
 
-        // time passed
-        progress_ += dt;
+    if (s->locked())
+        status_ = FINISHED;
 
+    if ( status_ == READY )
+        status_ = ACTIVE;
+
+    if ( status_ == ACTIVE ) {
         // move target by speed vector * time (in second)
-        glm::vec2 scale = start_ + speed_ * ( dt * 0.001f);
+        glm::vec2 scale = glm::vec2(s->group(View::GEOMETRY)->scale_) + speed_ * ( dt * 0.001f );
         s->group(View::GEOMETRY)->scale_ = glm::vec3(scale, s->group(View::GEOMETRY)->scale_.z);
 
         // time-out
-        if ( progress_ > duration_ ) {
-            // done
-            finished_ = true;
-        }
+        if ( (elapsed_ - delay_) > duration_ )
+            status_ = FINISHED;
     }
-    else
-        finished_ = true;
 }
 
 void Resize::multiply (float factor)
@@ -586,6 +628,11 @@ SourceCallback *Resize::clone() const
     return new Resize(speed_.x, speed_.y, duration_);
 }
 
+SourceCallback *Resize::reverse(Source *) const
+{
+    return new Resize(speed_.x, speed_.y, 0.f);
+}
+
 void Resize::accept(Visitor& v)
 {
     SourceCallback::accept(v);
@@ -593,36 +640,35 @@ void Resize::accept(Visitor& v)
 }
 
 Turn::Turn(float speed, float ms) : SourceCallback(),
-    speed_(speed), duration_(ms), progress_(0.f)
+    speed_(speed), duration_(ms)
 {
 }
 
 void Turn::update(Source *s, float dt)
 {
-    if (s && !s->locked()) {
-        // reset on first run or upon call of reset()
-        if (!initialized_){
-            // start animation
-            progress_ = 0.f;
-            // initial position
-            start_ = s->group(View::GEOMETRY)->rotation_.z;
-            initialized_ = true;
-        }
+    SourceCallback::update(s, dt);
 
-        // calculate amplitude of movement
-        progress_ += dt;
+    if (s->locked())
+        status_ = FINISHED;
+
+    // set start on first time it is ready
+    if ( status_ == READY ){
+        // initial position
+        angle_ = s->group(View::GEOMETRY)->rotation_.z;
+        status_ = ACTIVE;
+    }
+
+    if ( status_ == ACTIVE ) {
 
         // perform movement
-        s->group(View::GEOMETRY)->rotation_.z = start_ - speed_ * ( dt * 0.001f );
+        angle_ -= speed_ * ( dt * 0.001f );
+        s->group(View::GEOMETRY)->rotation_.z = angle_;
 
         // timeout
-        if ( progress_ > duration_ ) {
+        if ( (elapsed_ - delay_) > duration_ )
             // done
-            finished_ = true;
-        }
+            status_ = FINISHED;
     }
-    else
-        finished_ = true;
 }
 
 void Turn::multiply (float factor)
@@ -633,6 +679,11 @@ void Turn::multiply (float factor)
 SourceCallback *Turn::clone() const
 {
     return new Turn(speed_, duration_);
+}
+
+SourceCallback *Turn::reverse(Source *) const
+{
+    return new Turn(speed_, 0.f);
 }
 
 void Turn::accept(Visitor& v)

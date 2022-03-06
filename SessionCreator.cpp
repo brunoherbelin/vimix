@@ -149,6 +149,9 @@ void SessionCreator::load(const std::string& filename)
     // load playlists
     loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
 
+    // load input callbacks
+    loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
+
     // thumbnail
     const XMLElement *thumbnailelement = sessionNode->FirstChildElement("Thumbnail");
     // if there is a user-defined thumbnail, get it
@@ -189,6 +192,62 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 
             session_->snapshots()->keys_.push_back(id);
             session_->snapshots()->xmlDoc_->InsertEndChild( N->DeepClone(session_->snapshots()->xmlDoc_) );
+        }
+    }
+}
+
+
+void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
+{
+    if (inputsNode != nullptr && session_ != nullptr) {
+
+        // read all 'Callback' nodes
+        xmlCurrent_ = inputsNode->FirstChildElement("Callback");
+        for ( ; xmlCurrent_ ; xmlCurrent_ = xmlCurrent_->NextSiblingElement()) {
+            // what key triggers the callback ?
+            uint input = 0;
+            xmlCurrent_->QueryUnsignedAttribute("input", &input);
+            if (input > 0) {
+                // what id is the source ?
+                uint64_t id = 0;
+                xmlCurrent_->QueryUnsigned64Attribute("id", &id);
+                if (id > 0) {
+                    // what type is the callback ?
+                    uint type = 0;
+                    xmlCurrent_->QueryUnsignedAttribute("type", &type);
+                    // instanciate the callback of that type
+                    SourceCallback *loadedcallback = SourceCallback::create((SourceCallback::CallbackType)type);
+                    // successfully created a callback of saved type
+                    if (loadedcallback) {
+                        // apply specific parameters
+                        loadedcallback->accept(*this);
+                        // find the source with the given id
+                        SourceList::iterator sit = session_->find(id);
+                        if (sit != session_->end()) {
+                            // assign to source in session
+                            session_->assignSourceCallback(input, *sit, loadedcallback);
+                        }
+                    }
+                }
+            }
+        }
+
+        // read array of synchronyzation mode for all inputs (CSV)
+        xmlCurrent_ = inputsNode->FirstChildElement("Synchrony");
+        if (xmlCurrent_) {
+            const char *text = xmlCurrent_->GetText();
+            if (text) {
+                std::istringstream iss(text);
+                std::string token;
+                uint i = 0;
+                while(std::getline(iss, token, ';')) {
+                    if (token.compare("1") == 0)
+                        session_->setInputSynchrony(i, Metronome::SYNC_BEAT);
+                    else if (token.compare("2") == 0)
+                        session_->setInputSynchrony(i, Metronome::SYNC_PHASE);
+                    ++i;
+                }
+            }
         }
     }
 }
@@ -898,30 +957,6 @@ void SessionLoader::visit (Source& s)
             idlist.push_back(id__);
         }
         groups_sources_id_.push_back(idlist);
-    }
-
-    XMLElement* callbacksNode = sourceNode->FirstChildElement("Callbacks");
-    if (callbacksNode) {
-        // Loop over 'Callback' nodes
-        xmlCurrent_ = callbacksNode->FirstChildElement("Callback");
-        for ( ; xmlCurrent_ ; xmlCurrent_ = xmlCurrent_->NextSiblingElement()) {
-            // what key triggers the callback ?
-            uint input = 0;
-            xmlCurrent_->QueryUnsignedAttribute("input", &input);
-            // what type is the callback ?
-            uint type = 0;
-            xmlCurrent_->QueryUnsignedAttribute("type", &type);
-            // instanciate the callback of that type
-            SourceCallback *loadedcallback = SourceCallback::create((SourceCallback::CallbackType)type);
-            // successfully created a callback of saved type
-            if (loadedcallback) {
-                // apply specific parameters
-                loadedcallback->accept(*this);
-                // add callback to source
-                s.addInputCallback(input, loadedcallback);
-            }
-        }
-
     }
 
     // restore current

@@ -31,6 +31,8 @@
 #include "SessionSource.h"
 #include "RenderSource.h"
 #include "MixingGroup.h"
+#include "ControlManager.h"
+#include "SourceCallback.h"
 #include "Log.h"
 
 #include "Session.h"
@@ -62,6 +64,8 @@ Session::Session() : active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
     config_[View::TEXTURE]->scale_ = Settings::application.views[View::TEXTURE].default_scale;
     config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
 
+    input_sync_.resize(INPUT_MAX, Metronome::SYNC_NONE);
+
     snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
     start_time_ = gst_util_get_timestamp ();
 }
@@ -80,6 +84,15 @@ Session::~Session()
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // erase this source from the list
         it = deleteSource(*it);
+    }
+
+    // delete all callbacks
+    for (auto iter = input_callbacks_.begin(); iter != input_callbacks_.end();
+         iter = input_callbacks_.erase(iter))  {
+        if ( iter->second.model_ != nullptr)
+            delete iter->second.model_;
+        if ( iter->second.reverse_ != nullptr)
+            delete iter->second.reverse_;
     }
 
     delete config_[View::RENDERING];
@@ -114,6 +127,50 @@ void Session::update(float dt)
     if ( render_.frame() == nullptr )
         return;
 
+    // listen to inputs
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
+    {
+        // get if the input is activated (e.g. key pressed)
+        bool input_active = Control::manager().inputActive(k->first);
+
+        // get the callback model for each input
+        if ( k->second.model_ != nullptr) {
+
+            // if the value referenced as pressed changed state
+            // or repeat key if there is no reverse callback
+            if ( input_active != k->second.active_ || k->second.reverse_ == nullptr) {
+
+                // ON PRESS
+                if (input_active) {
+                    // delete the reverse if was not released
+                    if (k->second.reverse_ != nullptr)
+                        delete k->second.reverse_;
+
+                    // generate a new callback from the model
+                    SourceCallback *C = k->second.model_->clone();
+                    // apply value multiplyer from input
+                    C->multiply( Control::manager().inputValue(k->first) );
+                    // add delay
+                    C->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                    // add callback to the source (force override)
+                    k->second.source_->call( C, true );
+                    // get the reverse if the callback, and remember it (can be null)
+                    k->second.reverse_ = C->reverse(k->second.source_);
+                }
+                // ON RELEASE
+                else {
+                    // call the reverse (NB: invalid value tested in call)
+                    k->second.source_->call( k->second.reverse_, true );
+                    // do not keep reference to reverse: will be deleted when terminated
+                    k->second.reverse_ = nullptr;
+                }
+
+                // remember state of callback
+                k->second.active_ = input_active;
+            }
+        }
+    }
+
     // pre-render all sources
     failedSource_ = nullptr;
     bool ready = true;
@@ -132,6 +189,8 @@ void Session::update(float dt)
         else {
             if ( !(*it)->ready() )
                 ready = false;
+            // set inputs
+
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
@@ -640,3 +699,161 @@ std::string Session::save(const std::string& filename, Session *session, const s
 
     return ret;
 }
+
+void Session::assignSourceCallback(uint input, Source *source, SourceCallback *callback)
+{
+    // find if this callback is already assigned
+    auto k = input_callbacks_.begin();
+    for (; k != input_callbacks_.end(); ++k)
+    {
+        // yes, then just change the source pointer
+        if ( k->second.model_ == callback) {
+            if (k->second.reverse_)
+                delete k->second.reverse_;
+            k->second.source_ = source;
+            break;
+        }
+    }
+
+    // if this callback is not assigned yet (looped until end)
+    if ( k == input_callbacks_.end() ) {
+        // create new entry
+        std::multimap<uint, InputSourceCallback>::iterator added = input_callbacks_.emplace(input, InputSourceCallback() );
+        added->second.model_ = callback;
+        added->second.source_ = source;
+    }
+}
+
+void Session::swapSourceCallback(uint from, uint to)
+{
+    std::multimap<uint, InputSourceCallback> swapped_callbacks_;
+
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
+    {
+        if ( k->first == from )
+            swapped_callbacks_.emplace( to,  k->second);
+        else
+            swapped_callbacks_.emplace( k->first,  k->second);
+    }
+
+    input_callbacks_.swap(swapped_callbacks_);
+}
+
+void Session::copySourceCallback(uint from, uint to)
+{
+    if ( input_callbacks_.count(from) > 0 ) {
+        auto result = input_callbacks_.equal_range(from);
+        for (auto it = result.first; it != result.second; ++it) {
+            assignSourceCallback(to, it->second.source_, it->second.model_->clone() );
+        }
+    }
+}
+
+std::list< std::pair<Source *, SourceCallback *> > Session::getSourceCallbacks(uint input)
+{
+    std::list< std::pair<Source *, SourceCallback*> > ret;
+
+    if ( input_callbacks_.count(input) > 0 ) {
+        auto result = input_callbacks_.equal_range(input);
+        for (auto it = result.first; it != result.second; ++it)
+            ret.push_back( std::pair<Source *, SourceCallback*>(it->second.source_, it->second.model_) );
+    }
+
+    return ret;
+}
+
+void Session::deleteSourceCallback(SourceCallback *callback)
+{
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
+    {
+        if ( k->second.model_ == callback) {
+            delete callback;
+            if (k->second.reverse_)
+                delete k->second.reverse_;
+            input_callbacks_.erase(k);
+            break;
+        }
+    }
+}
+
+void Session::deleteSourceCallbacks(uint input)
+{
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
+    {
+        if ( k->first == input) {
+            if (k->second.model_)
+                delete k->second.model_;
+            if (k->second.reverse_)
+                delete k->second.reverse_;
+            input_callbacks_.erase(k);
+        }
+        else
+            ++k;
+    }
+}
+
+void Session::deleteSourceCallbacks(Source *source)
+{
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
+    {
+        if ( k->second.source_ == source) {
+            if (k->second.model_)
+                delete k->second.model_;
+            if (k->second.reverse_)
+                delete k->second.reverse_;
+            input_callbacks_.erase(k);
+        }
+        else
+            ++k;
+    }
+}
+
+
+void Session::clearSourceCallbacks()
+{
+    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
+    {
+        if (k->second.model_)
+            delete k->second.model_;
+        if (k->second.reverse_)
+            delete k->second.reverse_;
+
+        k = input_callbacks_.erase(k);
+    }
+}
+
+std::list<uint> Session::assignedInputs()
+{
+    std::list<uint> inputs;
+
+    // fill with list of keys
+    for(const auto& [key, value] : input_callbacks_) {
+        inputs.push_back(key);
+    }
+
+    // remove duplicates
+    inputs.unique();
+
+    return inputs;
+}
+
+bool Session::inputAssigned(uint input)
+{
+    return input_callbacks_.find(input) != input_callbacks_.end();
+}
+
+void Session::setInputSynchrony(uint input, Metronome::Synchronicity sync)
+{
+    input_sync_[input] = sync;
+}
+
+std::vector<Metronome::Synchronicity> Session::getInputSynchrony()
+{
+    return input_sync_;
+}
+
+Metronome::Synchronicity Session::inputSynchrony(uint input)
+{
+    return input_sync_[input];
+}
+

@@ -4587,26 +4587,6 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
     }
 }
 
-void InputMappingInterface::readInputSource()
-{
-    // clear
-    input_sources_callbacks.clear();
-    memset(input_assigned, 0, sizeof(input_assigned));
-
-    // loop over sources of the session
-    Session *ses = Mixer::manager().session();
-    for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
-        // loop over registered keys
-        std::list<uint> inputs = (*sit)->callbackInputs();
-        for (auto k = inputs.begin(); k != inputs.end(); ++k) {
-            // add entry in input map
-            std::list<SourceCallback *> callbacks = (*sit)->inputCallbacks(*k);
-            for (auto c = callbacks.begin(); c != callbacks.end(); ++c )
-                input_sources_callbacks.emplace( *k, std::pair<Source *, SourceCallback*>(*sit, *c) );
-            input_assigned[*k] = true;
-        }
-    }
-}
 
 void InputMappingInterface::Render()
 {
@@ -4630,8 +4610,8 @@ void InputMappingInterface::Render()
         return;
     }
 
-    // Update internal data structures
-    readInputSource();
+    // short variable to refer to session
+    Session *S = Mixer::manager().session();
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
@@ -4645,11 +4625,8 @@ void InputMappingInterface::Render()
             ImGui::MenuItem( ICON_FA_BAN "  Disable", nullptr, &Settings::application.mapping.disabled);
 
             // Clear all
-            if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear all" ) ){
-                Session *ses = Mixer::manager().session();
-                for (auto sit = ses->begin(); sit != ses->end(); ++sit)
-                    (*sit)->clearInputCallbacks();
-            }
+            if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear all" ) )
+                S->clearSourceCallbacks();
 
             // output manager menu
             ImGui::Separator();
@@ -4684,29 +4661,24 @@ void InputMappingInterface::Render()
         const std::string keymenu = ICON_FA_HAND_POINT_RIGHT "  Input " + Control::manager().inputLabel(current_input_);
         if (ImGui::BeginMenu(keymenu.c_str()) )
         {
-            if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Reset mapping", NULL, false, input_assigned[current_input_] ) ){
+            if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Reset mapping", NULL, false, S->inputAssigned(current_input_) ) )
                 // remove all source callback of this input
-                auto current_source_callback = input_sources_callbacks.equal_range(current_input_);
-                for (auto kit = current_source_callback.first; kit != current_source_callback.second; ++kit)
-                    kit->second.first->removeInputCallback(kit->second.second);
-                // internal data structure changed
-                readInputSource();
-            }
+                S->deleteSourceCallbacks(current_input_);
 
-            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome", input_assigned[current_input_]))
+            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome", S->inputAssigned(current_input_)))
             {
-                Metronome::Synchronicity sync = Metronome::SYNC_NONE;
+                Metronome::Synchronicity sync = S->inputSynchrony(current_input_);
                 bool active = sync == Metronome::SYNC_NONE;
                 if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active )){
-
+                    S->setInputSynchrony(current_input_, Metronome::SYNC_NONE);
                 }
                 active = sync == Metronome::SYNC_BEAT;
                 if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active )){
-
+                    S->setInputSynchrony(current_input_, Metronome::SYNC_BEAT);
                 }
                 active = sync == Metronome::SYNC_PHASE;
                 if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active )){
-
+                    S->setInputSynchrony(current_input_, Metronome::SYNC_PHASE);
                 }
                 ImGui::EndMenu();
             }
@@ -4716,17 +4688,13 @@ void InputMappingInterface::Render()
                 // static var for the copy-paste mechanism
                 static uint _copy_current_input = INPUT_UNDEFINED;
                 // 2) Copy (if there are callbacks assigned)
-                if (ImGui::MenuItem("Copy", NULL, false, input_assigned[current_input_] ))
+                if (ImGui::MenuItem("Copy", NULL, false, S->inputAssigned(current_input_) ))
                     // Remember the index of the input to copy
                     _copy_current_input = current_input_;
                 // 3) Paste (if copied input index is assigned)
-                if (ImGui::MenuItem("Paste", NULL, false, input_assigned[_copy_current_input] )) {
-                    // create source callbacks at current input cloning those of the copied index
-                    auto copy_source_callback = input_sources_callbacks.equal_range(_copy_current_input);
-                    for (auto kit = copy_source_callback.first; kit != copy_source_callback.second; ++kit)
-                        kit->second.first->addInputCallback(current_input_, kit->second.second->clone());
-                    // internal data structure changed
-                    readInputSource();
+                if (ImGui::MenuItem("Paste", NULL, false, S->inputAssigned(current_input_) )) {
+                    // copy source callbacks from rememberd index to current input index
+                    S->copySourceCallback(_copy_current_input, current_input_);
                 }
                 ImGui::EndMenu();
             }
@@ -4768,13 +4736,14 @@ void InputMappingInterface::Render()
             }
             // draw key button
             ImGui::PushID(ik);
-            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, keyLetterIconSize)) {
+            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), S->inputAssigned(ik), 0, keyLetterIconSize)) {
                 current_input_ = ik;
+                // TODO SET VAR current input assigned??
             }
             ImGui::PopID();
 
             // if user clics and drags an assigned key icon...
-            if (input_assigned[ik] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+            if (S->inputAssigned(ik) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_KEYBOARD", &ik, sizeof(uint));
                 ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
                 ImGui::EndDragDropSource();
@@ -4785,10 +4754,8 @@ void InputMappingInterface::Render()
                     if ( payload->DataSize == sizeof(uint) ) {
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
-                        // index of current source changed;
-                        auto result = input_sources_callbacks.equal_range(previous_input_key);
-                        for (auto kit = result.first; kit != result.second; ++kit)
-                            kit->second.first->swapInputCallback(previous_input_key, ik);
+                        // swap
+                        S->swapSourceCallback(previous_input_key, ik);
                         // switch to this key
                         current_input_ = ik;
                     }
@@ -4848,12 +4815,12 @@ void InputMappingInterface::Render()
             }
             // draw key button
             ImGui::PushID(ik);
-            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), input_assigned[ik], 0, iconsize)) {
+            if (ImGui::Selectable(Control::manager().inputLabel(ik).c_str(), S->inputAssigned(ik), 0, iconsize)) {
                 current_input_ = ik;
             }
             ImGui::PopID();
             // if user clics and drags an assigned key icon...
-            if (input_assigned[ik] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+            if (S->inputAssigned(ik) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_NUMPAD", &ik, sizeof(uint));
                 ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
                 ImGui::EndDragDropSource();
@@ -4864,10 +4831,8 @@ void InputMappingInterface::Render()
                     if ( payload->DataSize == sizeof(uint) ) {
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
-                        // index of current source changed;
-                        auto result = input_sources_callbacks.equal_range(previous_input_key);
-                        for (auto kit = result.first; kit != result.second; ++kit)
-                            kit->second.first->swapInputCallback(previous_input_key, ik);
+                        // swap
+                        S->swapSourceCallback(previous_input_key, ik);
                         // switch to this key
                         current_input_ = ik;
                     }
@@ -4924,9 +4889,11 @@ void InputMappingInterface::Render()
 
             // draw key button
             ImGui::PushID(it);
-            if (ImGui::Selectable(" ", input_assigned[it], 0, keyNumpadIconSize))
+            if (ImGui::Selectable(" ", S->inputAssigned(it), 0, keyNumpadIconSize))
                 current_input_ = it;
             ImGui::PopID();
+
+            // TODO DragN DROP
 
             // 4 elements in a row
             if ((t % 4) < 3) ImGui::SameLine();
@@ -4997,12 +4964,12 @@ void InputMappingInterface::Render()
             }
             // draw key button
             ImGui::PushID(ig);
-            if (ImGui::Selectable(gamepad_labels[b].c_str(), input_assigned[ig], 0, keyLetterIconSize))
+            if (ImGui::Selectable(gamepad_labels[b].c_str(), S->inputAssigned(ig), 0, keyLetterIconSize))
                 current_input_ = ig;
             ImGui::PopID();
 
             // if user clics and drags an assigned key icon...
-            if (input_assigned[ig] && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+            if (S->inputAssigned(ig) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_GAMEPAD", &ig, sizeof(uint));
                 ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ig).c_str());
                 ImGui::EndDragDropSource();
@@ -5013,10 +4980,8 @@ void InputMappingInterface::Render()
                     if ( payload->DataSize == sizeof(uint) ) {
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
-                        // index of current source changed;
-                        auto result = input_sources_callbacks.equal_range(previous_input_key);
-                        for (auto kit = result.first; kit != result.second; ++kit)
-                            kit->second.first->swapInputCallback(previous_input_key, ig);
+                        // swap
+                        S->swapSourceCallback(previous_input_key, ig);
                         // switch to this key
                         current_input_ = ig;
                     }
@@ -5054,7 +5019,7 @@ void InputMappingInterface::Render()
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS), axis_bar_size);
         // Draw button to assign the axis to an action
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("LX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS], 0, axis_icon_size))
+        if (ImGui::Selectable("LX", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS;
         // Draw frame around current gamepad axis
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS)
@@ -5064,7 +5029,7 @@ void InputMappingInterface::Render()
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+1), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("LY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+1], 0, axis_icon_size))
+        if (ImGui::Selectable("LY", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS+1), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+1;
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+1)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -5073,7 +5038,7 @@ void InputMappingInterface::Render()
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+2), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("L2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+2], 0, axis_icon_size))
+        if (ImGui::Selectable("L2", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS+2), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+2;
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+2)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -5088,7 +5053,7 @@ void InputMappingInterface::Render()
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+3), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("RX", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+3], 0, axis_icon_size))
+        if (ImGui::Selectable("RX", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS+3), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+3;
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+3)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -5097,7 +5062,7 @@ void InputMappingInterface::Render()
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+4), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("RY", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+4], 0, axis_icon_size))
+        if (ImGui::Selectable("RY", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS+4), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+4;
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+4)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -5106,7 +5071,7 @@ void InputMappingInterface::Render()
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
         ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+5), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("R2", input_assigned[INPUT_JOYSTICK_FIRST_AXIS+5], 0, axis_icon_size))
+        if (ImGui::Selectable("R2", S->inputAssigned(INPUT_JOYSTICK_FIRST_AXIS+5), 0, axis_icon_size))
             current_input_ = INPUT_JOYSTICK_FIRST_AXIS+5;
         if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+5)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -5126,20 +5091,20 @@ void InputMappingInterface::Render()
 
         float w = ImGui::GetWindowWidth() *0.25f;
 
-        if (input_assigned[current_input_]) {
+        if (S->inputAssigned(current_input_)) {
 
-            auto result = input_sources_callbacks.equal_range(current_input_);
-            for (auto kit = result.first; kit != result.second; ++kit) {
+            auto result = S->getSourceCallbacks(current_input_);
+            for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
 
-                Source *source = kit->second.first;
-                SourceCallback *callback = kit->second.second;
+                Source *source = kit->first;
+                SourceCallback *callback = kit->second;
 
                 // push ID because we repeat the same UI
                 ImGui::PushID( (void*) callback);
 
                 // Delete interface
                 if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Remove") ){
-                    source->removeInputCallback(callback);
+                    S->deleteSourceCallback(callback);
                     // reload
                     ImGui::PopID();
                     break;
@@ -5148,12 +5113,10 @@ void InputMappingInterface::Render()
                 // Select Source
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                Source *select = ComboSelectSource(source);
-                if (select != nullptr) {
-                    // copy callback to other source
-                    select->addInputCallback(current_input_, callback->clone());
-                    // remove previous callback
-                    source->removeInputCallback(callback);
+                Source *selected_source = ComboSelectSource(source);
+                if (selected_source != nullptr) {
+                    // reassign the callback to newly selected source
+                    S->assignSourceCallback(current_input_, selected_source, callback);
                     // reload
                     ImGui::PopID();
                     break;
@@ -5165,9 +5128,9 @@ void InputMappingInterface::Render()
                 uint type = ComboSelectCallback( callback->type() );
                 if (type > 0) {
                     // remove previous callback
-                    source->removeInputCallback(callback);
-                    // add callback
-                    source->addInputCallback(current_input_, SourceCallback::create((SourceCallback::CallbackType)type) );
+                    S->deleteSourceCallback(callback);
+                    // assign callback
+                    S->assignSourceCallback(current_input_, source, SourceCallback::create((SourceCallback::CallbackType)type) );
                     // reload
                     ImGui::PopID();
                     break;
@@ -5222,7 +5185,7 @@ void InputMappingInterface::Render()
                 // user selected a callback type
                 if (temp_new_callback > 0) {
                     // step 4 : create new callback and add it to source
-                    temp_new_source->addInputCallback(current_input_, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
+                    S->assignSourceCallback(current_input_, temp_new_source, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
                     // done
                     temp_new_source = nullptr;
                     temp_new_callback = 0;

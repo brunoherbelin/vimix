@@ -33,25 +33,34 @@ public:
     SourceCallback();
     virtual ~SourceCallback() {}
 
-    virtual void update (Source *, float) = 0;
+    virtual void update (Source *, float);
     virtual void multiply (float) {};
     virtual SourceCallback *clone () const = 0;
     virtual SourceCallback *reverse (Source *) const { return nullptr; }
     virtual CallbackType type () const { return CALLBACK_GENERIC; }
     virtual void accept (Visitor& v);
 
-    inline bool finished () const { return finished_; }
-    inline void reset () { initialized_ = false; }
+    inline bool finished () const { return status_ > ACTIVE; }
+    inline void reset () { status_ = PENDING; }
+    inline void delay (float milisec) { delay_ = milisec;}
 
 protected:
-    bool finished_;
-    bool initialized_;
+
+    typedef enum {
+        PENDING = 0,
+        READY,
+        ACTIVE,
+        FINISHED
+    } state;
+
+    state status_;
+    float delay_;
+    float elapsed_;
 };
 
 class SetAlpha : public SourceCallback
 {
     float duration_;
-    float progress_;
     float alpha_;
     glm::vec2 start_;
     glm::vec2 target_;
@@ -81,10 +90,9 @@ class Loom : public SourceCallback
     glm::vec2 pos_;
     glm::vec2 step_;
     float duration_;
-    float progress_;
 
 public:
-    Loom (float speed = 0.f, float ms = 0.f);
+    Loom (float speed = 0.f, float ms = FLT_MAX);
 
     float value () const { return speed_; }
     void  setValue (float d) { speed_ = d; }
@@ -94,6 +102,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone() const override;
+    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_LOOM; }
     void accept (Visitor& v) override;
 };
@@ -116,7 +125,6 @@ public:
 class SetDepth : public SourceCallback
 {
     float duration_;
-    float progress_;
     float start_;
     float target_;
     bool bidirectional_;
@@ -152,7 +160,7 @@ public:
     bool  bidirectional () const { return bidirectional_;}
     void  setBidirectional (bool on) { bidirectional_ = on; }
 
-    void update (Source *s, float) override;
+    void update (Source *s, float dt) override;
     SourceCallback *clone() const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_PLAY; }
@@ -164,7 +172,7 @@ class RePlay : public SourceCallback
 public:
     RePlay();
 
-    void update(Source *s, float) override;
+    void update(Source *s, float dt) override;
     SourceCallback *clone() const override;
     CallbackType type () const override { return CALLBACK_REPLAY; }
 };
@@ -173,7 +181,7 @@ class ResetGeometry : public SourceCallback
 {
 public:
     ResetGeometry () : SourceCallback() {}
-    void update (Source *s, float) override;
+    void update (Source *s, float dt) override;
     SourceCallback *clone () const override;
     CallbackType type () const override { return CALLBACK_RESETGEO; }
 };
@@ -181,7 +189,6 @@ public:
 class SetGeometry : public SourceCallback
 {
     float duration_;
-    float progress_;
     Group start_;
     Group target_;
     bool bidirectional_;
@@ -207,12 +214,11 @@ public:
 class Grab : public SourceCallback
 {
     glm::vec2 speed_;
-    glm::vec2 start_;
+    glm::vec2 pos_;
     float duration_;
-    float progress_;
 
 public:
-    Grab(float dx = 0.f, float dy = 0.f, float ms = 0.f);
+    Grab(float dx = 0.f, float dy = 0.f, float ms = FLT_MAX);
 
     glm::vec2 value () const { return speed_; }
     void  setValue (glm::vec2 d) { speed_ = d; }
@@ -222,6 +228,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_GRAB; }
     void accept (Visitor& v) override;
 };
@@ -229,12 +236,10 @@ public:
 class Resize : public SourceCallback
 {
     glm::vec2 speed_;
-    glm::vec2 start_;
     float duration_;
-    float progress_;
 
 public:
-    Resize(float dx = 0.f, float dy = 0.f, float ms = 0.f);
+    Resize(float dx = 0.f, float dy = 0.f, float ms = FLT_MAX);
 
     glm::vec2 value () const { return speed_; }
     void  setValue (glm::vec2 d) { speed_ = d; }
@@ -244,6 +249,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_RESIZE; }
     void accept (Visitor& v) override;
 };
@@ -251,12 +257,11 @@ public:
 class Turn : public SourceCallback
 {
     float speed_;
-    float start_;
+    float angle_;
     float duration_;
-    float progress_;
 
 public:
-    Turn(float speed = 0.f, float ms = 0.f);
+    Turn(float speed = 0.f, float ms = FLT_MAX);
 
     float value () const { return speed_; }
     void  setValue (float d) { speed_ = d; }
@@ -266,6 +271,7 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;
 };

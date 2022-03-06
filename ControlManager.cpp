@@ -35,6 +35,7 @@
 #include "ActionManager.h"
 #include "SystemToolkit.h"
 #include "tinyxml2Toolkit.h"
+#include "Metronome.h"
 
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
@@ -588,7 +589,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new Loom(x), true );
+            target->call( new Loom(x, 0.f), true );
             // this will require to send feedback status about source
             send_feedback = true;
         }
@@ -608,13 +609,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
             float x = 0.f, y = 0.f;
             arguments >> x >> y >> osc::EndMessage;
-            target->call( new Grab( x, y), true );
+            target->call( new Grab( x, y, 0.f), true );
         }
         /// e.g. '/vimix/current/scale ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
             float x = 0.f, y = 0.f;
             arguments >> x >> y >> osc::EndMessage;
-            target->call( new Resize( x, y), true );
+            target->call( new Resize( x, y, 0.f), true );
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
@@ -624,7 +625,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> osc::EndMessage;
             else // ignore second argument
                 arguments >> y >> osc::EndMessage;
-            target->call( new Turn( x ), true );
+            target->call( new Turn( x, 0.f), true );
         }
         /// e.g. '/vimix/current/reset'
         else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {
@@ -871,6 +872,7 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
     socket.Send( p.Data(), p.Size() );
 }
 
+
 void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int mods)
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
@@ -894,7 +896,7 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
     }
 }
 
-bool Control::inputActive(uint id)
+bool Control::inputActive (uint id)
 {
     input_access_.lock();
     const bool ret = input_active[MIN(id,INPUT_MAX)];
@@ -903,7 +905,7 @@ bool Control::inputActive(uint id)
     return ret && !Settings::application.mapping.disabled;
 }
 
-float Control::inputValue(uint id)
+float Control::inputValue (uint id)
 {
     input_access_.lock();
     const float ret = input_values[MIN(id,INPUT_MAX)];
