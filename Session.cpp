@@ -785,7 +785,7 @@ void Session::deleteSourceCallbacks(uint input)
                 delete k->second.model_;
             if (k->second.reverse_)
                 delete k->second.reverse_;
-            input_callbacks_.erase(k);
+            k = input_callbacks_.erase(k);
         }
         else
             ++k;
@@ -801,7 +801,7 @@ void Session::deleteSourceCallbacks(Source *source)
                 delete k->second.model_;
             if (k->second.reverse_)
                 delete k->second.reverse_;
-            input_callbacks_.erase(k);
+            k = input_callbacks_.erase(k);
         }
         else
             ++k;

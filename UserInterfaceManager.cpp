@@ -1365,38 +1365,38 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::Spacing();
-    ImGui::Text("\nvimix is built using the following libraries:");
+    ImGui::Separator();
+    ImGui::Text("vimix is built using the following libraries:");
 
-//    tinyfd_inputBox("tinyfd_query", NULL, NULL);
-//    ImGui::Text("- Tinyfiledialogs v%s mode '%s'", tinyfd_version, tinyfd_response);
+    if ( ImGui::Button("About Dear ImGui (build information)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_imgui_about = true;
+
+    if ( ImGui::Button("About GStreamer (plugins)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_gst_about = true;
+
+    if ( ImGui::Button("About OpenGL (runtime extensions)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_opengl_about = true;
 
     ImGui::Columns(3, "abouts");
     ImGui::Separator();
-
-    ImGui::Text("Dear ImGui");
-    ImGui::PushID("dearimguiabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_imgui_about = true;
-    ImGui::PopID();
+    ImGuiToolkit::ButtonOpenUrl("glad", "https://glad.dav1d.de", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
-
-    ImGui::Text("GStreamer");
-    ImGui::PushID("gstreamerabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_gst_about = true;
-    ImGui::PopID();
+    ImGuiToolkit::ButtonOpenUrl("glfw3", "http://www.glfw.org", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
+    ImGuiToolkit::ButtonOpenUrl("glm", "https://glm.g-truc.net", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
-    ImGui::Text("OpenGL");
-    ImGui::PushID("openglabout");
-    if ( ImGui::Button("More info", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_opengl_about = true;
-    ImGui::PopID();
+    ImGui::NextColumn();
+    ImGuiToolkit::ButtonOpenUrl("OSCPack", "http://www.rossbencina.com/code/oscpack", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+    ImGui::NextColumn();
+    ImGuiToolkit::ButtonOpenUrl("TinyXML2", "https://github.com/leethomason/tinyxml2.git", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+    ImGui::NextColumn();
+    ImGuiToolkit::ButtonOpenUrl("STB", "https://github.com/nothings/stb", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::Columns(1);
-
 
     ImGui::End();
 }
@@ -1651,7 +1651,7 @@ void HelperToolbox::Render()
     ImGui::SetNextWindowSize(ImVec2(460, 800), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
 
-    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
+    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
     {
         ImGui::End();
         return;
@@ -1677,7 +1677,7 @@ void HelperToolbox::Render()
 
             // output manager menu
             ImGui::Separator();
-            if ( ImGui::MenuItem( ICON_FA_TIMES "  Close") )
+            if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_HELP) )
                 Settings::application.widget.help = false;
 
             ImGui::EndMenu();
@@ -1807,6 +1807,29 @@ void HelperToolbox::Render()
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Group"); ImGui::NextColumn();
         ImGui::Text ("Group of sources rendered together after flattenning them in Layers view.");
+
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Inputs"))
+    {
+        ImGui::Columns(2, "inputcolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+
+        ImGui::Text(ICON_FA_KEYBOARD "  Keyboard"); ImGui::NextColumn();
+        ImGui::Text ("React to key press on standard keyboard, covering 25 keys from [A] to [Y], without modifier.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CALCULATOR "   Numpad"); ImGui::NextColumn();
+        ImGui::Text ("React to key press on numerical keypad, covering 15 keys from [0] to [9] and including [ . ], [ + ], [ - ], [ * ], [ / ], without modifier.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_TABLET_ALT "   TouchOSC"); ImGui::NextColumn();
+        ImGui::Text ("React to OSC events sent in a local betwork by TouchOSC.");
+        ImGuiToolkit::ButtonOpenUrl("Install TouchOSC", "https://github.com/brunoherbelin/vimix/wiki/TouchOSC-companion", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_GAMEPAD " Gamepad"); ImGui::NextColumn();
+        ImGui::Text ("React to button press and axis movement on a gamepad or a joystick. Only the first plugged device is considered.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -4658,7 +4681,8 @@ void InputMappingInterface::Render()
         }
 
         // Options for current key
-        const std::string keymenu = ICON_FA_HAND_POINT_RIGHT "  Input " + Control::manager().inputLabel(current_input_);
+        const std::string key = (current_input_ < INPUT_NUMPAD_LAST) ? "  Key " : "  ";
+        const std::string keymenu = ICON_FA_HAND_POINT_RIGHT + key + Control::manager().inputLabel(current_input_);
         if (ImGui::BeginMenu(keymenu.c_str()) )
         {
             if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Reset mapping", NULL, false, S->inputAssigned(current_input_) ) )
@@ -4683,18 +4707,15 @@ void InputMappingInterface::Render()
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu(ICON_FA_COPY "  Duplicate"))
+            std::list<uint> models = S->assignedInputs();
+            if (ImGui::BeginMenu(ICON_FA_COPY "  Duplicate", models.size() > 0) )
             {
-                // static var for the copy-paste mechanism
-                static uint _copy_current_input = INPUT_UNDEFINED;
-                // 2) Copy (if there are callbacks assigned)
-                if (ImGui::MenuItem("Copy", NULL, false, S->inputAssigned(current_input_) ))
-                    // Remember the index of the input to copy
-                    _copy_current_input = current_input_;
-                // 3) Paste (if copied input index is assigned)
-                if (ImGui::MenuItem("Paste", NULL, false, S->inputAssigned(current_input_) )) {
-                    // copy source callbacks from rememberd index to current input index
-                    S->copySourceCallback(_copy_current_input, current_input_);
+                for (auto m = models.cbegin(); m != models.cend(); ++m) {
+                    if ( *m != current_input_ )   {
+                        if ( ImGui::MenuItem( Control::inputLabel( *m ).c_str() ) ){
+                            S->copySourceCallback( *m, current_input_);
+                        }
+                    }
                 }
                 ImGui::EndMenu();
             }
@@ -4745,7 +4766,7 @@ void InputMappingInterface::Render()
             // if user clics and drags an assigned key icon...
             if (S->inputAssigned(ik) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_KEYBOARD", &ik, sizeof(uint));
-                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
+                ImGui::Text( ICON_FA_HAND_POINT_RIGHT " %s ", Control::manager().inputLabel(ik).c_str());
                 ImGui::EndDragDropSource();
             }
             // ...and drops it onto another key icon
@@ -4822,7 +4843,7 @@ void InputMappingInterface::Render()
             // if user clics and drags an assigned key icon...
             if (S->inputAssigned(ik) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_NUMPAD", &ik, sizeof(uint));
-                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ik).c_str());
+                ImGui::Text( ICON_FA_HAND_POINT_RIGHT " %s ", Control::manager().inputLabel(ik).c_str());
                 ImGui::EndDragDropSource();
             }
             // ...and drops it onto another key icon
@@ -4893,7 +4914,26 @@ void InputMappingInterface::Render()
                 current_input_ = it;
             ImGui::PopID();
 
-            // TODO DragN DROP
+            // if user clics and drags an assigned key icon...
+            if (S->inputAssigned(it) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                ImGui::SetDragDropPayload("DND_MULTITOUCH", &it, sizeof(uint));
+                ImGui::Text( ICON_FA_HAND_POINT_RIGHT " %s ", Control::manager().inputLabel(it).c_str());
+                ImGui::EndDragDropSource();
+            }
+            // ...and drops it onto another key icon
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_MULTITOUCH")) {
+                    if ( payload->DataSize == sizeof(uint) ) {
+                        // drop means change key of input callbacks
+                        uint previous_input_key = *(const int*)payload->Data;
+                        // swap
+                        S->swapSourceCallback(previous_input_key, it);
+                        // switch to this key
+                        current_input_ = it;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
 
             // 4 elements in a row
             if ((t % 4) < 3) ImGui::SameLine();
@@ -4971,7 +5011,7 @@ void InputMappingInterface::Render()
             // if user clics and drags an assigned key icon...
             if (S->inputAssigned(ig) && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 ImGui::SetDragDropPayload("DND_GAMEPAD", &ig, sizeof(uint));
-                ImGui::Text( ICON_FA_CUBE " %s ", Control::manager().inputLabel(ig).c_str());
+                ImGui::Text( ICON_FA_HAND_POINT_RIGHT " %s ", Control::manager().inputLabel(ig).c_str());
                 ImGui::EndDragDropSource();
             }
             // ...and drops it onto another key icon
@@ -5091,6 +5131,9 @@ void InputMappingInterface::Render()
 
         float w = ImGui::GetWindowWidth() *0.25f;
 
+        ///
+        /// list of input callbacks for the current input
+        ///
         if (S->inputAssigned(current_input_)) {
 
             auto result = S->getSourceCallbacks(current_input_);
@@ -5150,7 +5193,9 @@ void InputMappingInterface::Render()
             ImGui::Text("No action mapped to this input. Add one with +.");
         }
 
-        // Add a new interface
+        ///
+        /// Add a new interface
+        ///
         static bool temp_new_input = false;
         static Source *temp_new_source = nullptr;
         static uint temp_new_callback = 0;
@@ -5192,6 +5237,15 @@ void InputMappingInterface::Render()
                     temp_new_input = false;
                 }
             }
+        }
+
+        ///
+        /// Sync info lower right corner
+        ///
+        Metronome::Synchronicity sync = S->inputSynchrony(current_input_);
+        if ( sync > Metronome::SYNC_NONE) {
+            ImGui::SetCursorPos(ImGui::GetWindowSize() - ImVec2(50, 50));
+            ImGuiToolkit::Icon( sync > Metronome::SYNC_BEAT ? 7 : 6, 13);
         }
 
         // close child window
