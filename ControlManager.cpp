@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -403,7 +403,6 @@ bool Control::init()
 
 void Control::update()
 {
-
     // read joystick buttons
     int num_buttons = 0;
     const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
@@ -438,6 +437,21 @@ void Control::update()
         }
     }
 
+    // draft : react to metronome
+    //    int p = (int) Metronome::manager().phase();
+    //    static bool bip = false;
+    //    static int t = 2;
+    //    if (!bip) {
+    //        if (p + 1 == t){
+    //            g_print("bip");
+    //            bip = true;
+    //        }
+    //    }
+    //    else {
+    //        if (p + 1 != t){
+    //            bip = false;
+    //        }
+    //    }
 }
 
 void Control::listen()
@@ -943,7 +957,7 @@ std::string Control::inputLabel(uint id)
     }
     else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
     {
-
+        label = std::string( "Custom ") + std::to_string(id - INPUT_CUSTOM_FIRST);
     }
 
     return label;

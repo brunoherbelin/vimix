@@ -59,10 +59,10 @@ namespace ableton
       return sessionState.beatAtTime(now(), mQuantum);
     }
 
-    std::chrono::microseconds timeNextBeat() const
+    std::chrono::microseconds timeNextBeat(std::chrono::microseconds now) const
     {
         auto sessionState = mLink.captureAppSessionState();
-        double beat = ceil(sessionState.beatAtTime(now(), mQuantum));
+        double beat = ceil(sessionState.beatAtTime(now, mQuantum));
         return sessionState.timeAtBeat(beat, mQuantum);
     }
 
@@ -72,11 +72,11 @@ namespace ableton
       return sessionState.phaseAtTime(now(), mQuantum);
     }
 
-    std::chrono::microseconds timeNextPhase() const
+    std::chrono::microseconds timeNextPhase(std::chrono::microseconds now) const
     {
         auto sessionState = mLink.captureAppSessionState();
-        double phase = ceil(sessionState.phaseAtTime(now(), mQuantum));
-        double beat = ceil(sessionState.beatAtTime(now(), mQuantum));
+        double phase = ceil(sessionState.phaseAtTime(now, mQuantum));
+        double beat = ceil(sessionState.beatAtTime(now, mQuantum));
         return sessionState.timeAtBeat(beat + (mQuantum-phase), mQuantum);
     }
 
@@ -223,12 +223,14 @@ void Metronome::restart()
 
 std::chrono::microseconds Metronome::timeToBeat()
 {
-    return engine_.timeNextBeat() - engine_.now();
+    std::chrono::microseconds now = engine_.now();
+    return engine_.timeNextBeat( now ) - now;
 }
 
 std::chrono::microseconds Metronome::timeToPhase()
 {
-    return engine_.timeNextPhase() - engine_.now();
+    std::chrono::microseconds now = engine_.now();
+    return engine_.timeNextPhase( now ) - now;
 }
 
 void delay(std::function<void()> f, std::chrono::microseconds us)
