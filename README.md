@@ -69,15 +69,26 @@ Compile (or re-compile after pull):
 **Libraries:**
 
 - gstreamer
-- gst-plugins : libav, base, good, bad & ugly
+- gst-plugins (libav, base, good, bad & ugly)
 - libglfw3
-- libicu
+- libicu (icu-i18n icu-uc icu-io)
+
+Optionnal:
+
+- glm
+- stb
+- TinyXML2
+- AbletonLink
 
 #### Install Dependencies
 
 **Ubuntu**
 
     $ apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav libicu-dev libgtk-3-dev 
+
+Optionnal:
+
+    $ apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
 
 **OSX with Brew**
 
