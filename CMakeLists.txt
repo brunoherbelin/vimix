@@ -29,7 +29,7 @@ endif()
 set(CMAKE_INCLUDE_CURRENTDIR ON)
 
 # Find the cmake modules
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules )
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /usr/share/cmake ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules )
 include(MacroLogFeature)
 include(MacroFindGStreamerLibrary)
 
@@ -63,6 +63,12 @@ elseif(WIN32)
     add_definitions(-DMINGW32)
 endif()
 
+# static sub packages in ext
+set(BUILD_STATIC_LIBS ON)
+
+#####
+##### Dependencies
+#####
 
 # Basics
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -80,7 +86,6 @@ macro_log_feature(PNG_FOUND "PNG" "Portable Network Graphics" "http://www.libpng
 #
 # GSTREAMER
 #
-
 find_package(GStreamer 1.0.0 COMPONENTS base)
 macro_log_feature(GSTREAMER_FOUND "GStreamer"
 "Open Source Multiplatform Multimedia Framework"
@@ -125,31 +130,95 @@ else ()
 endif()
 macro_log_feature(GLFW3_FOUND "glfw3" "Open Source multi-platform library for OpenGL" "http://www.glfw.org" TRUE)
 
-
-macro_display_feature_log()
-
-# static sub packages in ext
-set(BUILD_STATIC_LIBS ON)
-
 #
 # GLM
 #
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
-message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm")
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(GLM QUIET glm>=0.9.9)
+else ()
+    find_package(glm QUIET)
+endif()
+
+if (GLM_FOUND)
+    macro_log_feature(GLM_FOUND "GLM" "OpenGL mathematics" "https://glm.g-truc.net" TRUE)
+else ()
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
+    message(STATUS "Compiling 'GLM' OpenGL mathematics https://glm.g-truc.net -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm")
+endif()
+
+#
+# TINY XML 2
+#
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(TINYXML2 QUIET tinyxml2>=8.0)
+else ()
+    find_package(tinyxml2 QUIET)
+endif()
+
+if (TINYXML2_FOUND)
+    macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" TRUE)
+else ()
+    add_library(tinyxml2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2/tinyxml2.cpp")
+    set(TINYXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
+    set(TINYXML2_LIBRARIES -ltinyxml2)
+    message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIRS}")
+endif()
+
+#
+# STB
+#
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(STB QUIET stb)
+else ()
+    find_package(stb QUIET)
+endif()
+
+if (STB_FOUND)
+    macro_log_feature(STB_FOUND "STB" "single-file image and audio processing" "https://github.com/nothings/stb" TRUE)
+else ()
+    set(STB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
+    message(STATUS "Including 'STB' single-file image and audio processing from https://github.com/nothings/stb -- ${STB_INCLUDE_DIRS}")
+endif()
 
 #
 # Ableton LINK
 #
-#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/link)
-include(${CMAKE_CURRENT_SOURCE_DIR}/ext/link/AbletonLinkConfig.cmake)
-message(STATUS "Compiling Ableton 'Link' https://github.com/Ableton/link -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/link")
+find_package(AbletonLink QUIET)
+
+if (AbletonLink_FOUND)
+    macro_log_feature(AbletonLink_FOUND "AbletonLink" "Ableton Link synchronizer" "https://github.com/Ableton/link" TRUE)
+else ()
+    include(${CMAKE_CURRENT_SOURCE_DIR}/ext/link/AbletonLinkConfig.cmake)
+    message(STATUS "Compiling with Ableton Link https://github.com/Ableton/link -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/link")
+endif()
 
 #
-# GLAD
+# FILE DIALOG: use tinyfiledialog for all except Linux
 #
-set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
-add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Compiling 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}")
+if(UNIX)
+    if (APPLE)
+        set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
+        add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
+        message(STATUS "Compiling 'TinyFileDialog' from https://git.code.sf.net/p/tinyfiledialogs/code -- ${TINYFD_INCLUDE_DIR}.")
+        set(TINYFD_LIBRARY TINYFD)
+    endif()
+else()
+    set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
+    add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
+    message(STATUS "Compiling 'TinyFileDialog' from https://git.code.sf.net/p/tinyfiledialogs/code -- ${TINYFD_INCLUDE_DIR}.")
+    set(TINYFD_LIBRARY TINYFD)
+endif()
+
+#
+# DIRENT (windows only)
+if(WIN32)
+    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/Dirent/include)
+    message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
+endif()
+
+#####
+##### Custom built libraries
+#####
 
 #
 # DEAR IMGUI
@@ -162,17 +231,11 @@ set(IMGUI_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/examples/imgui_impl_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/examples/imgui_impl_opengl3.cpp
 )
+add_definitions(-DIMGUI_USE_STB_SPRINTF)
 set(IMGUI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui)
 add_library(IMGUI "${IMGUI_SRCS}")
 target_compile_definitions(IMGUI PRIVATE "IMGUI_IMPL_OPENGL_LOADER_GLAD")
 message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIR}")
-
-#
-# TINY XML 2
-#
-set(TINYXML2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
-add_library(TINYXML2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2/tinyxml2.cpp")
-message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIR}")
 
 #
 # OSCPack
@@ -196,21 +259,11 @@ add_library(OSCPACK "${OSCPACK_SRCS}")
 message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}")
 
 #
-# FILE DIALOG: use tinyfiledialog for all except Linux
+# GLAD
 #
-if(UNIX)
-    if (APPLE)
-        set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
-        add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
-        message(STATUS "Compiling 'TinyFileDialog' from https://git.code.sf.net/p/tinyfiledialogs/code -- ${TINYFD_INCLUDE_DIR}.")
-        set(TINYFD_LIBRARY TINYFD)
-    endif()
-else()
-    set(TINYFD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd)
-    add_library(TINYFD "${CMAKE_CURRENT_SOURCE_DIR}/ext/tfd/tinyfiledialogs.c")
-    message(STATUS "Compiling 'TinyFileDialog' from https://git.code.sf.net/p/tinyfiledialogs/code -- ${TINYFD_INCLUDE_DIR}.")
-    set(TINYFD_LIBRARY TINYFD)
-endif()
+set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
+add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
+message(STATUS "Including 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}")
 
 #
 # ImGui Color Text Editor
@@ -221,23 +274,12 @@ set(IMGUITEXTEDIT_SRC
 )
 message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}")
 
-#
-# STB
-#
-set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
-add_definitions(-DIMGUI_USE_STB_SPRINTF)
-message(STATUS "Including 'STB Nothings' from https://github.com/nothings/stb -- ${STB_INCLUDE_DIR}")
 
-#
-# DIRENT (windows only)
-if(WIN32)
-    set(DIRENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/Dirent/include)
-    message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
-endif()
+macro_display_feature_log()
 
-#
-#  Application
-#
+#####
+##### Application
+#####
 
 # Setup the environment
 include_directories(
@@ -256,9 +298,9 @@ include_directories(
     ${IMGUI_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}/examples
     ${IMGUITEXTEDIT_INCLUDE_DIR}
-    ${TINYXML2_INCLUDE_DIR}
+    ${TINYXML2_INCLUDE_DIRS}
     ${TINYFD_INCLUDE_DIR}
-    ${STB_INCLUDE_DIR}
+    ${STB_INCLUDE_DIRS}
     ${DIRENT_INCLUDE_DIR}
     ${OSCPACK_INCLUDE_DIR}
     ${link_HEADERS}
@@ -507,13 +549,13 @@ target_compile_definitions(${VMIX_BINARY} PUBLIC "IMGUI_IMPL_OPENGL_LOADER_GLAD"
 
 target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     vmix::rc
-    glm::glm
+    ${GLM_LIBRARIES}
     GLAD
-    TINYXML2
     IMGUI
     OSCPACK
     ${TINYFD_LIBRARY}
     ${GLFW3_LIBRARIES}
+    ${TINYXML2_LIBRARIES}
     ${ICU_LIBRARIES}
     ${CMAKE_DL_LIBS}
     ${GOBJECT_LIBRARIES}
