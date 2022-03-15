@@ -938,12 +938,14 @@ std::string Control::inputLabel(uint id)
     }
     else if ( id >= INPUT_NUMPAD_FIRST && id <= INPUT_NUMPAD_LAST )
     {
-        int k = GLFW_KEY_KP_0 + id -INPUT_NUMPAD_FIRST;
-        label = std::string( glfwGetKeyName( k, glfwGetKeyScancode(k) ) );
+        static std::vector< std::string > pad_labels = { "0", "1", "2", "3", "4", "5",
+                                                  "6", "7", "8", "9", ".", "/", "*", "-", "+"
+                                                };
+        label = pad_labels[id -INPUT_NUMPAD_FIRST];
     }
     else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
     {
-        std::vector< std::string > joystick_labels = { "Button A", "Button B", "Button X", "Button Y",
+        static std::vector< std::string > joystick_labels = { "Button A", "Button B", "Button X", "Button Y",
                                                        "Left bumper", "Right bumper", "Back", "Start",
                                                        "Guide", "Left thumb", "Right thumb",
                                                        "Up", "Right", "Down", "Left",
