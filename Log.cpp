@@ -284,7 +284,7 @@ void Log::Render(bool *showWarnings)
             ImGuiToolkit::Icon(9, 4);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(width);
-            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occured.\n\n", warnings.size());
+            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld error(s) occurred.\n\n", warnings.size());
             ImGui::Dummy(ImVec2(width, 0));
 
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);

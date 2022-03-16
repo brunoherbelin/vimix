@@ -111,7 +111,7 @@ public:
      * */
     bool isOpen() const;
     /**
-     * True if problem occured
+     * True if problem occurred
      * */
     bool failed() const;
     /**

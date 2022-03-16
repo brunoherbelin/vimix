@@ -1783,7 +1783,7 @@ void HelperToolbox::Render()
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
-        ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emmitted on the network (e.g. broadcasted by vimix).");
+        ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emitted on the network (e.g. broadcasted by vimix).");
         ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(ICON_FA_COG); ImGui::NextColumn();
@@ -6401,7 +6401,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::HelpToolTip("Select the history of recently opened files or a folder. "
                              "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
-                             "performs cross fading to the openned session.");
+                             "performs cross fading to the opened session.");
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");

@@ -72,12 +72,12 @@ std::string BaseToolkit::uniqueName(const std::string &basename, std::list<std::
 
 std::string BaseToolkit::transliterate(const std::string &input)
 {
-    // because icu::Transliterator is slow, we keep a dictionnary of already
+    // because icu::Transliterator is slow, we keep a dictionary of already
     // transliterated texts to be faster during repeated calls (update of user interface)
-    static std::map<std::string, std::string> dictionnary_;
-    std::map<std::string, std::string>::const_iterator existingentry = dictionnary_.find(input);
+    static std::map<std::string, std::string> dictionary_;
+    std::map<std::string, std::string>::const_iterator existingentry = dictionary_.find(input);
 
-    if (existingentry == dictionnary_.cend()) {
+    if (existingentry == dictionary_.cend()) {
 
         auto ucs = icu::UnicodeString::fromUTF8(input);
 
@@ -96,11 +96,11 @@ std::string BaseToolkit::transliterate(const std::string &input)
         output << ucs;
 
         // remember for future
-        dictionnary_[input] = output.str();
+        dictionary_[input] = output.str();
     }
 
     // return remembered transliterated text
-    return dictionnary_[input];
+    return dictionary_[input];
 }
 
 

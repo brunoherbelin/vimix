@@ -444,7 +444,7 @@ void MediaPlayer::Frame::unmap()
 
 void MediaPlayer::close()
 {
-    // not openned?
+    // not opened?
     if (!opened_) {
         // wait for loading to finish
         if (discoverer_.valid())

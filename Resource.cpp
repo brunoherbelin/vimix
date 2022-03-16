@@ -122,7 +122,7 @@ const char *Resource::getData(const std::string& path, size_t* out_file_size){
         data = static_cast<const char *>(it);
     }
     catch (const std::system_error &e) {
-        Log::Error("Could not access ressource %s", std::string(path).c_str());
+        Log::Error("Could not access resource %s", std::string(path).c_str());
 	}
 
     return data;
@@ -138,7 +138,7 @@ std::string Resource::getText(const std::string& path){
     	file_stream << std::string(file.begin(), file.end()) << std::endl;
     }
     catch (const std::system_error &e) {
-        Log::Error("Could not access ressource %s", std::string(path).c_str());
+        Log::Error("Could not access resource %s", std::string(path).c_str());
 	}
 
 	return file_stream.str();
@@ -162,14 +162,14 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
     size_t size = 0;
     const char *fp = getData(path, &size);
     if ( size==0 ){
-        Log::Error("Could not open ressource %s: empty?", std::string(path).c_str());
+        Log::Error("Could not open resource %s: empty?", std::string(path).c_str());
         return 0;
     }
 
 	// verify the type of file = bytes [0 - 3]
     const char *filecode = fp;
     if (strncmp(filecode, "DDS ", 4) != 0){
-        Log::Error("Could not open DDS ressource %s: wrong format.", std::string(path).c_str());
+        Log::Error("Could not open DDS resource %s: wrong format.", std::string(path).c_str());
         return 0;
     }
 
@@ -201,13 +201,13 @@ uint Resource::getTextureDDS(const std::string& path, float *aspect_ratio)
 		break;
 	default:
         {
-        Log::Error("Could not open DDS ressource %s: Not a DXT1, DXT3 or DXT5 texture.",std::string(path).c_str());
+        Log::Error("Could not open DDS resource %s: Not a DXT1, DXT3 or DXT5 texture.",std::string(path).c_str());
         return 0;
         }
 	}
 
     if (height == 0 || bufsize == 0){
-        Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        Log::Error("Invalid image in resource %s", std::string(path).c_str());
         return 0;
     }
     float ar = static_cast<float>(width) / static_cast<float>(height);
@@ -259,7 +259,7 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
         return getTextureDDS(path, aspect_ratio);
     }
 
-    // return previously openned resource if already openned before
+    // return previously opened resource if already open
     if (textureIndex.count(path) > 0) {
         if (aspect_ratio) *aspect_ratio = textureAspectRatio[path];
 		return textureIndex[path];
@@ -274,17 +274,17 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
     size_t size = 0;
     const char *fp = getData(path, &size);
     if ( size==0 ){
-        Log::Error("Could not open ressource %s: empty?",std::string(path).c_str());
+        Log::Error("Could not open resource %s: empty?",std::string(path).c_str());
         return 0;
     }
 
 	img = stbi_load_from_memory(reinterpret_cast<const unsigned char *>(fp), size, &w, &h, &n, 4);
 	if (img == NULL) {
-        Log::Error("Failed to open ressource %s: %s", std::string(path).c_str(), stbi_failure_reason() );
+        Log::Error("Failed to open resource %s: %s", std::string(path).c_str(), stbi_failure_reason() );
 	 	return 0;
 	}
     if (h == 0){
-        Log::Error("Invalid image in ressource %s", std::string(path).c_str());
+        Log::Error("Invalid image in resource %s", std::string(path).c_str());
         stbi_image_free(img);
         return 0;
     }

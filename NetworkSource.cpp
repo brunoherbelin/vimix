@@ -285,7 +285,7 @@ void NetworkStream::update()
                 pipelinestring.append(" ! videoconvert ");
 
 #ifdef NETWORK_DEBUG
-            Log::Info("Openning pipeline %s", pipelinestring.c_str());
+            Log::Info("Opening pipeline %s", pipelinestring.c_str());
 #endif
                 // open the pipeline with generic stream class
                 Stream::open(pipelinestring, config_.width, config_.height);

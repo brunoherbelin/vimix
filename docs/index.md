@@ -2,10 +2,10 @@ vimix performs **graphical mixing and blending** of several movie clips and
 computer generated graphics, with image processing effects in real-time.
 
 Its intuitive and hands-on user interface gives direct control on image opacity and
-shape for producing live graphics during concerts and VJ-ing sessions.
+shape for producing live graphics during concerts or VJ-ing sessions.
 
-The ouput image is typically projected full-screen on an external
-monitor or a projector, but can be streamed or recorded live (no audio).
+The output image is typically projected full-screen on an external
+monitor or a projector, but can be streamed live (SRT) or recorded (no audio).
 
 ![screenshot](vimix_0.2_beta.jpg)
 
@@ -31,7 +31,7 @@ Download package from [Github Releases](https://github.com/brunoherbelin/vimix/r
 ## Control vimix with OSC
 
 You can control remotely vimix with [OSC](https://en.wikipedia.org/wiki/Open_Sound_Control), using [TouchOSC Mk1](https://github.com/brunoherbelin/vimix/wiki/TouchOSC-companion)
-or using the [vimix OSC API](https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API) from your other OSC applications.
+or using the [vimix OSC API](https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API) from your OSC applications.
 
 ## About
 
@@ -42,7 +42,7 @@ from these 10 years of refinement of User-Experience design since its [first dra
 
 vimix is in its early infancy, open to [features requests and bugs reports](https://github.com/brunoherbelin/vimix/issues).
 
-vimix welcomes contributions and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info
+vimix welcomes contributions and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info.
 
 
 

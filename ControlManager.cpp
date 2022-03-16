@@ -327,12 +327,12 @@ void Control::loadOscConfig()
 
 void Control::resetOscConfig()
 {
-    // generate a template xml translation dictionnary
+    // generate a template xml translation dictionary
     tinyxml2::XMLDocument xmlDoc;
     tinyxml2::XMLDeclaration *pDec = xmlDoc.NewDeclaration();
     xmlDoc.InsertFirstChild(pDec);
     tinyxml2::XMLComment *pComment = xmlDoc.NewComment("The OSC translator converts OSC address patterns into other ones.\n"
-                                                       "Complete the dictionnary by adding as many <osc> translations as you want.\n"
+                                                       "Complete the dictionary by adding as many <osc> translations as you want.\n"
                                                        "Each <osc> should contain a <from> pattern to translate into a <to> pattern.\n"
                                                        "More at https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API.");
     xmlDoc.InsertEndChild(pComment);

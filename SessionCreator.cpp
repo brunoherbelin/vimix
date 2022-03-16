@@ -103,7 +103,7 @@ void SessionCreator::load(const std::string& filename)
 {
     XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
     if ( XMLResultError(eResult)){
-        Log::Warning("%s could not be openned.", filename.c_str());
+        Log::Warning("%s could not be opened.", filename.c_str());
         return;
     }
 

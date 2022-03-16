@@ -77,7 +77,7 @@ void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string no
         sessionNode->SetAttribute("label", label.c_str() );
         // label describes the action
         sessionNode->SetAttribute("date", SystemToolkit::date_time_string().c_str() );
-        // view indicates the view when this action occured
+        // view indicates the view when this action occurred
         sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
 
         // get the thumbnail (requires one opengl update to render)
@@ -482,7 +482,7 @@ static void saveSnapshot(const std::string& filename, tinyxml2::XMLElement *snap
     tinyxml2::XMLDocument xmlDoc;
     XMLError eResult = xmlDoc.LoadFile(filename.c_str());
     if ( XMLResultError(eResult)){
-        Log::Warning("%s could not be openned for re-export.", filename.c_str());
+        Log::Warning("%s could not be opened for re-export.", filename.c_str());
         return;
     }
     XMLElement *header = xmlDoc.FirstChildElement(APP_NAME);

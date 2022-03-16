@@ -336,7 +336,7 @@ void Stream::Frame::unmap()
 
 void Stream::close()
 {
-    // not openned?
+    // not opened?
     if (!opened_) {
         // wait for loading to finish
         if (discoverer_.valid())

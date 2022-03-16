@@ -56,7 +56,7 @@ namespace ImGuiToolkit
 
     void ValueBar(float fraction, const ImVec2& size_arg);
 
-    // fonts from ressources 'fonts/'
+    // fonts from resources 'fonts/'
     typedef enum {
         FONT_DEFAULT =0,
         FONT_BOLD,
