@@ -840,7 +840,7 @@ void TextureView::draw()
                 // disabled info
                 else {
                     ImGui::SameLine(0, 60);
-                    ImGui::TextDisabled( MaskShader::mask_shapes[shape] );
+                    ImGui::TextDisabled( "%s", MaskShader::mask_shapes[shape] );
                     ImGui::SameLine();
                     ImGui::TextDisabled( "mask");
                 }

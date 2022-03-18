@@ -475,7 +475,7 @@ void UserInterface::handleMouse()
     }
 
     // if not on any window
-    if ( !ImGui::IsAnyWindowHovered() && !ImGui::IsAnyWindowFocused() )
+    if ( !ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !ImGui::IsWindowFocused(ImGuiHoveredFlags_AnyWindow) )
     {
         //
         // Mouse wheel over background
