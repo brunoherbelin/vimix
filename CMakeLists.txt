@@ -227,8 +227,17 @@ endif()
 #####
 
 #
+# GLAD
+#
+set(GLAD_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
+add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
+message(STATUS "Including 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIRS}")
+
+#
 # DEAR IMGUI
 #
+set(IMGUI_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui)
+set(IMGUI_BACKEND_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/examples)
 set(IMGUI_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui//imgui_demo.cpp
@@ -236,12 +245,13 @@ set(IMGUI_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui//imgui_widgets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/examples/imgui_impl_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/examples/imgui_impl_opengl3.cpp
-)
-add_definitions(-DIMGUI_USE_STB_SPRINTF)
-set(IMGUI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui)
+    )
 add_library(IMGUI "${IMGUI_SRCS}")
 target_compile_definitions(IMGUI PRIVATE "IMGUI_IMPL_OPENGL_LOADER_GLAD")
-message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIR}")
+target_compile_definitions(IMGUI PRIVATE "IMGUI_USE_STB_SPRINTF")
+set(IMGUI_LIBRARIES IMGUI)
+message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIRS}")
+
 
 #
 # OSCPack
@@ -265,13 +275,6 @@ add_library(OSCPACK "${OSCPACK_SRCS}")
 message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}")
 
 #
-# GLAD
-#
-set(GLAD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/include)
-add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Including 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIR}")
-
-#
 # ImGui Color Text Editor
 #
 set(IMGUITEXTEDIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit)
@@ -280,7 +283,60 @@ set(IMGUITEXTEDIT_SRC
 )
 message(STATUS "Including 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}")
 
+##
+## Fonts
+##
 
+file(GLOB_RECURSE ROBOTO_REGULAR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Regular.ttf")
+if(NOT ROBOTO_REGULAR)
+    file(GLOB_RECURSE ROBOTO_REGULAR "/usr/share/fonts/*/Roboto-Regular.ttf")
+    message(STATUS "Copy ${ROBOTO_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${ROBOTO_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(ROBOTO_REGULAR "./rsc/fonts/Roboto-Regular.ttf")
+endif()
+
+file(GLOB_RECURSE ROBOTO_BOLD RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Bold.ttf")
+if(NOT ROBOTO_BOLD)
+    file(GLOB_RECURSE ROBOTO_BOLD "/usr/share/fonts/*/Roboto-Bold.ttf")
+    message(STATUS "Copy ${ROBOTO_BOLD} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${ROBOTO_BOLD} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(ROBOTO_BOLD "./rsc/fonts/Roboto-Bold.ttf")
+endif()
+
+file(GLOB_RECURSE ROBOTO_ITALIC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Italic.ttf")
+if(NOT ROBOTO_ITALIC)
+    file(GLOB_RECURSE ROBOTO_ITALIC "/usr/share/fonts/*/Roboto-Italic.ttf")
+    message(STATUS "Copy ${ROBOTO_ITALIC} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${ROBOTO_ITALIC} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(ROBOTO_ITALIC "./rsc/fonts/Roboto-Italic.ttf")
+endif()
+
+file(GLOB_RECURSE HACK_REGULAR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Hack-Regular.ttf")
+if(NOT HACK_REGULAR)
+    file(GLOB_RECURSE HACK_REGULAR "/usr/share/fonts/*/Hack-Regular.ttf")
+    message(STATUS "Copy ${HACK_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${HACK_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(HACK_REGULAR "./rsc/fonts/Hack-Regular.ttf")
+endif()
+
+file(GLOB_RECURSE AWESOME_SOLID RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "fa-solid-900.ttf")
+if(NOT AWESOME_SOLID)
+    file(GLOB_RECURSE AWESOME_SOLID "/usr/share/fonts/*/fa-solid-900.ttf")
+    message(STATUS "Copy ${AWESOME_SOLID} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${AWESOME_SOLID} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(AWESOME_SOLID "./rsc/fonts/fa-solid-900.ttf")
+endif()
+
+
+file(GLOB_RECURSE AWESOME_REGULAR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "fa-regular-400.ttf")
+if(NOT AWESOME_REGULAR)
+    file(GLOB_RECURSE AWESOME_REGULAR "/usr/share/fonts/*/fa-regular-400.ttf")
+    message(STATUS "Copy ${AWESOME_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
+    file(COPY ${AWESOME_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
+    set(AWESOME_REGULAR "./rsc/fonts/fa-regular-400.ttf")
+endif()
+
+# All done
 macro_display_feature_log()
 
 #####
@@ -300,9 +356,9 @@ include_directories(
     ${ICU_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
     ${GLIB2_INCLUDE_DIR}
-    ${GLAD_INCLUDE_DIR}
-    ${IMGUI_INCLUDE_DIR}
-    ${IMGUI_INCLUDE_DIR}/examples
+    ${GLAD_INCLUDE_DIRS}
+    ${IMGUI_INCLUDE_DIRS}
+    ${IMGUI_BACKEND_INCLUDE_DIRS}
     ${IMGUITEXTEDIT_INCLUDE_DIR}
     ${TINYXML2_INCLUDE_DIRS}
     ${TINYFD_INCLUDE_DIR}
@@ -395,6 +451,12 @@ set(VMIX_SRCS
 
 
 set(VMIX_RSC_FILES
+    ${HACK_REGULAR}
+    ${ROBOTO_REGULAR}
+    ${ROBOTO_BOLD}
+    ${ROBOTO_ITALIC}
+    ${AWESOME_REGULAR}
+    ${AWESOME_SOLID}
     ./rsc/shaders/simple.fs
     ./rsc/shaders/simple.vs
     ./rsc/shaders/image.fs
@@ -407,12 +469,6 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/image.vs
     ./rsc/shaders/imageprocessing.fs
     ./rsc/shaders/imageblending.fs
-    ./rsc/fonts/Hack-Regular.ttf
-    ./rsc/fonts/Roboto-Regular.ttf
-    ./rsc/fonts/Roboto-Bold.ttf
-    ./rsc/fonts/Roboto-Italic.ttf
-    ./rsc/fonts/fa-regular-400.ttf
-    ./rsc/fonts/fa-solid-900.ttf
     ./rsc/images/mask_vignette.png
     ./rsc/images/mask_halo.png
     ./rsc/images/mask_glow.png
@@ -557,8 +613,8 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     vmix::rc
     ${GLM_LIBRARIES}
     GLAD
-    IMGUI
     OSCPACK
+    ${IMGUI_LIBRARIES}
     ${TINYFD_LIBRARY}
     ${GLFW3_LIBRARIES}
     ${TINYXML2_LIBRARIES}
