@@ -64,26 +64,35 @@ int main(int argc, char *argv[])
     // one extra argument is given
     if (argc == 2) {
         std::string argument(argv[1]);
-        if (argument == "--clean" || argument == "-c") {
-            // clean start if requested : Save empty settings before loading
-            Settings::Save();
-            return 0;
-        }
-        else if (argument == "--version" || argument == "-v") {
+        if (argument[0] == '-') {
+            if (argument == "--clean" || argument == "-C") {
+                // clean start if requested : Save empty settings before loading
+                Settings::Save();
+                fprintf(stderr, "%s: clean OK\n", APP_NAME);
+                return 0;
+            }
+            else if (argument == "--version" || argument == "-V") {
 #ifdef VIMIX_VERSION_MAJOR
-            fprintf(stderr, "%s %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
+                fprintf(stderr, "%s: version %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
 #else
-            fprintf(stderr, "%s\n", APP_NAME);
+                fprintf(stderr, "%s\n", APP_NAME);
 #endif
-            return 0;
-        }
-        else if (argument == "--test" || argument == "-t") {
-            if ( !Rendering::manager().init() ) {
-                fprintf(stderr, "%s Failed\n", APP_NAME);
+                return 0;
+            }
+            else if (argument == "--test" || argument == "-T") {
+                if ( !Rendering::manager().init() ) {
+                    fprintf(stderr, "%s: test Failed\n", APP_NAME);
+                    return 1;
+                }
+                fprintf(stderr, "%s: test OK\n", APP_NAME);
+                return 0;
+            }
+            else {
+                fprintf(stderr, "%s: unrecognized option '%s'\n"
+                        "Usage: %s [-V, --version][-T, --test][-C, --clean][FILE]\n",
+                        APP_NAME, argument.c_str(), APP_NAME);
                 return 1;
             }
-            fprintf(stderr, "%s OK\n", APP_NAME);
-            return 0;
         }
         else {
             // try to open the file

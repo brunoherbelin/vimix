@@ -1,0 +1,63 @@
+.\"Created by Bruno Herbelin
+
+.TH vimix 1 "March 2022" "0.7.0" "vimix manpage"
+
+.SH NAME
+vimix \- Video live mixer
+
+..SH SYNOPSIS
+.B vimix
+.RI [ OPTIONS ]
+.RI [ FILE ]
+.br
+
+.SH DESCRIPTION
+.B vimix
+performs graphical mixing and blending of several movie clips and computer generated graphics, with image processing effects in real-time.
+
+Its intuitive and hands-on user interface gives direct control on image opacity and shape for producing live graphics during concerts or VJ-ing sessions.
+
+The output image is typically projected full-screen on an external monitor or a projector, but can be streamed live (SRT) or recorded (no audio).
+
+.SH OPTIONS
+
+.TP
+.BR \-V ", " \-\^\-version
+Output the version number of
+.B vimix
+and exit.
+
+.TP
+.BR \-C ", " \-\^\-clean
+Clean the user stored preferences of
+.B vimix
+and exit.
+
+.TP
+.BR \-T ", " \-\^\-test
+Perform a minimal rendering test and exit.
+
+.SH FILE
+
+Launches 
+.B vimix
+and tries to open the provided session file (.mix extension).
+
+.SH "SEE ALSO"
+.SS "Regular Manual Pages"
+.BR gst-launch-1.0 (1),
+.BR gst-inspect-1.0 (1)
+
+.SS "Documentation"
+A user manual and tutorials are available online (https://github.com/brunoherbelin/vimix/wiki).
+
+.SH BUGS
+.SS "Reporting bugs"
+Report bugs and issues on github (https://github.com/brunoherbelin/vimix).
+
+.SH COPYRIGHT
+GPL3+ license
+.PP
+Copyright (c) 2022 Bruno Herbelin
+.PP
+This document is part of the vimix software.
