@@ -2823,12 +2823,13 @@ void SourceController::RenderSelection(size_t i)
             // select all playable sources
             for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
                 if ( (*s)->playable() ) {
+                    std::string label = std::string((*s)->initials()) + "  - " + (*s)->name();
                     if (std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
-                        if (ImGui::MenuItem( (*s)->name().c_str() , 0, false ))
+                        if (ImGui::MenuItem( label.c_str() , 0, false ))
                             Mixer::manager().session()->addToPlayGroup(i, *s);
                     }
                     else {
-                        if (ImGui::MenuItem( (*s)->name().c_str(), 0, true ))
+                        if (ImGui::MenuItem( label.c_str(), 0, true ))
                             Mixer::manager().session()->removeFromPlayGroup(i, *s);
                     }
                 }
@@ -4390,14 +4391,16 @@ Source *InputMappingInterface::ComboSelectSource(Source *current)
 {
     Source *selected = nullptr;
     std::string label = "Select";
+
     if (current)
-        label = current->name();
+        label = std::string(current->initials()) + "  - " + current->name();
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
         Session *ses = Mixer::manager().session();
         for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
-            if (ImGui::Selectable( (*sit)->name().c_str() )) {
+            label = std::string((*sit)->initials()) + "  - " + (*sit)->name();
+            if (ImGui::Selectable( label.c_str() )) {
                 selected = *sit;
             }
         }
