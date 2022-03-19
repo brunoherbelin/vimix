@@ -270,7 +270,7 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip)
     // draw with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
     ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
-    ImGui::Text(icon);
+    ImGui::Text("%s", icon);
     ImGui::PopStyleColor();
 
     ImGui::PopID();
@@ -558,7 +558,7 @@ void showToolTip(const char* desc, const char* shortcut)
     if (shortcut) {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-        ImGui::Text(shortcut);
+        ImGui::Text("%s", shortcut);
         ImGui::PopStyleColor();
     }
     ImGui::EndTooltip();
@@ -583,7 +583,7 @@ void ImGuiToolkit::HelpToolTip(const char* desc, const char* shortcut)
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 void ImGuiToolkit::Indication(const char* desc, const char* icon, const char* shortcut)
 {
-    ImGui::TextDisabled( icon );
+    ImGui::TextDisabled("%s", icon );
     if (ImGui::IsItemHovered())
         showToolTip(desc, shortcut);
 }
@@ -1505,7 +1505,7 @@ void ImGuiToolkit::WindowText(const char* window_name, ImVec2 window_pos, const 
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text(text);
+        ImGui::Text("%s", text);
         ImGui::PopFont();
 
         ImGui::End();
@@ -1874,7 +1874,7 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
 
     // show label
     ImGui::SameLine();
-    ImGui::Text(label);
+    ImGui::Text("%s", label);
 
     return ret;
 }
@@ -1893,5 +1893,5 @@ void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, floa
     ImGui::PopFont();
 
     ImGui::SameLine();
-    ImGui::Text(label);
+    ImGui::Text("%s", label);
 }

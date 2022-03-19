@@ -166,7 +166,7 @@ void ImGuiVisitor::visit(Scene &n)
 void ImGuiVisitor::visit(Primitive &n)
 {
     ImGui::PushID(std::to_string(n.id()).c_str());
-    ImGui::Text("Primitive %d");
+    ImGui::Text("Primitive");
 
     n.shader()->accept(*this);
 

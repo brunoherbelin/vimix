@@ -1066,7 +1066,7 @@ int UserInterface::RenderViewNavigator(int *shift)
             ImGui::NextColumn();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
             ImGuiToolkit::PushFont(Settings::application.current_view == 4 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-            ImGui::Text(Settings::application.views[v].name.c_str());
+            ImGui::Text("%s", Settings::application.views[v].name.c_str());
             ImGui::PopFont();
         }
 
@@ -4017,7 +4017,7 @@ void OutputPreview::Render()
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" " ICON_FA_TV "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
-                ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   %s (%d peer)",
+                ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   %s (%ld peer)",
                              Connection::manager().info().name.c_str(),
                              Streaming::manager().listStreams().size() );
             if (video_broadcaster_)
@@ -4522,7 +4522,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
             Group tmp; edited->getTarget(&tmp);
             tmp.accept(info);
             ImGui::BeginTooltip();
-            ImGui::Text(info.str().c_str());
+            ImGui::Text("%s", info.str().c_str());
             ImGui::EndTooltip();
         }
 
@@ -5880,7 +5880,7 @@ void Navigator::RenderNewPannel()
                             ++tooltip;
                             if (tooltip>30) {
                                 ImGui::BeginTooltip();
-                                ImGui::Text(filenametooltip.c_str());
+                                ImGui::Text("%s", filenametooltip.c_str());
                                 ImGui::EndTooltip();
                             }
                         }
@@ -6748,7 +6748,7 @@ void Navigator::RenderMainPannelVimix()
                     // draw thumbnail in tooltip
                     ImGui::BeginTooltip();
                     _snap_thumbnail.Render(size.x);
-                    ImGui::Text(_snap_date.c_str());
+                    ImGui::Text("%s", _snap_date.c_str());
                     ImGui::EndTooltip();
                     ++count_over; // prevents display twice on item overlap
                 }
