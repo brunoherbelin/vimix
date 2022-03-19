@@ -1241,13 +1241,14 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         return;
     }
 
-    ImGui::SetNextItemWidth(200);
+    // combo selection of mode, with fixed width to display enough text
+    ImGui::SetNextItemWidth( 8.f * ImGui::GetTextLineHeight());
     ImGui::Combo("##mode", p_mode,
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
                  ICON_FA_HOURGLASS_HALF "   Runtime\0"
                  ICON_FA_VECTOR_SQUARE  "  Source\0");
 
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
     ImGui::Spacing();
@@ -3909,9 +3910,13 @@ void OutputPreview::Render()
             ImGui::EndMenuBar();
         }
 
-        float width = ImGui::GetContentRegionAvail().x;
+        // image takes the available window area
+        ImVec2 imagesize = ImGui::GetContentRegionAvail();
+        // image height respects original aspect ratio but is at most the available window height
+        imagesize.y = MIN( imagesize.x / ar, imagesize.y);
+        // image respects original aspect ratio
+        imagesize.x = imagesize.y * ar;
 
-        ImVec2 imagesize ( width, width / ar);
         // virtual button to show the output window when clic on the preview
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
@@ -4393,13 +4398,13 @@ Source *InputMappingInterface::ComboSelectSource(Source *current)
     std::string label = "Select";
 
     if (current)
-        label = std::string(current->initials()) + "  - " + current->name();
+        label = std::string(current->initials()) + " - " + current->name();
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
         Session *ses = Mixer::manager().session();
         for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
-            label = std::string((*sit)->initials()) + "  - " + (*sit)->name();
+            label = std::string((*sit)->initials()) + " - " + (*sit)->name();
             if (ImGui::Selectable( label.c_str() )) {
                 selected = *sit;
             }
@@ -4602,7 +4607,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
 
         int val = edited->value() ? 1 : 0;
         ImGui::SetNextItemWidth(right_align);
-        if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, val ? "Play" : "Pause"))
+        if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, "Pause  |   Play "))
             edited->setValue(val>0);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGuiToolkit::Indication("Play or pause the source.", 16, 7);
@@ -4617,13 +4622,13 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
 void InputMappingInterface::Render()
 {
     const ImGuiContext& g = *GImGui;
-    static ImVec2 keyItemSpacing = ImVec2(6, 6);
-    static ImVec2 keyLetterIconSize = ImVec2(48, 48);
-    static ImVec2 keyLetterItemSize = keyLetterIconSize + keyItemSpacing;
-    static ImVec2 keyNumpadIconSize = ImVec2(60, 60);
-    static ImVec2 keyNumpadItemSize = keyNumpadIconSize + keyItemSpacing;
-    static float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + keyItemSpacing.y;
-    static float  inputarea_width = keyLetterItemSize.x * 5.f;
+    const ImVec2 keyItemSpacing = ImVec2(g.FontSize * 0.2f, g.FontSize * 0.2f);
+    const ImVec2 keyLetterIconSize = ImVec2(g.FontSize * 1.9f, g.FontSize * 1.9f);
+    const ImVec2 keyLetterItemSize = keyLetterIconSize + keyItemSpacing;
+    const ImVec2 keyNumpadIconSize = ImVec2(g.FontSize * 2.4f, g.FontSize * 2.4f);
+    const ImVec2 keyNumpadItemSize = keyNumpadIconSize + keyItemSpacing;
+    const float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + keyItemSpacing.y;
+    const float  inputarea_width = keyLetterItemSize.x * 5.f;
 
     ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(1000, fixed_height), ImGuiCond_FirstUseEver);
