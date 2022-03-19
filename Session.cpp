@@ -742,9 +742,9 @@ void Session::swapSourceCallback(uint from, uint to)
 void Session::copySourceCallback(uint from, uint to)
 {
     if ( input_callbacks_.count(from) > 0 ) {
-        auto result = input_callbacks_.equal_range(from);
-        for (auto it = result.first; it != result.second; ++it) {
-            assignSourceCallback(to, it->second.source_, it->second.model_->clone() );
+        auto from_callbacks = getSourceCallbacks(from);
+        for (auto it = from_callbacks.cbegin(); it != from_callbacks.cend(); ++it){
+            assignSourceCallback(to, it->first, it->second->clone() );
         }
     }
 }
