@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <algorithm>
 #include <iostream>
 #include <locale>
 using namespace std;
@@ -63,10 +62,10 @@ void Settings::Save(uint64_t runtime)
     xmlDoc.InsertFirstChild(pDec);
 
     XMLElement *pRoot = xmlDoc.NewElement(application.name.c_str());
+    xmlDoc.InsertEndChild(pRoot);
 #ifdef VIMIX_VERSION_MAJOR
     pRoot->SetAttribute("major", VIMIX_VERSION_MAJOR);
     pRoot->SetAttribute("minor", VIMIX_VERSION_MINOR);
-    xmlDoc.InsertEndChild(pRoot);
 #endif
     // runtime
     if (runtime>0)
@@ -76,7 +75,7 @@ void Settings::Save(uint64_t runtime)
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
-	// block: windows
+    // Windows
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
 
@@ -175,21 +174,6 @@ void Settings::Save(uint64_t runtime)
     XMLElement *BrushNode = xmlDoc.NewElement( "Brush" );
     BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
     pRoot->InsertEndChild(BrushNode);
-
-    // bloc connections
-    {
-        XMLElement *connectionsNode = xmlDoc.NewElement( "Connections" );
-
-//        map<int, std::string>::iterator iter;
-//        for (iter=application.instance_names.begin(); iter != application.instance_names.end(); iter++)
-//        {
-//            XMLElement *connection = xmlDoc.NewElement( "Instance" );
-//            connection->SetAttribute("name", iter->second.c_str());
-//            connection->SetAttribute("id", iter->first);
-//            connectionsNode->InsertEndChild(connection);
-//        }
-        pRoot->InsertEndChild(connectionsNode);
-    }
 
     // bloc views
     {
@@ -339,21 +323,10 @@ void Settings::Load()
     if (pRoot == nullptr)
         return;
 
-    // cancel on different root name
-    if (application.name.compare( string( pRoot->Value() ) ) != 0 )
-        return;
-
-#ifdef VIMIX_VERSION_MAJOR
-    // cancel on different version
-    int version_major = -1, version_minor = -1;
-    pRoot->QueryIntAttribute("major", &version_major);
-    pRoot->QueryIntAttribute("minor", &version_minor);
-    if (version_major != VIMIX_VERSION_MAJOR || version_minor != VIMIX_VERSION_MINOR)
-        return;
-#endif
     // runtime
     pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
+    // General application preferences
     XMLElement * applicationNode = pRoot->FirstChildElement("Application");
     if (applicationNode != nullptr) {
         applicationNode->QueryFloatAttribute("scale", &application.scale);
@@ -444,7 +417,7 @@ void Settings::Load()
         transitionnode->QueryIntAttribute("profile", &application.transition.profile);
     }
 
-    // bloc windows
+    // Windows
     {
         XMLElement * pElement = pRoot->FirstChildElement("Windows");
         if (pElement)
@@ -501,22 +474,6 @@ void Settings::Load()
                                            application.views[id].default_translation);
 
             }
-        }
-
-    }
-
-    // bloc Connections
-    {
-        XMLElement * pElement = pRoot->FirstChildElement("Connections");
-        if (pElement)
-        {
-//            XMLElement* connectionNode = pElement->FirstChildElement("Instance");
-//            for( ; connectionNode ; connectionNode=connectionNode->NextSiblingElement())
-//            {
-//                int id = 0;
-//                connectionNode->QueryIntAttribute("id", &id);
-//                application.instance_names[id] = connectionNode->Attribute("name");
-//            }
         }
 
     }
