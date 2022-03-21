@@ -7124,6 +7124,9 @@ void Navigator::RenderMainPannel()
     ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
     if (ImGui::Begin("##navigatorMain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
+        // Temporary fix for preventing horizontal scrolling (https://github.com/ocornut/imgui/issues/2915)
+        ImGui::SetScrollX(0);
+
         //
         // Panel content depends on show_config_
         //
