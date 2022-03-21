@@ -744,7 +744,7 @@ IF(APPLE)
     else()
         install(CODE "
                 execute_process(COMMAND
-                codesign --verbose=4 --deep --force
+                codesign -vvv --deep --force
                 --entitlements \"${APPLE_CODESIGN_ENTITLEMENTS}\"
                 --sign \"${APPLE_CODESIGN_IDENTITY}\"
                 \"${APPS}\" )
