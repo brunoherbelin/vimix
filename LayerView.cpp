@@ -121,7 +121,7 @@ void LayerView::draw()
         // special action of Mixing view
         if (candidate_flatten_group){
             if (ImGui::Selectable( ICON_FA_DOWNLOAD "  Flatten" )) {
-                Mixer::manager().groupSelection();
+                Mixer::manager().flattenSelection();
             }
         }
         else {

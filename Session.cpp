@@ -255,13 +255,13 @@ SourceList::iterator Session::addSource(Source *s)
     // find the source
     SourceList::iterator its = find(s);
 
-    // ok, its NOT in the list !
+    // ok, it's NOT in the list !
     if (its == sources_.end()) {
         // insert the source in the rendering
         render_.scene.ws()->attach(s->group(View::RENDERING));
-        // insert the source to the beginning of the list
+        // insert the source to the end of the list
         sources_.push_back(s);
-        // return the iterator to the source created at the beginning
+        // return the iterator to the source created at the end
         its = --sources_.end();
     }
 

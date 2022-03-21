@@ -834,7 +834,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     int i = 0;
     char oscaddr[128];
     int index_current = Mixer::manager().indexCurrentSource();
-    for (; i < Mixer::manager().count(); ++i) {
+    for (; i < Mixer::manager().numSource(); ++i) {
         // send status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) << (index_current == i ? 1.f : 0.f) << osc::EndMessage;

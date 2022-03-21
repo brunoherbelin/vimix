@@ -39,12 +39,12 @@ public:
     }
 
     // update session and all views
-    void update();
-    inline float dt() const { return dt_;} // in miliseconds
-    inline int fps() const { return int(roundf(1000.f/dt__));}
+    void update ();
+    inline float dt () const { return dt_; } // in miliseconds
+    inline int fps  () const { return int(roundf(1000.f/dt__)); }
 
     // draw session and current view
-    void draw();
+    void draw ();
 
     // creation of sources
     Source * createSourceFile   (const std::string &path);
@@ -62,37 +62,37 @@ public:
     void addSource    (Source *s);
     void deleteSource (Source *s);
     void renameSource (Source *s, const std::string &newname = "");
-    void attach       (Source *s);
-    void detach       (Source *s);
-    void deselect     (Source *s);
-    void deleteSelection();
-    void groupSelection();
+    int  numSource    () const;
+
+    // operations on selection
+    void deleteSelection  ();
+    void flattenSelection ();
 
     // current source
-    Source * currentSource ();
+    Source *currentSource ();
     void setCurrentSource (Source *s);
     void setCurrentSource (std::string namesource);
     void setCurrentSource (Node *node);
     void setCurrentSource (uint64_t id);
-    void setCurrentNext ();
+    void setCurrentNext   ();
     void setCurrentPrevious ();
     void unsetCurrentSource ();
 
+    // access though indices
     Source *sourceAtIndex (int index);
-    void setCurrentIndex (int index);
-    void moveIndex (int current_index, int target_index);
+    void setCurrentIndex  (int index);
+    void moveIndex        (int current_index, int target_index);
     int  indexCurrentSource () const;
-    int  count() const;
 
     // browsing into sources
-    Source * findSource (Node *node);
-    Source * findSource (std::string name);
-    Source * findSource (uint64_t id);
+    Source * findSource    (Node *node);
+    Source * findSource    (std::string name);
+    Source * findSource    (uint64_t id);
     SourceList findSources (float depth_from, float depth_to);
-    SourceList validate(const SourceList &list);
+    SourceList validate (const SourceList &list);
 
     // management of view
-    View *view   (View::Mode m = View::INVALID);
+    View * view  (View::Mode m = View::INVALID);
     void setView (View::Mode m);
 
     void conceal  (Source *s);
@@ -100,7 +100,7 @@ public:
     bool concealed(Source *s);
 
     // manipulate, load and save sessions
-    inline Session *session () const { return session_; }
+    inline Session * session () const { return session_; }
     void clear  ();
     void save   (bool with_version = false);
     void saveas (const std::string& filename, bool with_version = false);
@@ -112,6 +112,8 @@ public:
     void set    (Session *session);
     void setResolution(glm::vec3 res);
     bool busy   () const { return busy_; }
+
+    void flatten();
 
     // operations depending on transition mode
     void close  (bool smooth = false);
@@ -136,6 +138,8 @@ protected:
     void insertSource  (Source *s, View::Mode m = View::INVALID);
     bool replaceSource (Source *from, Source *to);
     bool recreateSource(Source *s);
+    void attach        (Source *s);
+    void detach        (Source *s);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

@@ -627,20 +627,10 @@ void Mixer::uncover(Source *s)
     }
 }
 
-
-void Mixer::deselect(Source *s)
-{
-    if ( s != nullptr ) {
-        if ( s == *current_source_)
-            unsetCurrentSource();
-        Mixer::selection().remove(s);
-    }
-}
-
 void Mixer::deleteSelection()
 {
     // number of sources in selection
-    int N = selection().size();
+    uint N = selection().size();
     // ignore if selection empty
     if (N > 0) {
 
@@ -671,7 +661,7 @@ void Mixer::deleteSelection()
     }
 }
 
-void Mixer::groupSelection()
+void Mixer::flattenSelection()
 {
     if (selection().empty())
         return;
@@ -727,6 +717,38 @@ void Mixer::groupSelection()
 
     // give the hand to the user
     Mixer::manager().setCurrentSource(sessiongroup);
+}
+
+void Mixer::flatten()
+{
+    //
+    SessionGroupSource *sessiongroup = new SessionGroupSource;
+    sessiongroup->setSession(session_);
+
+    // set alpha to full opacity
+    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
+    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+
+    // propose a name to the session group
+    sessiongroup->setName( SystemToolkit::base_filename(session_->filename()));
+
+    // create a session containing the sessiongroup
+    Session *futuresession = new Session;
+    futuresession->addSource( sessiongroup );
+
+    // set and swap to futuresession
+    set(futuresession);
+
+    // detatch current session's nodes from views
+    for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
+        detach(*source_iter);
+    // detatch session's mixing group
+    for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
+        (*group_iter)->attachTo(nullptr);
+    // prevent deletion of session_ (now embedded into session group)
+    session_ = new Session;
+
+    Log::Notify("Created source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -932,7 +954,7 @@ int Mixer::indexCurrentSource() const
     return current_source_index_;
 }
 
-int  Mixer::count() const
+int  Mixer::numSource() const
 {
     return (int) session_->numSource();
 }
@@ -982,9 +1004,13 @@ void Mixer::setView(View::Mode m)
     Settings::application.current_view = (int) m;
 
     // selection might have to change
-    for (auto sit = session_->begin(); sit != session_->end(); sit++) {
-        if ( !current_view_->canSelect(*sit) )
-            deselect( *sit );
+    for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
+        Source *s = *sit;
+        if ( s != nullptr && !current_view_->canSelect( s ) ) {
+            if ( s == *current_source_ )
+                unsetCurrentSource();
+            Mixer::selection().remove( s );
+        }
     }
 
     // need to deeply update view to apply eventual changes
@@ -1235,7 +1261,7 @@ void Mixer::merge(SessionSource *source)
 
 void Mixer::swap()
 {
-    if (!back_session_ || !session_)
+    if (!back_session_)
         return;
 
     if (session_) {
@@ -1244,6 +1270,9 @@ void Mixer::swap()
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
             detach(*source_iter);
+        // detatch session's mixing group
+        for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
+            (*group_iter)->attachTo(nullptr);
     }
 
     // swap back and front
@@ -1268,16 +1297,18 @@ void Mixer::swap()
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-    // transfer fading
-    session_->setFadingTarget( MAX(back_session_->fadingTarget(), session_->fadingTarget()));
-
     // no current source
     current_source_ = session_->end();
     current_source_index_ = -1;
 
-    // delete back (former front session)
-    garbage_.push_back(back_session_);
-    back_session_ = nullptr;
+    if (back_session_) {
+        // transfer fading
+        session_->setFadingTarget( MAX(back_session_->fadingTarget(), session_->fadingTarget()));
+
+        // delete back (former front session)
+        garbage_.push_back(back_session_);
+        back_session_ = nullptr;
+    }
 
     // reset History manager
     Action::manager().init();
@@ -1337,6 +1368,8 @@ void Mixer::set(Session *s)
     // swap current with given session
     sessionSwapRequested_ = true;
 }
+
+
 
 void Mixer::setResolution(glm::vec3 res)
 {

@@ -350,6 +350,16 @@ void SessionGroupSource::init()
     }
 }
 
+void SessionGroupSource::setSession (Session *s)
+{
+    if (s) {
+        if ( session_ )
+            delete session_;
+        session_ = s;
+        resolution_ = s->frame()->resolution();
+    }
+}
+
 bool SessionGroupSource::import(Source *source)
 {
     bool ret = false;

@@ -924,6 +924,7 @@ void UserInterface::showMenuEdit()
 
 void UserInterface::showMenuFile()
 {
+    // NEW
     if (ImGui::MenuItem( MENU_NEW_FILE, SHORTCUT_NEW_FILE)) {
         Mixer::manager().close();
         navigator.hidePannel();
@@ -933,21 +934,27 @@ void UserInterface::showMenuFile()
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
     ImGui::Combo("Height", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
-    ImGui::Separator();
+    if (ImGui::MenuItem( ICON_FA_FILE_IMPORT " Embed in New file", nullptr, false, Mixer::manager().numSource() > 0)) {
+        Mixer::manager().flatten();
+    }
 
-    ImGui::MenuItem( ICON_FA_LEVEL_UP_ALT "  Open last on start", nullptr, &Settings::application.recentSessions.load_at_start);
+    // FILE OPEN AND SAVE
+    ImGui::Separator();
+    const std::string currentfilename = Mixer::manager().session()->filename();
+    const bool currentfileopen = !currentfilename.empty();
+
+    ImGui::MenuItem( MENU_OPEN_ON_START, nullptr, &Settings::application.recentSessions.load_at_start);
 
     if (ImGui::MenuItem( MENU_OPEN_FILE, SHORTCUT_OPEN_FILE))
         selectOpenFilename();
-    if (ImGui::MenuItem( MENU_REOPEN_FILE, SHORTCUT_REOPEN_FILE))
-        Mixer::manager().load( Mixer::manager().session()->filename() );
-
-    if (ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import") && sessionimportdialog) {
+    if (ImGui::MenuItem( MENU_REOPEN_FILE, SHORTCUT_REOPEN_FILE, false, currentfileopen))
+        Mixer::manager().load( currentfilename );
+    if (sessionimportdialog && ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import sources" )) {
         // launch file dialog to open a session file
         sessionimportdialog->open();
         navigator.hidePannel();
     }
-    if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE)) {
+    if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE, false, currentfileopen)) {
         if (saveOrSaveAs())
             navigator.hidePannel();
     }
@@ -956,6 +963,7 @@ void UserInterface::showMenuFile()
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
+    // HELP AND QUIT
     ImGui::Separator();
     if (ImGui::MenuItem( IMGUI_TITLE_HELP, SHORTCUT_HELP))
         Settings::application.widget.help = true;

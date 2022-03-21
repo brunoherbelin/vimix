@@ -69,6 +69,7 @@ public:
     void accept (Visitor& v) override;
 
     // SessionGroup Source specific interface
+    void setSession (Session *s);
     inline void setResolution (glm::vec3 v) { resolution_ = v; }
 
     // import a source
