@@ -135,11 +135,6 @@ void SessionCreator::load(const std::string& filename)
     XMLElement *sessionNode = xmlDoc_.FirstChildElement("Session");
     SessionLoader::load( sessionNode );
 
-    // create groups
-    std::list< SourceList > groups = getMixingGroups();
-    for (auto group_it = groups.begin(); group_it != groups.end(); ++group_it)
-         session_->link( *group_it );
-
     // load snapshots
     loadSnapshots( xmlDoc_.FirstChildElement("Snapshots") );
 
@@ -489,8 +484,12 @@ void SessionLoader::load(XMLElement *sessionNode)
             }
         }
 
-        // loop over SourceLinks and resolve them
-        // NB: this could become the mechanism for clone sources too
+        //
+        // create groups
+        //
+        std::list< SourceList > groups = getMixingGroups();
+        for (auto group_it = groups.begin(); group_it != groups.end(); ++group_it)
+             session_->link( *group_it );
 
     }
 }
