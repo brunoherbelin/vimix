@@ -330,6 +330,9 @@ Source *Session::popSource()
         s = *its;
         // remove Node from the rendering scene
         render_.scene.ws()->detach( s->group(View::RENDERING) );
+        // inform group
+        if (s->mixingGroup() != nullptr)
+            s->mixingGroup()->detach(s);
         // erase the source from the update list & get next element
         sources_.erase(its);
     }

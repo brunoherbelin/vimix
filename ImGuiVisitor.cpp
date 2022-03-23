@@ -675,7 +675,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Flat Sesion group");
+    ImGui::Text("Session group");
 
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);

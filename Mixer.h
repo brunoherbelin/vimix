@@ -66,7 +66,10 @@ public:
 
     // operations on selection
     void deleteSelection  ();
-    void flattenSelection ();
+    void groupSelection ();
+    void groupAll ();
+
+    void flattenSession();
 
     // current source
     Source *currentSource ();
@@ -113,7 +116,6 @@ public:
     void setResolution(glm::vec3 res);
     bool busy   () const { return busy_; }
 
-    void flatten();
 
     // operations depending on transition mode
     void close  (bool smooth = false);
