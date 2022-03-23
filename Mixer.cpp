@@ -661,73 +661,156 @@ void Mixer::deleteSelection()
     }
 }
 
-void Mixer::flattenSelection()
+void Mixer::groupSelection()
 {
+    // obvious cancel
     if (selection().empty())
         return;
 
+    // work on non-empty selection of sources
+    auto _selection = selection().getCopy();
+
+    // create session group where to transfer sources into
     SessionGroupSource *sessiongroup = new SessionGroupSource;
     sessiongroup->setResolution( session_->frame()->resolution() );
 
-    // prepare for new session group attributes
+    // prepare for new session group name
     std::string name;
-    float d = selection().front()->depth();
+    // prepare for depth to place the group source
+    float d = _selection.front()->depth();
 
-    // empty the selection
-    while ( !selection().empty() ) {
-
-        Source *s = selection().front();
-        d = MIN(s->depth(), d);
-
-        // import source into group
-        if ( sessiongroup->import(s) ) {
-            name += s->initials();
-            // detach & remove element from selection()
-            detach (s);
-            // remove source from session
-            session_->removeSource(s);
-        }
-        else
-            selection().pop_front();
-
+    // remember groups before emptying the session
+    std::list<SourceList> allgroups = session_->getMixingGroups();
+    std::list<SourceList> selectgroups;
+    for (auto git = allgroups.begin(); git != allgroups.end(); ++git){
+        selectgroups.push_back( intersect( *git, _selection));
     }
 
-    // set depth at given location
-    sessiongroup->group(View::LAYER)->translation_.z = d;
+    // browse the selection
+    for (auto sit = _selection.begin(); sit != _selection.end(); ++sit) {
 
-    // set alpha to full opacity
-    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
-    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+        // import source into group
+        if ( sessiongroup->import(*sit) ) {
+            // find lower depth in _selection
+            d = MIN( (*sit)->depth(), d);
+            // generate name from intials of all sources
+            name += (*sit)->initials();
+            // detach & remove element from selection()
+            detach (*sit);
+            // remove source from session
+            session_->removeSource(*sit);
+        }
+    }
 
-    // Add source to Session
-    session_->addSource(sessiongroup);
+    if (sessiongroup->session()->numSource() > 0) {
+        // recreate groups in session group
+        for (auto git = selectgroups.begin(); git != selectgroups.end(); ++git)
+            sessiongroup->session()->link( *git );
 
-    // Attach source to Mixer
-    attach(sessiongroup);
+        // set depth at given location
+        sessiongroup->group(View::LAYER)->translation_.z = d;
 
-    // rename and avoid name duplicates
-    renameSource(sessiongroup, name);
+        // set alpha to full opacity
+        sessiongroup->group(View::MIXING)->translation_.x = 0.f;
+        sessiongroup->group(View::MIXING)->translation_.y = 0.f;
 
-    // store in action manager
-    std::ostringstream info;
-    info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
-    Action::manager().store(info.str());
+        // Add source to Session
+        session_->addSource(sessiongroup);
 
-    Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+        // Attach source to Mixer
+        attach(sessiongroup);
 
-    // give the hand to the user
-    Mixer::manager().setCurrentSource(sessiongroup);
+        // set name (avoid name duplicates)
+        renameSource(sessiongroup, name);
+
+        // store in action manager
+        std::ostringstream info;
+        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
+        Action::manager().store(info.str());
+
+        Log::Notify("Added group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+
+        // give the hand to the user
+        Mixer::manager().setCurrentSource(sessiongroup);
+    }
+    else {
+        delete sessiongroup;
+        Log::Info("Failed to group selection");
+    }
 }
 
-void Mixer::flatten()
+void Mixer::groupAll()
 {
-    //
+    // obvious cancel
+    if (session_->empty())
+        return;
+
+    // create session group where to transfer sources into
+    SessionGroupSource *sessiongroup = new SessionGroupSource;
+    sessiongroup->setResolution( session_->frame()->resolution() );
+
+    // remember groups before emptying the session
+    std::list<SourceList> allgroups = session_->getMixingGroups();
+
+    // empty the session (does not delete sources)
+    for ( Source *s = session_->popSource(); s != nullptr; s = session_->popSource()) {
+        if ( sessiongroup->import(s) )
+            detach(s);
+        else
+            break;
+    }
+
+    if (sessiongroup->session()->numSource() > 0) {
+
+        // recreate groups in session group
+        for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
+            sessiongroup->session()->link( *git );
+
+        // set default depth in workspace for the session-group source
+        sessiongroup->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
+
+        // set alpha to full opacity so that rendering is identical after swap
+        sessiongroup->group(View::MIXING)->translation_.x = 0.f;
+        sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+
+        // Add the session-group source to Session
+        session_->addSource(sessiongroup);
+
+        // Attach the session-group source  to Mixer
+        attach(sessiongroup);
+
+        // name the session-group source (avoid name duplicates)
+        renameSource(sessiongroup, SystemToolkit::base_filename(session_->filename()));
+
+        // store in action manager
+        std::ostringstream info;
+        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
+        Action::manager().store(info.str());
+
+        Log::Notify("Added group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+
+        // give the hand to the user
+        Mixer::manager().setCurrentSource(sessiongroup);
+    }
+    else {
+        delete sessiongroup;
+        Log::Info("Failed to group all sources.");
+    }
+
+}
+
+void Mixer::flattenSession()
+{
+    // new session group containing current session
     SessionGroupSource *sessiongroup = new SessionGroupSource;
     sessiongroup->setSession(session_);
 
-    // set alpha to full opacity
+    // set alpha to full opacity so that rendering is identical after swap
     sessiongroup->group(View::MIXING)->translation_.x = 0.f;
     sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+
+    // set default depth in workspace
+    sessiongroup->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
 
     // propose a name to the session group
     sessiongroup->setName( SystemToolkit::base_filename(session_->filename()));
@@ -736,19 +819,24 @@ void Mixer::flatten()
     Session *futuresession = new Session;
     futuresession->addSource( sessiongroup );
 
-    // set and swap to futuresession
+    // set identical filename to future session
+    futuresession->setFilename( session_->filename() );
+
+    // set and swap to futuresession (will be done at next update)
     set(futuresession);
 
-    // detatch current session's nodes from views
+    // detatch current session_'s nodes from views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
         detach(*source_iter);
-    // detatch session's mixing group
+
+    // detatch session_'s mixing group
     for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
         (*group_iter)->attachTo(nullptr);
+
     // prevent deletion of session_ (now embedded into session group)
     session_ = new Session;
 
-    Log::Notify("Created source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+    Log::Notify("Created group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -1135,6 +1223,9 @@ void Mixer::merge(Session *session)
         return;
     }
 
+    // remember groups before emptying the session
+    std::list<SourceList> allgroups = session->getMixingGroups();
+
     // import every sources
     std::ostringstream info;
     info << session->numSource() << " sources imported from:" << session->filename();
@@ -1149,12 +1240,9 @@ void Mixer::merge(Session *session)
         attach(s);
     }
 
-    // import and attach session's mixing groups
-    auto group_iter = session->beginMixingGroup();
-    while ( group_iter != session->endMixingGroup() ){
-        session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
-        group_iter = session->deleteMixingGroup(group_iter);
-    }
+    // recreate groups in current session_
+    for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
+        session_->link( *git, mixing_.scene.fg() );
 
     // needs to update !
     ++View::need_deep_update_;
@@ -1206,6 +1294,9 @@ void Mixer::merge(SessionSource *source)
             }
         }
 
+        // remember groups before emptying the session
+        std::list<SourceList> allgroups = session->getMixingGroups();
+
         // import every sources
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
@@ -1236,12 +1327,9 @@ void Mixer::merge(SessionSource *source)
             attach(s);
         }
 
-        // import and attach session's mixing groups
-        auto group_iter = session->beginMixingGroup();
-        while ( group_iter != session->endMixingGroup() ){
-            session_->link((*group_iter)->getCopy(), mixing_.scene.fg());
-            group_iter = session->deleteMixingGroup(group_iter);
-        }
+        // recreate groups in current session_
+        for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
+            session_->link( *git, mixing_.scene.fg() );
 
         // needs to update !
         ++View::need_deep_update_;

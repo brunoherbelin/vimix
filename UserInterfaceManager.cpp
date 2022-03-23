@@ -934,10 +934,6 @@ void UserInterface::showMenuFile()
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
     ImGui::Combo("Height", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
 
-    if (ImGui::MenuItem( ICON_FA_FILE_IMPORT " Embed in New file", nullptr, false, Mixer::manager().numSource() > 0)) {
-        Mixer::manager().flatten();
-    }
-
     // FILE OPEN AND SAVE
     ImGui::Separator();
     const std::string currentfilename = Mixer::manager().session()->filename();
@@ -949,11 +945,6 @@ void UserInterface::showMenuFile()
         selectOpenFilename();
     if (ImGui::MenuItem( MENU_REOPEN_FILE, SHORTCUT_REOPEN_FILE, false, currentfileopen))
         Mixer::manager().load( currentfilename );
-    if (sessionimportdialog && ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import sources" )) {
-        // launch file dialog to open a session file
-        sessionimportdialog->open();
-        navigator.hidePannel();
-    }
     if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE, false, currentfileopen)) {
         if (saveOrSaveAs())
             navigator.hidePannel();
@@ -962,6 +953,21 @@ void UserInterface::showMenuFile()
         selectSaveFilename();
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
+
+    // IMPORT AND GROUP
+    ImGui::Separator();
+    if (sessionimportdialog && ImGui::MenuItem( ICON_FA_SIGN_OUT_ALT " Import sources" )) {
+        // launch file dialog to open a session file
+        sessionimportdialog->open();
+        // close pannel to select file
+        navigator.hidePannel();
+    }
+    if (ImGui::MenuItem( ICON_FA_SIGN_IN_ALT " Group all sources", nullptr, false, Mixer::manager().numSource() > 0)) {
+        // create a new group session with all sources
+        Mixer::manager().groupAll();
+        // switch pannel to show first source (created)
+        navigator.showPannelSource(0);
+    }
 
     // HELP AND QUIT
     ImGui::Separator();

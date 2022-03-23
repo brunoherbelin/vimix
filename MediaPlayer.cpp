@@ -36,6 +36,8 @@
 #define MEDIA_PLAYER_DEBUG
 #endif
 
+#define DISCOVER_TIMOUT 15
+
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
 MediaPlayer::MediaPlayer()
@@ -123,7 +125,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 #endif
     MediaInfo video_stream_info;
     GError *err = NULL;
-    GstDiscoverer *discoverer = gst_discoverer_new (15 * GST_SECOND, &err);
+    GstDiscoverer *discoverer = gst_discoverer_new (DISCOVER_TIMOUT * GST_SECOND, &err);
 
     /* Instantiate the Discoverer */
     if (!discoverer) {
@@ -448,7 +450,8 @@ void MediaPlayer::close()
     if (!opened_) {
         // wait for loading to finish
         if (discoverer_.valid())
-            discoverer_.wait();
+            if ( discoverer_.wait_for(std::chrono::seconds(DISCOVER_TIMOUT)) == std::future_status::timeout )
+                 failed_ = true;
         // nothing else to change
         return;
     }
