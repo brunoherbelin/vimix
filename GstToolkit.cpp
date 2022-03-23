@@ -213,11 +213,11 @@ string GstToolkit::gst_version()
 
 #if GST_GL_HAVE_PLATFORM_GLX
     // https://gstreamer.freedesktop.org/documentation/nvcodec/index.html?gi-language=c#plugin-nvcodec
-    // list ordered with higher priority first (e.g. nvidia proprietary before vaapi)
-    const char *plugins[11] = { "nvh264dec", "nvh265dec",  "nvmpeg2videodec", "nvmpeg4videodec", "nvvp8dec", "nvvp9dec",
-                                "vaapidecodebin", "omxmpeg4videodec", "omxmpeg2dec", "omxh264dec", "vdpaumpegdec",
+    // list ordered with higher priority at the end (e.g. nvidia proprietary before vaapi)
+    const char *plugins[12] = { "vdpaumpegdec", "omxh264dec", "omxmpeg2dec", "omxmpeg4videodec", "vaapidecodebin",
+                                "nvh264dec", "nvh265dec", "nvmpegvideodec", "nvmpeg2videodec", "nvmpeg4videodec", "nvvp8dec", "nvvp9dec"
                                };
-    const int N = 11;
+    const int N = 12;
 #elif GST_GL_HAVE_PLATFORM_CGL
     const char *plugins[2] = { "vtdec_hw", "vtdechw" };
     const int N = 2;
@@ -236,16 +236,15 @@ std::list<std::string> GstToolkit::enable_gpu_decoding_plugins(bool enable)
     if ( plugins_register == nullptr )
         plugins_register = gst_registry_get();
 
-    static bool enabled_ = false;
-    if (enabled_ != enable) {
-        enabled_ = enable;
-        for (int i = 0; i < N; i++) {
-            GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
-            if(feature != NULL) {
-                plugins_list_.push_front( string( plugins[i] ) );
-                gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + (N-i) : GST_RANK_MARGINAL);
-                gst_object_unref(feature);
-            }
+    int n = 0;
+    for (int i = 0; i < N; i++) {
+        GstPluginFeature* feature = gst_registry_lookup_feature(plugins_register, plugins[i]);
+        if(feature != NULL) {
+            ++n;
+            plugins_list_.push_front( string( plugins[i] ) );
+            gst_plugin_feature_set_rank(feature, enable ? GST_RANK_PRIMARY + n : GST_RANK_MARGINAL + n);
+//            g_printerr("Gstreamer plugin %s set to %d \n", plugins[i], enable ? GST_RANK_PRIMARY + n : GST_RANK_MARGINAL + n);
+            gst_object_unref(feature);
         }
     }
 
