@@ -796,7 +796,6 @@ void Mixer::groupAll()
         delete sessiongroup;
         Log::Info("Failed to group all sources.");
     }
-
 }
 
 void Mixer::flattenSession()
