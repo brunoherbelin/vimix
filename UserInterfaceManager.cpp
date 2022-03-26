@@ -231,6 +231,8 @@ uint64_t UserInterface::Runtime() const
 
 void UserInterface::handleKeyboard()
 {
+    static bool esc_repeat_ = false;
+
     const ImGuiIO& io = ImGui::GetIO();
     alt_modifier_active = io.KeyAlt;
     shift_modifier_active = io.KeyShift;
@@ -383,10 +385,17 @@ void UserInterface::handleKeyboard()
             navigator.hidePannel();
             // toggle clear workspace
             WorkspaceWindow::toggleClearRestoreWorkspace();
+            // ESC key is not yet maintained pressed
+            esc_repeat_ = false;
         }
-        else if ( WorkspaceWindow::clear() && ImGui::IsKeyReleased( GLFW_KEY_ESCAPE )) {
-            // toggle clear workspace
-            WorkspaceWindow::toggleClearRestoreWorkspace();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, true )) {
+            // ESC key is maintained pressed
+            esc_repeat_ = true;
+        }
+        else if ( esc_repeat_ && WorkspaceWindow::clear() && ImGui::IsKeyReleased( GLFW_KEY_ESCAPE )) {
+            // restore cleared workspace when releasing ESC after maintain
+            WorkspaceWindow::restoreWorkspace();
+            esc_repeat_ = false;
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_END, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
@@ -1982,7 +1991,7 @@ void WorkspaceWindow::toggleClearRestoreWorkspace()
 {
     // do not toggle if an animation is ongoing
     for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
-        if ( (*it)->Visible() && (*it)->impl_ && (*it)->impl_->animation )
+        if ( (*it)->impl_ && (*it)->impl_->animation )
             return;
     }
 

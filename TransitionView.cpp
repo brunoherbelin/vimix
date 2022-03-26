@@ -157,8 +157,10 @@ void TransitionView::update(float dt)
         // request update
         transition_source_->touch();
 
-        if (d > 0.2f)
+        if (d > 0.2f) {
             Mixer::manager().setView(View::MIXING);
+            WorkspaceWindow::restoreWorkspace();
+        }
 
     }
 
