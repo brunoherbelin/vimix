@@ -80,7 +80,9 @@ void View::update(float dt)
     // a more complete update is requested
     if (View::need_deep_update_ > 0) {
         // reorder sources
-        scene.root()->sort();
+        scene.bg()->sort();
+        scene.ws()->sort();
+        scene.fg()->sort();
     }
 }
 
