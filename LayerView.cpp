@@ -296,7 +296,7 @@ float LayerView::setDepth(Source *s, float d)
     sourceNode->translation_.z = CLAMP( depth, MIN_DEPTH, MAX_DEPTH);
 
     // request reordering of scene at next update
-    View::need_deep_update_++;
+    ++View::need_deep_update_;
 
     // request update of source
     s->touch();

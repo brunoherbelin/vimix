@@ -268,6 +268,8 @@ Source * Mixer::createSourceFile(const std::string &path)
         // propose a new name based on uri
         s->setName(SystemToolkit::base_filename(path));
 
+        // remember as recent import
+        Settings::application.recentImport.push(path);
     }
     else {
         Settings::application.recentImport.remove(path);
@@ -443,9 +445,6 @@ void Mixer::insertSource(Source *s, View::Mode m)
 
         // notify creation of source
         Log::Notify("Added source '%s' with %s", s->name().c_str(), s->info().c_str());
-        MediaSource *ms = dynamic_cast<MediaSource *>(s);
-        if (ms)
-            Settings::application.recentImport.push(ms->path());
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)

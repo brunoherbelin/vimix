@@ -210,7 +210,7 @@ void SessionFileSource::init()
             active_ = true;
             touch();
 
-            //  update to draw framebuffer
+            // update to draw framebuffer
             session_->update(dt_);
 
             // if all sources are ready, done with initialization!
@@ -227,7 +227,7 @@ void SessionFileSource::init()
             // set resolution
             session_->setResolution( session_->config(View::RENDERING)->scale_ );
 
-            //  update to draw framebuffer
+            // update to draw framebuffer
             session_->update(dt_);
 
             // get the texture index from framebuffer of session, apply it to the surface
@@ -255,8 +255,10 @@ void SessionFileSource::init()
         Node *loader = overlays_[View::TRANSITION]->back();
         overlays_[View::TRANSITION]->detach(loader);
         delete loader;
-        // deep update to reorder
+        // request deep update to reorder session_
         ++View::need_deep_update_;
+        // run update to redraw framebuffer (after reorder)
+        session_->update(dt_);
     }
 }
 
