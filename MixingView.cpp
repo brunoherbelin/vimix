@@ -688,9 +688,9 @@ void MixingView::setAlpha(Source *s)
     if (!s)
         return;
 
-    // move the layer node of the source
+    // move the mixing node of the source
     Group *sourceNode = s->group(mode_);
-    glm::vec2 mix_pos = glm::vec2(DEFAULT_MIXING_TRANSLATION);
+    glm::vec2 mix_pos(sourceNode->translation_);
 
     for(NodeSet::iterator it = scene.ws()->begin(); it != scene.ws()->end(); ++it) {
         // avoid superposing icons: distribute equally

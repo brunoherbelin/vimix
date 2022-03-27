@@ -133,7 +133,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     // create groups and overlays for each view
 
     // default mixing nodes
-    groups_[View::MIXING]->scale_ = glm::vec3(0.15f, 0.15f, 1.f);
+    groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE);
     groups_[View::MIXING]->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
 
     frames_[View::MIXING] = new Switch;

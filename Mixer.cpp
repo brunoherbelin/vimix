@@ -727,7 +727,7 @@ void Mixer::groupSelection()
         info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
         Action::manager().store(info.str());
 
-        Log::Notify("Added group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+        Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
 
         // give the hand to the user
         Mixer::manager().setCurrentSource(sessiongroup);
@@ -772,24 +772,19 @@ void Mixer::groupAll()
         sessiongroup->group(View::MIXING)->translation_.x = 0.f;
         sessiongroup->group(View::MIXING)->translation_.y = 0.f;
 
-        // Add the session-group source to Session
-        session_->addSource(sessiongroup);
-
-        // Attach the session-group source  to Mixer
-        attach(sessiongroup);
-
         // name the session-group source (avoid name duplicates)
         renameSource(sessiongroup, SystemToolkit::base_filename(session_->filename()));
+
+        // Add the session-group source in the mixer
+        // NB: sessiongroup will be updated and inserted to Mixing view on next frame
+        addSource(sessiongroup);
 
         // store in action manager
         std::ostringstream info;
         info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
         Action::manager().store(info.str());
 
-        Log::Notify("Added group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
-
-        // give the hand to the user
-        Mixer::manager().setCurrentSource(sessiongroup);
+        Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
     }
     else {
         delete sessiongroup;
@@ -834,7 +829,7 @@ void Mixer::flattenSession()
     // prevent deletion of session_ (now embedded into session group)
     session_ = new Session;
 
-    Log::Notify("Created group source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+    Log::Notify("Switched to '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
