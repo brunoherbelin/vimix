@@ -119,6 +119,16 @@ void SessionSource::update(float dt)
 
 }
 
+void SessionSource::play (bool on)
+{
+    paused_ = !on;
+
+    if (session_) {
+        for( SourceList::iterator it = session_->begin(); it != session_->end(); ++it)
+            (*it)->setActive(!paused_);
+    }
+}
+
 void SessionSource::replay ()
 {
     if (session_) {

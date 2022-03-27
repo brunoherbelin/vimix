@@ -148,17 +148,16 @@ void InfoVisitor::visit (SessionFileSource& s)
         return;
 
     std::ostringstream oss;
-
-    if (s.session()->frame()){
+    if (s.session()->frame()){        
+        std::string numsource = std::to_string(s.session()->numSource()) + " source" + (s.session()->numSource()>1 ? "s" : "");
         if (brief_) {
-            oss << SystemToolkit::filename(s.path()) << " (";
-            oss << s.session()->numSource() << " sources)" << std::endl;
-            oss << "RGB, ";
-            oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+            oss << SystemToolkit::filename(s.path()) << std::endl;
+            oss << numsource << ", " ;
+            oss << "RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
         else {
             oss << s.path() << std::endl;
-            oss << "RGB" << std::endl;
+            oss << "MIX session (" << numsource << "), RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
     }
@@ -173,10 +172,17 @@ void InfoVisitor::visit (SessionGroupSource& s)
         return;
 
     std::ostringstream oss;
-    oss << s.session()->numSource() << " sources in group" << std::endl;
     if (s.session()->frame()){
-        oss << "RGB, ";
-        oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+        std::string numsource = std::to_string(s.session()->numSource()) + " source" + (s.session()->numSource()>1 ? "s" : "");
+        if (brief_) {
+            oss << numsource << ", " ;
+            oss << "RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+        }
+        else {
+            oss << "Group of " << numsource << std::endl;
+            oss << "RGB" << std::endl;
+            oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+        }
     }
 
     information_ = oss.str();

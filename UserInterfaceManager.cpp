@@ -215,7 +215,7 @@ bool UserInterface::Init()
     // init dialogs
     sessionopendialog   = new DialogToolkit::OpenSessionDialog("Open Session");
     sessionsavedialog   = new DialogToolkit::SaveSessionDialog("Save Session");
-    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Session");
+    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Sources");
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
