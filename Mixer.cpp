@@ -541,7 +541,7 @@ void Mixer::deleteSource(Source *s)
         session_->deleteSource(s);
 
         // log
-        Log::Notify("Source %s deleted.", name.c_str());
+        Log::Notify("Source '%s' deleted.", name.c_str());
     }
 
     // cancel transition source in TRANSITION view

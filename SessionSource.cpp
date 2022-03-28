@@ -401,7 +401,7 @@ glm::ivec2 SessionGroupSource::icon() const
 std::string SessionGroupSource::info() const
 {
     if (session_)
-        return std::string("group of ") + std::to_string(session_->numSource()) + " sources";
+        return std::string("group of ") + std::to_string(session_->numSource()) + " source" + (session_->numSource()>1 ? "s" : "");
     else
         return std::string("undefined group.");
 }
