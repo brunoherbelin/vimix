@@ -779,12 +779,8 @@ void Mixer::groupAll()
         // NB: sessiongroup will be updated and inserted to Mixing view on next frame
         addSource(sessiongroup);
 
-        // store in action manager
-        std::ostringstream info;
-        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
-        Action::manager().store(info.str());
-
-        Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+        // inform of creation
+        Log::Info("Source '%s' created with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
     }
     else {
         delete sessiongroup;
