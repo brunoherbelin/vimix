@@ -872,7 +872,7 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-Stream::TimeCounter::TimeCounter()
+Stream::TimeCounter::TimeCounter(): fps(1.f)
 {
     timer = g_timer_new ();
 }

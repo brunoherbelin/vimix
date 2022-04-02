@@ -1322,7 +1322,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
 
 
 
-MediaPlayer::TimeCounter::TimeCounter()
+MediaPlayer::TimeCounter::TimeCounter(): fps(1.f)
 {
     timer = g_timer_new ();
 }
