@@ -7218,7 +7218,7 @@ void SourcePreview::setSource(Source *s, const string &label)
         delete source_;
 
     source_ = s;
-    label_ = BaseToolkit::truncated(label, 35);
+    label_ = label;
     reset_ = true;
 }
 
@@ -7231,8 +7231,6 @@ Source * SourcePreview::getSource()
 
 void SourcePreview::Render(float width)
 {
-    static InfoVisitor _info;
-
     if(source_) {
         // cancel if failed
         if (source_->failed()) {
@@ -7264,14 +7262,19 @@ void SourcePreview::Render(float width)
             FrameBuffer *frame = source_->frame();
             ImVec2 preview_size(width, width / frame->aspectRatio());
             ImGui::Image((void*)(uintptr_t) frame->texture(), preview_size);
+            bool mouseover = ImGui::IsItemHovered();
+            if (mouseover) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted(label_.c_str());
+                ImGui::EndTooltip();
+            }
             // if the source is playable and once its ready
             if (source_->playable() && source_->ready()) {
                 // activate the source on mouse over
-                bool activate = ImGui::IsItemHovered();
-                if (source_->active() != activate)
-                    source_->setActive(activate);
+                if (source_->active() != mouseover)
+                    source_->setActive(mouseover);
                 // show icon '>' to indicate if we can activate it
-                if (!activate) {
+                if (!mouseover) {
                     ImVec2 pos = ImGui::GetCursorPos();
                     ImGui::SetCursorPos(pos + preview_size * ImVec2(0.5f, -0.6f));
                     ImGuiToolkit::Icon(12,7);
@@ -7281,8 +7284,9 @@ void SourcePreview::Render(float width)
             // information text
             ImGuiToolkit::Icon(source_->icon().x, source_->icon().y);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::Text("%s", label_.c_str());
+            ImGui::Text("%s", source_->info().c_str());
             if (source_->ready()) {
+                static InfoVisitor _info;
                 source_->accept(_info);
                 ImGui::Text("%s", _info.str().c_str());
             }

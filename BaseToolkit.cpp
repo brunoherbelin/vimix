@@ -104,10 +104,10 @@ std::string BaseToolkit::transliterate(const std::string &input)
 }
 
 
-std::string BaseToolkit::unspace(const std::string &input)
+std::string BaseToolkit::unspace(const std::string &input, char delim)
 {
     std::string output = input;
-    std::replace( output.begin(), output.end(), ' ', '_');
+    std::replace_if( output.begin(), output.end(), ::isspace, delim);
     return output;
 }
 

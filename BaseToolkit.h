@@ -16,8 +16,8 @@ std::string uniqueName(const std::string &basename, std::list<std::string> exist
 // get a transliteration to Latin of any string
 std::string transliterate(const std::string &input);
 
-// replaces spaces by underscores in a string
-std::string unspace(const std::string &input);
+// replaces spaces by delim in a string
+std::string unspace(const std::string &input, char delim = '_');
 
 // get a string to display memory size with unit KB, MB, GB, TB
 std::string byte_to_string(long b);

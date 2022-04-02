@@ -246,5 +246,5 @@ glm::ivec2 CloneSource::icon() const
 
 std::string CloneSource::info() const
 {
-    return std::string("clone of ") + cloning_provenance_label[provenance_] + " from '" + origin_->name() + "'";
+    return "Clone";
 }

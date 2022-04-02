@@ -82,11 +82,7 @@ glm::ivec2 GenericStreamSource::icon() const
 
 std::string GenericStreamSource::info() const
 {
-    if (gst_elements_.empty())
-        return "Gstreamer custom pipeline without source";
-    std::string src_element = gst_elements_.front();
-    src_element = src_element.substr(0, src_element.find(" "));
-    return std::string("Gstreamer custom pipeline with source '")+src_element+"'";
+    return "Custom gstreamer";
 }
 
 StreamSource::StreamSource(uint64_t id) : Source(id), stream_(nullptr)

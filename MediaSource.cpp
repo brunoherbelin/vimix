@@ -75,7 +75,10 @@ glm::ivec2 MediaSource::icon() const
 
 std::string MediaSource::info() const
 {
-    return std::string("media '") + path_ + "'";
+    if (mediaplayer_->isImage())
+        return "Image File";
+    else
+        return "Video File";
 }
 
 bool MediaSource::failed() const

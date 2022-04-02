@@ -687,7 +687,10 @@ glm::ivec2 DeviceSource::icon() const
 
 std::string DeviceSource::info() const
 {
-    return std::string("device '") + device_ + "'";
+    if ( device_.find("Screen") != std::string::npos )
+        return "Screen capture";
+    else
+        return "Device";
 }
 
 

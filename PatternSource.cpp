@@ -181,5 +181,5 @@ glm::ivec2 PatternSource::icon() const
 
 std::string PatternSource::info() const
 {
-    return std::string("pattern '") + Pattern::get(pattern()->type()).label + "'";
+    return "Pattern";
 }

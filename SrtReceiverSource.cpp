@@ -52,5 +52,5 @@ glm::ivec2 SrtReceiverSource::icon() const
 
 std::string SrtReceiverSource::info() const
 {
-    return std::string("SRT receiver from '") + uri() + "'";
+    return "SRT receiver";
 }

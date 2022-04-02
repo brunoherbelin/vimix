@@ -299,7 +299,7 @@ glm::ivec2 SessionFileSource::icon() const
 
 std::string SessionFileSource::info() const
 {
-    return std::string("session vimix '") + path_ + "'";
+    return "Session File";
 }
 
 
@@ -400,8 +400,5 @@ glm::ivec2 SessionGroupSource::icon() const
 
 std::string SessionGroupSource::info() const
 {
-    if (session_)
-        return std::string("group of ") + std::to_string(session_->numSource()) + " source" + (session_->numSource()>1 ? "s" : "");
-    else
-        return std::string("undefined group.");
+    return "Session group";
 }

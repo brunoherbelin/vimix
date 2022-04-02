@@ -266,7 +266,7 @@ glm::ivec2 MultiFileSource::icon () const
 
 std::string MultiFileSource::info() const
 {
-    return std::string("sequence '") + sequence_.location + "'";
+    return "Images sequence";
 }
 
 

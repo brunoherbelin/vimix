@@ -53,6 +53,7 @@
 #include "SrtReceiverSource.h"
 #include "SourceCallback.h"
 
+#include "InfoVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "Streamer.h"
@@ -444,7 +445,10 @@ void Mixer::insertSource(Source *s, View::Mode m)
         Action::manager().store(s->name() + std::string(": source inserted"));
 
         // notify creation of source
-        Log::Notify("Added source '%s' with %s", s->name().c_str(), s->info().c_str());
+        static InfoVisitor _more_info;
+        s->accept(_more_info);
+        std::string moreinfo = BaseToolkit::unspace(_more_info.str(), ' ');
+        Log::Notify("Added %s source '%s' (%s)", s->info().c_str(), s->name().c_str(), moreinfo.c_str());
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -724,10 +728,10 @@ void Mixer::groupSelection()
 
         // store in action manager
         std::ostringstream info;
-        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources flatten.";
+        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources groupped.";
         Action::manager().store(info.str());
 
-        Log::Notify("Added source '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+        Log::Notify("Added %s source '%s' (group of %d sources)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->numSource());
 
         // give the hand to the user
         Mixer::manager().setCurrentSource(sessiongroup);
@@ -780,7 +784,7 @@ void Mixer::groupAll()
         addSource(sessiongroup);
 
         // inform of creation
-        Log::Info("Source '%s' created with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+        Log::Info("%s Source '%s' created (%d sources groupped)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->numSource());
     }
     else {
         delete sessiongroup;
@@ -825,7 +829,7 @@ void Mixer::flattenSession()
     // prevent deletion of session_ (now embedded into session group)
     session_ = new Session;
 
-    Log::Notify("Switched to '%s' with %s", sessiongroup->name().c_str(), sessiongroup->info().c_str());
+    Log::Notify("Switched to session '%s'", sessiongroup->name().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)

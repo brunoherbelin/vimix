@@ -576,17 +576,14 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::Spacing();
 
     ImGui::PopID();
+
+    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text(s.info().c_str());
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if ( s.mediaplayer()->isImage() )
-        ImGui::Text("Image File");
-    else
-        ImGui::Text("Video File");
-
     // Media info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
@@ -617,10 +614,6 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 {
     if (s.session() == nullptr)
         return;
-
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Session File");
 
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -673,10 +666,6 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     if (s.session() == nullptr)
         return;
 
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Session group");
-
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
@@ -703,10 +692,6 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
 void ImGuiVisitor::visit (RenderSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Rendering Output");
-
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
@@ -733,10 +718,6 @@ void ImGuiVisitor::visit (RenderSource& s)
 
 void ImGuiVisitor::visit (CloneSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Clone");
-
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
@@ -770,10 +751,6 @@ void ImGuiVisitor::visit (CloneSource& s)
 
 void ImGuiVisitor::visit (PatternSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Pattern");
-
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
@@ -810,10 +787,6 @@ void ImGuiVisitor::visit (PatternSource& s)
 
 void ImGuiVisitor::visit (DeviceSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Device");
-
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
@@ -883,9 +856,6 @@ void ImGuiVisitor::visit (NetworkSource& s)
 
 void ImGuiVisitor::visit (MultiFileSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Images sequence");
     static uint64_t id = 0;
 
     // information text
@@ -951,10 +921,6 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 {
     float w = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Custom");
-
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
     s.accept(info);
@@ -988,10 +954,6 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 
 void ImGuiVisitor::visit (SrtReceiverSource& s)
 {
-    ImGuiToolkit::Icon(s.icon().x, s.icon().y);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("SRT Receiver");
-
     // network info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);

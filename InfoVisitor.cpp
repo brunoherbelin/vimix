@@ -107,7 +107,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
         oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,")) << ", ";
         oss << mp.width() << " x " << mp.height();
         if (!mp.isImage())
-            oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
+            oss << ", " << std::fixed << std::setprecision(0) << mp.frameRate() << "fps";
     }
     else {
         oss << mp.filename() << std::endl;
@@ -172,14 +172,14 @@ void InfoVisitor::visit (SessionGroupSource& s)
         return;
 
     std::ostringstream oss;
+    oss << s.session()->numSource() << " source" << (s.session()->numSource()>1 ? "s" : "");
+
     if (s.session()->frame()){
-        std::string numsource = std::to_string(s.session()->numSource()) + " source" + (s.session()->numSource()>1 ? "s" : "");
         if (brief_) {
-            oss << numsource << ", " ;
-            oss << "RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+            oss << ", RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
         else {
-            oss << "Group of " << numsource << std::endl;
+            oss << " in Group"<< std::endl;
             oss << "RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
@@ -275,7 +275,7 @@ void InfoVisitor::visit (DeviceSource& s)
         if (brief_) {
             oss << best.stream << " " << best.format  << ", ";
             oss << best.width << " x " << best.height << ", ";
-            oss << std::fixed << std::setprecision(1) << fps << " fps";
+            oss << std::fixed << std::setprecision(0) << fps << "fps";
         }
         else {
             oss << s.device() << std::endl;

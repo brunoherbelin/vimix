@@ -352,6 +352,6 @@ glm::ivec2 NetworkSource::icon() const
 
 std::string NetworkSource::info() const
 {
-    return std::string("shared by '") + connection_name_ + "'";
+    return "Shared stream";
 }
 
