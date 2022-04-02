@@ -638,12 +638,12 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         ImGui::SetCursorPos(pos);
     }
 
-    if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
     ImGui::SameLine();
     ImGui::Text("Sources");
 
-    if (ImGuiToolkit::ButtonIcon(3, 2)) s.session()->setFadingTarget(0.f);
+    if (ImGuiToolkit::IconButton(2, 1)) s.session()->setFadingTarget(0.f);
     float f = s.session()->fading();
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -693,9 +693,12 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
         ImGui::SetCursorPos(pos);
     }
 
-    if ( ImGui::Button( ICON_FA_UPLOAD " Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+
+
+    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
-    }
+    ImGui::SameLine();
+    ImGui::Text("Sources");
 }
 
 void ImGuiVisitor::visit (RenderSource& s)
