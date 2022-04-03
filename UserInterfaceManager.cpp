@@ -2847,7 +2847,7 @@ void SourceController::RenderSelection(size_t i)
             // select all playable sources
             for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
                 if ( (*s)->playable() ) {
-                    std::string label = std::string((*s)->initials()) + "  - " + (*s)->name();
+                    std::string label = std::string((*s)->initials()) + " - " + (*s)->name();
                     if (std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
                         if (ImGui::MenuItem( label.c_str() , 0, false ))
                             Mixer::manager().session()->addToPlayGroup(i, *s);
@@ -6011,7 +6011,7 @@ void Navigator::RenderNewPannel()
                 SourceList::iterator iter;
                 for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
                 {
-                    label = std::string("Source ") + (*iter)->name();
+                    label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
                     if (ImGui::Selectable( label.c_str() )) {
                         label = std::string("Clone of ") + label;
                         new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name()),label);
