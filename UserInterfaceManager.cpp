@@ -6171,7 +6171,7 @@ void Navigator::RenderNewPannel()
                 ImGui::InputText("##url", bufurl, IM_ARRAYSIZE(bufurl), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
 
-                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting to a stream on Secure Reliable Transport (SRT) protocol, waiting for connections in listener mode.", ICON_SOURCE_SRT);
+                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting with Secure Reliable Transport (SRT) protocol to a broadcaster that is waiting for connections (listener mode).", ICON_SOURCE_SRT);
 
                 if ( ImGui::Button("Call", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                     new_source_preview_.setSource( Mixer::manager().createSourceSrt(Settings::application.custom_connect_ip, Settings::application.custom_connect_port), bufurl);

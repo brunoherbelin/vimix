@@ -175,8 +175,11 @@ std::list<std::string> BaseToolkit::splitted(const std::string& str, char delim)
 std::string BaseToolkit::joinned(std::list<std::string> strlist, char separator)
 {
     std::string str;
-    for (auto it = strlist.cbegin(); it != strlist.cend(); ++it)
-        str += (*it) + separator;
+    for (auto it = strlist.cbegin(); it != strlist.cend(); ++it) {
+        if (it != strlist.cbegin())
+            str += separator;
+        str += (*it);
+    }
 
     return str;
 }

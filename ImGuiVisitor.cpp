@@ -579,7 +579,7 @@ void ImGuiVisitor::visit (Source& s)
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text(s.info().c_str());
+    ImGui::Text("%s", s.info().c_str());
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
@@ -663,7 +663,8 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
 void ImGuiVisitor::visit (SessionGroupSource& s)
 {
-    if (s.session() == nullptr)
+    Session *session = s.session();
+    if (session == nullptr)
         return;
 
     // info
@@ -682,7 +683,15 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
         ImGui::SetCursorPos(pos);
     }
 
-
+    // Show list of sources in text bloc (multi line, dark background)
+    ImGuiTextBuffer info;
+    info.append( BaseToolkit::joinned( session->getNameList(), '\n').c_str() );
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::InputTextMultiline("##sourcesingroup", (char *)info.c_str(), info.size(),
+                              ImVec2(IMGUI_RIGHT_ALIGN, CLAMP(session->numSource(), 2, 5) * ImGui::GetTextLineHeightWithSpacing()),
+                              ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor(1);
 
     if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
