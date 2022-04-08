@@ -42,9 +42,13 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 {
 }
 
-Session::Session() : active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
+Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
     filename_(""), failedSource_(nullptr), thumbnail_(nullptr)
 {
+    // create unique id
+    if (id_ == 0)
+        id_ = BaseToolkit::uniqueId();
+
     config_[View::RENDERING] = new Group;
     config_[View::RENDERING]->scale_ = glm::vec3(0.f);
 
@@ -669,10 +673,10 @@ void Session::validate (SourceList &sources)
     }
 }
 
-Session *Session::load(const std::string& filename, uint recursion)
+Session *Session::load(const std::string& filename, uint level)
 {
     // create session
-    SessionCreator creator(recursion);
+    SessionCreator creator(level);
     creator.load(filename);
 
     // return created session

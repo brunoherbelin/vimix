@@ -43,7 +43,7 @@ public:
     void render() override;
 
     // SessionFile Source specific interface
-    void load(const std::string &p = "", uint recursion = 0);
+    void load(const std::string &p = "", uint level = 0);
 
     inline std::string path() const { return path_; }
 

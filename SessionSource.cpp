@@ -174,7 +174,7 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
 
 }
 
-void SessionFileSource::load(const std::string &p, uint recursion)
+void SessionFileSource::load(const std::string &p, uint level)
 {
     path_ = p;
 
@@ -192,7 +192,7 @@ void SessionFileSource::load(const std::string &p, uint recursion)
     }
     else {
         // launch a thread to load the session file
-        sessionLoader_ = std::async(std::launch::async, Session::load, path_, recursion);
+        sessionLoader_ = std::async(std::launch::async, Session::load, path_, level);
         Log::Notify("Opening %s", p.c_str());
     }
 
@@ -229,7 +229,7 @@ void SessionFileSource::init()
                 // done init
                 wait_for_sources_ = false;
                 initialized_ = true;
-                Log::Info("Source Session %s loaded %d sources.", path_.c_str(), session_->numSource());
+                Log::Info("Source '%s' linked to Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
             }
         }
         else if ( !failed_ ) {
@@ -254,7 +254,7 @@ void SessionFileSource::init()
                 wait_for_sources_ = true;
             else {
                 initialized_ = true;
-                Log::Info("New Session created (%d x %d).", renderbuffer->width(), renderbuffer->height());
+                Log::Info("Source '%s' linked to new Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
             }
         }
     }

@@ -38,10 +38,13 @@ class Session
     friend class RenderSource;
 
 public:
-    Session();
+    Session(uint64_t id = 0);
     ~Session();
 
-    static Session *load(const std::string& filename, uint recursion = 0);
+    // Get unique id
+    inline uint64_t id () const { return id_; }
+
+    static Session *load(const std::string& filename, uint level = 0);
     static std::string save(const std::string& filename, Session *session, const std::string& snapshot_name = "");
 
     // add given source into the session
@@ -169,6 +172,7 @@ public:
     Metronome::Synchronicity inputSynchrony(uint input);
 
 protected:
+    uint64_t id_;
     bool active_;
     float activation_threshold_;
     RenderView render_;

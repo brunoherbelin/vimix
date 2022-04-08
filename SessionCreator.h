@@ -1,6 +1,7 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
+#include <list>
 #include <map>
 #include <tinyxml2.h>
 
@@ -13,11 +14,9 @@ class FrameBufferImage;
 
 class SessionLoader : public Visitor {
 
-    SessionLoader();
-
 public:
 
-    SessionLoader(Session *session, int recursion = 0);
+    SessionLoader(Session *session = nullptr, uint level = 0);
     inline Session *session() const { return session_; }
 
     void load(tinyxml2::XMLElement *sessionNode);
@@ -84,8 +83,8 @@ protected:
     std::string sessionFilePath_;
     // parsing current xml
     tinyxml2::XMLElement *xmlCurrent_;
-    // level of loading recursion
-    int recursion_;
+    // level of loading imbricated sessions and recursion
+    uint level_;
     // map of correspondance from xml source id (key) to new source pointer (value)
     std::map< uint64_t, Source* > sources_id_;
     // list of groups (lists of xml source id)
@@ -115,7 +114,7 @@ class SessionCreator : public SessionLoader {
     void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
 
 public:
-    SessionCreator(int recursion = 0);
+    SessionCreator(uint level = 0);
 
     void load(const std::string& filename);
 

@@ -94,25 +94,34 @@ SessionInformation SessionCreator::info(const std::string& filename)
     return ret;
 }
 
-SessionCreator::SessionCreator(int recursion): SessionLoader(nullptr, recursion)
+SessionCreator::SessionCreator(uint level): SessionLoader(nullptr, level)
 {
 
 }
 
 void SessionCreator::load(const std::string& filename)
 {
+    // avoid imbricated sessions at too many depth
+    if (level_ > MAX_SESSION_LEVEL) {
+        Log::Warning("Too many imbricated sessions detected! Interrupting loading at depth %d.\n", MAX_SESSION_LEVEL);
+        return;
+    }
+
+    // Load XML document
     XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
     if ( XMLResultError(eResult)){
         Log::Warning("%s could not be opened.\n%s", filename.c_str(), xmlDoc_.ErrorStr());
         return;
     }
 
+    // check header
     XMLElement *header = xmlDoc_.FirstChildElement(APP_NAME);
     if (header == nullptr) {
-        Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
+        Log::Warning("%s is not a %s file.", filename.c_str(), APP_NAME);
         return;
     }
 
+    // check version
     int version_major = -1, version_minor = -1;
     header->QueryIntAttribute("major", &version_major);
     header->QueryIntAttribute("minor", &version_minor);
@@ -124,15 +133,28 @@ void SessionCreator::load(const std::string& filename)
 //        return;
     }
 
+    // check content
+    XMLElement *sessionNode = xmlDoc_.FirstChildElement("Session");
+    if (sessionNode == nullptr) {
+        Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
+        return;
+    }
+
+    // read id of session
+    uint64_t id__ = 0;
+    sessionNode->QueryUnsigned64Attribute("id", &id__);
+
     // session file seems legit, create a session
-    session_ = new Session;
+    session_ = new Session(id__);
+
+    // set filename and current path
+    sessionFilePath_ = SystemToolkit::path_filename(filename);
+    session_->setFilename( filename );
 
     // load views config (includes resolution of session rendering)
     loadConfig( xmlDoc_.FirstChildElement("Views") );
 
     // ready to read sources
-    sessionFilePath_ = SystemToolkit::path_filename(filename);
-    XMLElement *sessionNode = xmlDoc_.FirstChildElement("Session");
     SessionLoader::load( sessionNode );
 
     // load snapshots
@@ -157,7 +179,9 @@ void SessionCreator::load(const std::string& filename)
     }
 
     // all good
-    session_->setFilename(filename);
+    Log::Info("Session %s Opened '%s' (%d sources)", std::to_string(session_->id()).c_str(),
+              filename.c_str(), session_->numSource());
+
 }
 
 
@@ -295,20 +319,12 @@ void SessionCreator::loadPlayGroups(tinyxml2::XMLElement *playgroupNode)
     }
 }
 
-SessionLoader::SessionLoader(): Visitor(),
-    session_(nullptr), xmlCurrent_(nullptr), recursion_(0)
+SessionLoader::SessionLoader(Session *session, uint level): Visitor(),
+    session_(session), xmlCurrent_(nullptr), level_(level)
 {
     // impose C locale
     setlocale(LC_ALL, "C");
 }
-
-SessionLoader::SessionLoader(Session *session, int recursion): Visitor(),
-    session_(session), xmlCurrent_(nullptr), recursion_(recursion)
-{
-    // impose C locale
-    setlocale(LC_ALL, "C");
-}
-
 
 std::map< uint64_t, Source* > SessionLoader::getSources() const
 {
@@ -345,16 +361,12 @@ void SessionLoader::load(XMLElement *sessionNode)
 {
     sources_id_.clear();
 
-    if (recursion_ > MAX_SESSION_LEVEL) {
-        Log::Warning("Recursive or imbricated sessions detected! Interrupting loading after %d iterations.\n", MAX_SESSION_LEVEL);
-        return;
-    }
-
     if (sessionNode != nullptr && session_ != nullptr)
     {
         //
         // session attributes
         //
+        // read and set activation threshold
         float t = MIXING_MIN_THRESHOLD;
         sessionNode->QueryFloatAttribute("activationThreshold", &t);
         session_->setActivationThreshold(t);
@@ -410,6 +422,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 }
                 else if ( std::string(pType) == "SrtReceiverSource") {
                     load_source = new SrtReceiverSource(id_xml_);
+                }
+                else if ( std::string(pType) != "CloneSource") {
+                    Log::Info("Unknown source type '%s' ignored.", pType);
                 }
 
                 // skip failed (including clones)
@@ -764,7 +779,7 @@ void SessionLoader::visit(MediaPlayer &n)
     XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
 
     if (mediaplayerNode) {
-        uint64_t id__ = -1;
+        uint64_t id__ = 0;
         mediaplayerNode->QueryUnsigned64Attribute("id", &id__);
 
         // timeline
@@ -1004,17 +1019,28 @@ void SessionLoader::visit (SessionFileSource& s)
         const char * text = pathNode->GetText();
         if (text) {
             std::string path(text);
-            // load only new files
-            if ( path != s.path() ) {
-                if ( !SystemToolkit::file_exists(path)){
-                    const char * relative;
-                    if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
-                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
-                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
-                        path = rel;
-                    }
+            if ( !SystemToolkit::file_exists(path) ){
+                const char * relative;
+                if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                    Log::Info("File '%s' not found; Trying '%s' instead.", path.c_str(), rel.c_str());
+                    path = rel;
                 }
-                s.load(path, recursion_ + 1);
+            }
+            // load only if session source s is new
+            if ( path != s.path() ) {
+                // level of session imbrication
+                uint l = level_;
+                if ( path == session_->filename() && l < MAX_SESSION_LEVEL) {
+                    // prevent recursive load by reaching maximum level of inclusion immediately
+                    l += MAX_SESSION_LEVEL;
+                    Log::Warning("Prevending recursive inclusion of Session '%s' into itself.", path.c_str());
+                }
+                else
+                    // normal increment level of inclusion
+                    ++l;
+                // launch session loader at incremented level
+                s.load(path, l);
             }
         }
     }
@@ -1032,7 +1058,7 @@ void SessionLoader::visit (SessionGroupSource& s)
         // only parse if newly created
         if (s.session()->empty()) {
             // load session inside group
-            SessionLoader grouploader( s.session(), recursion_ + 1 );
+            SessionLoader grouploader( s.session(), level_ + 1 );
             grouploader.load( sessionGroupNode );
         }
     }

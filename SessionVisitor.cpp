@@ -75,6 +75,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
         (*iter)->accept(sv);
 
     // save session attributes
+    sessionNode->SetAttribute("id", session->id());
     sessionNode->SetAttribute("activationThreshold", session->activationThreshold());
 
     // save the thumbnail
@@ -664,6 +665,7 @@ void SessionVisitor::visit (SessionGroupSource& s)
     Session *se = s.session();
     if (se) {
         XMLElement *sessionNode = xmlDoc_->NewElement("Session");
+        sessionNode->SetAttribute("id", se->id());
         xmlCurrent_->InsertEndChild(sessionNode);
 
         for (auto iter = se->begin(); iter != se->end(); ++iter){
