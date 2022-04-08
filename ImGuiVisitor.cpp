@@ -689,7 +689,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::InputTextMultiline("##sourcesingroup", (char *)info.c_str(), info.size(),
-                              ImVec2(IMGUI_RIGHT_ALIGN, CLAMP(session->numSource(), 2, 5) * ImGui::GetTextLineHeightWithSpacing()),
+                              ImVec2(IMGUI_RIGHT_ALIGN, CLAMP(session->size(), 2, 5) * ImGui::GetTextLineHeightWithSpacing()),
                               ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor(1);
 

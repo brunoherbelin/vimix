@@ -180,7 +180,7 @@ void SessionCreator::load(const std::string& filename)
 
     // all good
     Log::Info("Session %s Opened '%s' (%d sources)", std::to_string(session_->id()).c_str(),
-              filename.c_str(), session_->numSource());
+              filename.c_str(), session_->size());
 
 }
 

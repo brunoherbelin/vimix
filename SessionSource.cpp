@@ -165,7 +165,7 @@ void SessionSource::update(float dt)
     if (session_->failedSource() != nullptr) {
         session_->deleteSource(session_->failedSource());
         // fail session if all sources failed
-        if ( session_->numSource() < 1)
+        if ( session_->size() < 1)
             failed_ = true;
     }
 
@@ -302,7 +302,7 @@ void SessionFileSource::init()
             attach(renderbuffer);
 
             // wait for all sources to init
-            if (session_->numSource() > 0)
+            if (session_->size() > 0)
                 wait_for_sources_ = true;
             else {
                 initialized_ = true;

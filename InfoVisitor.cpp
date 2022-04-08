@@ -149,7 +149,11 @@ void InfoVisitor::visit (SessionFileSource& s)
 
     std::ostringstream oss;
     if (s.session()->frame()){        
-        std::string numsource = std::to_string(s.session()->numSource()) + " source" + (s.session()->numSource()>1 ? "s" : "");
+        uint N = s.session()->size();
+        std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
+        uint T = s.session()->numSources();
+        if (T>N)
+            numsource += " (" + std::to_string(T) + " total)";
         if (brief_) {
             oss << SystemToolkit::filename(s.path()) << std::endl;
             oss << numsource << ", " ;
@@ -172,7 +176,11 @@ void InfoVisitor::visit (SessionGroupSource& s)
         return;
 
     std::ostringstream oss;
-    oss << s.session()->numSource() << " source" << (s.session()->numSource()>1 ? "s" : "");
+    uint N = s.session()->size();
+    oss << N << " source" << (N>1 ? "s" : "");
+    uint T = s.session()->numSources();
+    if (T>N)
+        oss << " (" << std::to_string(T) << " total)";
 
     if (s.session()->frame()){
         if (brief_) {

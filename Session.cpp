@@ -33,6 +33,7 @@
 #include "MixingGroup.h"
 #include "ControlManager.h"
 #include "SourceCallback.h"
+#include "CountVisitor.h"
 #include "Log.h"
 
 #include "Session.h"
@@ -432,10 +433,20 @@ SourceList Session::getDepthSortedList() const
     return depth_sorted(sources_);
 }
 
-uint Session::numSource() const
+uint Session::size() const
 {
     return sources_.size();
 }
+
+uint Session::numSources() const
+{
+    CountVisitor counter;
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        (*it)->accept(counter);
+    }
+    return counter.numSources();
+}
+
 
 SourceIdList Session::getIdList() const
 {

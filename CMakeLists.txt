@@ -434,6 +434,7 @@ set(VMIX_SRCS
     ImGuiToolkit.cpp
     ImGuiVisitor.cpp
     InfoVisitor.cpp
+    CountVisitor.cpp
     GstToolkit.cpp
     GlmToolkit.cpp
     SystemToolkit.cpp

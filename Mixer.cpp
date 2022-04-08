@@ -705,7 +705,7 @@ void Mixer::groupSelection()
         }
     }
 
-    if (sessiongroup->session()->numSource() > 0) {
+    if (sessiongroup->session()->size() > 0) {
         // recreate groups in session group
         for (auto git = selectgroups.begin(); git != selectgroups.end(); ++git)
             sessiongroup->session()->link( *git );
@@ -728,10 +728,10 @@ void Mixer::groupSelection()
 
         // store in action manager
         std::ostringstream info;
-        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->numSource() << " sources groupped.";
+        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->size() << " sources groupped.";
         Action::manager().store(info.str());
 
-        Log::Notify("Added %s source '%s' (group of %d sources)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->numSource());
+        Log::Notify("Added %s source '%s' (group of %d sources)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->size());
 
         // give the hand to the user
         Mixer::manager().setCurrentSource(sessiongroup);
@@ -763,7 +763,7 @@ void Mixer::groupAll()
             break;
     }
 
-    if (sessiongroup->session()->numSource() > 0) {
+    if (sessiongroup->session()->size() > 0) {
 
         // recreate groups in session group
         for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
@@ -784,7 +784,7 @@ void Mixer::groupAll()
         addSource(sessiongroup);
 
         // inform of creation
-        Log::Info("%s Source '%s' created (%d sources groupped)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->numSource());
+        Log::Info("%s Source '%s' created (%d sources groupped)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->size());
     }
     else {
         delete sessiongroup;
@@ -980,7 +980,7 @@ void Mixer::moveIndex (int current_index, int target_index)
 
 void Mixer::setCurrentNext()
 {
-    if (session_->numSource() > 0) {
+    if (session_->size() > 0) {
 
         SourceList::iterator it = current_source_;
         ++it;
@@ -995,7 +995,7 @@ void Mixer::setCurrentNext()
 
 void Mixer::setCurrentPrevious()
 {
-    if (session_->numSource() > 0) {
+    if (session_->size() > 0) {
 
         SourceList::iterator it = current_source_;
 
@@ -1037,7 +1037,7 @@ int Mixer::indexCurrentSource() const
 
 int  Mixer::numSource() const
 {
-    return (int) session_->numSource();
+    return (int) session_->size();
 }
 
 Source *Mixer::currentSource()
@@ -1221,7 +1221,7 @@ void Mixer::merge(Session *session)
 
     // import every sources
     std::ostringstream info;
-    info << session->numSource() << " sources imported from:" << session->filename();
+    info << session->size() << " sources imported from:" << session->filename();
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
         // avoid name duplicates
         renameSource(s);
@@ -1260,7 +1260,7 @@ void Mixer::merge(SessionSource *source)
 
     // prepare Action manager info
     std::ostringstream info;
-    info << source->name().c_str() << " expanded:" << session->numSource() << " sources imported";
+    info << source->name().c_str() << " expanded:" << session->size() << " sources imported";
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
@@ -1395,7 +1395,7 @@ void Mixer::swap()
     Action::manager().init();
 
     // notification
-    Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->numSource());
+    Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->size());
 }
 
 void Mixer::close(bool smooth)

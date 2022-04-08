@@ -5407,7 +5407,7 @@ void Navigator::Render()
 
     // hack to show more sources if not enough space; make source icons smaller...
     ImVec2 sourceiconsize(icon_width, icon_width);
-    if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->numSource() * icon_width )
+    if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->size() * icon_width )
         sourceiconsize.y *= 0.75f;
 
     // Left bar top

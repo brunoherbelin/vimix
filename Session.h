@@ -63,7 +63,7 @@ public:
 
     // management of list of sources
     bool empty() const;
-    uint numSource() const;
+    uint size() const;
     SourceList::iterator begin ();
     SourceList::iterator end ();
     SourceList::iterator find (Source *s);
@@ -80,6 +80,9 @@ public:
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;    
     void move (int current_index, int target_index);
+
+    // get total number of sources (recursively)
+    uint numSources() const;
 
     // update all sources and mark sources which failed
     void update (float dt);
