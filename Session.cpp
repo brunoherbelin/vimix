@@ -19,6 +19,8 @@
 
 #include <algorithm>
 
+#include <tinyxml2.h>
+
 #include "defines.h"
 #include "BaseToolkit.h"
 #include "Source.h"
@@ -872,5 +874,48 @@ std::vector<Metronome::Synchronicity> Session::getInputSynchrony()
 Metronome::Synchronicity Session::inputSynchrony(uint input)
 {
     return input_sync_[input];
+}
+
+
+void Session::applySnapshot(uint64_t key)
+{
+    tinyxml2::XMLElement *snapshot_node_ = snapshots_.xmlDoc_->FirstChildElement( SNAPSHOT_NODE(key).c_str() );;
+    if (snapshot_node_) {
+
+        SourceIdList session_sources = getIdList();
+
+        SessionLoader loader( this );
+        loader.load( snapshot_node_ );
+
+        // loaded_sources contains map of xml ids of all sources treated by loader
+        std::map< uint64_t, Source* > loaded_sources = loader.getSources();
+
+        // remove intersect of both lists (sources were updated by SessionLoader)
+        for( auto lsit = loaded_sources.begin(); lsit != loaded_sources.end(); ){
+            auto ssit = std::find(session_sources.begin(), session_sources.end(), (*lsit).first);
+            if ( ssit != session_sources.end() ) {
+                lsit = loaded_sources.erase(lsit);
+                session_sources.erase(ssit);
+            }
+            else
+                lsit++;
+        }
+
+        // remaining ids in list sessionsources : to remove
+        while ( !session_sources.empty() ){
+            SourceList::iterator its = find(session_sources.front());
+            // its in the list !
+            if (its != sources_.end()) {
+#ifndef ACTION_DEBUG
+                Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
+#endif
+                // delete source from session
+                deleteSource( *its );
+            }
+            session_sources.pop_front();
+        }
+
+        ++View::need_deep_update_;
+    }
 }
 

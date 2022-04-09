@@ -27,6 +27,8 @@ struct SessionNote
     SessionNote(const std::string &t = "", bool l = false, int s = 0);
 };
 
+#define SNAPSHOT_NODE(i) std::to_string(i).insert(0,1,'S')
+
 struct SessionSnapshots {
 
     tinyxml2::XMLDocument *xmlDoc_;
@@ -148,6 +150,7 @@ public:
 
     // snapshots
     SessionSnapshots * snapshots () { return &snapshots_; }
+    void applySnapshot(uint64_t key);
 
     // playlists
     void addPlayGroup(const SourceIdList &ids);

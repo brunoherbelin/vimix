@@ -636,22 +636,44 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::SameLine();
     ImGui::Text("Sources");
 
+    // versions
+    SessionSnapshots *versions = s.session()->snapshots();
+    if (versions->keys_.size()>0) {
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginCombo("Version", ICON_FA_CODE_BRANCH " Select" ) )
+        {
+            for (auto v = versions->keys_.crbegin() ; v != versions->keys_.crend(); ++v){
+                std::string label = std::to_string(*v);
+                const tinyxml2::XMLElement *snap = versions->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*v).c_str() );
+                if (snap)
+                    label = snap->Attribute("label");
+                if (ImGui::Selectable( label.c_str() )) {
+                    s.session()->applySnapshot(*v);
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    // fading
     if (ImGuiToolkit::IconButton(2, 1)) s.session()->setFadingTarget(0.f);
-    float f = s.session()->fading();
+    int f = 100 - int(s.session()->fading() * 100.f);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::SliderFloat("Fading", &f, 0.0, 1.0, f < 0.001 ? "None" : "%.2f") )
-        s.session()->setFadingTarget(f);
+    if (ImGui::SliderInt("Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
+        s.session()->setFadingTarget( float(100 - f) * 0.01f );
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
-        oss << s.name() << ": Fading " << std::setprecision(2) << f;
+        oss << s.name() << ": Fading " << f << " %";
         Action::manager().store(oss.str());
     }
+
+    // file open
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
     ImGui::SameLine();
     ImGui::Text("File");
-
+    // file path
     std::string path = SystemToolkit::path_filename(s.path());
     std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
