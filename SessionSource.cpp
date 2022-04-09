@@ -48,8 +48,8 @@ SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false), timer_(0
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     group->attach(frame);
     frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
-    frame->scale_.x = 1.05;
-    frame->scale_.y = 1.1;
+    frame->scale_.x = 1.04;
+    frame->scale_.y = 1.07;
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
     group->attach(frame);
@@ -59,9 +59,9 @@ SessionSource::SessionSource(uint64_t id) : Source(id), failed_(false), timer_(0
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     group->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
-    frame->scale_.x = 1.05;
-    frame->scale_.y = 1.1;
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
+    frame->scale_.x = 1.04;
+    frame->scale_.y = 1.07;
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     group->attach(frame);
@@ -190,6 +190,20 @@ void SessionSource::replay ()
     }
 }
 
+bool SessionSource::playable () const
+{
+    bool p = false;
+    if (session_) {
+        for( SourceList::iterator it = session_->begin(); it != session_->end(); ++it) {
+            if ( (*it)->playable() ){
+                p = true;
+                break;
+            }
+        }
+    }
+    return p;
+}
+
 SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_(""), initialized_(false), wait_for_sources_(false)
 {
     // specific node for transition view
@@ -245,7 +259,7 @@ void SessionFileSource::load(const std::string &p, uint level)
     else {
         // launch a thread to load the session file
         sessionLoader_ = std::async(std::launch::async, Session::load, path_, level);
-        Log::Notify("Opening %s", p.c_str());
+        Log::Notify("Opening '%s'...", p.c_str());
     }
 
     // will be ready after init and one frame rendered
@@ -271,6 +285,9 @@ void SessionFileSource::init()
             // force update of of all sources
             active_ = true;
             touch();
+
+            // deep update to make sure reordering of sources
+            ++View::need_deep_update_;
 
             // update to draw framebuffer
             session_->update(dt_);
@@ -366,7 +383,11 @@ void SessionGroupSource::init()
 {
     if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
 
+        // valid resolution given to create render view
         session_->setResolution( resolution_ );
+
+        // deep update to make sure reordering of sources
+        ++View::need_deep_update_;
 
         //  update to draw framebuffer
         session_->update( dt_ );
@@ -380,11 +401,13 @@ void SessionGroupSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // deep update to reorder
-        ++View::need_deep_update_;
+        // render the session frame into frame buffer immediately (avoids 1 frame blank)
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
 
         // done init
-        Log::Info("Source Group created (%d x %d).", int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+        Log::Info("Session Group '%s' initialized (%d x %d).", name().c_str(), int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
     }
 }
 

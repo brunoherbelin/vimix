@@ -16,7 +16,7 @@ public:
     void setActive (bool on) override;
     bool playing () const override { return !paused_; }
     void play (bool on) override;
-    bool playable () const  override { return true; }
+    bool playable () const  override;
     guint64 playtime () const override { return timer_; }
     void replay () override;
     bool failed () const override;

@@ -784,11 +784,12 @@ void Mixer::groupAll()
         addSource(sessiongroup);
 
         // inform of creation
-        Log::Info("%s Source '%s' created (%d sources groupped)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->size());
+        Log::Info("%s '%s' created with %d sources", sessiongroup->info().c_str(),
+                  sessiongroup->name().c_str(), sessiongroup->session()->size());
     }
     else {
         delete sessiongroup;
-        Log::Info("Failed to group all sources.");
+        Log::Info("Failed to group all sources");
     }
 }
 
@@ -1395,7 +1396,9 @@ void Mixer::swap()
     Action::manager().init();
 
     // notification
-    Log::Notify("Session %s loaded. %d source(s) created.", session_->filename().c_str(), session_->size());
+    uint N = session_->numSources();
+    std::string numsource = ( N>0 ? std::to_string(N) : "No" ) + " source" + (N>1 ? "s" : "");
+    Log::Notify("Session %s loaded. %s created.", session_->filename().c_str(), numsource.c_str());
 }
 
 void Mixer::close(bool smooth)
