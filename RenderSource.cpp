@@ -96,7 +96,7 @@ void RenderSource::init()
         ++View::need_deep_update_;
 
         // done init
-        Log::Info("Source Render linked to session (%d x %d).", int(fb->resolution().x), int(fb->resolution().y) );
+        Log::Info("Source '%s' linked to output (%d x %d).", name().c_str(), int(fb->resolution().x), int(fb->resolution().y) );
     }
 }
 

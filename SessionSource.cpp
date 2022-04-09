@@ -407,7 +407,10 @@ void SessionGroupSource::init()
         renderbuffer_->end();
 
         // done init
-        Log::Info("Session Group '%s' initialized (%d x %d).", name().c_str(), int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+        uint N = session_->size();
+        std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
+        Log::Info("Source '%s' groupped %s (%d x %d).", name().c_str(), numsource.c_str(),
+                  int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
     }
 }
 

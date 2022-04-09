@@ -783,9 +783,6 @@ void Mixer::groupAll()
         // NB: sessiongroup will be updated and inserted to Mixing view on next frame
         addSource(sessiongroup);
 
-        // inform of creation
-        Log::Info("%s '%s' created with %d sources", sessiongroup->info().c_str(),
-                  sessiongroup->name().c_str(), sessiongroup->session()->size());
     }
     else {
         delete sessiongroup;

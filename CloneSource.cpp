@@ -110,7 +110,7 @@ void CloneSource::init()
         ++View::need_deep_update_;
 
         // done init
-        Log::Info("Source %s cloning source %s.", name().c_str(), origin_->name().c_str() );
+        Log::Info("Source '%s' cloning source '%s'.", name().c_str(), origin_->name().c_str() );
     }
 }
 
