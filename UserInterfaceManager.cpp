@@ -2966,7 +2966,7 @@ void SourceController::RenderSelectedSources()
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
         center.x -= ImGui::GetTextLineHeight() * 2.f;
         ImGui::SetCursorScreenPos(top + center);
-        ImGui::Text("Nothing selected");
+        ImGui::Text("Nothing to play");
         ImGui::PopFont();
         ImGui::PopStyleColor(1);
 
