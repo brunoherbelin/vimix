@@ -61,6 +61,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     rootnode->SetAttribute("major", XML_VERSION_MAJOR);
     rootnode->SetAttribute("minor", XML_VERSION_MINOR);
     rootnode->SetAttribute("size", session->size());
+    rootnode->SetAttribute("total", session->numSources());
     rootnode->SetAttribute("date", SystemToolkit::date_time_string().c_str());
     rootnode->SetAttribute("resolution", session->frame()->info().c_str());
     xmlDoc.InsertEndChild(rootnode);

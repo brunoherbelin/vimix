@@ -64,8 +64,12 @@ SessionInformation SessionCreator::info(const std::string& filename)
 
             const XMLElement *header = doc.FirstChildElement(APP_NAME);
             if (header != nullptr) {
-                int s = header->IntAttribute("size");
-                ret.description = std::to_string( s ) + " source" + ( s > 1 ? "s\n" : "\n");
+                uint s = header->UnsignedAttribute("size");
+                ret.description = std::to_string( s ) + " source" + ( s > 1 ? "s" : "");
+                uint t = header->UnsignedAttribute("total");
+                if (t>s)
+                    ret.description += " (" + std::to_string(t) + " in total)";
+                ret.description += "\n";
                 const char *att_string = header->Attribute("resolution");
                 if (att_string)
                     ret.description += std::string( att_string ) + "\n";
