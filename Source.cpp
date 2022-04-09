@@ -409,6 +409,7 @@ void Source::setMode(Source::Mode m)
 
     // the lock icon
     locker_->setActive( locked_ ? 0 : 1);
+    locker_->child(1)->visible_ = current;
 
     // the mixing group overlay
     overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr && !locked_;

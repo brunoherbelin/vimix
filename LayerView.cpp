@@ -241,8 +241,8 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             // pick on the lock icon; unlock source
             if ( UserInterface::manager().ctrlModifier() && pick.first == s->lock_) {
                 lock(s, false);
-//                pick = { s->locker_, pick.second };
-                pick = { nullptr, glm::vec2(0.f) };
+                pick = { s->locker_, pick.second };
+//                pick = { nullptr, glm::vec2(0.f) };
             }
             // pick on the open lock icon; lock source and cancel pick
             else if ( UserInterface::manager().ctrlModifier() && pick.first == s->unlock_ ) {
