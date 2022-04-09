@@ -151,7 +151,7 @@ void Mixer::update()
                 // cosmetics saved ok
                 Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
                 Settings::application.recentSessions.push(filename);
-                Log::Notify("Session %s saved.", filename.c_str());
+                Log::Notify("Session '%s' saved.", filename.c_str());
             }
             busy_ = false;
         }
@@ -274,7 +274,7 @@ Source * Mixer::createSourceFile(const std::string &path)
     }
     else {
         Settings::application.recentImport.remove(path);
-        Log::Notify("File %s does not exist.", path.c_str());
+        Log::Notify("File '%s' does not exist.", path.c_str());
     }
 
     return s;
@@ -1396,9 +1396,9 @@ void Mixer::swap()
     Action::manager().init();
 
     // notification
-    uint N = session_->numSources();
-    std::string numsource = ( N>0 ? std::to_string(N) : "No" ) + " source" + (N>1 ? "s" : "");
-    Log::Notify("Session %s loaded. %s created.", session_->filename().c_str(), numsource.c_str());
+    uint N = session_->size();
+    std::string numsource = ( N>0 ? std::to_string(N) : "no" ) + " source" + (N>1 ? "s" : "");
+    Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
 }
 
 void Mixer::close(bool smooth)

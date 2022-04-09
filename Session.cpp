@@ -440,11 +440,15 @@ uint Session::size() const
 
 uint Session::numSources() const
 {
-    CountVisitor counter;
-    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
-        (*it)->accept(counter);
+    if (true) {
+        CountVisitor counter;
+        for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+            (*it)->accept(counter);
+        }
+        return counter.numSources();
     }
-    return counter.numSources();
+    else
+        return size();
 }
 
 

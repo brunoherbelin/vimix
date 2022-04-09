@@ -79,14 +79,22 @@ void CountVisitor::visit (MediaSource& s)
 
 void CountVisitor::visit (SessionFileSource& s)
 {
-    num_source_ += s.session()->numSources();
+    if (s.session() != nullptr)
+        num_source_ += s.session()->numSources();
+    else
+        ++num_source_;
+
     if (s.playable())
         ++num_playable_;
 }
 
 void CountVisitor::visit (SessionGroupSource& s)
 {
-    num_source_ += s.session()->numSources();
+    if (s.session() != nullptr)
+        num_source_ += s.session()->numSources();
+    else
+        ++num_source_;
+
     if (s.playable())
         ++num_playable_;
 }
