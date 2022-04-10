@@ -775,7 +775,7 @@ void ImGuiVisitor::visit (CloneSource& s)
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = s.delay();
-    if (ImGui::SliderFloat("Delay", &d, 0.f, 1.f, d < 0.01f ? "None" : "%.2f s"))
+    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, d < 0.01f ? "None" : "%.2f s"))
         s.setDelay(d);
 
 }

@@ -3,7 +3,7 @@
 
 #include <array>
 
-#define DELAY_ARRAY_SIZE 70
+#define DELAY_ARRAY_SIZE 130
 
 #include "Source.h"
 

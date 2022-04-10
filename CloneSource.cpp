@@ -187,7 +187,7 @@ void CloneSource::update(float dt)
 
 void CloneSource::setDelay(double second)
 {
-    delay_ = CLAMP(second, 0.0, 1.0);
+    delay_ = CLAMP(second, 0.0, 2.0);
 }
 
 void CloneSource::play (bool on)
