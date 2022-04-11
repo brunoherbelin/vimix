@@ -3,9 +3,7 @@
 
 #include <string>
 #include <map>
-#ifdef __APPLE__
 #include <sys/types.h>
-#endif
 
 namespace Resource
 {
@@ -14,7 +12,7 @@ namespace Resource
     // return file tyext content as one string
     std::string getText(const std::string& path);
 
-    // Support DDS files, DXT1, DXT5 and DXT5 
+    // Support DDS files, DXT1, DXT5 and DXT5
     // Returns the OpenGL generated Texture index
     uint getTextureDDS(const std::string& path, float *aspect_ratio = nullptr);
 
