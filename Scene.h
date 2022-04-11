@@ -3,10 +3,7 @@
 
 #define INVALID_ID -1
 
-#ifdef __APPLE__
 #include <sys/types.h>
-#endif
-
 #include <set>
 #include <list>
 #include <vector>

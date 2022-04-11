@@ -1,10 +1,7 @@
 #ifndef __SETTINGS_H_
 #define __SETTINGS_H_
 
-#ifdef __APPLE__
 #include <sys/types.h>
-#endif
-
 #include <string>
 #include <map>
 #include <vector>
