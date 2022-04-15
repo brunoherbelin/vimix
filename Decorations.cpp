@@ -659,3 +659,54 @@ void Glyph::setChar(char c)
         }
     }
 }
+
+Mesh *DotLine::dot_ = nullptr;
+
+DotLine::DotLine() : Node()
+{
+    if (DotLine::dot_ == nullptr)
+        DotLine::dot_ = new Mesh("mesh/point.ply");
+
+    spacing = 0.2f;
+    target = glm::vec3( 0.f, 0.f, 0.f);
+    color  = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+}
+
+void DotLine::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() ) {
+        if (!DotLine::dot_->initialized())
+            DotLine::dot_->init();
+        init();
+    }
+
+    if ( visible_ ) {
+
+        // set color
+        DotLine::dot_->shader()->color = color;
+
+        // draw start point
+        DotLine::dot_->draw( modelview, projection);
+
+        // draw equally spaced intermediate points
+        glm::vec3 inc = target;
+        glm::vec3 space = spacing * glm::normalize(target);
+        glm::mat4 ctm = modelview;
+
+        while ( glm::length(inc) > spacing ) {
+            inc -= space;
+            ctm *= glm::translate(glm::identity<glm::mat4>(), space);
+            DotLine::dot_->draw( ctm, projection);
+        }
+
+        // draw target point
+        ctm = modelview * glm::translate(glm::identity<glm::mat4>(), target);
+        DotLine::dot_->draw( ctm, projection);
+    }
+}
+
+void DotLine::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}

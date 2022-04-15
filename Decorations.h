@@ -115,4 +115,20 @@ protected:
 };
 
 
+class DotLine : public Node
+{
+public:
+    DotLine();
+
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
+
+    float spacing;
+    glm::vec4 color;
+    glm::vec3 target;
+
+protected:
+    static Mesh *dot_;
+};
+
 #endif // DECORATIONS_H
