@@ -31,6 +31,14 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#ifndef NDEBUG
+//#define FRAMEBUFFER_DEBUG
+#endif
+
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+#define GL_TEXTURE_FREE_MEMORY_ATI		0x87FC
+
 const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
 glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
 const char* FrameBuffer::resolution_name[5] = { "720", "1080", "1200", "1440", "2160" };
@@ -131,15 +139,19 @@ void FrameBuffer::init()
         // attach the 2D texture to intermediate FBO (intermediate_framebufferid_)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
-//        Log::Info("New FBO %d Multi Sampling ", framebufferid_);
-
+#ifdef FRAMEBUFFER_DEBUG
+        g_printerr("New FBO %d Multi Sampling ", framebufferid_);
+#endif
     }
     else {
 
         // direct attach the 2D texture to FBO
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
-//        Log::Info("New FBO %d Single Sampling ", framebufferid_);
+#ifdef FRAMEBUFFER_DEBUG
+        g_printerr("New FBO %d Single Sampling ", framebufferid_);
+#endif
+
     }
 
     checkFramebufferStatus();
@@ -157,6 +169,11 @@ FrameBuffer::~FrameBuffer()
         glDeleteTextures(1, &textureid_);
     if (intermediate_textureid_)
         glDeleteTextures(1, &intermediate_textureid_);
+
+#ifdef FRAMEBUFFER_DEBUG
+    GLint framebufferMemoryInKB = ( width() * height() * 5 ) / 1024;
+    g_printerr("Framebuffer deleted %d x %d, %d kB freed\n", width(), height(), framebufferMemoryInKB);
+#endif
 }
 
 
@@ -329,10 +346,68 @@ void FrameBuffer::checkFramebufferStatus()
             Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
             break;
         case GL_FRAMEBUFFER_COMPLETE:
-//#ifndef NDEBUG
-//            g_print("Framebuffer created %d x %d\n", width(), height());
-//#endif
-            break;
+
+        {
+            static int meminfomode = -1;
+            // first time check which way to get memory info
+            if (meminfomode<0) {
+                meminfomode = 0;
+                GLint numExtensions = 0;
+                glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+                for (int i = 0; i < numExtensions; ++i){
+
+                    const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
+                    if ( strcmp( (const char*)ccc, "GL_NVX_gpu_memory_info") == 0 ){
+                        meminfomode = 1;
+                        break;
+                    }
+                    else if ( strcmp( (const char*)ccc, "GL_ATI_meminfo") == 0 ){
+                        meminfomode = 2;
+                        break;
+                    }
+                }
+
+            }
+
+            GLint framebufferMemoryInKB = ( width() * height() * 5 ) / 1024;
+
+            // NVIDIA
+            if (meminfomode == 1) {
+                static GLint nTotalMemoryInKB = -1;
+                if (nTotalMemoryInKB<0)
+                    glGetIntegerv( GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,  &nTotalMemoryInKB );
+
+                GLint nCurAvailMemoryInKB = 0;
+                glGetIntegerv( GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &nCurAvailMemoryInKB );
+
+                if ( nCurAvailMemoryInKB < framebufferMemoryInKB )
+                    Log::Warning("Cannot allocate frame buffer: only %d kB GPU RAM remaining on the %d kB available (%d %%).",
+                                 nCurAvailMemoryInKB, nTotalMemoryInKB, int(float(nCurAvailMemoryInKB) / float(nTotalMemoryInKB) * 100.f  ) );
+#ifdef FRAMEBUFFER_DEBUG
+                else
+                    g_printerr("Framebuffer created %d x %d, %d kB allocated (%d kB remaining on %d kB)\n", width(), height(), framebufferMemoryInKB, nCurAvailMemoryInKB, nTotalMemoryInKB);
+#endif
+            }
+            // ATI
+            else if (meminfomode == 2) {
+
+                GLint nCurAvailMemoryInKB = 0;
+                glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &nCurAvailMemoryInKB );
+
+                if ( nCurAvailMemoryInKB < framebufferMemoryInKB )
+                    Log::Warning("Cannot allocate frame buffer: only %d kB GPU RAM remaining.", nCurAvailMemoryInKB );
+#ifdef FRAMEBUFFER_DEBUG
+                else
+                    g_printerr("Framebuffer created %d x %d, %d kB allocated (%d kB remaining)\n", width(), height(), framebufferMemoryInKB, nCurAvailMemoryInKB);
+#endif
+            }
+#ifdef FRAMEBUFFER_DEBUG
+             else
+                g_printerr("Framebuffer created %d x %d, %d kB allocated\n", width(), height(), framebufferMemoryInKB);
+#endif
+
+        }
+        break;
     }
 }
 
