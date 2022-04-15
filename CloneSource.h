@@ -1,9 +1,7 @@
 #ifndef CLONESOURCE_H
 #define CLONESOURCE_H
 
-#include <array>
-
-#define DELAY_ARRAY_SIZE 130
+#include <queue>
 
 #include "Source.h"
 
@@ -54,20 +52,23 @@ protected:
     void init() override;
     Source *origin_;
 
-    // cloning & stack of past frames
-    std::array<FrameBuffer *, DELAY_ARRAY_SIZE> stack_;
+    // cloning & queue of past frames
+    std::queue<FrameBuffer *> images_;
     Surface *cloningsurface_;
-    size_t read_index_, write_index_;
+    FrameBuffer *to_delete_;
 
     // time management
     GTimer *timer_;
-    std::array<double, DELAY_ARRAY_SIZE> elapsed_stack_;
-    std::array<guint64, DELAY_ARRAY_SIZE> timestamps_;
+    std::queue<double> elapsed_;
+    std::queue<guint64> timestamps_;
     double delay_;
 
     // control
     bool paused_;
     CloneSourceProvenance provenance_;
+
+    // connecting line
+    class DotLine *connection_;
 };
 
 

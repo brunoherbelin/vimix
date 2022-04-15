@@ -23,6 +23,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Log.h"
+#include "defines.h"
 #include "Resource.h"
 #include "Visitor.h"
 #include "FrameBuffer.h"
@@ -34,7 +35,7 @@ const char* CloneSource::cloning_provenance_label[2] = { "Original texture", "Po
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    read_index_(0), write_index_(0), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
+    to_delete_(nullptr), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -43,11 +44,13 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
-    // init array
-    stack_.fill(nullptr);
-    elapsed_stack_.fill(0.0);
-    timestamps_.fill(0);
+    // init connecting line
+    connection_ = new DotLine;
+    connection_->color = glm::vec4(COLOR_DEFAULT_SOURCE, 0.5f);
+    connection_->target = origin->groups_[View::MIXING]->translation_;
+    groups_[View::MIXING]->attach(connection_);
 
+    // init timer
     timer_ = g_timer_new ();
 }
 
@@ -57,9 +60,10 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 
     // delete all frame buffers
-    for (size_t i = 0; i < stack_.size(); ++i){
-        if ( stack_[i] != nullptr )
-            delete stack_[i];
+    while (!images_.empty()) {
+        if (images_.front() != nullptr)
+            delete images_.front();
+        images_.pop();
     }
 
     if (cloningsurface_)
@@ -87,15 +91,15 @@ void CloneSource::init()
 
         // frame buffers where to draw frames from the origin source
         glm::vec3 res = origin_->frame()->resolution();
-        for (size_t i = 0; i < stack_.size(); ++i){
-            stack_[i] = new FrameBuffer( res, origin_->frame()->use_alpha() );
-        }
-
-        // set initial texture surface
-        texturesurface_->setTextureIndex( stack_[read_index_]->texture() );
+        images_.push( new FrameBuffer( res, origin_->frame()->use_alpha() ) );
+        timestamps_.push( origin_->playtime() );
+        elapsed_.push( 0.f );
 
         // activate elapsed-timer
         g_timer_start(timer_);
+
+        // set initial texture surface
+        texturesurface_->setTextureIndex( images_.front()->texture() );
 
         // create render Frame buffer matching size of images
         FrameBuffer *renderbuffer = new FrameBuffer( res, true);
@@ -131,10 +135,10 @@ void CloneSource::setActive (bool on)
 
         // change visibility of active surface (show preview of origin when inactive)
         if (activesurface_) {
-            if (active_)
+            if (active_ || images_.empty())
                 activesurface_->setTextureIndex(Resource::getTextureTransparent());
             else
-                activesurface_->setTextureIndex(stack_[read_index_]->texture());
+                activesurface_->setTextureIndex(images_.front()->texture());
         }
     }
 }
@@ -143,44 +147,59 @@ void CloneSource::update(float dt)
 {
     Source::update(dt);
 
-    if (!paused_ && origin_ && cloningsurface_ != nullptr) {
+    if (origin_) {
 
-        double now = g_timer_elapsed (timer_, NULL) ;
+        if (!paused_ && cloningsurface_ != nullptr) {
 
-        // increment enplacement of write index
-        write_index_ = (write_index_+1)%(stack_.size());
-        elapsed_stack_[write_index_] = now;
-        timestamps_[write_index_] = origin_->playtime();
-
-        // CLONE_RENDER : blit rendered framebuffer in the stack
-        if (provenance_ == CLONE_RENDER)
-            origin_->frame()->blit(stack_[write_index_]);
-        // CLONE_TEXTURE : render origin texture in the stack
-        else {
-            stack_[write_index_]->begin();
-            cloningsurface_->draw(glm::identity<glm::mat4>(), stack_[write_index_]->projection());
-            stack_[write_index_]->end();
-        }
-
-        // define emplacement of read index
-        if (delay_ < 0.001)
-            // minimal difference if no delay
-            read_index_ = write_index_;
-        else
-        {
-            // starting where we are at, get the next index that satisfies the delay
-            size_t previous_index = read_index_;
-            while ( now - elapsed_stack_[read_index_] > delay_)  {
-                // usually, one frame increment suffice
-                read_index_ = (read_index_ + 1 )%(stack_.size());
-                // break the loop if running infinite (never happens)
-                if (previous_index == read_index_)
-                    break;
+            // if temporary FBO was pending to be deleted, delete it now
+            if (to_delete_ != nullptr) {
+                delete to_delete_;
+                to_delete_ = nullptr;
             }
+
+            // What time is it?
+            double now = g_timer_elapsed (timer_, NULL);
+
+            // is the total buffer of images longer than delay ?
+            if ( !images_.empty() && now - elapsed_.front() > delay_ ) {
+                // remember FBO to be reused if needed (see below) or deleted later
+                to_delete_ = images_.front();
+                // remove element from queue (front)
+                images_.pop();
+                elapsed_.pop();
+                timestamps_.pop();
+            }
+
+            // add image to queue to accumulate buffer images until delay reached
+            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.001) ) {
+                // create a FBO if none can be reused (from above)
+                if (to_delete_ == nullptr)
+                    to_delete_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
+                // add element to queue (back)
+                images_.push( to_delete_ );
+                elapsed_.push( now );
+                timestamps_.push( origin_->playtime() );
+                // to_delete_ FBO is now used, should not be deleted
+                to_delete_ = nullptr;
+            }
+
+            // CLONE_RENDER : blit rendered framebuffer in the newest image (back)
+            if (provenance_ == CLONE_RENDER)
+                origin_->frame()->blit(images_.back());
+            // CLONE_TEXTURE : render origin texture in the the newest image (back)
+            else {
+                images_.back()->begin();
+                cloningsurface_->draw(glm::identity<glm::mat4>(), images_.back()->projection());
+                images_.back()->end();
+            }
+
+            // update the source surface to be rendered with the oldest image (front)
+            texturesurface_->setTextureIndex( images_.front()->texture() );
         }
 
-        // update the source surface to be rendered
-        texturesurface_->setTextureIndex( stack_[read_index_]->texture() );
+        // update connection line target to position of origin source
+        connection_->target = glm::inverse( GlmToolkit::transform(groups_[View::MIXING]->translation_, glm::vec3(0), groups_[View::MIXING]->scale_) ) *
+                glm::vec4(origin_->groups_[View::MIXING]->translation_, 1.f);
     }
 }
 
@@ -212,22 +231,46 @@ bool CloneSource::playable () const
 
 void CloneSource::replay()
 {
+    // clear to_delete_ FBO if pending
+    if (to_delete_ != nullptr) {
+        delete to_delete_;
+        to_delete_ = nullptr;
+    }
+
+    // remove all images except the one in the back (newest)
+    while (images_.size() > 1) {
+        // do not delete immediately the (oldest) front image (the FBO is currently displayed)
+        if (to_delete_ == nullptr)
+            to_delete_ = images_.front();
+        // delete other FBO (unused)
+        else if (images_.front() != nullptr)
+            delete images_.front();
+        images_.pop();
+    }
+
+    // remove all timing
+    while (!elapsed_.empty())
+        elapsed_.pop();
+    // reset elapsed timer to 0
     g_timer_reset(timer_);
-    elapsed_stack_.fill(0.0);
-    write_index_ = 0;
-    read_index_ = 1;
+    elapsed_.push(0.);
+
+    // remove all timestamps
+    while (!timestamps_.empty())
+        timestamps_.pop();
+    timestamps_.push(0);
 }
 
 guint64 CloneSource::playtime () const
 {
-    return timestamps_[read_index_];
+    return timestamps_.front();
 }
 
 
 uint CloneSource::texture() const
 {
-    if (cloningsurface_ != nullptr)
-        return stack_[read_index_]->texture();
+    if (cloningsurface_ != nullptr && !images_.empty())
+        return images_.front()->texture();
     else
         return Resource::getTextureTransparent();
 }
