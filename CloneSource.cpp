@@ -33,7 +33,7 @@
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    garbage_image_(nullptr), delay_(0.0), paused_(false)
+    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -72,18 +72,19 @@ CloneSource::~CloneSource()
 
 void CloneSource::init()
 {
-    if (origin_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
+    if (origin_ && origin_->ready_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
 
         // frame buffers where to draw frames from the origin source
         glm::vec3 res = origin_->frame()->resolution();
         images_.push( new FrameBuffer( res, origin_->frame()->use_alpha() ) );
         timestamps_.push( origin_->playtime() );
-        elapsed_.push( 0.f );
+        elapsed_.push( 0. );
 
-        // activate elapsed-timer
-        g_timer_start(timer_);
+        // ask to reset elapsed-timer
+        timer_reset_ = true;
 
         // set initial texture surface
+        origin_->frame()->blit( images_.front() );
         texturesurface_->setTextureIndex( images_.front()->texture() );
 
         // create render Frame buffer matching size of images
@@ -106,9 +107,6 @@ void CloneSource::init()
 
 void CloneSource::setActive (bool on)
 {
-    // request update
-    need_update_ |= active_ != on;
-
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
@@ -130,21 +128,26 @@ void CloneSource::update(float dt)
 {
     Source::update(dt);
 
-    if (origin_) {
+    if (origin_ && !images_.empty()) {
 
-        if (!paused_) {
-
+        if (!paused_ && active_)
+        {
             // if temporary FBO was pending to be deleted, delete it now
             if (garbage_image_ != nullptr) {
                 delete garbage_image_;
                 garbage_image_ = nullptr;
             }
 
+            // Reset elapsed timer on request (init or replay)
+            if ( timer_reset_ ) {
+                g_timer_start(timer_);
+                timer_reset_ = false;
+            }
             // What time is it?
             double now = g_timer_elapsed (timer_, NULL);
 
             // is the total buffer of images longer than delay ?
-            if ( !images_.empty() && now - elapsed_.front() > delay_ )
+            if ( now - elapsed_.front() > delay_ )
             {
                 // remember FBO to be reused if needed (see below) or deleted later
                 garbage_image_ = images_.front();
@@ -160,7 +163,7 @@ void CloneSource::update(float dt)
                 // create a FBO if none can be reused (from above) and test for RAM in GPU
                 if (garbage_image_ == nullptr && ( images_.empty() || FrameBuffer::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) )
                     garbage_image_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
-                // no image available
+                // image available
                 if (garbage_image_ != nullptr) {
                     // add element to queue (back)
                     images_.push( garbage_image_ );
@@ -175,11 +178,14 @@ void CloneSource::update(float dt)
                 }
             }
 
-            // blit rendered framebuffer in the newest image (back)
-            origin_->frame()->blit(images_.back());
+            // make sure the queue is not empty (in case of failure above)
+            if ( !images_.empty() ) {
+                // blit rendered framebuffer in the newest image (back)
+                origin_->frame()->blit( images_.back() );
 
-            // update the source surface to be rendered with the oldest image (front)
-            texturesurface_->setTextureIndex( images_.front()->texture() );
+                // update the source surface to be rendered with the oldest image (front)
+                texturesurface_->setTextureIndex( images_.front()->texture() );
+            }
         }
 
         // update connection line target to position of origin source
@@ -237,7 +243,7 @@ void CloneSource::replay()
     while (!elapsed_.empty())
         elapsed_.pop();
     // reset elapsed timer to 0
-    g_timer_reset(timer_);
+    timer_reset_ = true;
     elapsed_.push(0.);
 
     // remove all timestamps

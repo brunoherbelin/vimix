@@ -49,6 +49,7 @@ protected:
 
     // time management
     GTimer *timer_;
+    bool timer_reset_;
     std::queue<double> elapsed_;
     std::queue<guint64> timestamps_;
     double delay_;

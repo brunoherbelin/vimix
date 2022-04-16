@@ -564,7 +564,7 @@ void Source::setActive (bool on)
 
     // do not disactivate if a clone depends on it
     for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
-        if ( (*clone)->active() )
+        if ( (*clone)->ready() && (*clone)->active() )
             active_ = true;
     }
 
