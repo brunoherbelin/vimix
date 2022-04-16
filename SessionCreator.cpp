@@ -130,9 +130,9 @@ void SessionCreator::load(const std::string& filename)
     header->QueryIntAttribute("major", &version_major);
     header->QueryIntAttribute("minor", &version_minor);
     if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
-        Log::Warning("%s session file is in version v%d.%d. but this vimix program expects v%d.%d.\n"
-                     "Loading might fail or lead to different or incomplete configuration.\n"
-                     "You can save this session again to avoid this warning.",
+        Log::Warning("%s is an older version of vimix session (v%d.%d instead of v%d.%d).\n"
+                     "Loading might lead to different or incomplete configuration.\n"
+                     "Save the session to avoid further warning.",
                      filename.c_str(), version_major, version_minor, XML_VERSION_MAJOR, XML_VERSION_MINOR);
 //        return;
     }
