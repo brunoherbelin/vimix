@@ -270,8 +270,12 @@ void FrameBuffer::release()
 
 void FrameBuffer::readPixels(uint8_t *target_data)
 {
-    if (!framebufferid_)
+    if (!framebufferid_) {
+#ifdef FRAMEBUFFER_DEBUG
+        g_printerr("FrameBuffer readPixels failed\n");
+#endif
         return;
+    }
 
     if (use_multi_sampling_)
         glBindFramebuffer(GL_READ_FRAMEBUFFER, intermediate_framebufferid_);
@@ -289,8 +293,12 @@ void FrameBuffer::readPixels(uint8_t *target_data)
 
 bool FrameBuffer::blit(FrameBuffer *destination)
 {
-    if (!framebufferid_ || !destination || (use_alpha_ != destination->use_alpha_) )
+    if (!framebufferid_ || !destination || (use_alpha_ != destination->use_alpha_) ){
+#ifdef FRAMEBUFFER_DEBUG
+        g_printerr("FrameBuffer blit failed\n");
+#endif
         return false;
+    }
 
     if (!destination->framebufferid_)
         destination->init();

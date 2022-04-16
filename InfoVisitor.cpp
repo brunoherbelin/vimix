@@ -235,8 +235,7 @@ void InfoVisitor::visit (CloneSource& s)
         }
         else {
             if (s.origin())
-                oss << "Clone of '" << s.origin()->name() << "' ";
-            oss << CloneSource::cloning_provenance_label[s.cloningProvenance()] << std::endl;
+                oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
             oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
             oss << (int)(s.delay()*1000.0) << " ms delay " << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();

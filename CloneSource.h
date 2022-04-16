@@ -25,20 +25,10 @@ public:
     void accept (Visitor& v) override;
 
     // implementation of cloning mechanism
-    CloneSource *clone(uint64_t id = 0) override;
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
     // Clone properties
-    typedef enum {
-        CLONE_TEXTURE = 0,
-        CLONE_RENDER
-    } CloneSourceProvenance;
-    static const char* cloning_provenance_label[2];
-
-    void setCloningProvenance(CloneSourceProvenance m) { provenance_ = m; }
-    CloneSourceProvenance cloningProvenance() const { return provenance_; }
-
     void setDelay(double second);
     double delay() const { return delay_; }
 
@@ -65,7 +55,6 @@ protected:
 
     // control
     bool paused_;
-    CloneSourceProvenance provenance_;
 
     // connecting line
     class DotLine *connection_;

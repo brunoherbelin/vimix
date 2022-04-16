@@ -763,20 +763,26 @@ void ImGuiVisitor::visit (CloneSource& s)
         UserInterface::manager().showSourceEditor(&s);
     ImGui::SetCursorPos(pos);
 
-    if ( ImGui::Button(s.origin()->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
+    if ( ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().setCurrentSource(s.origin());
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Origin");
 
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) s.cloningProvenance();
-    if (ImGui::Combo("Render", &m, CloneSource::cloning_provenance_label, IM_ARRAYSIZE(CloneSource::cloning_provenance_label)) )
-        s.setCloningProvenance((CloneSource::CloneSourceProvenance)m);
-
+    if (ImGuiToolkit::IconButton(10, 15)) {
+        s.setDelay(0.f);
+        Action::manager().store("Delay None");
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = s.delay();
     if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, d < 0.01f ? "None" : "%.2f s"))
         s.setDelay(d);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        std::ostringstream oss;
+        oss << "Delay " << std::setprecision(3) << d << " s";
+        Action::manager().store(oss.str());
+    }
 
 }
 

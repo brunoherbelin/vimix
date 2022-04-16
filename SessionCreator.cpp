@@ -375,6 +375,10 @@ void SessionLoader::load(XMLElement *sessionNode)
         sessionNode->QueryFloatAttribute("activationThreshold", &t);
         session_->setActivationThreshold(t);
 
+
+        std::list<XMLElement*> cloneNodesToAdd;
+        std::list<uint64_t> possible_xml_ids;
+
         //
         // source lists
         //
@@ -389,6 +393,7 @@ void SessionLoader::load(XMLElement *sessionNode)
             // check if a source with the given id exists in the session
             uint64_t id_xml_ = 0;
             xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+            possible_xml_ids.push_front(id_xml_);
             SourceList::iterator sit = session_->find(id_xml_);
 
             // no source with this id exists
@@ -427,7 +432,10 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "SrtReceiverSource") {
                     load_source = new SrtReceiverSource(id_xml_);
                 }
-                else if ( std::string(pType) != "CloneSource") {
+                else if ( std::string(pType) == "CloneSource") {
+                    cloneNodesToAdd.push_front(xmlCurrent_);
+                }
+                else {
                     Log::Info("Unknown source type '%s' ignored.", pType);
                 }
 
@@ -450,54 +458,60 @@ void SessionLoader::load(XMLElement *sessionNode)
             sources_id_[id_xml_] = load_source;
         }
 
-        // create clones after all sources, to be able to clone a source created above
-        sourceNode = sessionNode->FirstChildElement("Source");
-        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
-        {
-            xmlCurrent_ = sourceNode;
+        // take all node elements for Clones to add
+        while ( !cloneNodesToAdd.empty() ) {
 
-            // verify type of node
-            const char *pType = xmlCurrent_->Attribute("type");
-            if ( pType && std::string(pType) == "CloneSource") {
+            // take out Clone's XML element
+            xmlCurrent_ = cloneNodesToAdd.front();
+            cloneNodesToAdd.pop_front();
 
-                // check if a source with same id exists
-                uint64_t id_xml_ = 0;
-                xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
-                SourceList::iterator sit = session_->find(id_xml_);
+            // check if a clone source with same id exists
+            uint64_t id_xml_ = 0;
+            xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+            SourceList::iterator sit = session_->find(id_xml_);
 
-                // no source clone with this id exists
-                if ( sit == session_->end() ) {
+            // no source clone with this id exists
+            if ( sit == session_->end() ) {
 
-                    // clone from given origin
-                    XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
-                    if (originNode) {
-                        uint64_t id_origin_ = 0;
-                        originNode->QueryUnsigned64Attribute("id", &id_origin_);
-                        SourceList::iterator origin;
-                        if (id_origin_ > 0)
-                            origin = session_->find(id_origin_);
-                        else {
-                            const char *text = originNode->GetText();
-                            if (text)
-                                origin = session_->find( std::string(text) );
-                            else
-                                origin = session_->end();
-                        }
-                        // found the orign source
-                        if (origin != session_->end()) {
-                            // create a new source of type Clone
-                            CloneSource *clone_source = (*origin)->clone(id_xml_);
+                // try to get clone from given origin
+                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                if (originNode) {
 
-                            // add source to session
-                            session_->addSource(clone_source);
+                    // find origin by id
+                    uint64_t id_origin_ = 0;
+                    originNode->QueryUnsigned64Attribute("id", &id_origin_);
+                    SourceList::iterator origin;
+                    if (id_origin_ > 0)
+                        origin = session_->find(id_origin_);
+                    // legacy: find origin by name
+                    else {
+                        const char *text = originNode->GetText();
+                        if (text)
+                            origin = session_->find( std::string(text) );
+                        else
+                            origin = session_->end();
+                    }
 
-                            // apply config to source
-                            clone_source->accept(*this);
-                            clone_source->touch();
+                    // found the orign source!
+                    if (origin != session_->end()) {
+                        // create a new source of type Clone
+                        CloneSource *clone_source = (*origin)->clone(id_xml_);
 
-                            // remember
-                            sources_id_[id_xml_] = clone_source;
-                        }
+                        // add clone source to session
+                        session_->addSource(clone_source);
+
+                        // apply config to clone source
+                        clone_source->accept(*this);
+                        clone_source->touch();
+
+                        // remember
+                        sources_id_[id_xml_] = clone_source;
+                    }
+                    // origin not found, retry later
+                    else {
+                        // sanity check: only retry later if the id is possible.
+                        if ( std::find(possible_xml_ids.begin(), possible_xml_ids.end(),id_origin_) != possible_xml_ids.end() )
+                            cloneNodesToAdd.push_back(xmlCurrent_);
                     }
                 }
             }
@@ -1200,11 +1214,6 @@ void SessionLoader::visit (SrtReceiverSource& s)
 
 void SessionLoader::visit (CloneSource& s)
 {
-    // set attributes
-    int p = 0;
-    xmlCurrent_->QueryIntAttribute("provenance", &p);
-    s.setCloningProvenance((CloneSource::CloneSourceProvenance)p);
-
     double d = 0.0;
     xmlCurrent_->QueryDoubleAttribute("delay", &d);
     s.setDelay(d);

@@ -687,7 +687,6 @@ void SessionVisitor::visit (CloneSource& s)
     xmlCurrent_->SetAttribute("type", "CloneSource");
 
     if (s.origin()) {
-        xmlCurrent_->SetAttribute("provenance", (int) s.cloningProvenance());
         xmlCurrent_->SetAttribute("delay", (double) s.delay());
 
         XMLElement *origin = xmlDoc_->NewElement("origin");

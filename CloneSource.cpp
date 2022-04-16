@@ -31,11 +31,9 @@
 
 #include "CloneSource.h"
 
-const char* CloneSource::cloning_provenance_label[2] = { "Original texture", "Post-processed image" };
-
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    garbage_image_(nullptr), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
+    garbage_image_(nullptr), delay_(0.0), paused_(false)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -72,22 +70,9 @@ CloneSource::~CloneSource()
     g_free(timer_);
 }
 
-CloneSource *CloneSource::clone(uint64_t id)
-{
-    // do not clone a clone : clone the original instead
-    if (origin_)
-        return origin_->clone(id);
-    else
-        return nullptr;
-}
-
 void CloneSource::init()
 {
-    if (origin_ && origin_->mode_ > Source::UNINITIALIZED) {
-
-        // internal surface to draw the original texture
-        cloningsurface_ = new Surface;
-        cloningsurface_->setTextureIndex( origin()->texture() );
+    if (origin_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
 
         // frame buffers where to draw frames from the origin source
         glm::vec3 res = origin_->frame()->resolution();
@@ -102,7 +87,7 @@ void CloneSource::init()
         texturesurface_->setTextureIndex( images_.front()->texture() );
 
         // create render Frame buffer matching size of images
-        FrameBuffer *renderbuffer = new FrameBuffer( res, true);
+        FrameBuffer *renderbuffer = new FrameBuffer( res, true );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
@@ -149,7 +134,7 @@ void CloneSource::update(float dt)
 
     if (origin_) {
 
-        if (!paused_ && cloningsurface_ != nullptr) {
+        if (!paused_) {
 
             // if temporary FBO was pending to be deleted, delete it now
             if (garbage_image_ != nullptr) {
@@ -192,15 +177,8 @@ void CloneSource::update(float dt)
                 }
             }
 
-            // CLONE_RENDER : blit rendered framebuffer in the newest image (back)
-            if (provenance_ == CLONE_RENDER)
-                origin_->frame()->blit(images_.back());
-            // CLONE_TEXTURE : render origin texture in the the newest image (back)
-            else {
-                images_.back()->begin();
-                cloningsurface_->draw(glm::identity<glm::mat4>(), images_.back()->projection());
-                images_.back()->end();
-            }
+            // blit rendered framebuffer in the newest image (back)
+            origin_->frame()->blit(images_.back());
 
             // update the source surface to be rendered with the oldest image (front)
             texturesurface_->setTextureIndex( images_.front()->texture() );
@@ -242,7 +220,6 @@ void CloneSource::replay()
 {
     // clear to_delete_ FBO if pending
     if (garbage_image_ != nullptr) {
-        g_printerr(" REPLAY delete garbage %d \n", garbage_image_->opengl_id());
         delete garbage_image_;
         garbage_image_ = nullptr;
     }
@@ -279,10 +256,10 @@ guint64 CloneSource::playtime () const
 
 uint CloneSource::texture() const
 {
-    if (cloningsurface_ != nullptr && !images_.empty())
+    if (!images_.empty())
         return images_.front()->texture();
     else
-        return Resource::getTextureTransparent();
+        return Resource::getTextureBlack();
 }
 
 void CloneSource::accept(Visitor& v)
