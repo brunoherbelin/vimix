@@ -7330,7 +7330,7 @@ void Thumbnail::fill(const FrameBufferImage *image)
     if (!texture_) {
         glGenTextures(1, &texture_);
         glBindTexture( GL_TEXTURE_2D, texture_);
-        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 2, SESSION_THUMBNAIL_HEIGHT);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, SESSION_THUMBNAIL_HEIGHT * 3, SESSION_THUMBNAIL_HEIGHT);
     }
 
     aspect_ratio_ = static_cast<float>(image->width) / static_cast<float>(image->height);
@@ -7343,7 +7343,7 @@ void Thumbnail::fill(const FrameBufferImage *image)
 void Thumbnail::Render(float width)
 {
     if (filled())
-        ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.5f*aspect_ratio_, 1.f));
+        ImGui::Image((void*)(intptr_t)texture_, ImVec2(width, width/aspect_ratio_), ImVec2(0,0), ImVec2(0.333f*aspect_ratio_, 1.f));
 }
 
 ///
