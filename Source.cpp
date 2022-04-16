@@ -554,7 +554,6 @@ void Source::attach(FrameBuffer *renderbuffer)
     need_update_ = true;
 }
 
-
 void Source::setActive (bool on)
 {
     // request update

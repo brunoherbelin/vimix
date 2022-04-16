@@ -103,16 +103,14 @@ void CloneSource::init()
     }
 }
 
+
 void CloneSource::setActive (bool on)
 {
     // request update
     need_update_ |= active_ != on;
 
-    active_ = on;
-
-    groups_[View::RENDERING]->visible_ = active_;
-    groups_[View::GEOMETRY]->visible_ = active_;
-    groups_[View::LAYER]->visible_ = active_;
+    // try to activate (may fail if source is cloned)
+    Source::setActive(on);
 
     if (origin_) {
         if ( mode_ > Source::UNINITIALIZED)
@@ -123,7 +121,7 @@ void CloneSource::setActive (bool on)
             if (active_ || images_.empty())
                 activesurface_->setTextureIndex(Resource::getTextureTransparent());
             else
-                activesurface_->setTextureIndex(images_.front()->texture());
+                activesurface_->setTextureIndex(renderbuffer_->texture());
         }
     }
 }
