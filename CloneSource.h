@@ -55,7 +55,7 @@ protected:
     // cloning & queue of past frames
     std::queue<FrameBuffer *> images_;
     Surface *cloningsurface_;
-    FrameBuffer *to_delete_;
+    FrameBuffer *garbage_image_;
 
     // time management
     GTimer *timer_;

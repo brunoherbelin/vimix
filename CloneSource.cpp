@@ -35,7 +35,7 @@ const char* CloneSource::cloning_provenance_label[2] = { "Original texture", "Po
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    to_delete_(nullptr), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
+    garbage_image_(nullptr), delay_(0.0), paused_(false), provenance_(CLONE_TEXTURE)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -152,18 +152,19 @@ void CloneSource::update(float dt)
         if (!paused_ && cloningsurface_ != nullptr) {
 
             // if temporary FBO was pending to be deleted, delete it now
-            if (to_delete_ != nullptr) {
-                delete to_delete_;
-                to_delete_ = nullptr;
+            if (garbage_image_ != nullptr) {
+                delete garbage_image_;
+                garbage_image_ = nullptr;
             }
 
             // What time is it?
             double now = g_timer_elapsed (timer_, NULL);
 
             // is the total buffer of images longer than delay ?
-            if ( !images_.empty() && now - elapsed_.front() > delay_ ) {
+            if ( !images_.empty() && now - elapsed_.front() > delay_ )
+            {
                 // remember FBO to be reused if needed (see below) or deleted later
-                to_delete_ = images_.front();
+                garbage_image_ = images_.front();
                 // remove element from queue (front)
                 images_.pop();
                 elapsed_.pop();
@@ -171,16 +172,24 @@ void CloneSource::update(float dt)
             }
 
             // add image to queue to accumulate buffer images until delay reached
-            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.001) ) {
-                // create a FBO if none can be reused (from above)
-                if (to_delete_ == nullptr)
-                    to_delete_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
-                // add element to queue (back)
-                images_.push( to_delete_ );
-                elapsed_.push( now );
-                timestamps_.push( origin_->playtime() );
-                // to_delete_ FBO is now used, should not be deleted
-                to_delete_ = nullptr;
+            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.001) )
+            {
+                // create a FBO if none can be reused (from above) and test for RAM in GPU
+                if (garbage_image_ == nullptr && ( images_.empty() || FrameBuffer::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) )
+                    garbage_image_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
+                // no image available
+                if (garbage_image_ != nullptr) {
+                    // add element to queue (back)
+                    images_.push( garbage_image_ );
+                    elapsed_.push( now );
+                    timestamps_.push( origin_->playtime() );
+                    // garbage_image_ FBO is now used, it should not be deleted
+                    garbage_image_ = nullptr;
+                }
+                else {
+                    delay_ = now - elapsed_.front() - (dt * 0.001);
+                    Log::Warning("Cannot satisfy delay for Clone %s: not enough RAM in graphics card.", name_.c_str());
+                }
             }
 
             // CLONE_RENDER : blit rendered framebuffer in the newest image (back)
@@ -232,16 +241,17 @@ bool CloneSource::playable () const
 void CloneSource::replay()
 {
     // clear to_delete_ FBO if pending
-    if (to_delete_ != nullptr) {
-        delete to_delete_;
-        to_delete_ = nullptr;
+    if (garbage_image_ != nullptr) {
+        g_printerr(" REPLAY delete garbage %d \n", garbage_image_->opengl_id());
+        delete garbage_image_;
+        garbage_image_ = nullptr;
     }
 
     // remove all images except the one in the back (newest)
     while (images_.size() > 1) {
         // do not delete immediately the (oldest) front image (the FBO is currently displayed)
-        if (to_delete_ == nullptr)
-            to_delete_ = images_.front();
+        if (garbage_image_ == nullptr)
+            garbage_image_ = images_.front();
         // delete other FBO (unused)
         else if (images_.front() != nullptr)
             delete images_.front();

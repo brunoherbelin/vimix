@@ -44,8 +44,9 @@ public:
     static float resolution_height[5];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
     static glm::ivec2 getParametersFromResolution(glm::vec3 res);
-    // unbind any framebuffer object
-    static void release();
+    // memory management
+    static glm::ivec2 getGPUMemoryInformation();
+    static bool shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
 
     FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
     FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
@@ -56,6 +57,8 @@ public:
     void begin(bool clear = true);
     // pop attrib and unbind to end draw
     void end();
+    // unbind (any) framebuffer object
+    static void release();
     // blit copy to another, returns true on success
     bool blit(FrameBuffer *destination);
     // bind the FrameBuffer in READ and perform glReadPixels
@@ -101,7 +104,6 @@ private:
     uint textureid_, intermediate_textureid_;
     uint framebufferid_, intermediate_framebufferid_;
     bool use_alpha_, use_multi_sampling_;
-
 };
 
 

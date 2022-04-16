@@ -32,7 +32,7 @@
 #include <stb_image_write.h>
 
 #ifndef NDEBUG
-//#define FRAMEBUFFER_DEBUG
+#define FRAMEBUFFER_DEBUG
 #endif
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
@@ -140,7 +140,7 @@ void FrameBuffer::init()
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr("New FBO %d Multi Sampling ", framebufferid_);
+        g_printerr("New FBO %d Multi Sampling\n", framebufferid_);
 #endif
     }
     else {
@@ -149,7 +149,7 @@ void FrameBuffer::init()
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr("New FBO %d Single Sampling ", framebufferid_);
+        g_printerr("New FBO %d Single Sampling\n", framebufferid_);
 #endif
 
     }
@@ -171,8 +171,8 @@ FrameBuffer::~FrameBuffer()
         glDeleteTextures(1, &intermediate_textureid_);
 
 #ifdef FRAMEBUFFER_DEBUG
-    GLint framebufferMemoryInKB = ( width() * height() * 5 ) / 1024;
-    g_printerr("Framebuffer deleted %d x %d, %d kB freed\n", width(), height(), framebufferMemoryInKB);
+    GLint framebufferMemoryInKB = ( width() * height() * (use_alpha_?4:3) ) / 1024;
+    g_printerr("Framebuffer deleted %d x %d, ~%d kB freed\n", width(), height(), framebufferMemoryInKB);
 #endif
 }
 
@@ -313,102 +313,129 @@ void FrameBuffer::checkFramebufferStatus()
 {
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     switch (status){
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT​ is returned if any of the framebuffer attachment points are framebuffer incomplete.");
-            break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT​ is returned if the framebuffer does not have at least one image attached to it.");
-            break;
-        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER​ is returned if the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE​ is GL_NONE​ for any color "
-            "attachment point(s) named by GL_DRAWBUFFERi​.");
-            break;
-        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER​ is returned if GL_READ_BUFFER​ is not GL_NONE​ and the value of "
-            "GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE​ is GL_NONE​ for the color attachment point named by GL_READ_BUFFER.");
-            break;
-        case GL_FRAMEBUFFER_UNSUPPORTED:
-            Log::Warning("GL_FRAMEBUFFER_UNSUPPORTED​ is returned if the combination of internal formats of the attached images violates an "
-            "implementation-dependent set of restrictions.");
-            break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE​ is returned if the value of GL_RENDERBUFFER_SAMPLES​ is not the same for all attached renderbuffers; "
-            "if the value of GL_TEXTURE_SAMPLES​ is the not same for all attached textures; or, if the attached images are a mix of renderbuffers and textures, the value of "
-            "GL_RENDERBUFFER_SAMPLES​ does not match the value of GL_TEXTURE_SAMPLES.\nGL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE​ is also returned if the value of "
-            "GL_TEXTURE_FIXED_SAMPLE_LOCATIONS​ is not the same for all attached textures; or, if the attached images are a mix of renderbuffers and textures, "
-            "the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS​ is not GL_TRUE​ for all attached textures.");
-            break;
-        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-            Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS​ is returned if any framebuffer attachment is layered, and any populated attachment is not layered,"
-            " or if all populated color attachments are not from textures of the same target.");
-            break;
-        case GL_FRAMEBUFFER_UNDEFINED:
-            Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
-            break;
-        case GL_FRAMEBUFFER_COMPLETE:
-
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT​ is returned if any of the framebuffer attachment points are framebuffer incomplete.");
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT​ is returned if the framebuffer does not have at least one image attached to it.");
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER​ is returned if the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE​ is GL_NONE​ for any color "
+                     "attachment point(s) named by GL_DRAWBUFFERi​.");
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER​ is returned if GL_READ_BUFFER​ is not GL_NONE​ and the value of "
+                     "GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE​ is GL_NONE​ for the color attachment point named by GL_READ_BUFFER.");
+        break;
+    case GL_FRAMEBUFFER_UNSUPPORTED:
+        Log::Warning("GL_FRAMEBUFFER_UNSUPPORTED​ is returned if the combination of internal formats of the attached images violates an "
+                     "implementation-dependent set of restrictions.");
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE​ is returned if the value of GL_RENDERBUFFER_SAMPLES​ is not the same for all attached renderbuffers; "
+                     "if the value of GL_TEXTURE_SAMPLES​ is the not same for all attached textures; or, if the attached images are a mix of renderbuffers and textures, the value of "
+                     "GL_RENDERBUFFER_SAMPLES​ does not match the value of GL_TEXTURE_SAMPLES.\nGL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE​ is also returned if the value of "
+                     "GL_TEXTURE_FIXED_SAMPLE_LOCATIONS​ is not the same for all attached textures; or, if the attached images are a mix of renderbuffers and textures, "
+                     "the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS​ is not GL_TRUE​ for all attached textures.");
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+        Log::Warning("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS​ is returned if any framebuffer attachment is layered, and any populated attachment is not layered,"
+                     " or if all populated color attachments are not from textures of the same target.");
+        break;
+    case GL_FRAMEBUFFER_UNDEFINED:
+        Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
+        break;
+    case GL_FRAMEBUFFER_COMPLETE:
         {
-            static int meminfomode = -1;
-            // first time check which way to get memory info
-            if (meminfomode<0) {
-                meminfomode = 0;
-                GLint numExtensions = 0;
-                glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
-                for (int i = 0; i < numExtensions; ++i){
 
-                    const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
-                    if ( strcmp( (const char*)ccc, "GL_NVX_gpu_memory_info") == 0 ){
-                        meminfomode = 1;
-                        break;
-                    }
-                    else if ( strcmp( (const char*)ccc, "GL_ATI_meminfo") == 0 ){
-                        meminfomode = 2;
-                        break;
-                    }
-                }
+        // approximation of RAM needed for this FBO
+        GLint framebufferMemoryInKB = ( width() * height() * (use_alpha_?4:3) * (use_multi_sampling_?2:1) ) / 1024;
 
-            }
+        // test available memory if created buffer is big (more than 8MB)
+        if ( framebufferMemoryInKB > 8000 ) {
 
-            GLint framebufferMemoryInKB = ( width() * height() * 5 ) / 1024;
+            // Obtain RAM usage in GPU (if possible)
+            glm::ivec2 RAM = getGPUMemoryInformation();
 
-            // NVIDIA
-            if (meminfomode == 1) {
-                static GLint nTotalMemoryInKB = -1;
-                if (nTotalMemoryInKB<0)
-                    glGetIntegerv( GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,  &nTotalMemoryInKB );
-
-                GLint nCurAvailMemoryInKB = 0;
-                glGetIntegerv( GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &nCurAvailMemoryInKB );
-
-                if ( nCurAvailMemoryInKB < framebufferMemoryInKB )
-                    Log::Warning("Cannot allocate frame buffer: only %d kB GPU RAM remaining on the %d kB available (%d %%).",
-                                 nCurAvailMemoryInKB, nTotalMemoryInKB, int(float(nCurAvailMemoryInKB) / float(nTotalMemoryInKB) * 100.f  ) );
-#ifdef FRAMEBUFFER_DEBUG
-                else
-                    g_printerr("Framebuffer created %d x %d, %d kB allocated (%d kB remaining on %d kB)\n", width(), height(), framebufferMemoryInKB, nCurAvailMemoryInKB, nTotalMemoryInKB);
-#endif
-            }
-            // ATI
-            else if (meminfomode == 2) {
-
-                GLint nCurAvailMemoryInKB = 0;
-                glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &nCurAvailMemoryInKB );
-
-                if ( nCurAvailMemoryInKB < framebufferMemoryInKB )
-                    Log::Warning("Cannot allocate frame buffer: only %d kB GPU RAM remaining.", nCurAvailMemoryInKB );
-#ifdef FRAMEBUFFER_DEBUG
-                else
-                    g_printerr("Framebuffer created %d x %d, %d kB allocated (%d kB remaining)\n", width(), height(), framebufferMemoryInKB, nCurAvailMemoryInKB);
-#endif
+            // bad case: not enough RAM, we should warn the user
+            if ( RAM.x < framebufferMemoryInKB * 3 ) {
+                Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
+                if (RAM.y < INT_MAX)
+                    Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
             }
 #ifdef FRAMEBUFFER_DEBUG
-             else
-                g_printerr("Framebuffer created %d x %d, %d kB allocated\n", width(), height(), framebufferMemoryInKB);
+            else {
+                // normal case: enough RAM (or unknown) for this FBO
+                g_printerr("Framebuffer allocated %d x %d, ~%d kB", width(), height(), framebufferMemoryInKB);
+                if (RAM.x < INT_MAX)
+                    g_printerr(" (%d kB remaining)", RAM.x);
+                g_printerr("\n");
+            }
 #endif
+        }
 
         }
         break;
     }
+
+}
+
+// RAM usage in GPU
+// returns { CurAvailMemoryInKB, TotalMemoryInKB }
+// MAX values means the info in not available
+glm::ivec2 FrameBuffer::getGPUMemoryInformation()
+{
+    glm::ivec2 ret(INT_MAX, INT_MAX);
+
+    // Detect method to get info
+    static int meminfomode = -1;
+    if (meminfomode<0) {
+        // initialized
+        meminfomode = 0;
+        GLint numExtensions = 0;
+        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+        for (int i = 0; i < numExtensions; ++i){
+            const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
+            // NVIDIA extension available
+            if ( strcmp( (const char*)ccc, "GL_NVX_gpu_memory_info") == 0 ){
+                meminfomode = 1;
+                break;
+            }
+            // ATI extension available
+            else if ( strcmp( (const char*)ccc, "GL_ATI_meminfo") == 0 ){
+                meminfomode = 2;
+                break;
+            }
+        }
+
+    }
+
+    // NVIDIA
+    if (meminfomode == 1) {
+        static GLint nTotalMemoryInKB = -1;
+        if (nTotalMemoryInKB<0)
+            glGetIntegerv( GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,  &nTotalMemoryInKB );
+        ret.y = nTotalMemoryInKB;
+
+        glGetIntegerv( GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &ret.x );
+    }
+    // ATI
+    else if (meminfomode == 2) {
+        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &ret.x );
+    }
+
+    return ret;
+}
+
+
+bool FrameBuffer::shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha, bool multiSampling)
+{
+    glm::ivec2 RAM = getGPUMemoryInformation();
+
+    // approximation of RAM needed for such FBO
+    GLint framebufferMemoryInKB = ( resolution.x * resolution.x * (useAlpha?4:3) * (multiSampling?2:1) ) / 1024;
+
+    return ( RAM.x > framebufferMemoryInKB * 3 );
 }
 
 
