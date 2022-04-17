@@ -458,7 +458,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     pick = { nullptr, glm::vec2(0.f) };
                 }
                 // pick a locked source ; cancel pick
-                else if ( current->locked() ) {
+                else if ( !UserInterface::manager().ctrlModifier() && current->locked() ) {
                     pick = { nullptr, glm::vec2(0.f) };
                 }
             }

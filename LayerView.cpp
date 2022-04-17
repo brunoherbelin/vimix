@@ -250,7 +250,7 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick a locked source; cancel pick
-            else if ( s->locked() ) {
+            else if ( !UserInterface::manager().ctrlModifier() && s->locked() ) {
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // pick the symbol: ask to show editor
