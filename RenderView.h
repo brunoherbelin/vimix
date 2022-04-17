@@ -40,6 +40,7 @@ protected:
     // get a thumbnail outside of opengl context; wait for a promise to be fullfiled after draw
     void drawThumbnail();
     FrameBufferImage *thumbnail ();
+    FrameBuffer *frame_thumbnail_;
 };
 
 #endif // RENDERVIEW_H
