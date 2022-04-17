@@ -661,13 +661,16 @@ void Glyph::setChar(char c)
 }
 
 Mesh *DotLine::dot_ = nullptr;
+Mesh *DotLine::arrow_ = nullptr;
 
 DotLine::DotLine() : Node()
 {
     if (DotLine::dot_ == nullptr)
         DotLine::dot_ = new Mesh("mesh/point.ply");
+    if (DotLine::arrow_ == nullptr)
+        DotLine::arrow_ = new Mesh("mesh/triangle_point.ply");
 
-    spacing = 0.2f;
+    spacing = 0.3f;
     target = glm::vec3( 0.f, 0.f, 0.f);
     color  = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
@@ -677,6 +680,8 @@ void DotLine::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( !initialized() ) {
         if (!DotLine::dot_->initialized())
             DotLine::dot_->init();
+        if (!DotLine::arrow_->initialized())
+            DotLine::arrow_->init();
         init();
     }
 
@@ -684,19 +689,24 @@ void DotLine::draw(glm::mat4 modelview, glm::mat4 projection)
 
         // set color
         DotLine::dot_->shader()->color = color;
+        DotLine::arrow_->shader()->color = color;
+
+        glm::mat4 ctm = modelview;
+        float angle = glm::orientedAngle( glm::normalize(glm::vec2(0.f,-1.f)), glm::normalize(glm::vec2(target)));
+        glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
+        R *= glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.0f, 1.5f, 1.f));
 
         // draw start point
-        DotLine::dot_->draw( modelview, projection);
+        DotLine::dot_->draw( ctm, projection);
 
         // draw equally spaced intermediate points
         glm::vec3 inc = target;
         glm::vec3 space = spacing * glm::normalize(target);
-        glm::mat4 ctm = modelview;
 
         while ( glm::length(inc) > spacing ) {
             inc -= space;
             ctm *= glm::translate(glm::identity<glm::mat4>(), space);
-            DotLine::dot_->draw( ctm, projection);
+            DotLine::arrow_->draw( ctm * R, projection);
         }
 
         // draw target point

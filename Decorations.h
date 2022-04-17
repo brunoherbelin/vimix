@@ -129,6 +129,7 @@ public:
 
 protected:
     static Mesh *dot_;
+    static Mesh *arrow_;
 };
 
 #endif // DECORATIONS_H
