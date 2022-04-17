@@ -55,8 +55,17 @@ std::string BaseToolkit::uniqueName(const std::string &basename, std::list<std::
                 ++count;
         }
 
-        if (count > 1)
-            tentativename = basename + "_" + std::to_string( count );
+        if (count > 1) {
+            // check if the name is ending by "_i", with i being a number
+            int i = 0;
+            size_t delim = tentativename.find_last_of('_');
+            if (delim != std::string::npos && BaseToolkit::is_a_number(tentativename.substr(++delim), &i) )
+                // keep same ending "_i" and increment i
+                tentativename = tentativename.substr(0, delim) + std::to_string(++i);
+            else
+                // add the "_i" ending
+                tentativename = basename + "_" + std::to_string( count );
+        }
         else
             tentativename += "_";
 

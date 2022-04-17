@@ -5651,7 +5651,7 @@ void Navigator::RenderSourcePannel(Source *s)
         ImGui::PopFont();
 
         // index indicator
-        ImGui::SetCursorPos(ImVec2(pannel_width_  - 35.f, 15.f));
+        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2 * ImGui::GetTextLineHeight(), 15.f));
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
         // name
