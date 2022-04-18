@@ -35,6 +35,9 @@ namespace Resource
     // list files in resource directory
     std::string listDirectory();
 
+    // tests if a resource path is available
+    bool hasPath(const std::string& path);
+
 }
 
 #endif /* __RSC_MANAGER_H_ */

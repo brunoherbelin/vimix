@@ -314,7 +314,7 @@ uint Resource::getTextureImage(const std::string& path, float *aspect_ratio)
 
 std::string Resource::listDirectory()
 {
-	// enter icons directory
+    // enter directory
     auto fs = cmrc::vmix::get_filesystem();
 	cmrc::directory_iterator it = fs.iterate_directory("");
 	cmrc::directory_iterator itend = it.end();
@@ -334,4 +334,10 @@ std::string Resource::listDirectory()
 	}
 
     return ls;
+}
+
+bool Resource::hasPath(const std::string& path)
+{
+    auto fs = cmrc::vmix::get_filesystem();
+    return fs.exists(path);
 }
