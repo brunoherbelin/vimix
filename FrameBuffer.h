@@ -44,9 +44,6 @@ public:
     static float resolution_height[5];
     static glm::vec3 getResolutionFromParameters(int ar, int h);
     static glm::ivec2 getParametersFromResolution(glm::vec3 res);
-    // memory management
-    static glm::ivec2 getGPUMemoryInformation();
-    static bool shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
 
     FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
     FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);

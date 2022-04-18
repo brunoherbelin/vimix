@@ -161,7 +161,7 @@ void CloneSource::update(float dt)
             if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.001) )
             {
                 // create a FBO if none can be reused (from above) and test for RAM in GPU
-                if (garbage_image_ == nullptr && ( images_.empty() || FrameBuffer::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) )
+                if (garbage_image_ == nullptr && ( images_.empty() || Rendering::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) )
                     garbage_image_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
                 // image available
                 if (garbage_image_ != nullptr) {

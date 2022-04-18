@@ -147,6 +147,10 @@ public:
     // project from scene coordinate to window
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
+    // memory management
+    static glm::ivec2 getGPUMemoryInformation();
+    static bool shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
+
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // for opengl pipeline in gstreamer
     static void LinkPipeline( GstPipeline *pipeline );

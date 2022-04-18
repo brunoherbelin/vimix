@@ -467,6 +467,71 @@ void Rendering::requestScreenshot()
 }
 
 
+// RAM usage in GPU
+// returns { CurAvailMemoryInKB, TotalMemoryInKB }
+// MAX values means the info in not available
+
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+#define GL_TEXTURE_FREE_MEMORY_ATI		0x87FC
+
+glm::ivec2 Rendering::getGPUMemoryInformation()
+{
+    glm::ivec2 ret(INT_MAX, INT_MAX);
+
+    // Detect method to get info
+    static int meminfomode = -1;
+    if (meminfomode<0) {
+        // initialized
+        meminfomode = 0;
+        GLint numExtensions = 0;
+        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+        for (int i = 0; i < numExtensions; ++i){
+            const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
+            // NVIDIA extension available
+            if ( strcmp( (const char*)ccc, "GL_NVX_gpu_memory_info") == 0 ){
+                meminfomode = 1;
+                break;
+            }
+            // ATI extension available
+            else if ( strcmp( (const char*)ccc, "GL_ATI_meminfo") == 0 ){
+                meminfomode = 2;
+                break;
+            }
+        }
+
+    }
+
+    // NVIDIA
+    if (meminfomode == 1) {
+        static GLint nTotalMemoryInKB = -1;
+        if (nTotalMemoryInKB<0)
+            glGetIntegerv( GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,  &nTotalMemoryInKB );
+        ret.y = nTotalMemoryInKB;
+
+        glGetIntegerv( GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &ret.x );
+    }
+    // ATI
+    else if (meminfomode == 2) {
+        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &ret.x );
+    }
+
+    return ret;
+}
+
+
+bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha, bool multiSampling)
+{
+    glm::ivec2 RAM = getGPUMemoryInformation();
+
+    // approximation of RAM needed for such FBO
+    GLint framebufferMemoryInKB = ( resolution.x * resolution.x * (useAlpha?4:3) * (multiSampling?2:1) ) / 1024;
+
+    return ( RAM.x > framebufferMemoryInKB * 3 );
+}
+
+
+
 // custom surface with a new VAO
 class WindowSurface : public Primitive {
 

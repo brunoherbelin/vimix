@@ -35,10 +35,6 @@
 #define FRAMEBUFFER_DEBUG
 #endif
 
-#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
-#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
-#define GL_TEXTURE_FREE_MEMORY_ATI		0x87FC
-
 const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
 glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
 const char* FrameBuffer::resolution_name[5] = { "720", "1080", "1200", "1440", "2160" };
@@ -363,7 +359,7 @@ void FrameBuffer::checkFramebufferStatus()
         if ( framebufferMemoryInKB > 8000 ) {
 
             // Obtain RAM usage in GPU (if possible)
-            glm::ivec2 RAM = getGPUMemoryInformation();
+            glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
             // bad case: not enough RAM, we should warn the user
             if ( RAM.x < framebufferMemoryInKB * 3 ) {
@@ -386,64 +382,6 @@ void FrameBuffer::checkFramebufferStatus()
         break;
     }
 
-}
-
-// RAM usage in GPU
-// returns { CurAvailMemoryInKB, TotalMemoryInKB }
-// MAX values means the info in not available
-glm::ivec2 FrameBuffer::getGPUMemoryInformation()
-{
-    glm::ivec2 ret(INT_MAX, INT_MAX);
-
-    // Detect method to get info
-    static int meminfomode = -1;
-    if (meminfomode<0) {
-        // initialized
-        meminfomode = 0;
-        GLint numExtensions = 0;
-        glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
-        for (int i = 0; i < numExtensions; ++i){
-            const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
-            // NVIDIA extension available
-            if ( strcmp( (const char*)ccc, "GL_NVX_gpu_memory_info") == 0 ){
-                meminfomode = 1;
-                break;
-            }
-            // ATI extension available
-            else if ( strcmp( (const char*)ccc, "GL_ATI_meminfo") == 0 ){
-                meminfomode = 2;
-                break;
-            }
-        }
-
-    }
-
-    // NVIDIA
-    if (meminfomode == 1) {
-        static GLint nTotalMemoryInKB = -1;
-        if (nTotalMemoryInKB<0)
-            glGetIntegerv( GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,  &nTotalMemoryInKB );
-        ret.y = nTotalMemoryInKB;
-
-        glGetIntegerv( GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &ret.x );
-    }
-    // ATI
-    else if (meminfomode == 2) {
-        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &ret.x );
-    }
-
-    return ret;
-}
-
-
-bool FrameBuffer::shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha, bool multiSampling)
-{
-    glm::ivec2 RAM = getGPUMemoryInformation();
-
-    // approximation of RAM needed for such FBO
-    GLint framebufferMemoryInKB = ( resolution.x * resolution.x * (useAlpha?4:3) * (multiSampling?2:1) ) / 1024;
-
-    return ( RAM.x > framebufferMemoryInKB * 3 );
 }
 
 
