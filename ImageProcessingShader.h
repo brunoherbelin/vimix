@@ -1,10 +1,7 @@
 #ifndef IMAGEPROCESSINGSHADER_H
 #define IMAGEPROCESSINGSHADER_H
 
-#include <glm/glm.hpp>
-
-#include "ImageShader.h"
-
+#include "Shader.h"
 
 class ImageProcessingShader : public Shader
 {

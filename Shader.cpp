@@ -72,17 +72,30 @@ GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ONE,   // lighten only
                                            GL_ZERO};
 
-ShadingProgram::ShadingProgram(const std::string& vertex_file, const std::string& fragment_file) :
-    vertex_id_(0), fragment_id_(0), id_(0), vertex_file_(vertex_file), fragment_file_(fragment_file)
+ShadingProgram::ShadingProgram(const std::string& vertex, const std::string& fragment) :
+    vertex_id_(0), fragment_id_(0), id_(0)
 {
+    if (Resource::hasPath(vertex))
+        vertex_file_ = vertex;
+    else
+        vertex_code_ = vertex;
+
+    if (Resource::hasPath(fragment))
+        fragment_file_ = fragment;
+    else
+        fragment_code_ = fragment;
 }
 
 void ShadingProgram::init()
 {
-    vertex_code_ = Resource::getText(vertex_file_);
-    fragment_code_ = Resource::getText(fragment_file_);
-	compile();
-	link();
+    if (vertex_code_.empty())
+        vertex_code_ = Resource::getText(vertex_file_);
+
+    if (fragment_code_.empty())
+        fragment_code_ = Resource::getText(fragment_file_);
+
+    if ( compile() )
+        link();
 }
 
 bool ShadingProgram::initialized()
@@ -90,7 +103,7 @@ bool ShadingProgram::initialized()
     return (id_ != 0);
 }
 
-void ShadingProgram::compile()
+bool ShadingProgram::compile()
 {
     const char* vcode = vertex_code_.c_str();
     vertex_id_ = glCreateShader(GL_VERTEX_SHADER);
@@ -102,7 +115,7 @@ void ShadingProgram::compile()
     glShaderSource(fragment_id_, 1, &fcode, NULL);
     glCompileShader(fragment_id_);
 
-    checkCompileErr();
+    return checkCompileErr();
 }
 
 void ShadingProgram::link()
@@ -117,7 +130,9 @@ void ShadingProgram::link()
     glUniform1i(glGetUniformLocation(id_, "iChannel1"), 1);
     glUseProgram(0);
     glDeleteShader(vertex_id_);
+    vertex_id_ = 0;
     glDeleteShader(fragment_id_);
+    fragment_id_ = 0;
 }
 
 void ShadingProgram::use()
@@ -125,7 +140,7 @@ void ShadingProgram::use()
     if (currentProgram_ == nullptr || currentProgram_ != this)
     {
         currentProgram_ = this;
-        glUseProgram(id_);
+        glUseProgram(id_);  // NB: if not linked, use 0 as default
     }
 }
 
@@ -190,7 +205,7 @@ void ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 va
 // 	glUniformMatrix4fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, val);
 // }
 
-void ShadingProgram::checkCompileErr()
+bool ShadingProgram::checkCompileErr()
 {
     int success;
     char infoLog[1024];
@@ -204,6 +219,7 @@ void ShadingProgram::checkCompileErr()
         glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
         Log::Warning("Error compiling Fragment ShadingProgram:\n%s", infoLog);
 	}
+    return success;
 }
 
 void ShadingProgram::checkLinkingErr()

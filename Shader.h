@@ -12,7 +12,9 @@ class FrameBuffer;
 class ShadingProgram
 {
 public:
-    ShadingProgram(const std::string& vertex_file, const std::string& fragment_file);
+    // create GLSL Program from resource file (if exist) or code of vertex and fragment shaders
+    ShadingProgram(const std::string& vertex, const std::string& fragment);
+
     void init();
     bool initialized();
     void use();
@@ -23,9 +25,9 @@ public:
 	static void enduse();
 
 private:
-    void checkCompileErr();
+    bool checkCompileErr();
     void checkLinkingErr();
-    void compile();
+    bool compile();
     void link();
     unsigned int vertex_id_, fragment_id_, id_;
     std::string vertex_code_;
