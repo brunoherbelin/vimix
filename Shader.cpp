@@ -73,74 +73,104 @@ GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ZERO};
 
 ShadingProgram::ShadingProgram(const std::string& vertex, const std::string& fragment) :
-    vertex_id_(0), fragment_id_(0), id_(0)
+    id_(0), need_compile_(true), vertex_(vertex), fragment_(fragment)
 {
-    if (Resource::hasPath(vertex))
-        vertex_file_ = vertex;
-    else
-        vertex_code_ = vertex;
-
-    if (Resource::hasPath(fragment))
-        fragment_file_ = fragment;
-    else
-        fragment_code_ = fragment;
 }
 
-void ShadingProgram::init()
+void ShadingProgram::setShaders(const std::string& vertex, const std::string& fragment)
 {
-    if (vertex_code_.empty())
-        vertex_code_ = Resource::getText(vertex_file_);
-
-    if (fragment_code_.empty())
-        fragment_code_ = Resource::getText(fragment_file_);
-
-    if ( compile() )
-        link();
-}
-
-bool ShadingProgram::initialized()
-{
-    return (id_ != 0);
+    vertex_ = vertex;
+    fragment_ = fragment;
+    need_compile_ = true;
 }
 
 bool ShadingProgram::compile()
 {
-    const char* vcode = vertex_code_.c_str();
-    vertex_id_ = glCreateShader(GL_VERTEX_SHADER);
+    char infoLog[1024];
+    int success = GL_FALSE;
+
+    std::string vertex_code = vertex_;
+    if (Resource::hasPath(vertex_))
+        vertex_code = Resource::getText(vertex_);
+    std::string fragment_code = fragment_;
+    if (Resource::hasPath(fragment_))
+        fragment_code = Resource::getText(fragment_);
+
+    // VERTEX SHADER
+    const char* vcode = vertex_code.c_str();
+    unsigned int vertex_id_ = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_id_, 1, &vcode, NULL);
     glCompileShader(vertex_id_);
 
-    const char* fcode = fragment_code_.c_str();
-    fragment_id_ = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_id_, 1, &fcode, NULL);
-    glCompileShader(fragment_id_);
+    glGetShaderiv(vertex_id_, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertex_id_, 1024, NULL, infoLog);
+        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
+    }
+    else {
+        // FRAGMENT SHADER
+        const char* fcode = fragment_code.c_str();
+        unsigned int fragment_id_ = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment_id_, 1, &fcode, NULL);
+        glCompileShader(fragment_id_);
 
-    return checkCompileErr();
-}
+        glGetShaderiv(fragment_id_, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
+            Log::Warning("Error compiling Fragment ShadingProgram:\n%s", infoLog);
+            glDeleteShader(vertex_id_);
+        }
+        else {
+            // LINK PROGRAM
 
-void ShadingProgram::link()
-{
-    id_ = glCreateProgram();
-    glAttachShader(id_, vertex_id_);
-    glAttachShader(id_, fragment_id_);
-    glLinkProgram(id_);
-    checkLinkingErr();
-    glUseProgram(id_);
-    glUniform1i(glGetUniformLocation(id_, "iChannel0"), 0);
-    glUniform1i(glGetUniformLocation(id_, "iChannel1"), 1);
-    glUseProgram(0);
-    glDeleteShader(vertex_id_);
-    vertex_id_ = 0;
-    glDeleteShader(fragment_id_);
-    fragment_id_ = 0;
+            // create new GL Program only if not already done
+            if (id_ == 0)
+                id_ = glCreateProgram();
+
+            // attach shaders and link
+            glAttachShader(id_, vertex_id_);
+            glAttachShader(id_, fragment_id_);
+            glLinkProgram(id_);
+
+            glGetProgramiv(id_, GL_LINK_STATUS, &success);
+            if (!success) {
+                glGetProgramInfoLog(id_, 1024, NULL, infoLog);
+                Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
+                glDeleteProgram(id_);
+                id_ = 0;
+            }
+            else {
+                // all good, set default uniforms
+                glUseProgram(id_);
+                glUniform1i(glGetUniformLocation(id_, "iChannel0"), 0);
+                glUniform1i(glGetUniformLocation(id_, "iChannel1"), 1);
+            }
+
+            // done (no more need for shaders)
+            glUseProgram(0);
+            glDeleteShader(vertex_id_);
+            glDeleteShader(fragment_id_);
+        }
+    }
+
+    // do not compile indefinitely
+    need_compile_ = false;
+
+    // inform of success
+    return success;
 }
 
 void ShadingProgram::use()
 {
     if (currentProgram_ == nullptr || currentProgram_ != this)
     {
-        currentProgram_ = this;
+        // first time use ; compile
+        if (need_compile_)
+            compile();
+        // use program
         glUseProgram(id_);  // NB: if not linked, use 0 as default
+        // remember (avoid switching program)
+        currentProgram_ = this;
     }
 }
 
@@ -148,6 +178,15 @@ void ShadingProgram::enduse()
 {
     glUseProgram(0);
     currentProgram_ = nullptr ;
+}
+
+void ShadingProgram::reset()
+{
+    if (id_ != 0) {
+        glDeleteProgram(id_);
+        id_ = 0;
+    }
+    ShadingProgram::enduse();
 }
 
 template<>
@@ -205,34 +244,6 @@ void ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 va
 // 	glUniformMatrix4fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, val);
 // }
 
-bool ShadingProgram::checkCompileErr()
-{
-    int success;
-    char infoLog[1024];
-    glGetShaderiv(vertex_id_, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertex_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
-    }
-    glGetShaderiv(fragment_id_, GL_COMPILE_STATUS, &success);
-	if (!success) {
-        glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Fragment ShadingProgram:\n%s", infoLog);
-	}
-    return success;
-}
-
-void ShadingProgram::checkLinkingErr()
-{
-    int success;
-	glGetProgramiv(id_, GL_LINK_STATUS, &success);
-	if (!success) {
-        char infoLog[1024];
-		glGetProgramInfoLog(id_, 1024, NULL, infoLog);
-        Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
-	}
-}
-
 
 bool Shader::force_blending_opacity = false;
 
@@ -259,10 +270,6 @@ void Shader::accept(Visitor& v) {
 
 void Shader::use()
 {
-    // initialization on first use
-    if (!program_->initialized())
-        program_->init();
-
     // Use program
     program_->use();
 

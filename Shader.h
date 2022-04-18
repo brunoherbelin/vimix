@@ -13,27 +13,23 @@ class ShadingProgram
 {
 public:
     // create GLSL Program from resource file (if exist) or code of vertex and fragment shaders
-    ShadingProgram(const std::string& vertex, const std::string& fragment);
+    ShadingProgram(const std::string& vertex = "", const std::string& fragment = "");
+    void setShaders(const std::string& vertex, const std::string& fragment);
 
-    void init();
-    bool initialized();
     void use();
+    bool compile();
+    static void enduse();
+    void reset();
+
 	template<typename T> void setUniform(const std::string& name, T val);
 	template<typename T> void setUniform(const std::string& name, T val1, T val2);
-	template<typename T> void setUniform(const std::string& name, T val1, T val2, T val3);
-
-	static void enduse();
+    template<typename T> void setUniform(const std::string& name, T val1, T val2, T val3);
 
 private:
-    bool checkCompileErr();
-    void checkLinkingErr();
-    bool compile();
-    void link();
-    unsigned int vertex_id_, fragment_id_, id_;
-    std::string vertex_code_;
-    std::string fragment_code_;
-    std::string vertex_file_;
-    std::string fragment_file_;
+    unsigned int id_;
+    bool need_compile_;
+    std::string vertex_;
+    std::string fragment_;
 
     static ShadingProgram *currentProgram_;
 };
