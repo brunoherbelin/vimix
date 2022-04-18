@@ -382,6 +382,7 @@ set(VMIX_SRCS
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp
+    ImageFilter.cpp
     UpdateCallback.cpp
     Scene.cpp
     Primitives.cpp

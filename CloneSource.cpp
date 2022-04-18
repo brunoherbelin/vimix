@@ -28,12 +28,13 @@
 #include "Visitor.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
+#include "ImageFilter.h"
 
 #include "CloneSource.h"
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false)
+    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false), filter_(nullptr)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -44,7 +45,7 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
 
     // init connecting line
     connection_ = new DotLine;
-    connection_->color = glm::vec4(COLOR_DEFAULT_SOURCE, 0.5f);
+    connection_->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
     connection_->target = origin->groups_[View::MIXING]->translation_;
     groups_[View::MIXING]->attach(connection_);
 
@@ -64,6 +65,9 @@ CloneSource::~CloneSource()
         images_.pop();
     }
 
+    if (filter_)
+        delete filter_;
+
     if (cloningsurface_)
         delete cloningsurface_;
 
@@ -77,15 +81,20 @@ void CloneSource::init()
         // frame buffers where to draw frames from the origin source
         glm::vec3 res = origin_->frame()->resolution();
         images_.push( new FrameBuffer( res, origin_->frame()->use_alpha() ) );
+        origin_->frame()->blit( images_.front() );
         timestamps_.push( origin_->playtime() );
         elapsed_.push( 0. );
 
         // ask to reset elapsed-timer
         timer_reset_ = true;
 
+        // create filter
+        filter_ = new ImageFilter( res, true );
+        filter_->setInputTexture( images_.front()->texture() );
+
         // set initial texture surface
-        origin_->frame()->blit( images_.front() );
-        texturesurface_->setTextureIndex( images_.front()->texture() );
+        texturesurface_->setTextureIndex( filter_->getOutputTexture() );
+//        texturesurface_->setTextureIndex( images_.front()->texture() );
 
         // create render Frame buffer matching size of images
         FrameBuffer *renderbuffer = new FrameBuffer( res, true );
@@ -101,6 +110,23 @@ void CloneSource::init()
 
         // done init
         Log::Info("Source '%s' cloning source '%s'.", name().c_str(), origin_->name().c_str() );
+    }
+}
+
+void CloneSource::render()
+{
+    if (  renderbuffer_ == nullptr )
+        init();
+    else {
+        // render filtered image
+        filter_->draw();
+        texturesurface_->setTextureIndex( filter_->getOutputTexture() );
+
+        // render textured surface into frame buffer
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
+        ready_ = true;
     }
 }
 
@@ -183,8 +209,10 @@ void CloneSource::update(float dt)
                 // blit rendered framebuffer in the newest image (back)
                 origin_->frame()->blit( images_.back() );
 
-                // update the source surface to be rendered with the oldest image (front)
-                texturesurface_->setTextureIndex( images_.front()->texture() );
+//                 update the source surface to be rendered with the oldest image (front)
+//                texturesurface_->setTextureIndex( images_.front()->texture() );
+                filter_->setInputTexture( images_.front()->texture() );
+
             }
         }
 

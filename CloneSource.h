@@ -23,6 +23,7 @@ public:
     uint texture() const override;
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
+    void render() override;
 
     // implementation of cloning mechanism
     inline void detach() { origin_ = nullptr; }
@@ -56,6 +57,9 @@ protected:
 
     // control
     bool paused_;
+
+    // filter
+    class ImageFilter *filter_;
 
     // connecting line
     class DotLine *connection_;
