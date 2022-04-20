@@ -39,6 +39,10 @@
 
 #include "Shader.h"
 
+#ifndef NDEBUG
+#define SHADER_DEBUG
+#endif
+
 // Globals
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
@@ -123,9 +127,10 @@ bool ShadingProgram::compile()
         else {
             // LINK PROGRAM
 
-            // create new GL Program only if not already done
-            if (id_ == 0)
-                id_ = glCreateProgram();
+            // create new GL Program
+            if (id_ != 0)
+                glDeleteProgram(id_);
+            id_ = glCreateProgram();
 
             // attach shaders and link
             glAttachShader(id_, vertex_id_);
@@ -144,6 +149,9 @@ bool ShadingProgram::compile()
                 glUseProgram(id_);
                 glUniform1i(glGetUniformLocation(id_, "iChannel0"), 0);
                 glUniform1i(glGetUniformLocation(id_, "iChannel1"), 1);
+#ifdef SHADER_DEBUG
+                g_printerr("New GLSL Program %d \n", id_);
+#endif
             }
 
             // done (no more need for shaders)
@@ -183,6 +191,9 @@ void ShadingProgram::enduse()
 void ShadingProgram::reset()
 {
     if (id_ != 0) {
+#ifdef SHADER_DEBUG
+        g_printerr("Delete GLSL Program %d \n", id_);
+#endif
         glDeleteProgram(id_);
         id_ = 0;
     }

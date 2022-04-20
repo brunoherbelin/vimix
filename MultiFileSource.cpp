@@ -77,7 +77,7 @@ bool MultiFileSequence::valid() const
     return !( location.empty() || codec.empty() || width < 1 || height < 1 || max == min);
 }
 
-inline MultiFileSequence& MultiFileSequence::operator = (const MultiFileSequence& b)
+MultiFileSequence& MultiFileSequence::operator = (const MultiFileSequence& b)
 {
     if (this != &b) {
         this->width = b.width;

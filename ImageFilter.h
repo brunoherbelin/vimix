@@ -2,66 +2,67 @@
 #define IMAGEFILTER_H
 
 #include <map>
+#include <string>
+
+#include <glm/glm.hpp>
 
 class Surface;
 class FrameBuffer;
-
-#include "Shader.h"
-
-class ImageFilteringShader : public Shader
-{
-    ShadingProgram custom_shading_;
-
-    // fragment shader GLSL code
-    std::string code_;
-
-    // list of uniform vars in GLSL
-    // with associated pair (current_value, default_values) in range [0.f 1.f]
-    std::map<std::string, glm::vec2> uniforms_;
-
-public:
-
-    ImageFilteringShader();
-    ~ImageFilteringShader();
-
-    void use() override;
-    void reset() override;
-    void accept(Visitor& v) override;
-    void copy(ImageFilteringShader const& S);
-
-    // set fragment shader code and uniforms (with default values)
-    void setFragmentCode(const std::string &code, std::map<std::string, float> parameters);
-};
+class ImageFilteringShader;
 
 
 class ImageFilter
 {
+    std::string code_;
+
+public:
+
+    ImageFilter();
+    ImageFilter(const ImageFilter &other);
+
+    ImageFilter& operator = (const ImageFilter& other);
+    bool operator !=(const ImageFilter& other) const;
+
+    // set the code of the filter
+    inline void setCode(const std::string &code) { code_ = code; }
+
+    // get the code of the filter
+    inline std::string code() const { return code_; }
+};
+
+
+class ImageFilterRenderer
+{
     Surface *surface_;
     FrameBuffer *buffer_;
     ImageFilteringShader *shader_;
-    uint type_;
+    bool enabled_;
+
+    ImageFilter filter_;
 
 public:
 
     // instanciate an image filter at given resolution, with alpha channel
-    ImageFilter(glm::vec3 resolution, bool useAlpha = false);
-    ~ImageFilter();
+    ImageFilterRenderer(glm::vec3 resolution);
+    ~ImageFilterRenderer();
+
+    inline void setEnabled (bool on) { enabled_ = on; }
+    inline bool enabled () const { return enabled_; }
 
     // set the texture to draw into the framebuffer
     void setInputTexture(uint t);
-
-//    typedef enum {
-
-//    } ;
-
-
-    void setFilter(uint filter);
 
     // draw the input texture with filter on the framebuffer
     void draw();
 
     // get the texture id of the rendered framebuffer
     uint getOutputTexture() const;
+
+    // set the code of the filter
+    void setFilter(const ImageFilter &f);
+
+    // get the code of the filter
+    inline ImageFilter filter() const { return filter_; }
 
 };
 

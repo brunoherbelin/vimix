@@ -25,6 +25,7 @@
 #include <array>
 #include <map>
 #include <iomanip>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -88,6 +89,7 @@ using namespace std;
 #include "SrtReceiverSource.h"
 #include "StreamSource.h"
 #include "PickingVisitor.h"
+#include "ImageFilter.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "Metronome.h"
@@ -5189,7 +5191,7 @@ void InputMappingInterface::Render()
 /// SHADER EDITOR
 ///
 ///
-ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader")
+ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), current_changed_(true)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -5223,6 +5225,7 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader")
     // init editor
     _editor.SetLanguageDefinition(lang);
     _editor.SetHandleKeyboardInputs(true);
+    _editor.SetText("");
 }
 
 void ShaderEditor::setVisible(bool on)
@@ -5305,8 +5308,58 @@ void ShaderEditor::Render()
             ImGui::EndMenu();
         }
 
+        if (ImGui::MenuItem(  " Compile ")) {
+            if (current_ != nullptr)
+                filters_[current_].setCode(_editor.GetText());
+                current_->setFilter( filters_[current_] );
+        }
 
         ImGui::EndMenuBar();
+    }
+
+    // garbage collection of code_
+    for (auto it = filters_.begin(); it != filters_.end(); ) {
+        // keep only if the source exists in the session
+        if ( Mixer::manager().session()->find( it->first ) != Mixer::manager().session()->end() )
+            ++it;
+        else
+            it = filters_.erase(it);
+    }
+
+    // get current clone source
+    CloneSource *c = nullptr;
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+        // there is a current source
+        c = dynamic_cast<CloneSource *>(s);
+        if ( c != nullptr ) {
+            // the current source is a clone
+            if ( filters_.find(c) == filters_.end() )
+                // the current clone was not registered
+                filters_[c] = c->filter();
+        }
+    }
+
+    // change editor text only if current changed
+    if ( current_ != c) {
+        // switch to another clone
+        if ( c != nullptr ) {
+            _editor.SetText(filters_[c].code());
+            _editor.SetReadOnly(false);
+        }
+        // cancel edit clone
+        else {
+            // get the editor text and remove trailing '\n'
+            std::string code = _editor.GetText();
+            code.back() = '\0';
+            // remember this code as buffered for the filter of this source
+            filters_[current_].setCode( code );
+            // cancel editor
+            _editor.SetText("");
+            _editor.SetReadOnly(true);
+        }
+        // current changed
+        current_ = c;
     }
 
     // render the editor

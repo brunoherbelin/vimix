@@ -4,6 +4,9 @@
 #include <queue>
 
 #include "Source.h"
+#include "ImageFilter.h"
+
+class ImageFilterRenderer;
 
 class CloneSource : public Source
 {
@@ -31,7 +34,10 @@ public:
 
     // Clone properties
     void setDelay(double second);
-    double delay() const { return delay_; }
+    inline double delay() const { return delay_; }
+
+    void setFilter(const ImageFilter &filter);
+    ImageFilter filter() const;
 
     glm::ivec2 icon() const override;
     std::string info() const override;
@@ -59,7 +65,7 @@ protected:
     bool paused_;
 
     // filter
-    class ImageFilter *filter_;
+    ImageFilterRenderer *filter_render_;
 
     // connecting line
     class DotLine *connection_;

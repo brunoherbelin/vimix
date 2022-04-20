@@ -28,13 +28,12 @@
 #include "Visitor.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
-#include "ImageFilter.h"
 
 #include "CloneSource.h"
 
 
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false), filter_(nullptr)
+    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false), filter_render_(nullptr)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -65,8 +64,8 @@ CloneSource::~CloneSource()
         images_.pop();
     }
 
-    if (filter_)
-        delete filter_;
+    if (filter_render_)
+        delete filter_render_;
 
     if (cloningsurface_)
         delete cloningsurface_;
@@ -88,13 +87,14 @@ void CloneSource::init()
         // ask to reset elapsed-timer
         timer_reset_ = true;
 
-        // create filter
-        filter_ = new ImageFilter( res, true );
-        filter_->setInputTexture( images_.front()->texture() );
+        // create filter for this resolution (with alpha channel)
+        filter_render_ = new ImageFilterRenderer( res );
 
-        // set initial texture surface
-        texturesurface_->setTextureIndex( filter_->getOutputTexture() );
-//        texturesurface_->setTextureIndex( images_.front()->texture() );
+        // provide initial texture to filter
+        filter_render_->setInputTexture( images_.front()->texture() );
+
+        // set texture surface to draw the result of the filter
+        texturesurface_->setTextureIndex( filter_render_->getOutputTexture() );
 
         // create render Frame buffer matching size of images
         FrameBuffer *renderbuffer = new FrameBuffer( res, true );
@@ -119,8 +119,8 @@ void CloneSource::render()
         init();
     else {
         // render filtered image
-        filter_->draw();
-        texturesurface_->setTextureIndex( filter_->getOutputTexture() );
+        filter_render_->draw();
+        texturesurface_->setTextureIndex( filter_render_->getOutputTexture() );
 
         // render textured surface into frame buffer
         renderbuffer_->begin();
@@ -206,12 +206,12 @@ void CloneSource::update(float dt)
 
             // make sure the queue is not empty (in case of failure above)
             if ( !images_.empty() ) {
-                // blit rendered framebuffer in the newest image (back)
+                // blit origin framebuffer in the newest image (back)
                 origin_->frame()->blit( images_.back() );
 
-//                 update the source surface to be rendered with the oldest image (front)
+                // update the surface to be rendered with the oldest image (front)
 //                texturesurface_->setTextureIndex( images_.front()->texture() );
-                filter_->setInputTexture( images_.front()->texture() );
+                filter_render_->setInputTexture( images_.front()->texture() );
 
             }
         }
@@ -226,6 +226,17 @@ void CloneSource::update(float dt)
 void CloneSource::setDelay(double second)
 {
     delay_ = CLAMP(second, 0.0, 2.0);
+}
+
+
+void CloneSource::setFilter(const ImageFilter &filter)
+{
+    filter_render_->setFilter(filter);
+}
+
+ImageFilter CloneSource::filter() const
+{
+    return filter_render_->filter();
 }
 
 void CloneSource::play (bool on)

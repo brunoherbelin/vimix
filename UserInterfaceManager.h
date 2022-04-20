@@ -99,6 +99,7 @@
 #include "InfoVisitor.h"
 #include "DialogToolkit.h"
 #include "SessionParser.h"
+#include "ImageFilter.h"
 
 
 struct ImVec2;
@@ -389,7 +390,9 @@ public:
 
 class ShaderEditor : public WorkspaceWindow
 {
-    std::string current_text_edited_;
+    CloneSource *current_;
+    bool current_changed_;
+    std::map<CloneSource *, ImageFilter> filters_;
 
 public:
     ShaderEditor();
