@@ -21,7 +21,7 @@ public:
 
     std::pair<Node *, glm::vec2> pick(glm::vec2) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2>) override;
-    void terminate() override;
+    void terminate(bool force) override;
     Cursor over (glm::vec2) override;
     void arrow (glm::vec2) override;
 

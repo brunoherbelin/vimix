@@ -1320,7 +1320,7 @@ void TextureView::initiate()
         stored_mask_size_ = glm::vec3(0.f);
 }
 
-void TextureView::terminate()
+void TextureView::terminate(bool force)
 {
     // special case for texture paint: store image on mouse release (end of action PAINT)
     if ( edit_source_ != nullptr && current_action_.find(MASK_PAINT_ACTION_LABEL) != std::string::npos ) {
@@ -1329,7 +1329,7 @@ void TextureView::terminate()
     }
 
     // View default termination of action
-    View::terminate();
+    View::terminate(force);
 
     // hide all overlays
     overlay_position_->visible_       = false;

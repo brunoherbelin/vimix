@@ -25,7 +25,7 @@ public:
     void arrow (glm::vec2) override;
 
     void initiate() override;
-    void terminate() override;
+    void terminate(bool force) override;
 
 private:
 

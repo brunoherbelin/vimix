@@ -43,7 +43,7 @@
 
 uint View::need_deep_update_ = 1;
 
-View::View(Mode m) : mode_(m), dt_(16.f)
+View::View(Mode m) : mode_(m), current_action_ongoing_(false), dt_(16.f)
 {
     show_context_menu_ = MENU_NONE;
 
@@ -133,18 +133,30 @@ std::pair<Node *, glm::vec2> View::pick(glm::vec2 P)
 
 void View::initiate()
 {
-    current_action_ = "";
-    for (auto sit = Mixer::manager().session()->begin();
-         sit != Mixer::manager().session()->end(); ++sit)
-        (*sit)->store(mode_);
+    // initiate pending action
+    if (!current_action_ongoing_) {
+        // all sources store their status at initiation of an action
+        for (auto sit = Mixer::manager().session()->begin();
+             sit != Mixer::manager().session()->end(); ++sit)
+            (*sit)->store(mode_);
+        // initiated
+        current_action_ = "";
+        current_action_ongoing_ = true;
+    }
 }
 
-void View::terminate()
+void View::terminate(bool force)
 {
-    std::regex r("\\n");
-    current_action_ = std::regex_replace(current_action_, r, " ");
-    Action::manager().store(current_action_);
-    current_action_ = "";
+    // terminate pending action
+    if (current_action_ongoing_ || force) {
+        // store the terminated action in action manager (undo history)
+        std::regex r("\\n");
+        current_action_ = std::regex_replace(current_action_, r, " ");
+        Action::manager().store(current_action_);
+        // terminated
+        current_action_ = "";
+        current_action_ongoing_ = false;
+    }
 }
 
 void View::zoom( float factor )

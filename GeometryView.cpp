@@ -1005,9 +1005,9 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     return ret;
 }
 
-void GeometryView::terminate()
+void GeometryView::terminate(bool force)
 {
-    View::terminate();
+    View::terminate(force);
 
     // hide all view overlays
     overlay_position_->visible_       = false;

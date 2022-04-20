@@ -239,6 +239,9 @@ void UserInterface::handleKeyboard()
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
 
+    if (!keyboard_available)
+        return;
+
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
 
@@ -404,40 +407,36 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
             // Space bar to toggle play / pause
             sourcecontrol.Play();
-
-        // normal keys in workspace // make sure no entry / window box is active        
-        if ( keyboard_available )
-        {
-            // Backspace to delete source
-            if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
-                Mixer::manager().deleteSelection();
-            // button tab to select next
-            else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
-                // cancel selection
-                if (!Mixer::selection().empty())
-                    Mixer::selection().clear();
-                if (shift_modifier_active)
-                    Mixer::manager().setCurrentPrevious();
-                else
-                    Mixer::manager().setCurrentNext();
-            }
-            // arrow keys to act on current view
-            else if (ImGui::IsKeyDown( GLFW_KEY_LEFT ))
-                Mixer::manager().view()->arrow( glm::vec2(-1.f, 0.f) );
-            else if (ImGui::IsKeyDown( GLFW_KEY_RIGHT ))
-                Mixer::manager().view()->arrow( glm::vec2(+1.f, 0.f) );
-            if (ImGui::IsKeyDown( GLFW_KEY_UP ))
-                Mixer::manager().view()->arrow( glm::vec2(0.f, -1.f) );
-            else if (ImGui::IsKeyDown( GLFW_KEY_DOWN ))
-                Mixer::manager().view()->arrow( glm::vec2(0.f, +1.f) );
-
-            if (ImGui::IsKeyReleased( GLFW_KEY_LEFT ) ||
-                ImGui::IsKeyReleased( GLFW_KEY_RIGHT ) ||
-                ImGui::IsKeyReleased( GLFW_KEY_UP ) ||
-                ImGui::IsKeyReleased( GLFW_KEY_DOWN ) ){
-                Mixer::manager().view()->terminate();
-            }
+        // Backspace to delete source
+        else if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
+            Mixer::manager().deleteSelection();
+        // button tab to select next
+        else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+            // cancel selection
+            if (!Mixer::selection().empty())
+                Mixer::selection().clear();
+            if (shift_modifier_active)
+                Mixer::manager().setCurrentPrevious();
+            else
+                Mixer::manager().setCurrentNext();
         }
+        // arrow keys to act on current view
+        else if ( ImGui::IsKeyDown( GLFW_KEY_LEFT  ) ||
+                  ImGui::IsKeyDown( GLFW_KEY_RIGHT ) ||
+                  ImGui::IsKeyDown( GLFW_KEY_UP    ) ||
+                  ImGui::IsKeyDown( GLFW_KEY_DOWN  ) ){
+            glm::vec2 delta(0.f, 0.f);
+            delta.x += ImGui::IsKeyDown( GLFW_KEY_RIGHT ) ? 1.f : ImGui::IsKeyDown( GLFW_KEY_LEFT ) ? -1.f : 0.f;
+            delta.y += ImGui::IsKeyDown( GLFW_KEY_DOWN ) ? 1.f : ImGui::IsKeyDown( GLFW_KEY_UP ) ? -1.f : 0.f;
+            Mixer::manager().view()->arrow( delta );
+        }
+        else if ( ImGui::IsKeyReleased( GLFW_KEY_LEFT  ) ||
+                  ImGui::IsKeyReleased( GLFW_KEY_RIGHT ) ||
+                  ImGui::IsKeyReleased( GLFW_KEY_UP    ) ||
+                  ImGui::IsKeyReleased( GLFW_KEY_DOWN  ) ){
+            Mixer::manager().view()->terminate(true);
+        }
+
     }
 
     // special case: CTRL + TAB is ALT + TAB in OSX
@@ -1189,6 +1188,11 @@ void UserInterface::RenderShaderEditor()
             bool ro = editor.IsReadOnly();
             if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
                 editor.SetReadOnly(ro);
+
+            bool ws = editor.IsShowingWhitespaces();
+            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Show whitespace", nullptr, &ws))
+                editor.SetShowWhitespaces(ws);
+
             ImGui::Separator();
 
             if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && editor.CanUndo()))
@@ -1215,24 +1219,14 @@ void UserInterface::RenderShaderEditor()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("View"))
+        if (ImGui::BeginMenu("Compile"))
         {
-            bool ws = editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Whitespace", nullptr, &ws))
-                editor.SetShowWhitespaces(ws);
-            ImGui::MenuItem( ICON_FA_WINDOW_MAXIMIZE  " Statusbar", nullptr, &show_statusbar);
+            ImGui::MenuItem( " Compile");
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
     }
 
-    if (show_statusbar) {
-        auto cpos = editor.GetCursorPosition();
-        ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-                    editor.IsOverwrite() ? "Ovr" : "Ins",
-                    editor.CanUndo() ? "*" : " ",
-                    editor.GetLanguageDefinition().mName.c_str());
-    }
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
     editor.Render("ShaderEditor");

@@ -577,9 +577,9 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     return ret;
 }
 
-void MixingView::terminate()
+void MixingView::terminate(bool force)
 {
-    View::terminate();
+    View::terminate(force);
 
     // terminate all mixing group actions
     for (auto g = Mixer::manager().session()->beginMixingGroup();
