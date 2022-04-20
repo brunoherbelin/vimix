@@ -28,6 +28,7 @@ struct WidgetsConfig
     bool inputs;
     int  inputs_view;
     bool shader_editor;
+    int  shader_editor_view;
     bool toolbox;
     bool help;
 
@@ -41,11 +42,12 @@ struct WidgetsConfig
         media_player = false;
         media_player_view = -1;
         media_player_timeline_editmode = false;
-        shader_editor = false;
         toolbox = false;
         help = false;
         timer = false;
         timer_view = -1;
+        shader_editor = false;
+        shader_editor_view = -1;
         inputs = false;
         inputs_view = -1;
     }

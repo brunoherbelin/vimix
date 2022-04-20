@@ -94,7 +94,7 @@ using namespace std;
 #include "VideoBroadcast.h"
 
 #include "TextEditor.h"
-TextEditor editor;
+TextEditor _editor;
 
 #include "UserInterfaceManager.h"
 #define PLOT_CIRCLE_SEGMENTS 64
@@ -141,7 +141,6 @@ UserInterface::UserInterface()
     show_opengl_about = false;
     show_view_navigator  = 0;
     target_view_navigator = 1;
-    currentTextEdit.clear();
     screenshot_step = 0;
     pending_save_on_exit = false;
 
@@ -239,8 +238,13 @@ void UserInterface::handleKeyboard()
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
 
-    if (!keyboard_available)
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        // only react to ESC key when keyboard is captured
+        if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
+
+        }
         return;
+    }
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
@@ -292,7 +296,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_E, false )) {
             // Shader Editor
-            Settings::application.widget.shader_editor = !Settings::application.widget.shader_editor;
+            shadercontrol.setVisible(!Settings::application.widget.shader_editor);
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_D, false )) {
             // Display output
@@ -754,7 +758,6 @@ void UserInterface::NewFrame()
     ImGui::NewFrame();
 
     // deal with keyboard and mouse events
-    handleKeyboard();
     handleMouse();
     handleScreenshot();
 
@@ -804,17 +807,19 @@ void UserInterface::NewFrame()
         }
     }
 
-    // navigator bar first
-    navigator.Render();
 }
 
 void UserInterface::Render()
 {
+    // navigator bar first
+    navigator.Render();
+
     // update windows before render
     outputcontrol.Update();
     sourcecontrol.Update();
     timercontrol.Update();
     inputscontrol.Update();
+    shadercontrol.Update();
 
     // warnings and notifications
     Log::Render(&Settings::application.widget.logs);
@@ -838,6 +843,10 @@ void UserInterface::Render()
     if (inputscontrol.Visible())
         inputscontrol.Render();
 
+    // Shader controller
+    if (shadercontrol.Visible())
+        shadercontrol.Render();
+
     // Logs
     if (Settings::application.widget.logs)
         Log::ShowLogWindow(&Settings::application.widget.logs);
@@ -853,8 +862,6 @@ void UserInterface::Render()
     // All other windows are simply not rendered if workspace is clear
     else {
         // windows
-        if (Settings::application.widget.shader_editor)
-            RenderShaderEditor();
         if (Settings::application.widget.help)
             helpwindow.Render();
         if (Settings::application.widget.toolbox)
@@ -877,6 +884,9 @@ void UserInterface::Render()
     // Navigator
     if (show_view_navigator > 0)
         target_view_navigator = RenderViewNavigator( &show_view_navigator );
+
+    // handle keyboard input after all IMGUI widgets have potentially captured keyboard
+    handleKeyboard();
 
     // all IMGUI Rendering
     ImGui::Render();
@@ -1125,114 +1135,6 @@ void UserInterface::showSourceEditor(Source *s)
         }
         navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
     }
-}
-
-void UserInterface::fillShaderEditor(const std::string &text)
-{
-    static bool initialized = false;
-    if (!initialized) {
-        auto lang = TextEditor::LanguageDefinition::GLSL();
-
-        static const char* const keywords[] = {
-            "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
-            "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
-            "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
-            "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
-            "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
-        };
-        for (auto& k : keywords)
-            lang.mKeywords.insert(k);
-
-        static const char* const identifiers[] = {
-            "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
-            "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
-            "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
-            "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
-            "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
-            "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
-            "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
-            "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
-        };
-        for (auto& k : identifiers)
-        {
-            TextEditor::Identifier id;
-            id.mDeclaration = "Added function";
-            lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
-        }
-        // init editor
-        editor.SetLanguageDefinition(lang);
-        initialized = true;
-    }
-
-    // remember text
-    currentTextEdit = text;
-    // fill editor
-    editor.SetText(currentTextEdit);
-}
-
-void UserInterface::RenderShaderEditor()
-{
-    static bool show_statusbar = true;
-
-    if ( !ImGui::Begin(IMGUI_TITLE_SHADEREDITOR, &Settings::application.widget.shader_editor, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar) )
-    {
-        ImGui::End();
-        return;
-    }
-
-    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("Edit"))
-        {
-            bool ro = editor.IsReadOnly();
-            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                editor.SetReadOnly(ro);
-
-            bool ws = editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Show whitespace", nullptr, &ws))
-                editor.SetShowWhitespaces(ws);
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && editor.CanUndo()))
-                editor.Undo();
-            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && editor.CanRedo()))
-                editor.Redo();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, editor.HasSelection()))
-                editor.Copy();
-            if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, nullptr, !ro && editor.HasSelection()))
-                editor.Cut();
-            if (ImGui::MenuItem( MENU_DELETE, SHORTCUT_DELETE, nullptr, !ro && editor.HasSelection()))
-                editor.Delete();
-            if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                editor.Paste();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
-                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Compile"))
-        {
-            ImGui::MenuItem( " Compile");
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-    editor.Render("ShaderEditor");
-    ImGui::PopFont();
-
-    ImGui::End();
 }
 
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
@@ -5278,6 +5180,139 @@ void InputMappingInterface::Render()
         ImGui::PopStyleVar();
     }
 
+
+    ImGui::End();
+}
+
+
+///
+/// SHADER EDITOR
+///
+///
+ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader")
+{
+    auto lang = TextEditor::LanguageDefinition::GLSL();
+
+    static const char* const keywords[] = {
+        "discard", "attribute", "varying", "uniform", "in", "out", "inout", "bvec2", "bvec3", "bvec4", "dvec2",
+        "dvec3", "dvec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4", "mat2",
+        "mat3", "mat4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D", "sampler3D", "samplerCUBE", "samplerbuffer",
+        "sampler1DArray", "sampler2DArray", "sampler1DShadow", "sampler2DShadow", "vec4", "vec4", "smooth", "flat",
+        "precise", "coherent", "uint", "struct", "switch", "unsigned", "void", "volatile", "while", "readonly"
+    };
+    for (auto& k : keywords)
+        lang.mKeywords.insert(k);
+
+    static const char* const identifiers[] = {
+        "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
+        "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
+        "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
+        "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
+        "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
+        "texture3DProj", "texture3DLod", "texture3DProjLod", "textureCube", "textureCubeLod", "shadow1D", "shadow1DProj",
+        "shadow1DLod", "shadow1DProjLod", "shadow2D", "shadow2DProj", "shadow2DLod", "shadow2DProjLod",
+        "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4", "refract", "exp", "log", "mainImage",
+    };
+    for (auto& k : identifiers)
+    {
+        TextEditor::Identifier id;
+        id.mDeclaration = "Added function";
+        lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+    }
+
+    // init editor
+    _editor.SetLanguageDefinition(lang);
+    _editor.SetHandleKeyboardInputs(true);
+}
+
+void ShaderEditor::setVisible(bool on)
+{
+    // restore workspace to show the window
+    if (WorkspaceWindow::clear_workspace_enabled) {
+        WorkspaceWindow::restoreWorkspace(on);
+        // do not change status if ask to hide (consider user asked to toggle because the window was not visible)
+        if (!on)  return;
+    }
+
+    if (on && Settings::application.widget.shader_editor_view != Settings::application.current_view)
+        Settings::application.widget.shader_editor_view = -1;
+
+    Settings::application.widget.shader_editor = on;
+}
+
+bool ShaderEditor::Visible() const
+{
+    return ( Settings::application.widget.shader_editor
+             && (Settings::application.widget.shader_editor_view < 0 || Settings::application.widget.shader_editor_view == Settings::application.current_view )
+             );
+}
+
+void ShaderEditor::Render()
+{
+    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+
+    if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+    {
+        ImGui::End();
+        return;
+    }
+
+    bool ro = _editor.IsReadOnly();
+    bool ws = _editor.IsShowingWhitespaces();
+
+    // menu (no title bar)
+    if (ImGui::BeginMenuBar())
+    {
+        // Close and widget menu
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.shader_editor = false;
+        if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
+        {
+            // Enable/Disable editor options
+            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Show whitespace", nullptr, &ws))
+                _editor.SetShowWhitespaces(ws);
+
+            ImGui::Separator();
+            if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
+                _editor.Undo();
+            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && _editor.CanRedo()))
+                _editor.Redo();
+            if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, _editor.HasSelection()))
+                _editor.Copy();
+            if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, nullptr, !ro && _editor.HasSelection()))
+                _editor.Cut();
+            if (ImGui::MenuItem( MENU_DELETE, SHORTCUT_DELETE, nullptr, !ro && _editor.HasSelection()))
+                _editor.Delete();
+            if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                _editor.Paste();
+            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
+                _editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(_editor.GetTotalLines(), 0));
+
+            // output manager menu
+            ImGui::Separator();
+            bool pinned = Settings::application.widget.shader_editor_view == Settings::application.current_view;
+            std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
+            if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
+                if (pinned)
+                    Settings::application.widget.shader_editor_view = Settings::application.current_view;
+                else
+                    Settings::application.widget.shader_editor_view = -1;
+            }
+            if ( ImGui::MenuItem( MENU_CLOSE, SHORTCUT_SHADEREDITOR) )
+                Settings::application.widget.shader_editor = false;
+
+            ImGui::EndMenu();
+        }
+
+
+        ImGui::EndMenuBar();
+    }
+
+    // render the editor
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    _editor.Render("Shader Editor");
+    ImGui::PopFont();
 
     ImGui::End();
 }

@@ -26,7 +26,7 @@
 #define IMGUI_TITLE_INPUT_MAPPING ICON_FA_HAND_PAPER " Inputs Mapping"
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
-#define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Code Editor"
+#define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
 #define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Output"
 
 #define MENU_NEW_FILE         ICON_FA_FILE "  New"
@@ -83,6 +83,8 @@
 #define SHORTCUT_TIMER        CTRL_MOD "T"
 #define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"
+#define TOOLTIP_SHADEREDITOR  "Shader Editor "
+#define SHORTCUT_SHADEREDITOR CTRL_MOD "E"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "Shift+F"
 #define TOOLTIP_MAIN          "Main menu "
@@ -385,6 +387,19 @@ public:
     bool Visible() const override;
 };
 
+class ShaderEditor : public WorkspaceWindow
+{
+    std::string current_text_edited_;
+
+public:
+    ShaderEditor();
+
+    void Render();
+    void setVisible(bool on);
+
+    // from WorkspaceWindow
+    bool Visible() const override;
+};
 
 
 class UserInterface
@@ -428,10 +443,6 @@ public:
     void showPannel(int id = 0);
     void showSourceEditor(Source *s);
 
-    // TODO implement the shader editor
-    std::string currentTextEdit;
-    void fillShaderEditor(const std::string &text);
-
     void StartScreenshot();
 
 protected:
@@ -463,6 +474,7 @@ protected:
     OutputPreview outputcontrol;
     TimerMetronome timercontrol;
     InputMappingInterface inputscontrol;
+    ShaderEditor shadercontrol;
     HelperToolbox helpwindow;
 
     void showMenuFile();
@@ -472,7 +484,6 @@ protected:
     void selectOpenFilename();
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
-    void RenderShaderEditor();
     int  RenderViewNavigator(int* shift);
     void RenderAbout(bool* p_open);
     void RenderNotes();
