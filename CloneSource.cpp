@@ -229,9 +229,9 @@ void CloneSource::setDelay(double second)
 }
 
 
-void CloneSource::setFilter(const ImageFilter &filter)
+void CloneSource::setFilter(const ImageFilter &filter, std::promise<std::string> *ret)
 {
-    filter_render_->setFilter(filter);
+    filter_render_->setFilter(filter, ret);
 }
 
 ImageFilter CloneSource::filter() const

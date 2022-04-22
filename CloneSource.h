@@ -36,7 +36,7 @@ public:
     void setDelay(double second);
     inline double delay() const { return delay_; }
 
-    void setFilter(const ImageFilter &filter);
+    void setFilter(const ImageFilter &filter, std::promise<std::string> *ret = nullptr);
     ImageFilter filter() const;
 
     glm::ivec2 icon() const override;

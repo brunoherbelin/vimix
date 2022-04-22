@@ -1,6 +1,7 @@
 #ifndef __SHADER_H_
 #define __SHADER_H_
 
+#include <future>
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
@@ -14,10 +15,13 @@ class ShadingProgram
 public:
     // create GLSL Program from resource file (if exist) or code of vertex and fragment shaders
     ShadingProgram(const std::string& vertex = "", const std::string& fragment = "");
-    void setShaders(const std::string& vertex, const std::string& fragment);
+
+    // Update GLSL Program with vertex and fragment program
+    // If a promise is given, it is filled during compilation with the compilation log.
+    void setShaders(const std::string& vertex, const std::string& fragment, std::promise<std::string> *prom = nullptr);
 
     void use();
-    bool compile();
+    void compile();
     static void enduse();
     void reset();
 
@@ -30,6 +34,7 @@ private:
     bool need_compile_;
     std::string vertex_;
     std::string fragment_;
+    std::promise<std::string> *promise_;
 
     static ShadingProgram *currentProgram_;
 };

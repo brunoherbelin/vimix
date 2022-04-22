@@ -28,6 +28,10 @@ public:
 
     // get the code of the filter
     inline std::string code() const { return code_; }
+
+    // global
+    static std::string getFilterCodeInputs();
+    static std::string getFilterCodeDefault();
 };
 
 
@@ -59,7 +63,7 @@ public:
     uint getOutputTexture() const;
 
     // set the code of the filter
-    void setFilter(const ImageFilter &f);
+    void setFilter(const ImageFilter &f, std::promise<std::string> *ret = nullptr);
 
     // get the code of the filter
     inline ImageFilter filter() const { return filter_; }

@@ -18,16 +18,15 @@
 **/
 
 #include <iostream>
-#include <cstring>
+#include <iomanip>
+#include <fstream>
 #include <sstream>
+#include <sstream>
+#include <cstring>
 #include <thread>
 #include <algorithm>
 #include <array>
 #include <map>
-#include <iomanip>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 
 using namespace std;
 
@@ -5191,7 +5190,8 @@ void InputMappingInterface::Render()
 /// SHADER EDITOR
 ///
 ///
-ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), current_changed_(true)
+ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr),
+    current_changed_(true), show_shader_inputs_(false)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -5206,8 +5206,8 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), cur
         lang.mKeywords.insert(k);
 
     static const char* const identifiers[] = {
-        "radians",  "degrees",   "sin",  "cos", "tan", "asin", "acos", "atan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
-        "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
+        "radians",  "degrees", "sin",  "cos", "tan", "pow", "exp2", "log2", "sqrt", "inversesqrt",
+        "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep", "length", "distance",
         "dot", "cross", "normalize", "ftransform", "faceforward", "reflect", "matrixcompmult", "lessThan", "lessThanEqual",
         "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not", "texture1D", "texture1DProj", "texture1DLod",
         "texture1DProjLod", "texture", "texture2D", "texture2DProj", "texture2DLod", "texture2DProjLod", "texture3D",
@@ -5218,7 +5218,18 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), cur
     for (auto& k : identifiers)
     {
         TextEditor::Identifier id;
-        id.mDeclaration = "Added function";
+        id.mDeclaration = "GLSL function";
+        lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+    }
+
+    static const char* const filter_keyword[] = {
+        "iResolution", "iTime", "iTimeDelta", "iFrame", "iChannelResolution", "iDate",
+        "iChannel0", "iChannel1", "iTransform", "FragColor", "vertexColor", "vertexUV",
+    };
+    for (auto& k : filter_keyword)
+    {
+        TextEditor::Identifier id;
+        id.mDeclaration = "Shader keyword";
         lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
     }
 
@@ -5226,6 +5237,9 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), cur
     _editor.SetLanguageDefinition(lang);
     _editor.SetHandleKeyboardInputs(true);
     _editor.SetText("");
+
+    // status
+    status_ = "-";
 }
 
 void ShaderEditor::setVisible(bool on)
@@ -5272,10 +5286,19 @@ void ShaderEditor::Render()
             Settings::application.widget.shader_editor = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
+            if (ImGui::MenuItem( ICON_FA_SYNC " Reload")) {
+                if (current_)
+                    filters_.erase(current_);
+                current_ = nullptr;
+            }
+
             // Enable/Disable editor options
+            ImGui::Separator();
+            ImGui::MenuItem( ICON_FA_UNDERLINE " Show Shader Inputs", nullptr, &show_shader_inputs_);
             if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Show whitespace", nullptr, &ws))
                 _editor.SetShowWhitespaces(ws);
 
+            // Edit menu
             ImGui::Separator();
             if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
                 _editor.Undo();
@@ -5289,7 +5312,7 @@ void ShaderEditor::Render()
                 _editor.Delete();
             if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
                 _editor.Paste();
-            if (ImGui::MenuItem( "Select all", nullptr, nullptr))
+            if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL, nullptr, _editor.GetText().size() > 1 ))
                 _editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(_editor.GetTotalLines(), 0));
 
             // output manager menu
@@ -5308,10 +5331,21 @@ void ShaderEditor::Render()
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem(  " Compile ")) {
-            if (current_ != nullptr)
+        if (ImGui::MenuItem( ICON_FA_HAMMER " Build", nullptr, nullptr, current_ != nullptr )) {
+
+            if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
+                // set the code of the current filter
                 filters_[current_].setCode(_editor.GetText());
-                current_->setFilter( filters_[current_] );
+
+                // change the filter of the current clone
+                // => this triggers compilation of shader
+                compilation_ = new std::promise<std::string>();
+                current_->setFilter( filters_[current_], compilation_ );
+                compilation_return_ = compilation_->get_future();
+
+                // inform status
+                status_ = "Building...";
+            }
         }
 
         ImGui::EndMenuBar();
@@ -5326,45 +5360,109 @@ void ShaderEditor::Render()
             it = filters_.erase(it);
     }
 
-    // get current clone source
-    CloneSource *c = nullptr;
-    Source *s = Mixer::manager().currentSource();
-    if (s != nullptr) {
-        // there is a current source
-        c = dynamic_cast<CloneSource *>(s);
-        if ( c != nullptr ) {
-            // the current source is a clone
-            if ( filters_.find(c) == filters_.end() )
-                // the current clone was not registered
-                filters_[c] = c->filter();
+    // if compiling, cannot change source nor do anything else
+    static std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
+    if (compilation_ != nullptr )
+    {
+        // wait for compilation to return
+        if (compilation_return_.wait_for(timeout) == std::future_status::ready )
+        {
+            // get message returned from compilation
+            std::string s = compilation_return_.get();
+
+            // find reported line numbers "0(nn)" and replace with "line N"
+            status_ = "";
+            std::regex e("0\\([[:digit:]]+\\)");
+            std::smatch m;
+            while (std::regex_search(s, m, e)) {
+                status_ += m.prefix().str();
+                int l = 0;
+                std::string num = m.str().substr(2, m.length()-2);
+                if ( BaseToolkit::is_a_number(num, &l)){
+                    status_ += "line ";
+                    status_ += std::to_string(l-16);
+                }
+                s = m.suffix().str();
+            }
+            status_ += s;
+
+            // end compilation promise
+            delete compilation_;
+            compilation_ = nullptr;
         }
     }
+    // not compiling
+    else {
 
-    // change editor text only if current changed
-    if ( current_ != c) {
-        // switch to another clone
-        if ( c != nullptr ) {
-            _editor.SetText(filters_[c].code());
-            _editor.SetReadOnly(false);
+        // get current clone source
+        CloneSource *c = nullptr;
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            // there is a current source
+            c = dynamic_cast<CloneSource *>(s);
+            if ( c != nullptr ) {
+                // the current source is a clone
+                if ( filters_.find(c) == filters_.end() )
+                    // the current clone was not registered
+                    filters_[c] = c->filter();
+            }
+            else
+                status_ = "No shader";
         }
-        // cancel edit clone
-        else {
-            // get the editor text and remove trailing '\n'
-            std::string code = _editor.GetText();
-            code.back() = '\0';
-            // remember this code as buffered for the filter of this source
-            filters_[current_].setCode( code );
-            // cancel editor
-            _editor.SetText("");
-            _editor.SetReadOnly(true);
+        else
+            status_ = "-";
+
+        // change editor text only if current changed
+        if ( current_ != c) {
+            // switch to another clone
+            if ( c != nullptr ) {
+                _editor.SetText(filters_[c].code());
+                _editor.SetReadOnly(false);
+                status_ = "Ready.";
+            }
+            // cancel edit clone
+            else {
+                // get the editor text and remove trailing '\n'
+                std::string code = _editor.GetText();
+                code = code.substr(0, code.size() -1);
+                // remember this code as buffered for the filter of this source
+                filters_[current_].setCode( code );
+                // cancel editor
+                _editor.SetText("");
+                _editor.SetReadOnly(true);
+            }
+            // current changed
+            current_ = c;
         }
-        // current changed
-        current_ = c;
+
     }
 
-    // render the editor
+    // render the window content in mono font
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+
+    // render status message
+    ImGui::Text("Status: %s", status_.c_str());
+
+    // render shader input
+    if (show_shader_inputs_) {
+        ImGuiTextBuffer info;
+        info.append(ImageFilter::getFilterCodeInputs().c_str());
+
+        // Show info text bloc (multi line, dark background)
+        ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor(2);
+        ImGui::PopFont();
+    }
+    else
+        ImGui::Spacing();
+
+    // render main editor
     _editor.Render("Shader Editor");
+
     ImGui::PopFont();
 
     ImGui::End();

@@ -4,6 +4,7 @@
 #include <string>
 #include <array>
 #include <list>
+#include <future>
 
 #include <gst/gstutils.h>
 
@@ -392,7 +393,12 @@ class ShaderEditor : public WorkspaceWindow
 {
     CloneSource *current_;
     bool current_changed_;
+    bool show_shader_inputs_;
     std::map<CloneSource *, ImageFilter> filters_;
+    std::promise<std::string> *compilation_;
+    std::future<std::string>  compilation_return_;
+
+    std::string status_;
 
 public:
     ShaderEditor();

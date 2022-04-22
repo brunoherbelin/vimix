@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -40,7 +40,7 @@
 #include "Shader.h"
 
 #ifndef NDEBUG
-#define SHADER_DEBUG
+//#define SHADER_DEBUG
 #endif
 
 // Globals
@@ -77,20 +77,22 @@ GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ZERO};
 
 ShadingProgram::ShadingProgram(const std::string& vertex, const std::string& fragment) :
-    id_(0), need_compile_(true), vertex_(vertex), fragment_(fragment)
+    id_(0), need_compile_(true), vertex_(vertex), fragment_(fragment), promise_(nullptr)
 {
 }
 
-void ShadingProgram::setShaders(const std::string& vertex, const std::string& fragment)
+void ShadingProgram::setShaders(const std::string& vertex, const std::string& fragment, std::promise<std::string> *prom)
 {
     vertex_ = vertex;
     fragment_ = fragment;
     need_compile_ = true;
+    promise_ = prom;
 }
 
-bool ShadingProgram::compile()
+void ShadingProgram::compile()
 {
     char infoLog[1024];
+    infoLog[0] = '\0';
     int success = GL_FALSE;
 
     std::string vertex_code = vertex_;
@@ -109,7 +111,6 @@ bool ShadingProgram::compile()
     glGetShaderiv(vertex_id_, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vertex_id_, 1024, NULL, infoLog);
-        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
     }
     else {
         // FRAGMENT SHADER
@@ -121,7 +122,6 @@ bool ShadingProgram::compile()
         glGetShaderiv(fragment_id_, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(fragment_id_, 1024, NULL, infoLog);
-            Log::Warning("Error compiling Fragment ShadingProgram:\n%s", infoLog);
             glDeleteShader(vertex_id_);
         }
         else {
@@ -140,7 +140,6 @@ bool ShadingProgram::compile()
             glGetProgramiv(id_, GL_LINK_STATUS, &success);
             if (!success) {
                 glGetProgramInfoLog(id_, 1024, NULL, infoLog);
-                Log::Warning("Error linking ShadingProgram:\n%s", infoLog);
                 glDeleteProgram(id_);
                 id_ = 0;
             }
@@ -161,11 +160,15 @@ bool ShadingProgram::compile()
         }
     }
 
+    // always fulfill a promise
+    if (promise_)
+        promise_->set_value( success ? "Ok" : "Error:\n" + std::string(infoLog) );
+    // if not asked to return a promise, inform user through logs
+    else if (!success)
+        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
+
     // do not compile indefinitely
     need_compile_ = false;
-
-    // inform of success
-    return success;
 }
 
 void ShadingProgram::use()

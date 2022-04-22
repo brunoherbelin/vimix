@@ -31,15 +31,14 @@
 
 #include "ImageFilter.h"
 
-std::string ShaderToyHeaderHelp =  "vec3      iResolution;           // viewport resolution (in pixels)\n"
-                                   "float     iTime;                 // shader playback time (in seconds)\n"
-                                   "float     iTimeDelta;            // render time (in seconds)\n"
-                                   "int       iFrame;                // shader playback frame\n"
-                                   "vec3      iChannelResolution[2]; // input channel resolution (in pixels)\n"
-                                   "vec4      iDate;                 // (year, month, day, time in seconds)\n"
-                                   "sampler2D iChannel0;             // input channel (texture).\n"
-                                   "sampler2D iChannel1;             // input channel (mask).\n"
-                                   "vec4      iDate;                 // (year, month, day, time in seconds)\n";
+std::string filterHeaderHelp =  "vec3      iResolution;           // viewport resolution (in pixels)\n"
+                                "float     iTime;                 // shader playback time (in seconds)\n"
+                                "float     iTimeDelta;            // render time (in seconds)\n"
+                                "int       iFrame;                // shader playback frame\n"
+                                "vec3      iChannelResolution[2]; // input channel resolution (in pixels)\n"
+                                "sampler2D iChannel0;             // input channel (texture).\n"
+                                "sampler2D iChannel1;             // input channel (mask).\n"
+                                "vec4      iDate;                 // (year, month, day, time in seconds)";
 
 std::string fragmentHeader = "#version 330 core\n"
                              "out vec4 FragColor;\n"
@@ -64,7 +63,7 @@ std::string filterDefault = "void mainImage( out vec4 fragColor, in vec2 fragCoo
                             "    fragColor = texture(iChannel0, uv);\n"
                             "}\n";
 
-std::string fragmentFooter = "\nvoid main() {\n"
+std::string fragmentFooter = "void main() {\n"
                              "    iChannelResolution[0] = vec3(textureSize(iChannel0, 0), 0.f);\n"
                              "    iChannelResolution[1] = vec3(textureSize(iChannel1, 0), 0.f);\n"
                              "    vec4 texcoord = iTransform * vec4(vertexUV.x, vertexUV.y, 0.0, 1.0);\n"
@@ -77,7 +76,7 @@ class ImageFilteringShader : public Shader
     ShadingProgram custom_shading_;
 
     // fragment shader GLSL code
-    std::string code_;
+    std::string shader_code_;
 
     // list of uniform vars in GLSL
     // with associated pair (current_value, default_values) in range [0.f 1.f]
@@ -99,7 +98,7 @@ public:
     void copy(ImageFilteringShader const& S);
 
     // set fragment shader code and uniforms (with default values)
-    void setFilterCode(const std::string &code, std::map<std::string, float> parameters);
+    void setFilterCode(const std::string &code, std::map<std::string, float> parameters, std::promise<std::string> *prom = nullptr);
 };
 
 
@@ -162,16 +161,15 @@ void ImageFilteringShader::reset()
 
     // loop over all uniforms
     for (auto u = uniforms_.begin(); u != uniforms_.end(); ++u)
-        // reset current value to detault value
+        // reset current value to default value
         u->second.x = u->second.y;
 }
 
-void ImageFilteringShader::setFilterCode(const std::string &code, std::map<std::string, float> parameters)
+void ImageFilteringShader::setFilterCode(const std::string &code, std::map<std::string, float> parameters, std::promise<std::string> *ret)
 {
     // change the shading code for fragment
-    code_ = fragmentHeader + code + fragmentFooter;
-    custom_shading_.setShaders("shaders/image.vs", code_);
-//        g_print("Filter code:\n%s", code_.c_str());
+    shader_code_ = fragmentHeader + code + fragmentFooter;
+    custom_shading_.setShaders("shaders/image.vs", shader_code_, ret);
 
     // set the list of uniforms
     uniforms_.clear();
@@ -183,8 +181,8 @@ void ImageFilteringShader::setFilterCode(const std::string &code, std::map<std::
 void ImageFilteringShader::copy(ImageFilteringShader const& S)
 {
     // change the shading code for fragment
-    code_ = S.code_;
-    custom_shading_.setShaders("shaders/image.vs", code_);
+    shader_code_ = S.shader_code_;
+    custom_shading_.setShaders("shaders/image.vs", shader_code_);
 
     // set the list of uniforms
     uniforms_.clear();
@@ -199,58 +197,15 @@ void ImageFilteringShader::accept(Visitor& v)
     v.visit(*this);
 }
 
+std::string ImageFilter::getFilterCodeInputs()
+{
+    return filterHeaderHelp;
+}
 
-
-
-
-
-std::string filterBloomCode = "float Threshold = 0.2;"
-                              "float Intensity = 1.0;"
-                              "float BlurSize = 4.0;"
-                              "vec4 BlurColor (in vec2 Coord, in sampler2D Tex, in float MipBias)"
-                              "{"
-                              "    vec2 TexelSize = MipBias/iChannelResolution[0].xy;"
-                              "    vec4  Color = texture(Tex, Coord, MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(TexelSize.x,0.0), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(-TexelSize.x,0.0), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(0.0,TexelSize.y), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(0.0,-TexelSize.y), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(TexelSize.x,TexelSize.y), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(-TexelSize.x,TexelSize.y), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(TexelSize.x,-TexelSize.y), MipBias);"
-                              "    Color += texture(Tex, Coord + vec2(-TexelSize.x,-TexelSize.y), MipBias);"
-                              "    return Color/9.0;"
-                              "}"
-                              "void mainImage( out vec4 fragColor, in vec2 fragCoord )"
-                              "{"
-                              "    vec2 uv = (fragCoord.xy/iResolution.xy);"
-                              "    vec4 Color = texture(iChannel0, uv);"
-                              "    vec4 Highlight = clamp(BlurColor(uv, iChannel0, BlurSize)-Threshold,0.0,1.0)*1.0/(1.0-Threshold);"
-                              "    fragColor = 1.0-(1.0-Color)*(1.0-Highlight*Intensity);"
-                              "}";
-
-
-std::string montecarloCode = "#define ITER 32\n"
-                             "#define SIZE 100\n"
-                             "void srand(vec2 a, out float r) {r=sin(dot(a,vec2(1233.224,1743.335)));}\n"
-                             "float rand(inout float r) { r=fract(3712.65*r+0.61432); return (r-0.5)*2.0;}\n"
-                             "void mainImage( out vec4 fragColor, in vec2 fragCoord ) {\n"
-                             "vec2 texcoord = fragCoord.xy / iResolution.xy;\n"
-                             "float p = (SIZE * 0.6 + 1.0)/textureSize(iChannel0, 0).y * 0.98;"
-                             "vec4 c=vec4(0.0);"
-                             "float r;"
-                             "srand(vec2(texcoord), r);"
-                             "vec2 rv;"
-                             "for(int i=0;i<ITER;i++) {"
-                             "rv.x=rand(r);"
-                             "rv.y=rand(r);"
-                             "c+=texture(iChannel0,texcoord+rv*p)/float(ITER);"
-                             "}"
-                             "fragColor = c;\n"
-                             "}";
-
-std::map< std::string, float > montecarloParam = { { "factor", 0.9 }, {"size", 0.1} };
-
+std::string ImageFilter::getFilterCodeDefault()
+{
+    return filterDefault;
+}
 
 ImageFilter::ImageFilter() : code_(filterDefault)
 {
@@ -264,21 +219,18 @@ ImageFilter::ImageFilter(const ImageFilter &other) : code_(other.code_)
 
 ImageFilter& ImageFilter::operator = (const ImageFilter& other)
 {
-    if (this != &other) {
+    if (this != &other)
         this->code_ = other.code_;
-    }
+
     return *this;
 }
 
 bool ImageFilter::operator != (const ImageFilter& other) const
 {
-    if (this != &other) {
+    if (this == &other || this->code_ == other.code_)
+        return false;
 
-        if (this->code_ != other.code_)
-            return true;
-
-    }
-    return false;
+    return true;
 }
 
 
@@ -292,7 +244,7 @@ ImageFilterRenderer::ImageFilterRenderer(glm::vec3 resolution): enabled_(true)
     buffer_ = new FrameBuffer( resolution, true );
 
     std::map< std::string, float > paramfilter;
-    shader_->setFilterCode( filter_.code(), paramfilter);
+    shader_->setFilterCode( filter_.code(), paramfilter );
 }
 
 ImageFilterRenderer::~ImageFilterRenderer()
@@ -328,12 +280,15 @@ void ImageFilterRenderer::draw()
     }
 }
 
-void ImageFilterRenderer::setFilter(const ImageFilter &f)
+void ImageFilterRenderer::setFilter(const ImageFilter &f, std::promise<std::string> *ret)
 {
     if (f != filter_) {
         // set to a different filter : apply change to shader
         std::map< std::string, float > paramfilter;
-        shader_->setFilterCode( f.code(), paramfilter );
+        shader_->setFilterCode( f.code(), paramfilter, ret );
+    }
+    else if (ret != nullptr) {
+        ret->set_value("No change.");
     }
 
     // keep new filter
