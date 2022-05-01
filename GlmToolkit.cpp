@@ -81,11 +81,6 @@ GlmToolkit::AxisAlignedBoundingBox::AxisAlignedBoundingBox(const GlmToolkit::Axi
 {
 }
 
-void GlmToolkit::AxisAlignedBoundingBox::operator = (const GlmToolkit::AxisAlignedBoundingBox &D ) {
-    mMin = D.mMin;
-    mMax = D.mMax;
-}
-
 void GlmToolkit::AxisAlignedBoundingBox::extend(const glm::vec3& point)
 {
     if (isNull()) {
@@ -251,6 +246,16 @@ bool GlmToolkit::operator< (const GlmToolkit::AxisAlignedBoundingBox& A, const G
         return false;
     return ( glm::length2(A.mMax-A.mMin) < glm::length2(B.mMax-B.mMin) );
 }
+
+GlmToolkit::AxisAlignedBoundingBox& GlmToolkit::AxisAlignedBoundingBox::operator = (const GlmToolkit::AxisAlignedBoundingBox &D )
+{
+    if (this != &D) {
+        this->mMin = D.mMin;
+        this->mMax = D.mMax;
+    }
+    return *this;
+}
+
 
 glm::ivec2 GlmToolkit::resolutionFromDescription(int aspectratio, int height)
 {
