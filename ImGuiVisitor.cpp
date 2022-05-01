@@ -784,6 +784,47 @@ void ImGuiVisitor::visit (CloneSource& s)
         Action::manager().store(oss.str());
     }
 
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##Filters", s.filter().name().c_str()) )
+    {
+        for (auto f = ImageFilter::presets.begin(); f != ImageFilter::presets.end(); ++f){
+            if (ImGui::Selectable( f->name().c_str() )) {
+                // apply the selected filter to the source
+                s.setFilter( *f );
+                // ask code editor to refresh
+                UserInterface::manager().showSourceEditor(&s);
+
+                //          TODO UNDO      std::ostringstream oss;
+                //                oss << s.name() << ": Pattern " << Pattern::get(p).label;
+                //                Action::manager().store(oss.str());
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    ImGui::Text("Filter");
+
+    std::map<std::string, float> filter_parameters = s.filter().parameters();
+    ImageFilter target = s.filter();
+    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    {
+        // TODO VISIT ImageFilter
+        float f = param->second;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( param->first.c_str(), &f, 0.f, 1.f, "%.2f")) {
+            target.setParameter(param->first, f);
+            s.setFilter( target );
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            // TODO UNDO
+            //            std::ostringstream oss;
+            //            oss << "Delay " << std::setprecision(3) << d << " s";
+            //            Action::manager().store(oss.str());
+        }
+
+    }
+
+
 }
 
 void ImGuiVisitor::visit (PatternSource& s)

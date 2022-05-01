@@ -20,7 +20,7 @@ void main()
     // adjust UV
     vec4 texcoord = iTransform * vec4(vertexUV.x, vertexUV.y, 0.0, 1.0);
 
-    // color is a mix of texture (manipulated with brightness & contrast), vertex and uniform colors
+    // color is a mix of texture, vertex and uniform colors
     vec4 textureColor = texture(iChannel0, texcoord.xy);
     vec3 RGB = textureColor.rgb * vertexColor.rgb * color.rgb;
 

@@ -26,6 +26,7 @@ class Shader;
 class ImageShader;
 class MaskShader;
 class ImageProcessingShader;
+class ImageFilter;
 
 class Source;
 class MediaSource;
@@ -78,6 +79,7 @@ public:
     virtual void visit (ImageShader&) {}
     virtual void visit (MaskShader&) {}
     virtual void visit (ImageProcessingShader&) {}
+    virtual void visit (ImageFilter&) {}
 
     // utility
     virtual void visit (Stream&) {}

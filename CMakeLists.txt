@@ -555,7 +555,25 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/icon_receive.ply
     ./rsc/mesh/h_line.ply
-    ./rsc/mesh/h_mark.ply
+    ./rsc/mesh/h_mark.ply    
+    ./rsc/shaders/filters/default.glsl
+    ./rsc/shaders/filters/bloom.glsl
+    ./rsc/shaders/filters/bokeh.glsl
+    ./rsc/shaders/filters/talk.glsl
+    ./rsc/shaders/filters/fisheye.glsl
+    ./rsc/shaders/filters/hashedblur.glsl
+    ./rsc/shaders/filters/blur.glsl
+    ./rsc/shaders/filters/blur_1.glsl
+    ./rsc/shaders/filters/blur_2.glsl
+    ./rsc/shaders/filters/sharpen.glsl
+    ./rsc/shaders/filters/sharpenedge.glsl
+    ./rsc/shaders/filters/chromakey.glsl
+    ./rsc/shaders/filters/kuwahara.glsl
+    ./rsc/shaders/filters/freichen.glsl
+    ./rsc/shaders/filters/sobel.glsl
+    ./rsc/shaders/filters/pixelate.glsl
+    ./rsc/shaders/filters/focus.glsl
+    ./rsc/shaders/filters/denoise.glsl
 )
 
 # Include the CMake RC module

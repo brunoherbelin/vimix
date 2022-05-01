@@ -1122,11 +1122,10 @@ void UserInterface::showSourceEditor(Source *s)
         if (s->playable()) {
             sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();
-            return;
         }
         CloneSource *cs = dynamic_cast<CloneSource *>(s);
         if (cs != nullptr) {
-            Mixer::manager().setCurrentSource( cs->origin() );
+            shadercontrol.refresh( cs );
             return;
         }
         RenderSource *rs = dynamic_cast<RenderSource *>(s);
@@ -5230,12 +5229,13 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr),
     {
         TextEditor::Identifier id;
         id.mDeclaration = "Shader keyword";
-        lang.mIdentifiers.insert(std::make_pair(std::string(k), id));
+        lang.mPreprocIdentifiers.insert(std::make_pair(std::string(k), id));
     }
 
     // init editor
     _editor.SetLanguageDefinition(lang);
     _editor.SetHandleKeyboardInputs(true);
+    _editor.SetShowWhitespaces(false);
     _editor.SetText("");
 
     // status
@@ -5264,6 +5264,14 @@ bool ShaderEditor::Visible() const
              );
 }
 
+void ShaderEditor::refresh(CloneSource *cs)
+{
+    if ( cs != nullptr && current_ != nullptr && cs == current_ ) {
+        filters_.erase(current_);
+        current_ = nullptr;
+    }
+}
+
 void ShaderEditor::Render()
 {
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
@@ -5287,7 +5295,7 @@ void ShaderEditor::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
             if (ImGui::MenuItem( ICON_FA_SYNC " Reload")) {
-                if (current_)
+                if ( current_ != nullptr )
                     filters_.erase(current_);
                 current_ = nullptr;
             }
@@ -5335,7 +5343,7 @@ void ShaderEditor::Render()
 
             if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
                 // set the code of the current filter
-                filters_[current_].setCode(_editor.GetText());
+                filters_[current_].setCode( { _editor.GetText(), "" } );
 
                 // change the filter of the current clone
                 // => this triggers compilation of shader
@@ -5402,7 +5410,7 @@ void ShaderEditor::Render()
             c = dynamic_cast<CloneSource *>(s);
             if ( c != nullptr ) {
                 // the current source is a clone
-                if ( filters_.find(c) == filters_.end() )
+//                if ( filters_.find(c) == filters_.end() )
                     // the current clone was not registered
                     filters_[c] = c->filter();
             }
@@ -5416,7 +5424,7 @@ void ShaderEditor::Render()
         if ( current_ != c) {
             // switch to another clone
             if ( c != nullptr ) {
-                _editor.SetText(filters_[c].code());
+                _editor.SetText( filters_[c].code().first );
                 _editor.SetReadOnly(false);
                 status_ = "Ready.";
             }
@@ -5426,7 +5434,8 @@ void ShaderEditor::Render()
                 std::string code = _editor.GetText();
                 code = code.substr(0, code.size() -1);
                 // remember this code as buffered for the filter of this source
-                filters_[current_].setCode( code );
+                filters_[current_].setCode( { code, "" } );
+
                 // cancel editor
                 _editor.SetText("");
                 _editor.SetReadOnly(true);

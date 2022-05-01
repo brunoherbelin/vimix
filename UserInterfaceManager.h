@@ -406,6 +406,8 @@ public:
     void Render();
     void setVisible(bool on);
 
+    void refresh(CloneSource *cs);
+
     // from WorkspaceWindow
     bool Visible() const override;
 };

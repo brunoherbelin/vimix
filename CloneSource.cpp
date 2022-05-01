@@ -84,8 +84,11 @@ void CloneSource::init()
         timestamps_.push( origin_->playtime() );
         elapsed_.push( 0. );
 
-        // ask to reset elapsed-timer
-        timer_reset_ = true;
+        // create render Frame buffer matching size of images
+        FrameBuffer *renderbuffer = new FrameBuffer( res, true );
+
+        // set the renderbuffer of the source and attach rendering nodes
+        attach(renderbuffer);
 
         // create filter for this resolution (with alpha channel)
         filter_render_ = new ImageFilterRenderer( res );
@@ -93,17 +96,11 @@ void CloneSource::init()
         // provide initial texture to filter
         filter_render_->setInputTexture( images_.front()->texture() );
 
-        // set texture surface to draw the result of the filter
-        texturesurface_->setTextureIndex( filter_render_->getOutputTexture() );
-
-        // create render Frame buffer matching size of images
-        FrameBuffer *renderbuffer = new FrameBuffer( res, true );
-
-        // set the renderbuffer of the source and attach rendering nodes
-        attach(renderbuffer);
-
         // force update of activation mode
         active_ = true;
+
+        // ask to reset elapsed-timer
+        timer_reset_ = true;
 
         // deep update to reorder
         ++View::need_deep_update_;
@@ -118,8 +115,11 @@ void CloneSource::render()
     if (  renderbuffer_ == nullptr )
         init();
     else {
-        // render filtered image
+
+        // render filter image
         filter_render_->draw();
+
+        // ensure correct output texture is displayed (could have changed if filter changed)
         texturesurface_->setTextureIndex( filter_render_->getOutputTexture() );
 
         // render textured surface into frame buffer
@@ -177,10 +177,12 @@ void CloneSource::update(float dt)
             {
                 // remember FBO to be reused if needed (see below) or deleted later
                 garbage_image_ = images_.front();
+
                 // remove element from queue (front)
                 images_.pop();
                 elapsed_.pop();
                 timestamps_.pop();
+
             }
 
             // add image to queue to accumulate buffer images until delay reached
@@ -199,6 +201,7 @@ void CloneSource::update(float dt)
                     garbage_image_ = nullptr;
                 }
                 else {
+                    // set delay to maximum affordable
                     delay_ = now - elapsed_.front() - (dt * 0.001);
                     Log::Warning("Cannot satisfy delay for Clone %s: not enough RAM in graphics card.", name_.c_str());
                 }
@@ -210,7 +213,6 @@ void CloneSource::update(float dt)
                 origin_->frame()->blit( images_.back() );
 
                 // update the surface to be rendered with the oldest image (front)
-//                texturesurface_->setTextureIndex( images_.front()->texture() );
                 filter_render_->setInputTexture( images_.front()->texture() );
 
             }
@@ -231,12 +233,21 @@ void CloneSource::setDelay(double second)
 
 void CloneSource::setFilter(const ImageFilter &filter, std::promise<std::string> *ret)
 {
-    filter_render_->setFilter(filter, ret);
+
+//    filter_shader_->setFilter(filter, ret);
+    if (filter_render_)
+        filter_render_->setFilter(filter, ret);
 }
 
 ImageFilter CloneSource::filter() const
 {
-    return filter_render_->filter();
+//    return filter_shader_->filter();
+
+    if (filter_render_)
+        return filter_render_->filter();
+
+    ImageFilter f;
+    return f;
 }
 
 void CloneSource::play (bool on)

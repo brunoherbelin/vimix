@@ -41,6 +41,7 @@ using namespace tinyxml2;
 #include "MultiFileSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "ImageFilter.h"
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
 #include "SystemToolkit.h"
@@ -508,6 +509,12 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     XMLElement *chromakey = xmlDoc_->NewElement("chromakey");
     chromakey->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.chromakey) );
     xmlCurrent_->InsertEndChild(chromakey);
+}
+
+
+void SessionVisitor::visit(ImageFilter &f)
+{
+
 
 }
 
@@ -684,18 +691,27 @@ void SessionVisitor::visit (RenderSource& s)
 
 void SessionVisitor::visit (CloneSource& s)
 {
+    XMLElement *cloneNode = xmlCurrent_;
     xmlCurrent_->SetAttribute("type", "CloneSource");
 
+    // origin of clone
     if (s.origin()) {
-        xmlCurrent_->SetAttribute("delay", (double) s.delay());
-
-        XMLElement *origin = xmlDoc_->NewElement("origin");
+        XMLElement *origin = xmlDoc_->NewElement( "origin" );
+        cloneNode->InsertEndChild(origin);
         origin->SetAttribute("id", s.origin()->id());
-
-        xmlCurrent_->InsertEndChild(origin);
         XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
         origin->InsertEndChild( text );
     }
+
+    // Delay
+    xmlCurrent_->SetAttribute( "delay", (double) s.delay());
+
+    // Filter
+//    xmlCurrent_ = xmlDoc_->NewElement( "ImageFilter" );
+//    cloneNode->InsertEndChild(xmlCurrent_);
+////    s.filteringShader()->accept(*this); // TODO save ImageFilter
+
+    xmlCurrent_ = cloneNode;  // parent for next visits (other subtypes of Source)
 }
 
 void SessionVisitor::visit (PatternSource& s)

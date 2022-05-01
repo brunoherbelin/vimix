@@ -339,5 +339,5 @@ std::string Resource::listDirectory()
 bool Resource::hasPath(const std::string& path)
 {
     auto fs = cmrc::vmix::get_filesystem();
-    return fs.exists(path);
+    return !path.empty() && fs.exists(path);
 }

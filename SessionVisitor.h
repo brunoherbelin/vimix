@@ -54,6 +54,7 @@ public:
     void visit (ImageShader& n) override;
     void visit (MaskShader& n) override;
     void visit (ImageProcessingShader& n) override;
+    void visit (ImageFilter& n) override;
 
     // Sources
     void visit (Source& s) override;
