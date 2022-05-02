@@ -378,6 +378,9 @@ void MediaPlayer::execute_open()
 
     // set the callbacks
     GstAppSinkCallbacks callbacks;
+#if GST_VERSION_MINOR > 18 && GST_VERSION_MAJOR > 0
+    callbacks.new_event = NULL;
+#endif
     callbacks.new_preroll = callback_new_preroll;
     if (media_.isimage) {
         callbacks.eos = NULL;
