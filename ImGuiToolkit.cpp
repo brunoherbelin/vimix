@@ -1086,6 +1086,53 @@ bool ImGuiToolkit::InvisibleSliderInt (const char* label, uint *index, uint min,
     return value_changed;
 }
 
+bool ImGuiToolkit::InvisibleSliderFloat (const char* label, float *index, float min, float max, ImVec2 size)
+{
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // get id
+    const ImGuiID id = window->GetID(label);
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    // read user input from system
+    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        if (focus_requested || (hovered && left_mouse_press) )
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+    else
+        return false;
+
+    bool value_changed = false;
+
+    if (ImGui::GetActiveID() == id) {
+        // Slider behavior
+        ImRect grab_slider_bb;
+        float _zero = min;
+        float _end = max;
+        value_changed = ImGui::SliderBehavior(bbox, id, ImGuiDataType_Float, index, &_zero,
+                                              &_end, "%f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    }
+
+    return value_changed;
+}
+
 bool ImGuiToolkit::EditPlotLines (const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
 {
     bool array_changed = false;

@@ -2062,7 +2062,7 @@ void WorkspaceWindow::Update()
 ///
 SourceController::SourceController() : WorkspaceWindow("SourceController"),
     min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
-    timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f),
+    timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f), filter_slider_(0.9),
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
@@ -2194,6 +2194,15 @@ void SourceController::Render()
                 replay_request_ = true;
             if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space"))
                 play_toggle_request_ = true;
+
+            if (ImGui::BeginMenu( ICON_FA_IMAGE "  Show"))
+            {
+                if (ImGuiToolkit::MenuItemIcon(7, 9, "Pre-processed input"))
+                    filter_slider_ = 1.0;
+                if (ImGuiToolkit::MenuItemIcon(8, 9, "Post-processed image"))
+                    filter_slider_ = 0.0;
+                ImGui::EndMenu();
+            }
 
             // Menu section for list
             ImGui::Separator();
@@ -2962,10 +2971,12 @@ void SourceController::RenderSingleSource(Source *s)
     // in case of a MediaSource
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if ( ms != nullptr ) {
-        RenderMediaPlayer( ms->mediaplayer() );
+        RenderMediaPlayer( ms );
     }
     else
     {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
         ImVec2 top = ImGui::GetCursorScreenPos();
         ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
         ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
@@ -2991,7 +3002,15 @@ void SourceController::RenderSingleSource(Source *s)
         ///
         top += corner;
         ImGui::SetCursorScreenPos(top);
-        ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
+        ImGui::Image((void*)(uintptr_t) s->texture(), framesize * ImVec2(filter_slider_,1.f), ImVec2(0.f,0.f), ImVec2(filter_slider_,1.f));
+
+        ImGui::SetCursorScreenPos(top + ImVec2(filter_slider_ * framesize.x, 0.f));
+        ImGui::Image((void*)(uintptr_t) s->frame()->texture(), framesize * ImVec2(1.f-filter_slider_,1.f), ImVec2(filter_slider_,0.f), ImVec2(1.f,1.f));
+
+        ImGui::SetCursorScreenPos(top + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
+        ImGuiToolkit::InvisibleSliderFloat("#filter_slider", &filter_slider_, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+        draw_list->AddCircleFilled(top + framesize * ImVec2(filter_slider_,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+        draw_list->AddLine(top + framesize * ImVec2(filter_slider_,0.0f), top + framesize * ImVec2(filter_slider_,1.f), IM_COL32(255, 255, 255, 150), 1);
 
         ///
         /// Info overlays
@@ -3003,7 +3022,6 @@ void SourceController::RenderSingleSource(Source *s)
             s->accept(info_);
             // draw overlay frame and text
             float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(top + ImVec2(h_space_, v_space_));
             ImGui::Text("%s", info_.str().c_str());
@@ -3033,9 +3051,9 @@ void SourceController::RenderSingleSource(Source *s)
     }
 }
 
-void SourceController::RenderMediaPlayer(MediaPlayer *mp)
+void SourceController::RenderMediaPlayer(MediaSource *ms)
 {
-    mediaplayer_active_ = mp;
+    mediaplayer_active_ = ms->mediaplayer();
 
     // for action manager
     std::ostringstream oss;
@@ -3069,7 +3087,15 @@ void SourceController::RenderMediaPlayer(MediaPlayer *mp)
     ///
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
-    ImGui::Image((void*)(uintptr_t) mediaplayer_active_->texture(), framesize);
+    ImGui::Image((void*)(uintptr_t) ms->texture(), framesize * ImVec2(filter_slider_,1.f), ImVec2(0.f,0.f), ImVec2(filter_slider_,1.f));
+
+    ImGui::SetCursorScreenPos(top_image + ImVec2(filter_slider_ * framesize.x, 0.f));
+    ImGui::Image((void*)(uintptr_t) ms->frame()->texture(), framesize * ImVec2(1.f-filter_slider_,1.f), ImVec2(filter_slider_,0.f), ImVec2(1.f,1.f));
+
+    ImGui::SetCursorScreenPos(top_image + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
+    ImGuiToolkit::InvisibleSliderFloat("#filter_slider_2", &filter_slider_, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+    draw_list->AddCircleFilled(top_image + framesize * ImVec2(filter_slider_,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+    draw_list->AddLine(top_image + framesize * ImVec2(filter_slider_,0.0f), top_image + framesize * ImVec2(filter_slider_,1.f), IM_COL32(255, 255, 255, 150), 1);
 
     ///
     /// Info overlays

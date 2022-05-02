@@ -50,6 +50,7 @@ namespace ImGuiToolkit
     void RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     void RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double tempo, double quantum, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
+    bool InvisibleSliderFloat(const char* label, float *index, float min, float max, const ImVec2 size);
     bool EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size);
     bool EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, guint64 begin, guint64 end, bool cut, bool *released, const ImVec2 size);
     void ShowPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size);

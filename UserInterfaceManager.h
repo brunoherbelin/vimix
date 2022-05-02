@@ -268,6 +268,7 @@ class SourceController : public WorkspaceWindow
     float mediaplayer_height_;
     float buttons_width_;
     float buttons_height_;
+    float filter_slider_;
 
     bool play_toggle_request_, replay_request_;
     bool pending_;
@@ -301,7 +302,7 @@ class SourceController : public WorkspaceWindow
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
-    void RenderMediaPlayer(MediaPlayer *mp);
+    void RenderMediaPlayer(MediaSource *ms);
 
 public:
     SourceController();
