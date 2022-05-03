@@ -158,12 +158,6 @@ void CloneSource::update(float dt)
 
         if (!paused_ && active_)
         {
-            // if temporary FBO was pending to be deleted, delete it now
-            if (garbage_image_ != nullptr) {
-                delete garbage_image_;
-                garbage_image_ = nullptr;
-            }
-
             // Reset elapsed timer on request (init or replay)
             if ( timer_reset_ ) {
                 g_timer_start(timer_);
@@ -173,8 +167,14 @@ void CloneSource::update(float dt)
             double now = g_timer_elapsed (timer_, NULL);
 
             // is the total buffer of images longer than delay ?
-            if ( now - elapsed_.front() > delay_ )
+            if ( !images_.empty() && now - elapsed_.front() > delay_ )
             {
+                // if temporary FBO was pending to be deleted, delete it now
+                if (garbage_image_ != nullptr) {
+                    delete garbage_image_;
+                    garbage_image_ = nullptr;
+                }
+
                 // remember FBO to be reused if needed (see below) or deleted later
                 garbage_image_ = images_.front();
 
@@ -182,15 +182,15 @@ void CloneSource::update(float dt)
                 images_.pop();
                 elapsed_.pop();
                 timestamps_.pop();
-
             }
 
-            // add image to queue to accumulate buffer images until delay reached
-            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.001) )
+            // add image to queue to accumulate buffer images until delay reached (with margin)
+            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.002) )
             {
                 // create a FBO if none can be reused (from above) and test for RAM in GPU
-                if (garbage_image_ == nullptr && ( images_.empty() || Rendering::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) )
+                if (garbage_image_ == nullptr && ( images_.empty() || Rendering::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) ){
                     garbage_image_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
+                }
                 // image available
                 if (garbage_image_ != nullptr) {
                     // add element to queue (back)
@@ -202,7 +202,7 @@ void CloneSource::update(float dt)
                 }
                 else {
                     // set delay to maximum affordable
-                    delay_ = now - elapsed_.front() - (dt * 0.001);
+                    delay_ = now - elapsed_.front() - (dt * 0.002);
                     Log::Warning("Cannot satisfy delay for Clone %s: not enough RAM in graphics card.", name_.c_str());
                 }
             }
@@ -214,7 +214,6 @@ void CloneSource::update(float dt)
 
                 // update the surface to be rendered with the oldest image (front)
                 filter_render_->setInputTexture( images_.front()->texture() );
-
             }
         }
 
@@ -233,16 +232,12 @@ void CloneSource::setDelay(double second)
 
 void CloneSource::setFilter(const ImageFilter &filter, std::promise<std::string> *ret)
 {
-
-//    filter_shader_->setFilter(filter, ret);
     if (filter_render_)
         filter_render_->setFilter(filter, ret);
 }
 
 ImageFilter CloneSource::filter() const
 {
-//    return filter_shader_->filter();
-
     if (filter_render_)
         return filter_render_->filter();
 
@@ -310,8 +305,8 @@ guint64 CloneSource::playtime () const
 
 uint CloneSource::texture() const
 {
-    if (!images_.empty())
-        return images_.front()->texture();
+    if (origin_)
+        return origin_->frame()->texture();
     else
         return Resource::getTextureBlack();
 }
