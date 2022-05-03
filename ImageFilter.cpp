@@ -89,7 +89,7 @@ std::list< ImageFilter > ImageFilter::presets = {
     ImageFilter("Sharp Edge", "shaders/filters/sharpenedge.glsl", "",  { { "Strength", 0.5} }),
     ImageFilter("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
     ImageFilter("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
-    ImageFilter("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Edge", 0.5} }),
+    ImageFilter("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
     ImageFilter("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
     ImageFilter("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.5} }),
 };
@@ -284,7 +284,7 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 }
 
 
-ImageFilterRenderer::ImageFilterRenderer(glm::vec3 resolution): enabled_(true)
+ImageFilterRenderer::ImageFilterRenderer(glm::vec3 resolution): enabled_(false)
 {
     shaders_.first  = new ImageFilteringShader;
     surfaces_.first = new Surface(shaders_.first);
@@ -327,13 +327,16 @@ void ImageFilterRenderer::draw()
 {
     if ( enabled_ )
     {
-        // render filtered surface into frame buffer
+        // FIRST PASS
+        // render input surface into frame buffer
         buffers_.first->begin();
         surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
         buffers_.first->end();
 
+        // SECOND PASS
         if ( buffers_.second && surfaces_.second ) {
-            // render filtered surface into frame buffer
+            // render filtered surface from first pass into frame buffer
+            surfaces_.second->setTextureIndex( buffers_.first->texture() );
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
             buffers_.second->end();
@@ -350,6 +353,9 @@ void ImageFilterRenderer::setFilter(const ImageFilter &f, std::promise<std::stri
 {
     // always keep local copy
     filter_ = f;
+
+    // force disable when using default filter
+    enabled_ = filter_ != ImageFilter::presets.front();
 
     // change code
     std::pair<std::string, std::string> codes = filter_.code();
@@ -378,7 +384,6 @@ void ImageFilterRenderer::setFilter(const ImageFilter &f, std::promise<std::stri
             // create shader, surface and buffer for second pass
             shaders_.second  = new ImageFilteringShader;
             surfaces_.second = new Surface(shaders_.second);
-            surfaces_.second->setTextureIndex( buffers_.first->texture() );
             buffers_.second  = new FrameBuffer( buffers_.first->resolution(), true );
         }
 
