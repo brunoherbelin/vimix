@@ -395,17 +395,17 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::Combo("Invert", &n.invert, "None\0Invert Color\0Invert Luminance\0"))
+    if (ImGui::Combo("Invert", &n.invert, "None\0Color RGB\0Luminance\0"))
         Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
 
-    if (ImGuiToolkit::IconButton(1, 7)) {
-        n.filterid = 0;
-        Action::manager().store("Filter None");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
-        Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]));
+//    if (ImGuiToolkit::IconButton(1, 7)) {
+//        n.filterid = 0;
+//        Action::manager().store("Filter None");
+//    }
+//    ImGui::SameLine(0, IMGUI_SAME_LINE);
+//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//    if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
+//        Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]));
 
     ImGui::PopID();
 
@@ -485,11 +485,14 @@ void ImGuiVisitor::visit (Source& s)
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
     if (on) {
-        ImGuiToolkit::Icon(6, 2); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Filters");
+        ImGuiToolkit::Icon(6, 2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Color correction");
     }
     else {
-        ImGuiToolkit::Indication("Filters disabled", 6, 2);
-        ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::TextDisabled("Filters");
+        ImGuiToolkit::Indication("Color correction disabled", 6, 2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::TextDisabled("Color correction");
     }
     pos = ImGui::GetCursorPos();
 
@@ -502,7 +505,7 @@ void ImGuiVisitor::visit (Source& s)
     {
         if (ImGui::MenuItem("Enable", NULL, &on)) {
             std::ostringstream oss;
-            oss << s.name() << ": " << ( on ? "Enable Filter" : "Disable Filter");
+            oss << s.name() << ": " << ( on ? "Enable Color correction" : "Disable Color correction");
             Action::manager().store(oss.str());
             s.setImageProcessingEnabled(on);
         }
