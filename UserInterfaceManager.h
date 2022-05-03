@@ -268,7 +268,6 @@ class SourceController : public WorkspaceWindow
     float mediaplayer_height_;
     float buttons_width_;
     float buttons_height_;
-    float filter_slider_;
 
     bool play_toggle_request_, replay_request_;
     bool pending_;

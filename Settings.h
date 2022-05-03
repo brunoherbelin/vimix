@@ -23,6 +23,7 @@ struct WidgetsConfig
     bool media_player;
     int  media_player_view;
     bool media_player_timeline_editmode;
+    float media_player_slider;
     bool timer;
     int  timer_view;
     bool inputs;
@@ -42,6 +43,7 @@ struct WidgetsConfig
         media_player = false;
         media_player_view = -1;
         media_player_timeline_editmode = false;
+        media_player_slider = 1.f;
         toolbox = false;
         help = false;
         timer = false;
