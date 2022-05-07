@@ -25,9 +25,6 @@
 
 ShadingProgram imageProcessingShadingProgram("shaders/image.vs", "shaders/imageprocessing.fs");
 
-const char* ImageProcessingShader::filter_names[12] = { "None", "Blur", "Sharpen", "Edge", "Emboss", "Denoising",
-                                                        "Erosion 3x3", "Erosion 5x5", "Erosion 7x7", "Dilation 3x3", "Dilation 5x5", "Dilation 7x7" };
-
 
 ImageProcessingShader::ImageProcessingShader(): Shader()
 {
@@ -48,7 +45,6 @@ void ImageProcessingShader::use()
     program_->setUniform("lumakey", lumakey);
     program_->setUniform("nbColors", nbColors);
     program_->setUniform("invert", invert);
-    program_->setUniform("filterid", filterid);
 
     program_->setUniform("gamma", gamma);
     program_->setUniform("levels", levels);
@@ -70,7 +66,6 @@ void ImageProcessingShader::reset()
     lumakey = 0.f;
     nbColors = 0;
     invert = 0;
-    filterid = 0;
     gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     levels = glm::vec4(0.f, 1.f, 0.f, 1.f);
     chromakey = glm::vec4(0.f, 0.8f, 0.f, 0.f);
@@ -88,7 +83,6 @@ void ImageProcessingShader::copy(ImageProcessingShader const& S)
     lumakey = S.lumakey;
     nbColors = S.nbColors;
     invert = S.invert;
-    filterid = S.filterid;
     gamma = S.gamma;
     levels = S.levels;
     chromakey = S.chromakey;

@@ -398,15 +398,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGui::Combo("Invert", &n.invert, "None\0Color RGB\0Luminance\0"))
         Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
 
-//    if (ImGuiToolkit::IconButton(1, 7)) {
-//        n.filterid = 0;
-//        Action::manager().store("Filter None");
-//    }
-//    ImGui::SameLine(0, IMGUI_SAME_LINE);
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    if (ImGui::Combo("Filter", &n.filterid, ImageProcessingShader::filter_names, IM_ARRAYSIZE(ImageProcessingShader::filter_names) ) )
-//        Action::manager().store("Filter " + std::string(ImageProcessingShader::filter_names[n.filterid]));
-
     ImGui::PopID();
 
     ImGui::Spacing();

@@ -917,7 +917,6 @@ void SessionLoader::visit(ImageProcessingShader &n)
         uniforms->QueryIntAttribute("nbColors", &n.nbColors);
         uniforms->QueryIntAttribute("invert", &n.invert);
         uniforms->QueryFloatAttribute("chromadelta", &n.chromadelta);
-        uniforms->QueryIntAttribute("filter", &n.filterid);
     }
 
     XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
