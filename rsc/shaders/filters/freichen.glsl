@@ -36,7 +36,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec3 v;
     freichen(v, fragCoord);
-    fragColor = vec4( vec3(1.0) - v, 1.0);
+    fragColor = vec4( v, 1.0);
 }
 
 

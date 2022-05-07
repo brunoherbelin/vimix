@@ -19,8 +19,8 @@ void sobel( out vec3 rgb, in vec2 fragCoord )
 	    float dp3 = dot(G[i][0], I[0]) + dot(G[i][1], I[1]) + dot(G[i][2], I[2]);
 	    cnv[i] = dp3 * dp3; 
     }
-    //rgb = vec3( 1.0 - sqrt(cnv[0]*cnv[0]+cnv[1]*cnv[1]) );
-    rgb = vec3( 1.0 - ( abs(cnv[0]) + abs(cnv[1]) ) );
+    rgb = vec3( sqrt(cnv[0]*cnv[0]+cnv[1]*cnv[1]) );
+    //rgb = vec3(  abs(cnv[0]) + abs(cnv[1]) );
 }
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
