@@ -78,6 +78,8 @@ public:
     inline void setEnabled (bool on) { enabled_ = on; }
     inline bool enabled () const { return enabled_; }
 
+    void update (float dt);
+
     // set the texture to draw into the framebuffer
     void setInputTexture(uint t);
 

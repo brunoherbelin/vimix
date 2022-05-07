@@ -182,11 +182,10 @@ class ImageFilteringShader : public ImageShader
     std::string shader_code_;
     std::string code_;
 
-    // for iTime & iFrame
+    // for iTimedelta
     GTimer *timer_;
     double iTime_;
-    int iFrame_;
-
+    uint iFrame_;
 
 public:
 
@@ -195,6 +194,8 @@ public:
 
     ImageFilteringShader();
     ~ImageFilteringShader();
+
+    void update(float dt);
 
     void use() override;
     void reset() override;
@@ -221,6 +222,18 @@ ImageFilteringShader::ImageFilteringShader(): ImageShader()
 ImageFilteringShader::~ImageFilteringShader()
 {
     custom_shading_.reset();
+    g_timer_destroy(timer_);
+}
+
+void ImageFilteringShader::update(float dt)
+{
+    iTime_ += dt;
+    if (iTime_ > FLT_MAX)
+        iTime_ = 0.0;
+
+    iFrame_++;
+    if (iFrame_ > INT_MAX)
+        iFrame_ = 0;
 }
 
 void ImageFilteringShader::use()
@@ -231,23 +244,18 @@ void ImageFilteringShader::use()
     // Shader input uniforms
     //
 
-    // Calculate iTime and iTimeDelta
-    double elapsed = g_timer_elapsed (timer_, NULL);
-    program_->setUniform("iTimeDelta", float(elapsed - iTime_) );
-    iTime_ = elapsed;
-    if (iTime_ > FLT_MAX) {
-        g_timer_start(timer_);
-        iTime_ = 0.f;
-    }
     program_->setUniform("iTime", float(iTime_) );
-    // calculate iFrame
-    program_->setUniform("iFrame", ++iFrame_);
-    if (iFrame_ > INT_MAX -2)
-        iFrame_ = 0;
+    program_->setUniform("iFrame", int(iFrame_) );
+
+    // Calculate iTimeDelta
+    double elapsed = g_timer_elapsed (timer_, NULL);
+    g_timer_reset(timer_);
+    program_->setUniform("iTimeDelta", float(elapsed) );
+
     // calculate iDate
     std::time_t now = std::time(0);
     std::tm *local = std::localtime(&now);
-    glm::vec4 iDate(local->tm_year, local->tm_mon, local->tm_mday, local->tm_hour*3600.0+local->tm_min*60.0+local->tm_sec);
+    glm::vec4 iDate(local->tm_year+1900, local->tm_mon, local->tm_mday, local->tm_hour*3600+local->tm_min*60+local->tm_sec);
     program_->setUniform("iDate", iDate);
 
     //
@@ -263,8 +271,8 @@ void ImageFilteringShader::reset()
     ImageShader::reset();
 
     // reset times
-    g_timer_start(timer_);
     iFrame_ = 0;
+    iTime_ = 0.0;
 
 }
 
@@ -317,11 +325,18 @@ ImageFilterRenderer::~ImageFilterRenderer()
     // NB: shaders_ are removed with surface
 }
 
+void ImageFilterRenderer::update(float dt)
+{
+    shaders_.first->update(dt);
+    if (shaders_.second)
+        shaders_.second->update(dt);
+}
+
 void ImageFilterRenderer::setInputTexture(uint t)
 {
     surfaces_.first->setTextureIndex( t );
     shaders_.first->mask_texture = t;
-    if (surfaces_.second && shaders_.second)
+    if (shaders_.second)
         shaders_.second->mask_texture = t;
 }
 

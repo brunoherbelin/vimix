@@ -112,7 +112,7 @@ void CloneSource::init()
 
 void CloneSource::render()
 {
-    if (  renderbuffer_ == nullptr )
+    if ( renderbuffer_ == nullptr )
         init();
     else {
 
@@ -157,7 +157,9 @@ void CloneSource::update(float dt)
     if (origin_ && !images_.empty()) {
 
         if (!paused_ && active_)
-        {
+        {            
+            filter_render_->update(dt);
+
             // Reset elapsed timer on request (init or replay)
             if ( timer_reset_ ) {
                 g_timer_start(timer_);
