@@ -1119,10 +1119,6 @@ void UserInterface::showSourceEditor(Source *s)
 
     if (s) {
         Mixer::manager().setCurrentSource( s );
-        if (s->playable()) {
-            sourcecontrol.setVisible(true);
-            sourcecontrol.resetActiveSelection();
-        }
         CloneSource *cs = dynamic_cast<CloneSource *>(s);
         if (cs != nullptr) {
             shadercontrol.refresh( cs );
@@ -1131,6 +1127,11 @@ void UserInterface::showSourceEditor(Source *s)
         RenderSource *rs = dynamic_cast<RenderSource *>(s);
         if (rs != nullptr) {
             outputcontrol.setVisible(true);
+            return;
+        }
+        if (s->playable()) {
+            sourcecontrol.setVisible(true);
+            sourcecontrol.resetActiveSelection();
             return;
         }
         navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
