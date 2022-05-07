@@ -561,19 +561,28 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/bokeh.glsl
     ./rsc/shaders/filters/talk.glsl
     ./rsc/shaders/filters/fisheye.glsl
-    ./rsc/shaders/filters/hashedblur.glsl
     ./rsc/shaders/filters/blur.glsl
     ./rsc/shaders/filters/blur_1.glsl
     ./rsc/shaders/filters/blur_2.glsl
+    ./rsc/shaders/filters/hashedblur.glsl
+    ./rsc/shaders/filters/sharp.glsl
     ./rsc/shaders/filters/sharpen.glsl
+    ./rsc/shaders/filters/sharpen_1.glsl
+    ./rsc/shaders/filters/sharpen_2.glsl
     ./rsc/shaders/filters/sharpenedge.glsl
     ./rsc/shaders/filters/chromakey.glsl
-    ./rsc/shaders/filters/kuwahara.glsl
-    ./rsc/shaders/filters/freichen.glsl
+    ./rsc/shaders/filters/bilinear.glsl
+    ./rsc/shaders/filters/edge.glsl
     ./rsc/shaders/filters/sobel.glsl
+    ./rsc/shaders/filters/freichen.glsl
+    ./rsc/shaders/filters/kuwahara.glsl
     ./rsc/shaders/filters/pixelate.glsl
     ./rsc/shaders/filters/focus.glsl
     ./rsc/shaders/filters/denoise.glsl
+    ./rsc/shaders/filters/noise.glsl
+    ./rsc/shaders/filters/grain.glsl
+    ./rsc/shaders/filters/stippling.glsl
+    ./rsc/shaders/filters/dithering.glsl
 )
 
 # Include the CMake RC module

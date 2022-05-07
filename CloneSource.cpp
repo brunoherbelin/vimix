@@ -260,6 +260,8 @@ void CloneSource::play (bool on)
 
 bool CloneSource::playable () const
 {
+    if (filter_render_->enabled())
+        return true;
     if (origin_)
         return origin_->playable();
     return true;

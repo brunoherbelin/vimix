@@ -49,7 +49,7 @@ vec4 smartDeNoise(sampler2D tex, vec2 uv, float sigma, float kSigma, float thres
         for(float y=-pt; y <= pt; y++) {
             vec2 d = vec2(x,y);
 
-            float blurFactor = exp( -dot(d , d) * invSigmaQx2 ) * invSigmaQx2PI; 
+            float blurFactor = exp( -dot(d, d) * invSigmaQx2 ) * invSigmaQx2PI;
             
             vec4 walkPx =  texture(tex,uv+d/size);
 
@@ -133,9 +133,9 @@ vec4 smartDeNoise(sampler2D tex, vec2 uv, float sigma, float kSigma, float thres
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    // Normalized pixel coordinates (from 0 to 1)
+    // Normalized pixel coordinates
     vec2 uv = fragCoord/iResolution.xy;
-	fragColor = smartDeNoise(iChannel0, uv, 5.0, 2.0, mix(0.01, 0.1, Threshold));
+    fragColor = smartDeNoise(iChannel0, uv, 2.0, 4.0, mix(0.01, 0.2, Threshold));
     
 }
 

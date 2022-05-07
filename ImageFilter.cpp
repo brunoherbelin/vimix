@@ -80,15 +80,22 @@ std::list< ImageFilter > ImageFilter::presets = {
     ImageFilter("Blur",     "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Amount", 0.5} }),
     ImageFilter("HashBlur", "shaders/filters/hashedblur.glsl", "",     { { "Radius", 0.5}, { "Iterations", 0.5 } }),
     ImageFilter("Unfocus",  "shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
+    ImageFilter("Smooth",   "shaders/filters/bilinear.glsl",   "",     { }),
     ImageFilter("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
+    ImageFilter("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
+    ImageFilter("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} }),
     ImageFilter("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
     ImageFilter("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
     ImageFilter("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
     ImageFilter("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
-    ImageFilter("Sharpen",  "shaders/filters/sharpen.glsl",    "",     { { "Strength", 1.0} }),
-    ImageFilter("Sharp Edge", "shaders/filters/sharpenedge.glsl", "",  { { "Strength", 0.5} }),
-    ImageFilter("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
+    ImageFilter("Sharpen",  "shaders/filters/sharp.glsl",  "",     { { "Amount", 0.5} }),
+    ImageFilter("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
+    ImageFilter("Sharp Edge", "shaders/filters/bilinear.glsl", "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
+    ImageFilter("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
     ImageFilter("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
+    ImageFilter("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
+    ImageFilter("Stippling","shaders/filters/stippling.glsl",  "",     { { "Factor", 0.5} }),
+    ImageFilter("Dithering","shaders/filters/dithering.glsl",  "",     { { "Factor", 0.5} }),
     ImageFilter("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
     ImageFilter("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
     ImageFilter("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.5} }),
@@ -313,6 +320,9 @@ ImageFilterRenderer::~ImageFilterRenderer()
 void ImageFilterRenderer::setInputTexture(uint t)
 {
     surfaces_.first->setTextureIndex( t );
+    shaders_.first->mask_texture = t;
+    if (surfaces_.second && shaders_.second)
+        shaders_.second->mask_texture = t;
 }
 
 uint ImageFilterRenderer::getOutputTexture() const

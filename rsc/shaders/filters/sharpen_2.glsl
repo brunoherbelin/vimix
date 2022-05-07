@@ -1,5 +1,3 @@
-#define RADIUS 0.2
-
 uniform float Amount;
 
 float SCurve (float x) {
@@ -13,8 +11,8 @@ vec3 BlurH (sampler2D source, vec2 uv, float step, float radius) {
     float weight = 0.0;
     float radiusMultiplier = 1.0 / max(1.0, radius);
 
-    // loop on pixels in X to apply horizontal blur: note optimization of +2 increment
-    for (float x = -radius; x <= radius; x+=2.0) {
+    // loop on pixels in X to apply horizontal blur
+    for (float x = -radius; x <= radius; x++) {
         weight = SCurve(1.0 - (abs(x) * radiusMultiplier)); 
         C += texture(source, uv + vec2(x * step, 0.0)).rgb * weight;
         divisor += weight; 
@@ -25,10 +23,15 @@ vec3 BlurH (sampler2D source, vec2 uv, float step, float radius) {
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    // upsample the image from blur_1
-    float upsampling = 1.0 - ( Amount * 0.9 );
-    vec2 uv = (fragCoord.xy * upsampling) / iResolution.xy;
+    vec2 uv = fragCoord.xy / iResolution.xy;
     
-    // Apply horizontal blur on restored resolution image
-    fragColor = vec4( BlurH(iChannel0, uv, upsampling / iResolution.x, RADIUS * iResolution.y * Amount), 1.0);
+    // get original image
+    vec3 c = texture(iChannel1, uv).rgb;
+
+    // Remove blurred image to original image
+    vec3 lumcoeff = vec3(0.299,0.587,0.114);
+    float luminance = dot( c - BlurH(iChannel0, uv, 1.0 / iResolution.x, mix(1.0, 0.1*iResolution.y, Amount) ), lumcoeff);
+
+    // composition
+    fragColor = vec4( c + vec3(luminance), 1.0);
 }

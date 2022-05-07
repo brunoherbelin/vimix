@@ -1,5 +1,3 @@
-#define RADIUS 0.2
-
 uniform float Amount;
 
 float SCurve (float x) {
@@ -25,10 +23,8 @@ vec3 BlurV (sampler2D source, vec2 uv, float step, float radius) {
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    // downsample the image to benefit from (free) linear subsampling of colors
-    float subsampling = 1.0 - ( Amount * 0.9 );
-    vec2 uv = fragCoord.xy / ( iResolution.xy * subsampling );
+    vec2 uv = fragCoord.xy / iResolution.xy;
     
-    // Apply vertical blur on downsampled image (allows to use smaller radius)
-    fragColor = vec4( BlurV(iChannel0, uv, 1.0 / (iResolution.y * subsampling), RADIUS * iResolution.y * Amount * subsampling), 1.0);
+    // Apply vertical blur
+    fragColor = vec4( BlurV(iChannel0, uv, 1.0 / iResolution.y, mix(1.0, 0.1*iResolution.y, Amount)), 1.0);
 }
