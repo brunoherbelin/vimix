@@ -583,6 +583,10 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/grain.glsl
     ./rsc/shaders/filters/stippling.glsl
     ./rsc/shaders/filters/dithering.glsl
+    ./rsc/shaders/filters/erosion.glsl
+    ./rsc/shaders/filters/dilation.glsl
+    ./rsc/shaders/filters/tophat.glsl
+    ./rsc/shaders/filters/blackhat.glsl
 )
 
 # Include the CMake RC module

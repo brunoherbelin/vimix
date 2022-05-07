@@ -99,6 +99,11 @@ std::list< ImageFilter > ImageFilter::presets = {
     ImageFilter("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
     ImageFilter("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
     ImageFilter("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.5} }),
+    ImageFilter("Openning", "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
+    ImageFilter("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
+    ImageFilter("TopHat",   "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",   { { "Radius", 0.5} }),
+    ImageFilter("BlackHat", "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",   { { "Radius", 0.5} })
+
 };
 
 
