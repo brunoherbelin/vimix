@@ -409,9 +409,12 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         origin = current_source_;
 
     // have an origin, can clone it
-    if (origin != session_->end())
+    if (origin != session_->end()) {
         // create a source
         s = (*origin)->clone();
+        // place clone next to origin
+        s->group(View::MIXING)->translation_ = (*origin)->group(View::MIXING)->translation_;
+    }
 
     return s;
 }
