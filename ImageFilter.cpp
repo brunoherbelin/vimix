@@ -215,6 +215,8 @@ ImageFilteringShader::ImageFilteringShader(): ImageShader()
     custom_shading_.setShaders("shaders/image.vs", shader_code_);
 
     timer_ = g_timer_new ();
+    iTime_ = 0.0;
+    iFrame_ = 0;
 
     ImageShader::reset();
 }
@@ -227,7 +229,7 @@ ImageFilteringShader::~ImageFilteringShader()
 
 void ImageFilteringShader::update(float dt)
 {
-    iTime_ += dt;
+    iTime_ += 0.001 * dt;
     if (iTime_ > FLT_MAX)
         iTime_ = 0.0;
 
