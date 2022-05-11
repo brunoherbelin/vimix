@@ -414,6 +414,7 @@ Source * Mixer::createSourceClone(const std::string &namesource)
         s = (*origin)->clone();
         // place clone next to origin
         s->group(View::MIXING)->translation_ = (*origin)->group(View::MIXING)->translation_;
+        s->group(View::LAYER)->translation_  = (*origin)->group(View::LAYER)->translation_ + LAYER_STEP;
     }
 
     return s;
