@@ -1,14 +1,15 @@
 uniform float Radius;
 #define MAX_SIZE 5
 
-vec3 erosion (sampler2D source, vec2 uv, vec2 uv_step, float R) 
+vec3 erosion (sampler2D source, vec2 uv, vec2 uv_step, float rad) 
 {
     vec3 minValue = vec3(1.0);  
-    float D = length(vec2( R / 2.));
+    float R = length(vec2(rad)) ;
+    float D = rad;
 
-    for (float i=-R; i <= R; ++i)
+    for (float i=-rad; i <= rad; ++i)
     {
-        for (float j=-R; j <= R; ++j)
+        for (float j=-rad; j <= rad; ++j)
         {
             vec2 delta = vec2(i, j);
             minValue = min(texture(source, uv + delta * smoothstep(R, D, length(delta)) * uv_step ).rgb, minValue); 
