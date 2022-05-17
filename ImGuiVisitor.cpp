@@ -774,10 +774,8 @@ void ImGuiVisitor::visit (DelayFilter& f)
 
 void ImGuiVisitor::visit (ImageFilter& f)
 {
-    // TODO : custom filter proposes to open editor
-
-    if (ImGuiToolkit::IconButton(1, 7)) {
-
+    if (ImGuiToolkit::IconButton(16, 10)) {
+        Settings::application.widget.shader_editor = true;
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -787,26 +785,24 @@ void ImGuiVisitor::visit (ImageFilter& f)
             if (ImGui::Selectable( p->name().c_str() )) {
                 // apply the selected filter to the source
                 f.setProgram( *p );
-                // ask code editor to refresh
-                // TODO
-
-
-                //          TODO UNDO      std::ostringstream oss;
-                //                oss << s.name() << ": Pattern " << Pattern::get(p).label;
-                //                Action::manager().store(oss.str());
             }
         }
         ImGui::EndCombo();
     }
     ImGui::SameLine();
-    ImGui::Text("Preset");
+    ImGui::Text("Algorithm");
 
     std::map<std::string, float> filter_parameters = f.program().parameters();
     FilteringProgram target = f.program();
     for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
     {
-        float v = param->second;
+        if (ImGuiToolkit::IconButton(12, 14)) {
+            target.setParameter(param->first, 0.f);
+            f.setProgram( target );
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        float v = param->second;
         if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
             target.setParameter(param->first, v);
             f.setProgram( target );
