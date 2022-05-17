@@ -4,9 +4,9 @@
 #include <queue>
 
 #include "Source.h"
-#include "ImageFilter.h"
+#include "FrameBufferFilter.h"
 
-class ImageFilterRenderer;
+#include "ImageFilter.h" // TODO REMOVE set_filtering_program
 
 class CloneSource : public Source
 {
@@ -27,20 +27,17 @@ public:
     bool failed() const override  { return origin_ == nullptr; }
     void accept (Visitor& v) override;
     void render() override;
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
     // implementation of cloning mechanism
     inline void detach() { origin_ = nullptr; }
     inline Source *origin() const { return origin_; }
 
-    // Clone properties
-    void setDelay(double second);
-    inline double delay() const { return delay_; }
+    // Filtering
+    void setFilter(FrameBufferFilter::Type T);
+    inline FrameBufferFilter *filter() { return filter_; }
 
-    void setFilter(const ImageFilter &filter, std::promise<std::string> *ret = nullptr);
-    ImageFilter filter() const;
-
-    glm::ivec2 icon() const override;
-    std::string info() const override;
 
 protected:
     // only Source class can create new CloneSource via clone();
@@ -49,26 +46,15 @@ protected:
     void init() override;
     Source *origin_;
 
-    // cloning & queue of past frames
-    std::queue<FrameBuffer *> images_;
-    Surface *cloningsurface_;
-    FrameBuffer *garbage_image_;
-
-    // time management
-    GTimer *timer_;
-    bool timer_reset_;
-    std::queue<double> elapsed_;
-    std::queue<guint64> timestamps_;
-    double delay_;
-
     // control
     bool paused_;
 
-    // filter
-    ImageFilterRenderer *filter_render_;
-
     // connecting line
     class DotLine *connection_;
+
+    // Filter
+    FrameBufferFilter *filter_;
+
 };
 
 

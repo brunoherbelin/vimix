@@ -27,6 +27,9 @@
 #include "Source.h"
 #include "SourceCallback.h"
 #include "CloneSource.h"
+#include "FrameBufferFilter.h"
+#include "DelayFilter.h"
+#include "ImageFilter.h"
 #include "MediaSource.h"
 #include "SessionSource.h"
 #include "StreamSource.h"
@@ -1210,14 +1213,71 @@ void SessionLoader::visit (SrtReceiverSource& s)
     }
 }
 
+void SessionLoader::visit (FrameBufferFilter&)
+{
 
-void SessionLoader::visit (CloneSource& s)
+}
+
+void SessionLoader::visit (DelayFilter& f)
 {
     double d = 0.0;
     xmlCurrent_->QueryDoubleAttribute("delay", &d);
-    s.setDelay(d);
+    f.setDelay(d);
 }
 
+void SessionLoader::visit (ImageFilter& f)
+{
+    const char * filter_name;
+    std::pair< std::string, std::string > filter_codes;
+    std::map< std::string, float > filter_params;
+
+    xmlCurrent_->QueryStringAttribute("name", &filter_name);
+
+    XMLElement* firstpass  = xmlCurrent_->FirstChildElement("firstpass");
+    if (firstpass) {
+        const char * code = firstpass->GetText();
+        if (code)
+            filter_codes.first = std::string(code);
+    }
+
+    XMLElement* secondpass = xmlCurrent_->FirstChildElement("secondpass");
+    if (secondpass) {
+        const char * code = secondpass->GetText();
+        if (code)
+            filter_codes.second = std::string(code);
+    }
+
+    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
+    if (parameters) {
+        XMLElement* param = parameters->FirstChildElement("uniform");
+        for( ; param ; param = param->NextSiblingElement())
+        {
+            float val = 0.f;
+            param->QueryFloatAttribute("value", &val);
+            const char * name;
+            param->QueryStringAttribute("name", &name);
+            if (name)
+                filter_params[name] = val;
+        }
+    }
+
+    f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second, filter_params) );
+}
+
+void SessionLoader::visit (CloneSource& s)
+{
+    // configuration of filter in clone
+    xmlCurrent_ = xmlCurrent_->FirstChildElement("Filter");
+    if (xmlCurrent_) {
+        // get type of filter and create
+        int t = 0;
+        xmlCurrent_->QueryIntAttribute("type", &t);
+        s.setFilter( FrameBufferFilter::Type(t) );
+
+        // set config filter
+        s.filter()->accept(*this);
+    }
+}
 
 void SessionLoader::visit (SourceCallback &)
 {

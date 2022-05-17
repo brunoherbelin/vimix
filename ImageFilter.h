@@ -4,66 +4,69 @@
 #include <map>
 #include <list>
 #include <string>
+#include <future>
+
 #include <glm/glm.hpp>
-#include <glib/gtimer.h>
 
-#include "ImageShader.h"
+#include "FrameBufferFilter.h"
 
-class Surface;
-class FrameBuffer;
-class ImageFilteringShader;
-
-
-class ImageFilter
+class FilteringProgram
 {
     std::string name_;
 
-    // code resource file or GLSL (ShaderToy style)
+    // code : resource file or GLSL (ShaderToy style)
     std::pair< std::string, std::string > code_;
 
-    // list of parameters (uniforms names and values)
+    // true if code is given for second pass
+    bool two_pass_filter_;
+
+    // list of parameters : uniforms names and values
     std::map< std::string, float > parameters_;
 
 public:
 
-    ImageFilter();
-    ImageFilter(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                const std::map<std::string, float> &parameters);
-    ImageFilter(const ImageFilter &other);
+    FilteringProgram();
+    FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
+                     const std::map<std::string, float> &parameters);
+    FilteringProgram(const FilteringProgram &other);
 
-    ImageFilter& operator= (const ImageFilter& other);
-    bool operator!= (const ImageFilter& other) const;
+    FilteringProgram& operator= (const FilteringProgram& other);
+    bool operator!= (const FilteringProgram& other) const;
 
-    // get the name of the filter
+    // get the name
     inline std::string name() const { return name_; }
 
-    // set the code of the filter
+    // set the code
     inline void setCode(const std::pair< std::string, std::string > &code) { code_ = code; }
 
-    // get the code of the filter
+    // get the code
     std::pair< std::string, std::string > code();
 
-    // set the list of parameters of the filter
+    // if has second pass
+    bool isTwoPass() const { return two_pass_filter_; }
+
+    // set the list of parameters
     inline void setParameters(const std::map< std::string, float > &parameters) { parameters_ = parameters; }
 
-    // get the list of parameters  of the filter
+    // get the list of parameters
     inline std::map< std::string, float > parameters() const { return parameters_; }
 
-    // set a value of a parameter
+    // set the value of a parameter
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
 
     // globals
     static std::string getFilterCodeInputs();
     static std::string getFilterCodeDefault();
-    static std::list< ImageFilter > presets;
+    static std::list< FilteringProgram > presets;
 };
 
+class Surface;
+class FrameBuffer;
 class ImageFilteringShader;
 
-class ImageFilterRenderer
+class ImageFilter : public FrameBufferFilter
 {
-    ImageFilter filter_;
-    bool enabled_;
+    FilteringProgram program_;
 
     std::pair< Surface *, Surface *> surfaces_;
     std::pair< FrameBuffer *, FrameBuffer * > buffers_;
@@ -71,30 +74,23 @@ class ImageFilterRenderer
 
 public:
 
-    // instanciate an image filter at given resolution, with alpha channel
-    ImageFilterRenderer(glm::vec3 resolution);
-    ~ImageFilterRenderer();
+    // instanciate an image filter at given resolution
+    ImageFilter();
+    ~ImageFilter();
 
-    inline void setEnabled (bool on) { enabled_ = on; }
-    inline bool enabled () const { return enabled_; }
+    // set the program
+    void setProgram(const FilteringProgram &f, std::promise<std::string> *ret = nullptr);
 
-    void update (float dt);
+    // get copy of the program
+    FilteringProgram program() const;
 
-    // set the texture to draw into the framebuffer
-    void setInputTexture(uint t);
-
-    // draw the input texture with filter on the framebuffer
-    void draw();
-
-    // get the texture id of the rendered framebuffer
-    uint getOutputTexture() const;
-
-    // set the filter
-    void setFilter(const ImageFilter &f, std::promise<std::string> *ret = nullptr);
-
-    // get copy of the filter
-    ImageFilter filter() const;
-
+    // implementation of FrameBufferFilter
+    Type type() const { return FrameBufferFilter::FILTER_IMAGE; }
+    uint texture () const override;
+    glm::vec3 resolution () const override;
+    void update (float dt) override;
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
 };
 
 

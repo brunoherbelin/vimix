@@ -394,7 +394,7 @@ class ShaderEditor : public WorkspaceWindow
     CloneSource *current_;
     bool current_changed_;
     bool show_shader_inputs_;
-    std::map<CloneSource *, ImageFilter> filters_;
+    std::map<CloneSource *, FilteringProgram> filters_;
     std::promise<std::string> *compilation_;
     std::future<std::string>  compilation_return_;
 

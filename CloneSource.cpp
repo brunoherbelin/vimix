@@ -25,15 +25,16 @@
 #include "Log.h"
 #include "defines.h"
 #include "Resource.h"
+#include "Decorations.h"
 #include "Visitor.h"
 #include "FrameBuffer.h"
-#include "Decorations.h"
+#include "FrameBufferFilter.h"
+#include "DelayFilter.h"
+#include "ImageFilter.h"
 
 #include "CloneSource.h"
 
-
-CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), cloningsurface_(nullptr),
-    garbage_image_(nullptr), timer_reset_(false), delay_(0.0), paused_(false), filter_render_(nullptr)
+CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), paused_(false), filter_(nullptr)
 {
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin->name();
@@ -48,8 +49,8 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
     connection_->target = origin->groups_[View::MIXING]->translation_;
     groups_[View::MIXING]->attach(connection_);
 
-    // init timer
-    timer_ = g_timer_new ();
+    // default to pass-through filter
+    filter_ = new PassthroughFilter;
 }
 
 CloneSource::~CloneSource()
@@ -57,50 +58,21 @@ CloneSource::~CloneSource()
     if (origin_)
         origin_->clones_.remove(this);
 
-    // delete all frame buffers
-    while (!images_.empty()) {
-        if (images_.front() != nullptr)
-            delete images_.front();
-        images_.pop();
-    }
-
-    if (filter_render_)
-        delete filter_render_;
-
-    if (cloningsurface_)
-        delete cloningsurface_;
-
-    g_free(timer_);
+    delete filter_;
 }
 
 void CloneSource::init()
 {
     if (origin_ && origin_->ready_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
 
-        // frame buffers where to draw frames from the origin source
-        glm::vec3 res = origin_->frame()->resolution();
-        images_.push( new FrameBuffer( res, origin_->frame()->use_alpha() ) );
-        origin_->frame()->blit( images_.front() );
-        timestamps_.push( origin_->playtime() );
-        elapsed_.push( 0. );
-
         // create render Frame buffer matching size of images
-        FrameBuffer *renderbuffer = new FrameBuffer( res, true );
+        FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // create filter for this resolution (with alpha channel)
-        filter_render_ = new ImageFilterRenderer( res );
-
-        // provide initial texture to filter
-        filter_render_->setInputTexture( images_.front()->texture() );
-
         // force update of activation mode
         active_ = true;
-
-        // ask to reset elapsed-timer
-        timer_reset_ = true;
 
         // deep update to reorder
         ++View::need_deep_update_;
@@ -117,10 +89,10 @@ void CloneSource::render()
     else {
 
         // render filter image
-        filter_render_->draw();
+        filter_->draw( origin_->frame() );
 
         // ensure correct output texture is displayed (could have changed if filter changed)
-        texturesurface_->setTextureIndex( filter_render_->getOutputTexture() );
+        texturesurface_->setTextureIndex( filter_->texture() );
 
         // render textured surface into frame buffer
         renderbuffer_->begin();
@@ -130,19 +102,19 @@ void CloneSource::render()
     }
 }
 
-
 void CloneSource::setActive (bool on)
 {
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
     if (origin_) {
-        if ( mode_ > Source::UNINITIALIZED)
+
+        if ( mode_ > Source::UNINITIALIZED )
             origin_->touch();
 
         // change visibility of active surface (show preview of origin when inactive)
         if (activesurface_) {
-            if (active_ || images_.empty())
+            if (active_)
                 activesurface_->setTextureIndex(Resource::getTextureTransparent());
             else
                 activesurface_->setTextureIndex(renderbuffer_->texture());
@@ -154,70 +126,10 @@ void CloneSource::update(float dt)
 {
     Source::update(dt);
 
-    if (origin_ && !images_.empty()) {
+    if (origin_) {
 
         if (!paused_ && active_)
-        {            
-            filter_render_->update(dt);
-
-            // Reset elapsed timer on request (init or replay)
-            if ( timer_reset_ ) {
-                g_timer_start(timer_);
-                timer_reset_ = false;
-            }
-            // What time is it?
-            double now = g_timer_elapsed (timer_, NULL);
-
-            // is the total buffer of images longer than delay ?
-            if ( !images_.empty() && now - elapsed_.front() > delay_ )
-            {
-                // if temporary FBO was pending to be deleted, delete it now
-                if (garbage_image_ != nullptr) {
-                    delete garbage_image_;
-                    garbage_image_ = nullptr;
-                }
-
-                // remember FBO to be reused if needed (see below) or deleted later
-                garbage_image_ = images_.front();
-
-                // remove element from queue (front)
-                images_.pop();
-                elapsed_.pop();
-                timestamps_.pop();
-            }
-
-            // add image to queue to accumulate buffer images until delay reached (with margin)
-            if ( images_.empty() || now - elapsed_.front() < delay_ + (dt * 0.002) )
-            {
-                // create a FBO if none can be reused (from above) and test for RAM in GPU
-                if (garbage_image_ == nullptr && ( images_.empty() || Rendering::shouldHaveEnoughMemory(origin_->frame()->resolution(), origin_->frame()->use_alpha()) ) ){
-                    garbage_image_ = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
-                }
-                // image available
-                if (garbage_image_ != nullptr) {
-                    // add element to queue (back)
-                    images_.push( garbage_image_ );
-                    elapsed_.push( now );
-                    timestamps_.push( origin_->playtime() );
-                    // garbage_image_ FBO is now used, it should not be deleted
-                    garbage_image_ = nullptr;
-                }
-                else {
-                    // set delay to maximum affordable
-                    delay_ = now - elapsed_.front() - (dt * 0.002);
-                    Log::Warning("Cannot satisfy delay for Clone %s: not enough RAM in graphics card.", name_.c_str());
-                }
-            }
-
-            // make sure the queue is not empty (in case of failure above)
-            if ( !images_.empty() ) {
-                // blit origin framebuffer in the newest image (back)
-                origin_->frame()->blit( images_.back() );
-
-                // update the surface to be rendered with the oldest image (front)
-                filter_render_->setInputTexture( images_.front()->texture() );
-            }
-        }
+            filter_->update(dt);
 
         // update connection line target to position of origin source
         connection_->target = glm::inverse( GlmToolkit::transform(groups_[View::MIXING]->translation_, glm::vec3(0), groups_[View::MIXING]->scale_) ) *
@@ -225,26 +137,28 @@ void CloneSource::update(float dt)
     }
 }
 
-
-void CloneSource::setDelay(double second)
+void CloneSource::setFilter(FrameBufferFilter::Type T)
 {
-    delay_ = CLAMP(second, 0.0, 2.0);
-}
+    if (filter_)
+        delete filter_;
+
+    switch (T)
+    {
+    case FrameBufferFilter::FILTER_DELAY:
+        filter_ = new DelayFilter;
+        break;
+    case FrameBufferFilter::FILTER_IMAGE:
+        filter_ = new ImageFilter;
+        break;
+    default:
+    case FrameBufferFilter::FILTER_PASSTHROUGH:
+        filter_ = new PassthroughFilter;
+        break;
+    }
 
 
-void CloneSource::setFilter(const ImageFilter &filter, std::promise<std::string> *ret)
-{
-    if (filter_render_)
-        filter_render_->setFilter(filter, ret);
-}
+    // TODO : resampling of renderbuffer
 
-ImageFilter CloneSource::filter() const
-{
-    if (filter_render_)
-        return filter_render_->filter();
-
-    ImageFilter f;
-    return f;
 }
 
 void CloneSource::play (bool on)
@@ -252,9 +166,13 @@ void CloneSource::play (bool on)
     // if a different state is asked
     if (paused_ == on) {
 
+        // play / pause filter to suspend clone
+        filter_->setEnabled( on );
+
         // restart clean if was paused
         if (paused_)
             replay();
+
         // toggle state
         paused_ = !on;
     }
@@ -262,48 +180,26 @@ void CloneSource::play (bool on)
 
 bool CloneSource::playable () const
 {
-    if (filter_render_->enabled())
+    if (filter_ && filter_->enabled())
         return true;
+
     if (origin_)
         return origin_->playable();
-    return true;
+
+    return false;
 }
 
 void CloneSource::replay()
 {
-    // clear to_delete_ FBO if pending
-    if (garbage_image_ != nullptr) {
-        delete garbage_image_;
-        garbage_image_ = nullptr;
-    }
+    // TODO: add reset to Filter
 
-    // remove all images except the one in the back (newest)
-    while (images_.size() > 1) {
-        // do not delete immediately the (oldest) front image (the FBO is currently displayed)
-        if (garbage_image_ == nullptr)
-            garbage_image_ = images_.front();
-        // delete other FBO (unused)
-        else if (images_.front() != nullptr)
-            delete images_.front();
-        images_.pop();
-    }
-
-    // remove all timing
-    while (!elapsed_.empty())
-        elapsed_.pop();
-    // reset elapsed timer to 0
-    timer_reset_ = true;
-    elapsed_.push(0.);
-
-    // remove all timestamps
-    while (!timestamps_.empty())
-        timestamps_.pop();
-    timestamps_.push(0);
 }
 
 guint64 CloneSource::playtime () const
 {
-    return timestamps_.front();
+    // TODO : get time of ImageFilter? Get Delay ?
+
+    return origin_->playtime();
 }
 
 

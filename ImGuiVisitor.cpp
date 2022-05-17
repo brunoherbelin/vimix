@@ -43,6 +43,9 @@
 #include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "CloneSource.h"
+#include "FrameBufferFilter.h"
+#include "DelayFilter.h"
+#include "ImageFilter.h"
 #include "RenderSource.h"
 #include "SessionSource.h"
 #include "PatternSource.h"
@@ -741,6 +744,83 @@ void ImGuiVisitor::visit (RenderSource& s)
 
 }
 
+void ImGuiVisitor::visit (FrameBufferFilter&)
+{
+
+}
+
+void ImGuiVisitor::visit (PassthroughFilter&)
+{
+
+}
+
+void ImGuiVisitor::visit (DelayFilter& f)
+{
+    if (ImGuiToolkit::IconButton(10, 15)) {
+        f.setDelay(0.f);
+        Action::manager().store("Delay None");
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    float d = f.delay();
+    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, d < 0.01f ? "None" : "%.2f s"))
+        f.setDelay(d);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        std::ostringstream oss;
+        oss << "Delay " << std::setprecision(3) << d << " s";
+        Action::manager().store(oss.str());
+    }
+}
+
+void ImGuiVisitor::visit (ImageFilter& f)
+{
+    // TODO : custom filter proposes to open editor
+
+    if (ImGuiToolkit::IconButton(1, 7)) {
+
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##Filters", f.program().name().c_str()) )
+    {
+        for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
+            if (ImGui::Selectable( p->name().c_str() )) {
+                // apply the selected filter to the source
+                f.setProgram( *p );
+                // ask code editor to refresh
+                // TODO
+
+
+                //          TODO UNDO      std::ostringstream oss;
+                //                oss << s.name() << ": Pattern " << Pattern::get(p).label;
+                //                Action::manager().store(oss.str());
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    ImGui::Text("Preset");
+
+    std::map<std::string, float> filter_parameters = f.program().parameters();
+    FilteringProgram target = f.program();
+    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    {
+        float v = param->second;
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+            target.setParameter(param->first, v);
+            f.setProgram( target );
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            // TODO UNDO
+            //            std::ostringstream oss;
+            //            oss << "Delay " << std::setprecision(3) << d << " s";
+            //            Action::manager().store(oss.str());
+        }
+
+    }
+}
+
 void ImGuiVisitor::visit (CloneSource& s)
 {
     // info
@@ -757,67 +837,32 @@ void ImGuiVisitor::visit (CloneSource& s)
         UserInterface::manager().showSourceEditor(&s);
     ImGui::SetCursorPos(pos);
 
+    // link to origin source
     std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
-    if ( ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) ))
         Mixer::manager().setCurrentSource(s.origin());
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Origin");
 
-    if (ImGuiToolkit::IconButton(10, 15)) {
-        s.setDelay(0.f);
-        Action::manager().store("Delay None");
+    // filter selection
+    std::ostringstream oss;
+    oss << s.name();
+    if (ImGuiToolkit::IconButton(1, 7)) {
+        s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
+        oss << ": Filter None";
+        Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    float d = s.delay();
-    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, d < 0.01f ? "None" : "%.2f s"))
-        s.setDelay(d);
-    if (ImGui::IsItemDeactivatedAfterEdit()) {
-        std::ostringstream oss;
-        oss << "Delay " << std::setprecision(3) << d << " s";
+    int type = (int) s.filter()->type();
+    if (ImGui::Combo("Filter", &type, FrameBufferFilter::type_label, IM_ARRAYSIZE(FrameBufferFilter::type_label) )) {
+        s.setFilter( FrameBufferFilter::Type(type) );
+        oss << ": Filter " << FrameBufferFilter::type_label[type];
         Action::manager().store(oss.str());
     }
 
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##Filters", s.filter().name().c_str()) )
-    {
-        for (auto f = ImageFilter::presets.begin(); f != ImageFilter::presets.end(); ++f){
-            if (ImGui::Selectable( f->name().c_str() )) {
-                // apply the selected filter to the source
-                s.setFilter( *f );
-                // ask code editor to refresh
-                UserInterface::manager().showSourceEditor(&s);
-
-                //          TODO UNDO      std::ostringstream oss;
-                //                oss << s.name() << ": Pattern " << Pattern::get(p).label;
-                //                Action::manager().store(oss.str());
-            }
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::SameLine();
-    ImGui::Text("Filter");
-
-    std::map<std::string, float> filter_parameters = s.filter().parameters();
-    ImageFilter target = s.filter();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        // TODO VISIT ImageFilter
-        float f = param->second;
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &f, 0.f, 1.f, "%.2f")) {
-            target.setParameter(param->first, f);
-            s.setFilter( target );
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            // TODO UNDO
-            //            std::ostringstream oss;
-            //            oss << "Delay " << std::setprecision(3) << d << " s";
-            //            Action::manager().store(oss.str());
-        }
-
-    }
-
+    // filter options
+    s.filter()->accept(*this);
 
 }
 

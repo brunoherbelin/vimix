@@ -28,13 +28,18 @@ public:
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;
-    void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+
+    void visit (CloneSource& s) override;
+    void visit (FrameBufferFilter&) override;
+    void visit (PassthroughFilter&) override;
+    void visit (DelayFilter&) override;
+    void visit (ImageFilter&) override;
 };
 
 #endif // IMGUIVISITOR_H

@@ -54,7 +54,6 @@ public:
     void visit (ImageShader& n) override;
     void visit (MaskShader& n) override;
     void visit (ImageProcessingShader& n) override;
-    void visit (ImageFilter& n) override;
 
     // Sources
     void visit (Source& s) override;
@@ -62,7 +61,6 @@ public:
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource&) override;
-    void visit (CloneSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (NetworkSource& s) override;
@@ -70,6 +68,11 @@ public:
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+
+    void visit (CloneSource& s) override;
+    void visit (FrameBufferFilter&) override;
+    void visit (DelayFilter&) override;
+    void visit (ImageFilter&) override;
 
     // callbacks
     void visit (SourceCallback&) override;

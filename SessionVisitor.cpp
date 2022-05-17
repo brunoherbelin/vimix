@@ -30,6 +30,9 @@ using namespace tinyxml2;
 #include "Source.h"
 #include "SourceCallback.h"
 #include "CloneSource.h"
+#include "FrameBufferFilter.h"
+#include "DelayFilter.h"
+#include "ImageFilter.h"
 #include "RenderSource.h"
 #include "MediaSource.h"
 #include "Session.h"
@@ -510,13 +513,6 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     xmlCurrent_->InsertEndChild(chromakey);
 }
 
-
-void SessionVisitor::visit(ImageFilter &f)
-{
-
-
-}
-
 void SessionVisitor::visit(LineStrip &n)
 {
     // Node of a different type
@@ -688,10 +684,52 @@ void SessionVisitor::visit (RenderSource& s)
     xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
 }
 
+void SessionVisitor::visit (FrameBufferFilter& f)
+{
+    xmlCurrent_->SetAttribute("type", (int) f.type());
+}
+
+void SessionVisitor::visit (DelayFilter& f)
+{
+    xmlCurrent_->SetAttribute("delay", f.delay());
+}
+
+void SessionVisitor::visit (ImageFilter& f)
+{
+    xmlCurrent_->SetAttribute("name", f.program().name().c_str() );
+
+    std::pair< std::string, std::string > filter_codes = f.program().code();
+    std::map< std::string, float > filter_params = f.program().parameters();
+
+    XMLElement *firstpass = xmlDoc_->NewElement( "firstpass" );
+    xmlCurrent_->InsertEndChild(firstpass);
+    {
+        XMLText *code = xmlDoc_->NewText( filter_codes.first.c_str() );
+        firstpass->InsertEndChild(code);
+    }
+
+    XMLElement *secondpass = xmlDoc_->NewElement( "secondpass" );
+    xmlCurrent_->InsertEndChild(secondpass);
+    {
+        XMLText *code = xmlDoc_->NewText( filter_codes.second.c_str() );
+        secondpass->InsertEndChild(code);
+    }
+
+    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
+    xmlCurrent_->InsertEndChild(parameters);
+    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
+    {
+        XMLElement *param = xmlDoc_->NewElement( "uniform" );
+        param->SetAttribute("name", p->first.c_str() );
+        param->SetAttribute("value", p->second );
+        parameters->InsertEndChild(param);
+    }
+}
+
 void SessionVisitor::visit (CloneSource& s)
 {
     XMLElement *cloneNode = xmlCurrent_;
-    xmlCurrent_->SetAttribute("type", "CloneSource");
+    cloneNode->SetAttribute("type", "CloneSource");
 
     // origin of clone
     if (s.origin()) {
@@ -702,13 +740,10 @@ void SessionVisitor::visit (CloneSource& s)
         origin->InsertEndChild( text );
     }
 
-    // Delay
-    xmlCurrent_->SetAttribute( "delay", (double) s.delay());
-
     // Filter
-//    xmlCurrent_ = xmlDoc_->NewElement( "ImageFilter" );
-//    cloneNode->InsertEndChild(xmlCurrent_);
-////    s.filteringShader()->accept(*this); // TODO save ImageFilter
+    xmlCurrent_ = xmlDoc_->NewElement( "Filter" );
+    s.filter()->accept(*this);
+    cloneNode->InsertEndChild(xmlCurrent_);
 
     xmlCurrent_ = cloneNode;  // parent for next visits (other subtypes of Source)
 }

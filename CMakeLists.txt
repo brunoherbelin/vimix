@@ -382,7 +382,6 @@ set(VMIX_SRCS
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp
-    ImageFilter.cpp
     UpdateCallback.cpp
     Scene.cpp
     Primitives.cpp
@@ -426,6 +425,9 @@ set(VMIX_SRCS
     NetworkSource.cpp
     MultiFileSource.cpp
     FrameBuffer.cpp
+    FrameBufferFilter.cpp
+    ImageFilter.cpp
+    DelayFilter.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
     PickingVisitor.cpp

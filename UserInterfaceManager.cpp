@@ -5377,18 +5377,25 @@ void ShaderEditor::Render()
 
         if (ImGui::MenuItem( ICON_FA_HAMMER " Build", nullptr, nullptr, current_ != nullptr )) {
 
+            // the UI has ref to code for this clone
             if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
-                // set the code of the current filter
-                filters_[current_].setCode( { _editor.GetText(), "" } );
 
-                // change the filter of the current clone
-                // => this triggers compilation of shader
-                compilation_ = new std::promise<std::string>();
-                current_->setFilter( filters_[current_], compilation_ );
-                compilation_return_ = compilation_->get_future();
+                ImageFilter *i = dynamic_cast<ImageFilter *>( current_->filter() );
+                // if we can access the code of inside the image filter
+                if (i) {
+                    // set the code of the current filter
+                    filters_[current_].setCode( { _editor.GetText(), "" } );
 
-                // inform status
-                status_ = "Building...";
+                    // change the filter of the current image filter
+                    // => this triggers compilation of shader
+                    compilation_ = new std::promise<std::string>();
+                    i->setProgram( filters_[current_], compilation_ );
+                    compilation_return_ = compilation_->get_future();
+
+                    // inform status
+                    status_ = "Building...";
+
+                }
             }
         }
 
@@ -5441,14 +5448,22 @@ void ShaderEditor::Render()
         // get current clone source
         CloneSource *c = nullptr;
         Source *s = Mixer::manager().currentSource();
+        // if there is a current source
         if (s != nullptr) {
-            // there is a current source
             c = dynamic_cast<CloneSource *>(s);
+            // if the current source is a clone
             if ( c != nullptr ) {
-                // the current source is a clone
-//                if ( filters_.find(c) == filters_.end() )
-                    // the current clone was not registered
-                    filters_[c] = c->filter();
+                FrameBufferFilter *f = c->filter();
+                // if the filter seems to be an Image Filter
+                if (f && f->type() == FrameBufferFilter::FILTER_IMAGE ) {
+                    ImageFilter *i = dynamic_cast<ImageFilter *>(f);
+                    // if we can access the code of the filter
+                    if (i) {
+                        // set code for this clone
+                        filters_[c] = i->program();
+                    }
+
+                }
             }
             else
                 status_ = "No shader";
@@ -5491,7 +5506,7 @@ void ShaderEditor::Render()
     // render shader input
     if (show_shader_inputs_) {
         ImGuiTextBuffer info;
-        info.append(ImageFilter::getFilterCodeInputs().c_str());
+        info.append(FilteringProgram::getFilterCodeInputs().c_str());
 
         // Show info text bloc (multi line, dark background)
         ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );

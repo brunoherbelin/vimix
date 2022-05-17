@@ -237,7 +237,7 @@ void InfoVisitor::visit (CloneSource& s)
             if (s.origin())
                 oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
             oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
-            oss << (int)(s.delay()*1000.0) << " ms delay " << std::endl;
+            oss << FrameBufferFilter::type_label[s.filter()->type()] << " filter" << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
     }

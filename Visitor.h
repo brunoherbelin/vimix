@@ -26,7 +26,6 @@ class Shader;
 class ImageShader;
 class MaskShader;
 class ImageProcessingShader;
-class ImageFilter;
 
 class Source;
 class MediaSource;
@@ -41,6 +40,11 @@ class CloneSource;
 class NetworkSource;
 class MixingGroup;
 class MultiFileSource;
+
+class FrameBufferFilter;
+class PassthroughFilter;
+class DelayFilter;
+class ImageFilter;
 
 class SourceCallback;
 class SetAlpha;
@@ -79,7 +83,6 @@ public:
     virtual void visit (ImageShader&) {}
     virtual void visit (MaskShader&) {}
     virtual void visit (ImageProcessingShader&) {}
-    virtual void visit (ImageFilter&) {}
 
     // utility
     virtual void visit (Stream&) {}
@@ -97,6 +100,11 @@ public:
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}
     virtual void visit (MultiFileSource&) {}
+
+    virtual void visit (FrameBufferFilter&) {}
+    virtual void visit (PassthroughFilter&) {}
+    virtual void visit (DelayFilter&) {}
+    virtual void visit (ImageFilter&) {}
 
     virtual void visit (SourceCallback&) {}
     virtual void visit (SetAlpha&) {}

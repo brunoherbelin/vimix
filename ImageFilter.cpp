@@ -18,7 +18,7 @@
 **/
 #include <ctime>
 
-#include <glm/glm.hpp>
+#include <glib.h>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -27,6 +27,7 @@
 #include "ImageShader.h"
 #include "Visitor.h"
 #include "FrameBuffer.h"
+#include "ImageShader.h"
 #include "Primitives.h"
 #include "Log.h"
 
@@ -75,40 +76,41 @@ std::string fragmentFooter = "void main() {\n"
 //                             "} \n";
 
 
-std::list< ImageFilter > ImageFilter::presets = {
-    ImageFilter(),
-    ImageFilter("Blur",     "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Amount", 0.5} }),
-    ImageFilter("HashBlur", "shaders/filters/hashedblur.glsl", "",     { { "Radius", 0.5}, { "Iterations", 0.5 } }),
-    ImageFilter("Unfocus",  "shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
-    ImageFilter("Smooth",   "shaders/filters/bilinear.glsl",   "",     { }),
-    ImageFilter("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
-    ImageFilter("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
-    ImageFilter("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} }),
-    ImageFilter("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
-    ImageFilter("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
-    ImageFilter("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
-    ImageFilter("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
-    ImageFilter("Sharpen",  "shaders/filters/sharp.glsl",  "",     { { "Amount", 0.5} }),
-    ImageFilter("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
-    ImageFilter("Sharp Edge", "shaders/filters/bilinear.glsl", "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
-    ImageFilter("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
-    ImageFilter("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
-    ImageFilter("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
-    ImageFilter("Stippling","shaders/filters/stippling.glsl",  "",     { { "Factor", 0.5} }),
-    ImageFilter("Dithering","shaders/filters/dithering.glsl",  "",     { { "Factor", 0.5} }),
-    ImageFilter("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
-    ImageFilter("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
-    ImageFilter("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.5} }),
-    ImageFilter("Openning", "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
-    ImageFilter("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
-    ImageFilter("TopHat",   "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",   { { "Radius", 0.5} }),
-    ImageFilter("BlackHat", "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",   { { "Radius", 0.5} })
-
+std::list< FilteringProgram > FilteringProgram::presets = {
+    FilteringProgram(),
+    FilteringProgram("Blur",     "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Amount", 0.5} }),
+    FilteringProgram("HashBlur", "shaders/filters/hashedblur.glsl", "",     { { "Radius", 0.5}, { "Iterations", 0.5 } }),
+    FilteringProgram("Unfocus",  "shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
+    FilteringProgram("Smooth",   "shaders/filters/bilinear.glsl",   "",     { }),
+    FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
+    FilteringProgram("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
+    FilteringProgram("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
+    FilteringProgram("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} }),
+    FilteringProgram("Sharpen",  "shaders/filters/sharp.glsl",      "",     { { "Amount", 0.5} }),
+    FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
+    FilteringProgram("Sharp Edge", "shaders/filters/bilinear.glsl", "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
+    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
+    FilteringProgram("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
+    FilteringProgram("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
+    FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
+    FilteringProgram("Erosion",  "shaders/filters/erosion.glsl",    "",     { { "Radius", 0.5} }),
+    FilteringProgram("Dilation", "shaders/filters/dilation.glsl",   "",     { { "Radius", 0.5} }),
+    FilteringProgram("Openning", "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
+    FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("TopHat",   "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
+    FilteringProgram("BlackHat", "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",  { { "Radius", 0.5} }),
+    FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
+    FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
+    FilteringProgram("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
+    FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { { "Factor", 0.5} }),
+    FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { { "Factor", 0.5} }),
+    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
+    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.35} }),
 };
 
 
 
-std::string ImageFilter::getFilterCodeInputs()
+std::string FilteringProgram::getFilterCodeInputs()
 {
     static std::string filterHeaderHelp =  "vec3      iResolution;           // viewport resolution (in pixels)\n"
                                            "float     iTime;                 // shader playback time (in seconds)\n"
@@ -121,42 +123,43 @@ std::string ImageFilter::getFilterCodeInputs()
     return filterHeaderHelp;
 }
 
-std::string ImageFilter::getFilterCodeDefault()
+std::string FilteringProgram::getFilterCodeDefault()
 {
     return filterDefault;
 }
 
-ImageFilter::ImageFilter() : name_("None"), code_({"shaders/filters/default.glsl",""})
+FilteringProgram::FilteringProgram() : name_("None"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
 {
 
 }
 
-ImageFilter::ImageFilter(const std::string &name, const std::string &first_pass, const std::string &second_pass,
+FilteringProgram::FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
                          const std::map<std::string, float> &parameters) :
     name_(name), code_({first_pass, second_pass}), parameters_(parameters)
 {
-
+    two_pass_filter_ = !second_pass.empty();
 }
 
-ImageFilter::ImageFilter(const ImageFilter &other) :
-    name_(other.name_), code_(other.code_), parameters_(other.parameters_)
+FilteringProgram::FilteringProgram(const FilteringProgram &other) :
+    name_(other.name_), code_(other.code_), parameters_(other.parameters_), two_pass_filter_(other.two_pass_filter_)
 {
 
 }
 
-ImageFilter& ImageFilter::operator= (const ImageFilter& other)
+FilteringProgram& FilteringProgram::operator= (const FilteringProgram& other)
 {
     if (this != &other) {
         this->name_ = other.name_;
         this->code_ = other.code_;
         this->parameters_.clear();
         this->parameters_ = other.parameters_;
+        this->two_pass_filter_ = other.two_pass_filter_;
     }
 
     return *this;
 }
 
-std::pair< std::string, std::string > ImageFilter::code()
+std::pair< std::string, std::string > FilteringProgram::code()
 {
     // code for filter can be provided by the name of a ressource file
     if (Resource::hasPath(code_.first))
@@ -167,7 +170,7 @@ std::pair< std::string, std::string > ImageFilter::code()
     return code_;
 }
 
-bool ImageFilter::operator!= (const ImageFilter& other) const
+bool FilteringProgram::operator!= (const FilteringProgram& other) const
 {
     if (this->code_.first != other.code_.first)
         return true;
@@ -306,58 +309,84 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 }
 
 
-ImageFilterRenderer::ImageFilterRenderer(glm::vec3 resolution): enabled_(false)
+ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr})
 {
+    // surface and shader for first pass
     shaders_.first  = new ImageFilteringShader;
     surfaces_.first = new Surface(shaders_.first);
-    buffers_.first  = new FrameBuffer( resolution, true );
 
-    shaders_.second  = nullptr;
-    surfaces_.second = nullptr;
-    buffers_.second  = nullptr;
+    // surface and shader for second pass
+    shaders_.second  = new ImageFilteringShader;
+    surfaces_.second = new Surface(shaders_.second);
 }
 
-ImageFilterRenderer::~ImageFilterRenderer()
+ImageFilter::~ImageFilter ()
 {
     if ( buffers_.first!= nullptr )
         delete buffers_.first;
     if ( buffers_.second!= nullptr )
         delete buffers_.second;
 
-    if ( surfaces_.first!= nullptr )
-        delete surfaces_.first;
-    if ( surfaces_.second!= nullptr )
-        delete surfaces_.second;
-
+    delete surfaces_.first;
+    delete surfaces_.second;
     // NB: shaders_ are removed with surface
 }
 
-void ImageFilterRenderer::update(float dt)
+void ImageFilter::update (float dt)
 {
     shaders_.first->update(dt);
-    if (shaders_.second)
+
+    if ( program_.isTwoPass() )
         shaders_.second->update(dt);
 }
 
-void ImageFilterRenderer::setInputTexture(uint t)
+uint ImageFilter::texture () const
 {
-    surfaces_.first->setTextureIndex( t );
-    shaders_.first->mask_texture = t;
-    if (shaders_.second)
-        shaders_.second->mask_texture = t;
+    if (buffers_.first && buffers_.second)
+        return program_.isTwoPass() ? buffers_.second->texture() : buffers_.first->texture();
+
+    if (input_)
+        return input_->texture();
+
+    return Resource::getTextureBlack();
 }
 
-uint ImageFilterRenderer::getOutputTexture() const
+glm::vec3 ImageFilter::resolution () const
 {
-    if ( enabled_ )
-        return buffers_.second ? buffers_.second->texture() : buffers_.first->texture();
-    else
-        return surfaces_.first->textureIndex();
+    if (buffers_.first && buffers_.second)
+        return program_.isTwoPass() ? buffers_.second->resolution() : buffers_.first->resolution();
+
+    if (input_)
+        return input_->resolution();
+
+    return glm::vec3(1,1,0);
 }
 
-void ImageFilterRenderer::draw()
+void ImageFilter::draw (FrameBuffer *input)
 {
-    if ( enabled_ )
+    // if input changed (typically on first draw)
+    if (input_ != input) {
+        // keep reference to input framebuffer
+        input_ = input;
+        // create first-pass surface and shader, taking as texture the input framebuffer
+        surfaces_.first->setTextureIndex( input_->texture() );
+        shaders_.first->mask_texture = input_->texture();
+        // (re)create framebuffer for result of first-pass
+        if (buffers_.first != nullptr)
+            delete buffers_.first;
+        buffers_.first = new FrameBuffer( input_->resolution(), input_->use_alpha() );
+        // enforce framebuffer if first-pass is created now, filled with input framebuffer
+        input_->blit( buffers_.first );
+        // create second-pass surface and shader, taking as texture the first-pass framebuffer
+        surfaces_.second->setTextureIndex( buffers_.first->texture() );
+        shaders_.second->mask_texture = input_->texture();
+        // (re)create framebuffer for result of second-pass
+        if (buffers_.second != nullptr)
+            delete buffers_.second;
+        buffers_.second = new FrameBuffer( buffers_.first->resolution(), buffers_.first->use_alpha() );
+    }
+
+    if ( enabled() )
     {
         // FIRST PASS
         // render input surface into frame buffer
@@ -366,9 +395,8 @@ void ImageFilterRenderer::draw()
         buffers_.first->end();
 
         // SECOND PASS
-        if ( buffers_.second && surfaces_.second ) {
+        if ( program_.isTwoPass() ) {
             // render filtered surface from first pass into frame buffer
-            surfaces_.second->setTextureIndex( buffers_.first->texture() );
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
             buffers_.second->end();
@@ -376,57 +404,42 @@ void ImageFilterRenderer::draw()
     }
 }
 
-ImageFilter ImageFilterRenderer::filter() const
+void ImageFilter::accept (Visitor& v)
 {
-    return filter_;
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
 }
 
-void ImageFilterRenderer::setFilter(const ImageFilter &f, std::promise<std::string> *ret)
+
+FilteringProgram ImageFilter::program () const
+{
+    return program_;
+}
+
+void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
     // always keep local copy
-    filter_ = f;
+    program_ = f;
 
-    // force disable when using default filter
-    enabled_ = filter_ != ImageFilter::presets.front();
+//    // force disable when using default filter
+//    setEnabled( program_ != FilteringProgram::presets.front() );
 
     // change code
-    std::pair<std::string, std::string> codes = filter_.code();
+    std::pair<std::string, std::string> codes = program_.code();
 
-    // set code for first pass
+    // FIRST PASS
+    // set code to the shader for first-pass
     shaders_.first->setCode( codes.first, ret );
-
-    // no code provided for second pass
-    if ( codes.second.empty() ) {
-
-        // delete second pass if was previously used
-        if (buffers_.second!= nullptr )
-            delete buffers_.second;
-        if (surfaces_.second!= nullptr )
-            delete surfaces_.second;
-
-        shaders_.second  = nullptr;
-        surfaces_.second = nullptr;
-        buffers_.second  = nullptr;
-    }
-    // set code for second pass
-    else {
-        // second pass not setup
-        if (shaders_.second == nullptr)  {
-
-            // create shader, surface and buffer for second pass
-            shaders_.second  = new ImageFilteringShader;
-            surfaces_.second = new Surface(shaders_.second);
-            buffers_.second  = new FrameBuffer( buffers_.first->resolution(), true );
-        }
-
-        // set the code of the shader for second pass
-        shaders_.second->setCode( codes.second );
-    }
-
     // change uniforms
-    shaders_.first->uniforms_ = filter_.parameters();
-    if (shaders_.second != nullptr )
-        shaders_.second->uniforms_ = filter_.parameters();
+    shaders_.first->uniforms_ = program_.parameters();
+
+    // SECOND PASS
+    if ( program_.isTwoPass() ) {
+        // set the code to the shader for second-pass
+        shaders_.second->setCode( codes.second );
+        // change uniforms
+        shaders_.second->uniforms_ = program_.parameters();
+    }
 
 }
 
