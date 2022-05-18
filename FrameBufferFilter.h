@@ -56,7 +56,7 @@ public:
     PassthroughFilter();
 
     // implementation of FrameBufferFilter
-    Type type() const { return FrameBufferFilter::FILTER_PASSTHROUGH; }
+    Type type() const override { return FrameBufferFilter::FILTER_PASSTHROUGH; }
     uint texture() const override;
     glm::vec3 resolution() const override;
 };

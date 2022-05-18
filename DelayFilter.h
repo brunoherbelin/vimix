@@ -20,7 +20,7 @@ public:
     inline double delay() const { return delay_; }
 
     // implementation of FrameBufferFilter
-    Type type() const { return FrameBufferFilter::FILTER_DELAY; }
+    Type type() const override { return FrameBufferFilter::FILTER_DELAY; }
     uint texture () const override;
     glm::vec3 resolution () const override;
     void update (float dt) override;

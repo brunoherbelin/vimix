@@ -5386,6 +5386,9 @@ void ShaderEditor::Render()
                     // set the code of the current filter
                     filters_[current_].setCode( { _editor.GetText(), "" } );
 
+                    // filter changed, cannot be named as before
+                    filters_[current_].setName("Custom");
+
                     // change the filter of the current image filter
                     // => this triggers compilation of shader
                     compilation_ = new std::promise<std::string>();
@@ -5394,7 +5397,6 @@ void ShaderEditor::Render()
 
                     // inform status
                     status_ = "Building...";
-
                 }
             }
         }
@@ -5462,8 +5464,9 @@ void ShaderEditor::Render()
                         // set code for this clone
                         filters_[c] = i->program();
                     }
-
                 }
+                else
+                    status_ = "No shader";
             }
             else
                 status_ = "No shader";

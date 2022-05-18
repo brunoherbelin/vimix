@@ -34,6 +34,7 @@ public:
     bool operator!= (const FilteringProgram& other) const;
 
     // get the name
+    inline void setName(const std::string &name) { name_ = name; }
     inline std::string name() const { return name_; }
 
     // set the code
@@ -85,7 +86,7 @@ public:
     FilteringProgram program() const;
 
     // implementation of FrameBufferFilter
-    Type type() const { return FrameBufferFilter::FILTER_IMAGE; }
+    Type type() const override { return FrameBufferFilter::FILTER_IMAGE; }
     uint texture () const override;
     glm::vec3 resolution () const override;
     void update (float dt) override;
