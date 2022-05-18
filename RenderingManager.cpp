@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -311,6 +311,13 @@ void Rendering::pushBackDrawCallback(RenderingCallback function)
 
 void Rendering::draw()
 {
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    glfwPollEvents();
+
     // change windows fullscreen mode if requested
     main_.toggleFullscreen_();
     output_.toggleFullscreen_();
@@ -338,27 +345,20 @@ void Rendering::draw()
         request_screenshot_ = false;
     }
 
+    // software framerate limiter < 61 FPS
+    {
+        static GTimer *timer = g_timer_new ();
+        double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
+        if ( (elapsed < 16390.0) && (elapsed > 0.0) )
+            g_usleep( 16390 - (gulong)elapsed  );
+        g_timer_start(timer);
+    }
+
     // swap GL buffers
     glfwSwapBuffers(main_.window());
 
     // draw output window (and swap buffer output)
     output_.draw( Mixer::manager().session()->frame() );
-
-    // software framerate limiter 60FPS if not v-sync
-    if ( Settings::application.render.vsync < 1 ) {
-        static GTimer *timer = g_timer_new ();
-        double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
-        if ( (elapsed < 16000.0) && (elapsed > 0.0) )
-            g_usleep( 16000 - (gulong)elapsed  );
-        g_timer_start(timer);
-    }
-
-    // Poll and handle events (inputs, window resize, etc.)
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    glfwPollEvents();
 
 }
 
@@ -983,12 +983,12 @@ void RenderingWindow::draw(FrameBuffer *fb)
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
+        // restore attribs
+        Rendering::manager().popAttrib();
+
         // swap buffer
         glfwSwapBuffers(window_);
     }
-
-    // restore attribs
-    Rendering::manager().popAttrib();
 
     // give back context ownership
     glfwMakeContextCurrent(master_);

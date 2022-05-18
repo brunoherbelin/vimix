@@ -7281,9 +7281,9 @@ void Navigator::RenderMainPannelSettings()
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
         bool change = false;
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
 #ifndef NDEBUG
+        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
 #endif
         // hardware support deserves more explanation
