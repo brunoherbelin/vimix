@@ -492,13 +492,19 @@ void Source::attach(FrameBuffer *renderbuffer)
         delete renderbuffer_;
     renderbuffer_ = renderbuffer;
 
-    // only first time initialization
-    if ( mode_ == UNINITIALIZED ) {
+    // create rendersurface_ only once
+    if ( rendersurface_ == nullptr) {
 
         // create the surfaces to draw the frame buffer in the views
         rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
         groups_[View::RENDERING]->attach(rendersurface_);
         groups_[View::GEOMETRY]->attach(rendersurface_);
+    }
+    else
+        rendersurface_->setFrameBuffer(renderbuffer_);
+
+    // create mixingsurface_ only once
+    if ( mixingsurface_ == nullptr) {
 
         // for mixing and layer views, add another surface to overlay
         // (stippled view on top with transparency)
@@ -506,16 +512,22 @@ void Source::attach(FrameBuffer *renderbuffer)
         groups_[View::MIXING]->attach(mixingsurface_);
         groups_[View::LAYER]->attach(mixingsurface_);
 
+        // Transition group node is optionnal
+        if (groups_[View::TRANSITION]->numChildren() > 0)
+            groups_[View::TRANSITION]->attach(mixingsurface_);
+    }
+    else
+        mixingsurface_->setFrameBuffer(renderbuffer_);
+
+    // create activesurface_ only once (and other initializations done once)
+    if ( activesurface_ == nullptr) {
+
         // for views showing a scaled mixing surface, a dedicated transparent surface allows grabbing
         activesurface_ = new Surface();
         activesurface_->setTextureIndex(Resource::getTextureTransparent());
         groups_[View::TEXTURE]->attach(activesurface_);
         groups_[View::MIXING]->attach(activesurface_);
         groups_[View::LAYER]->attach(activesurface_);
-
-        // Transition group node is optionnal
-        if (groups_[View::TRANSITION]->numChildren() > 0)
-            groups_[View::TRANSITION]->attach(mixingsurface_);
 
         // if a symbol is available, add it to overlay
         if (symbol_) {
@@ -529,12 +541,6 @@ void Source::attach(FrameBuffer *renderbuffer)
         groups_[View::GEOMETRY]->attach( locker_ );
         groups_[View::TEXTURE]->attach( locker_ );
 
-        // make the source visible
-        setMode(VISIBLE);
-    }
-    else {
-        rendersurface_->setFrameBuffer(renderbuffer_);
-        mixingsurface_->setFrameBuffer(renderbuffer_);
     }
 
     // if a symbol is available
@@ -559,6 +565,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     if (maskbuffer_)
         delete maskbuffer_;
     maskbuffer_ = new FrameBuffer( glm::vec3(0.5) * renderbuffer->resolution() );
+
+    // make the source visible
+    if ( mode_ == UNINITIALIZED )
+        setMode(VISIBLE);
 
     // request update
     need_update_ = true;
