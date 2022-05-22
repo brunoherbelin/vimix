@@ -33,6 +33,7 @@ public:
 private:
     std::string device_;
     std::atomic<bool> unplugged_;
+    void unsetDevice();
 };
 
 struct DeviceConfig {

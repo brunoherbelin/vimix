@@ -370,6 +370,11 @@ DeviceSource::DeviceSource(uint64_t id) : StreamSource(id), unplugged_(false)
 
 DeviceSource::~DeviceSource()
 {
+    unsetDevice();
+}
+
+void DeviceSource::unsetDevice()
+{
     // unregister this device source from a Device handler
     auto h = std::find_if(Device::manager().handles_.begin(), Device::manager().handles_.end(), hasConnectedSource(this));
     if (h != Device::manager().handles_.end())
@@ -398,10 +403,17 @@ DeviceSource::~DeviceSource()
 
 void DeviceSource::setDevice(const std::string &devicename)
 {
+    if (device_.compare(devicename) == 0)
+        return;
+
     // instanciate and wait for monitor initialization if not already initialized
     std::mutex mtx;
     std::unique_lock<std::mutex> lck(mtx);
     Device::manager().monitor_initialization_.wait(lck, Device::initialized);
+
+    // if changing device
+    if (!device_.empty())
+        unsetDevice();
 
     // remember device name
     device_ = devicename;
@@ -449,11 +461,14 @@ void DeviceSource::setDevice(const std::string &devicename)
 
                 pipeline << " ! videoconvert";
 
-                // resize render buffer
+                // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
-                    renderbuffer_->resize(best.width, best.height);
+                    delete renderbuffer_;
+                renderbuffer_ = nullptr;
 
                 // new stream
+                if (stream_)
+                    delete stream_;
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer

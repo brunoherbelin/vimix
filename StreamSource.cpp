@@ -119,10 +119,10 @@ void StreamSource::init()
         // once the texture of media player is created
         if (stream_->texture() != Resource::getTextureBlack()) {
 
-            // get the texture index from media player, apply it to the media surface
+            // get the texture index from stream, apply it to the surface
             texturesurface_->setTextureIndex( stream_->texture() );
 
-            // create Frame buffer matching size of media player
+            // create Frame buffer matching size of stream
             float height = float(stream_->width()) / stream_->aspectRatio();
             FrameBuffer *renderbuffer = new FrameBuffer(stream_->width(), (uint)height, FrameBuffer::FrameBuffer_alpha);
 
@@ -149,7 +149,7 @@ void StreamSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    if (stream_) {
+    if ( stream_ ) {
         // change status of stream (only if status changed)
         if (active_ != was_active)
             stream_->enable(active_);
@@ -196,8 +196,7 @@ guint64 StreamSource::playtime () const
 {
     if ( stream_ )
         return stream_->position();
-    else
-        return 0;
+    return 0;
 }
 
 void StreamSource::update(float dt)
@@ -205,6 +204,6 @@ void StreamSource::update(float dt)
     Source::update(dt);
 
     // update stream
-    if (stream_)
+    if ( stream_ )
         stream_->update();
 }
