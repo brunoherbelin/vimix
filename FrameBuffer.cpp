@@ -76,7 +76,7 @@ glm::ivec2 FrameBuffer::getParametersFromResolution(glm::vec3 res)
 }
 
 FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(flags),
-    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0)
+    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(resolution);
     setProjectionArea(glm::vec2(1.f, 1.f));
@@ -86,7 +86,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(f
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags_(flags),
-    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0)
+    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(width, height);
     setProjectionArea(glm::vec2(1.f, 1.f));
@@ -97,18 +97,35 @@ FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags
 
 void FrameBuffer::init()
 {
+    mem_usage_ = 0;
+
     // generate texture
     glGenTextures(1, &textureid_);
     glBindTexture(GL_TEXTURE_2D, textureid_);
 
+    // create texture with Mipmapping with multiple levels
     if (flags_ & FrameBuffer_mipmap) {
         glTexStorage2D(GL_TEXTURE_2D, MIPMAP_LEVEL + 1, (flags_ & FrameBuffer_alpha) ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+        // calculate GPU memory usage
+        int width = attrib_.viewport.x;
+        int height = attrib_.viewport.y;
+        for(int i=0; i < MIPMAP_LEVEL; ++i) {
+            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
+            width = MAX(1, (width / 2));
+            height = MAX(1, (height / 2));
+        }
     }
+    // default : create simple texture for RGB(A)
     else  {
         glTexStorage2D(GL_TEXTURE_2D, 1, (flags_ & FrameBuffer_alpha) ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // calculate GPU memory usage
+        mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
     }
+
+    // common texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -120,7 +137,7 @@ void FrameBuffer::init()
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr("New FBO %d (%d x %d)\n", framebufferid_, attrib_.viewport.x, attrib_.viewport.y);
+        g_printerr("Framebuffer %d created (%d x %d) - ", framebufferid_, attrib_.viewport.x, attrib_.viewport.y);
 #endif
 
     // take settings into account: no multisampling if application multisampling is level 0
@@ -147,8 +164,11 @@ void FrameBuffer::init()
         glGenFramebuffers(1, &multisampling_framebufferid_);
         glBindFramebuffer(GL_FRAMEBUFFER, multisampling_framebufferid_);
 
+        // calculate GPU memory usage
+        mem_usage_ += ( Settings::application.render.multisampling * attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
+
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr(" - with Multi Sampling (%d) \n", Settings::application.render.multisampling);
+        g_printerr("multi sampling (%d) - ", Settings::application.render.multisampling);
 #endif
     }
 
@@ -156,28 +176,34 @@ void FrameBuffer::init()
     // (i.e. the multisampling_framebufferid_ FBO if enabled, default framebufferid_ otherwise)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
+    // attach multiple FBOs to the mipmaped texture
     if (flags_ & FrameBuffer_mipmap) {
 
         glGenFramebuffers(MIPMAP_LEVEL, mipmap_framebufferid_);
         for(int i=0; i < MIPMAP_LEVEL; ++i) {
-
             glBindFramebuffer(GL_FRAMEBUFFER, mipmap_framebufferid_[i]);
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, i + 1);
-
         }
 
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr(" - with Mipmap (%d)\n", MIPMAP_LEVEL);
+        g_printerr("mipmap (%d) - ", MIPMAP_LEVEL);
 #endif
     }
 
     checkFramebufferStatus();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+#ifdef FRAMEBUFFER_DEBUG
+    g_printerr("~%d kB allocated\n", mem_usage_);
+#endif
 }
 
 FrameBuffer::~FrameBuffer()
 {
+#ifdef FRAMEBUFFER_DEBUG
+    g_printerr("Framebuffer %d deleted - ~%d kB freed\n", framebufferid_, mem_usage_);
+#endif
+
     if (framebufferid_)
         glDeleteFramebuffers(1, &framebufferid_);
     if (multisampling_framebufferid_)
@@ -188,13 +214,7 @@ FrameBuffer::~FrameBuffer()
         glDeleteTextures(1, &textureid_);
     if (multisampling_textureid_)
         glDeleteTextures(1, &multisampling_textureid_);
-
-#ifdef FRAMEBUFFER_DEBUG
-    GLint framebufferMemoryInKB = ( width() * height() * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
-    g_printerr("Framebuffer deleted %d x %d, ~%d kB freed\n", width(), height(), framebufferMemoryInKB);
-#endif
 }
-
 
 uint FrameBuffer::texture() const
 {
@@ -255,6 +275,7 @@ void FrameBuffer::resize(int width, int height)
 
             // change resolution
             attrib_.viewport = glm::ivec2(width, height);
+            mem_usage_ = 0;
         }
     }
 }
@@ -360,8 +381,6 @@ bool FrameBuffer::blit(FrameBuffer *destination)
                       0, 0, destination->width(), destination->height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // TODO : verify blit onto FBO with mipmapping ?
-
     return true;
 }
 
@@ -404,30 +423,18 @@ void FrameBuffer::checkFramebufferStatus()
     case GL_FRAMEBUFFER_COMPLETE:
         {
 
-        // approximation of RAM needed for this FBO
-        GLint framebufferMemoryInKB = ( width() * height() * (flags_ & FrameBuffer_alpha?4:3) * (flags_ & FrameBuffer_multisampling?2:1) ) / 1024;
-
         // test available memory if created buffer is big (more than 8MB)
-        if ( framebufferMemoryInKB > 8000 ) {
+        if ( mem_usage_ > 8000 ) {
 
             // Obtain RAM usage in GPU (if possible)
             glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
             // bad case: not enough RAM, we should warn the user
-            if ( RAM.x < framebufferMemoryInKB * 3 ) {
+            if ( RAM.x < mem_usage_ * 3 ) {
                 Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
                 if (RAM.y < INT_MAX)
                     Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
             }
-#ifdef FRAMEBUFFER_DEBUG
-            else {
-                // normal case: enough RAM (or unknown) for this FBO
-                g_printerr("Framebuffer allocated %d x %d, ~%d kB", width(), height(), framebufferMemoryInKB);
-                if (RAM.x < INT_MAX)
-                    g_printerr(" (%d kB remaining)", RAM.x);
-                g_printerr("\n");
-            }
-#endif
         }
 
         }

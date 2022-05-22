@@ -110,6 +110,7 @@ private:
     glm::vec2 projection_area_;
     uint textureid_, multisampling_textureid_;
     uint framebufferid_, multisampling_framebufferid_, mipmap_framebufferid_[MIPMAP_LEVEL] = {};
+    uint mem_usage_;
 };
 
 
