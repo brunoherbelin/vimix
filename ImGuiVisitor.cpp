@@ -603,7 +603,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
 
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Folder");
 }
 
@@ -630,7 +630,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
     if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Sources");
 
     // versions
@@ -668,14 +668,14 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     // file open
     if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().set( s.detach() );
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("File");
     // file path
     std::string path = SystemToolkit::path_filename(s.path());
     std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Folder");
 
 }
@@ -714,7 +714,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 
     if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Sources");
 }
 
@@ -758,12 +758,12 @@ void ImGuiVisitor::visit (DelayFilter& f)
 {
     if (ImGuiToolkit::IconButton(10, 15)) {
         f.setDelay(0.f);
-        Action::manager().store("Delay None");
+        Action::manager().store("Delay 0 s");
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = f.delay();
-    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, d < 0.01f ? "None" : "%.2f s"))
+    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, "%.2f s"))
         f.setDelay(d);
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         std::ostringstream oss;
@@ -822,7 +822,9 @@ void ImGuiVisitor::visit (ImageFilter& f)
     }
 
     // Open Editor
-    if ( ImGui::Button( ICON_FA_CODE " Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    ImGuiToolkit::IconButton(18, 18);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if ( ImGui::Button( ICON_FA_CODE "  Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.shader_editor = true;
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Code");
@@ -905,7 +907,7 @@ void ImGuiVisitor::visit (PatternSource& s)
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Generator");
 }
 
@@ -1034,7 +1036,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Folder");
 
     if (id != s.id())
