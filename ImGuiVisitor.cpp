@@ -774,8 +774,10 @@ void ImGuiVisitor::visit (DelayFilter& f)
 
 void ImGuiVisitor::visit (ImageFilter& f)
 {
-    if (ImGuiToolkit::IconButton(16, 10)) {
-        Settings::application.widget.shader_editor = true;
+    // Selection of Algorithm
+    if (ImGuiToolkit::IconButton(1, 4)) {
+        FilteringProgram target;
+        f.setProgram( target );
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -789,20 +791,23 @@ void ImGuiVisitor::visit (ImageFilter& f)
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Algorithm");
 
+    // List of parameters
     std::map<std::string, float> filter_parameters = f.program().parameters();
     FilteringProgram target = f.program();
     for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
     {
-        if (ImGuiToolkit::IconButton(12, 14)) {
-            target.setParameter(param->first, 0.f);
+        ImGui::PushID( param->first.c_str() );
+        float v = param->second;
+        if (ImGuiToolkit::IconButton(11, 11)) {
+            v = 0.f;
+            target.setParameter(param->first, v);
             f.setProgram( target );
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        float v = param->second;
         if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
             target.setParameter(param->first, v);
             f.setProgram( target );
@@ -813,8 +818,14 @@ void ImGuiVisitor::visit (ImageFilter& f)
             //            oss << "Delay " << std::setprecision(3) << d << " s";
             //            Action::manager().store(oss.str());
         }
-
+        ImGui::PopID();
     }
+
+    // Open Editor
+    if ( ImGui::Button( ICON_FA_CODE " Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Settings::application.widget.shader_editor = true;
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Code");
 }
 
 void ImGuiVisitor::visit (CloneSource& s)

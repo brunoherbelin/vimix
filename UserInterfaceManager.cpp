@@ -964,6 +964,14 @@ void UserInterface::showMenuFile()
         selectOpenFilename();
     if (ImGui::MenuItem( MENU_REOPEN_FILE, SHORTCUT_REOPEN_FILE, false, currentfileopen))
         Mixer::manager().load( currentfilename );
+
+    if (sessionimportdialog && ImGui::MenuItem( ICON_FA_FILE_EXPORT " Import" )) {
+        // launch file dialog to open a session file
+        sessionimportdialog->open();
+        // close pannel to select file
+        navigator.hidePannel();
+    }
+
     if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE, false, currentfileopen)) {
         if (saveOrSaveAs())
             navigator.hidePannel();
@@ -973,20 +981,15 @@ void UserInterface::showMenuFile()
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
-    // IMPORT AND GROUP
+    // GROUP
     ImGui::Separator();
-    if (sessionimportdialog && ImGui::MenuItem( ICON_FA_SIGN_OUT_ALT " Import sources" )) {
-        // launch file dialog to open a session file
-        sessionimportdialog->open();
-        // close pannel to select file
-        navigator.hidePannel();
-    }
-    if (ImGui::MenuItem( ICON_FA_SIGN_IN_ALT " Group all sources", nullptr, false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(11, 2, "Group all sources", false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().groupAll();
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
+    // TODO : FLATTEN (import all sources from all groups)
 
     // HELP AND QUIT
     ImGui::Separator();
