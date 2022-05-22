@@ -43,7 +43,7 @@ struct WidgetsConfig
         media_player = false;
         media_player_view = -1;
         media_player_timeline_editmode = false;
-        media_player_slider = 1.f;
+        media_player_slider = 0.f;
         toolbox = false;
         help = false;
         timer = false;
