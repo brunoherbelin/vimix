@@ -522,12 +522,13 @@ glm::ivec2 Rendering::getGPUMemoryInformation()
 }
 
 
-bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha, bool multiSampling)
+bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags)
 {
     glm::ivec2 RAM = getGPUMemoryInformation();
 
     // approximation of RAM needed for such FBO
-    GLint framebufferMemoryInKB = ( resolution.x * resolution.x * (useAlpha?4:3) * (multiSampling?2:1) ) / 1024;
+    GLint framebufferMemoryInKB = ( resolution.x * resolution.x *
+                                    ((flags & FrameBuffer::FrameBuffer_alpha)?4:3) * ((flags & FrameBuffer::FrameBuffer_multisampling)?2:1) ) / 1024;
 
     return ( RAM.x > framebufferMemoryInKB * 3 );
 }

@@ -66,7 +66,7 @@ void CloneSource::init()
     if (origin_ && origin_->ready_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
 
         // create render Frame buffer matching size of images
-        FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->use_alpha() );
+        FrameBuffer *renderbuffer = new FrameBuffer( origin_->frame()->resolution(), origin_->frame()->flags() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);

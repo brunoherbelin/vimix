@@ -138,12 +138,12 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
     // if different frame buffer from previous frame
     if ( frame_buffer->width() != width_ ||
          frame_buffer->height() != height_ ||
-         frame_buffer->use_alpha() != use_alpha_) {
+         (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha) != use_alpha_) {
 
         // define stream properties
         width_ = frame_buffer->width();
         height_ = frame_buffer->height();
-        use_alpha_ = frame_buffer->use_alpha();
+        use_alpha_ = (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha);
         size_ = width_ * height_ * (use_alpha_ ? 4 : 3);
 
         // first time initialization

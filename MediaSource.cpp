@@ -106,7 +106,7 @@ void MediaSource::init()
 
             // create Frame buffer matching size of media player
             float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
-            FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, true);
+            FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, FrameBuffer::FrameBuffer_alpha);
 
             // icon in mixing view
             if (mediaplayer_->isImage())

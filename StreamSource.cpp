@@ -124,7 +124,7 @@ void StreamSource::init()
 
             // create Frame buffer matching size of media player
             float height = float(stream_->width()) / stream_->aspectRatio();
-            FrameBuffer *renderbuffer = new FrameBuffer(stream_->width(), (uint)height, true);
+            FrameBuffer *renderbuffer = new FrameBuffer(stream_->width(), (uint)height, FrameBuffer::FrameBuffer_alpha);
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);

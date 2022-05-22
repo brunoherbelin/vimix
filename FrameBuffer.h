@@ -4,6 +4,7 @@
 #include "RenderingManager.h"
 
 #define FBI_JPEG_QUALITY 90
+#define MIPMAP_LEVEL 6
 
 /**
  * @brief The FrameBufferImage class stores an RGB image in RAM
@@ -45,8 +46,17 @@ public:
     static glm::vec3 getResolutionFromParameters(int ar, int h);
     static glm::ivec2 getParametersFromResolution(glm::vec3 res);
 
-    FrameBuffer(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
-    FrameBuffer(uint width, uint height, bool useAlpha = false, bool multiSampling = false);
+    enum FrameBufferCreationFlags_
+    {
+        FrameBuffer_rgb            = 0,
+        FrameBuffer_alpha          = 1 << 1,
+        FrameBuffer_multisampling  = 1 << 2,
+        FrameBuffer_mipmap         = 1 << 3
+    };
+    typedef int FrameBufferFlags;
+
+    FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags = FrameBuffer_rgb);
+    FrameBuffer(uint width, uint height, FrameBufferFlags flags = FrameBuffer_rgb);
     FrameBuffer(FrameBuffer const&) = delete;
     ~FrameBuffer();
 
@@ -81,8 +91,7 @@ public:
 
     // internal pixel format
     inline uint opengl_id() const { return framebufferid_; }
-    inline bool use_alpha() const { return use_alpha_; }
-    inline bool use_multisampling() const { return use_multi_sampling_; }
+    inline FrameBufferFlags flags() const { return flags_; }
 
     // index for texturing
     uint texture() const;
@@ -95,12 +104,12 @@ private:
     void init();
     void checkFramebufferStatus();
 
+    FrameBufferFlags flags_;
     RenderingAttrib attrib_;
     glm::mat4 projection_;
     glm::vec2 projection_area_;
-    uint textureid_, intermediate_textureid_;
-    uint framebufferid_, intermediate_framebufferid_;
-    bool use_alpha_, use_multi_sampling_;
+    uint textureid_, multisampling_textureid_;
+    uint framebufferid_, multisampling_framebufferid_, mipmap_framebufferid_[MIPMAP_LEVEL] = {};
 };
 
 

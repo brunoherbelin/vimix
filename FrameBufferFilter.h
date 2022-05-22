@@ -1,6 +1,7 @@
 #ifndef FRAMEBUFFERFILTER_H
 #define FRAMEBUFFERFILTER_H
 
+#include <sys/types.h>
 #include <glm/glm.hpp>
 
 class Visitor;

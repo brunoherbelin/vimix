@@ -77,9 +77,13 @@ void RenderView::setResolution(glm::vec3 resolution, bool useAlpha)
         frame_buffer_ = nullptr;
     }
 
-    if (!frame_buffer_)
+    if (!frame_buffer_) {
         // output frame is an RBG Multisamples FrameBuffer
-        frame_buffer_ = new FrameBuffer(resolution, useAlpha, true);
+        FrameBuffer::FrameBufferFlags flag = FrameBuffer::FrameBuffer_multisampling;
+        if (useAlpha)
+            flag |= FrameBuffer::FrameBuffer_alpha;
+        frame_buffer_ = new FrameBuffer(resolution, flag);
+    }
 
     // reset fading
     setFading();

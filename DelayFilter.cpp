@@ -54,8 +54,8 @@ void DelayFilter::update (float dt)
         if ( frames_.empty() || now_ - elapsed_.front() < delay_ + ( double(dt) * 0.002) )
         {
             // create a FBO if none can be reused (from above) and test for RAM in GPU
-            if (temp_frame_ == nullptr && ( frames_.empty() || Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->use_alpha()) ) ){
-                temp_frame_ = new FrameBuffer( input_->resolution(), input_->use_alpha() );
+            if (temp_frame_ == nullptr && ( frames_.empty() || Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->flags()) ) ){
+                temp_frame_ = new FrameBuffer( input_->resolution(), input_->flags() );
             }
             // image available
             if (temp_frame_ != nullptr) {

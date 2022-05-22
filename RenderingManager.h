@@ -149,7 +149,7 @@ public:
 
     // memory management
     static glm::ivec2 getGPUMemoryInformation();
-    static bool shouldHaveEnoughMemory(glm::vec3 resolution, bool useAlpha = false, bool multiSampling = false);
+    static bool shouldHaveEnoughMemory(glm::vec3 resolution, int flags);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // for opengl pipeline in gstreamer

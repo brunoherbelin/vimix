@@ -78,9 +78,14 @@ void RenderSource::init()
 //        rendered_surface_ = new Surface;
 //        rendered_surface_->setTextureIndex( fb->texture() );
 
+        // use same flags than session frame, without multisampling
+        FrameBuffer::FrameBufferFlags flag = fb->flags();
+        flag &= ~FrameBuffer::FrameBuffer_multisampling;
+
         // create the frame buffer displayed by the source (all modes)
-        rendered_output_ = new FrameBuffer( fb->resolution(), fb->use_alpha() );
-        // needs a first initialization
+        rendered_output_ = new FrameBuffer( fb->resolution(), flag );
+
+        // needs a first initialization (to get texture)
         fb->blit(rendered_output_);
 
         // set the texture index from internal framebuffer, apply it to the source texture surface

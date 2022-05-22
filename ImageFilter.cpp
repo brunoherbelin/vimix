@@ -374,7 +374,9 @@ void ImageFilter::draw (FrameBuffer *input)
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
-        buffers_.first = new FrameBuffer( input_->resolution(), input_->use_alpha() );
+        // FBO with mipmapping
+        FrameBuffer::FrameBufferFlags f = input_->flags() | FrameBuffer::FrameBuffer_mipmap;
+        buffers_.first = new FrameBuffer( input_->resolution(), f );
         // enforce framebuffer if first-pass is created now, filled with input framebuffer
         input_->blit( buffers_.first );
         // create second-pass surface and shader, taking as texture the first-pass framebuffer
@@ -383,7 +385,7 @@ void ImageFilter::draw (FrameBuffer *input)
         // (re)create framebuffer for result of second-pass
         if (buffers_.second != nullptr)
             delete buffers_.second;
-        buffers_.second = new FrameBuffer( buffers_.first->resolution(), buffers_.first->use_alpha() );
+        buffers_.second = new FrameBuffer( buffers_.first->resolution(), buffers_.first->flags() );
     }
 
     if ( enabled() )

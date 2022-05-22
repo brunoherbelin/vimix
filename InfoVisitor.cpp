@@ -206,13 +206,13 @@ void InfoVisitor::visit (RenderSource& s)
 
     if (s.frame()){
         if (brief_) {
-            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
         else {
             oss << "Rendering Output (";
             oss << RenderSource::rendering_provenance_label[s.renderingProvenance()] << ") " << std::endl;
-            oss << (s.frame()->use_alpha() ? "RGBA" : "RGB") << std::endl;
+            oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
     }
@@ -230,13 +230,13 @@ void InfoVisitor::visit (CloneSource& s)
 
     if (s.frame()){
         if (brief_) {
-            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
         else {
             if (s.origin())
                 oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
-            oss << (s.frame()->use_alpha() ? "RGBA, " : "RGB, ");
+            oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
             oss << FrameBufferFilter::type_label[s.filter()->type()] << " filter" << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
