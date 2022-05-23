@@ -2199,20 +2199,20 @@ void SourceController::Render()
             if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space"))
                 play_toggle_request_ = true;
 
+            ImGui::Separator();
             // Menu section for displayed image
-            if (ImGui::BeginMenu( ICON_FA_IMAGE " Displayed image"))
+            if (ImGui::BeginMenu( ICON_FA_IMAGE "  Displayed image"))
             {
-                if (ImGuiToolkit::MenuItemIcon(7, 9, " Pre-processed"))
-                    Settings::application.widget.media_player_slider = 1.0;
-                if (ImGuiToolkit::MenuItemIcon(6, 9, " Split view"))
-                    Settings::application.widget.media_player_slider = 0.5;
                 if (ImGuiToolkit::MenuItemIcon(8, 9, " Post-processed"))
                     Settings::application.widget.media_player_slider = 0.0;
+                if (ImGuiToolkit::MenuItemIcon(6, 9, " Split view"))
+                    Settings::application.widget.media_player_slider = 0.5;
+                if (ImGuiToolkit::MenuItemIcon(7, 9, " Pre-processed"))
+                    Settings::application.widget.media_player_slider = 1.0;
                 ImGui::EndMenu();
             }
 
             // Menu section for list
-            ImGui::Separator();
             if (ImGui::MenuItem( ICON_FA_TH "  List all")) {
                 selection_.clear();
                 resetActiveSelection();
@@ -2828,7 +2828,12 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
     bool ret = false;
 
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
-    ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
+
+    // Always draw pre- and post-processed images
+    ImGui::Image((void*)(uintptr_t) s->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
+    ImGui::SetCursorScreenPos(frame_top + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
+    ImGui::Image((void*)(uintptr_t) s->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
+
     frame_top.x += 1.f;
     ImGui::SetCursorScreenPos(frame_top);
 
@@ -3009,18 +3014,25 @@ void SourceController::RenderSingleSource(Source *s)
         ///
         top += corner;
         ImGui::SetCursorScreenPos(top);
-        ImGui::Image((void*)(uintptr_t) s->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
+        CloneSource *cloned = dynamic_cast<CloneSource *>(s);
 
-        ImGui::SetCursorScreenPos(top + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
-        ImGui::Image((void*)(uintptr_t) s->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
+        if (s->imageProcessingEnabled() || cloned != nullptr) {
+            ImGui::Image((void*)(uintptr_t) s->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
 
-        draw_list->AddCircleFilled(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
-        draw_list->AddLine(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
+            ImGui::SetCursorScreenPos(top + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
+            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
 
-        ImGui::SetCursorScreenPos(top + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
-        ImGuiToolkit::InvisibleSliderFloat("#filter_slider", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
-        if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
-            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+            draw_list->AddCircleFilled(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+            draw_list->AddLine(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
+
+            ImGui::SetCursorScreenPos(top + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
+            ImGuiToolkit::InvisibleSliderFloat("#filter_slider", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+            if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        }
+        else {
+            ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
+        }
 
         ///
         /// Info overlays
@@ -3097,18 +3109,24 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
     ///
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
-    ImGui::Image((void*)(uintptr_t) ms->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
 
-    ImGui::SetCursorScreenPos(top_image + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
-    ImGui::Image((void*)(uintptr_t) ms->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
+    if (ms->imageProcessingEnabled()) {
+        ImGui::Image((void*)(uintptr_t) ms->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
 
-    draw_list->AddCircleFilled(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
-    draw_list->AddLine(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
+        ImGui::SetCursorScreenPos(top_image + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
+        ImGui::Image((void*)(uintptr_t) ms->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
 
-    ImGui::SetCursorScreenPos(top_image + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
-    ImGuiToolkit::InvisibleSliderFloat("#Settings::application.widget.media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
-    if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
-        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        draw_list->AddCircleFilled(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+        draw_list->AddLine(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
+
+        ImGui::SetCursorScreenPos(top_image + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
+        ImGuiToolkit::InvisibleSliderFloat("#Settings::application.widget.media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+        if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+    }
+    else {
+        ImGui::Image((void*)(uintptr_t) mediaplayer_active_->texture(), framesize);
+    }
 
     ///
     /// Info overlays
