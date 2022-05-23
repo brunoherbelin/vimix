@@ -82,7 +82,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(f
     setProjectionArea(glm::vec2(1.f, 1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
     for(int i=0; i<MIPMAP_LEVEL; ++i)
-        mipmap_framebufferid_[MIPMAP_LEVEL] = 0;
+        mipmap_framebufferid_[i] = 0;
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags_(flags),
@@ -92,7 +92,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags
     setProjectionArea(glm::vec2(1.f, 1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
     for(int i=0; i<MIPMAP_LEVEL; ++i)
-        mipmap_framebufferid_[MIPMAP_LEVEL] = 0;
+        mipmap_framebufferid_[i] = 0;
 }
 
 void FrameBuffer::init()
@@ -263,7 +263,7 @@ void FrameBuffer::resize(int width, int height)
             if (mipmap_framebufferid_[0])
                 glDeleteFramebuffers(MIPMAP_LEVEL, mipmap_framebufferid_);
             for(int i=0; i<MIPMAP_LEVEL; ++i)
-                mipmap_framebufferid_[MIPMAP_LEVEL] = 0;
+                mipmap_framebufferid_[i] = 0;
 
             if (textureid_)
                 glDeleteTextures(1, &textureid_);
