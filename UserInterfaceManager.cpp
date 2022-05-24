@@ -989,7 +989,10 @@ void UserInterface::showMenuFile()
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    // TODO : FLATTEN (import all sources from all groups)
+    if (ImGuiToolkit::MenuItemIcon(7, 2, "Expand all groups", false, Mixer::manager().numSource() > 0)) {
+        // create a new group session with all sources
+        Mixer::manager().ungroupAll();
+    }
 
     // HELP AND QUIT
     ImGui::Separator();

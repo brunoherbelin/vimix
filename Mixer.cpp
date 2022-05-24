@@ -794,7 +794,19 @@ void Mixer::groupAll()
     }
 }
 
-void Mixer::flattenSession()
+void Mixer::ungroupAll()
+{
+    for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
+    {
+        SessionGroupSource *ss = dynamic_cast< SessionGroupSource * >(*source_iter);
+
+        if ( ss != nullptr )
+            import(ss);
+
+    }
+}
+
+void Mixer::groupSession()
 {
     // new session group containing current session
     SessionGroupSource *sessiongroup = new SessionGroupSource;

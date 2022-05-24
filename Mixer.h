@@ -68,8 +68,8 @@ public:
     void deleteSelection  ();
     void groupSelection ();
     void groupAll ();
-
-    void flattenSession();
+    void ungroupAll ();
+    void groupSession ();
 
     // current source
     Source *currentSource ();
