@@ -983,13 +983,13 @@ void UserInterface::showMenuFile()
 
     // GROUP
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, "Group all sources", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Group all sources", false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().groupAll();
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, "Expand all groups", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all groups", false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().ungroupAll();
     }
@@ -5934,7 +5934,7 @@ void Navigator::RenderSourcePannel(Source *s)
         // clone & delete buttons
         ImGui::Text(" ");
         // Action on source
-        if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
         if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);

@@ -546,7 +546,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     // if a symbol is available
     if (symbol_)
         // hack to place the symbols in the corner independently of aspect ratio
-        symbol_->translation_.x = 1.1f * (renderbuffer_->aspectRatio()-1.f);
+        symbol_->translation_.x = (renderbuffer_->aspectRatio() - 0.3f) / renderbuffer_->aspectRatio();
 
     // hack to place the initials in the corner independently of aspect ratio
     initial_0_->translation_.x = 0.2f - renderbuffer_->aspectRatio();

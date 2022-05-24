@@ -176,6 +176,8 @@ void InfoVisitor::visit (SessionGroupSource& s)
         return;
 
     std::ostringstream oss;
+
+    if (!brief_) oss << "Group of ";
     uint N = s.session()->size();
     oss << N << " source" << (N>1 ? "s" : "");
     uint T = s.session()->numSources();
@@ -187,7 +189,7 @@ void InfoVisitor::visit (SessionGroupSource& s)
             oss << ", RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
         else {
-            oss << " in Group"<< std::endl;
+            oss << std::endl;
             oss << "RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }

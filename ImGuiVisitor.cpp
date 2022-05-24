@@ -712,7 +712,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
                               ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor(1);
 
-    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Sources");
