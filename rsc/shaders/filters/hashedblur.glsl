@@ -25,18 +25,18 @@ vec2 Hash22(vec2 p)
     return fract(vec2((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y));
 }
 
-vec3 Blur(vec2 uv, float radius)
+vec4 Blur(vec2 uv, float radius)
 {
     radius = radius * .04;
     vec2 circle = vec2(radius) * vec2((iResolution.y / iResolution.x), 1.0);
     vec2 random = Hash22( uv + TIME );
 
     // Do the blur here...
-    vec3 acc = vec3(0.0);
-    int max = int( Iterations * 49.0 + 1.0 ); // between 1 and 50
+    vec4 acc = vec4(0.0);
+    int max = int( Iterations * 29.0 + 1.0 ); // between 1 and 30
     for (int i = 0; i < max; i++)
     {
-        acc += texture(iChannel0, uv + circle * Sample(random), radius*10.0).xyz;
+        acc += textureLod(iChannel0, uv + circle * Sample(random), radius*10.0);
     }
     return acc / float(max);
 }
@@ -45,8 +45,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord.xy / iResolution.xy;
     
-    float radius = Radius * 0.005 * iResolution.y;
+    float radius = Radius * 0.01 * iResolution.y;
     radius = pow(radius, 2.0);
  
-    fragColor = vec4(Blur(uv * vec2(1.0, -1.0), radius), 1.0);
+    fragColor = Blur(uv * vec2(1.0, -1.0), radius);
 }

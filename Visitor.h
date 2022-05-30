@@ -44,6 +44,7 @@ class MultiFileSource;
 class FrameBufferFilter;
 class PassthroughFilter;
 class DelayFilter;
+class BlurFilter;
 class ImageFilter;
 
 class SourceCallback;
@@ -104,6 +105,7 @@ public:
     virtual void visit (FrameBufferFilter&) {}
     virtual void visit (PassthroughFilter&) {}
     virtual void visit (DelayFilter&) {}
+    virtual void visit (BlurFilter&) {}
     virtual void visit (ImageFilter&) {}
 
     virtual void visit (SourceCallback&) {}

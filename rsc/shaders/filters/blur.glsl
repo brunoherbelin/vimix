@@ -1,27 +1,29 @@
+// 16x acceleration of https://www.shadertoy.com/view/4tSyzy
+// by applying gaussian at intermediate MIPmap level.
 
-vec3 texSample(const int x, const int y, in vec2 fragCoord)
-{
-	vec2 uv = fragCoord.xy / iResolution.xy * iChannelResolution[0].xy;
-	uv = (uv + vec2(x, y)) / iChannelResolution[0].xy;
-	return texture(iChannel0, uv).xyz;       
-}    
+const int samples = 25,
+          LOD = 2,         // gaussian done on MIPmap at scale LOD
+          sLOD = 1 << LOD; // tile size = 2^LOD
+const float sigma = float(samples) * .25;
 
-void blur( out vec3 rgb, in vec2 fragCoord )
-{
-    vec3 tot = vec3(0.0);
-    
-    for( int j=0; j<9; j++ )
-        for( int i=0; i<9; i++ )
-            tot += pow( texSample(i-4, j-4, fragCoord), vec3(2.2));
-    
-    rgb = pow(tot/81.0,vec3(1.0/2.2)); 
+float gaussian(vec2 i) {
+    return exp( -.5* dot(i/=sigma,i) ) / ( 6.28 * sigma*sigma );
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    vec3 b;
-    blur(b, fragCoord);
-    fragColor = vec4( b, 1.0);
+vec4 blur(sampler2D sp, vec2 U, vec2 scale) {
+    vec4 O = vec4(0);
+    int s = samples/sLOD;
+    float t = 0., g;
+
+    for ( int i = 0; i < s*s; i++ ) {
+        vec2 d = vec2(i%s, i/s)*float(sLOD) - float(samples)/2.;
+        t += g = gaussian(d);
+        O += g * textureLod( sp, U + scale * d , float(LOD) );
+    }
+
+    return O / t;
 }
 
-
+void mainImage(out vec4 O, vec2 U) {
+    O = blur( iChannel0, U/iResolution.xy, 1./iChannelResolution[0].xy );
+}

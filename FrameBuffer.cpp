@@ -81,8 +81,6 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(f
     attrib_.viewport = glm::ivec2(resolution);
     setProjectionArea(glm::vec2(1.f, 1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
-    for(int i=0; i<MIPMAP_LEVEL; ++i)
-        mipmap_framebufferid_[i] = 0;
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags_(flags),
@@ -91,8 +89,6 @@ FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags
     attrib_.viewport = glm::ivec2(width, height);
     setProjectionArea(glm::vec2(1.f, 1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
-    for(int i=0; i<MIPMAP_LEVEL; ++i)
-        mipmap_framebufferid_[i] = 0;
 }
 
 void FrameBuffer::init()
@@ -107,23 +103,15 @@ void FrameBuffer::init()
     if (flags_ & FrameBuffer_mipmap) {
         glTexStorage2D(GL_TEXTURE_2D, MIPMAP_LEVEL + 1, (flags_ & FrameBuffer_alpha) ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-        // calculate GPU memory usage
-        int width = attrib_.viewport.x;
-        int height = attrib_.viewport.y;
-        for(int i=0; i < MIPMAP_LEVEL; ++i) {
-            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
-            width = MAX(1, (width / 2));
-            height = MAX(1, (height / 2));
-        }
     }
     // default : create simple texture for RGB(A)
     else  {
         glTexStorage2D(GL_TEXTURE_2D, 1, (flags_ & FrameBuffer_alpha) ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        // calculate GPU memory usage
-        mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
     }
+
+    // calculate GPU memory usage (for debug only)
+    mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
 
     // common texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -179,12 +167,14 @@ void FrameBuffer::init()
     // attach multiple FBOs to the mipmaped texture
     if (flags_ & FrameBuffer_mipmap) {
 
-        glGenFramebuffers(MIPMAP_LEVEL, mipmap_framebufferid_);
-        for(int i=0; i < MIPMAP_LEVEL; ++i) {
-            glBindFramebuffer(GL_FRAMEBUFFER, mipmap_framebufferid_[i]);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, i + 1);
+        // calculate GPU memory usage
+        int width = attrib_.viewport.x;
+        int height = attrib_.viewport.y;
+        for(int i=1; i < MIPMAP_LEVEL; ++i) {
+            width = MAX(1, (width / 2));
+            height = MAX(1, (height / 2));
+            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
         }
-
 #ifdef FRAMEBUFFER_DEBUG
         g_printerr("mipmap (%d) - ", MIPMAP_LEVEL);
 #endif
@@ -208,8 +198,6 @@ FrameBuffer::~FrameBuffer()
         glDeleteFramebuffers(1, &framebufferid_);
     if (multisampling_framebufferid_)
         glDeleteFramebuffers(1, &multisampling_framebufferid_);
-    if (mipmap_framebufferid_[0])
-        glDeleteFramebuffers(MIPMAP_LEVEL, mipmap_framebufferid_);
     if (textureid_)
         glDeleteTextures(1, &textureid_);
     if (multisampling_textureid_)
@@ -260,11 +248,6 @@ void FrameBuffer::resize(int width, int height)
                 glDeleteFramebuffers(1, &multisampling_framebufferid_);
             multisampling_framebufferid_ = 0;
 
-            if (mipmap_framebufferid_[0])
-                glDeleteFramebuffers(MIPMAP_LEVEL, mipmap_framebufferid_);
-            for(int i=0; i<MIPMAP_LEVEL; ++i)
-                mipmap_framebufferid_[i] = 0;
-
             if (textureid_)
                 glDeleteTextures(1, &textureid_);
             textureid_ = 0;
@@ -305,27 +288,13 @@ void FrameBuffer::end()
                           0, 0, attrib_.viewport.x, attrib_.viewport.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
-    // if mipmapped texture, fill FBOs
-    if (flags_ & FrameBuffer_mipmap) {
-        // First read full-size framebuffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
-        int width = attrib_.viewport.x;
-        int height = attrib_.viewport.y;
-        // iterate over all levels of mipmaps
-        for(int i=0; i < MIPMAP_LEVEL; ++i) {
-            // draw on Mipmap level i
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mipmap_framebufferid_[i]);
-            // blit into half-sized mipmap i (with linear nearest color)
-            glBlitFramebuffer(0, 0, width, height,
-                              0, 0, width / 2, height / 2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            // next iteration (i+1), read half-size mipmap level i
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, mipmap_framebufferid_[i]);
-            width = MAX(1, (width / 2));
-            height = MAX(1, (height / 2));
-        }
-    }
-
     FrameBuffer::release();
+
+    if (flags_ & FrameBuffer_mipmap) {
+        glBindTexture(GL_TEXTURE_2D, textureid_);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     Rendering::manager().popAttrib();
 }

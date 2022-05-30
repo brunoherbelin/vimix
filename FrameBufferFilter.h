@@ -20,6 +20,7 @@ public:
     typedef enum {
         FILTER_PASSTHROUGH = 0,
         FILTER_DELAY,
+        FILTER_BLUR,
         FILTER_IMAGE,
         FILTER_INVALID
     } Type;

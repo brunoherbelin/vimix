@@ -147,6 +147,9 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
     case FrameBufferFilter::FILTER_DELAY:
         filter_ = new DelayFilter;
         break;
+    case FrameBufferFilter::FILTER_BLUR:
+        filter_ = new BlurFilter;
+        break;
     case FrameBufferFilter::FILTER_IMAGE:
         filter_ = new ImageFilter;
         break;
@@ -157,7 +160,7 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
     }
 
 
-    // TODO : resampling of renderbuffer
+    // TODO : resampling of renderbuffer ?
 
 }
 

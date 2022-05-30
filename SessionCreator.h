@@ -64,6 +64,7 @@ public:
     void visit (CloneSource& s) override;
     void visit (FrameBufferFilter&) override;
     void visit (DelayFilter&) override;
+    void visit (BlurFilter&) override;
     void visit (ImageFilter&) override;
 
     // callbacks

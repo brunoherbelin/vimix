@@ -3,6 +3,7 @@
 
 #include <map>
 #include <list>
+#include <vector>
 #include <string>
 #include <future>
 
@@ -69,21 +70,20 @@ class ImageFilter : public FrameBufferFilter
 {
     FilteringProgram program_;
 
-    std::pair< Surface *, Surface *> surfaces_;
-    std::pair< FrameBuffer *, FrameBuffer * > buffers_;
-    std::pair< ImageFilteringShader *, ImageFilteringShader *> shaders_;
-
 public:
 
     // instanciate an image filter at given resolution
     ImageFilter();
-    ~ImageFilter();
+    virtual ~ImageFilter();
 
     // set the program
     void setProgram(const FilteringProgram &f, std::promise<std::string> *ret = nullptr);
-
     // get copy of the program
     FilteringProgram program() const;
+
+    // update parameters of program
+    void setProgramParameters(const std::map< std::string, float > &parameters);
+    void setProgramParameter(const std::string &p, float value);
 
     // implementation of FrameBufferFilter
     Type type() const override { return FrameBufferFilter::FILTER_IMAGE; }
@@ -92,7 +92,51 @@ public:
     void update (float dt) override;
     void draw   (FrameBuffer *input) override;
     void accept (Visitor& v) override;
+
+protected:
+
+    std::pair< Surface *, Surface *> surfaces_;
+    std::pair< FrameBuffer *, FrameBuffer * > buffers_;
+    std::pair< ImageFilteringShader *, ImageFilteringShader *> shaders_;
+    void updateParameters();
 };
+
+
+class BlurFilter : public ImageFilter
+{
+public:
+
+    BlurFilter();
+    virtual ~BlurFilter();
+
+    // Algorithms used for blur
+    typedef enum {
+        BLUR_GAUSSIAN = 0,
+        BLUR_HASH,
+        BLUR_OPENNING,
+        BLUR_CLOSING,
+        BLUR_FAST,
+        BLUR_INVALID
+    } BlurMethod;
+    static const char* method_label[BLUR_INVALID];
+    BlurMethod method () const { return method_; }
+    void setMethod(int method);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_BLUR; }
+
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
+
+private:
+    BlurMethod method_;
+    static std::vector< FilteringProgram > programs_;
+
+    Surface *mipmap_surface_;
+    FrameBuffer *mipmap_buffer_;
+};
+
+
 
 
 #endif // IMAGEFILTER_H

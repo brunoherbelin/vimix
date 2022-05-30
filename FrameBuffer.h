@@ -4,7 +4,7 @@
 #include "RenderingManager.h"
 
 #define FBI_JPEG_QUALITY 90
-#define MIPMAP_LEVEL 6
+#define MIPMAP_LEVEL 7
 
 /**
  * @brief The FrameBufferImage class stores an RGB image in RAM
@@ -109,7 +109,7 @@ private:
     glm::mat4 projection_;
     glm::vec2 projection_area_;
     uint textureid_, multisampling_textureid_;
-    uint framebufferid_, multisampling_framebufferid_, mipmap_framebufferid_[MIPMAP_LEVEL] = {};
+    uint framebufferid_, multisampling_framebufferid_;
     uint mem_usage_;
 };
 

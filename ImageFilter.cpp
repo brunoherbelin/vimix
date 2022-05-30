@@ -128,6 +128,12 @@ std::string FilteringProgram::getFilterCodeDefault()
     return filterDefault;
 }
 
+////////////////////////////////////////
+/////                                 //
+////  PROGRAM DEFINING A FILTER      ///
+///                                 ////
+////////////////////////////////////////
+
 FilteringProgram::FilteringProgram() : name_("None"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
 {
 
@@ -180,6 +186,12 @@ bool FilteringProgram::operator!= (const FilteringProgram& other) const
     return false;
 }
 
+
+////////////////////////////////////////
+/////                                 //
+////  IMAGE SHADER FOR FILTERS       ///
+///                                 ////
+////////////////////////////////////////
 
 class ImageFilteringShader : public ImageShader
 {
@@ -309,6 +321,12 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 }
 
 
+////////////////////////////////////////
+/////                                 //
+////  GENERIC IMAGE FILTER           ///
+///                                 ////
+////////////////////////////////////////
+
 ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr})
 {
     // surface and shader for first pass
@@ -374,7 +392,7 @@ void ImageFilter::draw (FrameBuffer *input)
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
-        // FBO with mipmapping
+        // FBO
         buffers_.first = new FrameBuffer( input_->resolution(), input_->flags() );
         // enforce framebuffer if first-pass is created now, filled with input framebuffer
         input_->blit( buffers_.first );
@@ -422,25 +440,152 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     // always keep local copy
     program_ = f;
 
-//    // force disable when using default filter
-//    setEnabled( program_ != FilteringProgram::presets.front() );
-
     // change code
     std::pair<std::string, std::string> codes = program_.code();
 
     // FIRST PASS
     // set code to the shader for first-pass
     shaders_.first->setCode( codes.first, ret );
+
+    // SECOND PASS
+    if ( program_.isTwoPass() )
+        // set the code to the shader for second-pass
+        shaders_.second->setCode( codes.second );
+
+    updateParameters();
+}
+
+void ImageFilter::updateParameters()
+{
     // change uniforms
     shaders_.first->uniforms_ = program_.parameters();
 
-    // SECOND PASS
-    if ( program_.isTwoPass() ) {
-        // set the code to the shader for second-pass
-        shaders_.second->setCode( codes.second );
-        // change uniforms
+    if ( program_.isTwoPass() )
         shaders_.second->uniforms_ = program_.parameters();
+}
+
+void ImageFilter::setProgramParameters(const std::map< std::string, float > &parameters)
+{
+    program_.setParameters(parameters);
+
+    updateParameters();
+}
+
+void ImageFilter::setProgramParameter(const std::string &p, float value)
+{
+    program_.setParameter(p, value);
+
+    updateParameters();
+}
+
+////////////////////////////////////////
+/////                                 //
+////  BLURING FILTERS                ///
+///                                 ////
+////////////////////////////////////////
+
+const char* BlurFilter::method_label[BlurFilter::BLUR_INVALID] = {
+    "Gaussian", "Hash", "Openning", "Closing", "Fast 2x2"
+};
+
+std::vector< FilteringProgram > BlurFilter::programs_ = {
+    FilteringProgram("Gaussian", "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Radius", 0.5} }),
+    FilteringProgram("Hashed",   "shaders/filters/hashedblur.glsl", "",     { { "Iterations", 0.5 }, { "Radius", 0.5} }),
+    FilteringProgram("Openning", "shaders/filters/hashederosion.glsl", "shaders/filters/hasheddilation.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("Closing",  "shaders/filters/hasheddilation.glsl", "shaders/filters/hashederosion.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("Fast 2x2", "shaders/filters/blur.glsl",   "",     { })
+};
+
+BlurFilter::BlurFilter (): ImageFilter(), method_(BLUR_INVALID), mipmap_buffer_(nullptr)
+{
+    mipmap_surface_ = new Surface;
+}
+
+BlurFilter::~BlurFilter ()
+{
+    delete mipmap_surface_;
+    if ( mipmap_buffer_!= nullptr )
+        delete mipmap_buffer_;
+}
+
+void BlurFilter::setMethod(int method)
+{
+    method_ = (BlurMethod) CLAMP(method, BLUR_GAUSSIAN, BLUR_INVALID-1);
+
+    setProgram( programs_[ (int) method_] );
+}
+
+void BlurFilter::draw (FrameBuffer *input)
+{
+    // Default to Gaussian blur
+    if (method_ == BLUR_INVALID)
+        setMethod( BLUR_GAUSSIAN );
+
+    // if input changed (typically on first draw)
+    if (input_ != input) {
+        // keep reference to input framebuffer
+        input_ = input;
+
+        // create zero-pass surface taking as texture the input framebuffer
+        mipmap_surface_->setTextureIndex( input_->texture() );
+
+        // FBO with mipmapping
+        // (re)create framebuffer for mipmapped input
+        if ( mipmap_buffer_!= nullptr )
+            delete mipmap_buffer_;
+        FrameBuffer::FrameBufferFlags f = input_->flags();
+        mipmap_buffer_ = new FrameBuffer( input_->resolution(), f | FrameBuffer::FrameBuffer_mipmap );
+        // enforce framebuffer created now, filled with input framebuffer
+        input_->blit( mipmap_buffer_ );
+
+        // create first-pass surface and shader, taking as texture the input framebuffer
+        surfaces_.first->setTextureIndex( mipmap_buffer_->texture() );
+        shaders_.first->mask_texture = input_->texture();
+        // (re)create framebuffer for result of first-pass
+        if (buffers_.first != nullptr)
+            delete buffers_.first;
+        buffers_.first = new FrameBuffer( input_->resolution(), f | FrameBuffer::FrameBuffer_mipmap );
+        // enforce framebuffer of first-pass is created now, filled with input framebuffer
+        mipmap_buffer_->blit( buffers_.first );
+
+        // create second-pass surface and shader, taking as texture the first-pass framebuffer
+        surfaces_.second->setTextureIndex( buffers_.first->texture() );
+        shaders_.second->mask_texture = input_->texture();
+        // (re)create framebuffer for result of second-pass
+        if (buffers_.second != nullptr)
+            delete buffers_.second;
+        buffers_.second = new FrameBuffer( input_->resolution(), f );
     }
 
+    if ( enabled() )
+    {
+        // ZERO PASS
+        // render input surface into frame buffer with Mipmapping (Levels of Details)
+        mipmap_buffer_->begin();
+        mipmap_surface_->draw(glm::identity<glm::mat4>(), mipmap_buffer_->projection());
+        mipmap_buffer_->end();
+
+        // FIRST PASS
+        // render mipmapped texture into frame buffer
+        buffers_.first->begin();
+        surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
+        buffers_.first->end();
+
+        // SECOND PASS
+        if ( program().isTwoPass() ) {
+            // render filtered surface from first pass into frame buffer
+            buffers_.second->begin();
+            surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
+            buffers_.second->end();
+        }
+    }
 }
+
+void BlurFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
 
