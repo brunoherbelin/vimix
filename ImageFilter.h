@@ -137,6 +137,33 @@ private:
 };
 
 
+class SharpenFilter : public ImageFilter
+{
+public:
+
+    SharpenFilter();
+
+    // Algorithms used for sharpen
+    typedef enum {
+        SHARPEN_MASK = 0,
+        SHARPEN_CONVOLUTION,
+        SHARPEN_EDGE,
+        SHARPEN_INVALID
+    } SharpenMethod;
+    static const char* method_label[SHARPEN_INVALID];
+    SharpenMethod method () const { return method_; }
+    void setMethod(int method);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_SHARPEN; }
+
+    void accept (Visitor& v) override;
+
+private:
+    SharpenMethod method_;
+    static std::vector< FilteringProgram > programs_;
+};
+
 
 
 #endif // IMAGEFILTER_H

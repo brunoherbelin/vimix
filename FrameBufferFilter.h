@@ -21,6 +21,7 @@ public:
         FILTER_PASSTHROUGH = 0,
         FILTER_DELAY,
         FILTER_BLUR,
+        FILTER_SHARPEN,
         FILTER_IMAGE,
         FILTER_INVALID
     } Type;

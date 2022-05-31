@@ -485,15 +485,15 @@ void ImageFilter::setProgramParameter(const std::string &p, float value)
 ////////////////////////////////////////
 
 const char* BlurFilter::method_label[BlurFilter::BLUR_INVALID] = {
-    "Gaussian", "Hash", "Openning", "Closing", "Fast 2x2"
+    "Gaussian", "Scattered", "Opening", "Closing", "Fast"
 };
 
 std::vector< FilteringProgram > BlurFilter::programs_ = {
-    FilteringProgram("Gaussian", "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Radius", 0.5} }),
-    FilteringProgram("Hashed",   "shaders/filters/hashedblur.glsl", "",     { { "Iterations", 0.5 }, { "Radius", 0.5} }),
-    FilteringProgram("Openning", "shaders/filters/hashederosion.glsl", "shaders/filters/hasheddilation.glsl",   { { "Radius", 0.5} }),
-    FilteringProgram("Closing",  "shaders/filters/hasheddilation.glsl", "shaders/filters/hashederosion.glsl",   { { "Radius", 0.5} }),
-    FilteringProgram("Fast 2x2", "shaders/filters/blur.glsl",   "",     { })
+    FilteringProgram("Gaussian", "shaders/filters/blur_1.glsl",        "shaders/filters/blur_2.glsl",     { { "Radius", 0.5} }),
+    FilteringProgram("Scattered","shaders/filters/hashedblur.glsl",    "",     { { "Radius", 0.5}, { "Iterations", 0.25 } }),
+    FilteringProgram("Opening",  "shaders/filters/hashederosion.glsl", "shaders/filters/hasheddilation.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("Closing",  "shaders/filters/hasheddilation.glsl","shaders/filters/hashederosion.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("Fast",     "shaders/filters/blur.glsl", "", { })
 };
 
 BlurFilter::BlurFilter (): ImageFilter(), method_(BLUR_INVALID), mipmap_buffer_(nullptr)
@@ -582,6 +582,39 @@ void BlurFilter::draw (FrameBuffer *input)
 }
 
 void BlurFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
+////////////////////////////////////////
+/////                                 //
+////  SHARPENING FILTERS             ///
+///                                 ////
+////////////////////////////////////////
+
+const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
+    "Unsharp mask", "Convolution", "Edge"
+};
+
+std::vector< FilteringProgram > SharpenFilter::programs_ = {
+    FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
+    FilteringProgram("Sharpen",      "shaders/filters/sharp.glsl",      "",     { { "Amount", 0.5} }),
+    FilteringProgram("Sharp Edge",   "shaders/filters/bilinear.glsl",   "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
+};
+
+SharpenFilter::SharpenFilter (): ImageFilter(), method_(SHARPEN_INVALID)
+{
+}
+
+void SharpenFilter::setMethod(int method)
+{
+    method_ = (SharpenMethod) CLAMP(method, SHARPEN_MASK, SHARPEN_INVALID-1);
+    setProgram( programs_[ (int) method_] );
+}
+
+void SharpenFilter::accept (Visitor& v)
 {
     FrameBufferFilter::accept(v);
     v.visit(*this);

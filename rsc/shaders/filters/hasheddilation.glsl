@@ -37,10 +37,10 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float ar = iResolution.y / iResolution.x ;
     float R  = 0.25 * Radius ;
 
-    vec4 O = vec4(1.);
+    vec4  O = vec4(1.);
     float N = 17;
     for (float i = 0.; i < N; i++) {
-        vec2 q = vec2(cos(TWOPI*((i+.5)/N)) * ar, sin(TWOPI*(i+.5)/N)) * Hash01(uv, floatBitsToUint(i));
+        vec2 q = vec2(cos(TWOPI*((i+.5)/N)) * ar, sin(TWOPI*(i+.5)/N)) * (0.1 + 0.9 * Hash01(uv, floatBitsToUint(i)));
         // vec2 q = vec2(cos(TWOPI*((i+.5)/N)) * ar, sin(TWOPI*(i+.5)/N)) * hash(vec2(i + 12., uv.x * uv.y + 24.));
         O = min( texture(iChannel0, uv + q*R), O );
     }

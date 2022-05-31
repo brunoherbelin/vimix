@@ -45,6 +45,7 @@ class FrameBufferFilter;
 class PassthroughFilter;
 class DelayFilter;
 class BlurFilter;
+class SharpenFilter;
 class ImageFilter;
 
 class SourceCallback;
@@ -106,6 +107,7 @@ public:
     virtual void visit (PassthroughFilter&) {}
     virtual void visit (DelayFilter&) {}
     virtual void visit (BlurFilter&) {}
+    virtual void visit (SharpenFilter&) {}
     virtual void visit (ImageFilter&) {}
 
     virtual void visit (SourceCallback&) {}
