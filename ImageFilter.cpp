@@ -614,6 +614,15 @@ void SharpenFilter::setMethod(int method)
     setProgram( programs_[ (int) method_] );
 }
 
+void SharpenFilter::draw (FrameBuffer *input)
+{
+    // Default
+    if (method_ == SHARPEN_INVALID)
+        setMethod( SHARPEN_MASK );
+
+    ImageFilter::draw( input );
+}
+
 void SharpenFilter::accept (Visitor& v)
 {
     FrameBufferFilter::accept(v);

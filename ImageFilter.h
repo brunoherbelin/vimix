@@ -157,6 +157,7 @@ public:
     // implementation of FrameBufferFilter
     Type type() const override { return FrameBufferFilter::FILTER_SHARPEN; }
 
+    void draw   (FrameBuffer *input) override;
     void accept (Visitor& v) override;
 
 private:

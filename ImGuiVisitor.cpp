@@ -824,7 +824,7 @@ void ImGuiVisitor::visit (SharpenFilter& f)
     oss << "Blur ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(7, 16)) {
+    if (ImGuiToolkit::IconButton(2, 1)) {
         f.setMethod( 0 );
         oss << SharpenFilter::method_label[0];
         Action::manager().store(oss.str());
