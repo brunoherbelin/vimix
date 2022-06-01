@@ -566,6 +566,8 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/blur.glsl
     ./rsc/shaders/filters/blur_1.glsl
     ./rsc/shaders/filters/blur_2.glsl
+    ./rsc/shaders/filters/lens_1.glsl
+    ./rsc/shaders/filters/lens_2.glsl
     ./rsc/shaders/filters/hashedblur.glsl
     ./rsc/shaders/filters/circularblur.glsl
     ./rsc/shaders/filters/hashederosion.glsl
@@ -574,6 +576,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/sharpen.glsl
     ./rsc/shaders/filters/sharpen_1.glsl
     ./rsc/shaders/filters/sharpen_2.glsl
+    ./rsc/shaders/filters/contour_2.glsl
     ./rsc/shaders/filters/sharpenedge.glsl
     ./rsc/shaders/filters/chromakey.glsl
     ./rsc/shaders/filters/bilinear.glsl

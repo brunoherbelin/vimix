@@ -153,6 +153,9 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
     case FrameBufferFilter::FILTER_SHARPEN:
         filter_ = new SharpenFilter;
         break;
+    case FrameBufferFilter::FILTER_EDGE:
+        filter_ = new EdgeFilter;
+        break;
     case FrameBufferFilter::FILTER_IMAGE:
         filter_ = new ImageFilter;
         break;

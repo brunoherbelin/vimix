@@ -148,6 +148,8 @@ public:
         SHARPEN_MASK = 0,
         SHARPEN_CONVOLUTION,
         SHARPEN_EDGE,
+        SHARPEN_WHITEHAT,
+        SHARPEN_BLACKHAT,
         SHARPEN_INVALID
     } SharpenMethod;
     static const char* method_label[SHARPEN_INVALID];
@@ -164,6 +166,37 @@ private:
     SharpenMethod method_;
     static std::vector< FilteringProgram > programs_;
 };
+
+
+class EdgeFilter : public ImageFilter
+{
+public:
+
+    EdgeFilter();
+
+    // Algorithms used for edge detection
+    typedef enum {
+        EDGE_THRESHOLD = 0,
+        EDGE_SOBEL,
+        EDGE_FREICHEN,
+        EDGE_CONTOUR,
+        EDGE_INVALID
+    } EdgeMethod;
+    static const char* method_label[EDGE_INVALID];
+    EdgeMethod method () const { return method_; }
+    void setMethod(int method);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_EDGE; }
+
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
+
+private:
+    EdgeMethod method_;
+    static std::vector< FilteringProgram > programs_;
+};
+
 
 
 

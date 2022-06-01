@@ -10,7 +10,7 @@ vec4 blur1D(vec2 U, vec2 D, float rad)
     for( int k=0; k<N; k++ ) {
         x = float(k)/r -1.;
         t += g = exp(-2.*x*x );
-        O += g * textureLod(iChannel0, (U + w*x*D) / iResolution.xy, z );
+        O += g * texture(iChannel0, (U + w*x*D) / iResolution.xy );
     }
     return O/t;
 }

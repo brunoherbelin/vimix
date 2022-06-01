@@ -78,27 +78,17 @@ std::string fragmentFooter = "void main() {\n"
 
 std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram(),
-    FilteringProgram("Blur",     "shaders/filters/blur_1.glsl",     "shaders/filters/blur_2.glsl",     { { "Amount", 0.5} }),
-    FilteringProgram("HashBlur", "shaders/filters/hashedblur.glsl", "",     { { "Radius", 0.5}, { "Iterations", 0.5 } }),
     FilteringProgram("Unfocus",  "shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
     FilteringProgram("Smooth",   "shaders/filters/bilinear.glsl",   "",     { }),
     FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
     FilteringProgram("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
     FilteringProgram("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
     FilteringProgram("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} }),
-    FilteringProgram("Sharpen",  "shaders/filters/sharp.glsl",      "",     { { "Amount", 0.5} }),
-    FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
-    FilteringProgram("Sharp Edge", "shaders/filters/bilinear.glsl", "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
-    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
-    FilteringProgram("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
-    FilteringProgram("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
     FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
     FilteringProgram("Erosion",  "shaders/filters/erosion.glsl",    "",     { { "Radius", 0.5} }),
     FilteringProgram("Dilation", "shaders/filters/dilation.glsl",   "",     { { "Radius", 0.5} }),
     FilteringProgram("Openning", "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
     FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
-    FilteringProgram("TopHat",   "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
-    FilteringProgram("BlackHat", "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",  { { "Radius", 0.5} }),
     FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
     FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
     FilteringProgram("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
@@ -595,13 +585,15 @@ void BlurFilter::accept (Visitor& v)
 ////////////////////////////////////////
 
 const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
-    "Unsharp mask", "Convolution", "Edge"
+    "Unsharp mask", "Convolution", "Edge", "White hat", "Black hat"
 };
 
 std::vector< FilteringProgram > SharpenFilter::programs_ = {
     FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
     FilteringProgram("Sharpen",      "shaders/filters/sharp.glsl",      "",     { { "Amount", 0.5} }),
     FilteringProgram("Sharp Edge",   "shaders/filters/bilinear.glsl",   "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
+    FilteringProgram("TopHat",       "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
+    FilteringProgram("BlackHat",     "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",  { { "Radius", 0.5} }),
 };
 
 SharpenFilter::SharpenFilter (): ImageFilter(), method_(SHARPEN_INVALID)
@@ -624,6 +616,49 @@ void SharpenFilter::draw (FrameBuffer *input)
 }
 
 void SharpenFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
+////////////////////////////////////////
+/////                                 //
+////  EDGE FILTERS                   ///
+///                                 ////
+////////////////////////////////////////
+
+const char* EdgeFilter::method_label[EdgeFilter::EDGE_INVALID] = {
+    "Thresholding", "Sobel", "Freichen", "Contour"
+};
+
+std::vector< FilteringProgram > EdgeFilter::programs_ = {
+    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
+    FilteringProgram("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
+    FilteringProgram("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
+    FilteringProgram("Contour",  "shaders/filters/sharpen_1.glsl",  "shaders/filters/contour_2.glsl",     { { "Amount", 0.5} }),
+};
+
+EdgeFilter::EdgeFilter (): ImageFilter(), method_(EDGE_INVALID)
+{
+}
+
+void EdgeFilter::setMethod(int method)
+{
+    method_ = (EdgeMethod) CLAMP(method, EDGE_THRESHOLD, EDGE_INVALID-1);
+    setProgram( programs_[ (int) method_] );
+}
+
+void EdgeFilter::draw (FrameBuffer *input)
+{
+    // Default
+    if (method_ == EDGE_INVALID)
+        setMethod( EDGE_THRESHOLD );
+
+    ImageFilter::draw( input );
+}
+
+void EdgeFilter::accept (Visitor& v)
 {
     FrameBufferFilter::accept(v);
     v.visit(*this);

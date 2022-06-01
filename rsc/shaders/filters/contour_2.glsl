@@ -22,8 +22,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     // Remove blurred image to original image
     vec4 lumcoeff = vec4(0.299, 0.587, 0.114, 1.);
-    float luminance = dot( c - blur1D(fragCoord, vec2(0,1), 0.1 * Amount ), lumcoeff);
+    float luminance = dot( blur1D(fragCoord, vec2(0,1), 0.1 * Amount ) - c, lumcoeff);
 
     // composition
-    fragColor =  c + vec4(luminance);
+    fragColor =  vec4(luminance, luminance, luminance, 1.0);
 }

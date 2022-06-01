@@ -22,6 +22,7 @@ public:
         FILTER_DELAY,
         FILTER_BLUR,
         FILTER_SHARPEN,
+        FILTER_EDGE,
         FILTER_IMAGE,
         FILTER_INVALID
     } Type;

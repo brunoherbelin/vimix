@@ -6,7 +6,7 @@
 #include "FrameBufferFilter.h"
 
 const char* FrameBufferFilter::type_label[FrameBufferFilter::FILTER_INVALID] = {
-    "None", "Delay", "Blur", "Sharpen", "Shader code"
+    "None", "Delay", "Blur", "Sharpen", "Edge", "Shader code"
 };
 
 FrameBufferFilter::FrameBufferFilter() : enabled_(true), input_(nullptr)

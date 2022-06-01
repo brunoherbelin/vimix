@@ -821,7 +821,7 @@ void ImGuiVisitor::visit (BlurFilter& f)
 void ImGuiVisitor::visit (SharpenFilter& f)
 {
     std::ostringstream oss;
-    oss << "Blur ";
+    oss << "Sharpen ";
 
     // Method selection
     if (ImGuiToolkit::IconButton(2, 1)) {
@@ -856,6 +856,51 @@ void ImGuiVisitor::visit (SharpenFilter& f)
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << SharpenFilter::method_label[ f.method() ];
+            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
+            Action::manager().store(oss.str());
+        }
+        ImGui::PopID();
+    }
+}
+
+void ImGuiVisitor::visit (EdgeFilter& f)
+{
+    std::ostringstream oss;
+    oss << "Edge ";
+
+    // Method selection
+    if (ImGuiToolkit::IconButton(16, 8)) {
+        f.setMethod( 0 );
+        oss << EdgeFilter::method_label[0];
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("Method", &m, EdgeFilter::method_label, IM_ARRAYSIZE(EdgeFilter::method_label) )) {
+        f.setMethod( m );
+        oss << EdgeFilter::method_label[m];
+        Action::manager().store(oss.str());
+    }
+
+
+    // List of parameters
+    std::map<std::string, float> filter_parameters = f.program().parameters();
+    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    {
+        ImGui::PushID( param->first.c_str() );
+        float v = param->second;
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            v = 0.f;
+            f.setProgramParameter(param->first, v);
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter(param->first, v);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << EdgeFilter::method_label[ f.method() ];
             oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
             Action::manager().store(oss.str());
         }
