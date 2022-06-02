@@ -1,4 +1,4 @@
-uniform float     Factor;
+uniform float Factor;
 
 const mat3 G[9] = mat3[](
         mat3( 0.3535533845424652, 0, -0.3535533845424652, 0.5, 0, -0.5, 0.3535533845424652, 0, -0.3535533845424652 ),
@@ -12,31 +12,24 @@ const mat3 G[9] = mat3[](
         mat3( 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408 )
 );
 
-void freichen( out vec3 rgb, in vec2 fragCoord )
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-	mat3 I;
+    mat3 I;
     float cnv[9];
-    vec3 sample;
+    vec4 s;
     for (int i=0; i<3; i++)
     for (int j=0; j<3; j++) {
-        sample = texture(iChannel0, (fragCoord + vec2(i-1,j-1)) / iResolution.xy  ).rgb;
-        I[i][j] = length(sample); 
+        s = texture(iChannel0, (fragCoord + vec2(i-1,j-1)) / iResolution.xy  );
+        I[i][j] = length(s);
     }
     for (int i=0; i<9; i++) {
         float dp3 = dot(G[i][0], I[0]) + dot(G[i][1], I[1]) + dot(G[i][2], I[2]);
-        cnv[i] = dp3 * dp3; 
+        cnv[i] = dp3 * dp3;
     }
     float M = cnv[0] + cnv[1] + cnv[2] + cnv[3];
     float S = M + cnv[4] + cnv[5] + cnv[6] + cnv[7] + cnv[8];
-    
-    rgb = vec3( (1.0 + 10.0 * Factor) * sqrt(M/S) );
-}
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    vec3 v;
-    freichen(v, fragCoord);
-    fragColor = vec4( v, 1.0);
+    fragColor = vec4( vec3( (1.0 + 10.0 * Factor) * sqrt(M/S) ), 1.0);
 }
 
 

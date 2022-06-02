@@ -21,9 +21,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec4 c = texture(iChannel1, fragCoord.xy / iResolution.xy);
 
     // Remove blurred image to original image
-    vec4 lumcoeff = vec4(0.299, 0.587, 0.114, 1.);
-    float luminance = dot( blur1D(fragCoord, vec2(0,1), 0.1 * Amount ) - c, lumcoeff);
+    c = blur1D(fragCoord, vec2(0,1), 0.1 * Amount ) - c;
+
+    // convert to greyscale
+    float luminance = dot(c, vec4(0.299, 0.587, 0.114, 1.));
 
     // composition
-    fragColor =  vec4(luminance, luminance, luminance, 1.0);
+    fragColor =  vec4( vec3( smoothstep( 0.05, 0.2, luminance) ), 1.0);
 }

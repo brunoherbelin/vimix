@@ -590,8 +590,8 @@ const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
 
 std::vector< FilteringProgram > SharpenFilter::programs_ = {
     FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
-    FilteringProgram("Sharpen",      "shaders/filters/sharp.glsl",      "",     { { "Amount", 0.5} }),
-    FilteringProgram("Sharp Edge",   "shaders/filters/bilinear.glsl",   "shaders/filters/sharpenedge.glsl",  { { "Strength", 0.5} }),
+    FilteringProgram("Sharpen",      "shaders/filters/sharpen.glsl",    "",   { { "Amount", 0.5} }),
+    FilteringProgram("Sharp Edge",   "shaders/filters/sharpenedge.glsl","",   { { "Amount", 0.5} }),
     FilteringProgram("TopHat",       "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
     FilteringProgram("BlackHat",     "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",  { { "Radius", 0.5} }),
 };

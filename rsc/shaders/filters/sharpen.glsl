@@ -1,11 +1,13 @@
-vec3 texSample(const int x, const int y, in vec2 fragCoord)
+uniform float Amount;
+
+vec4 texSample(const int x, const int y, in vec2 fragCoord)
 {
     vec2 uv = fragCoord.xy / iResolution.xy * iChannelResolution[0].xy;
     uv = (uv + vec2(x, y)) / iChannelResolution[0].xy;
-    return texture(iChannel0, uv).xyz;
+    return texture(iChannel0, uv);
 }    
 
-void sharpen( out vec3 rgb, in vec2 fragCoord )
+void sharpen( out vec4 rgb, in vec2 fragCoord )
 {
     rgb =
     texSample(-1,-1, fragCoord) *  -1. +                     
@@ -22,10 +24,10 @@ void sharpen( out vec3 rgb, in vec2 fragCoord )
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     // sharpen mask
-    vec3 sharped;
+    vec4 sharped;
     sharpen(sharped, fragCoord);
 
-    fragColor = vec4( sharped, 1.0);
+    fragColor = mix(texSample( 0, 0, fragCoord), sharped , 1.5 * Amount);;
 }
 
 

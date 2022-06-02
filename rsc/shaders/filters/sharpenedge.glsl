@@ -1,4 +1,4 @@
-uniform float Strength;
+uniform float Amount;
 
 vec3 blurSample(in vec2 uv, in vec2 xoff, in vec2 yoff)
 {
@@ -38,5 +38,5 @@ vec3 edgeStrength(in vec2 uv)
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord.xy / iResolution.xy;
-    fragColor = vec4(texture(iChannel0, uv).xyz - edgeStrength(uv) * Strength * (iResolution.y*0.05), 1.0);
+    fragColor = vec4(texture(iChannel0, uv).xyz - edgeStrength(uv) * Amount * (iResolution.y*0.05), 1.0);
 }
