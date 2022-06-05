@@ -629,13 +629,13 @@ void SharpenFilter::accept (Visitor& v)
 ////////////////////////////////////////
 
 const char* EdgeFilter::method_label[EdgeFilter::EDGE_INVALID] = {
-    "Thresholding", "Sobel", "Freichen", "Contour"
+    "Sobel", "Freichen", "Thresholding", "Contour"
 };
 
 std::vector< FilteringProgram > EdgeFilter::programs_ = {
-    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
     FilteringProgram("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
     FilteringProgram("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
+    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
     FilteringProgram("Contour",  "shaders/filters/sharpen_1.glsl",  "shaders/filters/contour_2.glsl",     { { "Amount", 0.5} }),
 };
 
@@ -645,7 +645,7 @@ EdgeFilter::EdgeFilter (): ImageFilter(), method_(EDGE_INVALID)
 
 void EdgeFilter::setMethod(int method)
 {
-    method_ = (EdgeMethod) CLAMP(method, EDGE_THRESHOLD, EDGE_INVALID-1);
+    method_ = (EdgeMethod) CLAMP(method, EDGE_SOBEL, EDGE_INVALID-1);
     setProgram( programs_[ (int) method_] );
 }
 
@@ -653,7 +653,7 @@ void EdgeFilter::draw (FrameBuffer *input)
 {
     // Default
     if (method_ == EDGE_INVALID)
-        setMethod( EDGE_THRESHOLD );
+        setMethod( EDGE_SOBEL );
 
     ImageFilter::draw( input );
 }

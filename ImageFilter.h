@@ -176,9 +176,9 @@ public:
 
     // Algorithms used for edge detection
     typedef enum {
-        EDGE_THRESHOLD = 0,
-        EDGE_SOBEL,
+        EDGE_SOBEL = 0,
         EDGE_FREICHEN,
+        EDGE_THRESHOLD,
         EDGE_CONTOUR,
         EDGE_INVALID
     } EdgeMethod;
