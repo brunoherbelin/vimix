@@ -1125,15 +1125,14 @@ void UserInterface::showSourceEditor(Source *s)
 
     if (s) {
         Mixer::manager().setCurrentSource( s );
-        CloneSource *cs = dynamic_cast<CloneSource *>(s);
-        if (cs != nullptr) {
-            shadercontrol.refresh( cs );
-            return;
-        }
         RenderSource *rs = dynamic_cast<RenderSource *>(s);
         if (rs != nullptr) {
             outputcontrol.setVisible(true);
             return;
+        }
+        CloneSource *cs = dynamic_cast<CloneSource *>(s);
+        if (cs != nullptr) {
+            shadercontrol.refresh( cs );
         }
         if (s->playable()) {
             sourcecontrol.setVisible(true);
