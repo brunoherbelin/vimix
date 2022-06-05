@@ -1225,6 +1225,13 @@ void SessionLoader::visit (DelayFilter& f)
     f.setDelay(d);
 }
 
+void SessionLoader::visit (ResampleFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("factor", &m);
+    f.setFactor(m);
+}
+
 void SessionLoader::visit (BlurFilter& f)
 {
     int m = 0;

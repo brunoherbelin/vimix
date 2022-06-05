@@ -772,6 +772,26 @@ void ImGuiVisitor::visit (DelayFilter& f)
     }
 }
 
+void ImGuiVisitor::visit (ResampleFilter& f)
+{
+    std::ostringstream oss;
+
+    // Resampling Factor selection
+    if (ImGuiToolkit::IconButton(8, 5)) {
+        f.setFactor( 0 );
+        oss << "Resample " << ResampleFilter::factor_label[0];
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.factor();
+    if (ImGui::Combo("Factor", &m, ResampleFilter::factor_label, IM_ARRAYSIZE(ResampleFilter::factor_label) )) {
+        f.setFactor( m );
+        oss << "Resample " << ResampleFilter::factor_label[m];
+        Action::manager().store(oss.str());
+    }
+}
+
 void ImGuiVisitor::visit (BlurFilter& f)
 {
     std::ostringstream oss;

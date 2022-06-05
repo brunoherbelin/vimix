@@ -102,6 +102,36 @@ protected:
 };
 
 
+class ResampleFilter : public ImageFilter
+{
+public:
+
+    ResampleFilter();
+
+    // Factors of resampling
+    typedef enum {
+        RESAMPLE_DOUBLE = 0,
+        RESAMPLE_HALF,
+        RESAMPLE_QUARTER,
+        RESAMPLE_INVALID
+    } ResampleFactor;
+    static const char* factor_label[RESAMPLE_INVALID];
+    ResampleFactor factor () const { return factor_; }
+    void setFactor(int factor);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_RESAMPLE; }
+
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
+
+private:
+    ResampleFactor factor_;
+    static std::vector< FilteringProgram > programs_;
+};
+
+
+
 class BlurFilter : public ImageFilter
 {
 public:

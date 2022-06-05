@@ -694,6 +694,11 @@ void SessionVisitor::visit (DelayFilter& f)
     xmlCurrent_->SetAttribute("delay", f.delay());
 }
 
+void SessionVisitor::visit (ResampleFilter& f)
+{
+    xmlCurrent_->SetAttribute("factor", (int) f.factor());
+}
+
 void SessionVisitor::visit (BlurFilter& f)
 {
     xmlCurrent_->SetAttribute("method", (int) f.method());

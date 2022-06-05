@@ -80,7 +80,7 @@ public:
     inline uint width() const { return attrib_.viewport.x; }
     inline uint height() const { return attrib_.viewport.y; }
     glm::vec3 resolution() const;
-    void resize(int width, int height);
+    void resize(glm::vec3 res);
     float aspectRatio() const;
     std::string info() const;
 

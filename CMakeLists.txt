@@ -595,6 +595,9 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/dilation.glsl
     ./rsc/shaders/filters/tophat.glsl
     ./rsc/shaders/filters/blackhat.glsl
+    ./rsc/shaders/filters/resample_double.glsl
+    ./rsc/shaders/filters/resample_half.glsl
+    ./rsc/shaders/filters/resample_quarter.glsl
 )
 
 # Include the CMake RC module

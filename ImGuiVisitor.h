@@ -39,6 +39,7 @@ public:
     void visit (FrameBufferFilter&) override;
     void visit (PassthroughFilter&) override;
     void visit (DelayFilter&) override;
+    void visit (ResampleFilter&) override;
     void visit (BlurFilter&) override;
     void visit (SharpenFilter&) override;
     void visit (EdgeFilter&) override;

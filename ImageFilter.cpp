@@ -60,7 +60,7 @@ std::string fragmentFooter = "void main() {\n"
                              "    iChannelResolution[0] = vec3(textureSize(iChannel0, 0), 0.f);\n"
                              "    iChannelResolution[1] = vec3(textureSize(iChannel1, 0), 0.f);\n"
                              "    vec4 texcoord = iTransform * vec4(vertexUV.x, vertexUV.y, 0.0, 1.0);\n"
-                             "    mainImage( FragColor, texcoord.xy * iChannelResolution[0].xy );\n"
+                             "    mainImage( FragColor, texcoord.xy * iResolution.xy );\n"
                              "}\n";
 
 //std::string fragmentFooter = "void main() {\n"
@@ -293,6 +293,8 @@ void ImageFilteringShader::setCode(const std::string &code, std::promise<std::st
     if (code != code_)
     {
         code_ = code;
+        if (code_.empty())
+            code_ = filterDefault;
         shader_code_ = fragmentHeader + code_ + fragmentFooter;
         custom_shading_.setShaders("shaders/image.vs", shader_code_, ret);
     }
@@ -467,6 +469,108 @@ void ImageFilter::setProgramParameter(const std::string &p, float value)
 
     updateParameters();
 }
+
+////////////////////////////////////////
+/////                                 //
+////  RESAMPLING FILTERS             ///
+///                                 ////
+////////////////////////////////////////
+
+const char* ResampleFilter::factor_label[ResampleFilter::RESAMPLE_INVALID] = {
+    "Double x2", "Half   1/2", "Quarter 1/4"
+};
+
+std::vector< FilteringProgram > ResampleFilter::programs_ = {
+    FilteringProgram("Double",   "shaders/filters/resample_double.glsl",  "",   { }),
+    FilteringProgram("Half",     "shaders/filters/resample_half.glsl",  "",     { }),
+    FilteringProgram("Quarter",  "", "shaders/filters/resample_half.glsl",      { })
+};
+
+ResampleFilter::ResampleFilter (): ImageFilter(), factor_(RESAMPLE_INVALID)
+{
+}
+
+void ResampleFilter::setFactor(int factor)
+{
+    factor_ = (ResampleFactor) CLAMP(factor, RESAMPLE_DOUBLE, RESAMPLE_INVALID-1);
+    setProgram( programs_[ (int) factor_] );
+
+    // force re-init
+    input_ = nullptr;
+}
+
+void ResampleFilter::draw (FrameBuffer *input)
+{
+    // Default
+    if (factor_ == RESAMPLE_INVALID)
+        setFactor( RESAMPLE_DOUBLE );
+
+    // if input changed (typically on first draw)
+    if (input_ != input) {
+        // keep reference to input framebuffer
+        input_ = input;
+
+        // create first-pass surface and shader, taking as texture the input framebuffer
+        surfaces_.first->setTextureIndex( input_->texture() );
+        shaders_.first->mask_texture = input_->texture();
+        // (re)create framebuffer for result of first-pass
+        if (buffers_.first != nullptr)
+            delete buffers_.first;
+        // set resolution depending on resample factor
+        glm::vec3 res = input_->resolution();
+        switch (factor_) {
+        case RESAMPLE_DOUBLE:
+            res *= 2.;
+            break;
+        case RESAMPLE_HALF:
+        case RESAMPLE_QUARTER:
+            res /= 2.;
+            break;
+        default:
+        case RESAMPLE_INVALID:
+            break;
+        }
+        buffers_.first = new FrameBuffer( res, input_->flags() );
+        // enforce framebuffer if first-pass is created now, filled with input framebuffer
+        input_->blit( buffers_.first );
+
+        // SECOND PASS for QUARTER resolution (divide by 2 after first pass divide by 2)
+        // create second-pass surface and shader, taking as texture the first-pass framebuffer
+        surfaces_.second->setTextureIndex( buffers_.first->texture() );
+        shaders_.second->mask_texture = input_->texture();
+        // (re)create framebuffer for result of second-pass
+        if (buffers_.second != nullptr)
+            delete buffers_.second;
+        res /= 2.;
+        buffers_.second = new FrameBuffer( res, buffers_.first->flags() );
+    }
+
+    if ( enabled() )
+    {
+        // FIRST PASS
+        // render input surface into frame buffer
+        buffers_.first->begin();
+        surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
+        buffers_.first->end();
+
+        // SECOND PASS
+        if ( program().isTwoPass() ) {
+            // render filtered surface from first pass into frame buffer
+            buffers_.second->begin();
+            surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
+            buffers_.second->end();
+        }
+    }
+}
+
+void ResampleFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
+
 
 ////////////////////////////////////////
 /////                                 //

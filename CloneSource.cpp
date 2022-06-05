@@ -87,14 +87,21 @@ void CloneSource::render()
     if ( renderbuffer_ == nullptr )
         init();
     else {
-
         // render filter image
         filter_->draw( origin_->frame() );
 
         // ensure correct output texture is displayed (could have changed if filter changed)
         texturesurface_->setTextureIndex( filter_->texture() );
 
+        // detect resampling (change of resolution in filter)
+        if ( renderbuffer_->resolution() != filter_->resolution() ) {
+            renderbuffer_->resize( filter_->resolution() );
+//            FrameBuffer *renderbuffer = new FrameBuffer( filter_->resolution(), origin_->frame()->flags() );
+//            attach(renderbuffer);
+        }
+
         // render textured surface into frame buffer
+        // NB: this also applies the color correction shader
         renderbuffer_->begin();
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
@@ -146,6 +153,9 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
     {
     case FrameBufferFilter::FILTER_DELAY:
         filter_ = new DelayFilter;
+        break;
+    case FrameBufferFilter::FILTER_RESAMPLE:
+        filter_ = new ResampleFilter;
         break;
     case FrameBufferFilter::FILTER_BLUR:
         filter_ = new BlurFilter;

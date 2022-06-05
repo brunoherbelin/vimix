@@ -235,10 +235,10 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
-void FrameBuffer::resize(int width, int height)
+void FrameBuffer::resize(glm::vec3 res)
 {
     if (framebufferid_) {
-        if (attrib_.viewport.x != width || attrib_.viewport.y != height)
+        if (attrib_.viewport.x != res.x || attrib_.viewport.y != res.y)
         {
             // de-init
             glDeleteFramebuffers(1, &framebufferid_);
@@ -257,7 +257,7 @@ void FrameBuffer::resize(int width, int height)
             multisampling_textureid_ = 0;
 
             // change resolution
-            attrib_.viewport = glm::ivec2(width, height);
+            attrib_.viewport = glm::ivec2(res);
             mem_usage_ = 0;
         }
     }
