@@ -579,6 +579,8 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/contour_2.glsl
     ./rsc/shaders/filters/sharpenedge.glsl
     ./rsc/shaders/filters/chromakey.glsl
+    ./rsc/shaders/filters/lumakey.glsl
+    ./rsc/shaders/filters/coloralpha.glsl
     ./rsc/shaders/filters/bilinear.glsl
     ./rsc/shaders/filters/edge.glsl
     ./rsc/shaders/filters/sobel.glsl

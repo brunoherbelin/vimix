@@ -166,6 +166,9 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
     case FrameBufferFilter::FILTER_EDGE:
         filter_ = new EdgeFilter;
         break;
+    case FrameBufferFilter::FILTER_ALPHA:
+        filter_ = new AlphaFilter;
+        break;
     case FrameBufferFilter::FILTER_IMAGE:
         filter_ = new ImageFilter;
         break;
@@ -174,10 +177,6 @@ void CloneSource::setFilter(FrameBufferFilter::Type T)
         filter_ = new PassthroughFilter;
         break;
     }
-
-
-    // TODO : resampling of renderbuffer ?
-
 }
 
 void CloneSource::play (bool on)

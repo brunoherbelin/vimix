@@ -928,6 +928,75 @@ void ImGuiVisitor::visit (EdgeFilter& f)
     }
 }
 
+void ImGuiVisitor::visit (AlphaFilter& f)
+{
+    std::ostringstream oss;
+    oss << "Alpha ";
+
+    // Method selection
+    if (ImGuiToolkit::IconButton(13, 4)) {
+        f.setOperation( 0 );
+        oss << AlphaFilter::operation_label[0];
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.operation();
+    if (ImGui::Combo("Operation", &m, AlphaFilter::operation_label, IM_ARRAYSIZE(AlphaFilter::operation_label) )) {
+        f.setOperation( m );
+        oss << AlphaFilter::operation_label[m];
+        Action::manager().store(oss.str());
+    }
+
+
+    // List of parameters
+    std::map<std::string, float> filter_parameters = f.program().parameters();
+
+    if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_LUMAKEY)
+    {
+        float v = filter_parameters["Tolerance"];
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            v = 0.f;
+            f.setProgramParameter("Tolerance", v);
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "Tolerance", &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter("Tolerance", v);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+    }
+
+    if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_FILL)
+    {
+        glm::vec4 color = glm::vec4(filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"], 1.f);
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            color = glm::vec4(0.f, 0.8f, 0.f, 1.f);
+            f.setProgramParameter("Red",   color.r);
+            f.setProgramParameter("Green", color.g);
+            f.setProgramParameter("Blue",  color.b);
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::ColorEdit3("Color", glm::value_ptr(color), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoOptions) )
+        {
+            f.setProgramParameter("Red",   color.r);
+            f.setProgramParameter("Green", color.g);
+            f.setProgramParameter("Blue",  color.b);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Color" << " " << color.r << " " << color.g << " " << color.b;
+            Action::manager().store(oss.str());
+        }
+    }
+
+}
+
 void ImGuiVisitor::visit (ImageFilter& f)
 {
     // Selection of Algorithm

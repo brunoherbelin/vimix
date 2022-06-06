@@ -48,6 +48,7 @@ class ResampleFilter;
 class BlurFilter;
 class SharpenFilter;
 class EdgeFilter;
+class AlphaFilter;
 class ImageFilter;
 
 class SourceCallback;
@@ -112,6 +113,7 @@ public:
     virtual void visit (BlurFilter&) {}
     virtual void visit (SharpenFilter&) {}
     virtual void visit (EdgeFilter&) {}
+    virtual void visit (AlphaFilter&) {}
     virtual void visit (ImageFilter&) {}
 
     virtual void visit (SourceCallback&) {}

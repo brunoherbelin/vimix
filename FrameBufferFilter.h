@@ -24,6 +24,7 @@ public:
         FILTER_BLUR,
         FILTER_SHARPEN,
         FILTER_EDGE,
+        FILTER_ALPHA,
         FILTER_IMAGE,
         FILTER_INVALID
     } Type;

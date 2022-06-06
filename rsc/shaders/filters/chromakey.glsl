@@ -46,11 +46,10 @@ float colorclose(vec3 yuv, vec3 keyYuv, vec2 tol)
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    vec2 fragPos =  fragCoord.xy / iResolution.xy;
-    vec4 texColor0 = texture(iChannel0, fragPos);
+    vec4 texColor0 = texture(iChannel0, fragCoord.xy / iResolution.xy);
 
     //convert from RGB to YCvCr/YUV
-    vec4 keyYUV =  RGBtoYUV * chromaKey;
+    vec4 keyYUV = RGBtoYUV * chromaKey;
     vec4 yuv = RGBtoYUV * texColor0;
 
     float mask = 1.0 - colorclose(yuv.rgb, keyYUV.rgb, maskRange);

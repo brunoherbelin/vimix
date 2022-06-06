@@ -770,3 +770,46 @@ void EdgeFilter::accept (Visitor& v)
 
 
 
+////////////////////////////////////////
+/////                                 //
+////  ALPHA FILTERS                  ///
+///                                 ////
+////////////////////////////////////////
+
+const char* AlphaFilter::operation_label[AlphaFilter::ALPHA_INVALID] = {
+    "Chromakey", "Lumakey", "Fill transparent"
+};
+
+std::vector< FilteringProgram > AlphaFilter::programs_ = {
+    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Tolerance", 1.0} }),
+    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Tolerance", 0.5} }),
+    FilteringProgram("coloralpha","shaders/filters/coloralpha.glsl", "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0} })
+};
+
+AlphaFilter::AlphaFilter (): ImageFilter(), operation_(ALPHA_INVALID)
+{
+}
+
+void AlphaFilter::setOperation(int op)
+{
+    operation_ = (AlphaOperation) CLAMP(op, ALPHA_CHROMAKEY, ALPHA_INVALID-1);
+    setProgram( programs_[ (int) operation_] );
+}
+
+void AlphaFilter::draw (FrameBuffer *input)
+{
+    // Default
+    if (operation_ == ALPHA_INVALID)
+        setOperation( ALPHA_CHROMAKEY );
+
+    ImageFilter::draw( input );
+}
+
+void AlphaFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
+

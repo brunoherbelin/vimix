@@ -230,4 +230,34 @@ private:
 
 
 
+class AlphaFilter : public ImageFilter
+{
+public:
+
+    AlphaFilter();
+
+    // Operations on alpha
+    typedef enum {
+        ALPHA_CHROMAKEY = 0,
+        ALPHA_LUMAKEY,
+        ALPHA_FILL,
+        ALPHA_INVALID
+    } AlphaOperation;
+    static const char* operation_label[ALPHA_INVALID];
+    AlphaOperation operation () const { return operation_; }
+    void setOperation(int op);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_ALPHA; }
+
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
+
+private:
+    AlphaOperation operation_;
+    static std::vector< FilteringProgram > programs_;
+};
+
+
+
 #endif // IMAGEFILTER_H
