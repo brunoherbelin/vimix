@@ -477,7 +477,7 @@ void ImageFilter::setProgramParameter(const std::string &p, float value)
 ////////////////////////////////////////
 
 const char* ResampleFilter::factor_label[ResampleFilter::RESAMPLE_INVALID] = {
-    "Double x2", "Half   1/2", "Quarter 1/4"
+    "Double resolution", "Half resolution", "Quarter resolution"
 };
 
 std::vector< FilteringProgram > ResampleFilter::programs_ = {
@@ -781,8 +781,8 @@ const char* AlphaFilter::operation_label[AlphaFilter::ALPHA_INVALID] = {
 };
 
 std::vector< FilteringProgram > AlphaFilter::programs_ = {
-    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Tolerance", 1.0} }),
-    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Tolerance", 0.5} }),
+    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Threshold", 0.5}, { "Tolerance", 0.5} }),
+    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Threshold", 0.5}, { "Tolerance", 0.5} } ),
     FilteringProgram("coloralpha","shaders/filters/coloralpha.glsl", "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0} })
 };
 

@@ -922,6 +922,22 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_LUMAKEY)
     {
+        float t = filter_parameters["Threshold"];
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            t = 0.f;
+            f.setProgramParameter("Threshold", t);
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "Threshold", &t, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter("Threshold", t);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            Action::manager().store(oss.str());
+        }
+
         float v = filter_parameters["Tolerance"];
         if (ImGuiToolkit::IconButton(13, 14)) {
             v = 0.f;

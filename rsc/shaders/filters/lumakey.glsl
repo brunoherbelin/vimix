@@ -1,3 +1,4 @@
+uniform float Threshold;
 uniform float Tolerance;
 
 
@@ -36,5 +37,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float L = dot(RGB, vec3(0.299, 0.587, 0.114));
 //    float L = lightness( RGB );
 
-    fragColor = vec4( RGB, smoothstep( 0.0, Tolerance, L ) );
+    fragColor = vec4( RGB, smoothstep( Threshold, Threshold + Tolerance * Tolerance, L ) );
 }
