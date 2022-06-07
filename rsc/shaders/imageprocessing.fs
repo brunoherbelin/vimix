@@ -43,18 +43,9 @@ uniform float saturation;
 uniform vec4  gamma;
 uniform vec4  levels;
 uniform float hueshift;
-uniform vec4  chromakey;
-uniform float chromadelta;
 uniform float threshold;
-uniform float lumakey;
 uniform int   nbColors;
 uniform int   invert;
-
-// conversion between rgb and YUV
-const mat4 RGBtoYUV = mat4(0.257,  0.439, -0.148, 0.0,
-                           0.504, -0.368, -0.291, 0.0,
-                           0.098, -0.071,  0.439, 0.0,
-                           0.0625, 0.500,  0.500, 1.0 );
 
 /*
 ** Hue, saturation, luminance <=> Red Green Blue
@@ -114,24 +105,6 @@ vec3 RGB2HSV( vec3 color )
     return hsl;
 }
 
-float alphachromakey(vec3 color, vec3 colorKey, float delta)
-{
-   // magic values
-   vec2 tol = vec2(0.5, 0.4*delta);
-
-   //convert from RGB to YCvCr/YUV
-   vec4 keyYuv = RGBtoYUV * vec4(colorKey, 1.0);
-   vec4 yuv = RGBtoYUV * vec4(color, 1.0);
-
-   // color distance in the UV (CbCr, PbPr) plane
-   vec2 dif = yuv.yz - keyYuv.yz;
-   float d = sqrt(dot(dif, dif));
-
-   // tolerance clamping
-   return max( (1.0 - step(d, tol.y)), step(tol.x, d) * (d - tol.x) / (tol.y - tol.x));
-}
-
-
 void main(void)
 {
     // adjust UV
@@ -144,9 +117,6 @@ void main(void)
 
     // read color
     vec3 transformedRGB = texcolor.rgb;
-
-    // chromakey
-    alpha -= mix( 0.0, 1.0 - alphachromakey( transformedRGB, chromakey.rgb, chromadelta), float(chromadelta > 0.0001) );
 
     // brightness and contrast transformation
     transformedRGB = mix(vec3(0.62), transformedRGB, contrast + 1.0) + brightness;
@@ -168,10 +138,6 @@ void main(void)
 
     // perform reduction of colors
     transformedHSL = mix( transformedHSL, floor(transformedHSL * vec3(nbColors)) / vec3(nbColors-1),  float( nbColors > 0 ) );
-
-    // luma key
-    alpha -= mix( 0.0, step( transformedHSL.z, lumakey ), float(lumakey > EPSILON));
-    alpha = clamp(alpha, 0.0, 1.0);
 
     // level threshold
     transformedHSL = mix( transformedHSL, vec3(0.0, 0.0, 0.95 - step( transformedHSL.z, threshold )), float(threshold > EPSILON));

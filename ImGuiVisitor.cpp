@@ -360,38 +360,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::IconButton(3, 1)) {
-        n.lumakey = 0.f;
-        Action::manager().store("Lumakey 0.0");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Lumakey", &n.lumakey, 0.0, 1.0);
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << "Lumakey " << std::setprecision(2) << n.lumakey;
-        Action::manager().store(oss.str());
-    }
-
-    if (ImGuiToolkit::IconButton(13, 4)) {
-        n.chromakey = glm::vec4(0.f, 0.8f, 0.f, 1.f);
-        n.chromadelta = 0.f;
-        Action::manager().store("Chromakey & Color Reset");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::ColorEdit3("Chroma color", glm::value_ptr(n.chromakey), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel  ) ;    
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store("Chroma color changed");
-    ImGui::SameLine(0, 5);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Chromakey", &n.chromadelta, 0.0, 1.0, n.chromadelta < 0.001 ? "None" : "Tolerance %.2f");
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << "Chromakey ";
-        if (n.chromadelta < 0.001) oss << "None"; else oss << std::setprecision(2) << n.chromadelta;
-        Action::manager().store(oss.str());
-    }
-
     if (ImGuiToolkit::IconButton(6, 16)) {
         n.invert = 0;
         Action::manager().store("Invert None");

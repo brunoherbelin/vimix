@@ -21,16 +21,12 @@ public:
     float saturation; // [-1 1]
     float hueshift;   // [0 1]
     float threshold;  // [0 1]
-    float lumakey;    // [0 1]
     // gamma
     glm::vec4 gamma;
     glm::vec4 levels;
     // discrete operations
     int nbColors;
     int invert;
-    // chroma key
-    glm::vec4 chromakey;
-    float chromadelta;
 
 };
 

@@ -79,10 +79,6 @@ void SourceInterpolator::interpolateImageProcessing()
             (1.f - current_cursor_) * from_.processingShader()->threshold
             + current_cursor_ * to_.processingShader()->threshold;
 
-    current_state_.processingShader()->lumakey =
-            (1.f - current_cursor_) * from_.processingShader()->lumakey
-            + current_cursor_ * to_.processingShader()->lumakey;
-
     current_state_.processingShader()->nbColors =
             (1.f - current_cursor_) * from_.processingShader()->nbColors
             + current_cursor_ * to_.processingShader()->nbColors;
@@ -94,14 +90,6 @@ void SourceInterpolator::interpolateImageProcessing()
     current_state_.processingShader()->levels =
             (1.f - current_cursor_) * from_.processingShader()->levels
             + current_cursor_ * to_.processingShader()->levels;
-
-    current_state_.processingShader()->chromakey =
-            (1.f - current_cursor_) * from_.processingShader()->chromakey
-            + current_cursor_ * to_.processingShader()->chromakey;
-
-    current_state_.processingShader()->chromadelta =
-            (1.f - current_cursor_) * from_.processingShader()->chromadelta
-            + current_cursor_ * to_.processingShader()->chromadelta;
 
     subject_->processingShader()->copy( *current_state_.processingShader() );
 

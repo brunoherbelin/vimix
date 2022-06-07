@@ -36,12 +36,30 @@ float colorclose(vec3 yuv, vec3 keyYuv, vec2 tol)
 {
     float tmp = sqrt(pow(keyYuv.g - yuv.g, 2.0) + pow(keyYuv.b - yuv.b, 2.0));
     if (tmp < tol.x)
-      return 0.0;
-        else if (tmp < tol.y)
-      return (tmp - tol.x)/(tol.y - tol.x);
-        else
-      return 1.0;
+        return 0.0;
+    else if (tmp < tol.y)
+        return (tmp - tol.x)/(tol.y - tol.x);
+    else
+        return 1.0;
 }
+
+float alphachromakey(vec3 color, vec3 colorKey, float delta)
+{
+   // magic values
+   vec2 tol = vec2(0.5, 0.4*delta);
+
+   //convert from RGB to YCvCr/YUV
+   vec4 keyYuv = RGBtoYUV * vec4(colorKey, 1.0);
+   vec4 yuv = RGBtoYUV * vec4(color, 1.0);
+
+   // color distance in the UV (CbCr, PbPr) plane
+   vec2 dif = yuv.yz - keyYuv.yz;
+   float d = sqrt(dot(dif, dif));
+
+   // tolerance clamping
+   return max( (1.0 - step(d, tol.y)), step(tol.x, d) * (d - tol.x) / (tol.y - tol.x));
+}
+
 
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
@@ -49,9 +67,12 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec4 texColor0 = texture(iChannel0, fragCoord.xy / iResolution.xy);
 
     //convert from RGB to YCvCr/YUV
-    vec4 keyYUV = RGBtoYUV * chromaKey;
-    vec4 yuv = RGBtoYUV * texColor0;
+//    vec4 keyYUV = RGBtoYUV * chromaKey;
+//    vec4 yuv = RGBtoYUV * texColor0;
+//    float mask = 1.0 - colorclose(yuv.rgb, keyYUV.rgb, maskRange);
+//    fragColor = max(texColor0 - mask * chromaKey, 0.0);
 
-    float mask = 1.0 - colorclose(yuv.rgb, keyYUV.rgb, maskRange);
-    fragColor = max(texColor0 - mask * chromaKey, 0.0);
+    float A = alphachromakey(texColor0.rgb, chromaKey.rgb, Tolerance);
+
+    fragColor = vec4( texColor0.rgb, A );
 }

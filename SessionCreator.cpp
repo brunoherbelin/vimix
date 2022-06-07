@@ -916,10 +916,8 @@ void SessionLoader::visit(ImageProcessingShader &n)
         uniforms->QueryFloatAttribute("saturation", &n.saturation);
         uniforms->QueryFloatAttribute("hueshift", &n.hueshift);
         uniforms->QueryFloatAttribute("threshold", &n.threshold);
-        uniforms->QueryFloatAttribute("lumakey", &n.lumakey);
         uniforms->QueryIntAttribute("nbColors", &n.nbColors);
         uniforms->QueryIntAttribute("invert", &n.invert);
-        uniforms->QueryFloatAttribute("chromadelta", &n.chromadelta);
     }
 
     XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
@@ -928,9 +926,6 @@ void SessionLoader::visit(ImageProcessingShader &n)
     XMLElement* levels = xmlCurrent_->FirstChildElement("levels");
     if (levels)
         tinyxml2::XMLElementToGLM( levels->FirstChildElement("vec4"), n.levels);
-    XMLElement* chromakey = xmlCurrent_->FirstChildElement("chromakey");
-    if (chromakey)
-        tinyxml2::XMLElementToGLM( chromakey->FirstChildElement("vec4"), n.chromakey);
 }
 
 void SessionLoader::visit (Source& s)

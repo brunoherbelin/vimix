@@ -42,14 +42,11 @@ void ImageProcessingShader::use()
     program_->setUniform("hueshift", hueshift);
 
     program_->setUniform("threshold", threshold);
-    program_->setUniform("lumakey", lumakey);
     program_->setUniform("nbColors", nbColors);
     program_->setUniform("invert", invert);
 
     program_->setUniform("gamma", gamma);
     program_->setUniform("levels", levels);
-    program_->setUniform("chromakey", chromakey);
-    program_->setUniform("chromadelta", chromadelta);
 
 }
 
@@ -63,13 +60,10 @@ void ImageProcessingShader::reset()
     saturation = 0.f;
     hueshift = 0.f;
     threshold = 0.f;
-    lumakey = 0.f;
     nbColors = 0;
     invert = 0;
     gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
     levels = glm::vec4(0.f, 1.f, 0.f, 1.f);
-    chromakey = glm::vec4(0.f, 0.8f, 0.f, 0.f);
-    chromadelta = 0.f;
 
 }
 
@@ -80,13 +74,10 @@ void ImageProcessingShader::copy(ImageProcessingShader const& S)
     saturation = S.saturation;
     hueshift = S.hueshift;
     threshold = S.threshold;
-    lumakey = S.lumakey;
     nbColors = S.nbColors;
     invert = S.invert;
     gamma = S.gamma;
     levels = S.levels;
-    chromakey = S.chromakey;
-    chromadelta = S.chromadelta;
 }
 
 

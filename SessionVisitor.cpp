@@ -494,10 +494,8 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     filter->SetAttribute("saturation", n.saturation);
     filter->SetAttribute("hueshift", n.hueshift);
     filter->SetAttribute("threshold", n.threshold);
-    filter->SetAttribute("lumakey", n.lumakey);
     filter->SetAttribute("nbColors", n.nbColors);
     filter->SetAttribute("invert", n.invert);
-    filter->SetAttribute("chromadelta", n.chromadelta);
     xmlCurrent_->InsertEndChild(filter);
 
     XMLElement *gamma = xmlDoc_->NewElement("gamma");
@@ -507,10 +505,6 @@ void SessionVisitor::visit(ImageProcessingShader &n)
     XMLElement *levels = xmlDoc_->NewElement("levels");
     levels->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.levels) );
     xmlCurrent_->InsertEndChild(levels);
-
-    XMLElement *chromakey = xmlDoc_->NewElement("chromakey");
-    chromakey->InsertEndChild( XMLElementFromGLM(xmlDoc_, n.chromakey) );
-    xmlCurrent_->InsertEndChild(chromakey);
 }
 
 void SessionVisitor::visit(LineStrip &n)
