@@ -1,4 +1,4 @@
-## inpired by https://www.shadertoy.com/view/fsjBWm (License: MIT)
+// inspired by https://www.shadertoy.com/view/fsjBWm (License: MIT)
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
