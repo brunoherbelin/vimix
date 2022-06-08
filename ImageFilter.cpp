@@ -78,23 +78,13 @@ std::string fragmentFooter = "void main() {\n"
 
 std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram(),
-    FilteringProgram("Unfocus",  "shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
-    FilteringProgram("Smooth",   "shaders/filters/bilinear.glsl",   "",     { }),
-    FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
-    FilteringProgram("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
-    FilteringProgram("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
-    FilteringProgram("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} }),
+    FilteringProgram("Bilateral","shaders/filters/bilinear.glsl",   "",     { }),
     FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
-    FilteringProgram("Erosion",  "shaders/filters/erosion.glsl",    "",     { { "Radius", 0.5} }),
-    FilteringProgram("Dilation", "shaders/filters/dilation.glsl",   "",     { { "Radius", 0.5} }),
-    FilteringProgram("Openning", "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
-    FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
     FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
     FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
     FilteringProgram("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
     FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { { "Factor", 0.5} }),
     FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { { "Factor", 0.5} }),
-    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",  "",     { { "Red", 0.05}, { "Green", 0.63}, { "Blue", 0.14}, { "Tolerance", 0.54} }),
     FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.35} }),
 };
 
@@ -693,7 +683,7 @@ const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
 };
 
 std::vector< FilteringProgram > SharpenFilter::programs_ = {
-    FilteringProgram("Unsharp Mask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
+    FilteringProgram("UnsharpMask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
     FilteringProgram("Sharpen",      "shaders/filters/sharpen.glsl",    "",   { { "Amount", 0.5} }),
     FilteringProgram("Sharp Edge",   "shaders/filters/sharpenedge.glsl","",   { { "Amount", 0.5} }),
     FilteringProgram("TopHat",       "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
@@ -720,6 +710,55 @@ void SharpenFilter::draw (FrameBuffer *input)
 }
 
 void SharpenFilter::accept (Visitor& v)
+{
+    FrameBufferFilter::accept(v);
+    v.visit(*this);
+}
+
+
+
+////////////////////////////////////////
+/////                                 //
+////  SMOOTHING FILTERS              ///
+///                                 ////
+////////////////////////////////////////
+
+const char* SmoothFilter::method_label[SmoothFilter::SMOOTH_INVALID] = {
+    "Bilateral", "Kuwahara", "Opening", "Closing", "Erosion", "Dilation", "Remove noise", "Add noise", "Add grain"
+};
+
+std::vector< FilteringProgram > SmoothFilter::programs_ = {
+    FilteringProgram("Bilateral","shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
+    FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
+    FilteringProgram("Opening",  "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
+    FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
+    FilteringProgram("Erosion",  "shaders/filters/erosion.glsl",    "",     { { "Radius", 0.5} }),
+    FilteringProgram("Dilation", "shaders/filters/dilation.glsl",   "",     { { "Radius", 0.5} }),
+    FilteringProgram("Denoise",  "shaders/filters/denoise.glsl",    "",     { { "Threshold", 0.5} }),
+    FilteringProgram("Noise",    "shaders/filters/noise.glsl",      "",     { { "Amount", 0.25} }),
+    FilteringProgram("Grain",    "shaders/filters/grain.glsl",      "",     { { "Amount", 0.5} })
+};
+
+SmoothFilter::SmoothFilter (): ImageFilter(), method_(SMOOTH_INVALID)
+{
+}
+
+void SmoothFilter::setMethod(int method)
+{
+    method_ = (SmoothMethod) CLAMP(method, SMOOTH_BILINEAR, SMOOTH_INVALID-1);
+    setProgram( programs_[ (int) method_] );
+}
+
+void SmoothFilter::draw (FrameBuffer *input)
+{
+    // Default
+    if (method_ == SMOOTH_INVALID)
+        setMethod( SMOOTH_BILINEAR );
+
+    ImageFilter::draw( input );
+}
+
+void SmoothFilter::accept (Visitor& v)
 {
     FrameBufferFilter::accept(v);
     v.visit(*this);

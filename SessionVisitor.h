@@ -75,6 +75,7 @@ public:
     void visit (ResampleFilter&) override;
     void visit (BlurFilter&) override;
     void visit (SharpenFilter&) override;
+    void visit (SmoothFilter&) override;
     void visit (EdgeFilter&) override;
     void visit (AlphaFilter&) override;
     void visit (ImageFilter&) override;

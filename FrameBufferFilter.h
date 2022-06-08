@@ -23,6 +23,7 @@ public:
         FILTER_RESAMPLE,
         FILTER_BLUR,
         FILTER_SHARPEN,
+        FILTER_SMOOTH,
         FILTER_EDGE,
         FILTER_ALPHA,
         FILTER_IMAGE,

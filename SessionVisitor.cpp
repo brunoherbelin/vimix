@@ -725,6 +725,22 @@ void SessionVisitor::visit (SharpenFilter& f)
     }
 }
 
+void SessionVisitor::visit (SmoothFilter& f)
+{
+    xmlCurrent_->SetAttribute("method", (int) f.method());
+
+    std::map< std::string, float > filter_params = f.program().parameters();
+    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
+    xmlCurrent_->InsertEndChild(parameters);
+    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
+    {
+        XMLElement *param = xmlDoc_->NewElement( "uniform" );
+        param->SetAttribute("name", p->first.c_str() );
+        param->SetAttribute("value", p->second );
+        parameters->InsertEndChild(param);
+    }
+}
+
 void SessionVisitor::visit (EdgeFilter& f)
 {
     xmlCurrent_->SetAttribute("method", (int) f.method());

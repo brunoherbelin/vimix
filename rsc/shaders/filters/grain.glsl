@@ -100,18 +100,16 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     noise.g = mix(noise.r,pnoise3D(vec3(rotCoordsG*vec2(width/grainsize,height/grainsize),1.0)),coloramount);
     noise.b = mix(noise.r,pnoise3D(vec3(rotCoordsB*vec2(width/grainsize,height/grainsize),2.0)),coloramount);
 
-    vec3 col = texture(iChannel0, texCoord).rgb;
+    vec4 col = texture(iChannel0, texCoord);
 
     //noisiness response curve based on scene luminance
     vec3 lumcoeff = vec3(0.299,0.587,0.114);
-    float luminance = lumamount * dot(col, lumcoeff);
+    float luminance = lumamount * dot(col.rgb, lumcoeff);
     float lum = smoothstep(0.2,0.0,luminance);
     lum += luminance;
 
     noise = mix(noise,vec3(0.0),pow(lum,4.0));
-    col += noise * mix(0.02, 0.4, Amount);
-
-    fragColor =  vec4(col,1.0);
+    fragColor = col + vec4(noise * mix(0.02, 0.4, Amount), col.a);
 }
 
 

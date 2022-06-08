@@ -198,6 +198,41 @@ private:
 };
 
 
+class SmoothFilter : public ImageFilter
+{
+public:
+
+    SmoothFilter();
+
+    // Algorithms used for smoothing
+    typedef enum {
+        SMOOTH_BILINEAR = 0,
+        SMOOTH_KUWAHARA,
+        SMOOTH_OPENING,
+        SMOOTH_CLOSING,
+        SMOOTH_EROSION,
+        SMOOTH_DILATION,
+        SMOOTH_DENOISE,
+        SMOOTH_ADDNOISE,
+        SMOOTH_ADDGRAIN,
+        SMOOTH_INVALID
+    } SmoothMethod;
+    static const char* method_label[SMOOTH_INVALID];
+    SmoothMethod method () const { return method_; }
+    void setMethod(int method);
+
+    // implementation of FrameBufferFilter
+    Type type() const override { return FrameBufferFilter::FILTER_SMOOTH; }
+
+    void draw   (FrameBuffer *input) override;
+    void accept (Visitor& v) override;
+
+private:
+    SmoothMethod method_;
+    static std::vector< FilteringProgram > programs_;
+};
+
+
 class EdgeFilter : public ImageFilter
 {
 public:

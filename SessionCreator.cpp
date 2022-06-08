@@ -1275,6 +1275,30 @@ void SessionLoader::visit (SharpenFilter& f)
     f.setProgramParameters(filter_params);
 }
 
+void SessionLoader::visit (SmoothFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+
+    std::map< std::string, float > filter_params;
+    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
+    if (parameters) {
+        XMLElement* param = parameters->FirstChildElement("uniform");
+        for( ; param ; param = param->NextSiblingElement())
+        {
+            float val = 0.f;
+            param->QueryFloatAttribute("value", &val);
+            const char * name;
+            param->QueryStringAttribute("name", &name);
+            if (name)
+                filter_params[name] = val;
+        }
+    }
+
+    f.setProgramParameters(filter_params);
+}
+
 void SessionLoader::visit (EdgeFilter& f)
 {
     int m = 0;

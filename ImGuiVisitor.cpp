@@ -851,6 +851,51 @@ void ImGuiVisitor::visit (SharpenFilter& f)
     }
 }
 
+void ImGuiVisitor::visit (SmoothFilter& f)
+{
+    std::ostringstream oss;
+    oss << "Smooth ";
+
+    // Method selection
+    if (ImGuiToolkit::IconButton(14, 8)) {
+        f.setMethod( 0 );
+        oss << SmoothFilter::method_label[0];
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("Method", &m, SmoothFilter::method_label, IM_ARRAYSIZE(SmoothFilter::method_label) )) {
+        f.setMethod( m );
+        oss << SmoothFilter::method_label[m];
+        Action::manager().store(oss.str());
+    }
+
+    // List of parameters
+    std::map<std::string, float> filter_parameters = f.program().parameters();
+    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    {
+        ImGui::PushID( param->first.c_str() );
+        float v = param->second;
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            v = 0.f;
+            f.setProgramParameter(param->first, v);
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter(param->first, v);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << EdgeFilter::method_label[ f.method() ];
+            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
+            Action::manager().store(oss.str());
+        }
+        ImGui::PopID();
+    }
+}
+
+
 void ImGuiVisitor::visit (EdgeFilter& f)
 {
     std::ostringstream oss;
@@ -988,47 +1033,47 @@ void ImGuiVisitor::visit (ImageFilter& f)
         FilteringProgram target;
         f.setProgram( target );
     }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("Algorithm", f.program().name().c_str()) )
-    {
-        for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
-            if (ImGui::Selectable( p->name().c_str() )) {
-                // apply the selected filter to the source
-                f.setProgram( *p );
-            }
-        }
-        ImGui::EndCombo();
-    }
+//    ImGui::SameLine(0, IMGUI_SAME_LINE);
+//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//    if (ImGui::BeginCombo("Algorithm", f.program().name().c_str()) )
+//    {
+//        for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
+//            if (ImGui::Selectable( p->name().c_str() )) {
+//                // apply the selected filter to the source
+//                f.setProgram( *p );
+//            }
+//        }
+//        ImGui::EndCombo();
+//    }
 
-    // List of parameters
-    std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        ImGui::PushID( param->first.c_str() );
-        float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter(param->first, v);
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            // TODO UNDO
-            //            std::ostringstream oss;
-            //            oss << "Delay " << std::setprecision(3) << d << " s";
-            //            Action::manager().store(oss.str());
-        }
-        ImGui::PopID();
-    }
+//    // List of parameters
+//    std::map<std::string, float> filter_parameters = f.program().parameters();
+//    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+//    {
+//        ImGui::PushID( param->first.c_str() );
+//        float v = param->second;
+//        if (ImGuiToolkit::IconButton(13, 14)) {
+//            v = 0.f;
+//            f.setProgramParameter(param->first, v);
+//        }
+//        ImGui::SameLine(0, IMGUI_SAME_LINE);
+//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+//            f.setProgramParameter(param->first, v);
+//        }
+//        if (ImGui::IsItemDeactivatedAfterEdit()) {
+//            // TODO UNDO
+//            //            std::ostringstream oss;
+//            //            oss << "Delay " << std::setprecision(3) << d << " s";
+//            //            Action::manager().store(oss.str());
+//        }
+//        ImGui::PopID();
+//    }
 
     // Open Editor
-    ImGuiToolkit::IconButton(18, 18);
+//    ImGuiToolkit::IconButton(18, 18);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if ( ImGui::Button( ICON_FA_CODE "  Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.shader_editor = true;
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Code");
@@ -1068,7 +1113,7 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int type = (int) s.filter()->type();
-    if (ImGui::Combo("Filter", &type, FrameBufferFilter::type_label, IM_ARRAYSIZE(FrameBufferFilter::type_label) )) {
+    if (ImGui::Combo("Filter", &type, FrameBufferFilter::type_label, IM_ARRAYSIZE(FrameBufferFilter::type_label), FrameBufferFilter::FILTER_INVALID)) {
         s.setFilter( FrameBufferFilter::Type(type) );
         oss << ": Filter " << FrameBufferFilter::type_label[type];
         Action::manager().store(oss.str());

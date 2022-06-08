@@ -47,6 +47,7 @@ class DelayFilter;
 class ResampleFilter;
 class BlurFilter;
 class SharpenFilter;
+class SmoothFilter;
 class EdgeFilter;
 class AlphaFilter;
 class ImageFilter;
@@ -112,6 +113,7 @@ public:
     virtual void visit (ResampleFilter&) {}
     virtual void visit (BlurFilter&) {}
     virtual void visit (SharpenFilter&) {}
+    virtual void visit (SmoothFilter&) {}
     virtual void visit (EdgeFilter&) {}
     virtual void visit (AlphaFilter&) {}
     virtual void visit (ImageFilter&) {}

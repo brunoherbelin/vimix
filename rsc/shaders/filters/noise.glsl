@@ -12,8 +12,8 @@ uniform float Amount;
 // Controls the contrast/variance of noise.
 #define VARIANCE 0.5
 
-vec3 channel_mix(vec3 a, vec3 b, vec3 w) {
-    return vec3(mix(a.r, b.r, w.r), mix(a.g, b.g, w.g), mix(a.b, b.b, w.b));
+vec4 channel_mix(vec4 a, vec4 b, vec4 w) {
+    return vec4(mix(a.r, b.r, w.r), mix(a.g, b.g, w.g), mix(a.b, b.b, w.b), mix(a.a, b.a, w.a));
 }
 
 float hash11(float p)
@@ -29,38 +29,33 @@ float hash12(vec2 p)
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
-float hash13(vec3 p3)
-{
-    p3  = fract(p3 * .1031);
-    p3 += dot(p3, p3.zyx + 31.32);
-    return fract((p3.x + p3.y) * p3.z);
-}
 
 float gaussian(float z, float u, float o) {
     return (1.0 / (o * sqrt(2.0 * 3.1415))) * exp(-(((z - u) * (z - u)) / (2.0 * (o * o))));
 }
 
-vec3 madd(vec3 a, vec3 b, float w) {
+vec4 madd(vec4 a, vec4 b, float w) {
     return a + a * b * w;
 }
 
-vec3 screen(vec3 a, vec3 b, float w) {
-    return mix(a, vec3(1.0) - (vec3(1.0) - a) * (vec3(1.0) - b), w);
+vec4 screen(vec4 a, vec4 b, float w) {
+    return mix(a, vec4(1.0) - (vec4(1.0) - a) * (vec4(1.0) - b), w);
 }
 
-vec3 overlay(vec3 a, vec3 b, float w) {
+vec4 overlay(vec4 a, vec4 b, float w) {
     return mix(a, channel_mix(
         2.0 * a * b,
-        vec3(1.0) - 2.0 * (vec3(1.0) - a) * (vec3(1.0) - b),
-        step(vec3(0.5), a)
+        vec4(1.0) - 2.0 * (vec4(1.0) - a) * (vec4(1.0) - b),
+        step(vec4(0.5), a)
     ), w);
 }
 
-vec3 soft_light(vec3 a, vec3 b, float w) {
-    return mix(a, pow(a, pow(vec3(2.0), 2.0 * (vec3(0.5) - b))), w);
+vec4 soft_light(vec4 a, vec4 b, float w) {
+    return mix(a, pow(a, pow(vec4(2.0), 2.0 * (vec4(0.5) - b))), w);
 }
 
-void mainImage(out vec4 color, vec2 coord) {
+void mainImage(out vec4 color, in vec2 coord)
+{
     vec2 uv = coord / iResolution.xy;
     color = texture(iChannel0, uv);
     #if SRGB
@@ -73,19 +68,19 @@ void mainImage(out vec4 color, vec2 coord) {
 
     noise = gaussian(noise, float(MEAN), float(VARIANCE) * float(VARIANCE));
 
-    float w = mix(0.05, 0.5, Amount );
-    vec3 grain = vec3(noise) * (1.0 - color.rgb);
+    float w = mix(0.05, 0.8, Amount );
+    vec4 grain = vec4(noise) * (1.0 - color);
 
     #if BLEND_MODE == 0
-    color.rgb += grain * w;
+    color += grain * w;
     #elif BLEND_MODE == 1
-    color.rgb = screen(color.rgb, grain, w);
+    color = screen(color, grain, w);
     #elif BLEND_MODE == 2
-    color.rgb = overlay(color.rgb, grain, w);
+    color = overlay(color, grain, w);
     #elif BLEND_MODE == 3
-    color.rgb = soft_light(color.rgb, grain, w);
+    color = soft_light(color, grain, w);
     #elif BLEND_MODE == 4
-    color.rgb = max(color.rgb, grain * w);
+    color = max(color, grain * w);
     #endif
 
     #if SRGB
