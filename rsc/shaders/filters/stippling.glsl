@@ -1,4 +1,4 @@
-uniform float Factor;
+float Factor = 0.3;
 
 #define SEED1 -0.5775604999999985
 #define SEED2 6.440483302499992
@@ -49,5 +49,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float c = mask(uv);
     c = float( f > mix( 0.6 * c, 1.4 * c, Factor) );
 
-    fragColor = vec4(c, c, c, 1.0);
+    fragColor = vec4(c, c, c, texture(iChannel0, fragCoord.xy / iResolution.xy).a );
 }

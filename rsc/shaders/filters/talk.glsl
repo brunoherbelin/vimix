@@ -1,7 +1,7 @@
 // From https://www.shadertoy.com/view/XdfcWN
 // Created by inigo quilez - iq/2014
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-uniform float Factor;
+float Factor = 0.5;
 
 vec2 hash( vec2 p ) {
     p = 2.0 * vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));

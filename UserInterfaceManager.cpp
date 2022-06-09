@@ -5329,6 +5329,7 @@ void ShaderEditor::refresh(CloneSource *cs)
         filters_.erase(current_);
         current_ = nullptr;
     }
+
 }
 
 void ShaderEditor::Render()
@@ -5353,34 +5354,48 @@ void ShaderEditor::Render()
             Settings::application.widget.shader_editor = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
-            if (ImGui::MenuItem( ICON_FA_SYNC " Reload")) {
+            if (ImGui::MenuItem( ICON_FA_SYNC "  Reload", nullptr, nullptr, current_ != nullptr)) {
                 if ( current_ != nullptr )
                     filters_.erase(current_);
+                // force reload
                 current_ = nullptr;
+            }
+
+            // Menu section for presets
+            if (ImGui::BeginMenu( ICON_FA_SCROLL " Example code", current_ != nullptr))
+            {
+                for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
+
+                    if (ImGui::MenuItem( p->name().c_str() )) {
+                        ImageFilter *i = dynamic_cast<ImageFilter *>( current_->filter() );
+                        // if we can access the code of inside the image filter
+                        if (i) {
+                            // change the filter of the current image filter
+                            // => this triggers compilation of shader
+                            compilation_ = new std::promise<std::string>();
+                            i->setProgram( *p, compilation_ );
+                            compilation_return_ = compilation_->get_future();
+                            // inform status
+                            status_ = "Building...";
+                            // force reload
+                            current_ = nullptr;
+                        }
+                    }
+
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Browse shadertoy.com")) {
+                SystemToolkit::open("https://www.shadertoy.com/");
             }
 
             // Enable/Disable editor options
             ImGui::Separator();
-            ImGui::MenuItem( ICON_FA_UNDERLINE " Show Shader Inputs", nullptr, &show_shader_inputs_);
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT " Show whitespace", nullptr, &ws))
+            ImGui::MenuItem( ICON_FA_UNDERLINE "  Show Shader Inputs", nullptr, &show_shader_inputs_);
+            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT "  Show whitespace", nullptr, &ws))
                 _editor.SetShowWhitespaces(ws);
-
-            // Edit menu
-            ImGui::Separator();
-            if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
-                _editor.Undo();
-            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && _editor.CanRedo()))
-                _editor.Redo();
-            if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, _editor.HasSelection()))
-                _editor.Copy();
-            if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, nullptr, !ro && _editor.HasSelection()))
-                _editor.Cut();
-            if (ImGui::MenuItem( MENU_DELETE, SHORTCUT_DELETE, nullptr, !ro && _editor.HasSelection()))
-                _editor.Delete();
-            if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                _editor.Paste();
-            if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL, nullptr, _editor.GetText().size() > 1 ))
-                _editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(_editor.GetTotalLines(), 0));
 
             // output manager menu
             ImGui::Separator();
@@ -5398,6 +5413,28 @@ void ShaderEditor::Render()
             ImGui::EndMenu();
         }
 
+        // Edit menu
+        if (ImGui::BeginMenu( "Edit", current_ != nullptr ) ) {
+
+            if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
+                _editor.Undo();
+            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && _editor.CanRedo()))
+                _editor.Redo();
+            if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, _editor.HasSelection()))
+                _editor.Copy();
+            if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, nullptr, !ro && _editor.HasSelection()))
+                _editor.Cut();
+            if (ImGui::MenuItem( MENU_DELETE, SHORTCUT_DELETE, nullptr, !ro && _editor.HasSelection()))
+                _editor.Delete();
+            if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                _editor.Paste();
+            if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL, nullptr, _editor.GetText().size() > 1 ))
+                _editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(_editor.GetTotalLines(), 0));
+
+            ImGui::EndMenu();
+        }
+
+        // Build action menu
         if (ImGui::MenuItem( ICON_FA_HAMMER " Build", nullptr, nullptr, current_ != nullptr )) {
 
             // the UI has ref to code for this clone
@@ -5488,11 +5525,13 @@ void ShaderEditor::Render()
                         filters_[c] = i->program();
                     }
                 }
-                else
-                    status_ = "No shader";
+                else {
+                    status_ = "-";
+                    c = nullptr;
+                }
             }
             else
-                status_ = "No shader";
+                status_ = "-";
         }
         else
             status_ = "-";

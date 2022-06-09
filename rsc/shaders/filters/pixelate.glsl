@@ -1,5 +1,5 @@
-uniform float Size;
-uniform float Sharpen;
+float Size = 0.5;
+float Sharpen = 0.5;
 
 const mat3 G = mat3( 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625);
         

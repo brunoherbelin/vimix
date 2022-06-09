@@ -1,6 +1,6 @@
 // from https://www.shadertoy.com/view/4s2GRR
 // Inspired by http://stackoverflow.com/questions/6030814/add-fisheye-effect-to-images-at-runtime-using-opengl-es
-uniform float Factor;
+float Factor = 0.4;
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
@@ -26,6 +26,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     else uv = p;//no effect for power = 1.0
 
     // Second part of cheat for round effect, not elliptical
-    vec3 col = texture(iChannel0, vec2(uv.x, uv.y * prop)).xyz;
-    fragColor = vec4(col, 1.0);
+    fragColor = texture(iChannel0, vec2(uv.x, uv.y * prop));
 }

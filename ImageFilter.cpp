@@ -63,31 +63,17 @@ std::string fragmentFooter = "void main() {\n"
                              "    mainImage( FragColor, texcoord.xy * iResolution.xy );\n"
                              "}\n";
 
-//std::string fragmentFooter = "void main() {\n"
-//                             "    iChannelResolution[0] = vec3(textureSize(iChannel0, 0), 0.f);\n"
-//                             "    iChannelResolution[1] = vec3(textureSize(iChannel1, 0), 0.f);\n"
-//                             "    vec4 texcoord = iTransform * vec4(vertexUV.x, vertexUV.y, 0.0, 1.0);\n"
-//                             "    vec4 filtered;\n"
-//                             "    mainImage( filtered, texcoord.xy * iChannelResolution[0].xy );\n"
-//                             "    vec3 RGB = filtered.rgb * vertexColor.rgb * color.rgb;\n"
-//                             "    float maskIntensity = dot(texture(iChannel1, vertexUV).rgb, vec3(1.0/3.0));\n"
-//                             "    float A = clamp(filtered.a * vertexColor.a * color.a * maskIntensity, 0.0, 1.0);\n"
-//                             "    FragColor = vec4(RGB * A, A);\n"
-//                             "} \n";
-
-
 std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram(),
     FilteringProgram("Bilateral","shaders/filters/bilinear.glsl",   "",     { }),
-    FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { { "Size", 0.5}, { "Sharpen", 0.5} }),
-    FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { { "Intensity", 0.5} }),
-    FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { { "Radius", 1.0} }),
-    FilteringProgram("Chalk",    "shaders/filters/talk.glsl",       "",     { { "Factor", 1.0} }),
-    FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { { "Factor", 0.5} }),
-    FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { { "Factor", 0.5} }),
-    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { { "Factor", 0.35} }),
+    FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { }),
+    FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { }),
+    FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { }),
+    FilteringProgram("Talk",     "shaders/filters/talk.glsl",       "",     { }),
+    FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { }),
+    FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { }),
+    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { })
 };
-
 
 
 std::string FilteringProgram::getFilterCodeInputs()
@@ -96,9 +82,9 @@ std::string FilteringProgram::getFilterCodeInputs()
                                            "float     iTime;                 // shader playback time (in seconds)\n"
                                            "float     iTimeDelta;            // render time (in seconds)\n"
                                            "int       iFrame;                // shader playback frame\n"
-                                           "vec3      iChannelResolution[2]; // input channel resolution (in pixels)\n"
-                                           "sampler2D iChannel0;             // input channel (texture).\n"
-                                           "sampler2D iChannel1;             // input channel (mask).\n"
+                                           "vec3      iChannelResolution[2]; // input channels resolution (in pixels)\n"
+                                           "sampler2D iChannel0;             // input channel 0 (texture).\n"
+                                           "sampler2D iChannel1;             // input channel 1 (texture).\n"
                                            "vec4      iDate;                 // (year, month, day, time in seconds)";
     return filterHeaderHelp;
 }
@@ -114,7 +100,7 @@ std::string FilteringProgram::getFilterCodeDefault()
 ///                                 ////
 ////////////////////////////////////////
 
-FilteringProgram::FilteringProgram() : name_("None"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
+FilteringProgram::FilteringProgram() : name_("Default"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
 {
 
 }

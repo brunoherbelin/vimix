@@ -1,4 +1,4 @@
-uniform float Factor;
+float Factor = 0.5;
 
 const float mult = 1.0 / 17.0;
 const mat4 adjustments = (mat4(
@@ -34,8 +34,8 @@ float adjustFrag( float val, vec2 coord ) {
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-        vec2 uv = fragCoord.xy / iResolution.xy;
-        vec4 videoColor = texture(iChannel0, uv);
+    vec2 uv = fragCoord.xy / iResolution.xy;
+    vec4 videoColor = texture(iChannel0, uv);
 
     float vidLum = getLuminance(videoColor);
     vidLum = adjustFrag(vidLum, fragCoord.xy);
