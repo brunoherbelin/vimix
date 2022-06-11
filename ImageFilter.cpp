@@ -65,8 +65,9 @@ std::string fragmentFooter = "void main() {\n"
 
 std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram(),
-    FilteringProgram("Bilateral","shaders/filters/bilinear.glsl",   "",     { }),
+    FilteringProgram("Bilateral","shaders/filters/focus.glsl",      "",     { }),
     FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { }),
+    FilteringProgram("Earlybird","shaders/filters/earlybird.glsl",  "",     { }),
     FilteringProgram("Bloom",    "shaders/filters/bloom.glsl",      "",     { }),
     FilteringProgram("Bokeh",    "shaders/filters/bokeh.glsl",      "",     { }),
     FilteringProgram("Talk",     "shaders/filters/talk.glsl",       "",     { }),
@@ -714,7 +715,7 @@ const char* SmoothFilter::method_label[SmoothFilter::SMOOTH_INVALID] = {
 };
 
 std::vector< FilteringProgram > SmoothFilter::programs_ = {
-    FilteringProgram("Bilateral","shaders/filters/focus.glsl",      "",     { { "Factor", 0.5} }),
+    FilteringProgram("Bilateral","shaders/filters/bilinear.glsl",   "",     { { "Factor", 0.5} }),
     FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
     FilteringProgram("Opening",  "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
     FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
@@ -764,7 +765,7 @@ const char* EdgeFilter::method_label[EdgeFilter::EDGE_INVALID] = {
 std::vector< FilteringProgram > EdgeFilter::programs_ = {
     FilteringProgram("Sobel",    "shaders/filters/sobel.glsl",      "",     { { "Factor", 0.5} }),
     FilteringProgram("Freichen", "shaders/filters/freichen.glsl",   "",     { { "Factor", 0.5} }),
-    FilteringProgram("Edge",     "shaders/filters/bilinear.glsl",   "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
+    FilteringProgram("Edge",     "shaders/filters/focus.glsl",      "shaders/filters/edge.glsl",     { { "Threshold", 0.5} }),
     FilteringProgram("Contour",  "shaders/filters/sharpen_1.glsl",  "shaders/filters/contour_2.glsl",     { { "Amount", 0.5} }),
 };
 

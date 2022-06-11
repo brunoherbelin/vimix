@@ -1,3 +1,6 @@
+// Ordered Dithering Shader https://www.shadertoy.com/view/4lSSRR
+// by mooglemoogle
+// Adapted by Bruno Herbelin for vimix
 float Factor = 0.5;
 
 const float mult = 1.0 / 17.0;

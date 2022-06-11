@@ -5,6 +5,7 @@
 // This shader is modified to be compatible with LOVE2D's quirky shader engine!
 // Modified by Christian D. Madsen
 // https://github.com/strangewarp/LoveAnisotropicKuwahara
+// Adapted by Bruno Herbelin for vimix
 
 uniform float Radius;
 

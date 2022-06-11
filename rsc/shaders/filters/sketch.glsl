@@ -1,4 +1,3 @@
-
 /** 
  * Sketchy Stippling / Dot-Drawing Effect by Ruofei Du (DuRuofei.com)
  * Link to demo: https://www.shadertoy.com/view/ldSyzV

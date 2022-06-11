@@ -1,14 +1,11 @@
 /*
-chroma key algorithm used to remove the greens screen
-this technique is nice as you can choose a color removal range.
-using this range, the algorithm will either remove the given color
-or blend it with background
+ * This file is part of vimix - video live mixer
+ * https://github.com/brunoherbelin/vimix
+ * (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * Distributed under GNU GPL3+ License
+**/
+// Inspired by https://www.shadertoy.com/view/MlVXWD by tudordot
 
-because of this, difficult parts (ie. the sword) can either have a
-green-ish look or are a bit transparent (hard to catch with a lot of movement)
-
-(c) tudordot from https://www.shadertoy.com/view/MlVXWD
-*/
 
 uniform float Red;
 uniform float Green;

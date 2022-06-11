@@ -1,10 +1,12 @@
+/*
+ * This file is part of vimix - video live mixer
+ * https://github.com/brunoherbelin/vimix
+ * (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * Distributed under GNU GPL3+ License
+**/
 #define TWOPI 6.28318530718
 
 uniform float Radius;
-
-// float hash(vec2 co){
-//     return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
-// }
 
 #define SEED uvec4(0x5C995C6Du, 0x6A3C6A57u, 0xC65536CBu, 0x3563995Fu)
 const uint lcgM = 2891336453u;// ideal for 32 bits with odd c

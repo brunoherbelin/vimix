@@ -1,5 +1,9 @@
-// Gaussian blur with mipmapping
-// Bruno Herbelin
+/*
+ * This file is part of vimix - video live mixer
+ * https://github.com/brunoherbelin/vimix
+ * (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * Distributed under GNU GPL3+ License
+**/
 // Following tutorial https://www.shadertoy.com/view/WtKfD3
 
 #define N 13

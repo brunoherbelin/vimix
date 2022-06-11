@@ -1,53 +1,53 @@
-float Factor = 0.3;
+// Blue Noise Stippling 2 https://www.shadertoy.com/view/ldyXDd by FabriceNeyret2
+// simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
+// see also https://www.shadertoy.com/view/MdtGD7
+// --- checkerboard noise : to decorelate the pattern between size x size tiles
+// Adapted by Bruno Herbelin for vimix
 
-#define SEED1 -0.5775604999999985
-#define SEED2 6.440483302499992
+// simple x-y decorrelated noise seems enough
+#define stepnoise0(p, size) rnd( floor(p/size)*size )
+#define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
 
+//   joeedh's original noise (cleaned-up)
 vec2 stepnoise(vec2 p, float size) {
-    p += 10.0;
-    float x = floor(p.x/size)*size;
-    float y = floor(p.y/size)*size;
-
-    x = fract(x*0.1) + 1.0 + x*0.0002;
-    y = fract(y*0.1) + 1.0 + y*0.0003;
-
-    float a = fract(1.0 / (0.000001*x*y + 0.00001));
-    a = fract(1.0 / (0.000001234*a + 0.00001));
-
-    float b = fract(1.0 / (0.000002*(x*y+x) + 0.00001));
-    b = fract(1.0 / (0.0000235*b + 0.00001));
-
-    return vec2(a, b);
+    p = floor((p+10.)/size)*size;          // is p+10. useful ?
+    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;
+    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
+    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );
+    return p;
 }
 
-float tent(float f) {
-    return 1.0 - abs(fract(f)-0.5)*2.0;
-}
-
+// --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
 float mask(vec2 p) {
-    vec2 r = stepnoise(p, 8.423424);
-    p[0] += r[0];
-    p[1] += r[1];
+#define SEED1 1.705
+#define DMUL  8.12235325       // are exact DMUL and -.5 important ?
+    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+  //return f;  // If you want to skeep the tone mapping
+    f *= 1.03; //  to avoid zero-stipple in plain white ?
+    // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
+    // returned value in [0,37.2] , but < 0.57 with P=50%
+    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%
+}                                          // max = 37.2, int = 0.55
 
-    float f1 = tent(p[0]*SEED1 + p[1]/(SEED1+0.5));
-    float f2 = tent(p[1]*SEED2 + p[0]/(SEED2+0.5));
-    float f = sqrt( f1*f2 );
+// --- for ramp at screen bottom
+#define tent(f) ( 1. - abs(2.*fract(f)-1.) )
+// --- fetch luminance( texture (pixel + offset) )
+#define s(x,y) dot( texture(iChannel0, (U+vec2(x,y))/R ), vec4(.3,.6,.1,0) ) // luminance
 
-    return f;
-}
-
-float saturation(vec3 color) {
-    return (min(color.r, min(color.g, color.b)) + max(color.r, max(color.g, color.b))) * 0.5;
-}
-
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
+void mainImage( out vec4 O, vec2 U )
 {
-    vec2 uv = fragCoord.xy;
-    vec2 uv2 = fragCoord.xy / iResolution.x;
+    vec2 R = iResolution.xy; O-=O;
+    // --- fetch video luminance and enhance the contrast
+    float f =  s(-1,-1) + s(-1,0) + s(-1,1)
+             + s( 0,-1) +         + s( 0,1)
+             + s( 1,-1) + s( 1,0) + s( 1,1),
+         f0 = s(0,0);
+    f = ( .125*f + 8.*f0 ) / 6.;
 
-    float f = saturation( texture(iChannel0, fragCoord.xy / iResolution.xy).rgb );
-    float c = mask(uv);
-    c = float( f > mix( 0.6 * c, 1.4 * c, Factor) );
+    f = f0 - ( f-f0 ) * 0.5;
 
-    fragColor = vec4(c, c, c, texture(iChannel0, fragCoord.xy / iResolution.xy).a );
+    // --- stippling
+    O += step(mask(U), f);
 }
+
