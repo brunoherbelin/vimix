@@ -379,7 +379,7 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
             Mixer::manager().setView(View::TEXTURE);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_PRINT_SCREEN, false ))
             StartScreenshot();
         // button home to toggle menu
         else if (ImGui::IsKeyPressed( GLFW_KEY_HOME, false ))
@@ -405,7 +405,7 @@ void UserInterface::handleKeyboard()
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_END, false )) {
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
         // Space bar
