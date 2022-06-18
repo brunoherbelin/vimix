@@ -379,7 +379,7 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
             Mixer::manager().setView(View::TEXTURE);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_PRINT_SCREEN, false ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
             StartScreenshot();
         // button home to toggle menu
         else if (ImGui::IsKeyPressed( GLFW_KEY_HOME, false ))
