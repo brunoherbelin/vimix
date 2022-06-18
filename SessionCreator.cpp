@@ -1227,14 +1227,9 @@ void SessionLoader::visit (ResampleFilter& f)
     f.setFactor(m);
 }
 
-void SessionLoader::visit (BlurFilter& f)
+std::map< std::string, float > get_parameters_(XMLElement* parameters)
 {
-    int m = 0;
-    xmlCurrent_->QueryIntAttribute("method", &m);
-    f.setMethod(m);
-
     std::map< std::string, float > filter_params;
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
     if (parameters) {
         XMLElement* param = parameters->FirstChildElement("uniform");
         for( ; param ; param = param->NextSiblingElement())
@@ -1247,8 +1242,17 @@ void SessionLoader::visit (BlurFilter& f)
                 filter_params[name] = val;
         }
     }
+    return filter_params;
+}
 
-    f.setProgramParameters(filter_params);
+void SessionLoader::visit (BlurFilter& f)
+{
+    // blur specific
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
 void SessionLoader::visit (SharpenFilter& f)
@@ -1256,23 +1260,8 @@ void SessionLoader::visit (SharpenFilter& f)
     int m = 0;
     xmlCurrent_->QueryIntAttribute("method", &m);
     f.setMethod(m);
-
-    std::map< std::string, float > filter_params;
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
-    if (parameters) {
-        XMLElement* param = parameters->FirstChildElement("uniform");
-        for( ; param ; param = param->NextSiblingElement())
-        {
-            float val = 0.f;
-            param->QueryFloatAttribute("value", &val);
-            const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
-                filter_params[name] = val;
-        }
-    }
-
-    f.setProgramParameters(filter_params);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
 void SessionLoader::visit (SmoothFilter& f)
@@ -1280,23 +1269,8 @@ void SessionLoader::visit (SmoothFilter& f)
     int m = 0;
     xmlCurrent_->QueryIntAttribute("method", &m);
     f.setMethod(m);
-
-    std::map< std::string, float > filter_params;
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
-    if (parameters) {
-        XMLElement* param = parameters->FirstChildElement("uniform");
-        for( ; param ; param = param->NextSiblingElement())
-        {
-            float val = 0.f;
-            param->QueryFloatAttribute("value", &val);
-            const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
-                filter_params[name] = val;
-        }
-    }
-
-    f.setProgramParameters(filter_params);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
 void SessionLoader::visit (EdgeFilter& f)
@@ -1304,23 +1278,8 @@ void SessionLoader::visit (EdgeFilter& f)
     int m = 0;
     xmlCurrent_->QueryIntAttribute("method", &m);
     f.setMethod(m);
-
-    std::map< std::string, float > filter_params;
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
-    if (parameters) {
-        XMLElement* param = parameters->FirstChildElement("uniform");
-        for( ; param ; param = param->NextSiblingElement())
-        {
-            float val = 0.f;
-            param->QueryFloatAttribute("value", &val);
-            const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
-                filter_params[name] = val;
-        }
-    }
-
-    f.setProgramParameters(filter_params);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
 void SessionLoader::visit (AlphaFilter& f)
@@ -1328,40 +1287,24 @@ void SessionLoader::visit (AlphaFilter& f)
     int m = 0;
     xmlCurrent_->QueryIntAttribute("operation", &m);
     f.setOperation(m);
-
-    std::map< std::string, float > filter_params;
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
-    if (parameters) {
-        XMLElement* param = parameters->FirstChildElement("uniform");
-        for( ; param ; param = param->NextSiblingElement())
-        {
-            float val = 0.f;
-            param->QueryFloatAttribute("value", &val);
-            const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
-                filter_params[name] = val;
-        }
-    }
-
-    f.setProgramParameters(filter_params);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
 void SessionLoader::visit (ImageFilter& f)
 {
     const char * filter_name;
     std::pair< std::string, std::string > filter_codes;
-    std::map< std::string, float > filter_params;
 
     xmlCurrent_->QueryStringAttribute("name", &filter_name);
 
+    // image filter code
     XMLElement* firstpass  = xmlCurrent_->FirstChildElement("firstpass");
     if (firstpass) {
         const char * code = firstpass->GetText();
         if (code)
             filter_codes.first = std::string(code);
     }
-
     XMLElement* secondpass = xmlCurrent_->FirstChildElement("secondpass");
     if (secondpass) {
         const char * code = secondpass->GetText();
@@ -1369,20 +1312,10 @@ void SessionLoader::visit (ImageFilter& f)
             filter_codes.second = std::string(code);
     }
 
-    XMLElement* parameters = xmlCurrent_->FirstChildElement("parameters");
-    if (parameters) {
-        XMLElement* param = parameters->FirstChildElement("uniform");
-        for( ; param ; param = param->NextSiblingElement())
-        {
-            float val = 0.f;
-            param->QueryFloatAttribute("value", &val);
-            const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
-                filter_params[name] = val;
-        }
-    }
+    // image filter parameters
+    std::map< std::string, float > filter_params = get_parameters_(xmlCurrent_->FirstChildElement("parameters"));
 
+    // set image filter program and parameters
     f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second, filter_params) );
 }
 

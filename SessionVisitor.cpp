@@ -693,93 +693,65 @@ void SessionVisitor::visit (ResampleFilter& f)
     xmlCurrent_->SetAttribute("factor", (int) f.factor());
 }
 
-void SessionVisitor::visit (BlurFilter& f)
+XMLElement *list_parameters_(tinyxml2::XMLDocument *doc, std::map< std::string, float > filter_params)
 {
-    xmlCurrent_->SetAttribute("method", (int) f.method());
-
-    std::map< std::string, float > filter_params = f.program().parameters();
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
+    XMLElement *parameters = doc->NewElement( "parameters" );
     for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
     {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
+        XMLElement *param = doc->NewElement( "uniform" );
         param->SetAttribute("name", p->first.c_str() );
         param->SetAttribute("value", p->second );
         parameters->InsertEndChild(param);
     }
+    return parameters;
+}
+
+void SessionVisitor::visit (BlurFilter& f)
+{
+    // blur specific
+    xmlCurrent_->SetAttribute("method", (int) f.method());
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (SharpenFilter& f)
 {
+    // sharpen specific
     xmlCurrent_->SetAttribute("method", (int) f.method());
-
-    std::map< std::string, float > filter_params = f.program().parameters();
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
-    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
-    {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
-        param->SetAttribute("name", p->first.c_str() );
-        param->SetAttribute("value", p->second );
-        parameters->InsertEndChild(param);
-    }
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (SmoothFilter& f)
 {
+    // smooth specific
     xmlCurrent_->SetAttribute("method", (int) f.method());
-
-    std::map< std::string, float > filter_params = f.program().parameters();
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
-    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
-    {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
-        param->SetAttribute("name", p->first.c_str() );
-        param->SetAttribute("value", p->second );
-        parameters->InsertEndChild(param);
-    }
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (EdgeFilter& f)
 {
+    // edge specific
     xmlCurrent_->SetAttribute("method", (int) f.method());
-
-    std::map< std::string, float > filter_params = f.program().parameters();
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
-    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
-    {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
-        param->SetAttribute("name", p->first.c_str() );
-        param->SetAttribute("value", p->second );
-        parameters->InsertEndChild(param);
-    }
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (AlphaFilter& f)
 {
+    // alpha specific
     xmlCurrent_->SetAttribute("operation", (int) f.operation());
-
-    std::map< std::string, float > filter_params = f.program().parameters();
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
-    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
-    {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
-        param->SetAttribute("name", p->first.c_str() );
-        param->SetAttribute("value", p->second );
-        parameters->InsertEndChild(param);
-    }
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (ImageFilter& f)
 {
     xmlCurrent_->SetAttribute("name", f.program().name().c_str() );
 
+    // image filter code
     std::pair< std::string, std::string > filter_codes = f.program().code();
-    std::map< std::string, float > filter_params = f.program().parameters();
-
     XMLElement *firstpass = xmlDoc_->NewElement( "firstpass" );
     xmlCurrent_->InsertEndChild(firstpass);
     {
@@ -794,15 +766,8 @@ void SessionVisitor::visit (ImageFilter& f)
         secondpass->InsertEndChild(code);
     }
 
-    XMLElement *parameters = xmlDoc_->NewElement( "parameters" );
-    xmlCurrent_->InsertEndChild(parameters);
-    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
-    {
-        XMLElement *param = xmlDoc_->NewElement( "uniform" );
-        param->SetAttribute("name", p->first.c_str() );
-        param->SetAttribute("value", p->second );
-        parameters->InsertEndChild(param);
-    }
+    // image filter parameters
+    xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
 void SessionVisitor::visit (CloneSource& s)

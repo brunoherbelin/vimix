@@ -749,6 +749,7 @@ void ImGuiVisitor::visit (ResampleFilter& f)
         f.setFactor( 0 );
         oss << "Resample " << ResampleFilter::factor_label[0];
         Action::manager().store(oss.str());
+        info.reset();
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -757,6 +758,33 @@ void ImGuiVisitor::visit (ResampleFilter& f)
         f.setFactor( m );
         oss << "Resample " << ResampleFilter::factor_label[m];
         Action::manager().store(oss.str());
+        info.reset();
+    }
+}
+
+void list_parameters_(ImageFilter &f, std::ostringstream &oss)
+{
+    std::map<std::string, float> filter_parameters = f.program().parameters();
+    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    {
+        ImGui::PushID( param->first.c_str() );
+        float v = param->second;
+        if (ImGuiToolkit::IconButton(13, 14)) {
+            v = 0.f;
+            f.setProgramParameter(param->first, v);
+            oss << " : " << param->first << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter(param->first, v);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
+            Action::manager().store(oss.str());
+        }
+        ImGui::PopID();
     }
 }
 
@@ -780,30 +808,8 @@ void ImGuiVisitor::visit (BlurFilter& f)
         Action::manager().store(oss.str());
     }
 
-
     // List of parameters
-    std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        ImGui::PushID( param->first.c_str() );
-        float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter(param->first, v);
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << BlurFilter::method_label[ f.method() ];
-            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
-            Action::manager().store(oss.str());
-        }
-        ImGui::PopID();
-    }
-
+    list_parameters_(f, oss);
 }
 
 void ImGuiVisitor::visit (SharpenFilter& f)
@@ -826,29 +832,8 @@ void ImGuiVisitor::visit (SharpenFilter& f)
         Action::manager().store(oss.str());
     }
 
-
     // List of parameters
-    std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        ImGui::PushID( param->first.c_str() );
-        float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter(param->first, v);
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << SharpenFilter::method_label[ f.method() ];
-            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
-            Action::manager().store(oss.str());
-        }
-        ImGui::PopID();
-    }
+    list_parameters_(f, oss);
 }
 
 void ImGuiVisitor::visit (SmoothFilter& f)
@@ -872,29 +857,8 @@ void ImGuiVisitor::visit (SmoothFilter& f)
     }
 
     // List of parameters
-    std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        ImGui::PushID( param->first.c_str() );
-        float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter(param->first, v);
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << EdgeFilter::method_label[ f.method() ];
-            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
-            Action::manager().store(oss.str());
-        }
-        ImGui::PopID();
-    }
+    list_parameters_(f, oss);
 }
-
 
 void ImGuiVisitor::visit (EdgeFilter& f)
 {
@@ -916,29 +880,8 @@ void ImGuiVisitor::visit (EdgeFilter& f)
         Action::manager().store(oss.str());
     }
 
-
     // List of parameters
-    std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-    {
-        ImGui::PushID( param->first.c_str() );
-        float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter(param->first, v);
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << EdgeFilter::method_label[ f.method() ];
-            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
-            Action::manager().store(oss.str());
-        }
-        ImGui::PopID();
-    }
+    list_parameters_(f, oss);
 }
 
 void ImGuiVisitor::visit (AlphaFilter& f)
@@ -960,7 +903,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         oss << AlphaFilter::operation_label[m];
         Action::manager().store(oss.str());
     }
-
 
     // List of parameters
     std::map<std::string, float> filter_parameters = f.program().parameters();
@@ -1033,42 +975,6 @@ void ImGuiVisitor::visit (ImageFilter& f)
         FilteringProgram target;
         f.setProgram( target );
     }
-//    ImGui::SameLine(0, IMGUI_SAME_LINE);
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    if (ImGui::BeginCombo("Algorithm", f.program().name().c_str()) )
-//    {
-//        for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
-//            if (ImGui::Selectable( p->name().c_str() )) {
-//                // apply the selected filter to the source
-//                f.setProgram( *p );
-//            }
-//        }
-//        ImGui::EndCombo();
-//    }
-
-//    // List of parameters
-//    std::map<std::string, float> filter_parameters = f.program().parameters();
-//    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
-//    {
-//        ImGui::PushID( param->first.c_str() );
-//        float v = param->second;
-//        if (ImGuiToolkit::IconButton(13, 14)) {
-//            v = 0.f;
-//            f.setProgramParameter(param->first, v);
-//        }
-//        ImGui::SameLine(0, IMGUI_SAME_LINE);
-//        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
-//            f.setProgramParameter(param->first, v);
-//        }
-//        if (ImGui::IsItemDeactivatedAfterEdit()) {
-//            // TODO UNDO
-//            //            std::ostringstream oss;
-//            //            oss << "Delay " << std::setprecision(3) << d << " s";
-//            //            Action::manager().store(oss.str());
-//        }
-//        ImGui::PopID();
-//    }
 
     // Open Editor
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1108,6 +1014,7 @@ void ImGuiVisitor::visit (CloneSource& s)
         s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
         oss << ": Filter None";
         Action::manager().store(oss.str());
+        info.reset();
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1116,6 +1023,7 @@ void ImGuiVisitor::visit (CloneSource& s)
         s.setFilter( FrameBufferFilter::Type(type) );
         oss << ": Filter " << FrameBufferFilter::type_label[type];
         Action::manager().store(oss.str());
+        info.reset();
     }
 
     // filter options
@@ -1191,7 +1099,6 @@ void ImGuiVisitor::visit (DeviceSource& s)
         }
         ImGui::EndCombo();
     }
-
 }
 
 void ImGuiVisitor::visit (NetworkSource& s)
