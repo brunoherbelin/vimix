@@ -2,6 +2,8 @@
 // Bokeh disc.
 // by David Hoskins.
 // Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+// Adapted by Bruno Herbelin for vimix
+
 // The Golden Angle is (3.-sqrt(5.0))*PI radians
 #define GOLDEN_ANGLE 2.39996323
 #define ITERATIONS 60

@@ -1,5 +1,6 @@
-// from https://www.shadertoy.com/view/4s2GRR
+// from https://www.shadertoy.com/view/4s2GRR by SanchYESS
 // Inspired by http://stackoverflow.com/questions/6030814/add-fisheye-effect-to-images-at-runtime-using-opengl-es
+// Adapted by Bruno Herbelin for vimix
 float Factor = 0.4;
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )

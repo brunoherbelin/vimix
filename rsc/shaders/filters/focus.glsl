@@ -1,5 +1,6 @@
 // Bilateral filter
 // inspired from mrharicot https://www.shadertoy.com/view/4dfGDH
+// Adapted by Bruno Herbelin for vimix
 
 #define SIGMA 10.0
 #define BSIGMA 0.1

@@ -2,6 +2,7 @@
 // David Hoskins.
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 // https://www.shadertoy.com/view/XdjSRw
+// Adapted by Bruno Herbelin for vimix
 
 // Set this to iTime to add pixel noise.
 #define TIME 0.0

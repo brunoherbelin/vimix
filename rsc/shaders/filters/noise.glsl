@@ -1,7 +1,7 @@
-uniform float Amount;
-
-// Feel free to steal this :^)
+// From https://www.shadertoy.com/view/4t2fRz
+// By luluco250. Feel free to steal this :^)
 // Consider it MIT licensed, you can link to this page if you want to.
+// Adapted by Bruno Herbelin for vimix
 
 #define SRGB 1
 // 0: Addition, 1: Screen, 2: Overlay, 3: Soft Light, 4: Lighten-Only
@@ -11,6 +11,8 @@ uniform float Amount;
 #define MEAN 0.0
 // Controls the contrast/variance of noise.
 #define VARIANCE 0.5
+
+uniform float Amount;
 
 vec4 channel_mix(vec4 a, vec4 b, vec4 w) {
     return vec4(mix(a.r, b.r, w.r), mix(a.g, b.g, w.g), mix(a.b, b.b, w.b), mix(a.a, b.a, w.a));

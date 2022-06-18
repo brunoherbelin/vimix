@@ -1,6 +1,8 @@
 // From https://www.shadertoy.com/view/XdfcWN
 // Created by inigo quilez - iq/2014
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+// Adapted by Bruno Herbelin for vimix
+
 float Factor = 0.5;
 
 vec2 hash( vec2 p ) {

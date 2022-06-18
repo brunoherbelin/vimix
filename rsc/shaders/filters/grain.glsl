@@ -1,3 +1,6 @@
+// From https://www.shadertoy.com/view/wllfDN
+// by germandavid
+// Adapted by Bruno Herbelin for vimix
 uniform float Amount;
 
 const float permTexUnit = 1.0/256.0;		// Perm texture texel-size
