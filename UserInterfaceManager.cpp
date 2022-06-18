@@ -1592,8 +1592,8 @@ void HelperToolbox::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_HELP))
         {
             // Enable/Disable Ableton Link
-            if ( ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Online user manual") ) {
-                SystemToolkit::open("https://github.com/brunoherbelin/vimix/wiki/User-manual");
+            if ( ImGui::MenuItem( ICON_FA_BOOK_OPEN "  Online wiki") ) {
+                SystemToolkit::open("https://github.com/brunoherbelin/vimix/wiki");
             }
 
             // Enable/Disable tooltips
@@ -1614,6 +1614,25 @@ void HelperToolbox::Render()
 
     const float width_window = ImGui::GetWindowSize().x - ImGui::GetFontSize();
     const float width_column0 = ImGui::GetFontSize() * 6;
+
+
+    if (ImGui::CollapsingHeader("Documentation", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+
+        ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+
+        ImGui::Text("User manual"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("Online user manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::NextColumn();
+        ImGui::Text("OSC"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("Open Sound Control API", "https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::NextColumn();
+        ImGui::Text("SRT"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("Secure Reliable Transport Broadcast", "https://github.com/brunoherbelin/vimix/wiki/SRT-stream-I-O", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+        ImGui::Columns(1);
+    }
 
     if (ImGui::CollapsingHeader("Views"))
     {
@@ -1729,7 +1748,7 @@ void HelperToolbox::Render()
         ImGui::Text ("Displays the rendering output as a source, with or without loopback.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
-        ImGui::Text ("Clone a source into another source, possibly with a short delay.");
+        ImGui::Text ("Clone a source into another source with a filter.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Group"); ImGui::NextColumn();
         ImGui::Text ("Group of sources rendered together after flattenning them in Layers view.");
@@ -1738,7 +1757,53 @@ void HelperToolbox::Render()
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Inputs"))
+    if (ImGui::CollapsingHeader("Filters"))
+    {
+        ImGui::Text("Select 'Clone & Filter' on a source to access filters;");
+
+        ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+
+        ImGuiToolkit::Icon(ICON_FILTER_DELAY); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Delay"); ImGui::NextColumn();
+        ImGui::Text("Postpones the display of the input source by a given delay (between 0.0 and 2.0 seconds).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_RESAMPLE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Resample"); ImGui::NextColumn();
+        ImGui::Text ("Displays the input source with a different resolution. Downsampling is producing a smaller resolution (half or quarter). Upsampling is producing a higher resolution (double). GPU filtering is applied to improve scaling quality.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_BLUR); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Blur"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU bluring filter. Radius of the filter (when available) is a fraction of the image height. ");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_SHARPEN); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Sharpen"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU sharpening filter.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_SMOOTH); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Smooth"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU smoothing filters to reduce noise. Inverse filters to add noise or grain are also available.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_EDGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Edge"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU filter to outline edges.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_ALPHA); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Alpha"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU chroma-key (green screen) or luma-key (black screen). Inverse filter fills transparent alpha with an opaque color.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_FILTER_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Custom"); ImGui::NextColumn();
+        ImGui::Text ("Applies a real-time GPU fragment shader defined by custom code in OpenGL Shading Language (GLSL). ");
+        ImGuiToolkit::ButtonOpenUrl("About GLSL", "https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGuiToolkit::ButtonOpenUrl("Browse shadertoy.com", "https://www.shadertoy.com", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Input Mapping"))
     {
         ImGui::Columns(2, "inputcolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -1761,7 +1826,7 @@ void HelperToolbox::Render()
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Keyboard shortcuts", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader("Keyboard shortcuts"))
     {
         ImGui::Columns(2, "keyscolumns", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -1770,6 +1835,10 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_BARS " Main menu"); ImGui::NextColumn();
         ImGui::Text("INS"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLUS " New source"); ImGui::NextColumn();
+        ImGui::Text("DEL"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_BACKSPACE " Delete source"); ImGui::NextColumn();
+        ImGui::Text("TAB"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EXCHANGE_ALT " Switch Current source"); ImGui::NextColumn();
         ImGui::Text("F1"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_BULLSEYE " Mixing view"); ImGui::NextColumn();
         ImGui::Text("F2"); ImGui::NextColumn();
@@ -1778,10 +1847,6 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_LAYER_GROUP " Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_BACKSPACE " DEL"); ImGui::NextColumn();
-        ImGui::Text("Delete Current source"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_EXCHANGE_ALT "  TAB"); ImGui::NextColumn();
-        ImGui::Text("Switch Current source"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
@@ -1795,6 +1860,8 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_CLOCK " " TOOLTIP_TIMER "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_INPUTS); ImGui::NextColumn();
         ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
         ImGui::Text(ICON_FA_STICKY_NOTE " " TOOLTIP_NOTE); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
@@ -5418,7 +5485,7 @@ void ShaderEditor::Render()
 
             if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
                 _editor.Undo();
-            if (ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, nullptr, !ro && _editor.CanRedo()))
+            if (ImGui::MenuItem( MENU_REDO, CTRL_MOD "Y", nullptr, !ro && _editor.CanRedo()))
                 _editor.Redo();
             if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, nullptr, _editor.HasSelection()))
                 _editor.Copy();
@@ -5493,7 +5560,7 @@ void ShaderEditor::Render()
                 std::string num = m.str().substr(2, m.length()-2);
                 if ( BaseToolkit::is_a_number(num, &l)){
                     status_ += "line ";
-                    status_ += std::to_string(l-16);
+                    status_ += std::to_string(l-15);
                 }
                 s = m.suffix().str();
             }

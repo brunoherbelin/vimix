@@ -724,7 +724,7 @@ void ImGuiVisitor::visit (PassthroughFilter&)
 
 void ImGuiVisitor::visit (DelayFilter& f)
 {
-    if (ImGuiToolkit::IconButton(10, 15)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
         f.setDelay(0.f);
         Action::manager().store("Delay 0 s");
     }
@@ -745,7 +745,7 @@ void ImGuiVisitor::visit (ResampleFilter& f)
     std::ostringstream oss;
 
     // Resampling Factor selection
-    if (ImGuiToolkit::IconButton(8, 5)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_RESAMPLE)) {
         f.setFactor( 0 );
         oss << "Resample " << ResampleFilter::factor_label[0];
         Action::manager().store(oss.str());
@@ -766,7 +766,7 @@ void ImGuiVisitor::visit (BlurFilter& f)
     oss << "Blur ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(7, 16)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_BLUR)) {
         f.setMethod( 0 );
         oss << BlurFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -812,7 +812,7 @@ void ImGuiVisitor::visit (SharpenFilter& f)
     oss << "Sharpen ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(2, 1)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_SHARPEN)) {
         f.setMethod( 0 );
         oss << SharpenFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -857,7 +857,7 @@ void ImGuiVisitor::visit (SmoothFilter& f)
     oss << "Smooth ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(14, 8)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_SMOOTH)) {
         f.setMethod( 0 );
         oss << SmoothFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -902,7 +902,7 @@ void ImGuiVisitor::visit (EdgeFilter& f)
     oss << "Edge ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(16, 8)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_EDGE)) {
         f.setMethod( 0 );
         oss << EdgeFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -947,7 +947,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     oss << "Alpha ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(13, 4)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_ALPHA)) {
         f.setOperation( 0 );
         oss << AlphaFilter::operation_label[0];
         Action::manager().store(oss.str());
@@ -1029,7 +1029,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 void ImGuiVisitor::visit (ImageFilter& f)
 {
     // Selection of Algorithm
-    if (ImGuiToolkit::IconButton(1, 4)) {
+    if (ImGuiToolkit::IconButton(ICON_FILTER_IMAGE)) {
         FilteringProgram target;
         f.setProgram( target );
     }
@@ -1071,7 +1071,6 @@ void ImGuiVisitor::visit (ImageFilter& f)
 //    }
 
     // Open Editor
-//    ImGuiToolkit::IconButton(18, 18);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Settings::application.widget.shader_editor = true;
