@@ -57,6 +57,7 @@ public:
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
 
     // globals
+    static int getFilterHeaderNumlines();
     static std::string getFilterCodeInputs();
     static std::string getFilterCodeDefault();
     static std::list< FilteringProgram > presets;

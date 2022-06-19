@@ -76,6 +76,10 @@ std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { })
 };
 
+int FilteringProgram::getFilterHeaderNumlines()
+{
+    return 15;
+}
 
 std::string FilteringProgram::getFilterCodeInputs()
 {

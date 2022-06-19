@@ -1132,7 +1132,7 @@ void UserInterface::showSourceEditor(Source *s)
         }
         CloneSource *cs = dynamic_cast<CloneSource *>(s);
         if (cs != nullptr) {
-            shadercontrol.refresh( cs );
+            shadercontrol.setVisible( cs );
         }
         if (s->playable()) {
             sourcecontrol.setVisible(true);
@@ -5390,13 +5390,15 @@ bool ShaderEditor::Visible() const
              );
 }
 
-void ShaderEditor::refresh(CloneSource *cs)
+void ShaderEditor::setVisible(CloneSource *cs)
 {
-    if ( cs != nullptr && current_ != nullptr && cs == current_ ) {
-        filters_.erase(current_);
-        current_ = nullptr;
-    }
+    if ( cs != nullptr ) {
+        FrameBufferFilter *f = cs->filter();
+        // if the filter is an Image Filter
+        if (f && f->type() == FrameBufferFilter::FILTER_IMAGE )
+            setVisible(true);
 
+    }
 }
 
 void ShaderEditor::Render()
@@ -5433,7 +5435,7 @@ void ShaderEditor::Render()
             {
                 for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
 
-                    if (ImGui::MenuItem( p->name().c_str() )) {
+                    if (current_ != nullptr && ImGui::MenuItem( p->name().c_str() )) {
                         ImageFilter *i = dynamic_cast<ImageFilter *>( current_->filter() );
                         // if we can access the code of inside the image filter
                         if (i) {
@@ -5550,9 +5552,9 @@ void ShaderEditor::Render()
             // get message returned from compilation
             std::string s = compilation_return_.get();
 
-            // find reported line numbers "0(nn)" and replace with "line N"
+            // find reported line numbers "0:nn" and replace with "line N"
             status_ = "";
-            std::regex e("0\\([[:digit:]]+\\)");
+            std::regex e("0\\:[[:digit:]]+");
             std::smatch m;
             while (std::regex_search(s, m, e)) {
                 status_ += m.prefix().str();
@@ -5560,7 +5562,8 @@ void ShaderEditor::Render()
                 std::string num = m.str().substr(2, m.length()-2);
                 if ( BaseToolkit::is_a_number(num, &l)){
                     status_ += "line ";
-                    status_ += std::to_string(l-15);
+                    status_ += std::to_string(l - FilteringProgram::getFilterHeaderNumlines());
+                    status_ += " ";
                 }
                 s = m.suffix().str();
             }
@@ -5588,8 +5591,10 @@ void ShaderEditor::Render()
                     ImageFilter *i = dynamic_cast<ImageFilter *>(f);
                     // if we can access the code of the filter
                     if (i) {
-                        // set code for this clone
-                        filters_[c] = i->program();
+                        // if the current clone was not already registered
+                        if ( filters_.find(c) == filters_.end() )
+                            // remember code for this clone
+                            filters_[c] = i->program();
                     }
                 }
                 else {
