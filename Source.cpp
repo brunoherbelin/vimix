@@ -643,6 +643,15 @@ float Source::alpha() const
     return blendingShader()->color.a;
 }
 
+
+bool Source::textureTransformed () const
+{
+    return frame()->projectionArea() != glm::vec2(1.f) ||       // cropped
+           group(View::TEXTURE)->rotation_.z != 0.f ||          // rotation
+           group(View::TEXTURE)->scale_ != glm::vec3(1.f) ||    // scaled
+           group(View::TEXTURE)->translation_ != glm::vec3(0.f);// displaced
+}
+
 void Source::call(SourceCallback *callback, bool override)
 {
     if (callback != nullptr) {

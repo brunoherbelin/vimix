@@ -6,8 +6,6 @@
 #include "Source.h"
 #include "FrameBufferFilter.h"
 
-#include "ImageFilter.h" // TODO REMOVE set_filtering_program
-
 class CloneSource : public Source
 {
     friend class Source;

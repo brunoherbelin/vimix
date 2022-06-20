@@ -199,7 +199,7 @@ void CloneSource::play (bool on)
 
 bool CloneSource::playable () const
 {
-    return true;
+    return filter_->type() != FrameBufferFilter::FILTER_PASSTHROUGH;
 }
 
 void CloneSource::replay()
