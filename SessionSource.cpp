@@ -137,14 +137,6 @@ void SessionSource::setActive (bool on)
     // change status of session (recursive change of internal sources)
     if (session_) {
         session_->setActive(active_);
-
-        // change visibility of active surface (show preview of session when inactive)
-        if (activesurface_) {
-            if (active_)
-                activesurface_->setTextureIndex(Resource::getTextureTransparent());
-            else
-                activesurface_->setTextureIndex(session_->frame()->texture());
-        }
     }
 }
 

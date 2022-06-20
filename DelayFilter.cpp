@@ -26,6 +26,29 @@ DelayFilter::~DelayFilter()
         elapsed_.pop();
 }
 
+void DelayFilter::reset ()
+{
+    // delete all frame buffers
+    while (!frames_.empty()) {
+        if (frames_.front() != nullptr)
+            delete frames_.front();
+        frames_.pop();
+    }
+
+    while (!elapsed_.empty())
+        elapsed_.pop();
+
+    now_ = 0.0;
+}
+
+double DelayFilter::updateTime ()
+{
+    if (!elapsed_.empty())
+        return elapsed_.front();
+
+    return 0.;
+}
+
 void DelayFilter::update (float dt)
 {
     if (input_) {
@@ -96,7 +119,7 @@ void DelayFilter::draw (FrameBuffer *input)
 {
     input_ = input;
 
-    if ( enabled() ) // TODO TEST DISABLE
+    if ( enabled() )
     {
         // make sure the queue is not empty
         if ( input_ && !frames_.empty() ) {

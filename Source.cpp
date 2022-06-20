@@ -523,7 +523,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     if ( activesurface_ == nullptr) {
 
         // for views showing a scaled mixing surface, a dedicated transparent surface allows grabbing
-        activesurface_ = new Surface();
+        activesurface_ = new Surface;
         activesurface_->setTextureIndex(Resource::getTextureTransparent());
         groups_[View::TEXTURE]->attach(activesurface_);
         groups_[View::MIXING]->attach(activesurface_);

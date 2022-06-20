@@ -1130,10 +1130,10 @@ void UserInterface::showSourceEditor(Source *s)
             outputcontrol.setVisible(true);
             return;
         }
-        CloneSource *cs = dynamic_cast<CloneSource *>(s);
-        if (cs != nullptr) {
-            shadercontrol.setVisible( cs );
-        }
+//        CloneSource *cs = dynamic_cast<CloneSource *>(s);
+//        if (cs != nullptr) {
+//            shadercontrol.setVisible( cs );
+//        }
         if (s->playable()) {
             sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();
@@ -3081,23 +3081,56 @@ void SourceController::RenderSingleSource(Source *s)
         ///
         /// Image
         ///
-        top += corner;
-        ImGui::SetCursorScreenPos(top);
+        const ImVec2 top_image = top + corner;
+        ImGui::SetCursorScreenPos(top_image);
+
+        ImVec2 crop = ImVec2 ( s->frame()->projectionArea().x, s->frame()->projectionArea().y);
         CloneSource *cloned = dynamic_cast<CloneSource *>(s);
 
-        if (s->imageProcessingEnabled() || cloned != nullptr) {
-            ImGui::Image((void*)(uintptr_t) s->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
+        if (s->imageProcessingEnabled() || ImLengthSqr(crop) < 2 || cloned != nullptr) {
+            //
+            // LEFT of slider  : original texture
+            //
+            ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
+            ImGui::Image((void*)(uintptr_t) s->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
 
-            ImGui::SetCursorScreenPos(top + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
+            //
+            // RIGHT of slider : post-processed image (after crop and color correction)
+            //
+            ImVec2 cropsize = framesize * crop;
+            ImVec2 croptop  = (framesize - cropsize) * 0.5f;
+            // no overlap of slider with cropped area
+            if (slider.x < croptop.x) {
+                // draw cropped area
+                ImGui::SetCursorScreenPos(top_image + croptop );
+                ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
+            }
+            // overlap of slider with cropped area (horizontally)
+            else if (slider.x < croptop.x + cropsize.x ) {
+                // compute slider ratio of cropped area
+                float cropped_slider = (slider.x - croptop.x) / cropsize.x;
+                // top x moves with slider
+                croptop.x = slider.x;
+                ImGui::SetCursorScreenPos(top_image + croptop );
+                // size is reduced by slider
+                cropsize = cropsize * ImVec2(1.f -cropped_slider, 1.f);
+                ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
+            }
+            // else : no render of cropped area
 
-            draw_list->AddCircleFilled(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
-            draw_list->AddLine(top + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
-
-            ImGui::SetCursorScreenPos(top + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
-            ImGuiToolkit::InvisibleSliderFloat("#filter_slider", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+            //
+            // SLIDER
+            //
+            // graphical indication of slider
+            draw_list->AddCircleFilled(top_image + slider * ImVec2(1.f, 0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+            draw_list->AddLine(top_image + slider * ImVec2(1.f,0.0f), top_image + slider, IM_COL32(255, 255, 255, 150), 1);
+            // user input : move slider horizontally
+            ImGui::SetCursorScreenPos(top_image + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
+            ImGuiToolkit::InvisibleSliderFloat("#Settings::application.widget.media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+            // affordance: cursor change to horizontal arrows
             if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+
         }
         else {
             ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
@@ -3106,20 +3139,20 @@ void SourceController::RenderSingleSource(Source *s)
         ///
         /// Info overlays
         ///
-        ImGui::SetCursorScreenPos(top + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), v_space_));
+        ImGui::SetCursorScreenPos(top_image + ImVec2(framesize.x - ImGui::GetTextLineHeightWithSpacing(), v_space_));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
         if (ImGui::IsItemHovered()){
             // fill info string
             s->accept(info_);
             // draw overlay frame and text
             float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-            draw_list->AddRectFilled(top, top + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
-            ImGui::SetCursorScreenPos(top + ImVec2(h_space_, v_space_));
+            draw_list->AddRectFilled(top_image, top_image + ImVec2(framesize.x, tooltip_height), IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(top_image + ImVec2(h_space_, v_space_));
             ImGui::Text("%s", info_.str().c_str());
             // special case Streams: print framerate
             StreamSource *sts = dynamic_cast<StreamSource*>(s);
             if (sts && s->playing()) {
-                ImGui::SetCursorScreenPos(top + ImVec2( framesize.x - 1.5f * buttons_height_, 0.5f * tooltip_height));
+                ImGui::SetCursorScreenPos(top_image + ImVec2( framesize.x - 1.5f * buttons_height_, 0.5f * tooltip_height));
                 ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
             }
         }
@@ -3178,20 +3211,53 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
     ///
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
+    ImVec2 crop = ImVec2 ( ms->frame()->projectionArea().x, ms->frame()->projectionArea().y);
 
-    if (ms->imageProcessingEnabled()) {
-        ImGui::Image((void*)(uintptr_t) ms->texture(), framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
+    if (ms->imageProcessingEnabled() || ImLengthSqr(crop) < 2) {
+        //
+        // LEFT of slider  : original texture
+        //
+        ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
+        ImGui::Image((void*)(uintptr_t) ms->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
 
-        ImGui::SetCursorScreenPos(top_image + ImVec2(Settings::application.widget.media_player_slider * framesize.x, 0.f));
-        ImGui::Image((void*)(uintptr_t) ms->frame()->texture(), framesize * ImVec2(1.f-Settings::application.widget.media_player_slider,1.f), ImVec2(Settings::application.widget.media_player_slider,0.f), ImVec2(1.f,1.f));
+        //
+        // RIGHT of slider : post-processed image (after crop and color correction)
+        //
+        ImVec2 cropsize = framesize * crop;
+        ImVec2 croptop  = (framesize - cropsize) * 0.5f;
+        // no overlap of slider with cropped area
+        if (slider.x < croptop.x) {
+            // draw cropped area
+            ImGui::SetCursorScreenPos(top_image + croptop );
+            ImGui::Image((void*)(uintptr_t) ms->frame()->texture(),
+                         cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
+        }
+        // overlap of slider with cropped area (horizontally)
+        else if (slider.x < croptop.x + cropsize.x ) {
+            // compute slider ratio of cropped area
+            float cropped_slider = (slider.x - croptop.x) / cropsize.x;
+            // top x moves with slider
+            croptop.x = slider.x;
+            ImGui::SetCursorScreenPos(top_image + croptop );
+            // size is reduced by slider
+            cropsize = cropsize * ImVec2(1.f -cropped_slider, 1.f);
+            ImGui::Image((void*)(uintptr_t) ms->frame()->texture(), cropsize, ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
+        }
+        // else : no render of cropped area
 
-        draw_list->AddCircleFilled(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
-        draw_list->AddLine(top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,0.0f), top_image + framesize * ImVec2(Settings::application.widget.media_player_slider,1.f), IM_COL32(255, 255, 255, 150), 1);
-
+        //
+        // SLIDER
+        //
+        // graphical indication of slider
+        draw_list->AddCircleFilled(top_image + slider * ImVec2(1.f, 0.5f), 20.f, IM_COL32(255, 255, 255, 150), 26);
+        draw_list->AddLine(top_image + slider * ImVec2(1.f,0.0f), top_image + slider, IM_COL32(255, 255, 255, 150), 1);
+        // user input : move slider horizontally
         ImGui::SetCursorScreenPos(top_image + ImVec2(0.f, 0.5f * framesize.y - 20.0f));
         ImGuiToolkit::InvisibleSliderFloat("#Settings::application.widget.media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x, 40.0f) );
+        // affordance: cursor change to horizontal arrows
         if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+
     }
     else {
         ImGui::Image((void*)(uintptr_t) mediaplayer_active_->texture(), framesize);
@@ -5397,7 +5463,6 @@ void ShaderEditor::setVisible(CloneSource *cs)
         // if the filter is an Image Filter
         if (f && f->type() == FrameBufferFilter::FILTER_IMAGE )
             setVisible(true);
-
     }
 }
 

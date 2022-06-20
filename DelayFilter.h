@@ -24,6 +24,8 @@ public:
     uint texture () const override;
     glm::vec3 resolution () const override;
     void update (float dt) override;
+    void reset () override;
+    double updateTime () override;
     void draw   (FrameBuffer *input) override;
     void accept (Visitor& v) override;
 

@@ -111,6 +111,8 @@ void CloneSource::render()
 
 void CloneSource::setActive (bool on)
 {
+    bool was_active = active_;
+
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
@@ -119,13 +121,9 @@ void CloneSource::setActive (bool on)
         if ( mode_ > Source::UNINITIALIZED )
             origin_->touch();
 
-        // change visibility of active surface (show preview of origin when inactive)
-        if (activesurface_) {
-            if (active_)
-                activesurface_->setTextureIndex(Resource::getTextureTransparent());
-            else
-                activesurface_->setTextureIndex(renderbuffer_->texture());
-        }
+        // enable / disable filtering
+        if ( active_ != was_active )
+            filter_->setEnabled( active_ );
     }
 }
 
@@ -190,8 +188,8 @@ void CloneSource::play (bool on)
         // play / pause filter to suspend clone
         filter_->setEnabled( on );
 
-        // restart clean if was paused
-        if (paused_)
+        // restart delay if was paused
+        if (paused_ && filter_->type() == FrameBufferFilter::FILTER_DELAY)
             replay();
 
         // toggle state
@@ -201,24 +199,19 @@ void CloneSource::play (bool on)
 
 bool CloneSource::playable () const
 {
-    if (filter_ && filter_->enabled())
-        return true;
-
-    if (origin_)
-        return origin_->playable();
-
-    return false;
+    return true;
 }
 
 void CloneSource::replay()
 {
-    // TODO: add reset to Filter
-
+    // reset Filter
+    filter_->reset();
 }
 
 guint64 CloneSource::playtime () const
 {
-    // TODO : get time of ImageFilter? Get Delay ?
+    if (filter_->type() != FrameBufferFilter::FILTER_PASSTHROUGH)
+        return guint64( filter_->updateTime() * GST_SECOND ) ;
 
     return origin_->playtime();
 }

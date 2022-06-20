@@ -142,13 +142,6 @@ void MediaSource::setActive (bool on)
     if ( active_ != was_active )
         mediaplayer_->enable(active_);
 
-    // change visibility of active surface (show preview of media when inactive)
-    if (activesurface_) {
-        if (active_)
-            activesurface_->setTextureIndex(Resource::getTextureTransparent());
-        else
-            activesurface_->setTextureIndex(mediaplayer_->texture());
-    }
 }
 
 

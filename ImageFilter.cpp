@@ -173,12 +173,11 @@ class ImageFilteringShader : public ImageShader
     std::string shader_code_;
     std::string code_;
 
+public:
     // for iTimedelta
     GTimer *timer_;
     double iTime_;
     uint iFrame_;
-
-public:
 
     // list of uniforms to control shader
     std::map< std::string, float > uniforms_;
@@ -323,6 +322,19 @@ ImageFilter::~ImageFilter ()
     // NB: shaders_ are removed with surface
 }
 
+void ImageFilter::reset ()
+{
+    shaders_.first->reset();
+
+    if ( program_.isTwoPass() )
+        shaders_.second->reset();
+}
+
+double ImageFilter::updateTime ()
+{
+    return shaders_.first->iTime_;
+}
+
 void ImageFilter::update (float dt)
 {
     shaders_.first->update(dt);
@@ -355,6 +367,8 @@ glm::vec3 ImageFilter::resolution () const
 
 void ImageFilter::draw (FrameBuffer *input)
 {
+    bool forced = false;
+
     // if input changed (typically on first draw)
     if (input_ != input) {
         // keep reference to input framebuffer
@@ -376,9 +390,11 @@ void ImageFilter::draw (FrameBuffer *input)
         if (buffers_.second != nullptr)
             delete buffers_.second;
         buffers_.second = new FrameBuffer( buffers_.first->resolution(), buffers_.first->flags() );
+        // forced draw
+        forced = true;
     }
 
-    if ( enabled() )
+    if ( enabled() || forced )
     {
         // FIRST PASS
         // render input surface into frame buffer
@@ -482,6 +498,8 @@ void ResampleFilter::setFactor(int factor)
 
 void ResampleFilter::draw (FrameBuffer *input)
 {
+    bool forced = false;
+
     // Default
     if (factor_ == RESAMPLE_INVALID)
         setFactor( RESAMPLE_DOUBLE );
@@ -524,9 +542,11 @@ void ResampleFilter::draw (FrameBuffer *input)
             delete buffers_.second;
         res /= 2.;
         buffers_.second = new FrameBuffer( res, buffers_.first->flags() );
+        // forced draw
+        forced = true;
     }
 
-    if ( enabled() )
+    if ( enabled() || forced )
     {
         // FIRST PASS
         // render input surface into frame buffer
@@ -592,6 +612,8 @@ void BlurFilter::setMethod(int method)
 
 void BlurFilter::draw (FrameBuffer *input)
 {
+    bool forced = false;
+
     // Default to Gaussian blur
     if (method_ == BLUR_INVALID)
         setMethod( BLUR_GAUSSIAN );
@@ -630,9 +652,11 @@ void BlurFilter::draw (FrameBuffer *input)
         if (buffers_.second != nullptr)
             delete buffers_.second;
         buffers_.second = new FrameBuffer( input_->resolution(), f );
+        // forced draw
+        forced = true;
     }
 
-    if ( enabled() )
+    if ( enabled() || forced )
     {
         // ZERO PASS
         // render input surface into frame buffer with Mipmapping (Levels of Details)
@@ -676,7 +700,7 @@ const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
 std::vector< FilteringProgram > SharpenFilter::programs_ = {
     FilteringProgram("UnsharpMask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
     FilteringProgram("Sharpen",      "shaders/filters/sharpen.glsl",    "",   { { "Amount", 0.5} }),
-    FilteringProgram("Sharp Edge",   "shaders/filters/sharpenedge.glsl","",   { { "Amount", 0.5} }),
+    FilteringProgram("Sharp Edge",   "shaders/filters/sharpenedge.glsl","",   { { "Amount", 0.25} }),
     FilteringProgram("TopHat",       "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),
     FilteringProgram("BlackHat",     "shaders/filters/dilation.glsl",   "shaders/filters/blackhat.glsl",  { { "Radius", 0.5} }),
 };
@@ -720,7 +744,7 @@ const char* SmoothFilter::method_label[SmoothFilter::SMOOTH_INVALID] = {
 
 std::vector< FilteringProgram > SmoothFilter::programs_ = {
     FilteringProgram("Bilateral","shaders/filters/bilinear.glsl",   "",     { { "Factor", 0.5} }),
-    FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 1.0} }),
+    FilteringProgram("Kuwahara", "shaders/filters/kuwahara.glsl",   "",     { { "Radius", 0.5} }),
     FilteringProgram("Opening",  "shaders/filters/erosion.glsl",    "shaders/filters/dilation.glsl",  { { "Radius", 0.5} }),
     FilteringProgram("Closing",  "shaders/filters/dilation.glsl",   "shaders/filters/erosion.glsl",   { { "Radius", 0.5} }),
     FilteringProgram("Erosion",  "shaders/filters/erosion.glsl",    "",     { { "Radius", 0.5} }),

@@ -50,8 +50,14 @@ public:
     // get the resolution of the rendered filtered framebuffer
     virtual glm::vec3 resolution () const = 0;
 
-    // perform update (non rendering)
-    virtual void update (float dt) {}
+    // perform update (non rendering), given dt in milisecond
+    virtual void update (float) {}
+
+    // reset update data and time
+    virtual void reset () {}
+
+    // total time of update, in second
+    virtual double updateTime () { return 0.; }
 
     // draw the input framebuffer and apply the filter
     virtual void draw (FrameBuffer *input);
@@ -60,8 +66,8 @@ public:
     virtual void accept (Visitor& v);
 
     // when enabled, draw is effective
-    inline void setEnabled (bool on) { enabled_ = on; }
-    inline bool enabled () const { return enabled_; }
+    inline  void setEnabled (bool on) { enabled_ = on; }
+    inline  bool enabled () const { return enabled_; }
 
 protected:
     FrameBuffer *input_;

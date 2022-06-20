@@ -513,13 +513,6 @@ void DeviceSource::setActive (bool on)
 
         }
 
-        // change visibility of active surface (show preview of stream when inactive)
-        if (activesurface_) {
-            if (active_)
-                activesurface_->setTextureIndex(Resource::getTextureTransparent());
-            else
-                activesurface_->setTextureIndex(stream_->texture());
-        }
     }
 
 }

@@ -16,7 +16,8 @@ FrameBufferFilter::FrameBufferFilter() : enabled_(true), input_(nullptr)
 
 void FrameBufferFilter::draw (FrameBuffer *input)
 {
-    input_ = input;
+    if (input && ( enabled_ || input_ == nullptr ) )
+        input_ = input;
 }
 
 void FrameBufferFilter::accept(Visitor& v)
