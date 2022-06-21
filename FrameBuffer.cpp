@@ -557,3 +557,30 @@ bool FrameBuffer::fill(FrameBufferImage *image)
 }
 
 
+//void FrameBuffer::writePNG(const std::string &filename)
+//{
+//    // not ready
+//    if (!framebufferid_)
+//        return;
+
+//    // create a temporary RGBA frame buffer at the resolution of cropped area
+//    int w = attrib_.viewport.x * projection_area_.x;
+//    int h = attrib_.viewport.y * projection_area_.y;
+//    FrameBuffer copy(w,  h,  FrameBuffer_alpha);
+
+//    // create temporary RAM buffer to store the cropped RGBA
+//    uint8_t *buffer = new uint8_t[w * h * 4];
+
+//    // blit the frame buffer into the copy
+//    blit(&copy);
+
+//    // get pixels of the copy into buffer
+//    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); // set buffer target readpixel
+//    copy.readPixels(buffer);
+
+//    // save to file
+//    stbi_write_png(filename.c_str(), w, h, 4, buffer, w * 4);
+
+//    // delete (copy is also deleted)
+//    delete[] buffer;
+//}

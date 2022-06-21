@@ -65,7 +65,7 @@
 #define MENU_RECORDCONT       ICON_FA_STOP_CIRCLE "  Save & continue"
 #define SHORTCUT_RECORDCONT   CTRL_MOD "Alt+R"
 #define MENU_CAPTUREFRAME     ICON_FA_CAMERA_RETRO "  Capture frame"
-#define SHORTCUT_CAPTUREFRAME CTRL_MOD "Shitf+R"
+#define SHORTCUT_CAPTUREFRAME "F11"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define MENU_OUTPUTFULLSCREEN ICON_FA_EXPAND_ALT "  Fullscreen window"
@@ -101,6 +101,7 @@
 #include "DialogToolkit.h"
 #include "SessionParser.h"
 #include "ImageFilter.h"
+#include "Screenshot.h"
 
 
 struct ImVec2;
@@ -269,7 +270,7 @@ class SourceController : public WorkspaceWindow
     float buttons_width_;
     float buttons_height_;
 
-    bool play_toggle_request_, replay_request_;
+    bool play_toggle_request_, replay_request_, capture_request_;
     bool pending_;
     std::string active_label_;
     int active_selection_;
@@ -303,11 +304,16 @@ class SourceController : public WorkspaceWindow
     float mediaplayer_timeline_zoom_;
     void RenderMediaPlayer(MediaSource *ms);
 
+    // dialog to select frame capture location
+    DialogToolkit::OpenFolderDialog *captureFolderDialog;
+    Screenshot capture;
+
 public:
     SourceController();
 
     inline void Play()   { play_toggle_request_  = true; }
     inline void Replay() { replay_request_= true; }
+    inline void Capture(){ capture_request_= true; }
     void resetActiveSelection();
 
     void setVisible(bool on);

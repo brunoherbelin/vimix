@@ -170,6 +170,7 @@ void Settings::Save(uint64_t runtime)
     SourceConfNode->SetAttribute("new_type", application.source.new_type);
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
+    SourceConfNode->SetAttribute("capture_path", application.source.capture_path.c_str());
     pRoot->InsertEndChild(SourceConfNode);
 
     // Brush
@@ -411,6 +412,12 @@ void Settings::Load()
         sourceconfnode->QueryIntAttribute("new_type", &application.source.new_type);
         sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
         sourceconfnode->QueryIntAttribute("res", &application.source.res);
+
+        const char *path_ = recordnode->Attribute("capture_path");
+        if (path_)
+            application.source.capture_path = std::string(path_);
+        else
+            application.source.capture_path = SystemToolkit::home_path();
     }
 
     // Transition

@@ -340,8 +340,7 @@ void Rendering::draw()
 
     // perform screenshot if requested
     if (request_screenshot_) {
-        // glfwMakeContextCurrent(main_window_);
-        screenshot_.captureGL(0, 0, main_.width(), main_.height());
+        screenshot_.captureGL(main_.width(), main_.height());
         request_screenshot_ = false;
     }
 

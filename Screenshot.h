@@ -5,15 +5,14 @@
 
 class Screenshot
 {
-    int             Width, Height;
+    int             Width, Height, bpp;
     unsigned char * Data;
     unsigned int    Pbo;
     unsigned int    Pbo_size;
     bool            Pbo_full;
 
-    void RemoveAlpha();
-    void FlipVertical();
     static void storeToFile(Screenshot *s, std::string filename);
+    void capture();
 
 public:
     Screenshot();
@@ -21,7 +20,8 @@ public:
 
     // Quick usage :
     // 1) Capture screenshot
-    void captureGL(int x, int y, int w, int h);
+    void captureGL(int w, int h);
+    void captureFramebuffer(class FrameBuffer *fb);
     // 2) if it is full after capture
     bool isFull();
     // 3) then you can save to file

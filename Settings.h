@@ -165,6 +165,7 @@ struct SourceConfig
     int new_type;
     int ratio;
     int res;
+    std::string capture_path;
 
     SourceConfig() {
         new_type = 0;

@@ -28,12 +28,14 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#include "FrameBuffer.h"
 #include "Screenshot.h"
 
 
 Screenshot::Screenshot()
 {
     Width = Height = 0;
+    bpp = 3;
     Data = nullptr;
     Pbo = 0;
     Pbo_size = 0;
@@ -53,12 +55,8 @@ bool Screenshot::isFull()
     return Pbo_full;
 }
 
-void Screenshot::captureGL(int x, int y, int w, int h)
+void Screenshot::capture()
 {
-    Width = w - x;
-    Height = h - y;
-    unsigned int size = Width * Height * 3;
-
     // create BPO
     if (Pbo == 0)
         glGenBuffers(1, &Pbo);
@@ -67,20 +65,55 @@ void Screenshot::captureGL(int x, int y, int w, int h)
     glBindBuffer(GL_PIXEL_PACK_BUFFER, Pbo);
 
     // init
+    unsigned int size = Width * Height * bpp;
     if (Pbo_size != size) {
         Pbo_size = size;
-        if (Data)  free(Data);
+        if (Data)
+            free(Data);
         Data = (unsigned char*) malloc(Pbo_size);
         glBufferData(GL_PIXEL_PACK_BUFFER, Pbo_size, NULL, GL_STREAM_READ);
     }
 
     // screenshot to PBO (fast)
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, 0);
-    Pbo_full = true;
+    glReadPixels(0, 0, Width, Height, bpp > 3 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // done
+    Pbo_full = true;
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+}
+
+void Screenshot::captureGL(int w, int h)
+{
+    bpp = 3; // screen capture of GL in RGB
+    Width = w;
+    Height = h;
+
+    // do capture
+    capture();
+}
+
+void Screenshot::captureFramebuffer(FrameBuffer *fb)
+{
+    if (!fb)
+        return;
+
+    bpp = 4; // capture of FBO in RGBA
+    Width = fb->width() * fb->projectionArea().x;
+    Height = fb->height() * fb->projectionArea().y;
+
+    // blit the frame buffer into an RBBA copy of cropped size
+    FrameBuffer copy(Width, Height, FrameBuffer::FrameBuffer_alpha);
+    fb->blit(&copy);
+
+    // get pixels from copy
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, copy.opengl_id());
+
+    // do capture
+    capture();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Screenshot::save(std::string filename)
@@ -108,35 +141,6 @@ void Screenshot::save(std::string filename)
 
 }
 
-void Screenshot::RemoveAlpha()
-{
-    unsigned int* p = (unsigned int*)Data;
-    int n = Width * Height;
-    while (n-- > 0)
-    {
-        *p |= 0xFF000000;
-        p++;
-    }
-}
-
-void Screenshot::FlipVertical()
-{
-    int comp = 4;
-    int stride = Width * comp;
-    unsigned char* line_tmp = new unsigned char[stride];
-    unsigned char* line_a = (unsigned char*)Data;
-    unsigned char* line_b = (unsigned char*)Data + (stride * (Height - 1));
-    while (line_a < line_b)
-    {
-        memcpy(line_tmp, line_a, stride);
-        memcpy(line_a, line_b, stride);
-        memcpy(line_b, line_tmp, stride);
-        line_a += stride;
-        line_b -= stride;
-    }
-    delete[] line_tmp;
-}
-
 // Thread to perform slow operation of saving to file
 void Screenshot::storeToFile(Screenshot *s, std::string filename)
 {
@@ -148,8 +152,9 @@ void Screenshot::storeToFile(Screenshot *s, std::string filename)
     // got data to save ?
     if (s && s->Data) {
         // save file
-        stbi_flip_vertically_on_write(true);
-        stbi_write_png(filename.c_str(), s->Width, s->Height, 3, s->Data, s->Width * 3);
+        if (s->bpp < 4) // hack : inverse screen capture GL
+            stbi_flip_vertically_on_write(true);
+        stbi_write_png(filename.c_str(), s->Width, s->Height, s->bpp, s->Data, s->Width * s->bpp);
     }
     ScreenshotSavePending_ = false;
 }

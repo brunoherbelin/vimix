@@ -319,13 +319,8 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().view()->selectAll();
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_R, false )) {
-            if (shift_modifier_active) {
-                FrameGrabbing::manager().add(new PNGRecorder);
-            }
-            else {
-                // toggle recording stop / start (or save and continue if + ALT modifier)
-                outputcontrol.ToggleRecord(alt_modifier_active);
-            }
+            // toggle recording stop / start (or save and continue if + ALT modifier)
+            outputcontrol.ToggleRecord(alt_modifier_active);
         }
         else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
             if (shift_modifier_active)
@@ -379,8 +374,15 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
             Mixer::manager().setView(View::TEXTURE);
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
+            sourcecontrol.Capture();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
+            FrameGrabbing::manager().add(new PNGRecorder);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
+            Settings::application.render.disabled = !Settings::application.render.disabled;
+        }
         // button home to toggle menu
         else if (ImGui::IsKeyPressed( GLFW_KEY_HOME, false ))
             navigator.togglePannelMenu();
@@ -404,9 +406,6 @@ void UserInterface::handleKeyboard()
             // restore cleared workspace when releasing ESC after maintain
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
-        }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
-            Settings::application.render.disabled = !Settings::application.render.disabled;
         }
         // Space bar
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
@@ -1445,7 +1444,7 @@ void ToolBox::Render()
     {
         if (ImGui::BeginMenu("Render"))
         {
-            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  Screenshot", "F12") )
+            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  View screenshot", "F9") )
                 UserInterface::manager().StartScreenshot();
 
             ImGui::EndMenu();
@@ -2142,6 +2141,8 @@ SourceController::SourceController() : WorkspaceWindow("SourceController"),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
 {
     info_.setExtendedStringMode();
+
+    captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
 }
 
 
@@ -2150,9 +2151,10 @@ void SourceController::resetActiveSelection()
     info_.reset();
     active_selection_ = -1;
     active_label_ = LABEL_AUTO_MEDIA_PLAYER;
+    play_toggle_request_ = false;
+    replay_request_ = false;
+    capture_request_ = false;
 }
-
-
 
 void SourceController::setVisible(bool on)
 {
@@ -2202,7 +2204,9 @@ void SourceController::Update()
             n_play++;
     }
 
-    // Play button or keyboard [space] was pressed
+    //
+    // Play button or keyboard [Space] was pressed
+    //
     if ( play_toggle_request_ ) {
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
@@ -2211,13 +2215,40 @@ void SourceController::Update()
         play_toggle_request_ = false;
     }
 
-    // Replay / rewind button or keyboard [B] was pressed
+    //
+    // Replay / rewind button or keyboard [CTRL+Space] was pressed
+    //
     if ( replay_request_ ) {
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
             (*source)->replay();
 
         replay_request_ = false;
+    }
+
+    //
+    // return from thread for selecting capture folder
+    //
+    if (captureFolderDialog->closed() && !captureFolderDialog->path().empty())
+        // get the folder from this file dialog
+        Settings::application.source.capture_path = captureFolderDialog->path();
+
+    //
+    // Capture frame on current source
+    //
+    Source *source = Mixer::manager().currentSource();
+    if (source != nullptr) {
+        // back from capture of FBO: can save file
+        if ( capture.isFull() ){
+            std::string filename = SystemToolkit::full_filename( Settings::application.source.capture_path, source->name() + SystemToolkit::date_time_string() + ".png" );
+            capture.save( filename );
+            Log::Notify("Frame saved %s", filename.c_str() );
+        }
+        // request capture : initiate capture of FBO
+        if ( capture_request_ ) {
+            capture.captureFramebuffer(source->frame());
+            capture_request_ = false;
+        }
     }
 
     // reset on session change
@@ -2262,26 +2293,56 @@ void SourceController::Render()
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
+            //
             // Menu section for play control
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD"Space"))
+            //
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
                 replay_request_ = true;
-            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space"))
+            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
                 play_toggle_request_ = true;
+            ImGui::Separator();
+
+            //
+            // Menu for capture frame
+            //
+            if (ImGui::MenuItem( ICON_FA_CAMERA_RETRO " Capture frame", "F10", nullptr, !selection_.empty()))
+                capture_request_ = true;
+            // path
+            static char* name_path[4] = { nullptr };
+            if ( name_path[0] == nullptr ) {
+                for (int i = 0; i < 4; ++i)
+                    name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
+                sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+            }
+            if (Settings::application.source.capture_path.empty())
+                Settings::application.source.capture_path = SystemToolkit::home_path();
+            sprintf( name_path[0], "%s", Settings::application.source.capture_path.c_str());
+            int selected_path = 0;
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::Combo("Path", &selected_path, name_path, 4);
+            if (selected_path > 2)
+                captureFolderDialog->open();
+            else if (selected_path > 1)
+                Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+            else if (selected_path > 0)
+                Settings::application.source.capture_path = SystemToolkit::home_path();
 
             ImGui::Separator();
-            // Menu section for displayed image
+            //
+            // Menu section for display
+            //
             if (ImGui::BeginMenu( ICON_FA_IMAGE "  Displayed image"))
             {
-                if (ImGuiToolkit::MenuItemIcon(8, 9, " Post-processed"))
+                if (ImGuiToolkit::MenuItemIcon(8, 9, " Render"))
                     Settings::application.widget.media_player_slider = 0.0;
-                if (ImGuiToolkit::MenuItemIcon(6, 9, " Split view"))
+                if (ImGuiToolkit::MenuItemIcon(6, 9, " Split"))
                     Settings::application.widget.media_player_slider = 0.5;
-                if (ImGuiToolkit::MenuItemIcon(7, 9, " Pre-processed"))
+                if (ImGuiToolkit::MenuItemIcon(7, 9, " Input"))
                     Settings::application.widget.media_player_slider = 1.0;
                 ImGui::EndMenu();
             }
-
-            // Menu section for list
             if (ImGui::MenuItem( ICON_FA_TH "  List all")) {
                 selection_.clear();
                 resetActiveSelection();
@@ -2289,13 +2350,15 @@ void SourceController::Render()
                 Mixer::selection().clear();
                 selection_ = playable_only( Mixer::manager().session()->getDepthSortedList() );
             }
-            if (ImGui::MenuItem( ICON_FA_ELLIPSIS_H "  List none")) {
+            if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
                 selection_.clear();
                 resetActiveSelection();
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();
             }
+            //
             // Menu section for window management
+            //
             ImGui::Separator();
             bool pinned = Settings::application.widget.media_player_view == Settings::application.current_view;
             std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
@@ -2389,18 +2452,6 @@ void SourceController::Render()
                         mediaplayer_active_->setRewindOnDisabled(true);
                     ImGui::EndMenu();
                 }
-
-//                if (ImGui::BeginMenu(ICON_FA_CUT "  Auto cut" ))
-//                {
-//                    if (ImGuiToolkit::MenuItemIcon(14, 12,  "Cut faded areas" ))
-//                        if (mediaplayer_active_->timeline()->autoCut()){
-//                            std::ostringstream oss;
-//                            oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-//                            oss << ": Cut faded areas";
-//                            Action::manager().store(oss.str());
-//                        }
-//                    ImGui::EndMenu();
-//                }
                 if (Settings::application.render.gpu_decoding)
                 {
                     ImGui::Separator();
@@ -3877,6 +3928,7 @@ void OutputPreview::Render()
                     UserInterface::manager().navigator.showConfig();
                 ImGui::SameLine(0);
                 ImGui::Text("Settings");
+
                 // BASIC OPTIONS
                 static char* name_path[4] = { nullptr };
                 if ( name_path[0] == nullptr ) {
@@ -3889,7 +3941,6 @@ void OutputPreview::Render()
                 if (Settings::application.record.path.empty())
                     Settings::application.record.path = SystemToolkit::home_path();
                 sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
-
                 int selected_path = 0;
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGui::Combo("Path", &selected_path, name_path, 4);
@@ -3902,6 +3953,7 @@ void OutputPreview::Render()
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
+
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGui::SliderInt("Trigger", &Settings::application.record.delay, 0, 5,
                                  Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
