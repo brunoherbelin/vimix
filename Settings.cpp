@@ -170,6 +170,7 @@ void Settings::Save(uint64_t runtime)
     SourceConfNode->SetAttribute("new_type", application.source.new_type);
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
+    SourceConfNode->SetAttribute("capture_naming", application.source.capture_naming);
     SourceConfNode->SetAttribute("capture_path", application.source.capture_path.c_str());
     pRoot->InsertEndChild(SourceConfNode);
 
@@ -413,7 +414,8 @@ void Settings::Load()
         sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
         sourceconfnode->QueryIntAttribute("res", &application.source.res);
 
-        const char *path_ = recordnode->Attribute("capture_path");
+        sourceconfnode->QueryIntAttribute("capture_naming", &application.source.capture_naming);
+        const char *path_ = sourceconfnode->Attribute("capture_path");
         if (path_)
             application.source.capture_path = std::string(path_);
         else

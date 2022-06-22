@@ -2240,9 +2240,32 @@ void SourceController::Update()
     if (source != nullptr) {
         // back from capture of FBO: can save file
         if ( capture.isFull() ){
-            std::string filename = SystemToolkit::full_filename( Settings::application.source.capture_path, source->name() + SystemToolkit::date_time_string() + ".png" );
-            capture.save( filename );
-            Log::Notify("Frame saved %s", filename.c_str() );
+            // default naming of file with date prefix
+            std::ostringstream filename;
+            filename << Settings::application.source.capture_path << PATH_SEP;
+            filename << SystemToolkit::date_time_string() << "_" << source->name() << ".png";
+
+            // if sequencial naming of file is selected
+            if (Settings::application.source.capture_naming == 0 )
+            {
+                // list all files in the target directory that potentially match the sequence naming pattern
+                std::list<std::string> pattern;
+                pattern.push_back( source->name() + "*.png"  );
+                std::list<std::string> ls = SystemToolkit::list_directory(Settings::application.source.capture_path, pattern);
+                // establish a filename for a consecutive sequence of numbers
+                for (int i = 0; i < ls.size() + 1; ++i) {
+                    filename.str(std::string()); // clear
+                    filename << Settings::application.source.capture_path << PATH_SEP;
+                    filename << source->name() << "_" ;
+                    filename << std::setw(4) << std::setfill('0') << i << ".png";
+                    // use that filename if was not already used
+                    if ( std::find( ls.begin(), ls.end(), filename.str() ) == ls.end() )
+                        break;
+                }
+            }
+            // save capture and inform user
+            capture.save( filename.str() );
+            Log::Notify("Frame saved in %s", filename.str().c_str() );
         }
         // request capture : initiate capture of FBO
         if ( capture_request_ ) {
@@ -2294,43 +2317,6 @@ void SourceController::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             //
-            // Menu section for play control
-            //
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
-                replay_request_ = true;
-            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
-                play_toggle_request_ = true;
-            ImGui::Separator();
-
-            //
-            // Menu for capture frame
-            //
-            if (ImGui::MenuItem( ICON_FA_CAMERA_RETRO " Capture frame", "F10", nullptr, !selection_.empty()))
-                capture_request_ = true;
-            // path
-            static char* name_path[4] = { nullptr };
-            if ( name_path[0] == nullptr ) {
-                for (int i = 0; i < 4; ++i)
-                    name_path[i] = (char *) malloc( 1024 * sizeof(char));
-                sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
-                sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
-                sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
-            }
-            if (Settings::application.source.capture_path.empty())
-                Settings::application.source.capture_path = SystemToolkit::home_path();
-            sprintf( name_path[0], "%s", Settings::application.source.capture_path.c_str());
-            int selected_path = 0;
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::Combo("Path", &selected_path, name_path, 4);
-            if (selected_path > 2)
-                captureFolderDialog->open();
-            else if (selected_path > 1)
-                Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
-            else if (selected_path > 0)
-                Settings::application.source.capture_path = SystemToolkit::home_path();
-
-            ImGui::Separator();
-            //
             // Menu section for display
             //
             if (ImGui::BeginMenu( ICON_FA_IMAGE "  Displayed image"))
@@ -2372,6 +2358,54 @@ void SourceController::Render()
                 Settings::application.widget.media_player = false;
                 selection_.clear();
             }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu(ICON_FA_PLAY "  Control"))
+        {
+            //
+            // Menu section for play control
+            //
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
+                replay_request_ = true;
+            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
+                play_toggle_request_ = true;
+
+            ImGui::Separator();
+            //
+            // Menu for capture frame
+            //
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
+            if (ImGui::MenuItem( ICON_FA_CAMERA_RETRO " Capture frame", "F10", nullptr, Mixer::manager().currentSource() != nullptr ))
+                capture_request_ = true;
+            ImGui::PopStyleColor(1);
+
+            // path
+            static char* name_path[4] = { nullptr };
+            if ( name_path[0] == nullptr ) {
+                for (int i = 0; i < 4; ++i)
+                    name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
+                sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+            }
+            if (Settings::application.source.capture_path.empty())
+                Settings::application.source.capture_path = SystemToolkit::home_path();
+            sprintf( name_path[0], "%s", Settings::application.source.capture_path.c_str());
+            int selected_path = 0;
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::Combo("Path", &selected_path, name_path, 4);
+            if (selected_path > 2)
+                captureFolderDialog->open();
+            else if (selected_path > 1)
+                Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+            else if (selected_path > 0)
+                Settings::application.source.capture_path = SystemToolkit::home_path();
+
+            static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "   Sequence", ICON_FA_CALENDAR "  Date" };
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::Combo("Naming", &Settings::application.source.capture_naming, naming_style, IM_ARRAYSIZE(naming_style));
 
             ImGui::EndMenu();
         }

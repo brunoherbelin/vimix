@@ -166,11 +166,13 @@ struct SourceConfig
     int ratio;
     int res;
     std::string capture_path;
+    int capture_naming;
 
     SourceConfig() {
         new_type = 0;
         ratio = 3;
         res = 1;
+        capture_naming = 0;
     }
 };
 
