@@ -511,9 +511,8 @@ GstClockTime Stream::position()
 void Stream::init_texture(guint index)
 {
     glActiveTexture(GL_TEXTURE0);
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-    glGenTextures(1, &textureindex_);
+    if (textureindex_ < 1)
+        glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
