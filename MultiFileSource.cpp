@@ -121,8 +121,14 @@ void MultiFile::open (const MultiFileSequence &sequence, uint framerate )
     gstreamer_pipeline << sequence.max;
     gstreamer_pipeline << " ! decodebin ! videoconvert";
 
-    // (private) open stream
+    // (private) open stream - asynchronous threaded process
     Stream::open(gstreamer_pipeline.str(), sequence.width, sequence.height);
+
+}
+
+void MultiFile::execute_open()
+{
+    Stream::execute_open();
 
     // keep multifile source for dynamic properties change
     src_ = gst_bin_get_by_name (GST_BIN (pipeline_), "src");

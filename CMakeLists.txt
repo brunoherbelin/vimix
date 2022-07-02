@@ -451,6 +451,7 @@ set(VMIX_SRCS
     ControlManager.cpp
     VideoBroadcast.cpp
     SrtReceiverSource.cpp
+    MultiFileRecorder.cpp
 )
 
 

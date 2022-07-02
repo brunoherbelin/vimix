@@ -37,6 +37,7 @@ public:
 
 protected:
     GstElement *src_ ;
+    void execute_open() override;
 };
 
 class MultiFileSource : public StreamSource
