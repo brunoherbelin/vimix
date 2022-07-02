@@ -93,6 +93,7 @@ using namespace std;
 #include "ImageProcessingShader.h"
 #include "Metronome.h"
 #include "VideoBroadcast.h"
+#include "MultiFileRecorder.h"
 
 #include "TextEditor.h"
 TextEditor _editor;
@@ -5805,6 +5806,17 @@ void Navigator::applyButtonSelection(int index)
     show_config_ = false;
 }
 
+void Navigator::clearNewPannel()
+{
+    new_source_preview_.setSource();
+    pattern_type = -1;
+    custom_pipeline = false;
+    custom_connected = false;
+    sourceSequenceFiles.clear();
+    sourceMediaFileCurrent.clear();
+    new_media_mode_changed = true;
+}
+
 void Navigator::clearButtonSelection()
 {
     // clear all buttons
@@ -5812,12 +5824,7 @@ void Navigator::clearButtonSelection()
         selected_button[i] = false;
 
     // clear new source pannel
-    new_source_preview_.setSource();
-    pattern_type = -1;
-    custom_pipeline = false;
-    sourceSequenceFiles.clear();
-    sourceMediaFileCurrent.clear();
-    new_media_mode_changed = true;
+    clearNewPannel();
 }
 
 void Navigator::showPannelSource(int index)
@@ -6219,7 +6226,7 @@ void Navigator::RenderNewPannel()
                                              };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
-            new_source_preview_.setSource();
+            clearNewPannel();
 
         ImGui::SetCursorPosY(2.f * width_);
 
@@ -6419,6 +6426,7 @@ void Navigator::RenderNewPannel()
 
             bool update_new_source = false;
             static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select Images");
+            //static bool _create_video_sequence = false;
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_IMAGES " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {

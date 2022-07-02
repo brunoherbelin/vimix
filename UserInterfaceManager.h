@@ -160,6 +160,7 @@ class Navigator
     bool custom_pipeline;
     bool custom_connected;
     void clearButtonSelection();
+    void clearNewPannel();
     void applyButtonSelection(int index);
 
     // side pannels
