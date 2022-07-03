@@ -9,27 +9,21 @@
 #include "Log.h"
 #include "GstToolkit.h"
 #include "BaseToolkit.h"
+#include "Settings.h"
 #include "MediaPlayer.h"
 
 #include "MultiFileRecorder.h"
 
-MultiFileRecorder::MultiFileRecorder(const std::string &filename) : filename_(filename),
+MultiFileRecorder::MultiFileRecorder() :
     fps_(0), width_(0), height_(0), bpp_(3),
     pipeline_(nullptr), src_(nullptr), frame_count_(0), timestamp_(0), frame_duration_(0),
-    endofstream_(false), accept_buffer_(false), progress_(0.f)
+    cancel_(false), endofstream_(false), accept_buffer_(false), progress_(0.f)
 {
-    // default
+    // default profile
     profile_ = VideoRecorder::H264_STANDARD;
 
-    // set fps and frame duration
+    // default fps and frame duration
     setFramerate(15);
-}
-
-
-inline void MultiFileRecorder::setFramerate (int fps)
-{
-    fps_ = fps;
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps_);
 }
 
 MultiFileRecorder::~MultiFileRecorder ()
@@ -41,11 +35,18 @@ MultiFileRecorder::~MultiFileRecorder ()
         gst_object_unref (pipeline_);
 }
 
-void MultiFileRecorder::assembleImages(std::list<std::string> list, const std::string &filename)
+void MultiFileRecorder::setFramerate (int fps)
 {
-    MultiFileRecorder recorder( filename );
+    fps_ = fps;
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps_);
+}
 
-    recorder.assemble( list );
+void MultiFileRecorder::setProfile (VideoRecorder::Profile p)
+{
+    if (p < VideoRecorder::VP8)
+        profile_ = p;
+    else
+        profile_ = VideoRecorder::H264_STANDARD;
 }
 
 // appsrc needs data and we should start sending
@@ -114,6 +115,7 @@ bool MultiFileRecorder::add_image (const std::string &image_filename)
 
     return true;
 }
+
 
 bool MultiFileRecorder::start_record (const std::string &video_filename)
 {
@@ -276,50 +278,87 @@ bool MultiFileRecorder::end_record ()
 
 
 
-void MultiFileRecorder::assemble (std::list<std::string> list)
+void MultiFileRecorder::start ()
 {
+    if ( promises_.empty() ) {
+        filename_ = std::string();
+        promises_.emplace_back( std::async(std::launch::async, assemble, this) );
+    }
+}
+
+void MultiFileRecorder::cancel ()
+{
+    cancel_ = true;
+}
+
+bool MultiFileRecorder::finished ()
+{
+    if ( !promises_.empty() ) {
+        // check that file dialog thread finished
+        if (promises_.back().wait_for(std::chrono::milliseconds(4)) == std::future_status::ready ) {
+            // get the filename from encoder
+            filename_ = promises_.back().get();
+            if (!filename_.empty()) {
+                // save path location
+                Settings::application.recentRecordings.push(filename_);
+            }
+            // done with this recoding
+            promises_.pop_back();
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
+{
+    std::string filename;
+
     // reset
-    progress_ = 0.f;
-    files_.clear();
-    width_ = 0;
-    height_ = 0;
-    bpp_ = 0;
+    rec->progress_ = 0.f;
+    rec->width_ = 0;
+    rec->height_ = 0;
+    rec->bpp_ = 0;
 
     // input files
-    if ( list.size() < 1 ) {
+    if ( rec->files_.size() < 1 ) {
         Log::Warning("MultiFileRecorder: No image given.");
-        return;
+        return filename;
     }
 
     // set recorder resolution from first image
-    stbi_info( list.front().c_str(), &width_, &height_, &bpp_);
+    stbi_info( rec->files_.front().c_str(), &rec->width_, &rec->height_, &rec->bpp_);
 
-    if ( width_ < 10 || height_ < 10 || bpp_ < 3 ) {
+    if ( rec->width_ < 10 || rec->height_ < 10 || rec->bpp_ < 3 ) {
         Log::Warning("MultiFileRecorder: invalid image.");
-        return;
-
+        return filename;
     }
-    Log::Info("MultiFileRecorder creating video %d x %d : %d.", width_, height_, bpp_);
+
+    Log::Info("MultiFileRecorder creating video %d x %d : %d.", rec->width_, rec->height_, rec->bpp_);
 
     // progress increment
-    float inc_ = 1.f / ( (float) list.size() + 2.f);
+    float inc_ = 1.f / ( (float) rec->files_.size() + 2.f);
 
     // initialize
-    frame_count_ = 0;
+    rec->frame_count_ = 0;
+    filename = BaseToolkit::common_prefix (rec->files_);
+    filename +=  "_sequence.mov";
 
-    if ( start_record( filename_ ) )
+    if ( rec->start_record( filename ) )
     {
         // progressing
-        progress_ += inc_;
+        rec->progress_ += inc_;
 
         // loop over images to open
-        for (auto file = list.cbegin(); file != list.cend(); ++file) {
+        for (auto file = rec->files_.cbegin(); file != rec->files_.cend(); ++file) {
 
-            if ( add_image( *file ) ) {
+            if ( rec->cancel_ )
+                break;
+
+            if ( rec->add_image( *file ) ) {
 
                 // validate file
-                frame_count_++;
-                files_.push_back( *file );
+                rec->frame_count_++;
             }
             else {
                 Log::Info("MultiFileRecorder could not include images %s.", file->c_str());
@@ -327,22 +366,25 @@ void MultiFileRecorder::assemble (std::list<std::string> list)
 
             // pause in case appsrc buffer is full
             int max = 100;
-            while (!accept_buffer_ && --max > 0)
+            while (!rec->accept_buffer_ && --max > 0)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
             // progressing
-            progress_ += inc_;
+            rec->progress_ += inc_;
         }
 
         // close file properly
-        if ( end_record() ) {
-            Log::Info("MultiFileRecorder %d images encoded (%ld s), saved in %s.", frame_count_, timestamp_, filename_.c_str());
+        if ( rec->end_record() ) {
+            Log::Info("MultiFileRecorder %d images encoded (%ld s), saved in %s.", rec->frame_count_, rec->timestamp_, filename.c_str());
         }
     }
+    else
+        filename = std::string();
 
     // finished
-    progress_ = 1.f;
+    rec->progress_ = 1.f;
 
+    return filename;
 }
 
 // alternative https://gstreamer.freedesktop.org/documentation/application-development/advanced/pipeline-manipulation.html?gi-language=c#changing-elements-in-a-pipeline

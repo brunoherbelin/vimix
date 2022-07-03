@@ -115,7 +115,7 @@ struct History
     History() {
         path = IMGUI_LABEL_RECENT_FILES;
         front_is_valid = false;
-        load_at_start = false;
+        load_at_start = true;
         save_on_exit = true;
         changed = false;
     }

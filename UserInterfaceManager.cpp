@@ -87,6 +87,7 @@ using namespace std;
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "StreamSource.h"
+#include "MultiFileSource.h"
 #include "PickingVisitor.h"
 #include "ImageFilter.h"
 #include "ImageShader.h"
@@ -104,6 +105,7 @@ TextEditor _editor;
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
 #define LABEL_STORE_SELECTION "  Store selection"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
+#define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -6219,7 +6221,7 @@ void Navigator::RenderNewPannel()
         // News Source selection pannel
         //
         static const char* origin_names[SOURCE_TYPES] = { ICON_FA_PHOTO_VIDEO "  File",
-                                               ICON_FA_SORT_NUMERIC_DOWN "   Sequence",
+                                               ICON_FA_IMAGES "   Sequence",
                                                ICON_FA_PLUG "    Connected",
                                                ICON_FA_COG "   Generated",
                                                ICON_FA_SYNC "   Internal"
@@ -6237,7 +6239,7 @@ void Navigator::RenderNewPannel()
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Open File", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
+            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
                 fileimportdialog.open();
             // Indication
             ImGui::SameLine();
@@ -6424,61 +6426,125 @@ void Navigator::RenderNewPannel()
         // Folder Source creator
         else if (Settings::application.source.new_type == SOURCE_SEQUENCE){
 
-            bool update_new_source = false;
-            static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select Images");
-            //static bool _create_video_sequence = false;
+            static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select multiple images");
+            static MultiFileSequence _numbered_sequence;
+            static MultiFileRecorder _video_recorder;
+            static int _fps = 25;
 
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_IMAGES " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 sourceSequenceFiles.clear();
                 _selectImagesDialog.open();
             }
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source from a sequence of numbered images.");
+            ImGuiToolkit::HelpToolTip("Create a source displaying a sequence of images (PNG, JPG, TIF);\n"
+                                     ICON_FA_CARET_RIGHT " files numbered consecutively\n"
+                                     ICON_FA_CARET_RIGHT " create a video from many images\n");
 
             // return from thread for folder openning
             if (_selectImagesDialog.closed()) {
+                // clear
+                new_source_preview_.setSource();
+                // store list of files from dialog
                 sourceSequenceFiles = _selectImagesDialog.images();
                 if (sourceSequenceFiles.empty())
                     Log::Notify("No file selected.");
-                // ask to reload the preview
-                update_new_source = true;
+
+                // set sequence
+                _numbered_sequence = MultiFileSequence(sourceSequenceFiles);
+
+                // automatically create a MultiFile Source if possible
+                if (_numbered_sequence.valid()) {
+                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
+                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
+                }
             }
 
             // multiple files selected
             if (sourceSequenceFiles.size() > 1) {
 
-                // set framerate
-                static int _fps = 30;
-                static bool _fps_changed = false;
+                ImGui::Text("\nCreate image sequence:");
+
+                // show info sequence
+                ImGuiTextBuffer info;
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                info.appendf("%d %s", (int) sourceSequenceFiles.size(), _numbered_sequence.codec.c_str());
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if ( ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps") ) {
-                    _fps_changed = true;
-                }
-                // only call for new source after mouse release to avoid repeating call to re-open the stream
-                else if (_fps_changed && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
-                    update_new_source = true;
-                    _fps_changed = false;
+                ImGui::InputText("Images", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                info.clear();
+                if (_numbered_sequence.location.empty())
+                    info.append("Not consecutively numbered");
+                else
+                    info.appendf("%s", SystemToolkit::base_filename(_numbered_sequence.location).c_str());
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+
+                // offer to open file browser at location
+                std::string path = SystemToolkit::path_filename(sourceSequenceFiles.front());
+                std::string label = BaseToolkit::truncated(path, 25);
+                label = BaseToolkit::transliterate(label);
+                ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("Folder");
+
+                // set framerate
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
+                if (ImGui::IsItemDeactivatedAfterEdit()){
+                    if (new_source_preview_.filled()) {
+                        std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
+                        new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
+                    }
                 }
 
-                if (update_new_source) {
-                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
+                ImGui::Spacing();
+
+                // Offer to create video from sequence
+                if ( ImGui::Button( ICON_FA_FILM " Make a video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                    // start video recorder
+                    _video_recorder.setFiles( sourceSequenceFiles );
+                    _video_recorder.setFramerate( _fps );
+                    _video_recorder.setProfile( (VideoRecorder::Profile) Settings::application.record.profile );
+                    _video_recorder.start();
+                    // dialog
+                    ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
                 }
+
+                // video recorder finished: inform and open pannel to import video source from recent recordings
+                if ( _video_recorder.finished() ) {
+
+                    Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
+
+                    if (Settings::application.recentRecordings.load_at_start)
+                        UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING, _video_recorder.filename());
+
+                }
+                else if (ImGui::BeginPopupModal(LABEL_VIDEO_SEQUENCE, NULL, ImGuiWindowFlags_NoResize))
+                {
+                    ImGui::Spacing();
+                    ImGui::Text("Please wait while the video is being encoded...");
+                    ImGui::Spacing();
+                    ImGui::ProgressBar(_video_recorder.progress());
+
+                    if (ImGui::Button("Cancel"))
+                        _video_recorder.cancel();
+
+                    ImGui::EndPopup();
+                }
+
             }
             // single file selected
             else if (sourceSequenceFiles.size() > 0) {
-
-                ImGui::Text("Single file selected");
-
-                if (update_new_source) {
-                    std::string label = BaseToolkit::transliterate( sourceSequenceFiles.front() );
-                    new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceSequenceFiles.front()), label);
-                }
-
+                // open image file as source
+                std::string label = BaseToolkit::transliterate( sourceSequenceFiles.front() );
+                new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceSequenceFiles.front()), label);
+                // done with sequence
+                sourceSequenceFiles.clear();
             }
+
 
         }
         // Internal Source creator

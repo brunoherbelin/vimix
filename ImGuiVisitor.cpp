@@ -1155,6 +1155,14 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         ImGui::SetCursorPos(pos);
     }
 
+    // Filename pattern
+    ImGuiTextBuffer info;
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    info.appendf("%s", SystemToolkit::base_filename(s.sequence().location).c_str());
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor(1);
+
     // change range
     static int _begin = -1;
     if (_begin < 0 || id != s.id())

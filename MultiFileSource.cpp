@@ -51,14 +51,6 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
 {
     location = BaseToolkit::common_numbered_pattern(list_files, &min, &max);
 
-    // sanity check: the location pattern looks like a filename and seems consecutive numbered
-    if ( SystemToolkit::extension_filename(location).empty() ||
-         SystemToolkit::path_filename(location) != SystemToolkit::path_filename(list_files.front()) ||
-         list_files.size() != (size_t) (max - min) + 1 ) {
-        Log::Info("MultiFileSequence '%s' invalid.", location.c_str());
-        location.clear();
-    }
-
     if ( !location.empty() ) {
         MediaInfo media = MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri( list_files.front() ) );
         if (media.valid && media.isimage) {
@@ -69,6 +61,14 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
         }
         else
             Log::Info("MultiFileSequence '%s' does not list images.", location.c_str());
+    }
+
+    // sanity check: the location pattern looks like a filename and seems consecutive numbered
+    if ( SystemToolkit::extension_filename(location).empty() ||
+         SystemToolkit::path_filename(location) != SystemToolkit::path_filename(list_files.front()) ||
+         list_files.size() != (size_t) (max - min) + 1 ) {
+        Log::Info("MultiFileSequence '%s' invalid.", location.c_str());
+        location.clear();
     }
 }
 
