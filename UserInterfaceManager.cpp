@@ -5526,9 +5526,9 @@ void ShaderEditor::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
             if (ImGui::MenuItem( ICON_FA_SYNC "  Reload", nullptr, nullptr, current_ != nullptr)) {
+                // force reload
                 if ( current_ != nullptr )
                     filters_.erase(current_);
-                // force reload
                 current_ = nullptr;
             }
 
@@ -5549,6 +5549,8 @@ void ShaderEditor::Render()
                             // inform status
                             status_ = "Building...";
                             // force reload
+                            if ( current_ != nullptr )
+                                filters_.erase(current_);
                             current_ = nullptr;
                         }
                     }
