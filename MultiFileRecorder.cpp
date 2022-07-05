@@ -172,7 +172,6 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     gst_app_src_set_emit_signals( src_, FALSE);
     gst_app_src_set_stream_type ( src_, GST_APP_STREAM_TYPE_STREAM);
     gst_app_src_set_latency     ( src_, -1, 0);
-    gst_app_src_set_leaky_type  ( src_, GST_APP_LEAKY_TYPE_NONE);
 
     // Set buffer size
     gst_app_src_set_max_bytes( src_, MIN_BUFFER_SIZE);
