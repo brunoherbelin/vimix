@@ -6517,20 +6517,34 @@ void Navigator::RenderNewPannel()
 
                 // video recorder finished: inform and open pannel to import video source from recent recordings
                 if ( _video_recorder.finished() ) {
-
-                    Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
-
-                    if (Settings::application.recentRecordings.load_at_start)
+                    // video recorder failed if it does not return a valid filename
+                    if ( _video_recorder.filename().empty() )
+                        Log::Warning("Failed to gemerate image sequence.");
+                    else {
+                        Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
+                        // open the file as new recording
+//                        if (Settings::application.recentRecordings.load_at_start)
                         UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING, _video_recorder.filename());
-
+                    }
                 }
                 else if (ImGui::BeginPopupModal(LABEL_VIDEO_SEQUENCE, NULL, ImGuiWindowFlags_NoResize))
                 {
                     ImGui::Spacing();
-                    ImGui::Text("Please wait while the video is being encoded...");
+                    ImGui::Text("Please wait while the video is being encoded :\n");
+
+                    ImGui::Text("Resolution :");ImGui::SameLine(150);
+                    ImGui::Text("%d x %d", _video_recorder.width(), _video_recorder.height() );
+                    ImGui::Text("Framerate :");ImGui::SameLine(150);
+                    ImGui::Text("%d fps", _video_recorder.framerate() );
+                    ImGui::Text("Codec :");ImGui::SameLine(150);
+                    ImGui::Text("%s", VideoRecorder::profile_name[ _video_recorder.profile() ] );
+                    ImGui::Text("Frames :");ImGui::SameLine(150);
+                    ImGui::Text("%ld / %ld", _video_recorder.numFrames(), _video_recorder.files().size() );
+
                     ImGui::Spacing();
                     ImGui::ProgressBar(_video_recorder.progress());
 
+                    ImGui::Spacing();
                     if (ImGui::Button("Cancel"))
                         _video_recorder.cancel();
 
