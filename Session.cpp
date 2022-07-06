@@ -305,8 +305,10 @@ SourceList::iterator Session::deleteSource(Source *s)
     return its;
 }
 
-void Session::removeSource(Source *s)
+SourceList::iterator Session::removeSource(Source *s)
 {
+    SourceList::iterator ret = sources_.end();
+
     // lock before change
     access_.lock();
 
@@ -320,11 +322,13 @@ void Session::removeSource(Source *s)
         if (s->mixingGroup() != nullptr)
             s->mixingGroup()->detach(s);
         // erase the source from the update list & get next element
-        sources_.erase(its);
+        ret = sources_.erase(its);
     }
 
     // unlock access
     access_.unlock();
+
+    return ret;
 }
 
 Source *Session::popSource()

@@ -67,7 +67,7 @@ public:
     // operations on selection
     void deleteSelection  ();
     void groupSelection ();
-    void groupAll ();
+    void groupAll (bool only_active = false);
     void ungroupAll ();
     void groupSession ();
 

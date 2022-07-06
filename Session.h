@@ -57,11 +57,11 @@ public:
 
     // remove this source from the session
     // Does not delete the source
-    void removeSource(Source *s);
+    SourceList::iterator removeSource (Source *s);
 
     // get ptr to front most source and remove it from the session
     // Does not delete the source
-    Source *popSource();
+    Source *popSource ();
 
     // management of list of sources
     bool empty() const;

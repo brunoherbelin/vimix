@@ -45,6 +45,17 @@ SourceList playable_only (const SourceList &list)
     return pl;
 }
 
+bool notactive (const Source *s) { return !s->active(); }
+
+SourceList active_only (const SourceList &list)
+{
+    SourceList pl = list;
+
+    pl.remove_if(notactive);
+
+    return pl;
+}
+
 SourceList depth_sorted(const SourceList &list)
 {
     SourceList sl = list;

@@ -746,7 +746,7 @@ void Mixer::groupSelection()
     }
 }
 
-void Mixer::groupAll()
+void Mixer::groupAll(bool only_active)
 {
     // obvious cancel
     if (session_->empty())
@@ -759,15 +759,37 @@ void Mixer::groupAll()
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session_->getMixingGroups();
 
-    // empty the session (does not delete sources)
-    for ( Source *s = session_->popSource(); s != nullptr; s = session_->popSource()) {
-        if ( sessiongroup->import(s) )
-            detach(s);
+    // loop over sources from the current mixer session
+    for(auto it = session_->begin(); it != session_->end(); ) {
+        // if request for only active, take only active source
+        // and if could import the source in the new session group
+        if ( ( !only_active || (*it)->active() ) && sessiongroup->import( *it ) ) {
+            // detatch the source from mixer
+            detach( *it );
+            // take out source from session and go to next (does not delete the source)
+            it = session_->removeSource( *it );
+        }
+        // otherwise just iterate (leave source in mixer)
         else
-            break;
+            ++it;
     }
 
+    // successful creation of a session group
     if (sessiongroup->session()->size() > 0) {
+
+        // if a clone was left orphan in the mixer current session, take in in the group
+        for(auto it = session_->begin(); it != session_->end(); ) {
+            CloneSource *cs = dynamic_cast<CloneSource*>(*it);
+            if ( cs != nullptr && session_->find( cs->origin() ) == session_->end() && sessiongroup->import( *it ) ) {
+                // detatch the source from mixer
+                detach( *it );
+                // take out source from session and go to next (does not delete the source)
+                it = session_->removeSource( *it );
+            }
+            // otherwise just iterate (leave source in mixer)
+            else
+                ++it;
+        }
 
         // recreate groups in session group
         for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
