@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
     Rendering::manager().pushBackDrawCallback(renderGUI);
 
     // show all windows
+    Rendering::manager().draw();
     Rendering::manager().show();
 
     // try to load file given in argument
