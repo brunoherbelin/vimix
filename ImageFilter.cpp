@@ -47,7 +47,8 @@ std::string fragmentHeader = "#version 330 core\n"
                              "uniform float     iTime;\n"
                              "uniform float     iTimeDelta;\n"
                              "uniform int       iFrame;\n"
-                             "uniform vec4      iDate;\n";
+                             "uniform vec4      iDate;\n"
+                             "uniform vec4      iMouse;\n";
 
 // Filter code starts at line 16 :
 std::string filterDefault  = "void mainImage( out vec4 fragColor, in vec2 fragCoord )\n"
@@ -73,12 +74,13 @@ std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram("Talk",     "shaders/filters/talk.glsl",       "",     { }),
     FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { }),
     FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { }),
-    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { })
+    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { }),
+    FilteringProgram("Logo",     "shaders/filters/logo.glsl",       "",     { })
 };
 
 int FilteringProgram::getFilterHeaderNumlines()
 {
-    return 15;
+    return 16;
 }
 
 std::string FilteringProgram::getFilterCodeInputs()
@@ -90,7 +92,8 @@ std::string FilteringProgram::getFilterCodeInputs()
                                            "vec3      iChannelResolution[2]; // input channels resolution (in pixels)\n"
                                            "sampler2D iChannel0;             // input channel 0 (texture).\n"
                                            "sampler2D iChannel1;             // input channel 1 (texture).\n"
-                                           "vec4      iDate;                 // (year, month, day, time in seconds)";
+                                           "vec4      iDate;                 // (year, month, day, time in seconds)\n"
+                                           "vec4      iMouse;                // emulation of mouse input.";
     return filterHeaderHelp;
 }
 
@@ -178,6 +181,7 @@ public:
     GTimer *timer_;
     double iTime_;
     uint iFrame_;
+    glm::vec4 iMouse_;
 
     // list of uniforms to control shader
     std::map< std::string, float > uniforms_;
@@ -207,6 +211,7 @@ ImageFilteringShader::ImageFilteringShader(): ImageShader()
     timer_ = g_timer_new ();
     iTime_ = 0.0;
     iFrame_ = 0;
+    iMouse_ = glm::vec4(0.f);
 
     ImageShader::reset();
 }
@@ -235,9 +240,9 @@ void ImageFilteringShader::use()
     //
     // Shader input uniforms
     //
-
     program_->setUniform("iTime", float(iTime_) );
     program_->setUniform("iFrame", int(iFrame_) );
+    program_->setUniform("iMouse", iMouse_ );
 
     // Calculate iTimeDelta
     double elapsed = g_timer_elapsed (timer_, NULL);

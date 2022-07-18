@@ -602,6 +602,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/resample_half.glsl
     ./rsc/shaders/filters/resample_quarter.glsl
     ./rsc/shaders/filters/earlybird.glsl
+    ./rsc/shaders/filters/logo.glsl
 )
 
 # Include the CMake RC module
