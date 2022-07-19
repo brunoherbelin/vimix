@@ -61,6 +61,7 @@ public:
     static std::string getFilterCodeInputs();
     static std::string getFilterCodeDefault();
     static std::list< FilteringProgram > presets;
+    static glm::vec4 iMouse;
 };
 
 class Surface;

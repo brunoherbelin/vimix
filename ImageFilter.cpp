@@ -39,8 +39,6 @@ std::string fragmentHeader = "#version 330 core\n"
                              "in vec2 vertexUV;\n"
                              "vec3 iChannelResolution[2];\n"
                              "uniform mat4      iTransform;\n"
-                             "uniform vec4      color;\n"
-                             "uniform float     stipple;\n"
                              "uniform vec3      iResolution;\n"
                              "uniform sampler2D iChannel0;\n"
                              "uniform sampler2D iChannel1;\n"
@@ -80,7 +78,7 @@ std::list< FilteringProgram > FilteringProgram::presets = {
 
 int FilteringProgram::getFilterHeaderNumlines()
 {
-    return 16;
+    return 14;
 }
 
 std::string FilteringProgram::getFilterCodeInputs()
@@ -93,7 +91,7 @@ std::string FilteringProgram::getFilterCodeInputs()
                                            "sampler2D iChannel0;             // input channel 0 (texture).\n"
                                            "sampler2D iChannel1;             // input channel 1 (texture).\n"
                                            "vec4      iDate;                 // (year, month, day, time in seconds)\n"
-                                           "vec4      iMouse;                // emulation of mouse input.";
+                                           "vec4      iMouse;                // simulate mouse input with sliders:";
     return filterHeaderHelp;
 }
 
@@ -101,6 +99,8 @@ std::string FilteringProgram::getFilterCodeDefault()
 {
     return filterDefault;
 }
+
+glm::vec4 FilteringProgram::iMouse = glm::vec4(0.5f,0.5f,0.f,0.f);
 
 ////////////////////////////////////////
 /////                                 //
@@ -181,7 +181,6 @@ public:
     GTimer *timer_;
     double iTime_;
     uint iFrame_;
-    glm::vec4 iMouse_;
 
     // list of uniforms to control shader
     std::map< std::string, float > uniforms_;
@@ -211,7 +210,6 @@ ImageFilteringShader::ImageFilteringShader(): ImageShader()
     timer_ = g_timer_new ();
     iTime_ = 0.0;
     iFrame_ = 0;
-    iMouse_ = glm::vec4(0.f);
 
     ImageShader::reset();
 }
@@ -242,7 +240,10 @@ void ImageFilteringShader::use()
     //
     program_->setUniform("iTime", float(iTime_) );
     program_->setUniform("iFrame", int(iFrame_) );
-    program_->setUniform("iMouse", iMouse_ );
+
+    // scale iMouse to resolution
+    glm::vec4 im = FilteringProgram::iMouse * glm::vec4( Rendering::manager().currentAttrib().viewport, 1.f, 1.f);
+    program_->setUniform("iMouse", im );
 
     // Calculate iTimeDelta
     double elapsed = g_timer_elapsed (timer_, NULL);

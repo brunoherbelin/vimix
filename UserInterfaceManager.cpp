@@ -44,6 +44,7 @@ using namespace std;
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
 
@@ -5451,8 +5452,8 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr),
     }
 
     static const char* const filter_keyword[] = {
-        "iResolution", "iTime", "iTimeDelta", "iFrame", "iChannelResolution", "iDate",
-        "iChannel0", "iChannel1", "iTransform", "FragColor", "vertexColor", "vertexUV",
+        "iResolution", "iTime", "iTimeDelta", "iFrame", "iChannelResolution", "iDate", "iMouse",
+        "iChannel0", "iChannel1", "iTransform", "FragColor", "vertexColor", "vertexUV"
     };
     for (auto& k : filter_keyword)
     {
@@ -5757,6 +5758,9 @@ void ShaderEditor::Render()
         ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor(2);
         ImGui::PopFont();
+
+        // sliders iMouse
+        ImGui::SliderFloat4("##iMouse", glm::value_ptr( FilteringProgram::iMouse ), 0.0, 1.0 );
     }
     else
         ImGui::Spacing();
