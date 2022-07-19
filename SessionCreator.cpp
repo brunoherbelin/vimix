@@ -851,9 +851,12 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
             n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
 
-            bool play = true;
-            mediaplayerNode->QueryBoolAttribute("play", &play);
-            n.play(play);
+            // only read media player play attribute if the source has no play attribute (backward compatibility)
+            if ( !xmlCurrent_->Attribute( "play" ) ) {
+                bool play = true;
+                mediaplayerNode->QueryBoolAttribute("play", &play);
+                n.play(play);
+            }
         }
     }
 }
@@ -933,9 +936,14 @@ void SessionLoader::visit (Source& s)
     XMLElement* sourceNode = xmlCurrent_;
     const char *pName = sourceNode->Attribute("name");
     s.setName(pName);
+
+    // schedule lock and play of the source (callbacks called after init)
     bool l = false;
     sourceNode->QueryBoolAttribute("locked", &l);
-    s.setLocked(l);
+    s.call( new Lock(l) );
+    bool p = true;
+    sourceNode->QueryBoolAttribute("play", &p);
+    s.call( new Play(p) );
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
@@ -990,6 +998,7 @@ void SessionLoader::visit (Source& s)
 
     // restore current
     xmlCurrent_ = sourceNode;
+
 }
 
 void SessionLoader::visit (MediaSource& s)

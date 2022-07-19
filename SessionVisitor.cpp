@@ -574,6 +574,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("id", s.id());
     sourceNode->SetAttribute("name", s.name().c_str() );
     sourceNode->SetAttribute("locked", s.locked() );
+    sourceNode->SetAttribute("play", s.playing() );
 
     // insert into hierarchy
     xmlCurrent_->InsertFirstChild(sourceNode);
