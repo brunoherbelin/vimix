@@ -58,6 +58,12 @@ namespace SystemToolkit
     // builds the absolute path (starting with '/') of relativePath starting from relativeTo (e.g. ../c/d rel to /a/b/e -> /a/b/c/d)
     std::string path_absolute_from_path(const std::string& relativePath, const std::string& relativeTo);
 
+    // generates a filename at given path, with basename and inerative suffix
+    std::string filename_sequential(const std::string& path, const std::string& base, const std::string& extension);
+
+    // generates a filename at given path, with basename and date prefix
+    std::string filename_dateprefix(const std::string& path, const std::string& base, const std::string& extension);
+
     // true of file exists
     bool file_exists(const std::string& path);
 

@@ -12,11 +12,12 @@
 
 class PNGRecorder : public FrameGrabber
 {
+    std::string basename_;
     std::string filename_;
 
 public:
 
-    PNGRecorder();
+    PNGRecorder(const std::string &basename = std::string());
     std::string filename() const { return filename_; }
 
 protected:
@@ -29,6 +30,7 @@ protected:
 
 class VideoRecorder : public FrameGrabber
 {
+    std::string basename_;
     std::string filename_;
 
     std::string init(GstCaps *caps) override;
@@ -57,7 +59,7 @@ public:
     static const char*   framerate_preset_name[3];
     static const int     framerate_preset_value[3];
 
-    VideoRecorder();
+    VideoRecorder(const std::string &basename = std::string());
     std::string info() const override;
     std::string filename() const { return filename_; }
 };

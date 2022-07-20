@@ -90,6 +90,7 @@ struct RecordConfig
     int framerate_mode;
     int buffering_mode;
     int priority_mode;
+    int naming_mode;
 
     RecordConfig() : path("") {
         profile = 0;
@@ -99,6 +100,7 @@ struct RecordConfig
         framerate_mode = 1;
         buffering_mode = 2;
         priority_mode = 1;
+        naming_mode = 1;
     }
 
 };

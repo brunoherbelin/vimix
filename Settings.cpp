@@ -156,6 +156,7 @@ void Settings::Save(uint64_t runtime)
     RecordNode->SetAttribute("framerate_mode", application.record.framerate_mode);
     RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
     RecordNode->SetAttribute("priority_mode", application.record.priority_mode);
+    RecordNode->SetAttribute("naming_mode", application.record.naming_mode);
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -399,6 +400,7 @@ void Settings::Load()
         recordnode->QueryIntAttribute("framerate_mode", &application.record.framerate_mode);
         recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
         recordnode->QueryIntAttribute("priority_mode", &application.record.priority_mode);
+        recordnode->QueryIntAttribute("naming_mode", &application.record.naming_mode);
 
         const char *path_ = recordnode->Attribute("path");
         if (path_)

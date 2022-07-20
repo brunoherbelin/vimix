@@ -276,7 +276,8 @@ string SystemToolkit::temp_path()
 string SystemToolkit::full_filename(const std::string& path, const string &filename)
 {
     string fullfilename = path;
-    fullfilename += PATH_SEP;
+    if (path.back() != PATH_SEP)
+        fullfilename += PATH_SEP;
     fullfilename += filename;
 
     return fullfilename;
@@ -300,7 +301,9 @@ string SystemToolkit::path_directory(const string& path)
 
     DIR *dir;
     if ((dir = opendir (path.c_str())) != NULL) {
-        directorypath = path + PATH_SEP;
+        directorypath = path;
+        if (path.back() != PATH_SEP)
+            directorypath += PATH_SEP;
         closedir (dir);
     }
 
@@ -451,3 +454,80 @@ string SystemToolkit::path_absolute_from_path(const string& relativePath, const 
 
     return absolutePath;
 }
+
+std::string SystemToolkit::filename_sequential(const std::string& path, const std::string& base, const std::string& extension)
+{
+    std::ostringstream filename;
+
+    // make sure extension is without the dot
+    string ext = extension;
+    auto loc = extension.find_last_of(".");
+    if (loc != string::npos)
+        ext = extension.substr( loc + 1 );
+
+    // make sure path is ok
+    std::string p = SystemToolkit::path_directory(path);
+    if (p.empty())
+        p = home_path();
+
+    // list all files in the target directory that potentially match the sequence naming pattern
+    std::list<std::string> pattern;
+    pattern.push_back( base + "*." + ext );
+    std::list<std::string> ls = SystemToolkit::list_directory(p, pattern);
+
+    // establish a filename for a consecutive sequence of numbers
+    for (int i = 0; i < ls.size() + 1; ++i) {
+        // clear
+        filename.str(std::string());
+        // add path
+        filename << p;
+        // add base filename
+        if (base.empty())
+            filename << "vimix";
+        else
+            filename << base ;
+        // add sequential number
+        filename  << "_" << std::setw(4) << std::setfill('0') << i;
+        // add extension
+        if (!ext.empty())
+            filename << "." << ext;
+        // use that filename if was not already used
+        if ( std::find( ls.begin(), ls.end(), filename.str() ) == ls.end() )
+            break;
+    }
+
+    return filename.str();
+}
+
+std::string SystemToolkit::filename_dateprefix(const std::string& path, const std::string& base, const std::string& extension)
+{
+    // make sure extension is without the dot
+    string ext = extension;
+    auto loc = extension.find_last_of(".");
+    if (loc != string::npos)
+        ext = extension.substr( loc + 1 );
+
+    // make sure path is ok
+    std::string p = SystemToolkit::path_directory(path);
+    if (p.empty())
+        p = home_path();
+
+    // build filename
+    std::ostringstream filename;
+    // add path
+    filename << p;
+    // add date prefix
+    filename << SystemToolkit::date_time_string() << "_";
+    // add base filename
+    if (base.empty())
+        filename << "vimix";
+    else
+        filename << base ;
+    // add extension
+    if (!ext.empty())
+        filename << "." << ext;
+
+    return filename.str();
+}
+
+

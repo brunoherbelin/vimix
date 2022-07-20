@@ -383,7 +383,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
             sourcecontrol.Capture();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
-            FrameGrabbing::manager().add(new PNGRecorder);
+            FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
@@ -2244,32 +2244,15 @@ void SourceController::Update()
     if (source != nullptr) {
         // back from capture of FBO: can save file
         if ( capture.isFull() ){
-            // default naming of file with date prefix
-            std::ostringstream filename;
-            filename << Settings::application.source.capture_path << PATH_SEP;
-            filename << SystemToolkit::date_time_string() << "_" << source->name() << ".png";
-
+            std::string filename;
             // if sequencial naming of file is selected
             if (Settings::application.source.capture_naming == 0 )
-            {
-                // list all files in the target directory that potentially match the sequence naming pattern
-                std::list<std::string> pattern;
-                pattern.push_back( source->name() + "*.png"  );
-                std::list<std::string> ls = SystemToolkit::list_directory(Settings::application.source.capture_path, pattern);
-                // establish a filename for a consecutive sequence of numbers
-                for (int i = 0; i < ls.size() + 1; ++i) {
-                    filename.str(std::string()); // clear
-                    filename << Settings::application.source.capture_path << PATH_SEP;
-                    filename << source->name() << "_" ;
-                    filename << std::setw(4) << std::setfill('0') << i << ".png";
-                    // use that filename if was not already used
-                    if ( std::find( ls.begin(), ls.end(), filename.str() ) == ls.end() )
-                        break;
-                }
-            }
+                filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, source->name(), "png");
+            else
+                filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, source->name(), "png");
             // save capture and inform user
-            capture.save( filename.str() );
-            Log::Notify("Frame saved in %s", filename.str().c_str() );
+            capture.save( filename );
+            Log::Notify("Frame saved in %s", filename.c_str() );
         }
         // request capture : initiate capture of FBO
         if ( capture_request_ ) {
@@ -2385,13 +2368,15 @@ void SourceController::Render()
                 capture_request_ = true;
             ImGui::PopStyleColor(1);
 
-            // path
+            ImGui::MenuItem("Settings", nullptr, false, false);
+
+            // path menu selection
             static char* name_path[4] = { nullptr };
             if ( name_path[0] == nullptr ) {
                 for (int i = 0; i < 4; ++i)
                     name_path[i] = (char *) malloc( 1024 * sizeof(char));
                 sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
-                sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
+                sprintf( name_path[2], "%s", ICON_FA_FOLDER " File location");
                 sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
             }
             if (Settings::application.source.capture_path.empty())
@@ -2402,14 +2387,28 @@ void SourceController::Render()
             ImGui::Combo("Path", &selected_path, name_path, 4);
             if (selected_path > 2)
                 captureFolderDialog->open();
-            else if (selected_path > 1)
-                Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+            else if (selected_path > 1) {
+                // file location of media player
+                if (mediaplayer_active_)
+                    Settings::application.source.capture_path = SystemToolkit::path_filename( mediaplayer_active_->filename() );
+                // else file location of session
+                else
+                    Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+            }
             else if (selected_path > 0)
                 Settings::application.source.capture_path = SystemToolkit::home_path();
 
-            static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "   Sequence", ICON_FA_CALENDAR "  Date" };
+            // offer to open folder location
+            ImVec2 draw_pos = ImGui::GetCursorPos();
+            ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
+            if (ImGuiToolkit::IconButton( ICON_FA_EXTERNAL_LINK_ALT,  Settings::application.source.capture_path.c_str()))
+                SystemToolkit::open(Settings::application.source.capture_path);
+            ImGui::SetCursorPos(draw_pos);
+
+            // Naming menu selection
+            static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::Combo("Naming", &Settings::application.source.capture_naming, naming_style, IM_ARRAYSIZE(naming_style));
+            ImGui::Combo("Filename", &Settings::application.source.capture_naming, naming_style, IM_ARRAYSIZE(naming_style));
 
             ImGui::EndMenu();
         }
@@ -3821,7 +3820,7 @@ void OutputPreview::ToggleRecord(bool save_and_continue)
             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
         // 'save & continue'
         if ( save_and_continue) {
-            VideoRecorder *rec = new VideoRecorder;
+            VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
             FrameGrabbing::manager().chain(video_recorder_, rec);
             video_recorder_ = rec;
         }
@@ -3831,7 +3830,7 @@ void OutputPreview::ToggleRecord(bool save_and_continue)
             video_recorder_->stop();
     }
     else {
-        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
+        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
                                                   std::chrono::seconds(Settings::application.record.delay)) );
     }
 }
@@ -3913,8 +3912,9 @@ void OutputPreview::Render()
             if (ImGui::BeginMenu( ICON_FA_COMPACT_DISC " Record"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
-                if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) )
-                    FrameGrabbing::manager().add(new PNGRecorder);
+                if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) ) {
+                    FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+                }
                 ImGui::PopStyleColor(1);
 
                 // temporary disabled
@@ -3940,7 +3940,7 @@ void OutputPreview::Render()
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // create a new recorder chainned to the current one
-                        VideoRecorder *rec = new VideoRecorder;
+                        VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
                         FrameGrabbing::manager().chain(video_recorder_, rec);
                         // swap recorder
                         video_recorder_ = rec;
@@ -3951,7 +3951,8 @@ void OutputPreview::Render()
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD) ) {
-                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder,
+                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
+                                                                  new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
                     ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
@@ -3959,13 +3960,11 @@ void OutputPreview::Render()
                 }
                 // Options menu
                 ImGui::Separator();
-                ImGui::MenuItem("Options", nullptr, false, false);
+                ImGui::MenuItem("Settings", nullptr, false, false);
                 // offer to open config panel from here for more options
                 ImGui::SameLine(ImGui::GetContentRegionAvailWidth() + 1.2f * IMGUI_RIGHT_ALIGN);
-                if (ImGuiToolkit::IconButton(13, 5))
+                if (ImGuiToolkit::IconButton(13, 5, "Advanced settings"))
                     UserInterface::manager().navigator.showConfig();
-                ImGui::SameLine(0);
-                ImGui::Text("Settings");
 
                 // BASIC OPTIONS
                 static char* name_path[4] = { nullptr };
@@ -3988,6 +3987,19 @@ void OutputPreview::Render()
                     Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
                 else if (selected_path > 0)
                     Settings::application.record.path = SystemToolkit::home_path();
+
+                // offer to open folder location
+                ImVec2 draw_pos = ImGui::GetCursorPos();
+                ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
+                if (ImGuiToolkit::IconButton( ICON_FA_EXTERNAL_LINK_ALT,  Settings::application.record.path.c_str()))
+                    SystemToolkit::open(Settings::application.record.path);
+                ImGui::SetCursorPos(draw_pos);
+
+                // Naming menu selection
+                static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::Combo("Filename", &Settings::application.record.naming_mode, naming_style, IM_ARRAYSIZE(naming_style));
+
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGuiToolkit::SliderTiming ("Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");

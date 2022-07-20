@@ -41,7 +41,7 @@
 
 #include "Recorder.h"
 
-PNGRecorder::PNGRecorder() : FrameGrabber()
+PNGRecorder::PNGRecorder(const std::string &basename) : FrameGrabber(), basename_(basename)
 {
 }
 
@@ -63,11 +63,13 @@ std::string PNGRecorder::init(GstCaps *caps)
         return msg;
     }
 
-    // verify location path (path is always terminated by the OS dependent separator)
-    std::string path = SystemToolkit::path_directory(Settings::application.record.path);
-    if (path.empty())
-        path = SystemToolkit::home_path();
-    filename_ = path + "vimix_" + SystemToolkit::date_time_string() + ".png";
+    // construct filename:
+    // if sequencial file naming
+    if (Settings::application.record.naming_mode == 0 )
+        filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "png");
+    // or prefixed with date
+    else
+        filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "png");
 
     // setup file sink
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
@@ -303,7 +305,7 @@ const char*   VideoRecorder::framerate_preset_name[3]  = { "15 FPS", "25 FPS", "
 const gint    VideoRecorder::framerate_preset_value[3] = { 15, 25, 30 };
 
 
-VideoRecorder::VideoRecorder() : FrameGrabber()
+VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), basename_(basename)
 {
     // first run initialization of hardware encoders in linux
 #if GST_GL_HAVE_PLATFORM_GLX
@@ -350,24 +352,34 @@ std::string VideoRecorder::init(GstCaps *caps)
     else
         description += profile_description[Settings::application.record.profile];
 
-    // verify location path (path is always terminated by the OS dependent separator)
-    std::string path = SystemToolkit::path_directory(Settings::application.record.path);
-    if (path.empty())
-        path = SystemToolkit::home_path();
-
-    // setup filename & muxer
+    // setup muxer and prepare filename
     if( Settings::application.record.profile == JPEG_MULTI) {
-        std::string folder = path + "vimix_" + SystemToolkit::date_time_string();
-        filename_ = SystemToolkit::full_filename(folder, "%05d.jpg");
-        if (SystemToolkit::create_directory(folder))
+        std::string folder = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "");
+        if (SystemToolkit::create_directory(folder)) {
+            filename_ = SystemToolkit::full_filename(folder, "%05d.jpg");
             description += "multifilesink name=sink";
+        }
+        else
+            return std::string("Video Recording : Failed to create folder ") + folder;
     }
     else if( Settings::application.record.profile == VP8) {
-        filename_ = path + "vimix_" + SystemToolkit::date_time_string() + ".webm";
+        // if sequencial file naming
+        if (Settings::application.record.naming_mode == 0 )
+            filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "webm");
+        // or prefixed with date
+        else
+            filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "webm");
+
         description += "webmmux ! filesink name=sink";
     }
     else {
-        filename_ = path + "vimix_" + SystemToolkit::date_time_string() + ".mov";
+        // if sequencial file naming
+        if (Settings::application.record.naming_mode == 0 )
+            filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "mov");
+        // or prefixed with date
+        else
+            filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "mov");
+
         description += "qtmux ! filesink name=sink";
     }
 
