@@ -716,15 +716,16 @@ bool UserInterface::TryClose()
     if (pending_save_on_exit)
         return true;
 
-    // save on exit
+    // check if there is something to save
     pending_save_on_exit = false;
-    if (Settings::application.recentSessions.save_on_exit && !Mixer::manager().session()->empty())
+    if (!Mixer::manager().session()->empty())
     {
         // determine if a pending save of session is required
         if (Mixer::manager().session()->filename().empty())
             // need to wait for user to give a filename
             pending_save_on_exit = true;
-        else
+        // save on exit
+        else if (Settings::application.recentSessions.save_on_exit)
             // ok to save the session
             Mixer::manager().save(false);
     }
@@ -1001,8 +1002,8 @@ void UserInterface::showMenuFile()
     ImGui::Separator();
     if (ImGui::MenuItem( IMGUI_TITLE_HELP, SHORTCUT_HELP))
         Settings::application.widget.help = true;
-    if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT))
-        TryClose();
+    if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT) && TryClose())
+        Rendering::manager().close();
 
 }
 
