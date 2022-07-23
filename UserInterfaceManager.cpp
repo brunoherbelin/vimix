@@ -1134,10 +1134,6 @@ void UserInterface::showSourceEditor(Source *s)
             outputcontrol.setVisible(true);
             return;
         }
-//        CloneSource *cs = dynamic_cast<CloneSource *>(s);
-//        if (cs != nullptr) {
-//            shadercontrol.setVisible( cs );
-//        }
         if (s->playable()) {
             sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();

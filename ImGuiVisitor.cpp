@@ -993,12 +993,14 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
-    ImVec2 pos = ImGui::GetCursorPos();
-    ImGui::SameLine(0, 0);
-    ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-        UserInterface::manager().showSourceEditor(&s);
-    ImGui::SetCursorPos(pos);
+    if ( s.playable() ) {
+        ImVec2 pos = ImGui::GetCursorPos();
+        ImGui::SameLine(0, 0);
+        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            UserInterface::manager().showSourceEditor(&s);
+        ImGui::SetCursorPos(pos);
+    }
 
     // link to origin source
     std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
