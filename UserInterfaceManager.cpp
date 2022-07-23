@@ -2235,25 +2235,27 @@ void SourceController::Update()
         Settings::application.source.capture_path = captureFolderDialog->path();
 
     //
-    // Capture frame on current source
+    // Capture frame on current selection
     //
-    Source *source = Mixer::manager().currentSource();
-    if (source != nullptr) {
+    Source *s = nullptr;
+    if ( selection_.size() == 1 )
+        s = selection_.front();
+    if ( s != nullptr) {
         // back from capture of FBO: can save file
         if ( capture.isFull() ){
             std::string filename;
             // if sequencial naming of file is selected
             if (Settings::application.source.capture_naming == 0 )
-                filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, source->name(), "png");
+                filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, s->name(), "png");
             else
-                filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, source->name(), "png");
+                filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, s->name(), "png");
             // save capture and inform user
             capture.save( filename );
             Log::Notify("Frame saved in %s", filename.c_str() );
         }
         // request capture : initiate capture of FBO
         if ( capture_request_ ) {
-            capture.captureFramebuffer(source->frame());
+            capture.captureFramebuffer( s->frame() );
             capture_request_ = false;
         }
     }
@@ -2301,6 +2303,15 @@ void SourceController::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             //
+            // Menu section for play control
+            //
+            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
+                replay_request_ = true;
+            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
+                play_toggle_request_ = true;
+
+            ImGui::Separator();
+            //
             // Menu section for display
             //
             if (ImGui::BeginMenu( ICON_FA_IMAGE "  Displayed image"))
@@ -2346,26 +2357,58 @@ void SourceController::Render()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu(ICON_FA_PLAY "  Control"))
+        if (ImGui::BeginMenu(active_label_.c_str()))
         {
-            //
-            // Menu section for play control
-            //
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
-                replay_request_ = true;
-            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
-                play_toggle_request_ = true;
+            // info on selection status
+            size_t N = Mixer::manager().session()->numPlayGroups();
+            bool enabled = !selection_.empty() && active_selection_ < 0;
 
-            ImGui::Separator();
-            //
-            // Menu for capture frame
-            //
+            // Menu : Dynamic selection
+            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
+                resetActiveSelection();
+            // Menu : store selection
+            if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE LABEL_STORE_SELECTION, NULL, false, enabled))
+            {
+                active_selection_ = N;
+                active_label_ = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(active_selection_);
+                Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
+                info_.reset();
+            }
+            // Menu : list of selections
+            if (N>0) {
+                ImGui::Separator();
+                for (size_t i = 0 ; i < N; ++i)
+                {
+                    std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
+                    if (ImGui::MenuItem( label.c_str() ))
+                    {
+                        active_selection_ = i;
+                        active_label_ = label;
+                        info_.reset();
+                    }
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+
+        //
+        // Menu for capture frame
+        //
+        if ( ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO "  Frame", selection_.size() == 1 ) )
+        {
+            bool inspect = Settings::application.source.inspector_zoom > 0.f;
+            if (ImGui::MenuItem( ICON_FA_SEARCH "  Inspector", NULL, &inspect ))
+                Settings::application.source.inspector_zoom = inspect ? 8.f : 0.f;
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
-            if (ImGui::MenuItem( ICON_FA_CAMERA_RETRO " Capture frame", "F10", nullptr, Mixer::manager().currentSource() != nullptr ))
+            if (ImGui::MenuItem( MENU_CAPTUREFRAME, "F10" ))
                 capture_request_ = true;
             ImGui::PopStyleColor(1);
 
-            ImGui::MenuItem("Settings", nullptr, false, false);
+            // separator and hack for extending menu width
+            ImGui::Separator();
+            ImGui::MenuItem("Settings                            ", nullptr, false, false);
 
             // path menu selection
             static char* name_path[4] = { nullptr };
@@ -2410,103 +2453,65 @@ void SourceController::Render()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu(active_label_.c_str()))
+        //
+        // Menu for video Mediaplayer control
+        //
+        if (ImGui::BeginMenu(ICON_FA_FILM " Video", mediaplayer_active_) )
         {
-            // info on selection status
-            size_t N = Mixer::manager().session()->numPlayGroups();
-            bool enabled = !selection_.empty() && active_selection_ < 0;
-
-            // Menu : Dynamic selection
-            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
-                resetActiveSelection();
-            // Menu : store selection
-            if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE LABEL_STORE_SELECTION, NULL, false, enabled))
-            {
-                active_selection_ = N;
-                active_label_ = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(active_selection_);
-                Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
-                info_.reset();
+            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline")){
+                mediaplayer_timeline_zoom_ = 1.f;
+                mediaplayer_active_->timeline()->clearFading();
+                mediaplayer_active_->timeline()->clearGaps();
+                std::ostringstream oss;
+                oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+                oss << ": Reset timeline";
+                Action::manager().store(oss.str());
             }
-            // Menu : list of selections
-            if (N>0) {
+
+            if (ImGui::MenuItem(LABEL_EDIT_FADING))
+                mediaplayer_edit_fading_ = true;
+
+            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+            {
+                Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
+                bool active = sync == Metronome::SYNC_NONE;
+                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
+                active = sync == Metronome::SYNC_BEAT;
+                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
+                active = sync == Metronome::SYNC_PHASE;
+                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
+            {
+                bool option = !mediaplayer_active_->rewindOnDisabled();
+                if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
+                    mediaplayer_active_->setRewindOnDisabled(false);
+                option = mediaplayer_active_->rewindOnDisabled();
+                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
+                    mediaplayer_active_->setRewindOnDisabled(true);
+                ImGui::EndMenu();
+            }
+            if (Settings::application.render.gpu_decoding)
+            {
                 ImGui::Separator();
-                for (size_t i = 0 ; i < N; ++i)
+                if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
                 {
-                    std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
-                    if (ImGui::MenuItem( label.c_str() ))
-                    {
-                        active_selection_ = i;
-                        active_label_ = label;
-                        info_.reset();
-                    }
+                    bool hwdec = !mediaplayer_active_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Auto", "", &hwdec ))
+                        mediaplayer_active_->setSoftwareDecodingForced(false);
+                    hwdec = mediaplayer_active_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                        mediaplayer_active_->setSoftwareDecodingForced(true);
+                    ImGui::EndMenu();
                 }
             }
 
             ImGui::EndMenu();
-        }
-
-        if (mediaplayer_active_) {
-            if (ImGui::BeginMenu(ICON_FA_FILM " Video") )
-            {
-                if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline")){
-                    mediaplayer_timeline_zoom_ = 1.f;
-                    mediaplayer_active_->timeline()->clearFading();
-                    mediaplayer_active_->timeline()->clearGaps();
-                    std::ostringstream oss;
-                    oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-                    oss << ": Reset timeline";
-                    Action::manager().store(oss.str());
-                }
-
-                if (ImGui::MenuItem(LABEL_EDIT_FADING))
-                    mediaplayer_edit_fading_ = true;
-
-                if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
-                {
-                    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
-                    bool active = sync == Metronome::SYNC_NONE;
-                    if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
-                    active = sync == Metronome::SYNC_BEAT;
-                    if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
-                    active = sync == Metronome::SYNC_PHASE;
-                    if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
-                {
-                    bool option = !mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
-                        mediaplayer_active_->setRewindOnDisabled(false);
-                    option = mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
-                        mediaplayer_active_->setRewindOnDisabled(true);
-                    ImGui::EndMenu();
-                }
-                if (Settings::application.render.gpu_decoding)
-                {
-                    ImGui::Separator();
-                    if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-                    {
-                        bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                        if (ImGui::MenuItem("Auto", "", &hwdec ))
-                            mediaplayer_active_->setSoftwareDecodingForced(false);
-                        hwdec = mediaplayer_active_->softwareDecodingForced();
-                        if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                            mediaplayer_active_->setSoftwareDecodingForced(true);
-                        ImGui::EndMenu();
-                    }
-                }
-
-                ImGui::EndMenu();
-            }
-        }
-        else {
-            ImGui::SameLine(0, 2.f * g.Style.ItemSpacing.x );
-            ImGui::TextDisabled(ICON_FA_FILM " Video");
         }
 
         ImGui::EndMenuBar();
@@ -3015,6 +3020,43 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
     return ret;
 }
 
+void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 origin)
+{
+    if (Settings::application.source.inspector_zoom > 0 && ImGui::IsWindowFocused())
+    {
+        // region size is computed with zoom factor from settings
+        float region_sz = texturesize.x / Settings::application.source.inspector_zoom;
+
+        // get coordinates of area to zoom at mouse position
+        const ImGuiIO& io = ImGui::GetIO();
+        float region_x = io.MousePos.x - origin.x - region_sz * 0.5f;
+        if (region_x < 0.f)
+            region_x = 0.f;
+        else if (region_x > texturesize.x - region_sz)
+            region_x = texturesize.x - region_sz;
+
+        float region_y = io.MousePos.y - origin.y - region_sz * 0.5f;
+        if (region_y < 0.f)
+            region_y = 0.f;
+        else if (region_y > texturesize.y - region_sz)
+            region_y = texturesize.y - region_sz;
+
+        // Tooltip without border and 100% opaque
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f) );
+        ImGui::BeginTooltip();
+
+        // compute UV and display image in tooltip
+        ImVec2 uv0 = ImVec2((region_x) / texturesize.x, (region_y) / texturesize.y);
+        ImVec2 uv1 = ImVec2((region_x + region_sz) / texturesize.x, (region_y + region_sz) / texturesize.y);
+        ImGui::Image((void*)(intptr_t)texture, ImVec2(texturesize.x / 3.f, texturesize.x / 3.f), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
+
+        ImGui::EndTooltip();
+        ImGui::PopStyleVar(3);
+    }
+}
+
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -3049,6 +3091,8 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
         //
         ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
         ImGui::Image((void*)(uintptr_t) s->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
+        if ( ImGui::IsItemHovered() )
+            DrawInspector(s->texture(), framesize, top_image);
 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
@@ -3060,6 +3104,8 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
             // draw cropped area
             ImGui::SetCursorScreenPos(top_image + croptop );
             ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
+            if ( ImGui::IsItemHovered() )
+                DrawInspector(s->frame()->texture(), framesize, top_image);
         }
         // overlap of slider with cropped area (horizontally)
         else if (slider.x < croptop.x + cropsize.x ) {
@@ -3071,6 +3117,8 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
             // size is reduced by slider
             cropsize = cropsize * ImVec2(1.f -cropped_slider, 1.f);
             ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
+            if ( ImGui::IsItemHovered() )
+                DrawInspector(s->frame()->texture(), framesize, top_image);
         }
         // else : no render of cropped area
 
@@ -3090,6 +3138,8 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
     }
     else {
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
+        if ( ImGui::IsItemHovered() )
+            DrawInspector(s->texture(), framesize, top_image);
     }
 
     return ImRect( top_image, top_image + framesize);

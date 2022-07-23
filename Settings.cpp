@@ -173,6 +173,7 @@ void Settings::Save(uint64_t runtime)
     SourceConfNode->SetAttribute("res", application.source.res);
     SourceConfNode->SetAttribute("capture_naming", application.source.capture_naming);
     SourceConfNode->SetAttribute("capture_path", application.source.capture_path.c_str());
+    SourceConfNode->SetAttribute("inspector_zoom", application.source.inspector_zoom);
     pRoot->InsertEndChild(SourceConfNode);
 
     // Brush
@@ -422,6 +423,7 @@ void Settings::Load()
             application.source.capture_path = std::string(path_);
         else
             application.source.capture_path = SystemToolkit::home_path();
+        sourceconfnode->QueryFloatAttribute("inspector_zoom", &application.source.inspector_zoom);
     }
 
     // Transition

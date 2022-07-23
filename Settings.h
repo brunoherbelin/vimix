@@ -169,12 +169,14 @@ struct SourceConfig
     int res;
     std::string capture_path;
     int capture_naming;
+    float inspector_zoom;
 
     SourceConfig() {
         new_type = 0;
         ratio = 3;
         res = 1;
         capture_naming = 0;
+        inspector_zoom = 8.f;
     }
 };
 
