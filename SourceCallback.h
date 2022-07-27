@@ -24,7 +24,8 @@ public:
         CALLBACK_PLAY = 8,
         CALLBACK_REPLAY = 9,
         CALLBACK_RESETGEO = 10,
-        CALLBACK_LOCK = 11
+        CALLBACK_LOCK = 11,
+        CALLBACK_SEEK = 12
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -34,7 +35,7 @@ public:
     virtual ~SourceCallback() {}
 
     virtual void update (Source *, float);
-    virtual void multiply (float) {};
+    virtual void multiply (float) {}
     virtual SourceCallback *clone () const = 0;
     virtual SourceCallback *reverse (Source *) const { return nullptr; }
     virtual CallbackType type () const { return CALLBACK_GENERIC; }
@@ -177,6 +178,22 @@ public:
     CallbackType type () const override { return CALLBACK_REPLAY; }
 };
 
+class Seek : public SourceCallback
+{
+    float target_time_;
+
+public:
+    Seek (float time = 0.f);
+
+    float value () const { return target_time_;}
+    void setValue (float t) { target_time_ = t; }
+
+    void update (Source *s, float dt) override;
+    SourceCallback *clone() const override;
+    CallbackType type () const override { return CALLBACK_SEEK; }
+    void accept (Visitor& v) override;
+};
+
 class ResetGeometry : public SourceCallback
 {
 public:
@@ -223,7 +240,7 @@ public:
     glm::vec2 value () const { return speed_; }
     void  setValue (glm::vec2 d) { speed_ = d; }
     float duration () const { return duration_; }
-    void  setDuration (float ns) { duration_ = ns; }
+    void  setDuration (float ms) { duration_ = ms; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;

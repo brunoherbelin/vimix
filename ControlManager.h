@@ -43,6 +43,10 @@
 #define OSC_SOURCE_RESIZE      "/resize"
 #define OSC_SOURCE_TURN        "/turn"
 #define OSC_SOURCE_RESET       "/reset"
+#define OSC_SOURCE_POSITION    "/position"
+#define OSC_SOURCE_SIZE        "/size"
+#define OSC_SOURCE_ANGLE       "/angle"
+#define OSC_SOURCE_SEEK        "/seek"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"

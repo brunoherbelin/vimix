@@ -19,6 +19,8 @@
 
 #include "defines.h"
 #include "Source.h"
+#include "MediaSource.h"
+#include "MediaPlayer.h"
 #include "UpdateCallback.h"
 #include "Visitor.h"
 #include "Log.h"
@@ -455,6 +457,38 @@ void RePlay::update(Source *s, float dt)
 SourceCallback *RePlay::clone() const
 {
     return new RePlay;
+}
+
+
+Seek::Seek(float time) : SourceCallback(), target_time_(time)
+{
+}
+
+void Seek::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // perform seek when ready
+    if ( status_ == READY ){
+
+        // access media player if target source is a media source
+        MediaSource *ms = dynamic_cast<MediaSource *>(s);
+        if (ms != nullptr)
+            ms->mediaplayer()->seek( GST_SECOND * target_time_ );
+
+        status_ = FINISHED;
+    }
+}
+
+SourceCallback *Seek::clone() const
+{
+    return new Seek(target_time_);
+}
+
+void Seek::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
 }
 
 

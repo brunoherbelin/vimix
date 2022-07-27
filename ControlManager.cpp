@@ -619,17 +619,37 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> x >> osc::EndMessage;
             target->call( new SetDepth(x), true );
         }
-        /// e.g. '/vimix/current/translation ff 10.0 2.2'
+        /// e.g. '/vimix/current/grab ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
             float x = 0.f, y = 0.f;
             arguments >> x >> y >> osc::EndMessage;
             target->call( new Grab( x, y, 0.f), true );
+        }
+        /// e.g. '/vimix/current/position ff 10.0 2.2'
+        else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
+            float x = 0.f, y = 0.f;
+            arguments >> x >> y >> osc::EndMessage;
+            Group transform;
+            transform.copyTransform(target->group(View::GEOMETRY));
+            transform.translation_.x = x;
+            transform.translation_.y = y;
+            target->call( new SetGeometry( &transform, 0.f), true );
         }
         /// e.g. '/vimix/current/scale ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
             float x = 0.f, y = 0.f;
             arguments >> x >> y >> osc::EndMessage;
             target->call( new Resize( x, y, 0.f), true );
+        }        
+        /// e.g. '/vimix/current/size ff 1.0 2.2'
+        else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
+            float x = 0.f, y = 0.f;
+            arguments >> x >> y >> osc::EndMessage;
+            Group transform;
+            transform.copyTransform(target->group(View::GEOMETRY));
+            transform.scale_.x = x;
+            transform.scale_.y = y;
+            target->call( new SetGeometry( &transform, 0.f), true );
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
@@ -641,9 +661,24 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> y >> osc::EndMessage;
             target->call( new Turn( x, 0.f), true );
         }
+        /// e.g. '/vimix/current/angle f 3.1416'
+        else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {
+            float a = 0.f;
+            arguments >> a >> osc::EndMessage;
+            Group transform;
+            transform.copyTransform(target->group(View::GEOMETRY));
+            transform.rotation_.z = a;
+            target->call( new SetGeometry( &transform, 0.f), true );
+        }
         /// e.g. '/vimix/current/reset'
         else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {
             target->call( new ResetGeometry(), true );
+        }
+        /// e.g. '/vimix/current/seek f 1.25'
+        else if ( attribute.compare(OSC_SOURCE_SEEK) == 0) {
+            float t = 0.f;
+            arguments >> t >> osc::EndMessage;
+            target->call( new Seek( t ), true );
         }
 #ifdef CONTROL_DEBUG
         else {
