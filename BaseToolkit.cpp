@@ -204,6 +204,9 @@ bool BaseToolkit::is_a_number(const std::string& str, int *val)
     catch (const std::invalid_argument&) {
         // avoids crash
     }
+    catch (const std::out_of_range&) {
+        // avoids crash
+    }
 
     return isanumber;
 }
