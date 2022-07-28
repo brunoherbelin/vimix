@@ -1622,8 +1622,11 @@ void HelperToolbox::Render()
         ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
 
-        ImGui::Text("User manual"); ImGui::NextColumn();
-        ImGuiToolkit::ButtonOpenUrl("Online user manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::Text("General"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("User manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::NextColumn();
+        ImGui::Text("Filters"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("Filters and ShaderToy reference", "https://github.com/brunoherbelin/vimix/wiki/Filters-and-ShaderToy", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGui::Text("OSC"); ImGui::NextColumn();
         ImGuiToolkit::ButtonOpenUrl("Open Sound Control API", "https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API", ImVec2(ImGui::GetContentRegionAvail().x, 0));
