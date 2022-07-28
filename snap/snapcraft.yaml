@@ -9,12 +9,27 @@ description: |
    Its intuitive and hands-on user interface gives direct control on image opacity and
    shape for producing live graphics during concerts and VJ-ing sessions.
    The ouput image is typically projected full-screen on an external
-   monitor or a projector, but can be recorded live (no audio).
+   monitor or a projector, but can be recorded and streamed live (no audio).
+contact: https://brunoherbelin.github.io/vimix/
+website: https://github.com/brunoherbelin/vimix
+issues: https://github.com/brunoherbelin/vimix/issues
+source-code: https://github.com/brunoherbelin/vimix.git
 icon: snap/gui/vimix.svg
 license: GPL-3.0+
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
-    
+architectures:
+  - build-on: amd64
+    build-for: amd64
+  - build-on: arm64
+    build-for: arm64
+  - build-on: armhf
+    build-for: armhf
+  - build-on: i386
+    build-for: i386
+  - build-on: ppc64el
+    build-for: ppc64el
+
 apps:
   vimix:
     extensions: [gnome-3-28]
