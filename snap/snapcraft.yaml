@@ -18,12 +18,6 @@ icon: snap/gui/vimix.svg
 license: GPL-3.0+
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
-architectures:
-  - amd64
-  - arm64
-  - armhf
-  - i386
-  - ppc64el
 
 apps:
   vimix:
