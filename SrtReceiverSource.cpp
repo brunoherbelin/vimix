@@ -23,7 +23,7 @@ void SrtReceiverSource::setConnection(const std::string &ip, const std::string &
     port_ = port;
     Log::Notify("Creating Source SRT receiving from '%s'", uri().c_str());
 
-    std::string description = "srtsrc uri=" + uri() + " ! tsdemux ! decodebin ! videoconvert";
+    std::string description = "srtsrc uri=" + uri() + " latency=200 ! tsdemux ! decodebin ! videoconvert";
 
     // open gstreamer
     stream_->open(description);

@@ -101,9 +101,9 @@ std::string VideoBroadcast::init(GstCaps *caps)
     }
 
     // TODO Configure options
-    // setup SRT streaming sink properties
+    // setup SRT streaming sink properties (latency)
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                  "latency", 1000,
+                  "latency", 200,
                   "wait-for-connection", false,
                   NULL);
 
