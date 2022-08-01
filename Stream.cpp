@@ -166,8 +166,14 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
 
                 // add a preroll callback
                 GstAppSinkCallbacks callbacks;
+#if GST_VERSION_MINOR > 18 && GST_VERSION_MAJOR > 0
+                callbacks.new_event = NULL;
+#endif
+                callbacks.eos = NULL;
+                callbacks.new_sample = NULL;
                 callbacks.new_preroll = callback_stream_discoverer;
                 gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, &info, NULL);
+                gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 
                 // start to play the pipeline
                 gst_element_set_state (_pipeline, GST_STATE_PLAYING);
