@@ -484,6 +484,7 @@ set(VMIX_RSC_FILES
     ./rsc/images/mask_linear_left.png
     ./rsc/images/mask_linear_right.png
     ./rsc/images/vimix_256x256.png
+    ./rsc/images/vimix_crow_white.png
     ./rsc/images/icons.dds
     ./rsc/images/gradient_0_cross_linear.png
     ./rsc/images/gradient_1_black_linear.png
