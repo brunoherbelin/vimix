@@ -292,7 +292,7 @@ void NetworkStream::update()
             }
         }
         else {
-            Log::Warning("Connection was rejected by %s.\nMake sure it accepts connection and try again.", streamer_.name.c_str());
+            Log::Warning("Connection was rejected by %s.\nMake sure Sharing on local network is enabled and try again.", streamer_.name.c_str());
             failed_=true;
         }
     }

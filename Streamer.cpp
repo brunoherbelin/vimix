@@ -243,7 +243,7 @@ void Streaming::refuseStream(const std::string &sender, int reply_to)
     // send OSC message to client
     socket.Send( p.Data(), p.Size() );
     // inform user
-    Log::Warning("A connection request for streaming came and was rejected.\nYou can Accept connections from the Output window.");
+    Log::Warning("A connection request for streaming came in and was refused.\nYou can enable the Sharing on local network from the menu of the Output window.");
 }
 
 void Streaming::addStream(const std::string &sender, int reply_to, const std::string &clientname)
