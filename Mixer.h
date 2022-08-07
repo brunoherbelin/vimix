@@ -49,7 +49,7 @@ public:
     // creation of sources
     Source * createSourceFile   (const std::string &path);
     Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
-    Source * createSourceClone  (const std::string &namesource = "");
+    Source * createSourceClone  (const std::string &namesource = "", bool copy_attributes = true);
     Source * createSourceRender ();
     Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(uint pattern, glm::ivec2 res);

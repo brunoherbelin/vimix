@@ -6652,7 +6652,7 @@ void Navigator::RenderNewPannel()
                     label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
                     if (ImGui::Selectable( label.c_str() )) {
                         label = std::string("Clone of ") + label;
-                        new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name()),label);
+                        new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name(), false),label);
                     }
                 }
                 ImGui::EndCombo();

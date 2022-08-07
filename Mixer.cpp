@@ -396,7 +396,7 @@ Source * Mixer::createSourceGroup()
     return s;
 }
 
-Source * Mixer::createSourceClone(const std::string &namesource)
+Source * Mixer::createSourceClone(const std::string &namesource, bool copy_attributes)
 {
     // ready to create a source
     Source *s = nullptr;
@@ -412,9 +412,17 @@ Source * Mixer::createSourceClone(const std::string &namesource)
     if (origin != session_->end()) {
         // create a source
         s = (*origin)->clone();
-        // place clone next to origin
-        s->group(View::MIXING)->translation_ = (*origin)->group(View::MIXING)->translation_;
-        s->group(View::LAYER)->translation_  = (*origin)->group(View::LAYER)->translation_ + LAYER_STEP;
+
+        // if clone operation asks to copy attributes
+        if (copy_attributes) {
+            // place clone next to origin
+            s->group(View::MIXING)->translation_ = (*origin)->group(View::MIXING)->translation_;
+            s->group(View::LAYER)->translation_  = (*origin)->group(View::LAYER)->translation_ + LAYER_STEP;
+            // copy geometry (overlap)
+            s->group(View::GEOMETRY)->translation_ = (*origin)->group(View::GEOMETRY)->translation_;
+            s->group(View::GEOMETRY)->scale_ = (*origin)->group(View::GEOMETRY)->scale_;
+            s->group(View::GEOMETRY)->rotation_ = (*origin)->group(View::GEOMETRY)->rotation_;
+        }
     }
 
     return s;
