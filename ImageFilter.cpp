@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 #include <ctime>
+#include <algorithm>
 
 #include <glib.h>
 #include <glm/gtc/matrix_access.hpp>
@@ -48,7 +49,6 @@ std::string fragmentHeader = "#version 330 core\n"
                              "uniform vec4      iDate;\n"
                              "uniform vec4      iMouse;\n";
 
-// Filter code starts at line 16 :
 std::string filterDefault  = "void mainImage( out vec4 fragColor, in vec2 fragCoord )\n"
                              "{\n"
                              "    vec2 uv = fragCoord.xy / iResolution.xy;\n"
@@ -75,11 +75,6 @@ std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { }),
     FilteringProgram("Logo",     "shaders/filters/logo.glsl",       "",     { })
 };
-
-int FilteringProgram::getFilterHeaderNumlines()
-{
-    return 14;
-}
 
 std::string FilteringProgram::getFilterCodeInputs()
 {
@@ -279,10 +274,15 @@ void ImageFilteringShader::setCode(const std::string &code, std::promise<std::st
     if (code != code_)
     {
         code_ = code;
+        // ensure code to compile is correct
         if (code_.empty())
             code_ = filterDefault;
+        // shader is composed of a header, the given code and a footer
         shader_code_ = fragmentHeader + code_ + fragmentFooter;
-        custom_shading_.setShaders("shaders/image.vs", shader_code_, ret);
+        // shift line numbers by number of lines in header
+        std::string::difference_type n = std::count(fragmentHeader.begin(), fragmentHeader.end(), '\n');
+        // launch build
+        custom_shading_.setShaders("shaders/image.vs", shader_code_, (int)n, ret);
     }
     else if (ret != nullptr) {
         ret->set_value("No change.");

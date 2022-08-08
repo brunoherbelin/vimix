@@ -1717,7 +1717,7 @@ void HelperToolbox::Render()
         ImGui::Text ("Render a session (*.mix) as a source.");
         ImGui::NextColumn();
         ImGui::Separator();
-        ImGui::Text(ICON_FA_SORT_NUMERIC_DOWN); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_IMAGES); ImGui::NextColumn();
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Sequence");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
@@ -5487,8 +5487,7 @@ void InputMappingInterface::Render()
 /// SHADER EDITOR
 ///
 ///
-ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr),
-    current_changed_(true), show_shader_inputs_(false)
+ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr), show_shader_inputs_(false)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -5535,6 +5534,7 @@ ShaderEditor::ShaderEditor() : WorkspaceWindow("Shader"), current_(nullptr),
     _editor.SetHandleKeyboardInputs(true);
     _editor.SetShowWhitespaces(false);
     _editor.SetText("");
+    _editor.SetReadOnly(true);
 
     // status
     status_ = "-";
@@ -5562,13 +5562,25 @@ bool ShaderEditor::Visible() const
              );
 }
 
-void ShaderEditor::setVisible(CloneSource *cs)
+void ShaderEditor::BuildShader()
 {
-    if ( cs != nullptr ) {
-        FrameBufferFilter *f = cs->filter();
-        // if the filter is an Image Filter
-        if (f && f->type() == FrameBufferFilter::FILTER_IMAGE )
-            setVisible(true);
+    // if the UI has a current clone, and ref to code for current clone is valid
+    if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
+
+        // set the code of the current filter
+        filters_[current_].setCode( { _editor.GetText(), "" } );
+
+        // filter changed, cannot be named as before
+        filters_[current_].setName("Custom");
+
+        // change the filter of the current image filter
+        // => this triggers compilation of shader
+        compilation_ = new std::promise<std::string>();
+        current_->setProgram( filters_[current_], compilation_ );
+        compilation_return_ = compilation_->get_future();
+
+        // inform status
+        status_ = "Building...";
     }
 }
 
@@ -5583,9 +5595,6 @@ void ShaderEditor::Render()
         return;
     }
 
-    bool ro = _editor.IsReadOnly();
-    bool ws = _editor.IsShowingWhitespaces();
-
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
@@ -5594,6 +5603,7 @@ void ShaderEditor::Render()
             Settings::application.widget.shader_editor = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
+            // reload code from GPU
             if (ImGui::MenuItem( ICON_FA_SYNC "  Reload", nullptr, nullptr, current_ != nullptr)) {
                 // force reload
                 if ( current_ != nullptr )
@@ -5607,35 +5617,30 @@ void ShaderEditor::Render()
                 for (auto p = FilteringProgram::presets.begin(); p != FilteringProgram::presets.end(); ++p){
 
                     if (current_ != nullptr && ImGui::MenuItem( p->name().c_str() )) {
-                        ImageFilter *i = dynamic_cast<ImageFilter *>( current_->filter() );
-                        // if we can access the code of inside the image filter
-                        if (i) {
-                            // change the filter of the current image filter
-                            // => this triggers compilation of shader
-                            compilation_ = new std::promise<std::string>();
-                            i->setProgram( *p, compilation_ );
-                            compilation_return_ = compilation_->get_future();
-                            // inform status
-                            status_ = "Building...";
-                            // force reload
-                            if ( current_ != nullptr )
-                                filters_.erase(current_);
-                            current_ = nullptr;
-                        }
+                        // change the filter of the current image filter
+                        // => this triggers compilation of shader
+                        compilation_ = new std::promise<std::string>();
+                        current_->setProgram( *p, compilation_ );
+                        compilation_return_ = compilation_->get_future();
+                        // inform status
+                        status_ = "Building...";
+                        // force reload
+                        if ( current_ != nullptr )
+                            filters_.erase(current_);
+                        current_ = nullptr;
                     }
-
                 }
-
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Browse shadertoy.com")) {
+            // Open browser to shadertoy website
+            if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Browse shadertoy.com"))
                 SystemToolkit::open("https://www.shadertoy.com/");
-            }
 
             // Enable/Disable editor options
             ImGui::Separator();
             ImGui::MenuItem( ICON_FA_UNDERLINE "  Show Shader Inputs", nullptr, &show_shader_inputs_);
+            bool ws = _editor.IsShowingWhitespaces();
             if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT "  Show whitespace", nullptr, &ws))
                 _editor.SetShowWhitespaces(ws);
 
@@ -5656,6 +5661,7 @@ void ShaderEditor::Render()
         }
 
         // Edit menu
+        bool ro = _editor.IsReadOnly();
         if (ImGui::BeginMenu( "Edit", current_ != nullptr ) ) {
 
             if (ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, nullptr, !ro && _editor.CanUndo()))
@@ -5677,103 +5683,59 @@ void ShaderEditor::Render()
         }
 
         // Build action menu
-        if (ImGui::MenuItem( ICON_FA_HAMMER " Build", nullptr, nullptr, current_ != nullptr )) {
-
-            // the UI has ref to code for this clone
-            if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
-
-                ImageFilter *i = dynamic_cast<ImageFilter *>( current_->filter() );
-                // if we can access the code of inside the image filter
-                if (i) {
-                    // set the code of the current filter
-                    filters_[current_].setCode( { _editor.GetText(), "" } );
-
-                    // filter changed, cannot be named as before
-                    filters_[current_].setName("Custom");
-
-                    // change the filter of the current image filter
-                    // => this triggers compilation of shader
-                    compilation_ = new std::promise<std::string>();
-                    i->setProgram( filters_[current_], compilation_ );
-                    compilation_return_ = compilation_->get_future();
-
-                    // inform status
-                    status_ = "Building...";
-                }
-            }
-        }
+        if (ImGui::MenuItem( ICON_FA_HAMMER " Build", CTRL_MOD "B", nullptr, current_ != nullptr ))
+            BuildShader();
 
         ImGui::EndMenuBar();
     }
 
-    // garbage collection of code_
-    for (auto it = filters_.begin(); it != filters_.end(); ) {
-        // keep only if the source exists in the session
-        if ( Mixer::manager().session()->find( it->first ) != Mixer::manager().session()->end() )
-            ++it;
-        else
-            it = filters_.erase(it);
+    // garbage collection
+    if ( Mixer::manager().session()->numSources() < 1 )
+    {
+        filters_.clear();
+        current_ = nullptr;
     }
 
     // if compiling, cannot change source nor do anything else
     static std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
-    if (compilation_ != nullptr )
+    if (compilation_ != nullptr && compilation_return_.wait_for(timeout) == std::future_status::ready )
     {
-        // wait for compilation to return
-        if (compilation_return_.wait_for(timeout) == std::future_status::ready )
-        {
-            // get message returned from compilation
-            std::string s = compilation_return_.get();
+        // get message returned from compilation
+        status_ = compilation_return_.get();
 
-            // find reported line numbers "0:nn" and replace with "line N"
-            status_ = "";
-            std::regex e("0\\:[[:digit:]]+");
-            std::smatch m;
-            while (std::regex_search(s, m, e)) {
-                status_ += m.prefix().str();
-                int l = 0;
-                std::string num = m.str().substr(2, m.length()-2);
-                if ( BaseToolkit::is_a_number(num, &l)){
-                    status_ += "line ";
-                    status_ += std::to_string(l - FilteringProgram::getFilterHeaderNumlines());
-                    status_ += " ";
-                }
-                s = m.suffix().str();
-            }
-            status_ += s;
-
-            // end compilation promise
-            delete compilation_;
-            compilation_ = nullptr;
-        }
+        // end compilation promise
+        delete compilation_;
+        compilation_ = nullptr;
     }
     // not compiling
     else {
 
+        ImageFilter *i = nullptr;
         // get current clone source
-        CloneSource *c = nullptr;
         Source *s = Mixer::manager().currentSource();
         // if there is a current source
         if (s != nullptr) {
-            c = dynamic_cast<CloneSource *>(s);
+            CloneSource *c = dynamic_cast<CloneSource *>(s);
             // if the current source is a clone
             if ( c != nullptr ) {
                 FrameBufferFilter *f = c->filter();
                 // if the filter seems to be an Image Filter
-                if (f && f->type() == FrameBufferFilter::FILTER_IMAGE ) {
-                    ImageFilter *i = dynamic_cast<ImageFilter *>(f);
+                if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE ) {
+                    i = dynamic_cast<ImageFilter *>(f);
                     // if we can access the code of the filter
-                    if (i) {
+                    if (i != nullptr) {
                         // if the current clone was not already registered
-                        if ( filters_.find(c) == filters_.end() )
+                        if ( filters_.find(i) == filters_.end() )
                             // remember code for this clone
-                            filters_[c] = i->program();
+                            filters_[i] = i->program();
+                    }
+                    else {
+                        filters_.erase(i);
+                        i = nullptr;
                     }
                 }
-                else {
+                else
                     status_ = "-";
-                    c = nullptr;
-                }
             }
             else
                 status_ = "-";
@@ -5782,27 +5744,31 @@ void ShaderEditor::Render()
             status_ = "-";
 
         // change editor text only if current changed
-        if ( current_ != c) {
-            // switch to another clone
-            if ( c != nullptr ) {
-                _editor.SetText( filters_[c].code().first );
+        if ( current_ != i)
+        {
+            // get the editor text and remove trailing '\n'
+            std::string code = _editor.GetText();
+            code = code.substr(0, code.size() -1);
+
+            // remember this code as buffered for the filter of this source
+            filters_[current_].setCode( { code, "" } );
+
+            // if switch to another shader code
+            if ( i != nullptr ) {
+                // change editor
+                _editor.SetText( filters_[i].code().first );
                 _editor.SetReadOnly(false);
                 status_ = "Ready.";
             }
             // cancel edit clone
             else {
-                // get the editor text and remove trailing '\n'
-                std::string code = _editor.GetText();
-                code = code.substr(0, code.size() -1);
-                // remember this code as buffered for the filter of this source
-                filters_[current_].setCode( { code, "" } );
-
                 // cancel editor
                 _editor.SetText("");
                 _editor.SetReadOnly(true);
+                status_ = "-";
             }
             // current changed
-            current_ = c;
+            current_ = i;
         }
 
     }
@@ -5832,6 +5798,14 @@ void ShaderEditor::Render()
     }
     else
         ImGui::Spacing();
+
+    // special case for 'CTRL + B' keyboard shortcut
+    // the TextEditor captures keyboard focus from the main imgui context
+    // so UserInterface::handleKeyboard cannot capture this event:
+    // reading key press before render bypasses this problem
+    const ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl && ImGui::IsKeyPressed(GLFW_KEY_B))
+        BuildShader();
 
     // render main editor
     _editor.Render("Shader Editor");

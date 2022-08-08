@@ -20,6 +20,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <regex>
 #include <chrono>
 #include <ctime>
 
@@ -77,16 +78,17 @@ GLenum blending_destination_function[9] = {GL_ONE_MINUS_SRC_ALPHA,// normal
                                            GL_ZERO};
 
 ShadingProgram::ShadingProgram(const std::string& vertex, const std::string& fragment) :
-    id_(0), need_compile_(true), vertex_(vertex), fragment_(fragment), promise_(nullptr)
+    id_(0), need_compile_(true), lineshift_(0), vertex_(vertex), fragment_(fragment), promise_(nullptr)
 {
 }
 
-void ShadingProgram::setShaders(const std::string& vertex, const std::string& fragment, std::promise<std::string> *prom)
+void ShadingProgram::setShaders(const std::string& vertex, const std::string& fragment, int lineshift,  std::promise<std::string> *prom)
 {
     vertex_ = vertex;
     fragment_ = fragment;
-    need_compile_ = true;
+    lineshift_ = lineshift;
     promise_ = prom;
+    need_compile_ = true;
 }
 
 void ShadingProgram::compile()
@@ -160,12 +162,39 @@ void ShadingProgram::compile()
         }
     }
 
+    std::string message;
+
+    // if a lineshift was given, fix the line numbers in info log string
+    if (lineshift_ > 0) {
+        std::string s(infoLog);
+        std::smatch m;
+#ifdef APPLE
+        std::regex e("0\\:[[:digit:]]+");
+#else
+        std::regex e("0\\([[:digit:]]+\\)");
+#endif
+        while (std::regex_search(s, m, e)) {
+            message += m.prefix().str();
+            int l = 0;
+            std::string num = m.str().substr(2, m.length()-2);
+            if ( BaseToolkit::is_a_number(num, &l)){
+                message += "line ";
+                message += std::to_string(l - lineshift_);
+            }
+            s = m.suffix().str();
+        }
+        message += s;
+    }
+    // default is to use info log message
+    else
+        message = std::string(infoLog);
+
     // always fulfill a promise
     if (promise_)
-        promise_->set_value( success ? "Ok" : "Error:\n" + std::string(infoLog) );
+        promise_->set_value( success ? "Ok" : "Error\n" + message );
     // if not asked to return a promise, inform user through logs
     else if (!success)
-        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", infoLog);
+        Log::Warning("Error compiling Vertex ShadingProgram:\n%s", message.c_str());
 
     // do not compile indefinitely
     need_compile_ = false;

@@ -18,7 +18,7 @@ public:
 
     // Update GLSL Program with vertex and fragment program
     // If a promise is given, it is filled during compilation with the compilation log.
-    void setShaders(const std::string& vertex, const std::string& fragment, std::promise<std::string> *prom = nullptr);
+    void setShaders(const std::string& vertex, const std::string& fragment, int lineshift = 0, std::promise<std::string> *prom = nullptr);
 
     void use();
     void compile();
@@ -32,6 +32,7 @@ public:
 private:
     unsigned int id_;
     bool need_compile_;
+    int lineshift_;
     std::string vertex_;
     std::string fragment_;
     std::promise<std::string> *promise_;
