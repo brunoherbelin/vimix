@@ -796,7 +796,7 @@ void Control::receiveMultitouchAttribute(const std::string &attribute,
 void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
 {
     // default values
-    char name[21] = {"\0"};
+    std::string name = "";
     float lock = 0.f;
     float play = 0.f;
     float depth = 0.f;
@@ -809,7 +809,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
 
     // fill values if the source is valid
     if (_s!=nullptr) {
-        strncpy(name, _s->name().c_str(), 20);
+        name  = _s->name();
         lock  = _s->locked() ? 1.f : 0.f;
         play  = _s->playing() ? 1.f : 0.f;
         depth = _s->depth();
@@ -829,7 +829,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
 
     /// name
     std::string address = std::string(OSC_PREFIX) + target + OSC_SOURCE_NAME;
-    p << osc::BeginMessage( address.c_str() ) << name << osc::EndMessage;
+    p << osc::BeginMessage( address.c_str() ) << name.c_str() << osc::EndMessage;
     /// Play status
     address = std::string(OSC_PREFIX) + target + OSC_SOURCE_LOCK;
     p << osc::BeginMessage( address.c_str() ) << lock << osc::EndMessage;
@@ -877,6 +877,10 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         // send status of alpha
         sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
+
+        // send name
+        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
+        p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
     }
 
     for (; i < (int) N ; ++i) {
@@ -887,6 +891,10 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         // reset status of alpha
         sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
+
+        /// name
+        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
+        p << osc::BeginMessage( oscaddr ) <<  "" << osc::EndMessage;
     }
 
     p << osc::EndBundle;
