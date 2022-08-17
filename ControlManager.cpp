@@ -680,6 +680,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> t >> osc::EndMessage;
             target->call( new Seek( t ), true );
         }
+        /// e.g. '/vimix/name/sync'
+        else if ( attribute.compare(OSC_SYNC) == 0) {
+            // this will require to send feedback status about source
+            send_feedback = true;
+        }
 #ifdef CONTROL_DEBUG
         else {
             Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());

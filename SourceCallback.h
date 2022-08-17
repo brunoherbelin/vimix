@@ -180,13 +180,13 @@ public:
 
 class Seek : public SourceCallback
 {
-    float target_time_;
+    float target_;
 
 public:
     Seek (float time = 0.f);
 
-    float value () const { return target_time_;}
-    void setValue (float t) { target_time_ = t; }
+    float value () const { return target_;}
+    void setValue (float t) { target_ = t; }
 
     void update (Source *s, float dt) override;
     SourceCallback *clone() const override;

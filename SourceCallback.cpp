@@ -460,7 +460,7 @@ SourceCallback *RePlay::clone() const
 }
 
 
-Seek::Seek(float time) : SourceCallback(), target_time_(time)
+Seek::Seek(float time) : SourceCallback(), target_(time)
 {
 }
 
@@ -473,8 +473,10 @@ void Seek::update(Source *s, float dt)
 
         // access media player if target source is a media source
         MediaSource *ms = dynamic_cast<MediaSource *>(s);
-        if (ms != nullptr)
-            ms->mediaplayer()->seek( GST_SECOND * target_time_ );
+        if (ms != nullptr) {
+            GstClockTime duration = ms->mediaplayer()->timeline()->duration();
+            ms->mediaplayer()->seek( target_ * duration );
+        }
 
         status_ = FINISHED;
     }
@@ -482,7 +484,7 @@ void Seek::update(Source *s, float dt)
 
 SourceCallback *Seek::clone() const
 {
-    return new Seek(target_time_);
+    return new Seek(target_);
 }
 
 void Seek::accept(Visitor& v)
