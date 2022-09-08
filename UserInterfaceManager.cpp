@@ -7877,6 +7877,7 @@ SourcePreview::SourcePreview() : source_(nullptr), label_(""), reset_(0)
 {
 
 }
+
 static void deletesource(Source *s)
 {
     delete s;
@@ -7884,8 +7885,13 @@ static void deletesource(Source *s)
 
 void SourcePreview::setSource(Source *s, const string &label)
 {
-    if(source_)
-        std::thread (deletesource, source_).detach();
+    if(source_) {
+        if (source_->ready())
+            delete source_;
+        else
+            std::thread (deletesource, source_).detach();
+    }
+
 
     source_ = s;
     label_ = label;
