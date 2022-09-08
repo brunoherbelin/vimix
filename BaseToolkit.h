@@ -35,7 +35,7 @@ std::list<std::string> splitted(const std::string& str, char delim);
 std::string joinned(std::list<std::string> strlist, char separator = ' ');
 
 // returns true if the string
-bool is_a_number(const std::string& str, int *val = nullptr);
+bool is_a_number(const std::string& str, int *val);
 
 // find common parts in a list of strings
 std::string common_prefix(const std::list<std::string> &allStrings);

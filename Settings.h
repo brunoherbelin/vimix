@@ -126,6 +126,18 @@ struct History
     void validate();
 };
 
+struct KnownHosts
+{
+    std::string protocol;
+    std::pair<std::string, std::string> default_host;
+    std::list< std::pair<std::string, std::string> > hosts;
+
+    KnownHosts() {}
+
+    void push(const std::string &ip, const std::string &port = "");
+    void remove(const std::string &ip);
+};
+
 struct TransitionConfig
 {
     bool cross_fade;
@@ -250,8 +262,7 @@ struct Application
     bool accept_connections;
     int stream_protocol;
     int broadcast_port;
-    std::string custom_connect_ip;
-    std::string custom_connect_port;
+    KnownHosts recentSRT;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -307,8 +318,8 @@ struct Application
         accept_connections = false;
         stream_protocol = 0;
         broadcast_port = 7070;
-        custom_connect_ip = "127.0.0.1";
-        custom_connect_port = "8888";
+        recentSRT.protocol = "srt://";
+        recentSRT.default_host = { "127.0.0.1", "7070"};
         pannel_current_session_mode = 0;
         current_view = 1;
         current_workspace= 1;

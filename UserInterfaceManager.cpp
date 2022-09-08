@@ -6731,7 +6731,7 @@ void Navigator::RenderNewPannel()
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##External", "Select device"))
+            if (ImGui::BeginCombo("##External", "Select stream"))
             {
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
@@ -6758,36 +6758,90 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source getting images from connected devices or machines;\n"
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
-                                     ICON_FA_CARET_RIGHT " stream shared by vimix on local network\n"
-                                     ICON_FA_CARET_RIGHT " SRT stream (e.g. broadcasted by vimix)");
+                                     ICON_FA_CARET_RIGHT " shared by vimix on local network\n"
+                                     ICON_FA_CARET_RIGHT " broadcasted with SRT over network.");
 
             if (custom_connected) {
 
+                bool valid_ = false;
+                static std::string url_;
+                static std::string ip_ = Settings::application.recentSRT.hosts.empty() ? Settings::application.recentSRT.default_host.first : Settings::application.recentSRT.hosts.front().first;
+                static std::string port_ = Settings::application.recentSRT.hosts.empty() ? Settings::application.recentSRT.default_host.second : Settings::application.recentSRT.hosts.front().second;
+                static std::regex ipv4("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
+                static std::regex numport("([0-9]){4,6}");
+
                 ImGui::Text("\nCall an SRT broadcaster:");
+                ImGui::SetCursorPos(pos + ImVec2(0.f, 1.8f * ImGui::GetFrameHeight()) );
+                ImGuiToolkit::Indication("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).", ICON_FA_PODCAST);
 
+                // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGuiToolkit::InputText("IP", &Settings::application.custom_connect_ip, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
+                ImGuiToolkit::InputText("IP", &ip_, ImGuiInputTextFlags_CharsDecimal);
+                valid_ = std::regex_match(ip_, ipv4);
 
+                // Entry field for port
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGuiToolkit::InputText("Port", &Settings::application.custom_connect_port, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsDecimal);
+                ImGuiToolkit::InputText("Port", &port_, ImGuiInputTextFlags_CharsDecimal);
+                valid_ &= std::regex_match(port_, numport);
 
-                static char bufurl[32];
-                ImFormatString(bufurl, IM_ARRAYSIZE(bufurl), "srt://%s:%s",
-                               Settings::application.custom_connect_ip.c_str(),
-                               Settings::application.custom_connect_port.c_str() );
+                // URL generated from protorol, IP and port
+                url_ = Settings::application.recentSRT.protocol + ip_ + ":" + port_;
+
+                // push style for disabled text entry
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.8f));
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText("##url", bufurl, IM_ARRAYSIZE(bufurl), ImGuiInputTextFlags_ReadOnly);
+
+                // display default IP & port
+                if (Settings::application.recentSRT.hosts.empty()) {
+                    ImGuiToolkit::InputText("##url", &url_, ImGuiInputTextFlags_ReadOnly);
+                }
+                // display most recent host & offer list of known hosts
+                else {
+                    if (ImGui::BeginCombo("##SRThosts", url_.c_str()))  {
+                        for (auto it = Settings::application.recentSRT.hosts.begin(); it != Settings::application.recentSRT.hosts.end(); ++it) {
+
+                            if (ImGui::Selectable( std::string(Settings::application.recentSRT.protocol + it->first + ":" + it->second).c_str() ) ) {
+                                ip_ = it->first;
+                                port_ = it->second;
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    // icons to clear lists
+                    ImVec2 pos_top = ImGui::GetCursorPos();
+                    ImGui::SameLine();
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
+                    if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
+                        Settings::application.recentSRT.hosts.clear();
+                        ip_ = Settings::application.recentSRT.default_host.first;
+                        port_ = Settings::application.recentSRT.default_host.second;
+                    }
+                    ImGui::PopStyleVar();
+                    ImGui::SetCursorPos(pos_top);
+
+                }
+
+                // pop disabled style
                 ImGui::PopStyleColor(1);
 
-                ImGui::SameLine(0); ImGuiToolkit::Indication("URL for connecting with Secure Reliable Transport (SRT) protocol to a broadcaster that is waiting for connections (listener mode).", ICON_SOURCE_SRT);
+                // push a RED color style if host is not valid
+                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, valid_ ? 0.0f : 0.6f, 0.4f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.0f, valid_ ? 0.0f : 0.7f, 0.3f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.0f, valid_ ? 0.0f : 0.8f, 0.2f));
 
-                if ( ImGui::Button("Call", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
-                    new_source_preview_.setSource( Mixer::manager().createSourceSrt(Settings::application.custom_connect_ip, Settings::application.custom_connect_port), bufurl);
+                // create a new SRT source if host is valid
+                if ( ImGui::Button("Call", ImVec2(IMGUI_RIGHT_ALIGN, 0)) && valid_ ) {
+                    // set preview source
+                    new_source_preview_.setSource( Mixer::manager().createSourceSrt(ip_, port_), url_);
+                    // remember known host
+                    Settings::application.recentSRT.push(ip_, port_);
                 }
+
+                ImGui::PopStyleColor(3);
             }
 
         }
