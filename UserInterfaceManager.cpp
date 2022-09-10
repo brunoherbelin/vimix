@@ -7624,9 +7624,15 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Text("Stream");
 
         char msg[256];
-        ImFormatString(msg, IM_ARRAYSIZE(msg),"Port for broadcasting on Secure Reliable Transport (SRT) protocol\n"
-                     "You can e.g. connect to:\n srt://%s:%d",
-                     NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port);
+        ImFormatString(msg, IM_ARRAYSIZE(msg), "Broadcast SRT\n\n"
+                                               "vimix is listening to SRT requests on Port %d. "
+                                               "Example network addresses to call:\n"
+                                               " srt//%s:%d (localhost)\n"
+                                               " srt//%s:%d (local IP)",
+                       Settings::application.broadcast_port,
+                       NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
+                       NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
+
         ImGuiToolkit::Indication(msg, ICON_FA_PODCAST);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
@@ -7639,7 +7645,8 @@ void Navigator::RenderMainPannelSettings()
                 Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
         }
 
-        ImGuiToolkit::Indication("Sharing H264 stream requires less bandwidth but more resources for encoding.", ICON_FA_SHARE_ALT_SQUARE);
+        ImGuiToolkit::Indication("Share on local network\n\n"
+                                 "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -7651,8 +7658,15 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Spacing();
         ImGui::Text("OSC");
 
-        sprintf(msg, "You can send OSC messages via UDP to the local IP address %s on Port %d",
-                NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive);
+        ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
+                                               "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
+                                               "Example network addresses:\n"
+                                               " udp//%s:%d (localhost)\n"
+                                               " udp//%s:%d (local IP)",
+                Settings::application.control.osc_port_receive,
+                Settings::application.control.osc_port_send,
+                NetworkToolkit::host_ips()[0].c_str(), Settings::application.control.osc_port_receive,
+                NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive );
         ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
         ImGui::SameLine(0);
 
@@ -7891,7 +7905,6 @@ void SourcePreview::setSource(Source *s, const string &label)
         else
             std::thread (deletesource, source_).detach();
     }
-
 
     source_ = s;
     label_ = label;
