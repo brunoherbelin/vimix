@@ -7623,26 +7623,28 @@ void Navigator::RenderMainPannelSettings()
         //
         ImGui::Text("Stream");
 
-        char msg[256];
-        ImFormatString(msg, IM_ARRAYSIZE(msg), "Broadcast SRT\n\n"
-                                               "vimix is listening to SRT requests on Port %d. "
-                                               "Example network addresses to call:\n"
-                                               " srt//%s:%d (localhost)\n"
-                                               " srt//%s:%d (local IP)",
-                       Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
+        if (VideoBroadcast::available()) {
+            char msg[256];
+            ImFormatString(msg, IM_ARRAYSIZE(msg), "Broadcast SRT\n\n"
+                                                   "vimix is listening to SRT requests on Port %d. "
+                                                   "Example network addresses to call:\n"
+                                                   " srt//%s:%d (localhost)\n"
+                                                   " srt//%s:%d (local IP)",
+                           Settings::application.broadcast_port,
+                           NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
+                    NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
 
-        ImGuiToolkit::Indication(msg, ICON_FA_PODCAST);
-        ImGui::SameLine(0);
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        char bufport[7] = "";
-        sprintf(bufport, "%d", Settings::application.broadcast_port);
-        ImGui::InputTextWithHint("Broadcast", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
-                Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
+            ImGuiToolkit::Indication(msg, ICON_FA_PODCAST);
+            ImGui::SameLine(0);
+            ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            char bufport[7] = "";
+            sprintf(bufport, "%d", Settings::application.broadcast_port);
+            ImGui::InputTextWithHint("Broadcast", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
+            if (ImGui::IsItemDeactivatedAfterEdit()){
+                if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
+                    Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
+            }
         }
 
         ImGuiToolkit::Indication("Share on local network\n\n"
@@ -7658,6 +7660,7 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Spacing();
         ImGui::Text("OSC");
 
+        char msg[256];
         ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
                                                "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
                                                "Example network addresses:\n"

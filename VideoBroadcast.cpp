@@ -22,8 +22,8 @@ std::string VideoBroadcast::srt_sink_;
 std::string VideoBroadcast::h264_encoder_;
 
 std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
-    {"srtsink", "srtsink uri=srt://:XXXX name=sink"},
-    {"srtserversink", "srtserversink uri=srt://:XXXX name=sink"}
+    {"srtsin", "srtsink uri=srt://:XXXX name=sink"},
+    {"srtserversin", "srtserversink uri=srt://:XXXX name=sink"}
 };
 
 std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
@@ -38,6 +38,8 @@ bool VideoBroadcast::available()
     static bool _tested = false;
     if (!_tested) {
         srt_sink_.clear();
+        h264_encoder_.clear();
+
         for (auto config = pipeline_sink_.cbegin();
              config != pipeline_sink_.cend() && srt_sink_.empty(); ++config) {
             if ( GstToolkit::has_feature(config->first) ) {
@@ -45,15 +47,19 @@ bool VideoBroadcast::available()
             }
         }
 
-        h264_encoder_.clear();
-        for (auto config = pipeline_encoder_.cbegin();
-             config != pipeline_encoder_.cend() && h264_encoder_.empty(); ++config) {
-            if ( GstToolkit::has_feature(config->first) ) {
-                h264_encoder_ = config->second;
-                if (config->first != pipeline_encoder_.back().first)
-                    Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
+        if (!srt_sink_.empty())
+        {
+            for (auto config = pipeline_encoder_.cbegin();
+                 config != pipeline_encoder_.cend() && h264_encoder_.empty(); ++config) {
+                if ( GstToolkit::has_feature(config->first) ) {
+                    h264_encoder_ = config->second;
+                    if (config->first != pipeline_encoder_.back().first)
+                        Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
+                }
             }
         }
+        else
+            Log::Info("Video SRT Broadcast not available.");
 
         // perform test only once
         _tested = true;
