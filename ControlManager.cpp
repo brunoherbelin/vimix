@@ -622,33 +622,76 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         /// e.g. '/vimix/current/grab ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
             float x = 0.f, y = 0.f;
-            arguments >> x >> y >> osc::EndMessage;
+            try {
+                arguments >> x;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            try {
+                arguments >> y;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            arguments >> osc::EndMessage;
             target->call( new Grab( x, y, 0.f), true );
         }
         /// e.g. '/vimix/current/position ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
-            float x = 0.f, y = 0.f;
-            arguments >> x >> y >> osc::EndMessage;
             Group transform;
             transform.copyTransform(target->group(View::GEOMETRY));
-            transform.translation_.x = x;
-            transform.translation_.y = y;
+            try {
+                float val = 0.f;
+                arguments >> val;
+                transform.translation_.x = val;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            try {
+                float val = 0.f;
+                arguments >> val;
+                transform.translation_.y = val;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            arguments >> osc::EndMessage;
             target->call( new SetGeometry( &transform, 0.f), true );
         }
-        /// e.g. '/vimix/current/scale ff 10.0 2.2'
+        /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
             float x = 0.f, y = 0.f;
-            arguments >> x >> y >> osc::EndMessage;
+
+            try {
+                arguments >> x;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            try {
+                arguments >> y;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            arguments >> osc::EndMessage;
             target->call( new Resize( x, y, 0.f), true );
         }        
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
-            float x = 0.f, y = 0.f;
-            arguments >> x >> y >> osc::EndMessage;
             Group transform;
             transform.copyTransform(target->group(View::GEOMETRY));
-            transform.scale_.x = x;
-            transform.scale_.y = y;
+            try {
+                float val = 0.f;
+                arguments >> val;
+                transform.scale_.x = val;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            try {
+                float val = 0.f;
+                arguments >> val;
+                transform.scale_.y = val;
+            }
+            catch (osc::WrongArgumentTypeException &) {
+            }
+            arguments >> osc::EndMessage;
             target->call( new SetGeometry( &transform, 0.f), true );
         }
         /// e.g. '/vimix/current/turn f 1.0'
