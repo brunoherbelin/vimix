@@ -889,6 +889,13 @@ void SessionVisitor::visit (SourceCallback &c)
     xmlCurrent_->SetAttribute("type", (uint) c.type());
 }
 
+void SessionVisitor::visit (ValueSourceCallback &c)
+{
+    xmlCurrent_->SetAttribute("value", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+}
+
 void SessionVisitor::visit (Play &c)
 {
     xmlCurrent_->SetAttribute("play", c.value());

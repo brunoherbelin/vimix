@@ -7,25 +7,46 @@
 
 class Visitor;
 class Source;
+class ImageProcessingShader;
 
+/**
+ * @brief The SourceCallback class defines operations on Sources that
+ * are applied at each update of Source. A SourceCallback is added to
+ * a source with; source->call( new SourceCallback );
+ *
+ * A source contains a list of SourceCallbacks. At each update(dt)
+ * a source calls the update on all its SourceCallbacks.
+ * The SourceCallback is created as PENDING, and becomes ACTIVE after
+ * the first update call.
+ * The SourceCallback is removed from the list when FINISHED.
+ *
+ */
 class SourceCallback
 {
 public:
 
     typedef enum {
         CALLBACK_GENERIC = 0,
-        CALLBACK_ALPHA = 1,
-        CALLBACK_LOOM = 2,
-        CALLBACK_GEOMETRY = 3,
-        CALLBACK_GRAB = 4,
-        CALLBACK_RESIZE = 5,
-        CALLBACK_TURN = 6,
-        CALLBACK_DEPTH = 7,
-        CALLBACK_PLAY = 8,
-        CALLBACK_REPLAY = 9,
-        CALLBACK_RESETGEO = 10,
-        CALLBACK_LOCK = 11,
-        CALLBACK_SEEK = 12
+        CALLBACK_ALPHA,
+        CALLBACK_LOOM,
+        CALLBACK_GEOMETRY,
+        CALLBACK_GRAB,
+        CALLBACK_RESIZE,
+        CALLBACK_TURN,
+        CALLBACK_DEPTH,
+        CALLBACK_PLAY,
+        CALLBACK_REPLAY,
+        CALLBACK_RESETGEO,
+        CALLBACK_LOCK,
+        CALLBACK_SEEK,
+        CALLBACK_BRIGHTNESS,
+        CALLBACK_CONTRAST,
+        CALLBACK_SATURATION,
+        CALLBACK_HUE,
+        CALLBACK_THRESHOLD,
+        CALLBACK_GAMMA,
+        CALLBACK_INVERT,
+        CALLBACK_POSTERIZE
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -58,6 +79,43 @@ protected:
     float delay_;
     float elapsed_;
 };
+
+/**
+ * @brief The ValueSourceCallback class is a generic type of
+ * callback which operates on a single float value of a source.
+ *
+ * ValueSourceCallback are practical for creating SourceCallbacks
+ * that change a single attribute of a source, that can be read
+ * and write on the source object.
+ */
+class ValueSourceCallback : public SourceCallback
+{
+protected:
+    float duration_;
+    float start_;
+    float target_;
+    bool  bidirectional_;
+
+    virtual float readValue(Source *s) const = 0;
+    virtual void  writeValue(Source *s, float val) = 0;
+
+public:
+    ValueSourceCallback (float v = 0.f, float ms = 0.f, bool revert = false);
+
+    float value () const { return target_;}
+    void  setValue (float v) { target_ = v; }
+    float duration () const { return duration_;}
+    void  setDuration (float ms) { duration_ = ms; }
+    bool  bidirectional () const { return bidirectional_;}
+    void  setBidirectional (bool on) { bidirectional_ = on; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *s) const override;
+    void accept (Visitor& v) override;
+};
+
 
 class SetAlpha : public SourceCallback
 {
@@ -178,22 +236,6 @@ public:
     CallbackType type () const override { return CALLBACK_REPLAY; }
 };
 
-class Seek : public SourceCallback
-{
-    float target_;
-
-public:
-    Seek (float time = 0.f);
-
-    float value () const { return target_;}
-    void setValue (float t) { target_ = t; }
-
-    void update (Source *s, float dt) override;
-    SourceCallback *clone() const override;
-    CallbackType type () const override { return CALLBACK_SEEK; }
-    void accept (Visitor& v) override;
-};
-
 class ResetGeometry : public SourceCallback
 {
 public:
@@ -293,5 +335,101 @@ public:
     void accept (Visitor& v) override;
 };
 
+class Seek : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    Seek (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_SEEK; }
+};
+
+class SetBrightness : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetBrightness (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_BRIGHTNESS; }
+};
+
+class SetContrast : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetContrast (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_CONTRAST; }
+};
+
+class SetSaturation : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetSaturation (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_SATURATION; }
+};
+
+class SetHue : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetHue (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_HUE; }
+};
+
+class SetThreshold : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetThreshold (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_THRESHOLD; }
+};
+
+class SetInvert : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetInvert (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_INVERT; }
+};
+
+class SetPosterize : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    SetPosterize (float v = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_POSTERIZE; }
+};
+
+class SetGamma : public SourceCallback
+{
+    float duration_;
+    glm::vec4 start_;
+    glm::vec4 target_;
+    bool bidirectional_;
+
+public:
+    SetGamma (glm::vec4 g = glm::vec4(), float ms = 0.f, bool revert = false);
+
+    glm::vec4 value () const { return target_; }
+    void  setValue (glm::vec4 g) { target_ = g; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+    bool  bidirectional () const { return bidirectional_; }
+    void  setBidirectional (bool on) { bidirectional_ = on; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone () const override;
+    SourceCallback *reverse(Source *s) const override;
+    CallbackType type () const override { return CALLBACK_GAMMA; }
+    void accept (Visitor& v) override;
+};
 
 #endif // SOURCECALLBACK_H

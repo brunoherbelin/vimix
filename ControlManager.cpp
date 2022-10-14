@@ -32,6 +32,7 @@
 #include "Mixer.h"
 #include "Source.h"
 #include "SourceCallback.h"
+#include "ImageProcessingShader.h"
 #include "ActionManager.h"
 #include "SystemToolkit.h"
 #include "tinyxml2Toolkit.h"
@@ -659,7 +660,6 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
             float x = 0.f, y = 0.f;
-
             try {
                 arguments >> x;
             }
@@ -696,13 +696,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
-            float x = 0.f, y = 0.f;
+            float x = 0.f, t = 0.f;
             arguments >> x;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
-            else // ignore second argument
-                arguments >> y >> osc::EndMessage;
-            target->call( new Turn( x, 0.f), true );
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Turn( x, t), true );
         }
         /// e.g. '/vimix/current/angle f 3.1416'
         else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {
@@ -717,7 +717,91 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {
             target->call( new ResetGeometry(), true );
         }
-        /// e.g. '/vimix/current/seek f 1.25'
+        /// e.g. '/vimix/current/brightness f 0.0'
+        else if ( attribute.compare(OSC_SOURCE_BRIGHTNESS) == 0) {
+            float val = 0.f, t = 0.f;
+            arguments >> val;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetBrightness( val, t ), true );
+        }
+        /// e.g. '/vimix/current/contrast f 0.0'
+        else if ( attribute.compare(OSC_SOURCE_CONTRAST) == 0) {
+            float val = 0.f, t = 0.f;
+            arguments >> val;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetContrast( val, t ), true );
+        }
+        /// e.g. '/vimix/current/saturation f 0.0'
+        else if ( attribute.compare(OSC_SOURCE_SATURATION) == 0) {
+            float val = 0.f, t = 0.f;
+            arguments >> val;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetSaturation( val, t ), true );
+        }
+        /// e.g. '/vimix/current/hue f 1.0'
+        else if ( attribute.compare(OSC_SOURCE_HUE) == 0) {
+            float val = 0.f, t = 0.f;
+            arguments >> val;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetHue( val, t ), true );
+        }
+        /// e.g. '/vimix/current/threshold f 1.0'
+        else if ( attribute.compare(OSC_SOURCE_THRESHOLD) == 0) {
+            float val = 0.f, t = 0.f;
+            arguments >> val;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetThreshold( val, t ), true );
+        }
+        /// e.g. '/vimix/current/gamma f 1.0'
+        else if ( attribute.compare(OSC_SOURCE_GAMMA) == 0) {
+            glm::vec4 g = target->processingShader()->gamma;
+            float t = 0.f;
+            arguments >> g.w;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGamma( g, t ), true );
+        }
+        /// e.g. '/vimix/current/color fff 1.0 0.5 0.9'
+        else if ( attribute.compare(OSC_SOURCE_COLOR) == 0) {
+            glm::vec4 g = target->processingShader()->gamma;
+            float t = 0.f;
+            arguments >> g.x >> g.y >> g.z;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGamma( g, t ), true );
+        }
+        /// e.g. '/vimix/current/invert f 1'
+        else if ( attribute.compare(OSC_SOURCE_INVERT) == 0) {
+            float v = 0.f;
+            arguments >> v >> osc::EndMessage;
+            target->call( new SetInvert( v ), true );
+        }
+        /// e.g. '/vimix/current/posterize f 1'
+        else if ( attribute.compare(OSC_SOURCE_POSTERIZE) == 0) {
+            float v = 0.f;
+            arguments >> v >> osc::EndMessage;
+            target->call( new SetPosterize( v ), true );
+        }
+        /// e.g. '/vimix/current/seek f 0.25'
         else if ( attribute.compare(OSC_SOURCE_SEEK) == 0) {
             float t = 0.f;
             arguments >> t >> osc::EndMessage;

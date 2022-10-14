@@ -82,6 +82,7 @@ public:
 
     // callbacks
     void visit (SourceCallback&) override;
+    void visit (ValueSourceCallback&) override;
     void visit (SetAlpha&) override;
     void visit (SetDepth&) override;
     void visit (SetGeometry&) override;

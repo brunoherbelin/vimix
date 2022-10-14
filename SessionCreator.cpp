@@ -1347,6 +1347,21 @@ void SessionLoader::visit (SourceCallback &)
 {
 }
 
+void SessionLoader::visit (ValueSourceCallback &c)
+{
+    float v = 0.f;
+    xmlCurrent_->QueryFloatAttribute("value", &v);
+    c.setValue(v);
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
 void SessionLoader::visit (Play &c)
 {
     bool p = true;

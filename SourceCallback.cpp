@@ -19,6 +19,7 @@
 
 #include "defines.h"
 #include "Source.h"
+#include "ImageProcessingShader.h"
 #include "MediaSource.h"
 #include "MediaPlayer.h"
 #include "UpdateCallback.h"
@@ -65,6 +66,33 @@ SourceCallback *SourceCallback::create(CallbackType type)
         break;
     case SourceCallback::CALLBACK_LOCK:
         loadedcallback = new Lock;
+        break;
+    case SourceCallback::CALLBACK_SEEK:
+        loadedcallback = new Seek;
+        break;
+    case SourceCallback::CALLBACK_BRIGHTNESS:
+        loadedcallback = new SetBrightness;
+        break;
+    case SourceCallback::CALLBACK_CONTRAST:
+        loadedcallback = new SetContrast;
+        break;
+    case SourceCallback::CALLBACK_SATURATION:
+        loadedcallback = new SetBrightness;
+        break;
+    case SourceCallback::CALLBACK_HUE:
+        loadedcallback = new SetContrast;
+        break;
+    case SourceCallback::CALLBACK_THRESHOLD:
+        loadedcallback = new SetThreshold;
+        break;
+    case SourceCallback::CALLBACK_GAMMA:
+        loadedcallback = new SetGamma;
+        break;
+    case SourceCallback::CALLBACK_INVERT:
+        loadedcallback = new SetInvert;
+        break;
+    case SourceCallback::CALLBACK_POSTERIZE:
+        loadedcallback = new SetPosterize;
         break;
     default:
         break;
@@ -139,6 +167,81 @@ void SourceCallback::update (Source *s, float dt)
 
 }
 
+
+ValueSourceCallback::ValueSourceCallback(float target, float ms, bool revert) : SourceCallback(),
+    duration_(ms), start_(0.f), target_(target), bidirectional_(revert)
+{
+}
+
+
+void ValueSourceCallback::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // set start on first time it is ready
+    if ( status_ == READY ){
+        start_ = readValue(s);
+        status_ = ACTIVE;
+    }
+
+    // update when active
+    if ( status_ == ACTIVE ) {
+
+        // time passed since start
+        float progress = elapsed_ - delay_;
+
+        // time-out or instantaneous
+        if ( !(ABS(duration_) > 0.f) || progress > duration_ ) {
+            // apply target
+            writeValue(s, target_);
+            // done
+            status_ = FINISHED;
+        }
+        // perform iteration of interpolation
+        else {
+            // apply calculated intermediate
+            writeValue(s, glm::mix(start_, target_, progress/duration_) );
+        }
+    }
+}
+
+void ValueSourceCallback::multiply (float factor)
+{
+    target_ *= factor;
+}
+
+SourceCallback *ValueSourceCallback::clone() const
+{
+    SourceCallback *ret = SourceCallback::create(type());
+    ValueSourceCallback *vsc = static_cast<ValueSourceCallback *>(ret);
+    vsc->setValue( target_ );
+    vsc->setDuration( duration_ );
+    vsc->setBidirectional( bidirectional_ );
+
+    return ret;
+}
+
+SourceCallback *ValueSourceCallback::reverse(Source *s) const
+{
+    SourceCallback *ret = nullptr;
+    if (bidirectional_) {
+        ret = SourceCallback::create(type());
+        ValueSourceCallback *vsc = static_cast<ValueSourceCallback *>(ret);
+        vsc->setValue( readValue(s) );
+        vsc->setDuration( duration_ );
+        vsc->setBidirectional( true );
+    }
+
+    return ret;
+}
+
+void ValueSourceCallback::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+
 void ResetGeometry::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
@@ -168,7 +271,7 @@ SourceCallback *ResetGeometry::clone() const
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
     duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
-    alpha_ = CLAMP(alpha_, 0.f, 1.f);
+    alpha_ = glm::clamp(alpha_, 0.f, 1.f);
     start_  = glm::vec2();
     target_ = glm::vec2();
 }
@@ -221,7 +324,7 @@ void SetAlpha::update(Source *s, float dt)
 
         // perform movement
         if ( ABS(duration_) > 0.f)
-            s->group(View::MIXING)->translation_ = glm::vec3(start_ + (progress/duration_)*(target_ - start_), s->group(View::MIXING)->translation_.z);
+            s->group(View::MIXING)->translation_ = glm::vec3(glm::mix(start_, target_, progress/duration_), s->group(View::MIXING)->translation_.z);
 
         // time-out
         if ( progress > duration_ ) {
@@ -343,7 +446,7 @@ void Loom::accept(Visitor& v)
 SetDepth::SetDepth(float target, float ms, bool revert) : SourceCallback(),
     duration_(ms), start_(0.f), target_(target), bidirectional_(revert)
 {
-    target_ = CLAMP(target_, MIN_DEPTH, MAX_DEPTH);
+    target_ = glm::clamp(target_, MIN_DEPTH, MAX_DEPTH);
 }
 
 void SetDepth::update(Source *s, float dt)
@@ -365,7 +468,7 @@ void SetDepth::update(Source *s, float dt)
 
         // perform movement
         if ( ABS(duration_) > 0.f)
-            s->group(View::LAYER)->translation_.z = start_ + (progress/duration_) * (target_ - start_);
+            s->group(View::LAYER)->translation_.z = glm::mix(start_, target_, progress/duration_);
 
         // time-out
         if ( progress > duration_ ) {
@@ -459,40 +562,39 @@ SourceCallback *RePlay::clone() const
     return new RePlay;
 }
 
-
-Seek::Seek(float time) : SourceCallback(), target_(time)
+Seek::Seek(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
 {
 }
 
-void Seek::update(Source *s, float dt)
+float Seek::readValue(Source *s) const
 {
-    SourceCallback::update(s, dt);
+    double ret = 0.f;
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
+        GstClockTime media_position = ms->mediaplayer()->position();
 
-    // perform seek when ready
-    if ( status_ == READY ){
-
-        // access media player if target source is a media source
-        MediaSource *ms = dynamic_cast<MediaSource *>(s);
-        if (ms != nullptr) {
-            GstClockTime duration = ms->mediaplayer()->timeline()->duration();
-            ms->mediaplayer()->seek( target_ * duration );
+        if (GST_CLOCK_TIME_IS_VALID(media_duration) && media_duration > 0 &&
+                GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
+            ret = static_cast<double>(media_position) / static_cast<double>(media_duration);
         }
+    }
 
-        status_ = FINISHED;
+    return (float)ret;
+}
+
+void Seek::writeValue(Source *s, float val)
+{
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
+        double media_position = glm::clamp( (double) val, 0.0, 1.0);
+        if (GST_CLOCK_TIME_IS_VALID(media_duration))
+            ms->mediaplayer()->seek( media_position * media_duration );
     }
 }
-
-SourceCallback *Seek::clone() const
-{
-    return new Seek(target_);
-}
-
-void Seek::accept(Visitor& v)
-{
-    SourceCallback::accept(v);
-    v.visit(*this);
-}
-
 
 SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(),
     duration_(ms), bidirectional_(revert)
@@ -531,11 +633,10 @@ void SetGeometry::update(Source *s, float dt)
 
         // perform movement
         if ( ABS(duration_) > 0.f){
-            float ratio = progress / duration_;
             Group intermediate;
-            intermediate.translation_ = (1.f - ratio) * start_.translation_ + ratio * target_.translation_;
-            intermediate.scale_ = (1.f - ratio) * start_.scale_ + ratio * target_.scale_;
-            intermediate.rotation_ = (1.f - ratio) * start_.rotation_ + ratio * target_.rotation_;
+            intermediate.translation_ = glm::mix(start_.translation_, target_.translation_, progress/duration_);
+            intermediate.scale_ = glm::mix(start_.scale_, target_.scale_, progress/duration_);
+            intermediate.rotation_ = glm::mix(start_.rotation_, target_.rotation_, progress/duration_);
             // apply geometry
             s->group(View::GEOMETRY)->copyTransform(&intermediate);
             s->touch();
@@ -723,6 +824,181 @@ SourceCallback *Turn::reverse(Source *) const
 }
 
 void Turn::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+SetBrightness::SetBrightness(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, -1.f, 1.f);
+}
+
+float SetBrightness::readValue(Source *s) const
+{
+    return s->processingShader()->brightness;
+}
+
+void SetBrightness::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->brightness = val;
+}
+
+SetContrast::SetContrast(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, -1.f, 1.f);
+}
+
+float SetContrast::readValue(Source *s) const
+{
+    return s->processingShader()->contrast;
+}
+
+void SetContrast::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->contrast = val;
+}
+
+SetSaturation::SetSaturation(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, -1.f, 1.f);
+}
+
+float SetSaturation::readValue(Source *s) const
+{
+    return s->processingShader()->saturation;
+}
+
+void SetSaturation::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->saturation = val;
+}
+
+SetHue::SetHue(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, 0.f, 1.f);
+}
+
+float SetHue::readValue(Source *s) const
+{
+    return s->processingShader()->hueshift;
+}
+
+void SetHue::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->hueshift = val;
+}
+
+SetThreshold::SetThreshold(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, 0.f, 1.f);
+}
+
+float SetThreshold::readValue(Source *s) const
+{
+    return s->processingShader()->threshold;
+}
+
+void SetThreshold::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->threshold = val;
+}
+
+
+SetInvert::SetInvert(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, 0.f, 2.f);
+}
+
+float SetInvert::readValue(Source *s) const
+{
+    return static_cast<float>(s->processingShader()->invert);
+}
+
+void SetInvert::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->invert = static_cast<int>(val);
+}
+
+SetPosterize::SetPosterize(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+    target_ = glm::clamp(target_, 0.f, 128.f);
+}
+
+float SetPosterize::readValue(Source *s) const
+{
+    return static_cast<float>(s->processingShader()->nbColors);
+}
+
+void SetPosterize::writeValue(Source *s, float val)
+{
+    if (s->imageProcessingEnabled())
+        s->processingShader()->nbColors = static_cast<int>(val);
+}
+
+
+SetGamma::SetGamma(glm::vec4 g, float ms, bool revert) : SourceCallback(),
+    duration_(ms), start_(glm::vec4()), target_(g), bidirectional_(revert)
+{
+    start_ = glm::clamp(start_, glm::vec4(0.f), glm::vec4(10.f));
+}
+
+void SetGamma::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    if (!s->imageProcessingEnabled())
+        status_ = FINISHED;
+
+    // set start on first time it is ready
+    if ( status_ == READY ){
+        start_ = s->processingShader()->gamma;
+        status_ = ACTIVE;
+    }
+
+    // update when active
+    if ( status_ == ACTIVE ) {
+
+        // time passed since start
+        float progress = elapsed_ - delay_;
+
+        // time-out or instantaneous
+        if ( !(ABS(duration_) > 0.f) || progress > duration_ ) {
+            // apply target
+            s->processingShader()->gamma = target_;
+            // done
+            status_ = FINISHED;
+        }
+        // perform iteration of interpolation
+        else {
+            // apply calculated intermediate
+            s->processingShader()->gamma = glm::mix(start_, target_, progress/duration_);
+        }
+    }
+}
+
+void SetGamma::multiply (float factor)
+{
+    target_ *= factor;
+}
+
+SourceCallback *SetGamma::clone() const
+{
+    return new SetGamma(target_, duration_, bidirectional_);
+}
+
+SourceCallback *SetGamma::reverse(Source *s) const
+{
+    return bidirectional_ ? new SetGamma(s->processingShader()->gamma, duration_) : nullptr;
+}
+
+void SetGamma::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);

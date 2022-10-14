@@ -53,6 +53,7 @@ class AlphaFilter;
 class ImageFilter;
 
 class SourceCallback;
+class ValueSourceCallback;
 class SetAlpha;
 class SetDepth;
 class SetGeometry;
@@ -119,6 +120,7 @@ public:
     virtual void visit (ImageFilter&) {}
 
     virtual void visit (SourceCallback&) {}
+    virtual void visit (ValueSourceCallback&) {}
     virtual void visit (SetAlpha&) {}
     virtual void visit (SetDepth&) {}
     virtual void visit (SetGeometry&) {}
