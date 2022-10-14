@@ -325,24 +325,10 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Hue shift", &n.hueshift, 0.0, 1.0);
+    ImGui::SliderFloat("Hue", &n.hueshift, 0.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Hue shift " << std::setprecision(2) << n.hueshift;
-        Action::manager().store(oss.str());
-    }
-
-    if (ImGuiToolkit::IconButton(18, 1)) {
-        n.nbColors = 0;
-        Action::manager().store("Posterize None");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << "Posterize ";
-        if (n.nbColors == 0) oss << "None"; else oss << n.nbColors;
         Action::manager().store(oss.str());
     }
 
@@ -357,6 +343,20 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         std::ostringstream oss;
         oss << "Threshold ";
         if (n.threshold < 0.001) oss << "None"; else oss << std::setprecision(2) << n.threshold;
+        Action::manager().store(oss.str());
+    }
+
+    if (ImGuiToolkit::IconButton(18, 1)) {
+        n.nbColors = 0;
+        Action::manager().store("Posterize None");
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        std::ostringstream oss;
+        oss << "Posterize ";
+        if (n.nbColors == 0) oss << "None"; else oss << n.nbColors;
         Action::manager().store(oss.str());
     }
 
@@ -446,16 +446,10 @@ void ImGuiVisitor::visit (Source& s)
     // Filter
     bool on = s.imageProcessingEnabled();
     ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
-    if (on) {
-        ImGuiToolkit::Icon(6, 2);
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Color correction");
-    }
-    else {
-        ImGuiToolkit::Indication("Color correction disabled", 6, 2);
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::TextDisabled("Color correction");
-    }
+    if (on)
+        ImGui::Text(ICON_FA_PALETTE "  Color correction");
+    else
+        ImGuiToolkit::Indication("Color correction filter is disabled", ICON_FA_PALETTE "  Color correction");
     pos = ImGui::GetCursorPos();
 
     // menu icon for image processing
@@ -527,6 +521,7 @@ void ImGuiVisitor::visit (Source& s)
 
         // full panel for image processing
         ImGui::SetCursorPos( pos );
+        ImGui::Spacing();
 
         if (s.processingshader_link_.connected()) {
             Source *target = s.processingshader_link_.source();

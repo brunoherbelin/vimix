@@ -383,7 +383,7 @@ class InputMappingInterface : public WorkspaceWindow
     uint current_input_;
 
     Source *ComboSelectSource(Source *current = nullptr);
-    uint ComboSelectCallback(uint current);
+    uint ComboSelectCallback(uint current, bool imageprocessing);
     void SliderParametersCallback(SourceCallback *callback, Source *source);
 
 public:

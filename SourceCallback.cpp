@@ -77,10 +77,10 @@ SourceCallback *SourceCallback::create(CallbackType type)
         loadedcallback = new SetContrast;
         break;
     case SourceCallback::CALLBACK_SATURATION:
-        loadedcallback = new SetBrightness;
+        loadedcallback = new SetSaturation;
         break;
     case SourceCallback::CALLBACK_HUE:
-        loadedcallback = new SetContrast;
+        loadedcallback = new SetHue;
         break;
     case SourceCallback::CALLBACK_THRESHOLD:
         loadedcallback = new SetThreshold;

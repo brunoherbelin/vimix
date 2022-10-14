@@ -4632,9 +4632,9 @@ Source *InputMappingInterface::ComboSelectSource(Source *current)
     return selected;
 }
 
-uint InputMappingInterface::ComboSelectCallback(uint current)
+uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessing)
 {
-    const char* callback_names[9] = { "Select",
+    const char* callback_names[21] = { "Select",
                                        ICON_FA_BULLSEYE "  Alpha",
                                        ICON_FA_BULLSEYE "  Loom",
                                        ICON_FA_OBJECT_UNGROUP "  Geometry",
@@ -4642,14 +4642,33 @@ uint InputMappingInterface::ComboSelectCallback(uint current)
                                        ICON_FA_OBJECT_UNGROUP "  Resize",
                                        ICON_FA_OBJECT_UNGROUP "  Turn",
                                        ICON_FA_LAYER_GROUP "  Depth",
-                                       ICON_FA_PLAY_CIRCLE "  Play"
-                                     };
+                                       ICON_FA_PLAY_CIRCLE "  Play",
+                                       "  None",
+                                       "  None",
+                                       "  None",
+                                       "  None",
+                                       ICON_FA_PALETTE "  Brightness",
+                                       ICON_FA_PALETTE "  Contrast",
+                                       ICON_FA_PALETTE "  Saturation",
+                                       ICON_FA_PALETTE "  Hue",
+                                       ICON_FA_PALETTE "  Threshold",
+                                       ICON_FA_PALETTE "  Gamma",
+                                       "  None",
+                                       "  None"
+    };
 
-    int selected = 0;
+    uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
         for (uint i = SourceCallback::CALLBACK_ALPHA; i <= SourceCallback::CALLBACK_PLAY; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
                 selected = i;
+            }
+        }
+        if (imageprocessing) {
+            for (uint i = SourceCallback::CALLBACK_BRIGHTNESS; i <= SourceCallback::CALLBACK_THRESHOLD; ++i){
+                if ( ImGui::Selectable( callback_names[i]) ) {
+                    selected = i;
+                }
             }
         }
         ImGui::EndCombo();
@@ -4828,6 +4847,156 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
             edited->setValue(val>0);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGuiToolkit::Indication("Play or pause the source.", 16, 7);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_BRIGHTNESS:
+    {
+        SetBrightness *edited = static_cast<SetBrightness*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_BRIGHTNESS", &val, -1.f, 1.f, "%.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Brightness color correction.", 5, 16);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_CONTRAST:
+    {
+        SetContrast *edited = static_cast<SetContrast*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_CONTRAST", &val, -1.f, 1.f, "%.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Contrast color correction.", 5, 16);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_SATURATION:
+    {
+        SetSaturation *edited = static_cast<SetSaturation*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_SATURATION", &val, -1.f, 1.f, "%.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Saturation color correction.", 9, 16);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_HUE:
+    {
+        SetHue *edited = static_cast<SetHue*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_HUE", &val, 0.f, 1.f, "%.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Hue shift color correction.", 12, 4);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_THRESHOLD:
+    {
+        SetThreshold *edited = static_cast<SetThreshold*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_THRESHOLD", &val, 0.f, 1.f, "%.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Threshold color correction.", 8, 1);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_GAMMA:
+    {
+//        SetGamma *edited = static_cast<SetGamma*>(callback);
+
+//        bool bd = edited->bidirectional();
+//        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+//            edited->setBidirectional(bd);
+
+//        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+//        int speed_index = d.index;
+//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+//        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+//            edited->setDuration(speed_values[speed_index]);
+
+//        float val = edited->value();
+//        ImGui::SetNextItemWidth(right_align);
+//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+//        if (ImGui::SliderFloat("##CALLBACK_GAMMA", &val, -1.f, 1.f, "%.1f"))
+//            edited->setValue(val);
+
+//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+//        ImGuiToolkit::Indication("Set Gamma color correction.", 5, 16);
     }
         break;
     default:
@@ -5393,7 +5562,7 @@ void InputMappingInterface::Render()
                 // Select Reaction
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                uint type = ComboSelectCallback( callback->type() );
+                uint type = ComboSelectCallback( callback->type(), source->imageProcessingEnabled() );
                 if (type > 0) {
                     // remove previous callback
                     S->deleteSourceCallback(callback);
@@ -5451,7 +5620,7 @@ void InputMappingInterface::Render()
                 // step 3: Get input for callback type
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                temp_new_callback = ComboSelectCallback( temp_new_callback );
+                temp_new_callback = ComboSelectCallback( temp_new_callback, temp_new_source->imageProcessingEnabled() );
                 // user selected a callback type
                 if (temp_new_callback > 0) {
                     // step 4 : create new callback and add it to source
