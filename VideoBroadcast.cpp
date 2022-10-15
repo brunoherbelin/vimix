@@ -22,8 +22,8 @@ std::string VideoBroadcast::srt_sink_;
 std::string VideoBroadcast::h264_encoder_;
 
 std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
-    {"srtsin", "srtsink uri=srt://:XXXX name=sink"},
-    {"srtserversin", "srtserversink uri=srt://:XXXX name=sink"}
+    {"srtsink", "srtsink uri=srt://:XXXX name=sink"},
+    {"srtserversink", "srtserversink uri=srt://:XXXX name=sink"}
 };
 
 std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
