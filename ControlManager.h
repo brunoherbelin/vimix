@@ -59,6 +59,7 @@
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
+#define OSC_SESSION_FADE       "/fade"
 
 #define OSC_MULTITOUCH         "/multitouch"
 

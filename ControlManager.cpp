@@ -858,6 +858,15 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
             }
             send_feedback = true;
         }
+        else if ( attribute.compare(OSC_SESSION_FADE) == 0) {
+            float v = 0.f, t = 0.f;
+            arguments >> v;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            Mixer::manager().session()->setFadingTarget(v, t);
+        }
 #ifdef CONTROL_DEBUG
         else {
             Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'session'", attribute.c_str());
