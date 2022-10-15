@@ -3069,7 +3069,7 @@ void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 origin)
     }
 }
 
-ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
+ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ///
@@ -3103,7 +3103,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
         //
         ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
         ImGui::Image((void*)(uintptr_t) s->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
-        if ( ImGui::IsItemHovered() )
+        if ( with_inspector && ImGui::IsItemHovered() )
             DrawInspector(s->texture(), framesize, top_image);
 
         //
@@ -3116,7 +3116,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
             // draw cropped area
             ImGui::SetCursorScreenPos(top_image + croptop );
             ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
-            if ( ImGui::IsItemHovered() )
+            if ( with_inspector && ImGui::IsItemHovered() )
                 DrawInspector(s->frame()->texture(), framesize, top_image);
         }
         // overlap of slider with cropped area (horizontally)
@@ -3129,7 +3129,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
             // size is reduced by slider
             cropsize = cropsize * ImVec2(1.f -cropped_slider, 1.f);
             ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
-            if ( ImGui::IsItemHovered() )
+            if ( with_inspector && ImGui::IsItemHovered() )
                 DrawInspector(s->frame()->texture(), framesize, top_image);
         }
         // else : no render of cropped area
@@ -3150,7 +3150,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize)
     }
     else {
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
-        if ( ImGui::IsItemHovered() )
+        if ( with_inspector && ImGui::IsItemHovered() )
             DrawInspector(s->texture(), framesize, top_image);
     }
 
@@ -3276,6 +3276,8 @@ void SourceController::RenderSelectedSources()
 
 void SourceController::RenderSingleSource(Source *s)
 {
+    static bool show_overlay_info = false;
+
     if ( s == nullptr)
         return;
 
@@ -3293,14 +3295,15 @@ void SourceController::RenderSingleSource(Source *s)
         ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
         ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize);
+        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize, !show_overlay_info);
 
         ///
         /// Info overlays
         ///
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
-        if (ImGui::IsItemHovered()){
+        show_overlay_info = ImGui::IsItemHovered();
+        if (show_overlay_info){
             // fill info string
             s->accept(info_);
             // draw overlay frame and text
@@ -3339,6 +3342,8 @@ void SourceController::RenderSingleSource(Source *s)
 
 void SourceController::RenderMediaPlayer(MediaSource *ms)
 {
+    static bool show_overlay_info = false;
+
     mediaplayer_active_ = ms->mediaplayer();
 
     // for action manager
@@ -3356,14 +3361,15 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
     const ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, mediaplayer_height_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize);
+    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize, !show_overlay_info);
 
     ///
     /// Info overlays
     ///
     ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
     ImGui::Text(ICON_FA_INFO_CIRCLE);
-    if (ImGui::IsItemHovered()){
+    show_overlay_info = ImGui::IsItemHovered();
+    if (show_overlay_info){
         // information visitor
         mediaplayer_active_->accept(info_);
         float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
