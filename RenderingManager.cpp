@@ -664,7 +664,7 @@ GLFWmonitor *RenderingWindow::monitorNamed(const std::string &name)
 GLFWmonitor *RenderingWindow::monitor()
 {
     // pick at the coordinates given or at pos of window
-    int x = 0, y = 0;
+    int x = 1, y = 1;
     if (window_ != nullptr)
         glfwGetWindowPos(window_, &x, &y);
     return monitorAt(x, y);
@@ -672,7 +672,7 @@ GLFWmonitor *RenderingWindow::monitor()
 
 void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 {
-    if (window_ != nullptr)
+    if (window_ == nullptr)
         return;
 
     // done request
