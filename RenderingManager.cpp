@@ -124,7 +124,7 @@ std::map<GLFWwindow *, RenderingWindow*> GLFW_window_;
 
 static void glfw_error_callback(int error, const char* description)
 {
-    Log::Error("Glfw Error %d: %s",  error, description);
+    g_printerr("Glfw Error %d: %s\n",  error, description);
 }
 
 static void WindowRefreshCallback( GLFWwindow * )
@@ -145,6 +145,10 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].w = width;
         Settings::application.windows[id].h = height;
     }
+
+#if __APPLE__
+    Rendering::manager().draw();
+#endif
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
@@ -193,7 +197,7 @@ bool Rendering::init()
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()){
-        Log::Error("Failed to Initialize GLFW.");
+        g_printerr("Failed to Initialize GLFW.\n");
         return false;
     }
 
@@ -575,14 +579,15 @@ void RenderingWindow::setTitle(const std::string &title)
     else
         fulltitle = title + std::string(" - " APP_NAME);
 
-    glfwSetWindowTitle(window_, fulltitle.c_str());
+    if (window_ != nullptr)
+        glfwSetWindowTitle(window_, fulltitle.c_str());
 }
 
 void RenderingWindow::setIcon(const std::string &resource)
 {
     size_t fpsize = 0;
     const char *fp = Resource::getData(resource, &fpsize);
-    if (fp != nullptr) {
+    if (fp != nullptr && window_ != nullptr) {
         GLFWimage icon;
         icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
         glfwSetWindowIcon( window_, 1, &icon );
@@ -659,13 +664,17 @@ GLFWmonitor *RenderingWindow::monitorNamed(const std::string &name)
 GLFWmonitor *RenderingWindow::monitor()
 {
     // pick at the coordinates given or at pos of window
-    int x, y;
-    glfwGetWindowPos(window_, &x, &y);
+    int x = 0, y = 0;
+    if (window_ != nullptr)
+        glfwGetWindowPos(window_, &x, &y);
     return monitorAt(x, y);
 }
 
 void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 {
+    if (window_ != nullptr)
+        return;
+
     // done request
     request_toggle_fullscreen_ = false;
 
