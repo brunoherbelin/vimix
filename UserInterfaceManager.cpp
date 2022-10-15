@@ -916,6 +916,14 @@ void UserInterface::showMenuEdit()
     const char *clipboard = ImGui::GetClipboardText();
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
+    // UNDO
+    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO) )
+        Action::manager().undo();
+    if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO) )
+        Action::manager().redo();
+
+    // EDIT
+    ImGui::Separator();
     if (ImGui::MenuItem( MENU_CUT, SHORTCUT_CUT, false, has_selection)) {
         std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty()) {
@@ -938,11 +946,19 @@ void UserInterface::showMenuEdit()
         Mixer::manager().view()->selectAll();
         navigator.hidePannel();
     }
+
+    // GROUP
     ImGui::Separator();
-    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO) )
-        Action::manager().undo();
-    if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO) )
-        Action::manager().redo();
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Group active sources", false, Mixer::manager().numSource() > 0)) {
+        // create a new group session with only active sources
+        Mixer::manager().groupAll( true );
+        // switch pannel to show first source (created)
+        navigator.showPannelSource(0);
+    }
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand groups", false, Mixer::manager().numSource() > 0)) {
+        // create a new group session with all sources
+        Mixer::manager().ungroupAll();
+    }
 }
 
 void UserInterface::showMenuFile()
@@ -984,19 +1000,6 @@ void UserInterface::showMenuFile()
         selectSaveFilename();
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
-
-    // GROUP
-    ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Group active sources", false, Mixer::manager().numSource() > 0)) {
-        // create a new group session with only active sources
-        Mixer::manager().groupAll( true );
-        // switch pannel to show first source (created)
-        navigator.showPannelSource(0);
-    }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand groups", false, Mixer::manager().numSource() > 0)) {
-        // create a new group session with all sources
-        Mixer::manager().ungroupAll();
-    }
 
     // HELP AND QUIT
     ImGui::Separator();
