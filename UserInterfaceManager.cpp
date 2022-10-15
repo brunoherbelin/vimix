@@ -6654,6 +6654,7 @@ void Navigator::RenderNewPannel()
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 sourceSequenceFiles.clear();
+                new_source_preview_.setSource();
                 _selectImagesDialog.open();
             }
 
@@ -6737,7 +6738,7 @@ void Navigator::RenderNewPannel()
                 if ( _video_recorder.finished() ) {
                     // video recorder failed if it does not return a valid filename
                     if ( _video_recorder.filename().empty() )
-                        Log::Warning("Failed to gemerate image sequence.");
+                        Log::Warning("Failed to generate an image sequence.");
                     else {
                         Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
                         // open the file as new recording

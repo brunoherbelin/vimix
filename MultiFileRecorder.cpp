@@ -9,6 +9,7 @@
 #include "Log.h"
 #include "GstToolkit.h"
 #include "BaseToolkit.h"
+#include "SystemToolkit.h"
 #include "Settings.h"
 #include "MediaPlayer.h"
 
@@ -130,7 +131,7 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     }
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! queue ! videoconvert ! ";
+    std::string description = "appsrc name=src ! queue ! videoconvert ! videoscale ! ";
     description += VideoRecorder::profile_description[ profile_ ];
     description += "qtmux ! filesink name=sink";
 
@@ -179,8 +180,8 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     // specify recorder resolution and framerate in the source caps
     GstCaps *caps  = gst_caps_new_simple ("video/x-raw",
                                           "format", G_TYPE_STRING, bpp_ < 4 ? "RGB" : "RGBA",
-                                          "width",  G_TYPE_INT, width_,
-                                          "height", G_TYPE_INT, height_,
+                                          "width",  G_TYPE_INT, width_ - width_%2,
+                                          "height", G_TYPE_INT, height_ - height_%2,
                                           "framerate", GST_TYPE_FRACTION, fps_, 1,
                                           NULL);
     gst_app_src_set_caps (src_, caps );
@@ -251,7 +252,7 @@ bool MultiFileRecorder::end_record ()
     // wait to receive end of stream
     GstMessage *msg = gst_bus_timed_pop_filtered(bus, GST_SECOND, GST_MESSAGE_EOS);
     if ( msg == NULL ) {
-        Log::Warning("MultiFileRecorder: Failed to close recording.");
+        Log::Warning("MultiFileRecorder: could not close.");
         ret = false;
     }
 
@@ -259,10 +260,16 @@ bool MultiFileRecorder::end_record ()
     GstStateChangeReturn r = gst_element_set_state (pipeline_, GST_STATE_NULL);
     if (r == GST_STATE_CHANGE_ASYNC) {
         gst_element_get_state (pipeline_, NULL, NULL, GST_SECOND);
-        g_print("... ASYNC END !\n");
+//        g_print("... ASYNC END !\n");
     }
     else if (r == GST_STATE_CHANGE_FAILURE) {
-        Log::Warning("MultiFileRecorder: Failed to end recording.");
+        Log::Warning("MultiFileRecorder: could not end properly.");
+        ret = false;
+    }
+
+    // invalidate if single frame
+    if (frame_count_ < 2) {
+        Log::Warning("MultiFileRecorder: a single image does not make a sequence.");
         ret = false;
     }
 
@@ -311,7 +318,7 @@ bool MultiFileRecorder::finished ()
 
 std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
 {
-    std::string filename;
+    std::string filename = std::string();
 
     // reset
     rec->progress_ = 0.f;
@@ -329,11 +336,9 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
     stbi_info( rec->files_.front().c_str(), &rec->width_, &rec->height_, &rec->bpp_);
 
     if ( rec->width_ < 10 || rec->height_ < 10 || rec->bpp_ < 3 ) {
-        Log::Warning("MultiFileRecorder: invalid image.");
+        Log::Warning("MultiFileRecorder: Invalid image %s.", rec->files_.front());
         return filename;
     }
-
-    Log::Info("MultiFileRecorder creating video %d x %d : %d.", rec->width_, rec->height_, rec->bpp_);
 
     // progress increment
     float inc_ = 1.f / ( (float) rec->files_.size() + 2.f);
@@ -341,7 +346,11 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
     // initialize
     rec->frame_count_ = 0;
     filename = BaseToolkit::common_prefix (rec->files_);
+    if (!SystemToolkit::path_directory(filename).empty())
+        filename += "image";
     filename +=  "_sequence.mov";
+
+    Log::Info("MultiFileRecorder creating %s, %d x %d px.", filename.c_str(), rec->width_, rec->height_);
 
     if ( rec->start_record( filename ) )
     {
@@ -354,14 +363,11 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
             if ( rec->cancel_ )
                 break;
 
-            if ( rec->add_image( *file ) ) {
-
+            if ( rec->add_image( *file ) )
                 // validate file
                 rec->frame_count_++;
-            }
-            else {
-                Log::Info("MultiFileRecorder could not include images %s.", file->c_str());
-            }
+            else
+                Log::Info("MultiFileRecorder could not add %s.", file->c_str());
 
             // pause in case appsrc buffer is full
             int max = 100;
@@ -372,10 +378,15 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
             rec->progress_ += inc_;
         }
 
+        // Give more explanation for possible errors
+        if ( rec->frame_count_ < rec->files_.size())
+            Log::Info("MultiFileRecorder not fully successful; are all images %d x %d px?",rec->width_, rec->height_);
+
         // close file properly
-        if ( rec->end_record() ) {
-            Log::Info("MultiFileRecorder %d images encoded (%ld s), saved in %s.", rec->frame_count_, rec->timestamp_, filename.c_str());
-        }
+        if ( rec->end_record() )
+            Log::Info("MultiFileRecorder %d images encoded (%s).", rec->frame_count_, GstToolkit::time_to_string(rec->timestamp_, GstToolkit::TIME_STRING_READABLE).c_str());
+        else
+            filename = std::string();
     }
     else
         filename = std::string();
