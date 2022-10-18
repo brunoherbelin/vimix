@@ -26,3 +26,5 @@ osx/.DS_Store
 osx/runvimix
 
 *.autosave
+
+flatpak/.flatpak-builder
