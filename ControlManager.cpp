@@ -37,6 +37,7 @@
 #include "SystemToolkit.h"
 #include "tinyxml2Toolkit.h"
 #include "Metronome.h"
+#include "TransitionView.h"
 
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"
@@ -858,14 +859,38 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
             }
             send_feedback = true;
         }
-        else if ( attribute.compare(OSC_SESSION_FADE) == 0) {
-            float v = 0.f, t = 0.f;
-            arguments >> v;
-            if (arguments.Eos())
+        else if ( attribute.compare(OSC_SESSION_OPEN) == 0) {
+            const char *filename;
+            arguments >> filename;
+            if (arguments.Eos()) {
                 arguments >> osc::EndMessage;
-            else
+                Mixer::manager().open(filename);
+            }
+            else {
+                float t = 0.f;
                 arguments >> t >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget(v, t);
+                Settings::application.transition.duration = t;
+                Mixer::manager().open(filename, true);
+                TransitionView *tv = dynamic_cast<TransitionView*>( Mixer::manager().view(View::TRANSITION) );
+                tv->play(true);
+            }
+        }
+        else if ( attribute.compare(OSC_SESSION_SAVE) == 0) {
+            Mixer::manager().save();
+        }
+        else if ( attribute.compare(OSC_SESSION_CLOSE) == 0) {
+            if (arguments.Eos()) {
+                arguments >> osc::EndMessage;
+                Mixer::manager().close();
+            }
+            else {
+                float t = 0.f;
+                arguments >> t >> osc::EndMessage;
+                Settings::application.transition.duration = t;
+                Mixer::manager().close(true);
+                TransitionView *tv = dynamic_cast<TransitionView*>( Mixer::manager().view(View::TRANSITION) );
+                tv->play(true);
+            }
         }
 #ifdef CONTROL_DEBUG
         else {
