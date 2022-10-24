@@ -53,10 +53,13 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-	</dict>
-	<key>NSCameraUsageDescription</key>
-	<string>vimix needs to access the camera to enable camera sources.</string>
-	<key>NSHighResolutionCapable</key>
+        </dict>
+        <key>NSCameraUsageDescription</key>
+        <string>vimix needs to access the camera to enable camera sources.</string>
+        <key>NSHighResolutionCapable</key>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>vimix needs to access the microphone to enable sound sources.</string>
+        <key>NSMicrophoneUsageDescription</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
         <string>Copyright © 2022 Bruno Herbelin. All rights reserved.</string>
