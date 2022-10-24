@@ -22,7 +22,7 @@
 #include "defines.h"
 #include "Visitor.h"
 #include "Resource.h"
-#include "rsc/fonts/IconsFontAwesome5.h"
+#include "IconsFontAwesome5.h"
 
 #include "ImageShader.h"
 

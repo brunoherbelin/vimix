@@ -10,7 +10,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 
-#include "rsc/fonts/IconsFontAwesome5.h"
+#include "IconsFontAwesome5.h"
 
 namespace ImGuiToolkit
 {
