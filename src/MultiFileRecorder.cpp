@@ -336,7 +336,7 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
     stbi_info( rec->files_.front().c_str(), &rec->width_, &rec->height_, &rec->bpp_);
 
     if ( rec->width_ < 10 || rec->height_ < 10 || rec->bpp_ < 3 ) {
-        Log::Warning("MultiFileRecorder: Invalid image %s.", rec->files_.front());
+        Log::Warning("MultiFileRecorder: Invalid image %s.", rec->files_.front().c_str());
         return filename;
     }
 

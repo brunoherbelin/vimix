@@ -334,6 +334,7 @@ include_directories(
     ${IMGUITEXTEDIT_INCLUDE_DIR}
 )
 add_library(IMGUITEXTEDIT "${CMAKE_CURRENT_SOURCE_DIR}/ext/ImGuiColorTextEdit/TextEditor.cpp")
+set_property(TARGET IMGUITEXTEDIT PROPERTY CXX_STANDARD 17)
 message(STATUS "Compiling 'ImGuiColorTextEdit' from https://github.com/BalazsJako/ImGuiColorTextEdit -- ${IMGUITEXTEDIT_INCLUDE_DIR}")
 
 

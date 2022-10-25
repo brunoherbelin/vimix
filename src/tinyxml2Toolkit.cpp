@@ -19,7 +19,6 @@
 
 #include <zlib.h>
 #include <glib.h>
-#include <glib/gi18n.h>
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"

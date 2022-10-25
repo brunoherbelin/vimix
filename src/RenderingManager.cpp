@@ -31,7 +31,6 @@
 #include <GLFW/glfw3.h>
 
 #ifdef APPLE
-#include "osx/CocoaToolkit.h"
 #define GLFW_EXPOSE_NATIVE_COCOA
 #define GLFW_EXPOSE_NATIVE_NSGL
 #else
@@ -48,6 +47,7 @@
 #include <gst/gl/gstglcontext.h>
 
 #ifdef GLFW_EXPOSE_NATIVE_COCOA
+//#include "osx/CocoaToolkit.h"
 //#include <gst/gl/cocoa/gstgldisplay_cocoa.h>
 #endif
 #ifdef GLFW_EXPOSE_NATIVE_GLX
