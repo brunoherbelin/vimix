@@ -164,10 +164,6 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 
 IF(APPLE)
 
-    # Bundle target
-    set(CPACK_GENERATOR DragNDrop)
-    set(CPACK_BINARY_DRAGNDROP ON)
-
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo
             BUNDLE  DESTINATION . COMPONENT Runtime
@@ -236,7 +232,6 @@ IF(APPLE)
             COMPONENT Runtime
     )
 
-    set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
     set(APPLE_CODESIGN_IDENTITY "" CACHE STRING "")
     string(LENGTH "${APPLE_CODESIGN_IDENTITY}" APPLE_CODESIGN_IDENTITY_LENGHT)
     if( ${APPLE_CODESIGN_IDENTITY_LENGHT} LESS 40 )

@@ -64,6 +64,9 @@ if(UNIX)
 
         # CPACK
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
+        set(CPACK_GENERATOR DragNDrop)
+        set(CPACK_BINARY_DRAGNDROP ON)
+        set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
 
         # find icu4c in OSX (pretty well hidden...)
         set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
