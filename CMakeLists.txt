@@ -368,61 +368,62 @@ message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack
 ##### Ressources
 #####
 
+set(RSC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rsc)
+
 #
 # Fonts
 #
 
-file(GLOB_RECURSE ROBOTO_REGULAR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Regular.ttf")
+file(GLOB_RECURSE ROBOTO_REGULAR "${RSC_DIR}/*/Roboto-Regular.ttf")
 if(NOT ROBOTO_REGULAR)
     file(GLOB_RECURSE ROBOTO_REGULAR "/usr/share/fonts/*/Roboto-Regular.ttf")
-    message(STATUS "Copy ${ROBOTO_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${ROBOTO_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(ROBOTO_REGULAR ${CMAKE_SOURCE_DIR}"/rsc/fonts/Roboto-Regular.ttf")
+    message(STATUS "Copy ${ROBOTO_REGULAR} to ${RSC_DIR}/fonts")
+    file(COPY ${ROBOTO_REGULAR} DESTINATION ${RSC_DIR}/fonts)
+    set(ROBOTO_REGULAR "${RSC_DIR}/fonts/Roboto-Regular.ttf")
 endif()
 
-file(GLOB_RECURSE ROBOTO_BOLD RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Bold.ttf")
+file(GLOB_RECURSE ROBOTO_BOLD "${RSC_DIR}/*/Roboto-Bold.ttf")
 if(NOT ROBOTO_BOLD)
     file(GLOB_RECURSE ROBOTO_BOLD "/usr/share/fonts/*/Roboto-Bold.ttf")
-    message(STATUS "Copy ${ROBOTO_BOLD} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${ROBOTO_BOLD} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(ROBOTO_BOLD ${CMAKE_CURRENT_SOURCE_DIR}"/rsc/fonts/Roboto-Bold.ttf")
+    message(STATUS "Copy ${ROBOTO_BOLD} to ${RSC_DIR}/fonts")
+    file(COPY ${ROBOTO_BOLD} DESTINATION ${RSC_DIR}/fonts)
+    set(ROBOTO_BOLD "${RSC_DIR}/fonts/Roboto-Bold.ttf")
 endif()
 
-file(GLOB_RECURSE ROBOTO_ITALIC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Roboto-Italic.ttf")
+file(GLOB_RECURSE ROBOTO_ITALIC "${RSC_DIR}/*/Roboto-Italic.ttf")
 if(NOT ROBOTO_ITALIC)
     file(GLOB_RECURSE ROBOTO_ITALIC "/usr/share/fonts/*/Roboto-Italic.ttf")
-    message(STATUS "Copy ${ROBOTO_ITALIC} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${ROBOTO_ITALIC} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(ROBOTO_ITALIC ${CMAKE_CURRENT_SOURCE_DIR}"/rsc/fonts/Roboto-Italic.ttf")
+    message(STATUS "Copy ${ROBOTO_ITALIC} to ${RSC_DIR}/fonts")
+    file(COPY ${ROBOTO_ITALIC} DESTINATION ${RSC_DIR}/fonts)
+    set(ROBOTO_ITALIC "${RSC_DIR}/fonts/Roboto-Italic.ttf")
 endif()
 
-file(GLOB_RECURSE HACK_REGULAR RELATIVE ${CMAKE_SOURCE_DIR} "Hack-Regular.ttf")
+file(GLOB_RECURSE HACK_REGULAR "${RSC_DIR}/*/Hack-Regular.ttf")
 if(NOT HACK_REGULAR)
     file(GLOB_RECURSE HACK_REGULAR "/usr/share/fonts/*/Hack-Regular.ttf")
-    message(STATUS "Copy ${HACK_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${HACK_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(HACK_REGULAR "${CMAKE_SOURCE_DIR}/../rsc/fonts/Hack-Regular.ttf")
+    message(STATUS "Copy ${HACK_REGULAR} to ${RSC_DIR}/fonts")
+    file(COPY ${HACK_REGULAR} DESTINATION ${RSC_DIR}/fonts)
+    set(HACK_REGULAR "${RSC_DIR}/fonts/Hack-Regular.ttf")
 endif()
 
-file(GLOB_RECURSE AWESOME_SOLID RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "fa-solid-900.ttf")
+file(GLOB_RECURSE AWESOME_SOLID "${RSC_DIR}/*/fa-solid-900.ttf")
 if(NOT AWESOME_SOLID)
     file(GLOB_RECURSE AWESOME_SOLID "/usr/share/fonts/*/fa-solid-900.ttf")
-    message(STATUS "Copy ${AWESOME_SOLID} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${AWESOME_SOLID} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(AWESOME_SOLID ${CMAKE_CURRENT_SOURCE_DIR}"/rsc/fonts/fa-solid-900.ttf")
+    message(STATUS "Copy ${AWESOME_SOLID} to ${RSC_DIR}/fonts")
+    file(COPY ${AWESOME_SOLID} DESTINATION ${RSC_DIR}/fonts)
+    set(AWESOME_SOLID "${RSC_DIR}/fonts/fa-solid-900.ttf")
 endif()
 
-
-file(GLOB_RECURSE AWESOME_REGULAR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "fa-regular-400.ttf")
+file(GLOB_RECURSE AWESOME_REGULAR "${RSC_DIR}/*/fa-regular-400.ttf")
 if(NOT AWESOME_REGULAR)
     file(GLOB_RECURSE AWESOME_REGULAR "/usr/share/fonts/*/fa-regular-400.ttf")
-    message(STATUS "Copy ${AWESOME_REGULAR} to ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts")
-    file(COPY ${AWESOME_REGULAR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts)
-    set(AWESOME_REGULAR "../rsc/fonts/fa-regular-400.ttf")
+    message(STATUS "Copy ${AWESOME_REGULAR} to ${RSC_DIR}/fonts")
+    file(COPY ${AWESOME_REGULAR} DESTINATION ${RSC_DIR}/fonts)
+    set(AWESOME_REGULAR "${RSC_DIR}/fonts/fa-regular-400.ttf")
 endif()
 
 include_directories(
-    "${CMAKE_CURRENT_SOURCE_DIR}/rsc/fonts"
+    "${RSC_DIR}/fonts"
 )
 
 
@@ -436,10 +437,10 @@ message(STATUS "Using 'CMakeRC ' from https://github.com/vector-of-bool/cmrc.git
 
 # set the files to package
 set(VMIX_RSC_FILES
-    ${HACK_REGULAR}
     ${ROBOTO_REGULAR}
     ${ROBOTO_BOLD}
     ${ROBOTO_ITALIC}
+    ${HACK_REGULAR}
     ${AWESOME_REGULAR}
     ${AWESOME_SOLID}
     ./rsc/shaders/simple.fs

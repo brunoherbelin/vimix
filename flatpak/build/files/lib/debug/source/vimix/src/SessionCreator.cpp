@@ -1,0 +1,1475 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
+#include <sstream>
+
+#include "Log.h"
+#include "defines.h"
+#include "Scene.h"
+#include "Primitives.h"
+#include "Mesh.h"
+#include "Source.h"
+#include "SourceCallback.h"
+#include "CloneSource.h"
+#include "FrameBufferFilter.h"
+#include "DelayFilter.h"
+#include "ImageFilter.h"
+#include "MediaSource.h"
+#include "SessionSource.h"
+#include "StreamSource.h"
+#include "PatternSource.h"
+#include "DeviceSource.h"
+#include "NetworkSource.h"
+#include "SrtReceiverSource.h"
+#include "MultiFileSource.h"
+#include "StreamSource.h"
+#include "RenderSource.h"
+#include "Session.h"
+#include "ImageShader.h"
+#include "ImageProcessingShader.h"
+#include "MediaPlayer.h"
+#include "SystemToolkit.h"
+
+#include "tinyxml2Toolkit.h"
+using namespace tinyxml2;
+
+#include "SessionCreator.h"
+
+SessionInformation SessionCreator::info(const std::string& filename)
+{
+    SessionInformation ret;
+
+    // if the file exists
+    if (SystemToolkit::file_exists(filename)) {
+        // impose C locale
+        setlocale(LC_ALL, "C");
+        // try to load the file
+        XMLDocument doc;
+        XMLError eResult = doc.LoadFile(filename.c_str());
+        // silently ignore on error
+        if ( !XMLResultError(eResult, false)) {
+
+            const XMLElement *header = doc.FirstChildElement(APP_NAME);
+            if (header != nullptr) {
+                uint s = header->UnsignedAttribute("size");
+                ret.description = std::to_string( s ) + " source" + ( s > 1 ? "s" : "");
+                uint t = header->UnsignedAttribute("total");
+                if (t>s)
+                    ret.description += " (" + std::to_string(t) + " in total)";
+                ret.description += "\n";
+                const char *att_string = header->Attribute("resolution");
+                if (att_string)
+                    ret.description += std::string( att_string ) + "\n";
+                att_string = header->Attribute("date");
+                if (att_string) {
+                    std::string date( att_string );
+                    ret.description += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
+                    ret.description += date.substr(8,2) + ":" + date.substr(10,2);
+                }
+            }
+            const XMLElement *session = doc.FirstChildElement("Session");
+            if (session != nullptr ) {
+                const XMLElement *thumbnailelement = session->FirstChildElement("Thumbnail");
+                // if there is a user defined thumbnail, get it
+                if (thumbnailelement) {
+                    ret.thumbnail = XMLToImage(thumbnailelement);
+                    ret.user_thumbnail_ = true;
+                }
+                // otherwise get the default saved thumbnail in session
+                else
+                    ret.thumbnail = XMLToImage(session);
+            }
+        }
+    }
+
+    return ret;
+}
+
+SessionCreator::SessionCreator(uint level): SessionLoader(nullptr, level)
+{
+
+}
+
+void SessionCreator::load(const std::string& filename)
+{
+    // avoid imbricated sessions at too many depth
+    if (level_ > MAX_SESSION_LEVEL) {
+        Log::Warning("Too many imbricated sessions detected! Interrupting loading at depth %d.\n", MAX_SESSION_LEVEL);
+        return;
+    }
+
+    // Load XML document
+    XMLError eResult = xmlDoc_.LoadFile(filename.c_str());
+    if ( XMLResultError(eResult)){
+        Log::Warning("%s could not be opened.\n%s", filename.c_str(), xmlDoc_.ErrorStr());
+        return;
+    }
+
+    // check header
+    XMLElement *header = xmlDoc_.FirstChildElement(APP_NAME);
+    if (header == nullptr) {
+        Log::Warning("%s is not a %s file.", filename.c_str(), APP_NAME);
+        return;
+    }
+
+    // check version
+    int version_major = -1, version_minor = -1;
+    header->QueryIntAttribute("major", &version_major);
+    header->QueryIntAttribute("minor", &version_minor);
+    if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
+        Log::Warning("%s is an older version of vimix session (v%d.%d instead of v%d.%d).\n"
+                     "Loading might lead to different or incomplete configuration.\n"
+                     "Save the session to avoid further warning.",
+                     filename.c_str(), version_major, version_minor, XML_VERSION_MAJOR, XML_VERSION_MINOR);
+//        return;
+    }
+
+    // check content
+    XMLElement *sessionNode = xmlDoc_.FirstChildElement("Session");
+    if (sessionNode == nullptr) {
+        Log::Warning("%s is not a %s session file.", filename.c_str(), APP_NAME);
+        return;
+    }
+
+    // read id of session
+    uint64_t id__ = 0;
+    sessionNode->QueryUnsigned64Attribute("id", &id__);
+
+    // session file seems legit, create a session
+    session_ = new Session(id__);
+
+    // set filename and current path
+    sessionFilePath_ = SystemToolkit::path_filename(filename);
+    session_->setFilename( filename );
+
+    // load views config (includes resolution of session rendering)
+    loadConfig( xmlDoc_.FirstChildElement("Views") );
+
+    // ready to read sources
+    SessionLoader::load( sessionNode );
+
+    // load snapshots
+    loadSnapshots( xmlDoc_.FirstChildElement("Snapshots") );
+
+    // load notes
+    loadNotes( xmlDoc_.FirstChildElement("Notes") );
+
+    // load playlists
+    loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
+
+    // load input callbacks
+    loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
+
+    // thumbnail
+    const XMLElement *thumbnailelement = sessionNode->FirstChildElement("Thumbnail");
+    // if there is a user-defined thumbnail, get it
+    if (thumbnailelement) {
+        FrameBufferImage *thumbnail = XMLToImage(thumbnailelement);
+        if (thumbnail != nullptr)
+            session_->setThumbnail( thumbnail );
+    }
+
+    // all good
+    Log::Info("Session %s Opened '%s' (%d sources)", std::to_string(session_->id()).c_str(),
+              filename.c_str(), session_->size());
+
+}
+
+
+void SessionCreator::loadConfig(XMLElement *viewsNode)
+{
+    if (viewsNode != nullptr && session_ != nullptr) {
+        // ok, ready to read views
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Mixing"), *session_->config(View::MIXING));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Geometry"), *session_->config(View::GEOMETRY));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Layer"), *session_->config(View::LAYER));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Texture"), *session_->config(View::TEXTURE));
+        SessionLoader::XMLToNode( viewsNode->FirstChildElement("Rendering"), *session_->config(View::RENDERING));
+    }
+}
+
+void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
+{
+    if (snapshotsNode != nullptr && session_ != nullptr) {
+
+        const XMLElement* N = snapshotsNode->FirstChildElement();
+        for( ; N ; N = N->NextSiblingElement()) {
+
+            char c;
+            u_int64_t id = 0;
+            std::istringstream nodename( N->Name() );
+            nodename >> c >> id;
+
+            session_->snapshots()->keys_.push_back(id);
+            session_->snapshots()->xmlDoc_->InsertEndChild( N->DeepClone(session_->snapshots()->xmlDoc_) );
+        }
+    }
+}
+
+
+void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
+{
+    if (inputsNode != nullptr && session_ != nullptr) {
+
+        // read all 'Callback' nodes
+        xmlCurrent_ = inputsNode->FirstChildElement("Callback");
+        for ( ; xmlCurrent_ ; xmlCurrent_ = xmlCurrent_->NextSiblingElement()) {
+            // what key triggers the callback ?
+            uint input = 0;
+            xmlCurrent_->QueryUnsignedAttribute("input", &input);
+            if (input > 0) {
+                // what id is the source ?
+                uint64_t id = 0;
+                xmlCurrent_->QueryUnsigned64Attribute("id", &id);
+                if (id > 0) {
+                    // what type is the callback ?
+                    uint type = 0;
+                    xmlCurrent_->QueryUnsignedAttribute("type", &type);
+                    // instanciate the callback of that type
+                    SourceCallback *loadedcallback = SourceCallback::create((SourceCallback::CallbackType)type);
+                    // successfully created a callback of saved type
+                    if (loadedcallback) {
+                        // apply specific parameters
+                        loadedcallback->accept(*this);
+                        // find the source with the given id
+                        SourceList::iterator sit = session_->find(id);
+                        if (sit != session_->end()) {
+                            // assign to source in session
+                            session_->assignSourceCallback(input, *sit, loadedcallback);
+                        }
+                    }
+                }
+            }
+        }
+
+        // read array of synchronyzation mode for all inputs (CSV)
+        xmlCurrent_ = inputsNode->FirstChildElement("Synchrony");
+        if (xmlCurrent_) {
+            const char *text = xmlCurrent_->GetText();
+            if (text) {
+                std::istringstream iss(text);
+                std::string token;
+                uint i = 0;
+                while(std::getline(iss, token, ';')) {
+                    if (token.compare("1") == 0)
+                        session_->setInputSynchrony(i, Metronome::SYNC_BEAT);
+                    else if (token.compare("2") == 0)
+                        session_->setInputSynchrony(i, Metronome::SYNC_PHASE);
+                    ++i;
+                }
+            }
+        }
+    }
+}
+
+void SessionCreator::loadNotes(XMLElement *notesNode)
+{
+    if (notesNode != nullptr && session_ != nullptr) {
+
+        XMLElement* note = notesNode->FirstChildElement("Note");
+        for( ; note ; note = note->NextSiblingElement())
+        {
+            SessionNote N;
+
+            note->QueryBoolAttribute("large", &N.large);
+            note->QueryIntAttribute("stick", &N.stick);
+            XMLElement *posNode = note->FirstChildElement("pos");
+            if (posNode)  tinyxml2::XMLElementToGLM( posNode->FirstChildElement("vec2"), N.pos);
+            XMLElement *sizeNode = note->FirstChildElement("size");
+            if (sizeNode)  tinyxml2::XMLElementToGLM( sizeNode->FirstChildElement("vec2"), N.size);
+            XMLElement* contentNode = note->FirstChildElement("text");
+            if (contentNode && contentNode->GetText())
+                N.text = std::string ( contentNode->GetText() );
+
+            session_->addNote(N);
+        }
+
+    }
+}
+
+void SessionCreator::loadPlayGroups(tinyxml2::XMLElement *playgroupNode)
+{
+    if (playgroupNode != nullptr && session_ != nullptr) {
+
+        XMLElement* playgroup = playgroupNode->FirstChildElement("PlayGroup");
+        for( ; playgroup ; playgroup = playgroup->NextSiblingElement())
+        {
+            SourceIdList playgroup_sources;
+
+            XMLElement* playgroupSourceNode = playgroup->FirstChildElement("source");
+            for ( ; playgroupSourceNode ; playgroupSourceNode = playgroupSourceNode->NextSiblingElement()) {
+                uint64_t id__ = 0;
+                playgroupSourceNode->QueryUnsigned64Attribute("id", &id__);
+
+                if (sources_id_.count(id__) > 0)
+                    playgroup_sources.push_back( id__ );
+
+            }
+            session_->addPlayGroup( playgroup_sources );
+        }
+    }
+}
+
+SessionLoader::SessionLoader(Session *session, uint level): Visitor(),
+    session_(session), xmlCurrent_(nullptr), level_(level)
+{
+    // impose C locale
+    setlocale(LC_ALL, "C");
+}
+
+std::map< uint64_t, Source* > SessionLoader::getSources() const
+{
+    return sources_id_;
+}
+
+// groups_sources_id_ is parsed in XML and contains list of groups of ids
+// Here we return the list of groups of newly created sources
+// based on correspondance map sources_id_
+// NB: importantly the list is cleared from duplicates
+std::list< SourceList > SessionLoader::getMixingGroups() const
+{
+    std::list< SourceList > groups_new_sources_id;
+
+    // perform conversion from xml id to new id
+    for (auto git = groups_sources_id_.begin(); git != groups_sources_id_.end(); ++git)
+    {
+        SourceList new_sources;
+        for (auto sit = (*git).begin(); sit != (*git).end(); ++sit ) {
+            if (sources_id_.count(*sit) > 0)
+                new_sources.push_back( sources_id_.at(*sit) );
+        }
+        new_sources.sort();
+        groups_new_sources_id.push_back( new_sources );
+    }
+
+    // remove duplicates
+    groups_new_sources_id.unique();
+
+    return groups_new_sources_id;
+}
+
+void SessionLoader::load(XMLElement *sessionNode)
+{
+    sources_id_.clear();
+
+    if (sessionNode != nullptr && session_ != nullptr)
+    {
+        //
+        // session attributes
+        //
+        // read and set activation threshold
+        float t = MIXING_MIN_THRESHOLD;
+        sessionNode->QueryFloatAttribute("activationThreshold", &t);
+        session_->setActivationThreshold(t);
+
+
+        std::list<XMLElement*> cloneNodesToAdd;
+        std::list<uint64_t> possible_xml_ids;
+
+        //
+        // source lists
+        //
+        XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
+        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+        {
+            xmlCurrent_ = sourceNode;
+
+            // source to load
+            Source *load_source = nullptr;
+
+            // check if a source with the given id exists in the session
+            uint64_t id_xml_ = 0;
+            xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+            possible_xml_ids.push_front(id_xml_);
+            SourceList::iterator sit = session_->find(id_xml_);
+
+            // no source with this id exists
+            if ( sit == session_->end() ) {
+                // create a new source depending on type
+                const char *pType = xmlCurrent_->Attribute("type");
+                if (!pType)
+                    continue;
+                if ( std::string(pType) == "MediaSource") {
+                    load_source = new MediaSource(id_xml_);
+                }
+                else if ( std::string(pType) == "SessionSource") {
+                    load_source = new SessionFileSource(id_xml_);
+                }
+                else if ( std::string(pType) == "GroupSource") {
+                    load_source = new SessionGroupSource(id_xml_);
+                }
+                else if ( std::string(pType) == "RenderSource") {
+                    load_source = new RenderSource(id_xml_);
+                }
+                else if ( std::string(pType) == "PatternSource") {
+                    load_source = new PatternSource(id_xml_);
+                }
+                else if ( std::string(pType) == "DeviceSource") {
+                    load_source = new DeviceSource(id_xml_);
+                }
+                else if ( std::string(pType) == "NetworkSource") {
+                    load_source = new NetworkSource(id_xml_);
+                }
+                else if ( std::string(pType) == "MultiFileSource") {
+                    load_source = new MultiFileSource(id_xml_);
+                }
+                else if ( std::string(pType) == "GenericStreamSource") {
+                    load_source = new GenericStreamSource(id_xml_);
+                }
+                else if ( std::string(pType) == "SrtReceiverSource") {
+                    load_source = new SrtReceiverSource(id_xml_);
+                }
+                else if ( std::string(pType) == "CloneSource") {
+                    cloneNodesToAdd.push_front(xmlCurrent_);
+                }
+                else {
+                    Log::Info("Unknown source type '%s' ignored.", pType);
+                }
+
+                // skip failed (including clones)
+                if (!load_source)
+                    continue;
+
+                // add source to session
+                session_->addSource(load_source);
+            }
+            // get reference to the existing source
+            else
+                load_source = *sit;
+
+            // apply config to source
+            load_source->accept(*this);
+            load_source->touch();
+
+            // remember
+            sources_id_[id_xml_] = load_source;
+        }
+
+        // take all node elements for Clones to add
+        while ( !cloneNodesToAdd.empty() ) {
+
+            // take out Clone's XML element
+            xmlCurrent_ = cloneNodesToAdd.front();
+            cloneNodesToAdd.pop_front();
+
+            // check if a clone source with same id exists
+            uint64_t id_xml_ = 0;
+            xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
+            SourceList::iterator sit = session_->find(id_xml_);
+
+            // no source clone with this id exists
+            if ( sit == session_->end() ) {
+
+                // try to get clone from given origin
+                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                if (originNode) {
+
+                    // find origin by id
+                    uint64_t id_origin_ = 0;
+                    originNode->QueryUnsigned64Attribute("id", &id_origin_);
+                    SourceList::iterator origin;
+                    if (id_origin_ > 0)
+                        origin = session_->find(id_origin_);
+                    // legacy: find origin by name
+                    else {
+                        const char *text = originNode->GetText();
+                        if (text)
+                            origin = session_->find( std::string(text) );
+                        else
+                            origin = session_->end();
+                    }
+
+                    // found the orign source!
+                    if (origin != session_->end()) {
+                        // create a new source of type Clone
+                        CloneSource *clone_source = (*origin)->clone(id_xml_);
+
+                        // add clone source to session
+                        session_->addSource(clone_source);
+
+                        // apply config to clone source
+                        clone_source->accept(*this);
+                        clone_source->touch();
+
+                        // remember
+                        sources_id_[id_xml_] = clone_source;
+                    }
+                    // origin not found, retry later
+                    else {
+                        // sanity check: only retry later if the id is possible.
+                        if ( std::find(possible_xml_ids.begin(), possible_xml_ids.end(),id_origin_) != possible_xml_ids.end() )
+                            cloneNodesToAdd.push_back(xmlCurrent_);
+                    }
+                }
+            }
+        }
+
+        //
+        // create groups
+        //
+        std::list< SourceList > groups = getMixingGroups();
+        for (auto group_it = groups.begin(); group_it != groups.end(); ++group_it)
+             session_->link( *group_it );
+
+    }
+}
+
+Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
+{
+    xmlCurrent_ = sourceNode;
+
+    // source to load
+    Source *load_source = nullptr;
+    bool is_clone = false;
+
+    uint64_t id__ = 0;
+    xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
+
+    // check if a source with the given id exists in the session
+    SourceList::iterator sit = session_->end();
+    if (mode == CLONE) {
+        sit = session_->find(id__);
+    }
+
+    // no source with this id exists or Mode DUPLICATE
+    if ( sit == session_->end() ) {
+        // create a new source depending on type
+        const char *pType = xmlCurrent_->Attribute("type");
+        if (pType) {
+            if ( std::string(pType) == "MediaSource") {
+                load_source = new MediaSource(id__);
+            }
+            else if ( std::string(pType) == "SessionSource") {
+                load_source = new SessionFileSource(id__);
+            }
+            else if ( std::string(pType) == "GroupSource") {
+                load_source = new SessionGroupSource(id__);
+            }
+            else if ( std::string(pType) == "RenderSource") {
+                load_source = new RenderSource(id__);
+            }
+            else if ( std::string(pType) == "PatternSource") {
+                load_source = new PatternSource(id__);
+            }
+            else if ( std::string(pType) == "DeviceSource") {
+                load_source = new DeviceSource(id__);
+            }
+            else if ( std::string(pType) == "NetworkSource") {
+                load_source = new NetworkSource(id__);
+            }
+            else if ( std::string(pType) == "MultiFileSource") {
+                load_source = new MultiFileSource(id__);
+            }
+            else if ( std::string(pType) == "GenericStreamSource") {
+                load_source = new GenericStreamSource(id__);
+            }
+            else if ( std::string(pType) == "SrtReceiverSource") {
+                load_source = new SrtReceiverSource(id__);
+            }
+            else if ( std::string(pType) == "CloneSource") {
+                // clone from given origin
+                XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
+                if (originNode) {
+                    uint64_t id_origin_ = 0;
+                    originNode->QueryUnsigned64Attribute("id", &id_origin_);
+                    SourceList::iterator origin;
+                    if (id_origin_ > 0)
+                        origin = session_->find(id_origin_);
+                    else
+                        origin = session_->find( std::string ( originNode->GetText() ) );
+                    // found the orign source
+                    if (origin != session_->end())
+                        load_source = (*origin)->clone(id__);
+                }
+            }
+        }
+    }
+    // clone existing source
+    else {
+        load_source = (*sit)->clone();
+        is_clone = true;
+    }
+
+    // apply config to source
+    if (load_source) {
+        load_source->accept(*this);
+        // increment depth for clones (avoid supperposition)
+        if (is_clone)
+            load_source->group(View::LAYER)->translation_.z += 0.2f;
+    }
+
+    return load_source;
+}
+
+
+bool SessionLoader::isClipboard(const std::string &clipboard)
+{
+    if (clipboard.size() > 6 && clipboard.substr(0, 6) == "<" APP_NAME )
+        return true;
+
+    return false;
+}
+
+tinyxml2::XMLElement* SessionLoader::firstSourceElement(const std::string &clipboard, XMLDocument &xmlDoc)
+{
+    tinyxml2::XMLElement* sourceNode = nullptr;
+
+    if ( !isClipboard(clipboard) )
+        return sourceNode;
+
+    // header
+    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+    if ( XMLResultError(eResult))
+        return sourceNode;
+
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return sourceNode;
+
+    // find node
+    sourceNode = root->FirstChildElement("Source");
+    return sourceNode;
+}
+
+void SessionLoader::applyImageProcessing(const Source &s, const std::string &clipboard)
+{
+    if ( !isClipboard(clipboard) )
+        return;
+
+    // header
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+    if ( XMLResultError(eResult))
+        return;
+
+    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+    if ( root == nullptr )
+        return;
+
+    // find node
+    tinyxml2::XMLElement* imgprocNode = nullptr;
+    tinyxml2::XMLElement* sourceNode = root->FirstChildElement("Source");
+    if (sourceNode == nullptr)
+        imgprocNode = root->FirstChildElement("ImageProcessing");
+    else
+        imgprocNode = sourceNode->FirstChildElement("ImageProcessing");
+
+    if (imgprocNode == nullptr)
+        return;
+
+    // create session visitor and browse
+    SessionLoader loader;
+    loader.xmlCurrent_ = imgprocNode;
+    s.processingShader()->accept(loader);
+}
+
+//void SessionLoader::applyMask(const Source &s, std::string clipboard)
+//{
+//    if ( !isClipboard(clipboard) )
+//        return;
+
+//    // header
+//    tinyxml2::XMLDocument xmlDoc;
+//    tinyxml2::XMLError eResult = xmlDoc.Parse(clipboard.c_str());
+//    if ( XMLResultError(eResult))
+//        return;
+
+//    tinyxml2::XMLElement *root = xmlDoc.FirstChildElement(APP_NAME);
+//    if ( root == nullptr )
+//        return;
+
+//    // find node
+//    tinyxml2::XMLElement* naskNode = nullptr;
+//    tinyxml2::XMLElement* sourceNode = root->FirstChildElement("Source");
+//    if (sourceNode == nullptr)
+//        naskNode = root->FirstChildElement("Mask");
+//    else
+//        naskNode = sourceNode->FirstChildElement("ImageProcessing");
+
+//    if (naskNode == nullptr)
+//        return;
+
+//    // create session visitor and browse
+//    SessionLoader loader;
+//    loader.xmlCurrent_ = naskNode;
+////    s.processingShader()->accept(loader);
+//}
+
+void SessionLoader::XMLToNode(const tinyxml2::XMLElement *xml, Node &n)
+{
+    if (xml != nullptr){
+        const XMLElement *node = xml->FirstChildElement("Node");
+        if ( !node || std::string(node->Name()).find("Node") == std::string::npos )
+            return;
+
+        const XMLElement *scaleNode = node->FirstChildElement("scale");
+        if (scaleNode)
+            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), n.scale_);
+        const XMLElement *translationNode = node->FirstChildElement("translation");
+        if (translationNode)
+            tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"), n.translation_);
+        const XMLElement *rotationNode = node->FirstChildElement("rotation");
+        if (rotationNode)
+            tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
+        const XMLElement *cropNode = node->FirstChildElement("crop");
+        if (cropNode)
+            tinyxml2::XMLElementToGLM( cropNode->FirstChildElement("vec3"), n.crop_);
+    }
+}
+
+void SessionLoader::XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s)
+{
+    SessionLoader::XMLToNode(xml->FirstChildElement("Mixing"),  *s.group(View::MIXING) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Geometry"),*s.group(View::GEOMETRY) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Layer"),   *s.group(View::LAYER) );
+    SessionLoader::XMLToNode(xml->FirstChildElement("Texture"), *s.group(View::TEXTURE) );
+
+    SessionLoader v(nullptr);
+    v.xmlCurrent_ = xml->FirstChildElement("ImageProcessing");
+    if (v.xmlCurrent_)
+        s.processingShader()->accept(v);
+
+}
+
+FrameBufferImage *SessionLoader::XMLToImage(const XMLElement *xml)
+{
+    FrameBufferImage *i = nullptr;
+
+    if (xml != nullptr){
+        // if there is an Image mask stored
+        const XMLElement* imageNode = xml->FirstChildElement("Image");
+        if (imageNode) {
+            // get theoretical image size
+            int w = 0, h = 0;
+            imageNode->QueryIntAttribute("width", &w);
+            imageNode->QueryIntAttribute("height", &h);
+            // if there is an internal array of data
+            const XMLElement* array = imageNode->FirstChildElement("array");
+            if (array) {
+                // create a temporary jpeg with size of the array
+                FrameBufferImage::jpegBuffer jpgimg;
+                array->QueryUnsignedAttribute("len", &jpgimg.len);
+                // ok, we got a size of data to load
+                if (jpgimg.len>0) {
+                    // allocate jpeg buffer
+                    jpgimg.buffer = (unsigned char*) malloc(jpgimg.len);
+                    // actual decoding of array
+                    if (XMLElementDecodeArray(array, jpgimg.buffer, jpgimg.len) ) {
+                        // create and set the image from jpeg
+                        i = new FrameBufferImage(jpgimg);
+                        // failed if wrong size
+                        if ( (w>0 && h>0) && (i->width != w || i->height != h) ) {
+                            delete i;
+                            i = nullptr;
+                        }
+                    }
+                    // free temporary buffer
+                    if (jpgimg.buffer)
+                        free(jpgimg.buffer);
+                }
+            }
+        }
+    }
+
+    return i;
+}
+
+void SessionLoader::visit(Node &n)
+{
+    XMLToNode(xmlCurrent_, n);
+}
+
+void SessionLoader::visit(MediaPlayer &n)
+{
+    XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
+
+    if (mediaplayerNode) {
+        uint64_t id__ = 0;
+        mediaplayerNode->QueryUnsigned64Attribute("id", &id__);
+
+        // timeline
+        XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
+        if (timelineelement) {
+            Timeline tl;
+            tl.setTiming( n.timeline()->interval(), n.timeline()->step());
+            XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
+            if (gapselement) {
+                XMLElement* gap = gapselement->FirstChildElement("Interval");
+                for( ; gap ; gap = gap->NextSiblingElement())
+                {
+                    GstClockTime a = GST_CLOCK_TIME_NONE;
+                    GstClockTime b = GST_CLOCK_TIME_NONE;
+                    gap->QueryUnsigned64Attribute("begin", &a);
+                    gap->QueryUnsigned64Attribute("end", &b);
+                    tl.addGap( a, b );
+                }
+            }
+            XMLElement *fadingselement = timelineelement->FirstChildElement("Fading");
+            if (fadingselement) {
+                XMLElement* array = fadingselement->FirstChildElement("array");
+                XMLElementDecodeArray(array, tl.fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
+            }
+            n.setTimeline(tl);
+        }
+
+        // change play status only if different id (e.g. new media player)
+        if ( n.id() != id__ ) {
+
+            double speed = 1.0;
+            mediaplayerNode->QueryDoubleAttribute("speed", &speed);
+            n.setPlaySpeed(speed);
+
+            int loop = 1;
+            mediaplayerNode->QueryIntAttribute("loop", &loop);
+            n.setLoop( (MediaPlayer::LoopMode) loop);
+
+            bool gpudisable = false;
+            mediaplayerNode->QueryBoolAttribute("software_decoding", &gpudisable);
+            n.setSoftwareDecodingForced(gpudisable);
+
+            bool rewind_on_disabled = false;
+            mediaplayerNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+            n.setRewindOnDisabled(rewind_on_disabled);
+
+            int sync_to_metronome = 0;
+            mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
+            n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
+
+            // only read media player play attribute if the source has no play attribute (backward compatibility)
+            if ( !xmlCurrent_->Attribute( "play" ) ) {
+                bool play = true;
+                mediaplayerNode->QueryBoolAttribute("play", &play);
+                n.play(play);
+            }
+        }
+    }
+}
+
+void SessionLoader::visit(Shader &n)
+{
+    XMLElement* color = xmlCurrent_->FirstChildElement("color");
+    if ( color ) {
+        tinyxml2::XMLElementToGLM( color->FirstChildElement("vec4"), n.color);
+        XMLElement* blending = xmlCurrent_->FirstChildElement("blending");
+        if (blending) {
+            int blend = 0;
+            blending->QueryIntAttribute("mode", &blend);
+            n.blending = (Shader::BlendMode) blend;
+        }
+    }
+}
+
+void SessionLoader::visit(ImageShader &n)
+{
+    const char *pType = xmlCurrent_->Attribute("type");
+    if ( std::string(pType) != "ImageShader" )
+        return;
+
+    XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
+    if (uniforms) {
+        uniforms->QueryFloatAttribute("stipple", &n.stipple);
+    }
+}
+
+void SessionLoader::visit(MaskShader &n)
+{
+    const char *pType = xmlCurrent_->Attribute("type");
+    if ( std::string(pType) != "MaskShader" )
+        return;
+
+    xmlCurrent_->QueryUnsignedAttribute("mode", &n.mode);
+    xmlCurrent_->QueryUnsignedAttribute("shape", &n.shape);
+
+    XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
+    if (uniforms) {
+        uniforms->QueryFloatAttribute("blur", &n.blur);
+        uniforms->QueryIntAttribute("option", &n.option);
+        XMLElement* size = uniforms->FirstChildElement("size");
+        if (size)
+            tinyxml2::XMLElementToGLM( size->FirstChildElement("vec2"), n.size);
+    }
+}
+
+void SessionLoader::visit(ImageProcessingShader &n)
+{
+    const char *pType = xmlCurrent_->Attribute("type");
+    if ( std::string(pType) != "ImageProcessingShader" )
+        return;
+
+    XMLElement* uniforms = xmlCurrent_->FirstChildElement("uniforms");
+    if (uniforms) {
+        uniforms->QueryFloatAttribute("brightness", &n.brightness);
+        uniforms->QueryFloatAttribute("contrast", &n.contrast);
+        uniforms->QueryFloatAttribute("saturation", &n.saturation);
+        uniforms->QueryFloatAttribute("hueshift", &n.hueshift);
+        uniforms->QueryFloatAttribute("threshold", &n.threshold);
+        uniforms->QueryIntAttribute("nbColors", &n.nbColors);
+        uniforms->QueryIntAttribute("invert", &n.invert);
+    }
+
+    XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
+    if (gamma)
+        tinyxml2::XMLElementToGLM( gamma->FirstChildElement("vec4"), n.gamma);
+    XMLElement* levels = xmlCurrent_->FirstChildElement("levels");
+    if (levels)
+        tinyxml2::XMLElementToGLM( levels->FirstChildElement("vec4"), n.levels);
+}
+
+void SessionLoader::visit (Source& s)
+{
+    XMLElement* sourceNode = xmlCurrent_;
+    const char *pName = sourceNode->Attribute("name");
+    s.setName(pName);
+
+    // schedule lock and play of the source (callbacks called after init)
+    bool l = false;
+    sourceNode->QueryBoolAttribute("locked", &l);
+    s.call( new Lock(l) );
+    bool p = true;
+    sourceNode->QueryBoolAttribute("play", &p);
+    s.call( new Play(p) );
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
+    if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Geometry");
+    if (xmlCurrent_) s.groupNode(View::GEOMETRY)->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Layer");
+    if (xmlCurrent_) s.groupNode(View::LAYER)->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Texture");
+    if (xmlCurrent_) {
+        s.groupNode(View::TEXTURE)->accept(*this);
+        bool m = true;
+        xmlCurrent_->QueryBoolAttribute("mirrored", &m);
+        s.setTextureMirrored(m);
+    }
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Blending");
+    if (xmlCurrent_)
+        s.blendingShader()->accept(*this);
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Mask");
+    if (xmlCurrent_)  {
+        // read the mask shader attributes
+        s.maskShader()->accept(*this);
+        // set the mask from jpeg
+        s.setMask( SessionLoader::XMLToImage(xmlCurrent_) );
+    }
+
+    xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
+    if (xmlCurrent_) {
+        bool on = xmlCurrent_->BoolAttribute("enabled", true);
+        uint64_t id__ = 0;
+        xmlCurrent_->QueryUnsigned64Attribute("follow", &id__);
+        s.processingShader()->accept(*this);
+        s.setImageProcessingEnabled(on);
+        s.processingshader_link_.connect(id__, session_);
+    }
+
+    xmlCurrent_ = sourceNode->FirstChildElement("MixingGroup");
+    if (xmlCurrent_) {
+        SourceIdList idlist;
+        XMLElement* mixingSourceNode = xmlCurrent_->FirstChildElement("source");
+        for ( ; mixingSourceNode ; mixingSourceNode = mixingSourceNode->NextSiblingElement()) {
+            uint64_t id__ = 0;
+            mixingSourceNode->QueryUnsigned64Attribute("id", &id__);
+            idlist.push_back(id__);
+        }
+        groups_sources_id_.push_back(idlist);
+    }
+
+    // restore current
+    xmlCurrent_ = sourceNode;
+
+}
+
+void SessionLoader::visit (MediaSource& s)
+{
+    // set uri
+    XMLElement* pathNode = xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
+    if (pathNode) {
+        const char * text = pathNode->GetText();
+        if (text) {
+            std::string path(text);
+            // load only new files
+            if ( path.compare(s.path()) != 0 ) {
+                if ( !SystemToolkit::file_exists(path)){
+                    const char * relative;
+                    if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
+                        path = rel;
+                    }
+                }
+                s.setPath(path);
+            }
+        }
+        // ensures the source is initialized even if no valid path is given
+        else
+            s.setPath("");
+    }
+
+    // set config media player
+    s.mediaplayer()->accept(*this);
+}
+
+void SessionLoader::visit (SessionFileSource& s)
+{
+    // set fading
+    float f = 0.f;
+    xmlCurrent_->QueryFloatAttribute("fading", &f);
+    s.session()->setFadingTarget(f);
+    // set uri
+    XMLElement* pathNode = xmlCurrent_->FirstChildElement("path");
+    if (pathNode) {
+        const char * text = pathNode->GetText();
+        if (text) {
+            std::string path(text);
+            if ( !SystemToolkit::file_exists(path) ){
+                const char * relative;
+                if ( pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                    Log::Info("File '%s' not found; Trying '%s' instead.", path.c_str(), rel.c_str());
+                    path = rel;
+                }
+            }
+            // load only if session source s is new
+            if ( path != s.path() ) {
+                // level of session imbrication
+                uint l = level_;
+                if ( path == session_->filename() && l < MAX_SESSION_LEVEL) {
+                    // prevent recursive load by reaching maximum level of inclusion immediately
+                    l += MAX_SESSION_LEVEL;
+                    Log::Warning("Prevending recursive inclusion of Session '%s' into itself.", path.c_str());
+                }
+                else
+                    // normal increment level of inclusion
+                    ++l;
+                // launch session loader at incremented level
+                s.load(path, l);
+            }
+        }
+    }
+
+}
+
+void SessionLoader::visit (SessionGroupSource& s)
+{
+    // set resolution from host session
+    s.setResolution( session_->config(View::RENDERING)->scale_ );
+
+    // get the inside session
+    XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
+    if (sessionGroupNode) {
+        // only parse if newly created
+        if (s.session()->empty()) {
+            // load session inside group
+            SessionLoader grouploader( s.session(), level_ + 1 );
+            grouploader.load( sessionGroupNode );
+        }
+    }
+}
+
+void SessionLoader::visit (RenderSource& s)
+{
+    // set attributes
+    int p = 0;
+    xmlCurrent_->QueryIntAttribute("provenance", &p);
+    s.setRenderingProvenance((RenderSource::RenderSourceProvenance)p);
+
+    // set session
+    s.setSession( session_ );
+}
+
+void SessionLoader::visit (PatternSource& s)
+{
+    uint t = xmlCurrent_->UnsignedAttribute("pattern");
+
+    glm::ivec2 resolution(800, 600);
+    XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
+    if (res)
+        tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
+
+    // change only if different pattern
+    if ( t != s.pattern()->type() )
+        s.setPattern(t, resolution);
+}
+
+void SessionLoader::visit (DeviceSource& s)
+{
+    std::string devname = std::string ( xmlCurrent_->Attribute("device") );
+
+    // change only if different device
+    if ( devname != s.device() )
+        s.setDevice(devname);
+}
+
+
+void SessionLoader::visit (NetworkSource& s)
+{
+    std::string connect = std::string ( xmlCurrent_->Attribute("connection") );
+
+    // change only if different device
+    if ( connect != s.connection() )
+        s.setConnection(connect);
+}
+
+
+void SessionLoader::visit (MultiFileSource& s)
+{
+    XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
+
+    if (seq) {
+
+        MultiFileSequence sequence;
+
+        const char *text = seq->GetText();
+        if (text) {
+            sequence.location = std::string (text);
+
+            // fix path if absolute path is not found
+            std::string folder = SystemToolkit::path_filename(sequence.location);
+            std::string dir = SystemToolkit::path_directory(folder);
+            if ( dir.empty() ){
+                const char * relative;
+                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
+                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
+                    sequence.location = rel;
+                }
+            }
+
+            // set sequence parameters
+            seq->QueryIntAttribute("min", &sequence.min);
+            seq->QueryIntAttribute("max", &sequence.max);
+            seq->QueryUnsignedAttribute("width", &sequence.width);
+            seq->QueryUnsignedAttribute("height", &sequence.height);
+            const char *codec = seq->Attribute("codec");
+            if (codec)
+                sequence.codec = std::string(codec);
+
+            uint fps = 0;
+            seq->QueryUnsignedAttribute("fps", &fps);
+
+            // different sequence
+            if ( sequence != s.sequence() ) {
+                s.setSequence( sequence, fps);
+            }
+            // same sequence, different framerate
+            else if ( fps != s.framerate() )  {
+                s.setFramerate( fps );
+            }
+
+            int begin = -1;
+            seq->QueryIntAttribute("begin", &begin);
+            int end = INT_MAX;
+            seq->QueryIntAttribute("end", &end);
+            if ( begin != s.begin() || end != s.end() )
+                s.setRange(begin, end);
+
+            bool loop = true;
+            seq->QueryBoolAttribute("loop", &loop);
+            if ( loop != s.loop() )
+                s.setLoop(loop);
+        }
+    }
+
+}
+
+void SessionLoader::visit (GenericStreamSource& s)
+{
+    XMLElement* desc = xmlCurrent_->FirstChildElement("Description");
+
+    if (desc) {
+        const char * text = desc->GetText();
+        if (text)
+            s.setDescription(text);
+    }
+}
+
+void SessionLoader::visit (SrtReceiverSource& s)
+{
+    XMLElement* ip = xmlCurrent_->FirstChildElement("ip");
+    XMLElement* port = xmlCurrent_->FirstChildElement("port");
+    if (ip && port) {
+        const char * textip = ip->GetText();
+        const char * textport = port->GetText();
+        if (textip && textport)
+            s.setConnection(textip, textport);
+    }
+}
+
+void SessionLoader::visit (FrameBufferFilter&)
+{
+
+}
+
+void SessionLoader::visit (DelayFilter& f)
+{
+    double d = 0.0;
+    xmlCurrent_->QueryDoubleAttribute("delay", &d);
+    f.setDelay(d);
+}
+
+void SessionLoader::visit (ResampleFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("factor", &m);
+    f.setFactor(m);
+}
+
+std::map< std::string, float > get_parameters_(XMLElement* parameters)
+{
+    std::map< std::string, float > filter_params;
+    if (parameters) {
+        XMLElement* param = parameters->FirstChildElement("uniform");
+        for( ; param ; param = param->NextSiblingElement())
+        {
+            float val = 0.f;
+            param->QueryFloatAttribute("value", &val);
+            const char * name;
+            param->QueryStringAttribute("name", &name);
+            if (name)
+                filter_params[name] = val;
+        }
+    }
+    return filter_params;
+}
+
+void SessionLoader::visit (BlurFilter& f)
+{
+    // blur specific
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
+}
+
+void SessionLoader::visit (SharpenFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
+}
+
+void SessionLoader::visit (SmoothFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
+}
+
+void SessionLoader::visit (EdgeFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("method", &m);
+    f.setMethod(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
+}
+
+void SessionLoader::visit (AlphaFilter& f)
+{
+    int m = 0;
+    xmlCurrent_->QueryIntAttribute("operation", &m);
+    f.setOperation(m);
+    // image filter parameters
+    f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
+}
+
+void SessionLoader::visit (ImageFilter& f)
+{
+    const char * filter_name;
+    std::pair< std::string, std::string > filter_codes;
+
+    xmlCurrent_->QueryStringAttribute("name", &filter_name);
+
+    // image filter code
+    XMLElement* firstpass  = xmlCurrent_->FirstChildElement("firstpass");
+    if (firstpass) {
+        const char * code = firstpass->GetText();
+        if (code)
+            filter_codes.first = std::string(code);
+    }
+    XMLElement* secondpass = xmlCurrent_->FirstChildElement("secondpass");
+    if (secondpass) {
+        const char * code = secondpass->GetText();
+        if (code)
+            filter_codes.second = std::string(code);
+    }
+
+    // image filter parameters
+    std::map< std::string, float > filter_params = get_parameters_(xmlCurrent_->FirstChildElement("parameters"));
+
+    // set image filter program and parameters
+    f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second, filter_params) );
+}
+
+void SessionLoader::visit (CloneSource& s)
+{
+    // configuration of filter in clone
+    xmlCurrent_ = xmlCurrent_->FirstChildElement("Filter");
+    if (xmlCurrent_) {
+        // get type of filter and create
+        int t = 0;
+        xmlCurrent_->QueryIntAttribute("type", &t);
+        s.setFilter( FrameBufferFilter::Type(t) );
+
+        // set config filter
+        s.filter()->accept(*this);
+    }
+}
+
+void SessionLoader::visit (SourceCallback &)
+{
+}
+
+void SessionLoader::visit (ValueSourceCallback &c)
+{
+    float v = 0.f;
+    xmlCurrent_->QueryFloatAttribute("value", &v);
+    c.setValue(v);
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
+void SessionLoader::visit (Play &c)
+{
+    bool p = true;
+    xmlCurrent_->QueryBoolAttribute("play", &p);
+    c.setValue(p);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
+void SessionLoader::visit (SetAlpha &c)
+{
+    float a = 0.f;
+    xmlCurrent_->QueryFloatAttribute("alpha", &a);
+    c.setValue(a);
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
+void SessionLoader::visit (SetDepth &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("depth", &d);
+    c.setValue(d);
+
+    d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
+void SessionLoader::visit (SetGeometry &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+
+    XMLElement* current = xmlCurrent_;
+
+    xmlCurrent_ = xmlCurrent_->FirstChildElement("Geometry");
+    if (xmlCurrent_) {
+        Group tmp;
+        tmp.accept(*this);
+        c.setTarget(&tmp);
+    }
+
+    xmlCurrent_ = current;
+}
+
+void SessionLoader::visit (Loom &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("delta", &d);
+    c.setValue(d);
+
+    d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
+void SessionLoader::visit (Grab &c)
+{
+    float dx = 0.f, dy = 0.f;
+    xmlCurrent_->QueryFloatAttribute("delta.x", &dx);
+    xmlCurrent_->QueryFloatAttribute("delta.y", &dy);
+    c.setValue( glm::vec2(dx, dy) );
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
+void SessionLoader::visit (Resize &c)
+{
+    float dx = 0.f, dy = 0.f;
+    xmlCurrent_->QueryFloatAttribute("delta.x", &dx);
+    xmlCurrent_->QueryFloatAttribute("delta.y", &dy);
+    c.setValue( glm::vec2(dx, dy) );
+
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
+void SessionLoader::visit (Turn &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("delta", &d);
+    c.setValue(d);
+
+    d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
+
+

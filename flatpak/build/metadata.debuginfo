@@ -1,0 +1,5 @@
+[Runtime]
+name=io.brunoherbelin.github.Vimix.Debug
+
+[ExtensionOf]
+ref=app/io.brunoherbelin.github.Vimix/x86_64/master

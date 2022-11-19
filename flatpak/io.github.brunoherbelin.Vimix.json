@@ -4,14 +4,16 @@
     "runtime-version": "43",
     "sdk": "org.gnome.Sdk",
     "command": "vimix",
-    "rename-desktop-file": "vimix.desktop",
-    "rename-icon": "vimix.svg",
     "finish-args": [
-        "--socket=x11",
+        "--socket=wayland",
+        "--socket=fallback-x11",
         "--socket=pulseaudio",
         "--share=ipc",
+        "--share=network",
         "--device=all",
-        "--filesystem=host"
+        "--device=dri",
+        "--filesystem=host",
+        "--env=GST_PLUGIN_PATH=/app/lib/gstreamer-1.0"
     ],
     "cleanup": [
         "/include",
@@ -22,6 +24,13 @@
         {
             "name": "glfw",
             "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DBUILD_SHARED_LIBS=ON",
+                "-DGLFW_BUILD_EXAMPLES=OFF",
+                "-DGLFW_BUILD_TESTS=OFF",
+                "-DGLFW_BUILD_DOCS=OFF"
+            ],
             "sources": [
                 {
                     "type": "archive",
@@ -33,13 +42,16 @@
         {
             "name": "vimix",
             "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://github.com/brunoherbelin/vimix.git",
-		    "tag": "0.7.1"
+                    "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]
         }
-    ]
+    ],
+    "_comment": "run 'git config --global --add protocol.file.allow always' before build"
 }

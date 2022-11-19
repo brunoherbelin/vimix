@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>io.github.brunoherbelin.Vimix</id>
+  <launchable type="desktop-id">io.github.brunoherbelin.Vimix.desktop</launchable>
+  <name>vimix</name>
+  <summary>Video live mixer</summary>
+  <description>
+    <p>vimix performs graphical mixing and blending of several movie clips and
+   computer generated graphics, with image processing effects in real-time.</p>
+    <p>The documentation can be accessed on vimix github wiki.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://brunoherbelin.github.io/vimix/vimix_0.2_beta.jpg</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.7.1" date="2022-07-21"/>
+  </releases>
+  <url type="homepage">https://brunoherbelin.github.io/vimix/</url>
+  <url type="help">https://github.com/brunoherbelin/vimix/wiki/User-manual</url>
+  <url type="faq">https://github.com/brunoherbelin/vimix/wiki</url>
+  <url type="bugtracker">https://github.com/brunoherbelin/vimix/issues</url>
+  <developer_name>Bruno Herbelin</developer_name>
+  <project_license>GPL-3.0+</project_license>
+</component>
+

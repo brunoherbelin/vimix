@@ -3,6 +3,6 @@ Type=Application
 Name=vimix
 Comment=Live video mixing.
 Categories=AudioVideo;Video;Graphics;Utility;
-Icon=${SNAP}/meta/gui/vimix.svg
+Icon=io.github.brunoherbelin.Vimix
 Exec=vimix
 Terminal=false
