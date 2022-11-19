@@ -15,6 +15,7 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.7.2" date="2022-11-19"/>
     <release version="0.7.1" date="2022-07-21"/>
   </releases>
   <url type="homepage">https://brunoherbelin.github.io/vimix/</url>
@@ -22,6 +23,10 @@
   <url type="faq">https://github.com/brunoherbelin/vimix/wiki</url>
   <url type="bugtracker">https://github.com/brunoherbelin/vimix/issues</url>
   <developer_name>Bruno Herbelin</developer_name>
-  <project_license>GPL-3.0+</project_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-audio">moderate</content_attribute>
+  </content_rating>
 </component>
 

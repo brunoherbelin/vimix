@@ -28,3 +28,7 @@ osx/runvimix
 *.autosave
 
 flatpak/.flatpak-builder
+
+flatpak/repo/
+
+flatpak/build/

@@ -1,5 +1,5 @@
 {
-    "app-id": "io.brunoherbelin.github.Vimix",
+    "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.gnome.Platform",
     "runtime-version": "43",
     "sdk": "org.gnome.Sdk",
@@ -48,7 +48,8 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://github.com/brunoherbelin/vimix.git"
+                    "url": "https://github.com/brunoherbelin/vimix.git",
+                    "tag": "0.7.2"
                 }
             ]
         }
