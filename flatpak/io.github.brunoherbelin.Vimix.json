@@ -40,6 +40,45 @@
             ]
         },
         {
+            "name": "srt",
+            "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DENABLE_APPS=OFF",
+                "-DENABLE_STDCXX_SYNC=ON"
+            ],
+            "sources": [
+            {
+                "type": "git",
+                "tag": "v1.5.1",
+                "url": "https://github.com/Haivision/srt.git"
+            }
+            ]
+        },
+        {
+            "name": "gstreamer",
+            "buildsystem": "meson",
+            "builddir": true,
+            "config-opts": [
+               "-Ddoc=disabled",
+               "-Dpython=disabled",
+               "-Dexamples=disabled",
+               "-Ddevtools=disabled",
+               "-Dlibav=enabled",
+               "-Dbad=enabled",
+               "-Dgst-plugins-bad:srt=enabled"
+            ],
+            "sources": [
+              {
+                "type": "git",
+                "tag": "1.20.4",
+                "commit": "642730bd67d3c23ac68bd328fbddd191a7a43f25",
+                "url": "https://gitlab.freedesktop.org/gstreamer/gstreamer.git",
+                "disable-submodules": false
+              }
+            ]
+        },
+        {
             "name": "vimix",
             "buildsystem": "cmake",
             "config-opts": [
