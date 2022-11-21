@@ -1,0 +1,18 @@
+Prepare and install flatpak
+
+~$ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+~$ flatpak install org.gnome.Sdk/x86_64
+~$ flatpak install org.gnome.Platform
+
+build vimix
+
+~$ cd vimix/flatpak
+~$ flatpak-builder --user --install --force-clean build io.github.brunoherbelin.Vimix.json
+
+NB: might need to run this to enable local git clone during build
+~$ git config --global --add protocol.file.allow always
+
+
+run vimix
+
+~$ flatpak run io.github.brunoherbelin.Vimix

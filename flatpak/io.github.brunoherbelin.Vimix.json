@@ -13,7 +13,7 @@
         "--device=all",
         "--device=dri",
         "--filesystem=host",
-        "--env=GST_PLUGIN_PATH=/app/lib/gstreamer-1.0"
+        "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [
         "/include",
@@ -52,6 +52,20 @@
                 "type": "git",
                 "tag": "v1.5.1",
                 "url": "https://github.com/Haivision/srt.git"
+            }
+            ]
+        },
+        {
+            "name": "frei0r",
+            "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "sources": [
+            {
+                "type": "git",
+                "tag": "v1.8.0",
+                "url": "https://github.com/dyne/frei0r.git"
             }
             ]
         },
