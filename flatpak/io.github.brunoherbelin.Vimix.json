@@ -40,6 +40,19 @@
             ]
         },
         {
+            "name": "x264",
+            "config-opts": [
+                "--enable-shared"
+            ],
+            "sources": [
+            {
+                "type": "git",
+                "commit": "baee400fa9ced6f5481a728138fed6e867b0ff7f",
+                "url": "https://code.videolan.org/videolan/x264.git"
+            }
+            ]
+        },
+        {
             "name": "srt",
             "buildsystem": "cmake",
             "config-opts": [
@@ -74,13 +87,16 @@
             "buildsystem": "meson",
             "builddir": true,
             "config-opts": [
+               "-Dgpl=enabled",
                "-Ddoc=disabled",
                "-Dpython=disabled",
                "-Dexamples=disabled",
                "-Ddevtools=disabled",
                "-Dlibav=enabled",
                "-Dbad=enabled",
-               "-Dgst-plugins-bad:srt=enabled"
+               "-Dgst-plugins-bad:srt=enabled",
+               "-Dugly=enabled",
+               "-Dgst-plugins-ugly:x264=enabled"
             ],
             "sources": [
               {
