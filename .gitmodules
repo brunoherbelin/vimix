@@ -22,3 +22,6 @@
 [submodule "ext/tfd"]
 	path = ext/tfd
 	url = https://git.code.sf.net/p/tinyfiledialogs/code
+[submodule "ext/shmdata"]
+	path = ext/shmdata
+	url = https://gitlab.com/sat-mtl/tools/shmdata.git
