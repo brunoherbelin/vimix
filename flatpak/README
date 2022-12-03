@@ -1,10 +1,10 @@
-Prepare and install flatpak
+** Prepare and install flatpak
 
 ~$ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 ~$ flatpak install org.gnome.Sdk/x86_64
 ~$ flatpak install org.gnome.Platform
 
-build vimix
+** build vimix flatpak
 
 ~$ cd vimix/flatpak
 ~$ flatpak-builder --user --install --force-clean build io.github.brunoherbelin.Vimix.json
@@ -13,6 +13,69 @@ NB: might need to run this to enable local git clone during build
 ~$ git config --global --add protocol.file.allow always
 
 
-run vimix
+run vimix flatpak
 
 ~$ flatpak run io.github.brunoherbelin.Vimix
+
+
+uninstall vimix 
+
+~$ flatpak uninstall vimix
+
+
+** Change io.github.brunoherbelin.Vimix.json
+
+"finish-args": [
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--share=ipc",
+    "--share=network",
+    "--device=shm",
+    "--device=all",
+    "--device=dri",
+    "--filesystem=host",
+    "--filesystem=/tmp",
+    "--talk-name=org.gtk.vfs.*",
+    "--env=FREI0R_PATH=/app/lib/frei0r-1"
+],
+
+"cleanup": [
+    "/include",
+    "/share/gdb",
+    "/share/info",
+    "/share/man",
+    "/lib/debug"
+],
+
+compile vimix with code from local folder (debug)
+
+        {
+            "name": "vimix",
+            "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "sources": [
+                {
+                "type":"dir",
+                "path": "/home/bhbn/Development/vimix",
+                }
+            ]
+        }
+
+for packaging 
+
+        {
+            "name": "vimix",
+            "buildsystem": "cmake",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/brunoherbelin/vimix.git",
+                    "tag": "0.7.2"
+                }
+            ]
+        }

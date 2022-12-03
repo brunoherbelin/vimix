@@ -7,18 +7,22 @@
     "finish-args": [
         "--socket=wayland",
         "--socket=fallback-x11",
-        "--socket=pulseaudio",
         "--share=ipc",
         "--share=network",
-        "--device=all",
         "--device=dri",
+        "--device=shm",
+        "--device=all",
         "--filesystem=host",
+        "--filesystem=/tmp",
+        "--talk-name=org.gtk.vfs.*",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [
         "/include",
+        "/share/gdb",
         "/share/info",
-        "/share/man"
+        "/share/man",
+        "/lib/debug"
     ],
     "modules": [
         {

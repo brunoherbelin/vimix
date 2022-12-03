@@ -288,6 +288,31 @@ if(WIN32)
     message(STATUS "Including 'Dirent' from https://github.com/tronkko/dirent -- ${DIRENT_INCLUDE_DIR}.")
 endif()
 
+
+#
+# SHMDATA (Unix only)
+#
+if(UNIX)
+
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(SHMDATA QUIET shmdata-1.3)
+    endif()
+
+    if(SHMDATA_FOUND)
+        find_library(GSTREAMER_SHMDATA_LIBRARY
+            NAMES gstshmdata
+            HINTS ${SHMDATA_LIBRARY_DIRS}/gstreamer-1.0
+        )
+        if(GSTREAMER_SHMDATA_LIBRARY)
+            add_definitions(-DGSTREAMER_SHMDATA_PLUGIN=\"${GSTREAMER_SHMDATA_LIBRARY}\")
+        endif()
+
+        macro_log_feature(GSTREAMER_SHMDATA_LIBRARY "GStreamerPluginShmdata" "Plugin to share any flow" "https://gitlab.com/sat-mtl/tools/shmdata" FALSE)
+    endif(SHMDATA_FOUND)
+
+endif(UNIX)
+
+
 # show message about found libs
 macro_display_feature_log()
 

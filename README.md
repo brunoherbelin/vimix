@@ -27,7 +27,7 @@ Download and install a release package from https://snapcraft.io/vimix
 
     $ snap install vimix
     
-NB: You'll need to setup the snap permissions.
+NB: You might need to setup the snap permissions.
 
 ### Mac OSX
 
@@ -79,6 +79,7 @@ Optionnal:
 - stb
 - TinyXML2
 - AbletonLink
+- Shmdata
 
 #### Install Dependencies
 
@@ -89,6 +90,9 @@ Optionnal:
 Optionnal:
 
     $ apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
+    
+
+Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/shmdata).
 
 **OSX with Brew**
 
@@ -101,9 +105,19 @@ To generate the snap (from vimix directory):
 
     $ snapcraft
     
-To install the locally created snap:
+To install and test the locally created snap:
     
     $ snap install --dangerous vimix_0.5_amd64.snap
+    
+#### Generate flatpak
+    
+    To generate and install the flatpack:
+    
+        $ flatpak-builder --user --install --force-clean build ##PATH_TO_VIMIX##/flatpak/io.github.brunoherbelin.Vimix.json
+        
+    To run the installed flatpak:
+        
+        $ flatpak run io.github.brunoherbelin.Vimix
     
 ### Memcheck
 
