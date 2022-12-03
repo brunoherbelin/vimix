@@ -225,12 +225,29 @@ bool Rendering::init()
     //
     // Gstreamer setup
     //
-    std::string plugins_path = SystemToolkit::cwd_path() + "gstreamer-1.0";
     std::string plugins_scanner = SystemToolkit::cwd_path() + "gst-plugin-scanner" ;
-    if ( SystemToolkit::file_exists(plugins_path)) {
-        Log::Info("Found Gstreamer plugins in %s", plugins_path.c_str());
-        g_setenv ("GST_PLUGIN_SYSTEM_PATH", plugins_path.c_str(), TRUE);
+    if ( SystemToolkit::file_exists(plugins_scanner)) {
+        Log::Info("Found Gstreamer scanner %s", plugins_scanner.c_str());
         g_setenv ("GST_PLUGIN_SCANNER", plugins_scanner.c_str(), TRUE);
+    }
+
+    std::string plugins_path;
+    std::string local_plugin_path = SystemToolkit::cwd_path() + "gstreamer-1.0";
+    if ( SystemToolkit::file_exists(local_plugin_path))
+        plugins_path = local_plugin_path;
+
+#ifdef GSTREAMER_SHMDATA_PLUGIN
+    std::string shmdata_plugin_path = GSTREAMER_SHMDATA_PLUGIN;
+    if ( SystemToolkit::file_exists(shmdata_plugin_path)) {
+        if (!plugins_path.empty())
+            plugins_path += ":";
+        plugins_path += SystemToolkit::path_filename(shmdata_plugin_path);
+    }
+#endif
+
+    if ( !plugins_path.empty() ) {
+        Log::Info("Found Gstreamer plugins in %s", plugins_path.c_str());
+        g_setenv ("GST_PLUGIN_PATH", plugins_path.c_str(), TRUE);
     }
     std::string frei0r_path = SystemToolkit::cwd_path() + "frei0r-1" ;
     if ( SystemToolkit::file_exists(frei0r_path)) {
