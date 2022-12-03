@@ -116,8 +116,11 @@ void wait_for_stream_(UdpListeningReceiveSocket *receiver)
 void NetworkStream::connect(const std::string &nameconnection)
 {
     // start fresh
-    if (connected())
-        disconnect();
+    if (connected()) {
+        failed_ = true;
+        std::this_thread::sleep_for (std::chrono::milliseconds(20));
+        disconnect();        
+    }
     received_config_ = false;
 
     // refuse self referencing
@@ -201,6 +204,7 @@ void NetworkStream::disconnect()
         p.Clear();
         p << osc::BeginMessage( OSC_PREFIX OSC_STREAM_DISCONNECT );
         p << config_.port; // send my stream port to identify myself to the streamer Connection::manager
+        p << failed_;
         p << osc::EndMessage;
 
         // send OSC message to streamer
@@ -208,6 +212,7 @@ void NetworkStream::disconnect()
         socket.Send( p.Data(), p.Size() );
 
         connected_ = false;
+        failed_ = false;
     }
 
     close();
@@ -250,16 +255,17 @@ void NetworkStream::update()
                         break;
                     std::this_thread::sleep_for (std::chrono::milliseconds(20));
                 }
-                // failed to find the shm socket file: cannot connect
+                // failed to find the shm socket file: try to reconnect
                 if (!SystemToolkit::file_exists(parameter)) {
-                    Log::Warning("Cannot connect to shared memory %s.", parameter.c_str());
-                    failed_ = true;
+                    std::string name = streamer_.name;
+                    Log::Warning("Cannot connect to %s with shared memory: reverting to UDP.", name.c_str());
+                    // quickly disconnect and re-connect
+                    connect( name );
                 }
                 parameter = "\"" + parameter + "\"";
             }
-
             // general case : create pipeline and open
-            if (!failed_) {
+            else {
                 // build the pipeline depending on stream info
                 std::string pipelinestring = NetworkToolkit::stream_receive_pipeline[config_.protocol];
 
@@ -285,7 +291,7 @@ void NetworkStream::update()
                 pipelinestring.append(" ! videoconvert ");
 
 #ifdef NETWORK_DEBUG
-            Log::Info("Opening pipeline %s", pipelinestring.c_str());
+                Log::Info("Opening pipeline %s", pipelinestring.c_str());
 #endif
                 // open the pipeline with generic stream class
                 Stream::open(pipelinestring, config_.width, config_.height);

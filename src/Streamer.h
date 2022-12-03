@@ -30,7 +30,7 @@ public:
     void enable(bool on);
     inline bool enabled() const { return enabled_; }
     void removeStreams(const std::string &clientname);
-    void removeStream(const std::string &sender, int port);
+    NetworkToolkit::StreamConfig removeStream(const std::string &sender, int port);
     void removeStream(const VideoStreamer *vs);
 
     bool busy();
@@ -44,7 +44,8 @@ protected:
         virtual void ProcessMessage( const osc::ReceivedMessage& m,
                                      const IpEndpointName& remoteEndpoint );
     };
-    void addStream(const std::string &sender, int reply_to, const std::string &clientname);
+    void addStream(const std::string &sender, int reply_to, const std::string &clientname,
+                   NetworkToolkit::StreamProtocol protocol = NetworkToolkit::DEFAULT);
     void refuseStream(const std::string &sender, int reply_to);
 
 private:
@@ -55,6 +56,8 @@ private:
 
     std::vector<VideoStreamer *> streamers_;    
     std::mutex streamers_lock_;
+
+    std::list<std::string> shm_blacklist_;
 };
 
 class VideoStreamer : public FrameGrabber

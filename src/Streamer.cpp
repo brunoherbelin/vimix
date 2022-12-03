@@ -66,20 +66,38 @@ void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int reply_to_port = (arg++)->AsInt32();
             const char *client_name = (arg++)->AsString();
-            if (Streaming::manager().enabled())
-                Streaming::manager().addStream(sender, reply_to_port, client_name);
+            if (Streaming::manager().enabled()) {
+                // default proposed protocol to stream
+                NetworkToolkit::StreamProtocol protocol = NetworkToolkit::DEFAULT;
+                // exception: if client is black listed for SHM
+                if ( std::find( Streaming::manager().shm_blacklist_.begin(),
+                                Streaming::manager().shm_blacklist_.end(), client_name
+                                ) != Streaming::manager().shm_blacklist_.end() )
+                    // then enforce local UDP transfer
+                    protocol = NetworkToolkit::UDP_RAW;
+                // add stream answering to request
+                Streaming::manager().addStream(sender, reply_to_port, client_name, protocol);
+            }
             else
                 Streaming::manager().refuseStream(sender, reply_to_port);
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_DISCONNECT) == 0 ){
-
-#ifdef STREAMER_DEBUG
-            Log::Info("%s does not need streaming anymore.", sender);
-#endif
+            // receive info on disconnection
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             int port = (arg++)->AsInt32();
-            Streaming::manager().removeStream(sender, port);
-
+            int failed = arg != m.ArgumentsEnd() && (arg++)->AsBool();
+            // remove the stream
+            NetworkToolkit::StreamConfig removed = Streaming::manager().removeStream(sender, port);
+            // if disconnection is due to failure of Shared Memory
+            if (failed && removed.protocol == NetworkToolkit::SHM_RAW) {
+                Log::Info("%s failed to connect shared memory.", removed.client_name.c_str());
+                // put this client in black-list
+                Streaming::manager().shm_blacklist_.push_back(removed.client_name);
+            }
+#ifdef STREAMER_DEBUG
+            else
+                Log::Info("%s:%d does not need streaming anymore.", sender, port);
+#endif
         }
     }
     catch( osc::Exception& e ){
@@ -158,8 +176,9 @@ void Streaming::enable(bool on)
     }
 }
 
-void Streaming::removeStream(const std::string &sender, int port)
+NetworkToolkit::StreamConfig Streaming::removeStream(const std::string &sender, int port)
 {
+    NetworkToolkit::StreamConfig removed;
     // get ip of sender
     std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
 
@@ -173,6 +192,7 @@ void Streaming::removeStream(const std::string &sender, int port)
             Log::Info("Ending streaming to %s:%d", config.client_address.c_str(), config.port);
 #endif
             // match: stop this streamer
+            removed = config;
             (*sit)->stop();
             // remove from list
             streamers_.erase(sit);
@@ -180,7 +200,7 @@ void Streaming::removeStream(const std::string &sender, int port)
         }
     }
     streamers_lock_.unlock();
-
+    return removed;
 }
 
 void Streaming::removeStreams(const std::string &clientname)
@@ -246,7 +266,8 @@ void Streaming::refuseStream(const std::string &sender, int reply_to)
     Log::Warning("A connection request for streaming came in and was refused.\nYou can enable the Sharing on local network from the menu of the Output window.");
 }
 
-void Streaming::addStream(const std::string &sender, int reply_to, const std::string &clientname)
+void Streaming::addStream(const std::string &sender, int reply_to,
+                          const std::string &clientname, NetworkToolkit::StreamProtocol protocol)
 {
     // get ip of client
     std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
@@ -265,19 +286,18 @@ void Streaming::addStream(const std::string &sender, int reply_to, const std::st
     conf.width = FrameGrabbing::manager().width();
     conf.height = FrameGrabbing::manager().height();
 
-    // without indication, the JPEG stream is default
-    conf.protocol = NetworkToolkit::UDP_JPEG;
-    // on localhost sharing, use RAW
-    if ( NetworkToolkit::is_host_ip(conf.client_address) )
-        conf.protocol = NetworkToolkit::UDP_RAW;
-    // for non-localhost, if low bandwidth is requested, use H264 codec
-    else if (Settings::application.stream_protocol > 0)
-        conf.protocol = NetworkToolkit::UDP_H264;
-
-// TODO : ideal would be Shared Memory, but does not work with linux snap package...
-//    // offer SHM stream if same IP that our host IP (i.e. on the same machine)
-//    if( conf.protocol == NetworkToolkit::UDP_RAW && NetworkToolkit::is_host_ip(conf.client_address) )
-//        conf.protocol = NetworkToolkit::SHM_RAW;
+    if (protocol == NetworkToolkit::DEFAULT) {
+        // without indication, the JPEG stream is default
+        conf.protocol = NetworkToolkit::UDP_JPEG;
+        // on localhost sharing, use SHARED MEMORY RAW
+        if ( NetworkToolkit::is_host_ip(conf.client_address) )
+            conf.protocol = NetworkToolkit::SHM_RAW;
+        // for non-localhost, if low bandwidth is requested, use H264 codec
+        else if (Settings::application.stream_protocol > 0)
+            conf.protocol = NetworkToolkit::UDP_H264;
+    }
+    else
+        conf.protocol = protocol;
 
     // build OSC message
     char buffer[IP_MTU_SIZE];
@@ -427,7 +447,7 @@ std::string VideoStreamer::init(GstCaps *caps)
     // all good
     initialized_ = true;
 
-    return std::string("Streaming to ") + config_.client_name + "started.";
+    return std::string("Streaming to ") + config_.client_name + " started.";
 }
 
 void VideoStreamer::terminate()
