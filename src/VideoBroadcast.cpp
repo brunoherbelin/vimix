@@ -201,3 +201,25 @@ std::string VideoBroadcast::info() const
     return ret.str();
 }
 
+
+// Alternatives
+//
+// RTP streaming of H264 directly on UDP
+// SEND:
+// gst-launch-1.0 v4l2src ! videoconvert !  x264enc pass=qual quantizer=20 tune=zerolatency ! rtph264pay !  udpsink host=127.0.0.1  port=1234
+// RECEIVE:
+// gst-launch-1.0 udpsrc port=1234 !  "application/x-rtp, payload=127" ! rtph264depay ! avdec_h264 !  videoconvert  ! autovideosink
+
+
+// RIST streaming of H264 with static payload Mpeg RTP
+// SEND:
+// gst-launch-1.0 v4l2src ! videoconvert ! x264enc pass=qual quantizer=20 tune=zerolatency ! mpegtsmux ! rtpmp2tpay ! ristsink address=0.0.0.0 port=7072
+// gst-launch-1.0 v4l2src ! videoconvert ! x264enc ! mpegtsmux ! rtpmp2tpay ! ristsink bonding-addresses="127.0.0.1:7070,127.0.0.1:7072"
+
+// RECEIVE:
+// gst-launch-1.0 ristsrc port=7072 ! rtpmp2tdepay ! tsdemux ! decodebin !  videoconvert  ! autovideosink
+
+//   {"ristsink", "ristsink port=XXXX name=sink"},
+//{"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! video/x-h264, profile=(string)high ! rtph264pay ! queue ! "},
+//{"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=high ! rtph264pay ! queue ! "},
+//{"x264enc", "x264enc tune=zerolatency ! video/x-h264, profile=high ! rtph264pay ! "}

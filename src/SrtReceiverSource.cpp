@@ -5,6 +5,15 @@
 
 #include "SrtReceiverSource.h"
 
+
+// gst-launch-1.0 rtspsrc location=rtsp://192.168.0.19:5500/camera ! decodebin !  videoconvert  ! autovideosink
+// gst-launch-1.0 ristsrc address=0.0.0.0 port=7072 ! rtpmp2tdepay ! tsdemux ! decodebin !  videoconvert  ! autovideosink
+
+// gst-launch-1.0 uridecodebin uri=rist://127.0.0.1:7072 ! videoconvert  ! autovideosink
+// gst-launch-1.0 uridecodebin uri=http://192.168.0.19:8080/video ! queue ! videoconvert  ! autovideosink
+// gst-launch-1.0 uridecodebin uri=rtsp://192.168.0.19:5500/camera ! queue ! videoconvert  ! autovideosink
+
+
 SrtReceiverSource::SrtReceiverSource(uint64_t id) : StreamSource(id)
 {
     // create stream
