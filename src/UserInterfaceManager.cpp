@@ -4116,7 +4116,7 @@ void OutputPreview::Render()
 
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Share on local network", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
@@ -4125,7 +4125,7 @@ void OutputPreview::Render()
                     std::vector<std::string> ls = Streaming::manager().listStreams();
                     if (ls.size()>0) {
                         ImGui::Separator();
-                        ImGui::MenuItem("Connected vimix", nullptr, false, false);
+                        ImGui::MenuItem("Connected peers", nullptr, false, false);
                         for (auto it = ls.begin(); it != ls.end(); ++it)
                             ImGui::Text(" %s", (*it).c_str() );
                     }
@@ -7826,12 +7826,12 @@ void Navigator::RenderMainPannelSettings()
             }
         }
 
-        ImGuiToolkit::Indication("Share on local network\n\n"
+        ImGuiToolkit::Indication("Peer-to-peer sharing on local network\n\n"
                                  "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Share", &Settings::application.stream_protocol, "JPEG\0H264\0");
+        ImGui::Combo("P2P Share", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
         //
         // OSC preferences
