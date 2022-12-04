@@ -152,7 +152,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            Log::Warning("'%s': Unknown file format (%s)", uri.c_str(), str);
+            Log::Info("'%s': Unknown file format (%s)", uri.c_str(), str);
             g_free (str);
         }
             break;
@@ -160,10 +160,9 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         case GST_DISCOVERER_OK:
             break;
         }
-        // no error, handle information found
-        if ( result == GST_DISCOVERER_OK ) {
-
-            GList *streams = gst_discoverer_info_get_video_streams(info);
+        // get videos in information found
+        GList *streams = gst_discoverer_info_get_video_streams(info);
+        if ( g_list_length(streams) > 0) {
             GList *tmp;
             for (tmp = streams; tmp && !video_stream_info.valid; tmp = tmp->next ) {
                 GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
@@ -216,12 +215,14 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                     video_stream_info.valid = true;
                 }
             }
-            gst_discoverer_stream_info_list_free(streams);
 
-            if (!video_stream_info.valid) {
-                Log::Warning("'%s': No video stream", uri.c_str());
-            }
+            if (!video_stream_info.valid)
+                Log::Warning("'%s': Invalid video stream", uri.c_str());
         }
+        else
+            Log::Warning("'%s': No supported video stream", uri.c_str());
+
+        gst_discoverer_stream_info_list_free(streams);
 
         if (info)
             gst_discoverer_info_unref (info);
