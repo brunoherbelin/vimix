@@ -84,7 +84,7 @@ bool FrameGrabbing::busy() const
     return !grabbers_.empty();
 }
 
-struct fgId: public std::unary_function<FrameGrabber*, bool>
+struct fgId
 {
     inline bool operator()(const FrameGrabber* elem) const {
        return (elem && elem->id() == _id);

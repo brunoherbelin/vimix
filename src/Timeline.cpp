@@ -28,7 +28,7 @@
 static float empty_zeros[MAX_TIMELINE_ARRAY] = {};
 static float empty_ones[MAX_TIMELINE_ARRAY] = {};
 
-struct includesTime: public std::unary_function<TimeInterval, bool>
+struct includesTime
 {
     inline bool operator()(const TimeInterval s) const
     {

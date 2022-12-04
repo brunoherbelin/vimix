@@ -149,7 +149,7 @@ ConnectionInfo Connection::info(int index)
 }
 
 
-struct hasName: public std::unary_function<ConnectionInfo, bool>
+struct hasName
 {
     inline bool operator()(const ConnectionInfo &elem) const {
        return (elem.name.compare(_a) == 0);

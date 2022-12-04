@@ -132,9 +132,9 @@ typedef std::multiset<Node*, z_comparator> NodeSet;
 
 //typedef std::list<Node*> NodeSet;
 
-struct hasId: public std::unary_function<Node*, bool>
+struct hasId
 {
-    inline bool operator()(const Node* e) const
+    constexpr bool operator()(const Node* e) const
     {
        return (e && e->id() == _id);
     }

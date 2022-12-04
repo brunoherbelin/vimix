@@ -200,7 +200,7 @@ public:
     MixingGroup *mixingGroup() const { return mixinggroup_; }
     void clearMixingGroup();
 
-    struct hasNode: public std::unary_function<Source*, bool>
+    struct hasNode
     {
         bool operator()(const Source* elem) const;
         hasNode(Node *n) : _n(n) { }
@@ -208,7 +208,7 @@ public:
         Node *_n;
     };
 
-    struct hasName: public std::unary_function<Source*, bool>
+    struct hasName
     {
         inline bool operator()(const Source* elem) const {
            return (elem && elem->name() == _n);
@@ -218,7 +218,7 @@ public:
         std::string _n;
     };
 
-    struct hasId: public std::unary_function<Source*, bool>
+    struct hasId
     {
         inline bool operator()(const Source* elem) const {
            return (elem && elem->id() == _id);
@@ -228,7 +228,7 @@ public:
         uint64_t _id;
     };
 
-    struct hasDepth: public std::unary_function<Source*, bool>
+    struct hasDepth
     {
         inline bool operator()(const Source* elem) const {
            return (elem && elem->depth()>_from && elem->depth()<_to );
