@@ -116,11 +116,9 @@ void wait_for_stream_(UdpListeningReceiveSocket *receiver)
 void NetworkStream::connect(const std::string &nameconnection)
 {
     // start fresh
-    if (connected()) {
-        failed_ = true;
-        std::this_thread::sleep_for (std::chrono::milliseconds(20));
-        disconnect();        
-    }
+    if (connected())
+        disconnect();
+
     received_config_ = false;
 
     // refuse self referencing
@@ -257,15 +255,16 @@ void NetworkStream::update()
                 }
                 // failed to find the shm socket file: try to reconnect
                 if (!SystemToolkit::file_exists(parameter)) {
-                    std::string name = streamer_.name;
-                    Log::Warning("Cannot connect to %s with shared memory: reverting to UDP.", name.c_str());
+                    failed_ = true;
+                    Log::Warning("Cannot connect to %s with shared memory: reverting to UDP.", streamer_.name.c_str());
                     // quickly disconnect and re-connect
-                    connect( name );
+                    connect( streamer_.name );
                 }
                 parameter = "\"" + parameter + "\"";
             }
-            // general case : create pipeline and open
-            else {
+
+            // if not disconnected : create pipeline and open
+            if (connected_) {
                 // build the pipeline depending on stream info
                 std::string pipelinestring = NetworkToolkit::stream_receive_pipeline[config_.protocol];
 
@@ -358,6 +357,6 @@ glm::ivec2 NetworkSource::icon() const
 
 std::string NetworkSource::info() const
 {
-    return "Shared stream";
+    return "Peer-to-peer stream";
 }
 
