@@ -114,7 +114,7 @@ Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
    return G_SOURCE_CONTINUE;
 }
 
-struct hasDeviceName: public std::unary_function<DeviceHandle, bool>
+struct hasDeviceName
 {
     inline bool operator()(const DeviceHandle &elem) const {
        return (elem.name.compare(_name) == 0);
@@ -125,7 +125,7 @@ private:
 };
 
 
-struct hasConnectedSource: public std::unary_function<DeviceHandle, bool>
+struct hasConnectedSource
 {
     inline bool operator()(const DeviceHandle &elem) const {
         auto sit = std::find(elem.connected_sources.begin(), elem.connected_sources.end(), s_);
@@ -222,8 +222,6 @@ void Device::launchMonitoring(Device *d)
     GstCaps *caps = gst_caps_new_empty_simple ("video/x-raw");
     gst_device_monitor_add_filter (d->monitor_, "Video/Source", caps);
     gst_caps_unref (caps);
-    gst_device_monitor_set_show_all_devices(d->monitor_, true);
-    gst_device_monitor_start (d->monitor_);
 
     // Add configs for already plugged devices
     GList *devices = gst_device_monitor_get_devices(d->monitor_);
@@ -271,6 +269,10 @@ void Device::launchMonitoring(Device *d)
     gst_bus_add_watch (bus, callback_device_monitor, NULL);
     gst_object_unref (bus);
 
+    //    gst_device_monitor_set_show_all_devices(d->monitor_, false);
+    if ( !gst_device_monitor_start (d->monitor_) )
+        Log::Info("Device discovery failed.");
+
     // restore g_main_context
     g_main_context_pop_thread_default(_gcontext_device);
 
@@ -302,7 +304,7 @@ bool Device::exists(const std::string &device)
     return ret;
 }
 
-struct hasDevice: public std::unary_function<DeviceSource*, bool>
+struct hasDevice
 {
     inline bool operator()(const DeviceSource* elem) const {
        return (elem && elem->device() == _d);
