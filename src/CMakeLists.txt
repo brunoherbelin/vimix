@@ -85,6 +85,7 @@ set(VMIX_SRCS
     Metronome.cpp
     ControlManager.cpp
     VideoBroadcast.cpp
+    ShmdataBroadcast.cpp
     SrtReceiverSource.cpp
     MultiFileRecorder.cpp
 )
