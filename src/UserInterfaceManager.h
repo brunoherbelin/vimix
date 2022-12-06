@@ -110,6 +110,7 @@ class FrameBufferImage;
 class FrameGrabber;
 class VideoRecorder;
 class VideoBroadcast;
+class ShmdataBroadcast;
 
 class SourcePreview {
 
@@ -330,6 +331,7 @@ class OutputPreview : public WorkspaceWindow
     // frame grabbers
     VideoRecorder *video_recorder_;
     VideoBroadcast *video_broadcaster_;
+    ShmdataBroadcast *shm_broadcaster_;
 
     // delayed trigger for recording
     std::vector< std::future<VideoRecorder *> > _video_recorders;
@@ -349,6 +351,9 @@ public:
 
     void ToggleBroadcast();
     inline bool isBroadcasting() const { return video_broadcaster_ != nullptr; }
+
+    void ToggleSharedMemory();
+    inline bool isSharingMemory() const { return shm_broadcaster_ != nullptr; }
 
     void Render();
     void setVisible(bool on);

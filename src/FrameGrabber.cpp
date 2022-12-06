@@ -270,7 +270,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 
 FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
-    timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(false)
+    timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(true)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();

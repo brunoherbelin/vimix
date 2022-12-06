@@ -27,9 +27,9 @@ std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
 };
 
 std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
-    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! video/x-h264, profile=(string)high ! h264parse config-interval=1 ! mpegtsmux ! queue ! "},
-    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=high ! h264parse config-interval=1 ! mpegtsmux ! queue ! "},
-    {"x264enc", "x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! "}
+    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! "},
+    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! "},
+    {"x264enc", "x264enc tune=zerolatency ! "}
 };
 
 bool VideoBroadcast::available()
@@ -76,18 +76,21 @@ VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port), stopped_(
 
 std::string VideoBroadcast::init(GstCaps *caps)
 {
+    if (!VideoBroadcast::available())
+        return std::string("Video Broadcast : Not available (missing SRT or H264)");
+
     // ignore
     if (caps == nullptr)
         return std::string("Video Broadcast : Invalid caps");
 
-    if (!VideoBroadcast::available())
-        return std::string("Video Broadcast : Not available (missing SRT or H264)");
-
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! ";
 
-    // complement pipeline with encoder and sink
+    // complement pipeline with encoder
     description += VideoBroadcast::h264_encoder_;
+    description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux ! ";
+
+    // complement pipeline with sink
     description += VideoBroadcast::srt_sink_;
 
     // change the placeholder to include the broadcast port
@@ -192,11 +195,11 @@ std::string VideoBroadcast::info() const
     std::ostringstream ret;
 
     if (!initialized_)
-        ret << "Starting SRT";
+        ret << "SRT starting..";
     else if (active_)
-        ret << "Broadcasting on SRT (listener mode)";
+        ret << "SRT Broadcast on port " << port_;
     else
-        ret << "SRT Terminated";
+        ret << "SRT terminated";
 
     return ret.str();
 }

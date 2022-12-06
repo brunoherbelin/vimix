@@ -95,6 +95,7 @@ using namespace std;
 #include "ImageProcessingShader.h"
 #include "Metronome.h"
 #include "VideoBroadcast.h"
+#include "ShmdataBroadcast.h"
 #include "MultiFileRecorder.h"
 
 #include "TextEditor.h"
@@ -3863,12 +3864,13 @@ void OutputPreview::Update()
         video_recorder_->stop();
     }
 
-    // verify the video broadcaster is valid (change to nullptr if invalid)
+    // verify the broadcasters are valid (change to nullptr if invalid)
     FrameGrabbing::manager().verify( (FrameGrabber**) &video_broadcaster_);
+    FrameGrabbing::manager().verify( (FrameGrabber**) &shm_broadcaster_);
 
 #if defined(LINUX)
     // verify the frame grabber for webcam emulator is valid
-    FrameGrabbing::manager().verify(&webcam_emulator_);
+    FrameGrabbing::manager().verify( (FrameGrabber**) &webcam_emulator_);
 #endif
 }
 
@@ -3908,6 +3910,17 @@ void OutputPreview::ToggleBroadcast()
     else {
         video_broadcaster_ = new VideoBroadcast;
         FrameGrabbing::manager().add(video_broadcaster_);
+    }
+}
+
+void OutputPreview::ToggleSharedMemory()
+{
+    if (shm_broadcaster_) {
+        shm_broadcaster_->stop();
+    }
+    else {
+        shm_broadcaster_ = new ShmdataBroadcast;
+        FrameGrabbing::manager().add(shm_broadcaster_);
     }
 }
 
@@ -4096,41 +4109,69 @@ void OutputPreview::Render()
                 }
 #endif
 
-                if (VideoBroadcast::available()) {
-                    // Broadcasting menu
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
-                    // Stop broadcast menu (broadcaster already exists)
-                    if (video_broadcaster_) {
-                        if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Broadcast SRT") )
-                            video_broadcaster_->stop();
-                    }
-                    // start broadcast (broadcaster does not exists)
-                    else {
-                        if ( ImGui::MenuItem( ICON_FA_PODCAST "  Broadcast SRT") ) {
-                            video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
-                            FrameGrabbing::manager().add(video_broadcaster_);
-                        }
-                    }
-                    ImGui::PopStyleColor(1);
-                }
-
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "  Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "   Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
-                if (Settings::application.accept_connections)
-                {
-                    std::vector<std::string> ls = Streaming::manager().listStreams();
-                    if (ls.size()>0) {
-                        ImGui::Separator();
-                        ImGui::MenuItem("Connected peers", nullptr, false, false);
-                        for (auto it = ls.begin(); it != ls.end(); ++it)
-                            ImGui::Text(" %s", (*it).c_str() );
+
+                // list active streams:
+                std::vector<std::string> ls = Streaming::manager().listStreams();
+
+
+                // Broadcasting menu
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.9f));
+                if (VideoBroadcast::available()) {
+                    bool enabled = (video_broadcaster_!=nullptr);
+                    if ( ImGui::MenuItem( ICON_FA_PODCAST "   SRT Broadcast", NULL, &enabled) )
+                        ToggleBroadcast();
+                }
+
+                // Shared Memory menu
+                if (ShmdataBroadcast::available()) {
+                    bool enabled = (shm_broadcaster_!=nullptr);
+                    if ( ImGui::MenuItem( ICON_FA_PROJECT_DIAGRAM " Shared Memory", NULL, &enabled) )
+                        ToggleSharedMemory();
+                }
+                ImGui::PopStyleColor(1);
+
+                // Display list of active stream
+                if (ls.size()>0 || video_broadcaster_ || shm_broadcaster_) {
+                    ImGui::Separator();
+                    ImGui::MenuItem("Active streaming", nullptr, false, false);
+
+                    // First the list of peer 2 peer
+                    for (auto it = ls.begin(); it != ls.end(); ++it)
+                        ImGui::Text(" %s ", (*it).c_str() );
+
+                    // Second the SRT
+                    if (video_broadcaster_) {
+                        ImGui::Text(" %s        ", video_broadcaster_->info().c_str());
+
+                        // copy text icon to give user the srt link to connect to
+                        ImVec2 draw_pos = ImGui::GetCursorPos();
+                        ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
+                        char msg[256];
+                        ImFormatString(msg, IM_ARRAYSIZE(msg), "srt//%s:%d", NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, msg))
+                            ImGui::SetClipboardText(msg);
+                        ImGui::SetCursorPos(draw_pos);
                     }
 
+                    // Third the SHMdata
+                    if (shm_broadcaster_) {
+                        ImGui::Text(" %s        ", shm_broadcaster_->info().c_str());
+
+                        // copy text icon to give user the socket path to connec to
+                        ImVec2 draw_pos = ImGui::GetCursorPos();
+                        ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, shm_broadcaster_->socket_path().c_str()))
+                            ImGui::SetClipboardText(shm_broadcaster_->socket_path().c_str());
+                        ImGui::SetCursorPos(draw_pos);
+                    }
                 }
+
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
@@ -4194,6 +4235,19 @@ void OutputPreview::Render()
             ImGui::PopStyleColor(1);
             ImGui::PopFont();
         }
+        // shmdata indicator
+        if (shm_broadcaster_)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 4.5f * r, draw_pos.y + r));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if (shm_broadcaster_->busy())
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
+            else
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
+            ImGui::Text(ICON_FA_PROJECT_DIAGRAM);
+            ImGui::PopStyleColor(1);
+            ImGui::PopFont();
+        }
         // streaming indicator
         if (Settings::application.accept_connections)
         {
@@ -4239,6 +4293,7 @@ void OutputPreview::Render()
             float h = 1.f;
             h += (Settings::application.accept_connections ? 1.f : 0.f);
             h += (video_broadcaster_ ? 1.f : 0.f);
+            h += (shm_broadcaster_ ? 1.f : 0.f);
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + imagesize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" " ICON_FA_TV "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
@@ -4248,6 +4303,8 @@ void OutputPreview::Render()
                              Streaming::manager().listStreams().size() );
             if (video_broadcaster_)
                 ImGui::Text( "  " ICON_FA_PODCAST "   %s", video_broadcaster_->info().c_str() );
+            if (shm_broadcaster_)
+                ImGui::Text( "  " ICON_FA_PROJECT_DIAGRAM " %s", shm_broadcaster_->info().c_str() );
         }
 
         ImGui::End();
@@ -5872,6 +5929,7 @@ void ShaderEditor::Render()
     {
         filters_.clear();
         current_ = nullptr;
+        _editor.SetText("");
     }
 
     // if compiling, cannot change source nor do anything else
@@ -7800,7 +7858,15 @@ void Navigator::RenderMainPannelSettings()
         //
         // Networking preferences
         //
+        ImGuiToolkit::Spacing();
         ImGui::Text("Stream");
+
+        ImGuiToolkit::Indication("Peer-to-peer sharing on local network\n\n"
+                                 "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
+        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("Share P2P", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
         if (VideoBroadcast::available()) {
             char msg[256];
@@ -7819,19 +7885,12 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             char bufport[7] = "";
             sprintf(bufport, "%d", Settings::application.broadcast_port);
-            ImGui::InputTextWithHint("Broadcast", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
+            ImGui::InputTextWithHint("Port SRT", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
             if (ImGui::IsItemDeactivatedAfterEdit()){
                 if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
                     Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
             }
         }
-
-        ImGuiToolkit::Indication("Peer-to-peer sharing on local network\n\n"
-                                 "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
-        ImGui::SameLine(0);
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("P2P Share", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
         //
         // OSC preferences

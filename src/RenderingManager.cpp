@@ -231,10 +231,15 @@ bool Rendering::init()
         g_setenv ("GST_PLUGIN_SCANNER", plugins_scanner.c_str(), TRUE);
     }
 
-    std::string plugins_path;
+    const gchar *c = g_getenv("GST_PLUGIN_PATH");
+    std::string plugins_path = c != NULL ? std::string(c) : "";
+
     std::string local_plugin_path = SystemToolkit::cwd_path() + "gstreamer-1.0";
-    if ( SystemToolkit::file_exists(local_plugin_path))
-        plugins_path = local_plugin_path;
+    if ( SystemToolkit::file_exists(local_plugin_path)){
+        if (!plugins_path.empty())
+            plugins_path += ":";
+        plugins_path += local_plugin_path;
+    }
 
 #ifdef GSTREAMER_SHMDATA_PLUGIN
     std::string shmdata_plugin_path = GSTREAMER_SHMDATA_PLUGIN;
