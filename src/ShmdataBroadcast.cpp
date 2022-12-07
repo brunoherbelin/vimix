@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <sstream>
 #include <iostream>
 
@@ -14,16 +33,18 @@
 #include "ShmdataBroadcast.h"
 
 // Test command
-// gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0/ shmdatasrc socket-path=/tmp/vimix-feed ! videoconvert ! autovideosink
+// gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0/ shmdatasrc socket-path=/tmp/shmdata_vimix0 ! videoconvert ! autovideosink
+
+std::string ShmdataBroadcast::shmdata_sink_ = "shmdatasink";
 
 bool ShmdataBroadcast::available()
 {
-    static bool _available = false;
-
     // test for availability once on first run
-    static bool _tested = false;
-    if (!_tested)
-        _available = GstToolkit::has_feature("shmdatasink");
+    static bool _available = false, _tested = false;
+    if (!_tested) {
+        _available = GstToolkit::has_feature(ShmdataBroadcast::shmdata_sink_);
+        _tested = true;
+    }
 
     return _available;
 }
@@ -45,14 +66,10 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         return std::string("Shmdata Broadcast : Invalid caps");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! queue ! shmdatasink socket-path=XXXX name=sink";
+    std::string description = "appsrc name=src ! queue ! ";
 
-    // change the placeholder to include the broadcast port
-    std::string::size_type xxxx = description.find("XXXX");
-    if (xxxx != std::string::npos)
-        description.replace(xxxx, 4, socket_path_);
-    else
-        return std::string("Shmdata Broadcast : Failed to configure shared memory socket path.");
+    // complement pipeline with sink
+    description += ShmdataBroadcast::shmdata_sink_ + " name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -62,6 +79,11 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         g_clear_error (&error);
         return msg;
     }
+
+    // setup shm sink
+    g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                  "socket-path", socket_path_.c_str(),
+                  NULL);
 
     // setup custom app source
     src_ = GST_APP_SRC( gst_bin_get_by_name (GST_BIN (pipeline_), "src") );

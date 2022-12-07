@@ -23,6 +23,7 @@ private:
     std::string socket_path_;
     std::atomic<bool> stopped_;
 
+    static std::string shmdata_sink_;
 };
 
 #endif // SHMDATABROADCAST_H

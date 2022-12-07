@@ -1,3 +1,22 @@
+/*
+ * This file is part of vimix - video live mixer
+ *
+ * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+**/
+
 #include <sstream>
 #include <iostream>
 
@@ -21,9 +40,9 @@
 std::string VideoBroadcast::srt_sink_;
 std::string VideoBroadcast::h264_encoder_;
 
-std::vector< std::pair<std::string, std::string> > pipeline_sink_ {
-    {"srtsink", "srtsink uri=srt://:XXXX name=sink"},
-    {"srtserversink", "srtserversink uri=srt://:XXXX name=sink"}
+std::vector< std::string > pipeline_sink_ {
+    "srtsink",
+    "srtserversink"
 };
 
 std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
@@ -42,8 +61,8 @@ bool VideoBroadcast::available()
 
         for (auto config = pipeline_sink_.cbegin();
              config != pipeline_sink_.cend() && srt_sink_.empty(); ++config) {
-            if ( GstToolkit::has_feature(config->first) ) {
-                srt_sink_ = config->second;
+            if ( GstToolkit::has_feature(*config) ) {
+                srt_sink_ = *config;
             }
         }
 
@@ -91,14 +110,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
     description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux ! ";
 
     // complement pipeline with sink
-    description += VideoBroadcast::srt_sink_;
-
-    // change the placeholder to include the broadcast port
-    std::string::size_type xxxx = description.find("XXXX");
-    if (xxxx != std::string::npos)
-        description.replace(xxxx, 4, std::to_string(port_));
-    else
-        return std::string("Video Broadcast : Failed to configure broadcast port.");
+    description += VideoBroadcast::srt_sink_ + " name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -109,9 +121,10 @@ std::string VideoBroadcast::init(GstCaps *caps)
         return msg;
     }
 
-    // TODO Configure options
-    // setup SRT streaming sink properties (latency)
+    // setup SRT streaming sink properties (uri, latency)
+    std::string uri = "srt://:" + std::to_string(port_);
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                  "uri", uri.c_str(),
                   "latency", 200,
                   "wait-for-connection", false,
                   NULL);
