@@ -27,7 +27,6 @@
 #include <gst/pbutils/pbutils.h>
 
 #include "Log.h"
-#include "Settings.h"
 #include "GstToolkit.h"
 
 #include "ShmdataBroadcast.h"
@@ -49,11 +48,12 @@ bool ShmdataBroadcast::available()
     return _available;
 }
 
-ShmdataBroadcast::ShmdataBroadcast(const std::string &socketpath): FrameGrabber(), socket_path_(socketpath), stopped_(false)
+ShmdataBroadcast::ShmdataBroadcast(const std::string &socketpath): FrameGrabber(), socket_path_(socketpath)
 {
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, DEFAULT_GRABBER_FPS);  // fixed 30 FPS
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, SHMDATA_FPS);  // fixed 30 FPS
 
-    socket_path_ += std::to_string(Settings::application.instance_id);
+    if (socket_path_.empty())
+        socket_path_ = SHMDATA_DEFAULT_PATH;
 }
 
 std::string ShmdataBroadcast::init(GstCaps *caps)
@@ -105,7 +105,7 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         GstCaps *tmp = gst_caps_copy( caps );
         GValue v = { 0, };
         g_value_init (&v, GST_TYPE_FRACTION);
-        gst_value_set_fraction (&v, DEFAULT_GRABBER_FPS, 1);  // fixed 30 FPS
+        gst_value_set_fraction (&v, SHMDATA_FPS, 1);  // fixed 30 FPS
         gst_caps_set_value(tmp, "framerate", &v);
         g_value_unset (&v);
 
@@ -141,22 +141,14 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
 
 void ShmdataBroadcast::terminate()
 {
-    // send EOS
-    gst_app_src_end_of_stream (src_);
+    // force finished
+    endofstream_ = true;
+    active_ = false;
 
     Log::Notify("Shared Memory terminated after %s s.",
                 GstToolkit::time_to_string(duration_).c_str());
 }
 
-void ShmdataBroadcast::stop ()
-{
-    // stop recording
-    FrameGrabber::stop ();
-
-    // force finished
-    endofstream_ = true;
-    active_ = false;
-}
 
 std::string ShmdataBroadcast::info() const
 {

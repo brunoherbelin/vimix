@@ -1,30 +1,33 @@
 #ifndef LOOPBACK_H
 #define LOOPBACK_H
 
-#include <vector>
-
-#include <gst/pbutils/pbutils.h>
-#include <gst/app/gstappsrc.h>
-
 #include "FrameGrabber.h"
 
+#define LOOPBACK_DEFAULT_DEVICE 10
+#define LOOPBACK_FPS 30
 
 class Loopback : public FrameGrabber
 {
-    static std::string  system_loopback_pipeline;
-    static std::string  system_loopback_name;
-    static bool system_loopback_initialized;
+public:
+    Loopback(int deviceid = LOOPBACK_DEFAULT_DEVICE);
+    virtual ~Loopback() {}
 
+    static bool available();
+
+    inline int  device_id() const { return loopback_device_; }
+    std::string device_name() const;
+
+    void stop() override;
+    std::string info() const override;
+
+private:
     std::string init(GstCaps *caps) override;
     void terminate() override;
 
-public:
+    // device information
+    int loopback_device_;
 
-    Loopback();
-
-    static bool systemLoopbackInitialized();
-    static bool initializeSystemLoopback();
-
+    static std::string loopback_sink_;
 };
 
 

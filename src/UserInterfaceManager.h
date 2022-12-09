@@ -111,6 +111,7 @@ class FrameGrabber;
 class VideoRecorder;
 class VideoBroadcast;
 class ShmdataBroadcast;
+class Loopback;
 
 class SourcePreview {
 
@@ -332,13 +333,10 @@ class OutputPreview : public WorkspaceWindow
     VideoRecorder *video_recorder_;
     VideoBroadcast *video_broadcaster_;
     ShmdataBroadcast *shm_broadcaster_;
+    Loopback *loopback_broadcaster_;
 
     // delayed trigger for recording
     std::vector< std::future<VideoRecorder *> > _video_recorders;
-
-#if defined(LINUX)
-    FrameGrabber *webcam_emulator_;
-#endif
 
     // dialog to select record location
     DialogToolkit::OpenFolderDialog *recordFolderDialog;
@@ -349,11 +347,14 @@ public:
     void ToggleRecord(bool save_and_continue = false);
     inline bool isRecording() const { return video_recorder_ != nullptr; }
 
-    void ToggleBroadcast();
-    inline bool isBroadcasting() const { return video_broadcaster_ != nullptr; }
+    void ToggleVideoBroadcast();
+    inline bool videoBroadcastEnabled() const { return video_broadcaster_ != nullptr; }
 
     void ToggleSharedMemory();
-    inline bool isSharingMemory() const { return shm_broadcaster_ != nullptr; }
+    inline bool sharedMemoryEnabled() const { return shm_broadcaster_ != nullptr; }
+
+    bool ToggleLoopbackCamera();
+    inline bool loopbackCameraEnabled() const { return loopback_broadcaster_!= nullptr; }
 
     void Render();
     void setVisible(bool on);

@@ -1,20 +1,21 @@
 #ifndef VIDEOBROADCAST_H
 #define VIDEOBROADCAST_H
 
-#include "NetworkToolkit.h"
 #include "FrameGrabber.h"
 #include "StreamSource.h"
 
+#define BROADCAST_DEFAULT_PORT 7070
 #define BROADCAST_FPS 30
 
 class VideoBroadcast : public FrameGrabber
 {
 public:
 
-    VideoBroadcast(int port = 7070);
+    VideoBroadcast(int port = BROADCAST_DEFAULT_PORT);
     virtual ~VideoBroadcast() {}
 
     static bool available();
+    inline int port() const { return port_; }
 
     void stop() override;
     std::string info() const override;
@@ -25,11 +26,10 @@ private:
 
     // connection information
     int port_;
-    std::atomic<bool> stopped_;
 
     // pipeline elements
     static std::string srt_sink_;
-    static std::string h264_encoder_;
+    static std::string srt_encoder_;
 };
 
 

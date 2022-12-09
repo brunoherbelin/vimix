@@ -3,16 +3,19 @@
 
 #include "FrameGrabber.h"
 
+#define SHMDATA_DEFAULT_PATH "/tmp/shmdata_vimix"
+#define SHMDATA_FPS 30
+
 class ShmdataBroadcast : public FrameGrabber
 {
 public:
-    ShmdataBroadcast(const std::string &socketpath = "/tmp/shmdata_vimix");
+    ShmdataBroadcast(const std::string &socketpath = SHMDATA_DEFAULT_PATH);
     virtual ~ShmdataBroadcast() {}
 
     static bool available();
+
     inline std::string socket_path() const { return socket_path_; }
 
-    void stop() override;
     std::string info() const override;
 
 private:
@@ -21,7 +24,6 @@ private:
 
     // connection information
     std::string socket_path_;
-    std::atomic<bool> stopped_;
 
     static std::string shmdata_sink_;
 };

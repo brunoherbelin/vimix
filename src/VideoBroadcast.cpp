@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <vector>
 #include <sstream>
 #include <iostream>
 
@@ -27,7 +28,6 @@
 #include <gst/pbutils/pbutils.h>
 
 #include "Log.h"
-#include "Settings.h"
 #include "GstToolkit.h"
 #include "NetworkToolkit.h"
 
@@ -38,14 +38,14 @@
 #endif
 
 std::string VideoBroadcast::srt_sink_;
-std::string VideoBroadcast::h264_encoder_;
+std::string VideoBroadcast::srt_encoder_;
 
-std::vector< std::string > pipeline_sink_ {
+std::vector< std::string > srt_sink_alternatives_ {
     "srtsink",
     "srtserversink"
 };
 
-std::vector< std::pair<std::string, std::string> > pipeline_encoder_ {
+std::vector< std::pair<std::string, std::string> > srt_encoder_alternatives_ {
     {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! "},
     {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! "},
     {"x264enc", "x264enc tune=zerolatency ! "}
@@ -57,10 +57,10 @@ bool VideoBroadcast::available()
     static bool _tested = false;
     if (!_tested) {
         srt_sink_.clear();
-        h264_encoder_.clear();
+        srt_encoder_.clear();
 
-        for (auto config = pipeline_sink_.cbegin();
-             config != pipeline_sink_.cend() && srt_sink_.empty(); ++config) {
+        for (auto config = srt_sink_alternatives_.cbegin();
+             config != srt_sink_alternatives_.cend() && srt_sink_.empty(); ++config) {
             if ( GstToolkit::has_feature(*config) ) {
                 srt_sink_ = *config;
             }
@@ -68,11 +68,11 @@ bool VideoBroadcast::available()
 
         if (!srt_sink_.empty())
         {
-            for (auto config = pipeline_encoder_.cbegin();
-                 config != pipeline_encoder_.cend() && h264_encoder_.empty(); ++config) {
+            for (auto config = srt_encoder_alternatives_.cbegin();
+                 config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
                 if ( GstToolkit::has_feature(config->first) ) {
-                    h264_encoder_ = config->second;
-                    if (config->first != pipeline_encoder_.back().first)
+                    srt_encoder_ = config->second;
+                    if (config->first != srt_encoder_alternatives_.back().first)
                         Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
                 }
             }
@@ -85,12 +85,14 @@ bool VideoBroadcast::available()
     }
 
     // video broadcast is installed if both srt and h264 are available
-    return (!srt_sink_.empty() && !h264_encoder_.empty());
+    return (!srt_sink_.empty() && !srt_encoder_.empty());
 }
 
-VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port), stopped_(false)
+VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port)
 {
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, BROADCAST_FPS);  // fixed 30 FPS
+    if (port_ < 1000)
+        port_ = BROADCAST_DEFAULT_PORT;
 }
 
 std::string VideoBroadcast::init(GstCaps *caps)
@@ -106,7 +108,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
     std::string description = "appsrc name=src ! videoconvert ! ";
 
     // complement pipeline with encoder
-    description += VideoBroadcast::h264_encoder_;
+    description += VideoBroadcast::srt_encoder_;
     description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux ! ";
 
     // complement pipeline with sink
@@ -181,8 +183,6 @@ std::string VideoBroadcast::init(GstCaps *caps)
 
     return std::string("Video Broadcast started SRT on port ") + std::to_string(port_);
 }
-
-
 
 void VideoBroadcast::terminate()
 {

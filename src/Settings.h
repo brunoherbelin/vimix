@@ -263,6 +263,8 @@ struct Application
     int stream_protocol;
     int broadcast_port;
     KnownHosts recentSRT;
+    int loopback_camera;
+    std::string shm_socket_path;
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -317,9 +319,11 @@ struct Application
         show_tooptips = true;
         accept_connections = false;
         stream_protocol = 0;
-        broadcast_port = 7070;
+        broadcast_port = 0;
         recentSRT.protocol = "srt://";
         recentSRT.default_host = { "127.0.0.1", "7070"};
+        loopback_camera = 0;
+        shm_socket_path = "";
         pannel_current_session_mode = 0;
         current_view = 1;
         current_workspace= 1;

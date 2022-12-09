@@ -940,7 +940,8 @@ void UserInterface::showMenuEdit()
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, false, has_clipboard)) {
-        Mixer::manager().paste(clipboard);
+        if (clipboard)
+            Mixer::manager().paste(clipboard);
         navigator.hidePannel();
     }
     if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL)) {
@@ -3811,11 +3812,8 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
 ///
 
 OutputPreview::OutputPreview() : WorkspaceWindow("OutputPreview"),
-    video_recorder_(nullptr), video_broadcaster_(nullptr)
+    video_recorder_(nullptr), video_broadcaster_(nullptr), loopback_broadcaster_(nullptr)
 {
-#if defined(LINUX)
-    webcam_emulator_ = nullptr;
-#endif
 
     recordFolderDialog = new DialogToolkit::OpenFolderDialog("Recording Location");
 }
@@ -3864,14 +3862,11 @@ void OutputPreview::Update()
         video_recorder_->stop();
     }
 
-    // verify the broadcasters are valid (change to nullptr if invalid)
+    // verify the frame grabbers are valid (change to nullptr if invalid)
     FrameGrabbing::manager().verify( (FrameGrabber**) &video_broadcaster_);
     FrameGrabbing::manager().verify( (FrameGrabber**) &shm_broadcaster_);
+    FrameGrabbing::manager().verify( (FrameGrabber**) &loopback_broadcaster_);
 
-#if defined(LINUX)
-    // verify the frame grabber for webcam emulator is valid
-    FrameGrabbing::manager().verify( (FrameGrabber**) &webcam_emulator_);
-#endif
 }
 
 VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
@@ -3902,13 +3897,15 @@ void OutputPreview::ToggleRecord(bool save_and_continue)
     }
 }
 
-void OutputPreview::ToggleBroadcast()
+void OutputPreview::ToggleVideoBroadcast()
 {
     if (video_broadcaster_) {
         video_broadcaster_->stop();
     }
     else {
-        video_broadcaster_ = new VideoBroadcast;
+        if (Settings::application.broadcast_port<1000)
+            Settings::application.broadcast_port = BROADCAST_DEFAULT_PORT;
+        video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
         FrameGrabbing::manager().add(video_broadcaster_);
     }
 }
@@ -3919,17 +3916,40 @@ void OutputPreview::ToggleSharedMemory()
         shm_broadcaster_->stop();
     }
     else {
-        shm_broadcaster_ = new ShmdataBroadcast;
+        if (Settings::application.shm_socket_path.empty())
+            Settings::application.shm_socket_path = SHMDATA_DEFAULT_PATH + std::to_string(Settings::application.instance_id);
+        shm_broadcaster_ = new ShmdataBroadcast(Settings::application.shm_socket_path);
         FrameGrabbing::manager().add(shm_broadcaster_);
     }
 }
 
+bool OutputPreview::ToggleLoopbackCamera()
+{
+    bool need_initialization = false;
+    if (loopback_broadcaster_) {
+        loopback_broadcaster_->stop();
+    }
+    else {
+        if (Settings::application.loopback_camera < 1)
+            Settings::application.loopback_camera = LOOPBACK_DEFAULT_DEVICE;
+        Settings::application.loopback_camera += Settings::application.instance_id;
+
+        try {
+            loopback_broadcaster_ = new Loopback(Settings::application.loopback_camera);
+            FrameGrabbing::manager().add(loopback_broadcaster_);
+        }
+        catch (const std::runtime_error &e) {
+            need_initialization = true;
+            Log::Info("%s", e.what());
+        }
+    }
+    return need_initialization;
+}
+
+
 void OutputPreview::Render()
 {
-
-#if defined(LINUX)
     bool openInitializeSystemLoopback = false;
-#endif
 
     FrameBuffer *output = Mixer::manager().session()->frame();
     if (output)
@@ -4090,25 +4110,6 @@ void OutputPreview::Render()
             }
             if (ImGui::BeginMenu(ICON_FA_WIFI  " Stream"))
             {
-
-#if defined(LINUX_NOT_YET_WORKING)
-                bool on = webcam_emulator_ != nullptr;
-                if ( ImGui::MenuItem( ICON_FA_CAMERA "  Emulate video camera", NULL, &on) ) {
-                    if (on) {
-                        if (Loopback::systemLoopbackInitialized()) {
-                            webcam_emulator_ = new Loopback;
-                            FrameGrabbing::manager().add(webcam_emulator_);
-                        }
-                        else
-                            openInitializeSystemLoopback = true;
-                    }
-                    else if (webcam_emulator_ != nullptr) {
-                        webcam_emulator_->stop();
-                        webcam_emulator_ = nullptr;
-                    }
-                }
-#endif
-
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
                 if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "   Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
@@ -4119,36 +4120,39 @@ void OutputPreview::Render()
                 // list active streams:
                 std::vector<std::string> ls = Streaming::manager().listStreams();
 
-
                 // Broadcasting menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.9f));
                 if (VideoBroadcast::available()) {
-                    bool enabled = (video_broadcaster_!=nullptr);
-                    if ( ImGui::MenuItem( ICON_FA_PODCAST "   SRT Broadcast", NULL, &enabled) )
-                        ToggleBroadcast();
+                    if ( ImGui::MenuItem( ICON_FA_GLOBE "   SRT Broadcast", NULL, videoBroadcastEnabled()) )
+                        ToggleVideoBroadcast();
                 }
 
                 // Shared Memory menu
                 if (ShmdataBroadcast::available()) {
-                    bool enabled = (shm_broadcaster_!=nullptr);
-                    if ( ImGui::MenuItem( ICON_FA_PROJECT_DIAGRAM " Shared Memory", NULL, &enabled) )
+                    if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "   Shared Memory", NULL, sharedMemoryEnabled()) )
                         ToggleSharedMemory();
                 }
+
+                // Loopback camera menu
+                if (Loopback::available()) {
+                    if ( ImGui::MenuItem( ICON_FA_VIDEO "  Loopback Camera", NULL, loopbackCameraEnabled()) )
+                        openInitializeSystemLoopback = ToggleLoopbackCamera();
+                }
+
                 ImGui::PopStyleColor(1);
 
                 // Display list of active stream
-                if (ls.size()>0 || video_broadcaster_ || shm_broadcaster_) {
+                if (ls.size()>0 || videoBroadcastEnabled() || sharedMemoryEnabled() || loopbackCameraEnabled()) {
                     ImGui::Separator();
-                    ImGui::MenuItem("Active streaming", nullptr, false, false);
+                    ImGui::MenuItem("Active streams", nullptr, false, false);
 
                     // First the list of peer 2 peer
                     for (auto it = ls.begin(); it != ls.end(); ++it)
                         ImGui::Text(" %s ", (*it).c_str() );
 
-                    // Second the SRT
-                    if (video_broadcaster_) {
+                    // SRT broadcast description
+                    if (videoBroadcastEnabled()) {
                         ImGui::Text(" %s        ", video_broadcaster_->info().c_str());
-
                         // copy text icon to give user the srt link to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
@@ -4159,15 +4163,25 @@ void OutputPreview::Render()
                         ImGui::SetCursorPos(draw_pos);
                     }
 
-                    // Third the SHMdata
-                    if (shm_broadcaster_) {
+                    // Shared memory broadcast description
+                    if (sharedMemoryEnabled()) {
                         ImGui::Text(" %s        ", shm_broadcaster_->info().c_str());
-
-                        // copy text icon to give user the socket path to connec to
+                        // copy text icon to give user the socket path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
                         if (ImGuiToolkit::IconButton( ICON_FA_COPY, shm_broadcaster_->socket_path().c_str()))
                             ImGui::SetClipboardText(shm_broadcaster_->socket_path().c_str());
+                        ImGui::SetCursorPos(draw_pos);
+                    }
+
+                    // Loopback camera description
+                    if (loopbackCameraEnabled()) {
+                        ImGui::Text(" %s        ", loopback_broadcaster_->info().c_str());
+                        // copy text icon to give user the device path to connect to
+                        ImVec2 draw_pos = ImGui::GetCursorPos();
+                        ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, loopback_broadcaster_->device_name().c_str()))
+                            ImGui::SetClipboardText(loopback_broadcaster_->device_name().c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
                 }
@@ -4201,88 +4215,83 @@ void OutputPreview::Render()
         ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
         ImGui::Text(ICON_FA_INFO_CIRCLE);
         bool drawoverlay = ImGui::IsItemHovered();
+
+        // icon indicators
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         // recording indicator
         if (video_recorder_)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
             ImGui::Text(ICON_FA_CIRCLE " %s", video_recorder_->info().c_str() );
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
         }
         else if (!_video_recorders.empty())
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             static double anim = 0.f;
             double a = sin(anim+=0.104); // 2 * pi / 60fps
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, a));
             ImGui::Text(ICON_FA_CIRCLE);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
         }
         // broadcast indicator
+        float vertical = r;
         if (video_broadcaster_)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
             if (video_broadcaster_->busy())
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
-            ImGui::Text(ICON_FA_PODCAST);
+            ImGui::Text(ICON_FA_GLOBE);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
+            vertical += 2.f * r;
         }
         // shmdata indicator
         if (shm_broadcaster_)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 4.5f * r, draw_pos.y + r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
             if (shm_broadcaster_->busy())
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
-            ImGui::Text(ICON_FA_PROJECT_DIAGRAM);
+            ImGui::Text(ICON_FA_SHARE_ALT);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
+            vertical += 2.f * r;
+        }
+        // loopback camera indicator
+        if (loopback_broadcaster_)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
+            if (loopback_broadcaster_->busy())
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
+            else
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
+            ImGui::Text(ICON_FA_VIDEO);
+            ImGui::PopStyleColor(1);
         }
         // streaming indicator
         if (Settings::application.accept_connections)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.4f * r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( Streaming::manager().busy())
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.4f));
             ImGui::Text(ICON_FA_SHARE_ALT_SQUARE);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
         }
         // OUTPUT DISABLED indicator
         if (Settings::application.render.disabled)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
-            ImGui::PopFont();
         }
-#if defined(LINUX)
-        // streaming indicator
-        if (webcam_emulator_)
-        {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + 2.f * r));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 0.8f));
-            ImGui::Text(ICON_FA_CAMERA);
-            ImGui::PopStyleColor(1);
-            ImGui::PopFont();
-        }
-#endif
+        ImGui::PopFont();
+
 
         ///
         /// Info overlay over image
@@ -4292,64 +4301,66 @@ void OutputPreview::Render()
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             float h = 1.f;
             h += (Settings::application.accept_connections ? 1.f : 0.f);
-            h += (video_broadcaster_ ? 1.f : 0.f);
-            h += (shm_broadcaster_ ? 1.f : 0.f);
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + imagesize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Text(" " ICON_FA_TV "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
-                ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   %s (%ld peer)",
+                ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   Available as %s (%ld peer connected)",
                              Connection::manager().info().name.c_str(),
                              Streaming::manager().listStreams().size() );
-            if (video_broadcaster_)
-                ImGui::Text( "  " ICON_FA_PODCAST "   %s", video_broadcaster_->info().c_str() );
-            if (shm_broadcaster_)
-                ImGui::Text( "  " ICON_FA_PROJECT_DIAGRAM " %s", shm_broadcaster_->info().c_str() );
         }
 
         ImGui::End();
     }
 
-#if defined(LINUX)
+    // Dialog to explain to the user how to initialize the loopback on the system
     if (openInitializeSystemLoopback && !ImGui::IsPopupOpen("Initialize System Loopback"))
         ImGui::OpenPopup("Initialize System Loopback");
     if (ImGui::BeginPopupModal("Initialize System Loopback", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
+#if defined(LINUX)
         int w = 600;
         ImGui::Text("In order to enable the video4linux camera loopback,\n"
-                    "'v4l2loopack' has to be installed and initialized on your machine\n\n"
-                    "To do so, the following commands should be executed (admin rights):\n");
+                    "'v4l2loopack' has to be installed and initialized on your machine");
+        ImGui::Spacing();
+        ImGuiToolkit::ButtonOpenUrl("More information online on v4l2loopback", "https://github.com/umlaeute/v4l2loopback");
+        ImGui::Spacing();
+        ImGui::Text("To do so, the following commands should be executed\n(with admin rights):");
 
         static char dummy_str[512];
         sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
-        ImGui::Text("Install v4l2loopack (once):");
+        ImGui::NewLine();
+        ImGui::Text("Install v4l2loopack (only once, and reboot):");
         ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd1", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(358794);
-        if ( ImGuiToolkit::ButtonIcon(11,2, "Copy to clipboard") )
+        if ( ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy to clipboard") )
             ImGui::SetClipboardText(dummy_str);
         ImGui::PopID();
 
-        sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=10 card_label=\"vimix loopback\"");
-        ImGui::Text("Initialize v4l2loopack (after reboot):");
+        sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=%d"
+                           " card_label=\"vimix loopback\"" , Settings::application.loopback_camera);
+        ImGui::NewLine();
+        ImGui::Text("Initialize v4l2loopack:");
         ImGui::SetNextItemWidth(600-40);
         ImGui::InputText("##cmd2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::PushID(899872);
-        if ( ImGuiToolkit::ButtonIcon(11,2, "Copy to clipboard") )
+        if ( ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy to clipboard") )
             ImGui::SetClipboardText(dummy_str);
         ImGui::PopID();
 
-        ImGui::Separator();
+
+        ImGui::NewLine();
         ImGui::SetItemDefaultFocus();
         if (ImGui::Button("Ok, I'll do this in a terminal and try again later.", ImVec2(w, 0)) ) {
             ImGui::CloseCurrentPopup();
         }
 
+#endif
         ImGui::EndPopup();
     }
-#endif
 }
 
 ///
