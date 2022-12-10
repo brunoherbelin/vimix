@@ -79,3 +79,8 @@ for packaging
                 }
             ]
         }
+        
+        
+** Declare flatpak on flathub :
+
+https://github.com/brunoherbelin/flathub

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=vimix
+GenericName=Video mixer
+Comment=Live video mixing
+Categories=AudioVideo;Video;Graphics;
+Icon=vimix.svg
+Exec=vimix
+MimeType=application/mix+xml
+Terminal=false

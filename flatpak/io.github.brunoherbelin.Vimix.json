@@ -4,6 +4,8 @@
     "runtime-version": "43",
     "sdk": "org.gnome.Sdk",
     "command": "vimix",
+    "rename-desktop-file": "vimix.desktop",
+    "rename-icon": "vimix",
     "finish-args": [
         "--socket=wayland",
         "--socket=fallback-x11",
@@ -22,7 +24,10 @@
         "/share/gdb",
         "/share/info",
         "/share/man",
-        "/lib/debug"
+        "/share/doc",
+        "/lib/pkgconfig",
+        "/lib/debug",
+        "*.a"
     ],
     "modules": [
         {
@@ -143,12 +148,10 @@
             ],
             "sources": [
                 {
-                    "type": "git",
-                    "url": "https://github.com/brunoherbelin/vimix.git",
-                    "tag": "0.7.3"
+                "type":"dir",
+                "path": "/home/bhbn/Development/vimix"
                 }
             ]
         }
-    ],
-    "_comment": "run 'git config --global --add protocol.file.allow always' before build"
+    ]
 }

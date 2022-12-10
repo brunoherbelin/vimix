@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2022 Bruno Herbelin -->
-<component type="desktop">
+<component type="desktop-application">
   <id>io.github.brunoherbelin.Vimix</id>
-  <launchable type="desktop-id">io.github.brunoherbelin.Vimix.desktop</launchable>
+  <launchable type="desktop-id">vimix.desktop</launchable>
   <name>vimix</name>
   <summary>Video live mixer</summary>
   <description>
