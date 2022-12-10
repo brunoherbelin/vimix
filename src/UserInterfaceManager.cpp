@@ -7024,7 +7024,7 @@ void Navigator::RenderNewPannel()
 
                 ImGui::Text("\nCall an SRT broadcaster:");
                 ImGui::SetCursorPos(pos + ImVec2(0.f, 1.8f * ImGui::GetFrameHeight()) );
-                ImGuiToolkit::Indication("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).", ICON_FA_PODCAST);
+                ImGuiToolkit::Indication("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).", ICON_FA_GLOBE);
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -7890,7 +7890,7 @@ void Navigator::RenderMainPannelSettings()
                            NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
                     NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
 
-            ImGuiToolkit::Indication(msg, ICON_FA_PODCAST);
+            ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
             ImGui::SameLine(0);
             ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);

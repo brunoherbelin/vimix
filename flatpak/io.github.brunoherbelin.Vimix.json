@@ -68,6 +68,7 @@
             {
                 "type": "git",
                 "tag": "v1.5.1",
+                "commit": "0bc3b03202b3159fc9b085b3ae6d66ec071c25d6",
                 "url": "https://github.com/Haivision/srt.git"
             }
             ]
@@ -82,6 +83,7 @@
             {
                 "type": "git",
                 "tag": "v1.8.0",
+                "commit": "c11beecfaad5c29350127515795295a13d53e956",
                 "url": "https://github.com/dyne/frei0r.git"
             }
             ]
@@ -128,6 +130,7 @@
             {
                 "type": "git",
                 "tag": "1.3.72",
+                "commit": "96e044d1c6330e5fc9993cda2abc695a1dbc656e",
                 "url": "https://gitlab.com/sat-mtl/tools/shmdata.git"
             }
             ]
@@ -142,7 +145,7 @@
                 {
                     "type": "git",
                     "url": "https://github.com/brunoherbelin/vimix.git",
-                    "tag": "0.7.2"
+                    "tag": "0.7.3"
                 }
             ]
         }
