@@ -1100,16 +1100,17 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
     {
+        int _key = layoutKey(key);
         Control::manager().input_access_.lock();
-        if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
-            Control::manager().input_active[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE;
-            Control::manager().input_values[INPUT_KEYBOARD_FIRST + key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
+        if (_key >= GLFW_KEY_A && _key <= GLFW_KEY_Z) {
+            Control::manager().input_active[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE;
+            Control::manager().input_values[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
         }
-        else if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL) {
-            Control::manager().input_active[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
-            Control::manager().input_values[INPUT_NUMPAD_FIRST + key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
+        else if (_key >= GLFW_KEY_KP_0 && _key <= GLFW_KEY_KP_EQUAL) {
+            Control::manager().input_active[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
+            Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
         }
-        else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
+        else if (_key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
         {
             static GLFWwindow *output = Rendering::manager().outputWindow().window();
             if (window==output)
@@ -1172,4 +1173,39 @@ std::string Control::inputLabel(uint id)
     }
 
     return label;
+}
+
+//
+// hack to convert GLFW key-press correction depending on keyboard layout
+//
+int Control::layoutKey(int key)
+{
+    static int  _keyMap[GLFW_KEY_LAST];
+    static bool _initialized = false;
+    if (!_initialized) {
+
+        // default 1 to 1 correspondance for all GLFW keys
+        for(int i=0; i < GLFW_KEY_LAST; ++i)
+            _keyMap[i] = i;
+
+        // conversion of alphabetical keys from keyboard layout
+        for(int l=GLFW_KEY_SEMICOLON; l < GLFW_KEY_LEFT_BRACKET; ++l) {
+
+            const char* key_name = glfwGetKeyName(l, 0);
+            if (key_name) {
+                int letter = (int)key_name[0];
+
+                // Convert to upper-case
+                if (letter >= 97 && letter <= 122)
+                    letter -= 32;
+
+                _keyMap[l] = letter;
+            }
+        }
+
+        _initialized = true;
+    }
+
+//    fprintf(stderr, "%d pressed; converted to %d\n", key, _keyMap[key]);
+    return _keyMap[key];
 }

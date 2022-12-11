@@ -172,6 +172,14 @@ bool UserInterface::Init()
     ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().mainWindow().window(), true);
     ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
 
+    // hack to change keys according to keyboard layout
+    io.KeyMap[ImGuiKey_A] = Control::layoutKey(GLFW_KEY_A);
+    io.KeyMap[ImGuiKey_C] = Control::layoutKey(GLFW_KEY_C);
+    io.KeyMap[ImGuiKey_V] = Control::layoutKey(GLFW_KEY_V);
+    io.KeyMap[ImGuiKey_X] = Control::layoutKey(GLFW_KEY_X);
+    io.KeyMap[ImGuiKey_Y] = Control::layoutKey(GLFW_KEY_Y);
+    io.KeyMap[ImGuiKey_Z] = Control::layoutKey(GLFW_KEY_Z);
+
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
@@ -255,12 +263,12 @@ void UserInterface::handleKeyboard()
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
 
-        if (ImGui::IsKeyPressed( GLFW_KEY_Q, false ))  {
+        if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_Q), false ))  {
             // try quit
             if ( TryClose() )
                 Rendering::manager().close();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_O, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_O), false )) {
             // SHIFT + CTRL + O : reopen current session
             if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
                 Mixer::manager().load( Mixer::manager().session()->filename() );
@@ -268,7 +276,7 @@ void UserInterface::handleKeyboard()
             else
                 selectOpenFilename();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_S, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_S), false )) {
             // SHIFT + CTRL + S : save as
             if (shift_modifier_active)
                 selectSaveFilename();
@@ -276,7 +284,7 @@ void UserInterface::handleKeyboard()
             else
                 saveOrSaveAs();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_W, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_W), false )) {
             // New Session
             Mixer::manager().close();
         }
@@ -284,35 +292,35 @@ void UserInterface::handleKeyboard()
             // restart media player
             sourcecontrol.Replay();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_L, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_L), false )) {
             // Logs
             Settings::application.widget.logs = !Settings::application.widget.logs;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_T, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_T), false )) {
             // Timers
             timercontrol.setVisible(!Settings::application.widget.timer);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_G, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_G), false )) {
             // Developer toolbox
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_H, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_H), false )) {
             // Helper
             Settings::application.widget.help = !Settings::application.widget.help;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_E, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_E), false )) {
             // Shader Editor
             shadercontrol.setVisible(!Settings::application.widget.shader_editor);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_D, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_D), false )) {
             // Display output
             outputcontrol.setVisible(!Settings::application.widget.preview);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_P, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_P), false )) {
             // Media player
             sourcecontrol.setVisible(!Settings::application.widget.media_player);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_A, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_A), false )) {
             if (shift_modifier_active)
             {
                 // clear selection
@@ -323,46 +331,46 @@ void UserInterface::handleKeyboard()
                 // select all
                 Mixer::manager().view()->selectAll();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_R, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_R), false )) {
             // toggle recording stop / start (or save and continue if + ALT modifier)
             outputcontrol.ToggleRecord(alt_modifier_active);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_Z )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_Z), false )) {
             if (shift_modifier_active)
                 Action::manager().redo();
             else
                 Action::manager().undo();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_C, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_C), false )) {
             std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty())
                 ImGui::SetClipboardText(clipboard.c_str());
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_X, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_X), false )) {
             std::string clipboard = Mixer::selection().clipboard();
             if (!clipboard.empty()) {
                 ImGui::SetClipboardText(clipboard.c_str());
                 Mixer::manager().deleteSelection();
             }
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_V, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_V), false )) {
             auto clipboard = ImGui::GetClipboardText();
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_F), false )) {
             if (shift_modifier_active)
                 Rendering::manager().mainWindow().toggleFullscreen();
             else
                 Rendering::manager().outputWindow().toggleFullscreen();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_M, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_M), false )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_I, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_I), false )) {
             Settings::application.widget.inputs = !Settings::application.widget.inputs;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_N, false ) && shift_modifier_active) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_N), false ) && shift_modifier_active) {
             Mixer::manager().session()->addNote();
         }
 

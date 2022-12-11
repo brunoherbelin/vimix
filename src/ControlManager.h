@@ -120,6 +120,7 @@ public:
     float inputValue  (uint id);
     float inputDelay  (uint id);
     static std::string inputLabel(uint id);
+    static int layoutKey(int key);
 
 protected:
 
