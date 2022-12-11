@@ -21,24 +21,24 @@ If you want to have the latest developper version of vimix (before releases), yo
 
 This way, the application vimix is still sandboxed (i.e. not installing libs in your system), removable (entirely free space after remove) and updatable (just re-compile to update).
 
-1. Install flatpak build environments
+### 1. Install flatpak build environments
 
-    ~$ sudo apt install flatpak-builder
+If not already installed, install the builder and the flathub repository:
 
+    ~$ sudo apt install flatpak-builder    
     ~$ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
+Install the runtime environments:
+    
     ~$ flatpak install org.gnome.Sdk/x86_64
-
-Select version **43** in the list of proposed version
-
     ~$ flatpak install org.gnome.Platform
 
 Select version **43** in the list of proposed version
 
 
-2. Build vimix flatpak
+### 2. Build vimix flatpak
 
-This settings of git is needed to enable clone of local repos during build:
+These settings of git are needed to enable clone of local repos during build:
 
     ~$ git config --global --add protocol.file.allow always
 
@@ -53,16 +53,18 @@ Launch the build of the flatpak:
 The build will be quite long as some dependencies are also re-build from source. However, the build of dependencies is kept in cache; rebuilding vimix will subsequently be much faster.
 
 
-3. Run vimix flatpak
+## Run vimix flatpak
 
-If all goes well, the package will have been generated and be able to run. The vimix app icon should be available. To run from command line:
+If all goes well, the package will have been generated and be able to run. The vimix app icon should be available. 
+
+To run from command line:
 
     ~$ flatpak run io.github.brunoherbelin.Vimix
 
 
 ## Uninstall vimix flatpak
 
-~$ flatpak uninstall vimix
+    ~$ flatpak uninstall vimix
 
 
 # Developper information
