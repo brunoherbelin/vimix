@@ -1972,10 +1972,10 @@ WorkspaceWindow::WorkspaceWindow(const char* name): name_(name), impl_(nullptr)
 
 void WorkspaceWindow::toggleClearRestoreWorkspace()
 {
-    // do not toggle if an animation is ongoing
+    // stop animations that are ongoing
     for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
         if ( (*it)->impl_ && (*it)->impl_->animation )
-            return;
+            (*it)->impl_->animation = false;
     }
 
     // toggle
