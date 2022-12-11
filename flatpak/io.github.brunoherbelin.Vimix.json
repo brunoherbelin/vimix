@@ -26,7 +26,6 @@
         "/share/man",
         "/share/doc",
         "/lib/pkgconfig",
-        "/lib/debug",
         "*.a"
     ],
     "modules": [
@@ -101,11 +100,14 @@
                "-Ddoc=disabled",
                "-Dpython=disabled",
                "-Dges=disabled",
+               "-Drs=disabled",
                "-Dgst-examples=disabled",
                "-Drtsp_server=disabled",
                "-Ddevtools=disabled",
+               "-Dlibav=disabled",
+               "-Dbase=disabled",
+               "-Dgood=disabled",
                "-Dgpl=enabled",
-               "-Dlibav=enabled",
                "-Dbad=enabled",
                "-Dgst-plugins-bad:srt=enabled",
                "-Dugly=enabled",
@@ -148,8 +150,8 @@
             ],
             "sources": [
                 {
-                "type":"dir",
-                "path": "/home/bhbn/Development/vimix"
+                "type":"git",
+                "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]
         }
