@@ -17,45 +17,50 @@ vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 GPL-3.0-or-later
 See [LICENSE](https://github.com/brunoherbelin/vimix/blob/master/LICENSE)
 
-# Install
+# Install vimix
 
 Check the [Quick Installation Guide](https://github.com/brunoherbelin/vimix/wiki/Quick-Installation-Guide)
 
 ### Linux
 
-Download and install a release package from https://snapcraft.io/vimix
+Download and install a released snap package from https://snapcraft.io/vimix
 
-    $ snap install vimix
+    ~$ snap install vimix
     
-NB: You might need to setup the snap permissions.
+Install the stable debian package
+
+    ~$ sudo apt install vimix
 
 ### Mac OSX
 
 Download and open a release package from https://github.com/brunoherbelin/vimix/releases
+
 NB: You'll need to accept the exception in OSX security preference.
+
+# Build vimix
 
 ## Clone
 
-    $ git clone --recursive https://github.com/brunoherbelin/vimix.git
+    ~$ git clone --recursive https://github.com/brunoherbelin/vimix.git
 
 This will create the directory 'vimix', download the latest version of vimix code,
 and (recursively) clone all the internal git dependencies.
 
 To only update a cloned git copy:
 
-    $ git pull
+    ~$ git pull
 
 ## Compile
 
 First time after git clone:
 
-    $ mkdir vimix-build
-    $ cd vimix-build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ../vimix
+    ~$ mkdir vimix-build
+    ~$ cd vimix-build
+    ~$ cmake -DCMAKE_BUILD_TYPE=Release ../vimix
     
 Compile (or re-compile after pull):
     
-    $ cmake --build .
+    ~$ cmake --build .
 
 ### Dependencies
 
@@ -85,21 +90,24 @@ Optionnal:
 
 **Ubuntu**
 
-    $ apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav libicu-dev libgtk-3-dev 
+    ~$ apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav libicu-dev libgtk-3-dev 
 
 Optionnal:
 
-    $ apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
+    ~$ apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
     
 
 Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/shmdata).
 
 **OSX with Brew**
 
-    $ brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
+    ~$ brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
 
-
-#### Generate snap
+### Generate flatpak
+    
+Building a flatpak package is a good option for having the latest version from git while avoiding to install all dependencies in your machine. Instructions are found [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
+    
+### Generate snap
 
 To generate the snap (from vimix directory):
 
@@ -107,17 +115,7 @@ To generate the snap (from vimix directory):
     
 To install and test the locally created snap:
     
-    $ snap install --dangerous vimix_0.5_amd64.snap
-    
-#### Generate flatpak
-    
-    To generate and install the flatpack:
-    
-        $ flatpak-builder --user --install --force-clean build ##PATH_TO_VIMIX##/flatpak/io.github.brunoherbelin.Vimix.json
-        
-    To run the installed flatpak:
-        
-        $ flatpak run io.github.brunoherbelin.Vimix
+    $ snap install --dangerous vimix_0.X.Y_amd64.snap
     
 ### Memcheck
 
