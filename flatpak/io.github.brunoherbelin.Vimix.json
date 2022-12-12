@@ -7,8 +7,7 @@
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=wayland",
-        "--socket=fallback-x11",
+        "--socket=x11",
         "--share=ipc",
         "--share=network",
         "--device=dri",
@@ -31,7 +30,7 @@
     "modules": [
         {
             "name": "glfw",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=Release",
                 "-DBUILD_SHARED_LIBS=ON",
@@ -62,7 +61,7 @@
         },
         {
             "name": "srt",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=Release",
                 "-DENABLE_APPS=OFF",
@@ -79,7 +78,7 @@
         },
         {
             "name": "frei0r",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=Release"
             ],
@@ -125,7 +124,7 @@
         },
         {
             "name": "shmdata",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=Release",
                 "-DWITH_PYTHON=OFF",
@@ -144,7 +143,7 @@
         },
         {
             "name": "vimix",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=Release"
             ],
