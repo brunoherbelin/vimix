@@ -8,7 +8,7 @@ Its intuitive and hands-on user interface gives direct control on image opacity 
 shape for producing live graphics during concerts and VJ-ing sessions.
 
 The output image is typically projected full-screen on an external
-monitor or a projector, but can be streamed live (SRT) or recorded (no audio).
+monitor or a projector, and can be streamed live (SRT, Shmdata) or recorded (without audio).
 
 vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 
@@ -23,11 +23,15 @@ Check the [Quick Installation Guide](https://github.com/brunoherbelin/vimix/wiki
 
 ### Linux
 
-Download and install a released snap package from https://snapcraft.io/vimix
+Download and install a released [flatpak package](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix)
+
+    ~$ flatpak install --user vimix
+    
+Download and install a released [snap package](https://snapcraft.io/vimix)  (slower release frequency)
 
     ~$ snap install vimix
     
-Install the stable debian package
+Install the stable debian package (slower release frequency)
 
     ~$ sudo apt install vimix
 
@@ -106,16 +110,6 @@ Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/sh
 ### Generate flatpak
     
 Building a flatpak package is a good option for having the latest version from git while avoiding to install all dependencies in your machine. Instructions are found [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
-    
-### Generate snap
-
-To generate the snap (from vimix directory):
-
-    $ snapcraft
-    
-To install and test the locally created snap:
-    
-    $ snap install --dangerous vimix_0.X.Y_amd64.snap
     
 ### Memcheck
 

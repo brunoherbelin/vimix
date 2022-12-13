@@ -18,7 +18,7 @@ Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871
 
 ### Linux
 
-[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-white.svg)](https://snapcraft.io/vimix)
+[![Get it from flathub](https://flathub.org/assets/badges/flathub-badge-en.svg)](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix)
 
 ### Mac OSX
 

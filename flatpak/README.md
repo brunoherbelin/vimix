@@ -10,12 +10,14 @@ e.g. for Ubuntu:
     ~$ sudo apt install flatpak
 
 
-## Install vimix from Flathub
+## Install vimix releases from Flathub
 
 If you followed all instructions of the [flatpak setup](https://flatpak.org/setup/), vimix should be in the list of packages.
 
+    ~$ flatpak install --user vimix
 
-## Build the flatpack package of vimix
+
+## Build local pre-release flatpack package of vimix
 
 If you want to have the latest developper version of vimix (before releases), you can build a vimix flatpak yourself.
 
@@ -69,7 +71,7 @@ To run from command line:
 
 # Developper information
 
-The flatpak manifest for flathub is at https://github.com/brunoherbelin/flathub
+The flatpak manifest for flathub is at https://github.com/flathub/io.github.brunoherbelin.Vimix
 
 To build the vimix flatpak with code from local folder (debugging), change the following:
 
