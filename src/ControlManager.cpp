@@ -1190,16 +1190,18 @@ int Control::layoutKey(int key)
 
         // conversion of alphabetical keys from keyboard layout
         for(int l=GLFW_KEY_SEMICOLON; l < GLFW_KEY_LEFT_BRACKET; ++l) {
+            int sc = glfwGetKeyScancode(l);
+            if ( sc > 0 ) {
+                const char* key_name = glfwGetKeyName(l, sc);
+                if (key_name) {
+                    int letter = (int)key_name[0];
 
-            const char* key_name = glfwGetKeyName(l, 0);
-            if (key_name) {
-                int letter = (int)key_name[0];
+                    // Convert to upper-case
+                    if (letter >= 97 && letter <= 122)
+                        letter -= 32;
 
-                // Convert to upper-case
-                if (letter >= 97 && letter <= 122)
-                    letter -= 32;
-
-                _keyMap[l] = letter;
+                    _keyMap[l] = letter;
+                }
             }
         }
 
