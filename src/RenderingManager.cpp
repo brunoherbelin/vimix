@@ -62,7 +62,7 @@
 #include "Log.h"
 #include "Resource.h"
 #include "Settings.h"
-#include "Primitives.h"
+#include "ImageShader.h"
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "GstToolkit.h"
@@ -179,6 +179,38 @@ static void WindowCloseCallback( GLFWwindow* w )
 {
     if (!UserInterface::manager().TryClose())
         glfwSetWindowShouldClose(w, GLFW_FALSE);
+}
+
+void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
+{
+    // Fill list of monitors of rendering manager
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+    // list monitors
+    if (count_monitors > 0) {
+        Rendering::manager().monitors_.clear();
+        int i = 0;
+        for (; i < count_monitors;  i++) {
+            // fill monitor structure
+            RenderingMonitor mo;
+            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+            mo.dimension = glm::ivec2(vm->width, vm->height);
+            glfwGetMonitorPos(monitors[i], &mo.position.x, &mo.position.y);
+            mo.name = glfwGetMonitorName(monitors[i]);
+            // add
+            Rendering::manager().monitors_.push_back(mo);
+        }
+    }
+
+#ifndef NDEBUG
+    if (event == GLFW_CONNECTED)
+        g_printerr("Monitor %s connected\n",  glfwGetMonitorName(monitor));
+    else if (event == GLFW_DISCONNECTED)
+        g_printerr("Monitor %s disconnected\n",  glfwGetMonitorName(monitor));
+    for (auto m = Rendering::manager().monitors_.begin(); m != Rendering::manager().monitors_.end(); m++) {
+        g_printerr("Monitor %s [%d, %d](%d x %d)\n", m->name.c_str(), m->position.x, m->position.y, m->dimension.x, m->dimension.y);
+    }
+#endif
 }
 
 void Rendering::close()
@@ -302,6 +334,13 @@ bool Rendering::init()
     output_.setIcon("images/vimix_256x256.png");
     // special callbacks for user input in output window
     glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
+
+    //
+    // Monitors configuration
+    //
+    Rendering::MonitorConnect(nullptr, GLFW_DONT_CARE);
+    // automatic detection of monitor connect & disconnect
+    glfwSetMonitorCallback(Rendering::MonitorConnect);
 
     return true;
 }
@@ -637,17 +676,11 @@ GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
         // try every monitor
         int i = 0;
         for (; i < count_monitors;  i++) {
-            int workarea_x, workarea_y, workarea_width, workarea_height;
-#if GLFW_VERSION_MINOR > 2
-            glfwGetMonitorWorkarea(monitors[i], &workarea_x, &workarea_y, &workarea_width, &workarea_height);
-#else
+            int workarea_x, workarea_y;
             glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
             const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-            workarea_width = vm->width;
-            workarea_height = vm->height;
-#endif
-            if ( x >= workarea_x && x <= workarea_x + workarea_width &&
-                 y >= workarea_y && y <= workarea_y + workarea_height)
+            if ( x >= workarea_x && x <= workarea_x + vm->width &&
+                 y >= workarea_y && y <= workarea_y + vm->height)
                 break;
         }
         // found the monitor containing this point !

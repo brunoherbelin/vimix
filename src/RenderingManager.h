@@ -16,6 +16,14 @@ typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;
 
+struct RenderingMonitor
+{
+    RenderingMonitor() {}
+    glm::ivec2 dimension;
+    glm::ivec2 position;
+    std::string name;
+};
+
 struct RenderingAttrib
 {
     RenderingAttrib() {}
@@ -169,6 +177,10 @@ private:
     RenderingWindow main_;
     std::string main_new_title_;
     RenderingWindow output_;
+
+    // monitors
+    std::list<RenderingMonitor> monitors_;
+    static void MonitorConnect(GLFWmonitor* monitor, int event);
 
     // file drop callback
     static void FileDropped(GLFWwindow* main_window_, int path_count, const char* paths[]);
