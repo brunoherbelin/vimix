@@ -696,7 +696,7 @@ void ImGuiVisitor::visit (RenderSource& s)
     if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
         UserInterface::manager().showSourceEditor(&s);
     ImGui::SameLine();
-    if (ImGuiToolkit::IconButton(ICON_FA_DESKTOP, "Show Output"))
+    if (ImGuiToolkit::IconButton(ICON_FA_WINDOW_MAXIMIZE, "Show Output"))
         Settings::application.widget.preview = true;
     ImGui::SetCursorPos(pos);
 

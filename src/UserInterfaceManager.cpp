@@ -1696,13 +1696,13 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGui::Text(ICON_FA_DESKTOP "  Output"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_PREVIEW); ImGui::NextColumn();
         ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and sharing to other vimix in local network.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_PLAY_CIRCLE "  Player"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_MEDIAPLAYER); ImGui::NextColumn();
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_CLOCK "  Timer"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_TIMER); ImGui::NextColumn();
         ImGui::Text ("Keep track of time with a stopwatch or a metronome (Ableton Link).");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
@@ -1885,7 +1885,7 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_DESKTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_WINDOW_MAXIMIZE " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLAY_CIRCLE " " TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
@@ -1897,7 +1897,7 @@ void HelperToolbox::Render()
         ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
         ImGui::Text(ICON_FA_STICKY_NOTE " " TOOLTIP_NOTE); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_WINDOW_MINIMIZE " Hide / " ICON_FA_WINDOW_MAXIMIZE " Show windows"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_TOGGLE_OFF " Hide / " ICON_FA_TOGGLE_ON " Show windows"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -6341,7 +6341,7 @@ void Navigator::Render()
             tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
 
         ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
-        if ( ImGuiToolkit::IconButton( WorkspaceWindow::clear() ? ICON_FA_WINDOW_MAXIMIZE : ICON_FA_WINDOW_MINIMIZE ) )
+        if ( ImGuiToolkit::IconButton( WorkspaceWindow::clear() ? ICON_FA_TOGGLE_OFF : ICON_FA_TOGGLE_ON ) )
             WorkspaceWindow::toggleClearRestoreWorkspace();
         if (ImGui::IsItemHovered())
             tooltip = { WorkspaceWindow::clear() ? TOOLTIP_SHOW : TOOLTIP_HIDE, SHORTCUT_HIDE};
@@ -7811,7 +7811,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_DESKTOP ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_WINDOW_MAXIMIZE ) )
         UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
