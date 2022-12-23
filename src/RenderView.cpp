@@ -28,10 +28,62 @@
 
 #include "defines.h"
 #include "Settings.h"
-#include "Decorations.h"
+#include "Primitives.h"
 
 #include "RenderView.h"
 
+const char* RenderView::ratio_preset_name[6] = { "4:3", "3:2", "16:10", "16:9", "21:9", "Custom" };
+glm::vec2 RenderView::ratio_preset_value[6] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f), glm::vec2(21.f,9.f) , glm::vec2(1.f,2.f) };
+const char* RenderView::height_preset_name[5] = { "720", "1080", "1200", "1440", "2160" };
+float RenderView::height_preset_value[5] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.f };
+
+
+glm::vec3 RenderView::resolutionFromPreset(int ar, int h)
+{
+    float width = ratio_preset_value[ar].x * height_preset_value[h] / ratio_preset_value[ar].y;
+    width -= (int)width % 2;
+    return glm::vec3( width, height_preset_value[h] , 0.f);
+}
+
+glm::ivec2 RenderView::presetFromResolution(glm::vec3 resolution)
+{
+    static int num_height = ((int)(sizeof(RenderView::height_preset_value) / sizeof(*RenderView::height_preset_value)));
+    static int num_ar = ((int)(sizeof(RenderView::ratio_preset_value) / sizeof(*RenderView::ratio_preset_value)));
+
+    glm::ivec2 ret = glm::ivec2(AspectRatio_Custom, -1);
+
+    // get height parameter
+    for(int h = 0; h < num_height; h++) {
+        if ( ABS_DIFF(resolution.y, RenderView::height_preset_value[h]) < 1.f){
+            ret.y = h;
+            break;
+        }
+    }
+    // found a preset height: find if it is a preset ratio
+    if (ret.y > -1) {
+        // get aspect ratio parameter
+        float myratio = resolution.x / resolution.y;
+        for(int ar = 0; ar < num_ar; ar++) {
+            if ( ABS_DIFF( myratio, RenderView::ratio_preset_value[ar].x / RenderView::ratio_preset_value[ar].y ) < EPSILON){
+                ret.x = ar;
+                break;
+            }
+        }
+    }
+    // not a preset height (NB : ratio is custom)
+    else {
+        // find closest height preset
+        float diff = MAXFLOAT;
+        for(int h = 0; h < num_height; h++) {
+            if ( ABS_DIFF(resolution.y, RenderView::height_preset_value[h]) < diff){
+                diff = ABS_DIFF(resolution.y, RenderView::height_preset_value[h]);
+                ret.y = h;
+            }
+        }
+    }
+
+    return ret;
+}
 
 RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr), frame_thumbnail_(nullptr)
 {
@@ -65,9 +117,13 @@ float RenderView::fading() const
 
 void RenderView::setResolution(glm::vec3 resolution, bool useAlpha)
 {
-    // use default resolution if invalid resolution is given (default behavior)
-    if (resolution.x < 2.f || resolution.y < 2.f)
-        resolution = FrameBuffer::getResolutionFromParameters(Settings::application.render.ratio, Settings::application.render.res);
+    // read settings if invalid resolution is given
+    if (resolution.x < 2.f || resolution.y < 2.f) {
+        if (Settings::application.render.ratio < AspectRatio_Custom)
+            resolution = resolutionFromPreset(Settings::application.render.ratio, Settings::application.render.res);
+        else
+            resolution = glm::vec3(Settings::application.render.custom_width, Settings::application.render.custom_height, 0.f);
+    }
 
     // do we need to change resolution ?
     if (frame_buffer_ && frame_buffer_->resolution() != resolution)  {

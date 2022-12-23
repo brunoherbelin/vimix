@@ -380,7 +380,7 @@ void Session::resetThumbnail()
 
 void Session::setResolution(glm::vec3 resolution, bool useAlpha)
 {
-    // setup the render view: if not specified the default config resulution will be used
+    // setup the render view: if not specified the default config resolution will be used
     render_.setResolution( resolution, useAlpha );
     // store the actual resolution set in the render view
     config_[View::RENDERING]->scale_ = render_.resolution();

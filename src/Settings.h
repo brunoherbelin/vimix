@@ -159,6 +159,7 @@ struct RenderConfig
     int multisampling;
     int ratio;
     int res;
+    int custom_width, custom_height;
     float fading;
     bool gpu_decoding;
 
@@ -169,6 +170,8 @@ struct RenderConfig
         multisampling = 2;
         ratio = 3;
         res = 1;
+        custom_width = 1200;
+        custom_height = 600;
         fading = 0.0;
         gpu_decoding = true;
     }

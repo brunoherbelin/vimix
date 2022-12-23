@@ -25,12 +25,28 @@ public:
     void draw () override;
     bool canSelect(Source *) override { return false; }
 
-    void setResolution (glm::vec3 resolution = glm::vec3(0.f), bool useAlpha = false);
+    void setResolution (glm::vec3 resolution, bool useAlpha = false);
     glm::vec3 resolution() const { return frame_buffer_->resolution(); }
-
 
     // current frame
     inline FrameBuffer *frame () const { return frame_buffer_; }
+
+    // size descriptions
+    enum AspectRatio {
+        AspectRatio_4_3 = 0,
+        AspectRatio_3_2,
+        AspectRatio_16_10,
+        AspectRatio_16_9,
+        AspectRatio_21_9,
+        AspectRatio_Custom
+    };
+    static const char* ratio_preset_name[6];
+    static glm::vec2 ratio_preset_value[6];
+    static const char* height_preset_name[5];
+    static float height_preset_value[5];
+
+    static glm::vec3 resolutionFromPreset(int ar, int h);
+    static glm::ivec2 presetFromResolution(glm::vec3 res);
 
 protected:
 

@@ -979,9 +979,19 @@ void UserInterface::showMenuFile()
         navigator.hidePannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
-    ImGui::Combo("Ratio", &Settings::application.render.ratio, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) );
-    ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
-    ImGui::Combo("Height", &Settings::application.render.res, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) );
+    ImGui::Combo("Ratio", &Settings::application.render.ratio, RenderView::ratio_preset_name, IM_ARRAYSIZE(RenderView::ratio_preset_name) );
+    if (Settings::application.render.ratio < RenderView::AspectRatio_Custom) {
+        // Presets height
+        ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
+        ImGui::Combo("Height", &Settings::application.render.res, RenderView::height_preset_name, IM_ARRAYSIZE(RenderView::height_preset_name) );
+    }
+    else {
+        // Custom width and height
+        ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
+        ImGui::InputInt("Width", &Settings::application.render.custom_width, 100, 500);
+        ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
+        ImGui::InputInt("Height", &Settings::application.render.custom_height, 100, 500);
+    }
 
     // FILE OPEN AND SAVE
     ImGui::Separator();
@@ -7424,19 +7434,29 @@ void Navigator::RenderMainPannelVimix()
 
             // change resolution (height only)
             // get parameters to edit resolution
-            glm::ivec2 p = FrameBuffer::getParametersFromResolution(output->resolution());
-            if (p.y > -1) {
+            glm::ivec2 preset = RenderView::presetFromResolution(output->resolution());
+            glm::ivec2 custom = glm::ivec2(output->resolution());
+            if (preset.x > -1) {
                 // cannot change resolution when recording
                 if ( UserInterface::manager().outputcontrol.isRecording() ) {
                     // show static info (same size than combo)
                     static char dummy_str[512];
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    sprintf(dummy_str, "%s", FrameBuffer::aspect_ratio_name[p.x]);
+                    sprintf(dummy_str, "%s", RenderView::ratio_preset_name[preset.x]);
                     ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    sprintf(dummy_str, "%s", FrameBuffer::resolution_name[p.y]);
-                    ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    if (preset.x < RenderView::AspectRatio_Custom) {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        sprintf(dummy_str, "%s", RenderView::height_preset_name[preset.y]);
+                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    } else {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        sprintf(dummy_str, "%d", custom.x);
+                        ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        sprintf(dummy_str, "%d", custom.y);
+                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    }
                     ImGui::PopStyleColor(1);
                 }
                 // offer to change filename, ratio and resolution
@@ -7447,18 +7467,38 @@ void Navigator::RenderMainPannelVimix()
                         UserInterface::manager().selectSaveFilename();
                     }
                     ImGui::SetCursorScreenPos(draw_pos);
-                    // combo boxes to select Rario and Height
+                    // combo boxes to select aspect rario
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if (ImGui::Combo("Ratio", &p.x, FrameBuffer::aspect_ratio_name, IM_ARRAYSIZE(FrameBuffer::aspect_ratio_name) ) )
+                    if (ImGui::Combo("Ratio", &preset.x, RenderView::ratio_preset_name, IM_ARRAYSIZE(RenderView::ratio_preset_name) ) )
                     {
-                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
+                        // change to custom aspect ratio: propose 1:1
+                        glm::vec3 res = glm::vec3(custom.y, custom.y, 0.f);
+                        // else, change to preset aspect ratio
+                        if (preset.x < RenderView::AspectRatio_Custom)
+                            res = RenderView::resolutionFromPreset(preset.x, preset.y);
+                        // change resolution
                         Mixer::manager().setResolution(res);
                     }
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if (ImGui::Combo("Height", &p.y, FrameBuffer::resolution_name, IM_ARRAYSIZE(FrameBuffer::resolution_name) ) )
-                    {
-                        glm::vec3 res = FrameBuffer::getResolutionFromParameters(p.x, p.y);
-                        Mixer::manager().setResolution(res);
+                    //  - preset aspect ratio : propose preset height
+                    if (preset.x < RenderView::AspectRatio_Custom) {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        if (ImGui::Combo("Height", &preset.y, RenderView::height_preset_name, IM_ARRAYSIZE(RenderView::height_preset_name) ) )
+                        {
+                            glm::vec3 res = RenderView::resolutionFromPreset(preset.x, preset.y);
+                            Mixer::manager().setResolution(res);
+                        }
+                    }
+                    //  - custom aspect ratio : input width and height
+                    else {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);                        
+                        ImGui::InputInt("Width", &custom.x, 100, 500);
+                        if (ImGui::IsItemDeactivatedAfterEdit())
+                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        ImGui::InputInt("Height", &custom.y, 100, 500);
+                        if (ImGui::IsItemDeactivatedAfterEdit())
+                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
+
                     }
                 }
             }
@@ -8347,47 +8387,47 @@ void ShowSandbox(bool* p_open)
     std::string tra = BaseToolkit::transliterate(std::string(str0));
     ImGui::Text("Transliteration: '%s'", tra.c_str());
 
-    ImGui::Separator();
+//    ImGui::Separator();
 
-    static bool selected[25] = { true, false, false, false, false,
-                                 true, false, false, false, false,
-                                 true, false, false, true, false,
-                                 false, false, false, true, false,
-                                 false, false, false, true, false };
+//    static bool selected[25] = { true, false, false, false, false,
+//                                 true, false, false, false, false,
+//                                 true, false, false, true, false,
+//                                 false, false, false, true, false,
+//                                 false, false, false, true, false };
 
-    ImVec2 keyIconSize = ImVec2(60,60);
+//    ImVec2 keyIconSize = ImVec2(60,60);
 
-    ImGuiContext& g = *GImGui;
-    ImVec2 itemsize = keyIconSize + g.Style.ItemSpacing;
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
-    ImVec2 frame_top = ImGui::GetCursorScreenPos();
+//    ImGuiContext& g = *GImGui;
+//    ImVec2 itemsize = keyIconSize + g.Style.ItemSpacing;
+//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+//    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.50f));
+//    ImVec2 frame_top = ImGui::GetCursorScreenPos();
 
 
-    static int key = 0;
-    static ImVec2 current(-1.f, -1.f);
+////    static int key = 0;
+//    static ImVec2 current(-1.f, -1.f);
 
-    for (int i = 0; i < 25; ++i) {
-        ImGui::PushID(i);
-        char letter[2];
-        sprintf(letter, "%c", 'A' + i);
-        if (ImGui::Selectable(letter, selected[i], 0, keyIconSize))
-        {
-            current = ImVec2(i % 5, i / 5);
-            key = GLFW_KEY_A + i;
-        }
-        ImGui::PopID();
-        if ((i % 5) < 4) ImGui::SameLine();
-    }
-    ImGui::PopStyleVar();
-    ImGui::PopFont();
+//    for (int i = 0; i < 25; ++i) {
+//        ImGui::PushID(i);
+//        char letter[2];
+//        sprintf(letter, "%c", 'A' + i);
+//        if (ImGui::Selectable(letter, selected[i], 0, keyIconSize))
+//        {
+//            current = ImVec2(i % 5, i / 5);
+////            key = GLFW_KEY_A + i;
+//        }
+//        ImGui::PopID();
+//        if ((i % 5) < 4) ImGui::SameLine();
+//    }
+//    ImGui::PopStyleVar();
+//    ImGui::PopFont();
 
-    if (current.x > -1 && current.y > -1) {
-        ImVec2 pos = frame_top + itemsize * current;
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(pos, pos + keyIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
+//    if (current.x > -1 && current.y > -1) {
+//        ImVec2 pos = frame_top + itemsize * current;
+//        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+//        draw_list->AddRect(pos, pos + keyIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
-    }
+//    }
 
 
 

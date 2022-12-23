@@ -160,6 +160,8 @@ void Settings::Save(uint64_t runtime)
     RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
+    RenderNode->SetAttribute("custom_width", application.render.custom_width);
+    RenderNode->SetAttribute("custom_height", application.render.custom_height);
     pRoot->InsertEndChild(RenderNode);
 
     // Record
@@ -439,6 +441,8 @@ void Settings::Load()
         rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
         rendernode->QueryIntAttribute("ratio", &application.render.ratio);
         rendernode->QueryIntAttribute("res", &application.render.res);
+        rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
+        rendernode->QueryIntAttribute("custom_height", &application.render.custom_height);
     }
 
     // Record
