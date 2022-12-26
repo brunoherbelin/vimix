@@ -3,11 +3,9 @@
 
 #include <map>
 
-#include "Log.h"
 #include "View.h"
-#include "Primitives.h"
+#include "Scene.h"
 #include "Source.h"
-#include "Decorations.h"
 
 #include "BoundingBoxVisitor.h"
 
@@ -57,15 +55,16 @@ void BoundingBoxVisitor::visit(Switch &n)
 
 void BoundingBoxVisitor::visit(Primitive &n)
 {
-
     bbox_.extend(n.bbox().transformed(modelview_));
-
-//    Log::Info("visitor box (%f, %f)-(%f, %f)", bbox_.min().x, bbox_.min().y, bbox_.max().x, bbox_.max().y);
 }
 
 void BoundingBoxVisitor::visit(Scene &n)
 {
     n.ws()->accept(*this);
+    if (force_){
+        n.bg()->accept(*this);
+        n.fg()->accept(*this);
+    }
 }
 
 GlmToolkit::AxisAlignedBoundingBox BoundingBoxVisitor::AABB(SourceList l, View *view)

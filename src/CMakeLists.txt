@@ -88,6 +88,7 @@ set(VMIX_SRCS
     ShmdataBroadcast.cpp
     SrtReceiverSource.cpp
     MultiFileRecorder.cpp
+    DisplaysView.cpp
 )
 
 #####

@@ -202,8 +202,8 @@ void Settings::Save(uint64_t runtime)
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // save current view only if [mixing, geometry, layers, appearance]
-        int v = application.current_view > 4 ? 1 : application.current_view;
+        // do not save Transition view as current
+        int v = application.current_view == 5 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
         viewsNode->SetAttribute("workspace", application.current_workspace);
 

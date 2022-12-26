@@ -29,7 +29,8 @@ public:
         LAYER     = 3,
         TEXTURE   = 4,
         TRANSITION = 5,
-        INVALID   = 6
+        DISPLAYS  = 6,
+        INVALID   = 7
     } Mode;
 
     inline Mode mode () const { return mode_; }

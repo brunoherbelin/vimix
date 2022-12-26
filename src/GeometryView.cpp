@@ -39,7 +39,6 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
-#include "Log.h"
 
 #include "GeometryView.h"
 

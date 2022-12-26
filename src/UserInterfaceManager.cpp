@@ -387,6 +387,8 @@ void UserInterface::handleKeyboard()
             Mixer::manager().setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
             Mixer::manager().setView(View::TEXTURE);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F5, false ))
+            Mixer::manager().setView(View::DISPLAYS);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -6201,7 +6203,7 @@ void Navigator::Render()
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     const ImVec2 iconsize(icon_width, icon_width);
-    const float sourcelist_height = height_ - 4.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
+    const float sourcelist_height = height_ - 5.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
 
     // hack to show more sources if not enough space; make source icons smaller...
     ImVec2 sourceiconsize(icon_width, icon_width);
@@ -6216,7 +6218,7 @@ void Navigator::Render()
     {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-        if (Settings::application.current_view < View::TRANSITION) {
+        if (Settings::application.current_view != View::TRANSITION) {
 
             // the "=" icon for menu
             if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
@@ -6303,34 +6305,41 @@ void Navigator::Render()
         bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
-        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, iconsize))
         {
             Mixer::manager().setView(View::MIXING);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Mixing ", "F1"};
-        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, iconsize))
         {
             Mixer::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Geometry ", "F2"};
-        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[View::LAYER], 0, iconsize))
         {
             Mixer::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Layers ", "F3"};
-        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, iconsize))
         {
             Mixer::manager().setView(View::TEXTURE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Texturing ", "F4"};
+        if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
+        {
+            Mixer::manager().setView(View::DISPLAYS);
+            view_pannel_visible = previous_view == Settings::application.current_view;
+        }
+        if (ImGui::IsItemHovered())
+            tooltip = {"Displays  ", "F5"};
 
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
@@ -7811,7 +7820,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_WINDOW_MAXIMIZE ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_CROW ) )
         UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};

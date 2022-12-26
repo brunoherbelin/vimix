@@ -34,10 +34,8 @@
 #include "PickingVisitor.h"
 #include "Decorations.h"
 #include "Mixer.h"
-#include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
-#include "Log.h"
 
 #include "View.h"
 
@@ -201,14 +199,14 @@ void View::recenter()
 
         // if the updated (translated) view does not contains the entire scene
         // we shall scale the view to fit the scene
-        if ( !updated_view_box.contains(scene_box)) {
+        if (!updated_view_box.contains(scene_box)) {
 
             glm::vec3 view_extend = updated_view_box.max() - updated_view_box.min();
             updated_view_box.extend(scene_box);
             glm::vec3 scene_extend = scene_box.max() - scene_box.min();
             glm::vec3 scale = view_extend  / scene_extend  ;
             float z = scene.root()->scale_.x;
-            z = CLAMP( z * MIN(scale.x, scale.y), MIXING_MIN_SCALE, MIXING_MAX_SCALE);
+            z = CLAMP( z * MIN(scale.x, scale.y), MIN_SCALE, MAX_SCALE);
             scene.root()->scale_.x = z;
             scene.root()->scale_.y = z;
 

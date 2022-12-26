@@ -6,6 +6,7 @@
 #include "LayerView.h"
 #include "TextureView.h"
 #include "TransitionView.h"
+#include "DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
 
@@ -153,6 +154,7 @@ protected:
     LayerView layer_;
     TextureView appearance_;
     TransitionView transition_;
+    DisplaysView displays_;
 
     bool busy_;
     float dt_;

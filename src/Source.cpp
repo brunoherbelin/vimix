@@ -24,7 +24,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
-#include "Log.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
 #include "Resource.h"
@@ -32,10 +31,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "BaseToolkit.h"
-#include "SystemToolkit.h"
 #include "MixingGroup.h"
-#include "Metronome.h"
-#include "ControlManager.h"
 #include "SourceCallback.h"
 
 #include "CloneSource.h"
@@ -553,7 +549,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     initial_1_->translation_.x = 0.4f - renderbuffer_->aspectRatio();
 
     // scale all icon nodes to match aspect ratio
-    for (int v = View::MIXING; v < View::INVALID; v++) {
+    for (int v = View::MIXING; v <= View::TRANSITION; v++) {
         NodeSet::iterator node;
         for (node = groups_[(View::Mode) v]->begin();
              node != groups_[(View::Mode) v]->end(); ++node) {

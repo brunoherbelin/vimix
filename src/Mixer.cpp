@@ -30,13 +30,11 @@
 #include <gst/gst.h>
 
 #include <tinyxml2.h>
-#include "tinyxml2Toolkit.h"
 
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
 #include "View.h"
-#include "ImageShader.h"
 #include "BaseToolkit.h"
 #include "SystemToolkit.h"
 #include "SessionCreator.h"
@@ -56,7 +54,7 @@
 #include "InfoVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
-#include "Streamer.h"
+#include "FrameGrabber.h"
 
 #include "Mixer.h"
 
@@ -230,6 +228,7 @@ void Mixer::update()
     layer_.update(dt_);
     appearance_.update(dt_);
     transition_.update(dt_);
+    displays_.update(dt_);
 
     // deep update was performed
     if  (View::need_deep_update_ > 0)
@@ -493,7 +492,7 @@ bool Mixer::replaceSource(Source *from, Source *to)
     to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
     to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
     to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
-    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
+    to->group(View::TEXTURE)->copyTransform( from->group(View::TEXTURE) );
 
     // TODO copy all filters
 
@@ -1107,6 +1106,9 @@ void Mixer::setView(View::Mode m)
     }
 
     switch (m) {
+    case View::DISPLAYS:
+        current_view_ = &displays_;
+        break;
     case View::TRANSITION:
         current_view_ = &transition_;
         break;
@@ -1145,6 +1147,8 @@ void Mixer::setView(View::Mode m)
 View *Mixer::view(View::Mode m)
 {
     switch (m) {
+    case View::DISPLAYS:
+        return &displays_;
     case View::TRANSITION:
         return &transition_;
     case View::GEOMETRY:
