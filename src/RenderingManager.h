@@ -16,14 +16,6 @@ typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;
 
-struct RenderingMonitor
-{
-    RenderingMonitor() {}
-    glm::ivec2 dimension;
-    glm::ivec2 position;
-    std::string name;
-};
-
 struct RenderingAttrib
 {
     RenderingAttrib() {}
@@ -89,10 +81,6 @@ public:
 
     // get monitor in which the window is
     GLFWmonitor *monitor();
-    // get which monitor contains this point
-    static GLFWmonitor *monitorAt(int x, int y);
-    // get which monitor has this name
-    static GLFWmonitor *monitorNamed(const std::string &name);
 
     glm::vec2 previous_size;
 };
@@ -130,7 +118,6 @@ public:
 
     // add function to call during Draw
     typedef void (* RenderingCallback)(void);
-    void pushFrontDrawCallback(RenderingCallback function);
     void pushBackDrawCallback(RenderingCallback function);
 
     // push and pop rendering attributes
@@ -154,6 +141,14 @@ public:
     glm::vec3 unProject(glm::vec2 screen_coordinate, glm::mat4 modelview = glm::mat4(1.f));
     // project from scene coordinate to window
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
+
+    // get hold on the monitors
+    void monitorsUpdate();
+    inline std::map<std::string, glm::ivec4> monitors() { return monitors_; }
+    // get which monitor contains this point
+    GLFWmonitor *monitorAt(int x, int y);
+    // get which monitor has this name
+    GLFWmonitor *monitorNamed(const std::string &name);
 
     // memory management
     static glm::ivec2 getGPUMemoryInformation();
@@ -179,7 +174,7 @@ private:
     RenderingWindow output_;
 
     // monitors
-    std::list<RenderingMonitor> monitors_;
+    std::map<std::string, glm::ivec4> monitors_;
     static void MonitorConnect(GLFWmonitor* monitor, int event);
 
     // file drop callback

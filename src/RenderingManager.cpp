@@ -183,34 +183,87 @@ static void WindowCloseCallback( GLFWwindow* w )
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 {
-    // Fill list of monitors of rendering manager
+    // reset list of monitors
+    Rendering::manager().monitors_.clear();
+
+    // list monitors with GLFW
     int count_monitors = 0;
     GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-    // list monitors
-    if (count_monitors > 0) {
-        Rendering::manager().monitors_.clear();
-        int i = 0;
-        for (; i < count_monitors;  i++) {
-            // fill monitor structure
-            RenderingMonitor mo;
-            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-            mo.dimension = glm::ivec2(vm->width, vm->height);
-            glfwGetMonitorPos(monitors[i], &mo.position.x, &mo.position.y);
-            mo.name = glfwGetMonitorName(monitors[i]);
-            // add
-            Rendering::manager().monitors_.push_back(mo);
-        }
+
+    // Fill list of monitors of rendering manager
+    for (int i = 0; i < count_monitors;  i++) {
+        // fill monitor structure
+        int x = 0, y = 0;
+        glfwGetMonitorPos(monitors[i], &x, &y);
+        const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+        std::string n = glfwGetMonitorName(monitors[i]);
+        // add
+        Rendering::manager().monitors_[n] = glm::ivec4(x, y, vm->width, vm->height);
     }
+
+    // TODO : find appropriate
+    // inform Displays View that monitors changed
+    Mixer::manager().view(View::DISPLAYS)->recenter();
 
 #ifndef NDEBUG
     if (event == GLFW_CONNECTED)
         g_printerr("Monitor %s connected\n",  glfwGetMonitorName(monitor));
     else if (event == GLFW_DISCONNECTED)
         g_printerr("Monitor %s disconnected\n",  glfwGetMonitorName(monitor));
-    for (auto m = Rendering::manager().monitors_.begin(); m != Rendering::manager().monitors_.end(); m++) {
-        g_printerr("Monitor %s [%d, %d](%d x %d)\n", m->name.c_str(), m->position.x, m->position.y, m->dimension.x, m->dimension.y);
-    }
 #endif
+}
+
+GLFWmonitor *Rendering::monitorAt(int x, int y)
+{
+    // default to primary monitor
+    GLFWmonitor *mo = glfwGetPrimaryMonitor();
+
+    // list all monitors
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+
+    // if there is more than one monitor
+    if (count_monitors > 1) {
+        // try every monitor
+        for (int i = 0; i < count_monitors;  i++) {
+            int workarea_x, workarea_y;
+            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
+            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+            if ( x >= workarea_x && x <= workarea_x + vm->width &&
+                 y >= workarea_y && y <= workarea_y + vm->height) {
+                // found the monitor containing this point !
+                mo = monitors[i];
+                break;
+            }
+        }
+    }
+
+    return mo;
+}
+
+
+GLFWmonitor *Rendering::monitorNamed(const std::string &name)
+{
+    // default to primary monitor
+    GLFWmonitor *mo = glfwGetPrimaryMonitor();
+
+    // list all monitors
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+
+    // if there is more than one monitor
+    if (count_monitors > 1) {
+        // try every monitor
+        for (int i = 0; i < count_monitors;  i++) {
+            if ( name.compare( glfwGetMonitorName(monitors[i]) ) == 0 ){
+                // found the monitor with this name
+                mo = monitors[i];
+                break;
+            }
+        }
+    }
+
+    return mo;
 }
 
 void Rendering::close()
@@ -363,12 +416,6 @@ bool Rendering::isActive()
     return !glfwWindowShouldClose(main_.window());
 }
 
-
-void Rendering::pushFrontDrawCallback(RenderingCallback function)
-{
-    draw_callbacks_.push_front(function);
-}
-
 void Rendering::pushBackDrawCallback(RenderingCallback function)
 {
     draw_callbacks_.push_back(function);
@@ -511,7 +558,7 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         if (filename.empty())
             break;
         // try to create a source
-        Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
+        Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );        
     }
     if (i>0) {
         UserInterface::manager().showPannel();
@@ -662,67 +709,13 @@ bool RenderingWindow::isFullscreen ()
     return Settings::application.windows[index_].fullscreen;
 }
 
-GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
-{
-    // default to primary monitor
-    GLFWmonitor *mo = glfwGetPrimaryMonitor();
-
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // pick at the coordinates given or at pos of window
-        // try every monitor
-        int i = 0;
-        for (; i < count_monitors;  i++) {
-            int workarea_x, workarea_y;
-            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
-            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-            if ( x >= workarea_x && x <= workarea_x + vm->width &&
-                 y >= workarea_y && y <= workarea_y + vm->height)
-                break;
-        }
-        // found the monitor containing this point !
-        if ( i < count_monitors)
-            mo = monitors[i];
-    }
-
-    return mo;
-}
-
-GLFWmonitor *RenderingWindow::monitorNamed(const std::string &name)
-{
-    // default to primary monitor
-    GLFWmonitor *mo = glfwGetPrimaryMonitor();
-
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // pick at the coordinates given or at pos of window
-        // try every monitor
-        int i = 0;
-        for (; i < count_monitors;  i++) {
-            if ( std::string( glfwGetMonitorName(monitors[i])) == name )
-                break;
-        }
-        // found the monitor with this name
-        if ( i < count_monitors)
-            mo = monitors[i];
-    }
-
-    return mo;
-}
-
 GLFWmonitor *RenderingWindow::monitor()
 {
     // pick at the coordinates given or at pos of window
     int x = 1, y = 1;
     if (window_ != nullptr)
         glfwGetWindowPos(window_, &x, &y);
-    return monitorAt(x, y);
+    return Rendering::manager().monitorAt(x, y);
 }
 
 void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
@@ -922,7 +915,7 @@ void RenderingWindow::show()
     glfwShowWindow(window_);
 
     if ( Settings::application.windows[index_].fullscreen ) {
-        GLFWmonitor *mo = monitorNamed(Settings::application.windows[index_].monitor);
+        GLFWmonitor *mo = Rendering::manager().monitorNamed(Settings::application.windows[index_].monitor);
         setFullscreen_(mo);
     }
 
