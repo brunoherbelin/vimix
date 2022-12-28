@@ -47,97 +47,72 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
 {
     scene.root()->scale_ = glm::vec3(DISPLAYS_DEFAULT_SCALE, DISPLAYS_DEFAULT_SCALE, 1.0f);
     // read default settings
-    if ( Settings::application.views[mode_].name.empty() )
+    if ( Settings::application.views[mode_].name.empty() ) {
         // no settings found: store application default
         saveSettings();
+    }
     else
         restoreSettings();
     Settings::application.views[mode_].name = "Displays";
 
-    // Geometry Scene foreground
+    // stored status of output_
+    output_status_ = new Group;
+
+    // Geometry Scene workspace
+    output_ = new Group;
+    scene.ws()->attach(output_);
     output_surface_ = new Surface;
-    output_surface_->visible_ = false;
-    scene.fg()->attach(output_surface_);
-//    Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-//    border->color = glm::vec4( COLOR_FRAME, 1.f );
-//    scene.fg()->attach(border);
+    output_->attach(output_surface_);
+    output_render_ = new Surface;
+    output_->attach(output_render_);
 
-//    // User interface foreground
-//    //
-//    // point to show POSITION
-//    overlay_position_ = new Symbol(Symbol::SQUARE_POINT);
-//    overlay_position_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-//    scene.fg()->attach(overlay_position_);
-//    overlay_position_->visible_ = false;
-//    // cross to show the axis for POSITION
-//    overlay_position_cross_ = new Symbol(Symbol::GRID);
-//    overlay_position_cross_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-//    scene.fg()->attach(overlay_position_cross_);
-//    overlay_position_cross_->visible_ = false;
-//    // 'clock' : tic marks every 10 degrees for ROTATION
-//    // with dark background
-//    overlay_rotation_clock_ = new Group;
-//    overlay_rotation_clock_tic_ = new Symbol(Symbol::CLOCK);
-//    overlay_rotation_clock_->attach(overlay_rotation_clock_tic_);
-//    Symbol *s = new Symbol(Symbol::CIRCLE_POINT);
-//    s->color = glm::vec4(0.f, 0.f, 0.f, 0.1f);
-//    s->scale_ = glm::vec3(28.f, 28.f, 1.f);
-//    s->translation_.z = -0.1;
-//    overlay_rotation_clock_->attach(s);
-//    overlay_rotation_clock_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_clock_);
-//    overlay_rotation_clock_->visible_ = false;
-//    // circle to show fixed-size  ROTATION
-//    overlay_rotation_clock_hand_ = new Symbol(Symbol::CLOCK_H);
-//    overlay_rotation_clock_hand_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_clock_hand_);
-//    overlay_rotation_clock_hand_->visible_ = false;
-//    overlay_rotation_fix_ = new Symbol(Symbol::SQUARE);
-//    overlay_rotation_fix_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_fix_);
-//    overlay_rotation_fix_->visible_ = false;
-//    // circle to show the center of ROTATION
-//    overlay_rotation_ = new Symbol(Symbol::CIRCLE);
-//    overlay_rotation_->scale_ = glm::vec3(0.25f, 0.25f, 1.f);
-//    scene.fg()->attach(overlay_rotation_);
-//    overlay_rotation_->visible_ = false;
-//    // 'grid' : tic marks every 0.1 step for SCALING
-//    // with dark background
-//    Group *g = new Group;
-//    s = new Symbol(Symbol::GRID);
-//    s->scale_ = glm::vec3(1.655f, 1.655f, 1.f);
-//    g->attach(s);
-//    s = new Symbol(Symbol::SQUARE_POINT);
-//    s->color = glm::vec4(0.f, 0.f, 0.f, 0.1f);
-//    s->scale_ = glm::vec3(17.f, 17.f, 1.f);
-//    s->translation_.z = -0.1;
-//    g->attach(s);
-//    overlay_scaling_grid_ = g;
-//    overlay_scaling_grid_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
-//    scene.fg()->attach(overlay_scaling_grid_);
-//    overlay_scaling_grid_->visible_ = false;
-//    // cross in the square for proportional SCALING
-//    overlay_scaling_cross_ = new Symbol(Symbol::CROSS);
-//    overlay_scaling_cross_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
-//    scene.fg()->attach(overlay_scaling_cross_);
-//    overlay_scaling_cross_->visible_ = false;
-//    // square to show the center of SCALING
-//    overlay_scaling_ = new Symbol(Symbol::SQUARE);
-//    overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
-//    scene.fg()->attach(overlay_scaling_);
-//    overlay_scaling_->visible_ = false;
+    output_visible_ = new Handles(Handles::EYESLASHED);
+    output_visible_->visible_ = false;
+    output_visible_->color = glm::vec4( COLOR_FRAME, 1.f );
+    output_->attach(output_visible_);
 
-//    border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-//    border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.2f );
-//    overlay_crop_ = border;
-//    scene.fg()->attach(overlay_crop_);
-//    overlay_crop_->visible_ = false;
+    // overlays for selected and not selected
+    output_overlays_ = new Switch;
+    output_->attach(output_overlays_);
 
-    // will be init later
-    overlay_selection_scale_ = nullptr;
-    overlay_selection_rotate_ = nullptr;
-    overlay_selection_stored_status_ = nullptr;
-    overlay_selection_active_ = false;
+    // output_overlays_ [0] is for not active output frame
+    Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame->color = glm::vec4( COLOR_FRAME, 1.f );
+    output_overlays_->attach(frame);
+
+    // output_overlays_ [1] is for active frame
+    Group *g = new Group;
+    output_overlays_->attach(g);
+    // Overlay menu icon
+    output_menu_ = new Handles(Handles::MENU);
+    output_menu_->color = glm::vec4( COLOR_FRAME, 1.f );
+    g->attach(output_menu_);
+    // selected frame
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
+    frame->color = glm::vec4( COLOR_FRAME, 1.f );
+    g->attach(frame);
+
+    // Overlay has two modes : window or fullscreen
+    output_mode_ = new Switch;
+    g->attach(output_mode_);
+
+    // output_mode_ [0] is for WINDOWED
+    output_handles_ = new Handles(Handles::RESIZE);
+    output_handles_->color = glm::vec4( COLOR_FRAME, 1.f );
+    output_mode_->attach(output_handles_);
+
+    // output_mode_ [1] is for FULLSCREEN
+    output_fullscreen_ = new Symbol(Symbol::TELEVISION);
+    output_fullscreen_->scale_ = glm::vec3(2.f, 2.f, 1.f);
+    output_fullscreen_->color = glm::vec4( COLOR_FRAME, 1.f );
+    output_mode_->attach(output_fullscreen_);
+
+    // default behavior : selected output in windowed mode
+    show_output_menu_ = false;
+    output_selected_=true;
+    output_overlays_->setActive(1);
+    output_mode_->setActive(0);
+
 }
 
 void DisplaysView::update(float dt)
@@ -148,24 +123,16 @@ void DisplaysView::update(float dt)
     if (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output){
-//            float aspect_ratio = output->aspectRatio();
-//            for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); ++node) {
-//                (*node)->scale_.x = aspect_ratio;
-//            }
-//            for (NodeSet::iterator node = scene.fg()->begin(); node != scene.fg()->end(); ++node) {
-//                (*node)->scale_.x = aspect_ratio;
-//            }
-//            output_surface_->setTextureIndex( output->texture() );
-        }
+        FrameBuffer *render = Mixer::manager().session()->frame();
+        if (render)
+            output_render_->setTextureIndex( render->texture() );
 
-        // prevent invalid scaling
-        float s = CLAMP(scene.root()->scale_.x, DISPLAYS_MIN_SCALE, DISPLAYS_MAX_SCALE);
-        scene.root()->scale_.x = s;
-        scene.root()->scale_.y = s;
+
+//        // prevent invalid scaling
+//        float s = CLAMP(scene.root()->scale_.x, DISPLAYS_MIN_SCALE, DISPLAYS_MAX_SCALE);
+//        scene.root()->scale_.x = s;
+//        scene.root()->scale_.y = s;
     }
-
 
 }
 
@@ -175,27 +142,45 @@ void  DisplaysView::recenter ()
 {
     // clear background display of monitors
     scene.clearBackground();
+    scene.clearForeground();
 
     // fill scene background with the frames to show monitors
+    int index = 1;
     std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
     for (auto monitor_iter = _monitors.begin();
-         monitor_iter != _monitors.end(); ++monitor_iter) {
+         monitor_iter != _monitors.end(); ++monitor_iter, ++index) {
 
-        Group *m = new Group;
+        // get coordinates of monitor in Display units
         glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(monitor_iter->second);
+
+        // add a background black surface with glow shadow
+        Group *m = new Group;
         m->scale_ = glm::vec3( 0.5f * rect.p, 0.5f * rect.q, 1.f );
         m->translation_ = glm::vec3( rect.x + m->scale_.x, -rect.y - m->scale_.y, 0.f );
+        Surface *surf = new Surface( new Shader);
+        surf->shader()->color =  glm::vec4( 0.1f, 0.1f, 0.1f, 1.f );
 
-        Surface *surf = new Surface;
         m->attach(surf);
-
-        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-        frame->color = glm::vec4( COLOR_MONITOR, 1.f );
+        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::GLOW);
+        frame->color = glm::vec4(COLOR_MONITOR, 1.f);
         m->attach(frame);
-
+        Glyph  *label = new Glyph(4);
+        label->setChar( std::to_string(index).back() );
+        label->color = glm::vec4( COLOR_MONITOR, 1.f );
+        label->translation_.y =  0.02f ;
+        label->scale_.y =  0.4f / rect.p;
+        m->attach(label);
         scene.bg()->attach( m );
 
-//        g_printerr("- display %f,%f  %f,%f\n", rect.x, rect.y, rect.w, rect.z);
+        // add a foreground color frame
+        Group *f = new Group;
+        f->copyTransform(m);
+        frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+        frame->color = glm::vec4( COLOR_MONITOR, 0.4f );
+        f->attach(frame);
+        scene.fg()->attach(f);
+
+//        g_printerr("- display %f,%f  %f,%f\n", rect.x, rect.y, rect.p, rect.q);
 //        g_printerr("          %f,%f  %f,%f\n", m->translation_.x, m->translation_.y,
 //                   m->scale_.x, m->scale_.y);
     }
@@ -231,269 +216,183 @@ int  DisplaysView::size ()
 
 void DisplaysView::draw()
 {
-//    std::vector<Node *> surfaces;
-//    std::vector<Node *> overlays;
-
 //    g_printerr("DisplaysView::draw()\n");
 
+    output_render_->visible_ = !Settings::application.render.disabled;
+    output_visible_->visible_ = Settings::application.render.disabled;
+
+
+    if ( Settings::application.windows[1].fullscreen ) {
+        output_mode_->setActive( 1 );
+
+        glm::ivec4 rect = Rendering::manager().monitors()[Settings::application.windows[1].monitor];
+
+        output_->scale_.x = rect.p * 0.5f * DISPLAYS_UNIT;
+        output_->scale_.y = rect.q * 0.5f * DISPLAYS_UNIT;
+        output_->translation_.x = rect.x * DISPLAYS_UNIT + output_->scale_.x;
+        output_->translation_.y = -rect.y * DISPLAYS_UNIT - output_->scale_.y;
+
+    }
+    else {
+        output_mode_->setActive( 0 );
+
+        if (!current_action_ongoing_) {
+
+            // TODO Mutex for multithread access with changed flag
+
+            output_->scale_.x = Settings::application.windows[1].w * 0.5f * DISPLAYS_UNIT;
+            output_->scale_.y = Settings::application.windows[1].h * 0.5f * DISPLAYS_UNIT;
+            output_->translation_.x = Settings::application.windows[1].x * DISPLAYS_UNIT + output_->scale_.x;
+            output_->translation_.y = -Settings::application.windows[1].y * DISPLAYS_UNIT - output_->scale_.y;
+
+        }
+    }
+
+
+    if (Settings::application.windows[1].scaled)  {
+        output_render_->scale_ = glm::vec3(1.f, 1.f, 1.f);
+    }
+    else {
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output){
+            float out_ar = output_->scale_.x / output_->scale_.y;
+            if (output->aspectRatio() < out_ar)
+                output_render_->scale_ = glm::vec3(output->aspectRatio() / out_ar, 1.f, 1.f);
+            else
+                output_render_->scale_ = glm::vec3(1.f, out_ar / output->aspectRatio(), 1.f);
+        }
+    }
 
     View::draw();
 
-//    // 0. prepare projection for draw visitors
-//    glm::mat4 projection = Rendering::manager().Projection();
+    // display popup menu
+    if (show_output_menu_) {
+        ImGui::OpenPopup( "DisplaysOutputContextMenu" );
+        show_output_menu_ = false;
+    }
+    if (ImGui::BeginPopup("DisplaysOutputContextMenu")) {
 
-////    // 1. Draw surface of sources in the current workspace
-////    DrawVisitor draw_surfaces(surfaces, projection);
-////    scene.accept(draw_surfaces);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
 
-////    for( auto it = surfaces.begin(); it!=surfaces.end(); ++it) {
-////        delete *it;
-////    }
+        if (ImGui::MenuItem( ICON_FA_EYE_SLASH "  Disable", nullptr, &Settings::application.render.disabled )){
 
-////    // 2. Draw scene rendering on top (which includes rendering of all visible sources)
-////    DrawVisitor draw_rendering(output_surface_, projection, true);
-////    scene.accept(draw_rendering);
+        }
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT  "   Scaled", nullptr, &Settings::application.windows[1].scaled )){
 
-//    // 3. Draw frames and icons of sources in the current workspace
-//    DrawVisitor draw_overlays(overlays, projection);
-//    scene.accept(draw_overlays);
+        }
+        ImGui::Separator();
+        bool _windowed = !Settings::application.windows[1].fullscreen;
+        if (ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "   Windowed", nullptr, &_windowed)){
+            Rendering::manager().outputWindow().exitFullscreen();
+        }
+        int index = 1;
+        std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
+        for (auto monitor_iter = _monitors.begin();
+             monitor_iter != _monitors.end(); ++monitor_iter, ++index) {
 
-//    // 4. Draw control overlays of current source on top (if selectable)
-//    if (s!=nullptr && canSelect(s)) {
-//        s->setMode(Source::CURRENT);
-//        DrawVisitor dv(s->overlays_[mode_], projection);
-//        scene.accept(dv);
-//    }
-
-//    // 5. Finally, draw overlays of view
-//    DrawVisitor draw_foreground(scene.fg(), projection);
-//    scene.accept(draw_foreground);
-
-//     display interface
-    // Locate window at upper left corner
-//    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01 );
-//    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
-//    // Set window position depending on icons size
-//    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-//    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
-//    if (ImGui::Begin("##DisplaysViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-//                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-//                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
-//    {
-//        // style grey
-//        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));  // 1
-//        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-//        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.36f, 0.36f, 0.36f, 0.9f));
-//        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.5f));
-//        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-//        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
-//        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-//        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f)); // 8
-
-//        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
-//        static std::vector< std::string > labels_ws = { "Background", "Workspace", "Foreground" };
-//        if ( ImGuiToolkit::ComboIcon (icons_ws, labels_ws, &Settings::application.current_workspace) ){
-//             ++View::need_deep_update_;
-//        }
-
-//        ImGui::PopStyleColor(8);  // 14 colors
-//        ImGui::End();
-//    }
-//    ImGui::PopFont();
-
-//    // display popup menu
-//    if (show_context_menu_ == MENU_SOURCE) {
-//        ImGui::OpenPopup( "DisplaysOutputContextMenu" );
-//        show_context_menu_ = MENU_NONE;
-//    }
-//    if (ImGui::BeginPopup("DisplaysOutputContextMenu")) {
-////        if (s != nullptr) {
-////            if (ImGui::Selectable( ICON_FA_EXPAND "   Fit" )){
-////                s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
-////                s->group(mode_)->rotation_.z = 0;
-////                s->group(mode_)->translation_ = glm::vec3(0.f);
-////                s->touch();
-////                Action::manager().store(s->name() + std::string(": Geometry Fit"));
-////            }
-////            if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
-////                s->group(mode_)->scale_ = glm::vec3(1.f);
-////                s->group(mode_)->rotation_.z = 0;
-////                s->group(mode_)->crop_ = glm::vec3(1.f);
-////                s->group(mode_)->translation_ = glm::vec3(0.f);
-////                s->touch();
-////                Action::manager().store(s->name() + std::string(": Geometry Reset"));
-////            }
-////            if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
-////                s->group(mode_)->translation_ = glm::vec3(0.f);
-////                s->touch();
-////                Action::manager().store(s->name() + std::string(": Reset position"));
-////            }
-////            if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
-////                s->group(mode_)->rotation_.z = 0;
-////                s->touch();
-////                Action::manager().store(s->name() + std::string(": Reset rotation"));
-////            }
-////            if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
-////                s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
-////                s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
-////                s->touch();
-////                Action::manager().store(s->name() + std::string(": Reset aspect ratio"));
-////            }
-////        }
-//        ImGui::EndPopup();
-//    }
+            bool _fullscreen = Settings::application.windows[1].fullscreen &&
+                    Settings::application.windows[1].monitor == monitor_iter->first;
+            std::string menutext = std::string( ICON_FA_TV "  Fullscreen ") + std::to_string(index);
+            if (ImGui::MenuItem( menutext.c_str(), nullptr, _fullscreen )){
+                Rendering::manager().outputWindow().setFullscreen( monitor_iter->first );
+            }
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::EndPopup();
+    }
 
 }
 
-
 std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 {
-    // prepare empty return value
-    std::pair<Node *, glm::vec2> pick = { nullptr, glm::vec2(0.f) };
+    // get picking from generic View
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
 
-    // unproject mouse coordinate into scene coordinates
-    glm::vec3 scene_point_ = Rendering::manager().unProject(P);
+    // ignore pick on render surface: it's the same as output surface
+    if (pick.first == output_render_)
+        pick.first = output_surface_;
 
-//    // picking visitor traverses the scene
-//    PickingVisitor pv(scene_point_);
-//    scene.accept(pv);
+    if (pick.first == output_menu_)
+        show_output_menu_ = true;
 
-//    // picking visitor found nodes?
-//    if ( !pv.empty() ) {
-//        // keep current source active if it is clicked
-//        Source *current = Mixer::manager().currentSource();
-//        if (current != nullptr) {
-//            if (current->workspace() != Settings::application.current_workspace){
-//                current = nullptr;
-//            }
-//            else {
-//                // find if the current source was picked
-//                auto itp = pv.rbegin();
-//                for (; itp != pv.rend(); ++itp){
-//                    // test if source contains this node
-//                    Source::hasNode is_in_source((*itp).first );
-//                    if ( is_in_source( current ) ){
-//                        // a node in the current source was clicked !
-//                        pick = *itp;
-//                        break;
-//                    }
-//                }
-//                // not found: the current source was not clicked
-//                if (itp == pv.rend()) {
-//                    current = nullptr;
-//                }
-//                // picking on the menu handle: show context menu
-//                else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
-//                    openContextMenu(MENU_SOURCE);
-//                }
-//                // pick on the lock icon; unlock source
-//                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
-//                    lock(current, false);
-//                    pick = { current->locker_, pick.second };
-////                    pick = { nullptr, glm::vec2(0.f) };
-//                }
-//                // pick on the open lock icon; lock source and cancel pick
-//                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
-//                    lock(current, true);
-//                    pick = { nullptr, glm::vec2(0.f) };
-//                }
-//                // pick a locked source ; cancel pick
-//                else if ( !UserInterface::manager().ctrlModifier() && current->locked() ) {
-//                    pick = { nullptr, glm::vec2(0.f) };
-//                }
-//            }
-//        }
-//        // the clicked source changed (not the current source)
-//        if (current == nullptr) {
-
-//            if (UserInterface::manager().ctrlModifier()) {
-
-//                // default to failed pick
-//                pick = { nullptr, glm::vec2(0.f) };
-
-//                // loop over all nodes picked to detect clic on locks
-//                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-//                    // get if a source was picked
-//                    Source *s = Mixer::manager().findSource((*itp).first);
-//                    // lock icon of a source (not current) is picked : unlock
-//                    if ( s!=nullptr && (*itp).first == s->lock_) {
-//                        lock(s, false);
-//                        pick = { s->locker_, (*itp).second };
-//                        break;
-//                    }
-//                }
-//            }
-//            // no lock icon picked, find what else was picked
-//            if ( pick.first == nullptr) {
-
-//                // loop over all nodes picked
-//                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-//                    // get if a source was picked
-//                    Source *s = Mixer::manager().findSource((*itp).first);
-//                    // accept picked sources in current workspaces
-//                    if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
-//                        // a non-locked source is picked (anywhere)
-//                        if ( !s->locked() ) {
-//                            // not in an active selection? don't pick this one!
-//                            if ( !UserInterface::manager().ctrlModifier() &&
-//                                 Mixer::selection().size() > 1 &&
-//                                 !Mixer::selection().contains(s))
-//                                continue;
-//                            // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-//                            pick = { s->locker_,  (*itp).second };
-//                            break;
-//                        }
-
-//                    }
-//                    // not a source picked
-//                    else {
-//                        // picked on selection handles
-//                        if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
-//                            pick = (*itp);
-//                            // initiate selection manipulation
-//                            if (overlay_selection_stored_status_) {
-//                                overlay_selection_stored_status_->copyTransform(overlay_selection_);
-//                                overlay_selection_active_ = true;
-//                            }
-//                            break;
-//                        }
-//                        else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
-//                            pick = (*itp);
-//                            openContextMenu(MENU_SELECTION);
-//                            break;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
+    // activate / deactivate output frame
+    output_selected_ = (pick.first == output_surface_) ||
+            (pick.first == output_handles_) ||
+            (pick.first == output_fullscreen_) ||
+            (pick.first == output_menu_);
+    output_overlays_->setActive(output_selected_ ? 1 : 0);
 
     return pick;
 }
 
-bool DisplaysView::canSelect(Source *s) {
+bool DisplaysView::canSelect(Source *) {
 
-    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
+    return false;
+}
+
+void DisplaysView::select(glm::vec2 A, glm::vec2 B)
+{
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_A = Rendering::manager().unProject(A);
+    glm::vec3 scene_point_B = Rendering::manager().unProject(B);
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_A, scene_point_B, true);
+    scene.accept(pv);
+
+    output_selected_ = !pv.empty();
+    output_overlays_->setActive(output_selected_ ? 0 : 1);
+
+}
+
+void DisplaysView::initiate()
+{
+    // initiate pending action
+    if (!current_action_ongoing_) {
+
+        // store status
+        output_status_->copyTransform(output_);
+
+        // initiated
+        current_action_ = "";
+        current_action_ongoing_ = true;
+    }
+}
+
+void DisplaysView::terminate(bool force)
+{
+    // terminate pending action
+    if (current_action_ongoing_ || force) {
+
+        Rendering::manager().outputWindow().setCoordinates( outputCoordinates() );
+
+
+        // reset indicators
+        output_handles_->overlayActiveCorner(glm::vec2(0.f, 0.f));
+
+        // terminated
+        current_action_ = "";
+        current_action_ongoing_ = false;
+    }
 }
 
 
-void DisplaysView::applySelectionTransform(glm::mat4 M)
+glm::ivec4 DisplaysView::outputCoordinates() const
 {
-//    for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
-//        // recompute all from matrix transform
-//        glm::mat4 transform = M * (*sit)->stored_status_->transform_;
-//        glm::vec3 tra, rot, sca;
-//        GlmToolkit::inverse_transform(transform, tra, rot, sca);
-//        (*sit)->group(mode_)->translation_ = tra;
-//        (*sit)->group(mode_)->scale_ = sca;
-//        (*sit)->group(mode_)->rotation_ = rot;
-//        // will have to be updated
-//        (*sit)->touch();
-//    }
+    glm::ivec4 rect;
+
+    rect.x = (output_->translation_.x - output_->scale_.x) / DISPLAYS_UNIT;
+    rect.y = (output_->translation_.y + output_->scale_.y) / - DISPLAYS_UNIT;
+    rect.p = 2.f * output_->scale_.x / DISPLAYS_UNIT;
+    rect.q = 2.f * output_->scale_.y / DISPLAYS_UNIT;
+
+    return rect;
 }
 
 View::Cursor DisplaysView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)
 {
+    std::ostringstream info;
     View::Cursor ret = Cursor();
 
     // grab coordinates in scene-View reference frame
@@ -501,167 +400,119 @@ View::Cursor DisplaysView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
     glm::vec3 scene_translation = scene_to - scene_from;
 
-    // No source is given
+    // No source should be given
     if (!s) {
+        // grab surface to move
+        if ( pick.first == output_surface_ ){
 
-//        // possibly grabing the selection overlay handles
-//        if (overlay_selection_ && overlay_selection_active_ ) {
+            // apply translation
+            output_->translation_ = output_status_->translation_ + scene_translation;
+            glm::ivec4 r = outputCoordinates();
 
-//            // rotation center to selection position
-//            glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), overlay_selection_stored_status_->translation_);
-//            glm::vec4 selection_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
-//            glm::vec4 selection_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+            // discretized translation with ALT
+            if (UserInterface::manager().altModifier()) {
+                r.x = ROUND(r.x, 0.01f);
+                r.y = ROUND(r.y, 0.01f);
+                output_->translation_.x = (r.x * DISPLAYS_UNIT) + output_->scale_.x;
+                output_->translation_.y = (r.y * - DISPLAYS_UNIT) - output_->scale_.y;
+            }
 
-//            // calculate scaling of selection
-//            float factor = glm::length( glm::vec2( selection_to ) ) / glm::length( glm::vec2( selection_from ) );
-//            glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+            // Show move cursor
+            output_handles_->overlayActiveCorner(glm::vec2(-1.f, 1.f));
+            ret.type = Cursor_ResizeAll;
+            info << "Position " << r.x << ", " << r.y << " px";
 
-//            // if interaction with selection SCALING handle
-//            if (pick.first == overlay_selection_scale_) {
+            // apply to settings
+            Settings::application.windows[2].x = r.x;
+            Settings::application.windows[2].y = r.y;
+        }
+        // grab handle to resize
+        else if ( pick.first == output_handles_ ){
 
-//                // show manipulation overlay
-//                overlay_scaling_cross_->visible_ = true;
-//                overlay_scaling_grid_->visible_ = false;
-//                overlay_scaling_->visible_ = true;
-//                overlay_scaling_->translation_.x = overlay_selection_stored_status_->translation_.x;
-//                overlay_scaling_->translation_.y = overlay_selection_stored_status_->translation_.y;
-//                overlay_scaling_->rotation_.z = overlay_selection_stored_status_->rotation_.z;
-//                overlay_scaling_->update(0);
-//                overlay_scaling_cross_->copyTransform(overlay_scaling_);
-//                overlay_scaling_->color = overlay_selection_icon_->color;
-//                overlay_scaling_cross_->color = overlay_selection_icon_->color;
+            // which corner was picked ?
+            glm::vec2 corner = glm::round(pick.second);
+            // inform on which corner should be overlayed (opposite)
+            output_handles_->overlayActiveCorner(-corner);
 
-//                // apply to selection overlay
-//                glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
-//                overlay_selection_->scale_ = glm::vec3(vec);
+            // transform from source center to corner
+            glm::mat4 T = GlmToolkit::transform(glm::vec3(corner.x, corner.y, 0.f), glm::vec3(0.f, 0.f, 0.f),
+                                                glm::vec3(1.f, 1.f, 1.f));
 
-//                // apply to selection sources
-//                // NB: complete transform matrix (right to left) : move to center, scale and move back
-//                glm::mat4 M = T * S * glm::inverse(T);
-//                applySelectionTransform(M);
+            // transformation from scene to corner:
+            glm::mat4 scene_to_corner_transform = T * glm::inverse(output_status_->transform_);
+            glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
 
-//                // store action in history
-//                current_action_ = "Scale selection";
-//                ret.type = Cursor_ResizeNWSE;
-//            }
-//            // if interaction with selection ROTATION handle
-//            else if (pick.first == overlay_selection_rotate_) {
+            // compute cursor movement in corner reference frame
+            glm::vec4 corner_from = scene_to_corner_transform * glm::vec4( scene_from,  1.f );
+            glm::vec4 corner_to   = scene_to_corner_transform * glm::vec4( scene_to,  1.f );
 
-//                // show manipulation overlay
-//                overlay_rotation_->visible_ = true;
-//                overlay_rotation_->translation_.x = overlay_selection_stored_status_->translation_.x;
-//                overlay_rotation_->translation_.y = overlay_selection_stored_status_->translation_.y;
-//                overlay_rotation_->update(0);
-//                overlay_rotation_->color = overlay_selection_icon_->color;
-//                overlay_rotation_fix_->visible_ = false;
-//                overlay_rotation_fix_->copyTransform(overlay_rotation_);
-//                overlay_rotation_fix_->color = overlay_selection_icon_->color;
+            // operation of scaling in corner reference frame
+            glm::vec3 corner_scaling = glm::vec3(corner_to) / glm::vec3(corner_from);
+            glm::ivec4 rect;
 
-//                // cancel out scaling with SHIFT modifier key
-//                if (UserInterface::manager().shiftModifier()) {
-//                    overlay_rotation_fix_->visible_ = true;
-//                    float scale_factor = glm::length( glm::vec2( overlay_selection_->scale_ ) ) / glm::length( glm::vec2( overlay_selection_stored_status_->scale_ ) );
-//                    S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale_factor, scale_factor, 1.f));
-//                }
+            // RESIZE CORNER
+            // proportional SCALING with SHIFT
+            if (UserInterface::manager().shiftModifier()) {
+                // calculate proportional scaling factor
+                float factor = glm::length( glm::vec2( corner_to ) ) / glm::length( glm::vec2( corner_from ) );
+                // scale node
+                output_->scale_ = output_status_->scale_ * glm::vec3(factor, factor, 1.f);
+            }
+            // non-proportional CORNER RESIZE  (normal case)
+            else {
+                // scale node
+                output_->scale_ = output_status_->scale_ * corner_scaling;
+            }
 
-//                // compute rotation angle
-//                float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
+            // discretized scaling with ALT
+            if (UserInterface::manager().altModifier()) {
+                // calculate ratio of scaling modulo the output resolution
+                glm::vec3 outputsize = output_->scale_ / DISPLAYS_UNIT;
+                glm::vec3 framesize = Mixer::manager().session()->frame()->resolution();
+                glm::vec3 ra = outputsize / framesize;
+                ra.x = ROUND(ra.x, 20.f);
+                ra.y = ROUND(ra.y, 20.f);
+                outputsize = ra * framesize;
+                output_->scale_.x = outputsize.x * DISPLAYS_UNIT;
+                output_->scale_.y = outputsize.y * DISPLAYS_UNIT;
+            }
+            // update corner scaling to apply to center coordinates
+            corner_scaling = output_->scale_ / output_status_->scale_;
 
-//                // apply to selection overlay
-//                glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
-//                overlay_selection_->scale_ = glm::vec3(vec);
-//                overlay_selection_->rotation_.z = overlay_selection_stored_status_->rotation_.z + angle;
+            // TRANSLATION CORNER
+            // convert source position in corner reference frame
+            glm::vec4 center = scene_to_corner_transform * glm::vec4( output_status_->translation_, 1.f);
+            // transform source center (in corner reference frame)
+            center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
+            // convert center back into scene reference frame
+            center = corner_to_scene_transform * center;
+            // apply to node
+            output_->translation_ = glm::vec3(center);
 
-//                // POST-CORRECTION ; discretized rotation with ALT
-//                if (UserInterface::manager().altModifier()) {
-//                    int degrees = int(  glm::degrees(overlay_selection_->rotation_.z) );
-//                    degrees = (degrees / 10) * 10;
-//                    overlay_selection_->rotation_.z = glm::radians( float(degrees) );
-//                    angle = overlay_selection_->rotation_.z - overlay_selection_stored_status_->rotation_.z;
-//                    overlay_rotation_clock_->visible_ = true;
-//                    overlay_rotation_clock_->copyTransform(overlay_rotation_);
-//                    overlay_rotation_clock_tic_->color = overlay_selection_icon_->color;
-//                }
+            // show cursor depending on diagonal (corner picked)
+            T = glm::rotate(glm::identity<glm::mat4>(), output_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
+            T = glm::scale(T, output_status_->scale_);
+            corner = T * glm::vec4( corner, 0.f, 0.f );
+            ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
 
-//                // apply to selection sources
-//                // NB: complete transform matrix (right to left) : move to center, rotate, scale and move back
-//                glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
-//                glm::mat4 M = T * S * R * glm::inverse(T);
-//                applySelectionTransform(M);
+            rect = outputCoordinates();
+            info << "Dimensions " << rect.p << " x "  << rect.q << " px";
 
-//                // store action in history
-//                current_action_ = "Scale and rotate selection";
-//                ret.type = Cursor_Hand;
-//            }
+            // apply to settings
+            Settings::application.windows[2].x = rect.x;
+            Settings::application.windows[2].y = rect.y;
+            Settings::application.windows[2].w = rect.p;
+            Settings::application.windows[2].h = rect.q;
+        }
 
-//        }
-
-        // update cursor
-        return ret;
     }
-
-//    Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
-
-//    // make sure matrix transform of stored status is updated
-//    s->stored_status_->update(0);
-//    // grab coordinates in source-root reference frame
-//    glm::vec4 source_from = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_from,  1.f );
-//    glm::vec4 source_to   = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_to,  1.f );
-//    glm::vec3 source_scaling     = glm::vec3(source_to) / glm::vec3(source_from);
-
-    // which manipulation to perform?
-    std::ostringstream info;
-
-    // store action in history
-    current_action_ = s->name() + ": " + info.str();
 
     // update cursor
     ret.info = info.str();
+
     return ret;
 }
 
-void DisplaysView::terminate(bool force)
-{
-    View::terminate(force);
-
-//    // hide all view overlays
-//    overlay_position_->visible_       = false;
-//    overlay_position_cross_->visible_ = false;
-//    overlay_rotation_clock_->visible_ = false;
-//    overlay_rotation_clock_hand_->visible_ = false;
-//    overlay_rotation_fix_->visible_   = false;
-//    overlay_rotation_->visible_       = false;
-//    overlay_scaling_grid_->visible_   = false;
-//    overlay_scaling_cross_->visible_  = false;
-//    overlay_scaling_->visible_        = false;
-//    overlay_crop_->visible_           = false;
-
-//    // restore possible color change after selection operation
-//    overlay_rotation_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
-//    overlay_rotation_fix_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
-//    overlay_rotation_clock_tic_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
-//    overlay_scaling_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
-//    overlay_scaling_cross_->color =  glm::vec4(1.f, 1.f, 1.f, 0.8f);
-
-    // restore of all handles overlays
-//    glm::vec2 c(0.f, 0.f);
-//    for (auto sit = Mixer::manager().session()->begin();
-//         sit != Mixer::manager().session()->end(); ++sit){
-
-//        (*sit)->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(c);
-//        (*sit)->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(c);
-//        (*sit)->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(c);
-//        (*sit)->handles_[mode_][Handles::RESIZE]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::RESIZE_H]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::RESIZE_V]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::SCALE]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::ROTATE]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::CROP]->visible_ = true;
-//        (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
-//    }
-
-    overlay_selection_active_ = false;
-}
 
 void DisplaysView::arrow (glm::vec2 movement)
 {
@@ -672,92 +523,5 @@ void DisplaysView::arrow (glm::vec2 movement)
     glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
     glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-//    bool first = true;
-//    glm::vec3 delta_translation(0.f);
-//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-
-//        // individual move with SHIFT
-//        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-//            continue;
-
-//        Group *sourceNode = (*it)->group(mode_);
-//        glm::vec3 dest_translation(0.f);
-
-//        if (first) {
-//            // dest starts at current
-//            dest_translation = sourceNode->translation_;
-
-//            // + ALT : discrete displacement
-//            if (UserInterface::manager().altModifier()) {
-//                if (accumulator > 100.f) {
-//                    dest_translation += glm::sign(gl_delta) * 0.11f;
-//                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-//                    dest_translation.y = ROUND(dest_translation.y, 10.f);
-//                    accumulator = 0.f;
-//                }
-//                else
-//                    break;
-//            }
-//            else {
-//                // normal case: dest += delta
-//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-//                accumulator = 0.f;
-//            }
-
-//            // store action in history
-//            std::ostringstream info;
-//            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-//            info << ", "  << sourceNode->translation_.y ;
-//            current_action_ = (*it)->name() + ": " + info.str();
-
-//            // delta for others to follow
-//            delta_translation = dest_translation - sourceNode->translation_;
-//        }
-//        else {
-//            // dest = current + delta from first
-//            dest_translation = sourceNode->translation_ + delta_translation;
-//        }
-
-//        // apply & request update
-//        sourceNode->translation_ = dest_translation;
-//        (*it)->touch();
-
-//        first = false;
-//    }
-}
-
-void DisplaysView::updateSelectionOverlay()
-{
-    View::updateSelectionOverlay();
-
-//    // create first
-//    if (overlay_selection_scale_ == nullptr) {
-
-//        overlay_selection_stored_status_ = new Group;
-//        overlay_selection_scale_ = new Handles(Handles::SCALE);
-//        overlay_selection_->attach(overlay_selection_scale_);
-//        overlay_selection_rotate_ = new Handles(Handles::ROTATE);
-//        overlay_selection_->attach(overlay_selection_rotate_);
-//    }
-
-//    if (overlay_selection_->visible_) {
-
-//        if ( !overlay_selection_active_) {
-
-//            // calculate ORIENTED bbox on selection
-//            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), this);
-
-//            // apply transform
-//            overlay_selection_->rotation_ = selection_box.orientation;
-//            overlay_selection_->scale_ = selection_box.aabb.scale();
-//            glm::mat4 rot = glm::rotate(glm::identity<glm::mat4>(), selection_box.orientation.z, glm::vec3(0.f, 0.f, 1.f) );
-//            glm::vec4 vec = rot * glm::vec4(selection_box.aabb.center(), 1.f);
-//            overlay_selection_->translation_ = glm::vec3(vec);
-//        }
-
-//        // cosmetics
-//        overlay_selection_scale_->color = overlay_selection_icon_->color;
-//        overlay_selection_rotate_->color = overlay_selection_icon_->color;
-//    }
 }
 

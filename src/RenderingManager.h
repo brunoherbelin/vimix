@@ -38,8 +38,8 @@ class RenderingWindow
     uint fbo_;
     class WindowSurface *surface_;
 
-    bool request_toggle_fullscreen_;
-    void toggleFullscreen_ ();
+    bool request_change_fullscreen_;
+    void changeFullscreen_ ();
     void setFullscreen_(GLFWmonitor *mo);
 
 public:
@@ -65,8 +65,12 @@ public:
 
     // fullscreen
     bool isFullscreen ();
-    void exitFullscreen();
+    void exitFullscreen ();
+    void setFullscreen (std::string monitorname);
     void toggleFullscreen ();
+
+    // set geometry
+    void setCoordinates(glm::ivec4 rect);
 
     // get width of rendering area
     int width();
@@ -143,8 +147,7 @@ public:
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
     // get hold on the monitors
-    void monitorsUpdate();
-    inline std::map<std::string, glm::ivec4> monitors() { return monitors_; }
+    inline std::map<std::string, glm::ivec4> monitors() { return monitors_geometry_; }
     // get which monitor contains this point
     GLFWmonitor *monitorAt(int x, int y);
     // get which monitor has this name
@@ -174,7 +177,7 @@ private:
     RenderingWindow output_;
 
     // monitors
-    std::map<std::string, glm::ivec4> monitors_;
+    std::map<std::string, glm::ivec4> monitors_geometry_;
     static void MonitorConnect(GLFWmonitor* monitor, int event);
 
     // file drop callback

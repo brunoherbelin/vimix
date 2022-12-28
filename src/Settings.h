@@ -60,9 +60,10 @@ struct WindowConfig
     std::string name;
     int x,y,w,h;
     bool fullscreen;
+    bool scaled;
     std::string monitor;
 
-    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), fullscreen(false), monitor("") { }
+    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), fullscreen(false), scaled(false), monitor("") { }
 
 };
 
@@ -336,6 +337,7 @@ struct Application
         windows[0].w = 1600;
         windows[0].h = 900;
         windows[1].name = "Output " APP_TITLE;
+        windows[2].name = "Fullscreen " APP_TITLE;
     }
 
 };

@@ -169,7 +169,7 @@ void MixingView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
 
         // special action of Mixing view: link or unlink
         SourceList selected = Mixer::selection().getCopy();

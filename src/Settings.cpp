@@ -105,8 +105,9 @@ void Settings::Save(uint64_t runtime)
 			window->SetAttribute("x", w.x);
 			window->SetAttribute("y", w.y);
 			window->SetAttribute("w", w.w);
-			window->SetAttribute("h", w.h);
+            window->SetAttribute("h", w.h);
             window->SetAttribute("f", w.fullscreen);
+            window->SetAttribute("s", w.scaled);
             window->SetAttribute("m", w.monitor.c_str());
             windowsNode->InsertEndChild(window);
 		}
@@ -502,6 +503,7 @@ void Settings::Load()
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
+                windowNode->QueryBoolAttribute("s", &w.scaled);
                 const char *text = windowNode->Attribute("m");
                 if (text)
                     w.monitor = std::string(text);

@@ -563,7 +563,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_crop.ply
     ./rsc/mesh/icon_eye.ply
     ./rsc/mesh/icon_eye_slash.ply
-    ./rsc/mesh/icon_vector_square_slash.ply
+    ./rsc/mesh/icon_tv.ply
     ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/icon_receive.ply
