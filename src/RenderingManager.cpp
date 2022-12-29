@@ -859,6 +859,14 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
+    if (master_ != nullptr) {
+        // special window type for output
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+//        glfwSetWindowAttrib( window_, GLFW_DECORATED, GLFW_FALSE);
+//        glfwSetWindowAttrib( window_, GLFW_RESIZABLE, GLFW_FALSE);
+    }
+
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
@@ -914,11 +922,6 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     // if not main window
     if ( master_ != NULL ) {
-
-        // special window type
-        glfwSetWindowAttrib( window_, GLFW_DECORATED, GLFW_FALSE);
-        glfwSetWindowAttrib( window_, GLFW_RESIZABLE, GLFW_FALSE);
-
         // Enable vsync on output window
         glfwSwapInterval(Settings::application.render.vsync);
         // no need for multisampling

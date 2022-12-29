@@ -26,6 +26,7 @@ public:
     void arrow (glm::vec2) override;
 
     glm::ivec4 outputCoordinates() const;
+    std::string outputFullscreenMonitor() const;
 
 private:
 
@@ -33,27 +34,19 @@ private:
     Group *output_status_;
     Surface *output_surface_;
     Surface *output_render_;
-    Switch *output_overlays_;
-    Switch *output_mode_;
+    Switch  *output_overlays_;
+    Switch  *output_mode_;
     Handles *output_handles_;
     Handles *output_menu_;
     Handles *output_visible_;
-    Symbol *output_fullscreen_;
+    Symbol  *output_fullscreen_;
 
     bool output_selected_;
     bool show_output_menu_;
+    int  display_action_;
+    bool update_pending_;
 
-//    Node *overlay_position_;
-//    Node *overlay_position_cross_;
-//    Symbol *overlay_rotation_;
-//    Symbol *overlay_rotation_fix_;
-//    Group *overlay_rotation_clock_;
-//    Symbol *overlay_rotation_clock_tic_;
-//    Node *overlay_rotation_clock_hand_;
-//    Symbol *overlay_scaling_;
-//    Symbol *overlay_scaling_cross_;
-//    Node *overlay_scaling_grid_;
-//    Node *overlay_crop_;
+    std::string output_monitor_;
 };
 
 

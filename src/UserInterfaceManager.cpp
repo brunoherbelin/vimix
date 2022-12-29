@@ -359,10 +359,7 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().paste(clipboard);
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_F), false )) {
-            if (shift_modifier_active)
-                Rendering::manager().mainWindow().toggleFullscreen();
-            else
-                Rendering::manager().outputWindow().toggleFullscreen();
+            Rendering::manager().mainWindow().toggleFullscreen();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_M), false )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
@@ -1931,8 +1928,6 @@ void HelperToolbox::Render()
         ImGui::Text(MENU_RECORD " Output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORDCONT); ImGui::NextColumn();
         ImGui::Text(MENU_RECORDCONT " recording"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_OUTPUTFULLSCREEN); ImGui::NextColumn();
-        ImGui::Text(MENU_OUTPUTFULLSCREEN " output window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
         ImGui::Text(MENU_OUTPUTDISABLE " output window"); ImGui::NextColumn();
         ImGui::Separator();
@@ -4004,12 +3999,6 @@ void OutputPreview::Render()
                 if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show window") )
                     Rendering::manager().outputWindow().show();
 
-                bool isfullscreen = Rendering::manager().outputWindow().isFullscreen();
-                if ( ImGui::MenuItem( MENU_OUTPUTFULLSCREEN, SHORTCUT_OUTPUTFULLSCREEN, &isfullscreen) ) {
-                    Rendering::manager().outputWindow().show();
-                    Rendering::manager().outputWindow().toggleFullscreen();
-                }
-
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 
                 // output manager menu
@@ -4306,7 +4295,7 @@ void OutputPreview::Render()
         if (Settings::application.render.disabled)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
         }
@@ -7820,7 +7809,7 @@ void Navigator::RenderMainPannelVimix()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_CROW ) )
+    if ( ImGuiToolkit::IconButton( ICON_FA_LAPTOP ) )
         UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
     if (ImGui::IsItemHovered())
         tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
@@ -8060,7 +8049,7 @@ void Navigator::RenderMainPannelSettings()
 
 void Navigator::RenderTransitionPannel()
 {
-    if (Settings::application.current_view < View::TRANSITION) {
+    if (Settings::application.current_view != View::TRANSITION) {
         hidePannel();
         return;
     }
