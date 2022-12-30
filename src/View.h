@@ -86,6 +86,11 @@ public:
         return Cursor ();
     }
 
+    // test mouse over provided a point in screen coordinates
+    virtual bool doubleclic (glm::vec2) {
+        return false;
+    }
+
     // left-right [-1 1] and up-down [1 -1] action from arrow keys
     virtual void arrow (glm::vec2) {}
 

@@ -810,8 +810,8 @@ void RenderingWindow::changeFullscreen_()
 
 void RenderingWindow::setCoordinates(glm::ivec4 rect)
 {
-    glfwSetWindowPos( window_, rect.x, rect.y);
     glfwSetWindowSize( window_, rect.p, rect.q);
+    glfwSetWindowPos( window_, rect.x, rect.y);
 }
 
 int RenderingWindow::width()
@@ -861,10 +861,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     if (master_ != nullptr) {
         // special window type for output
-        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-//        glfwSetWindowAttrib( window_, GLFW_DECORATED, GLFW_FALSE);
-//        glfwSetWindowAttrib( window_, GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     }
 
     // create the window

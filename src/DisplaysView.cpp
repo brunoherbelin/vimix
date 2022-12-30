@@ -34,7 +34,6 @@
 #include "Source.h"
 #include "Settings.h"
 #include "PickingVisitor.h"
-#include "DrawVisitor.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
@@ -113,7 +112,7 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     output_overlays_->setActive(1);
     output_mode_->setActive(0);
     output_monitor_ = "";
-    update_pending_ = false;
+    draw_pending_ = false;
 
     // display actions : 0 = move output, 1 paint, 2 erase
     display_action_ = 0;
@@ -130,7 +129,6 @@ void DisplaysView::update(float dt)
         FrameBuffer *render = Mixer::manager().session()->frame();
         if (render)
             output_render_->setTextureIndex( render->texture() );
-
 
 //        // prevent invalid scaling
 //        float s = CLAMP(scene.root()->scale_.x, DISPLAYS_MIN_SCALE, DISPLAYS_MAX_SCALE);
@@ -220,59 +218,108 @@ int  DisplaysView::size ()
 
 void DisplaysView::draw()
 {
-//    g_printerr("DisplaysView::draw()\n");
-
+    // update visible flag
     output_render_->visible_ = !Settings::application.render.disabled;
     output_visible_->visible_ = Settings::application.render.disabled;
 
+    if (output_render_->visible_) {
+        // rendering of framebuffer in window
+        if (Settings::application.windows[1].scaled)  {
+            output_render_->scale_ = glm::vec3(1.f, 1.f, 1.f);
+        }
+        else {
+            FrameBuffer *output = Mixer::manager().session()->frame();
+            if (output){
+                float out_ar = output_->scale_.x / output_->scale_.y;
+                if (output->aspectRatio() < out_ar)
+                    output_render_->scale_ = glm::vec3(output->aspectRatio() / out_ar, 1.f, 1.f);
+                else
+                    output_render_->scale_ = glm::vec3(1.f, out_ar / output->aspectRatio(), 1.f);
+            }
+        }
+    }
+
+    // Window overlay
+    if ( Settings::application.windows[1].fullscreen ) {
+        // output overlay for fullscreen
+        output_mode_->setActive( 1 );
+
+        glm::ivec4 rect = Rendering::manager().monitors()[Settings::application.windows[1].monitor];
+        glm::vec2 TopLeft = glm::vec2(rect.x * DISPLAYS_UNIT, -rect.y * DISPLAYS_UNIT);
+        TopLeft = Rendering::manager().project(glm::vec3(TopLeft, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowPos( ImVec2( TopLeft.x, TopLeft.y), ImGuiCond_Always);
+
+        glm::vec2 BottomRight = glm::vec2( (rect.x + rect.p) * DISPLAYS_UNIT, -(rect.y + rect.q) * DISPLAYS_UNIT);
+        BottomRight = Rendering::manager().project(glm::vec3(BottomRight, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowSize( ImVec2( BottomRight.x - TopLeft.x, BottomRight.y - TopLeft.y), ImGuiCond_Always);
+
+        ImGui::SetNextWindowBgAlpha(0.0f); // Transparent background
+        if (ImGui::Begin("InfoOutputFullscreen", NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(ImVec2(TopLeft.x, TopLeft.y + 4), ImVec2(BottomRight.x, TopLeft.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
+
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::TextColored(ImVec4(COLOR_FRAME_LIGHT, 1.0f), ICON_FA_TV " %s  %d x %d px", Settings::application.windows[1].monitor.c_str(), rect.p, rect.q);
+            ImGui::PopFont();
+
+            ImGui::End();
+        }
+
+    }
+    else {
+        // output overlay for window
+        output_mode_->setActive( 0 );
+
+        glm::vec2 TopLeft = glm::vec2(Settings::application.windows[1].x * DISPLAYS_UNIT, -Settings::application.windows[1].y * DISPLAYS_UNIT);
+        TopLeft = Rendering::manager().project(glm::vec3(TopLeft, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowPos( ImVec2( TopLeft.x, TopLeft.y), ImGuiCond_Always);
+
+        glm::vec2 BottomRight = glm::vec2( (Settings::application.windows[1].x + Settings::application.windows[1].w) * DISPLAYS_UNIT,
+                -(Settings::application.windows[1].y + Settings::application.windows[1].h) * DISPLAYS_UNIT);
+        BottomRight = Rendering::manager().project(glm::vec3(BottomRight, 0.f), scene.root()->transform_, false);
+        ImGui::SetNextWindowSize( ImVec2( BottomRight.x - TopLeft.x, BottomRight.y - TopLeft.y), ImGuiCond_Always);
+
+        ImGui::SetNextWindowBgAlpha(0.0f); // Transparent background
+        if (ImGui::Begin("InfoOutputWindow", NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(ImVec2(TopLeft.x, TopLeft.y + 4), ImVec2(BottomRight.x, TopLeft.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
+
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::TextColored(ImVec4(COLOR_FRAME_LIGHT, 1.0f), ICON_FA_WINDOW_RESTORE " (%d,%d)  %d x %d px", Settings::application.windows[1].x, Settings::application.windows[1].y,
+                        Settings::application.windows[1].w, Settings::application.windows[1].h);
+            ImGui::PopFont();
+
+            ImGui::End();
+        }
+    }
 
     // if user is not manipulating output frame
     // update the output frame to match the window dimensions
-    if (!current_action_ongoing_ && !update_pending_) {
+    if (!current_action_ongoing_ && !draw_pending_) {
         // TODO Mutex for multithread access with changed flag
-
         if ( Settings::application.windows[1].fullscreen ) {
-            // output overlay for fullscreen
-            output_mode_->setActive( 1 );
-
             glm::ivec4 rect = Rendering::manager().monitors()[Settings::application.windows[1].monitor];
             output_->scale_.x = rect.p * 0.5f * DISPLAYS_UNIT;
             output_->scale_.y = rect.q * 0.5f * DISPLAYS_UNIT;
             output_->translation_.x = rect.x * DISPLAYS_UNIT + output_->scale_.x;
             output_->translation_.y = -rect.y * DISPLAYS_UNIT - output_->scale_.y;
-
         }
         else {
-            // output overlay for window
-            output_mode_->setActive( 0 );
-
             output_->scale_.x = Settings::application.windows[1].w * 0.5f * DISPLAYS_UNIT;
             output_->scale_.y = Settings::application.windows[1].h * 0.5f * DISPLAYS_UNIT;
             output_->translation_.x = Settings::application.windows[1].x * DISPLAYS_UNIT + output_->scale_.x;
             output_->translation_.y = -Settings::application.windows[1].y * DISPLAYS_UNIT - output_->scale_.y;
         }
-
     }
 
-    // rendering of framebuffer in window
-    if (Settings::application.windows[1].scaled)  {
-        output_render_->scale_ = glm::vec3(1.f, 1.f, 1.f);
-    }
-    else {
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output){
-            float out_ar = output_->scale_.x / output_->scale_.y;
-            if (output->aspectRatio() < out_ar)
-                output_render_->scale_ = glm::vec3(output->aspectRatio() / out_ar, 1.f, 1.f);
-            else
-                output_render_->scale_ = glm::vec3(1.f, out_ar / output->aspectRatio(), 1.f);
-        }
-    }
 
     // main call to draw the view
     View::draw();
 
-    update_pending_ = false;
 //    // Render the UI
 //    if (output_render_ != nullptr){
 
@@ -287,31 +334,28 @@ void DisplaysView::draw()
 //                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
 //                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
 //        {
-
-//            // style grey
-//            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_MONITOR, 1.0f));  // 1
+//            // colors for UI
+//            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));  // 1
 //            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 //            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
 //            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
 //            ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
 //            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
 //            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-//            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+//            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
 //            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.36f, 0.36f, 0.36f, 0.9f));
 //            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.5f));
 //            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.88f, 0.88f, 0.88f, 0.73f));
 //            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.83f, 0.83f, 0.84f, 0.78f));
-//            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
+//            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.43f, 0.43f, 0.43f, 0.60f));
 //            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));   // 14 colors
-
-//            // GUI for drawing
 
 //            // select cursor
 //            static bool on = true;
-//            ImGui::SameLine(0, 60);
 //            on = display_action_ == 0;
 //            if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on)) {
 //                output_selected_=true;
+//                output_overlays_->setActive(1);
 //                display_action_ = 0;
 //            }
 
@@ -319,6 +363,7 @@ void DisplaysView::draw()
 //            on = display_action_ == 1;
 //            if (ImGuiToolkit::ButtonToggle(ICON_FA_PAINT_BRUSH, &on)) {
 //                output_selected_=false;
+//                output_overlays_->setActive(0);
 //                display_action_ = 1;
 //            }
 
@@ -326,6 +371,7 @@ void DisplaysView::draw()
 //            on = display_action_ == 2;
 //            if (ImGuiToolkit::ButtonToggle(ICON_FA_ERASER, &on)) {
 //                output_selected_=false;
+//                output_overlays_->setActive(0);
 //                display_action_ = 2;
 //            }
 
@@ -466,17 +512,6 @@ void DisplaysView::draw()
 
         ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT  "   Scaled", nullptr, &Settings::application.windows[1].scaled );
 
-        if (ImGui::MenuItem( ICON_FA_VECTOR_SQUARE "  Reset" )){
-            // reset resolution to 1:1
-            glm::ivec4 rect = outputCoordinates();
-            rect.p = Mixer::manager().session()->frame()->width();
-            rect.q = Mixer::manager().session()->frame()->height();
-            Rendering::manager().outputWindow().setCoordinates( rect );
-            // reset attributes
-            Settings::application.windows[1].scaled = false;
-            Rendering::manager().outputWindow().exitFullscreen();
-        }
-
         ImGui::Separator();
         bool _windowed = !Settings::application.windows[1].fullscreen;
         if (ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "   Window", nullptr, &_windowed)){
@@ -484,6 +519,30 @@ void DisplaysView::draw()
             // not fullscreen on a monitor
             output_monitor_ = "";
         }
+
+        if (ImGui::MenuItem( ICON_FA_LAPTOP "  Reset size", nullptr, false, _windowed )){
+            // reset resolution to 1:1
+            glm::ivec4 rect = outputCoordinates();
+            rect.p = Mixer::manager().session()->frame()->width();
+            rect.q = Mixer::manager().session()->frame()->height();
+            Rendering::manager().outputWindow().setCoordinates( rect );
+        }
+
+        if (ImGui::MenuItem( ICON_FA_EXPAND "   Fit all screens", nullptr, false, _windowed )){
+
+            glm::ivec4 rect (INT_MAX, INT_MAX, 0, 0);
+            std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
+            for (auto monitor_iter = _monitors.begin();
+                 monitor_iter != _monitors.end(); ++monitor_iter) {
+                rect.x = MIN(rect.x, monitor_iter->second.x);
+                rect.y = MIN(rect.y, monitor_iter->second.y);
+                rect.p = MAX(rect.p, monitor_iter->second.x+monitor_iter->second.p);
+                rect.q = MAX(rect.q, monitor_iter->second.y+monitor_iter->second.q);
+            }
+            Rendering::manager().outputWindow().setCoordinates( rect );
+        }
+
+        ImGui::Separator();
         int index = 1;
         std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
         for (auto monitor_iter = _monitors.begin();
@@ -501,6 +560,7 @@ void DisplaysView::draw()
         ImGui::EndPopup();
     }
 
+    draw_pending_ = false;
 }
 
 std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
@@ -583,7 +643,9 @@ void DisplaysView::terminate(bool force)
         // terminated
         current_action_ = "";
         current_action_ongoing_ = false;
-        update_pending_ = true;
+
+        // prevent next draw
+        draw_pending_ = true;
     }
 }
 
@@ -755,14 +817,54 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
 }
 
 
+bool DisplaysView::doubleclic (glm::vec2 P)
+{
+    if ( pick(P).first != nullptr) {
+        Rendering::manager().outputWindow().show();
+        return true;
+    }
+
+    return false;
+}
+
 void DisplaysView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_;
+    // grab only works on selected output if not fullscreen
+    if (output_selected_ && !Settings::application.windows[1].fullscreen) {
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+        // operate in pixel coordinates
+        static glm::vec2 p;
 
+        // initiate movement (only once)
+        if (!current_action_ongoing_) {
+
+            // initial position
+            p.x = (output_->translation_.x - output_->scale_.x) / DISPLAYS_UNIT;
+            p.y = (output_->translation_.y + output_->scale_.y) / - DISPLAYS_UNIT;
+
+            // initiate (terminated at key release)
+            current_action_ongoing_ = true;
+        }
+
+        // add movement vector to position (pixel precision)
+        p += movement ; //* (dt_ * 0.5f);
+
+        // discretized translation with ALT
+        if (UserInterface::manager().altModifier()) {
+            glm::vec2 q;
+            q.x = ROUND(p.x, 0.05f); // 20 pix precision
+            q.y = ROUND(p.y, 0.05f);
+            // convert back to output-frame coordinates
+            output_->translation_.x = (q.x * DISPLAYS_UNIT) + output_->scale_.x;
+            output_->translation_.y = (q.y * - DISPLAYS_UNIT) - output_->scale_.y;
+        }
+        else
+        {
+            // convert back to output-frame coordinates
+            output_->translation_.x = (p.x * DISPLAYS_UNIT) + output_->scale_.x;
+            output_->translation_.y = (p.y * - DISPLAYS_UNIT) - output_->scale_.y;
+        }
+
+    }
 }
 

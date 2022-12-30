@@ -571,7 +571,7 @@ void TextureView::draw()
         {
 
             // style grey
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_APPEARANCE_LIGHT, 1.0f));  // 1
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));  // 1
             ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));

@@ -437,6 +437,12 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     return Cursor(Cursor_ResizeEW, info.str() );
 }
 
+bool TransitionView::doubleclic (glm::vec2 )
+{
+    Mixer::manager().setView(View::MIXING);
+    return true;
+}
+
 void TransitionView::arrow (glm::vec2 movement)
 {
     Source *s = Mixer::manager().currentSource();
