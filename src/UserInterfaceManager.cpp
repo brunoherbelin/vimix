@@ -429,12 +429,14 @@ void UserInterface::handleKeyboard()
         // button tab to select next
         else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
             // cancel selection
-            if (!Mixer::selection().empty())
+            if (Mixer::selection().size() > 1)
                 Mixer::selection().clear();
             if (shift_modifier_active)
                 Mixer::manager().setCurrentPrevious();
             else
                 Mixer::manager().setCurrentNext();
+            if (navigator.pannelVisible())
+                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
         }
         // arrow keys to act on current view
         else if ( ImGui::IsKeyDown( GLFW_KEY_LEFT  ) ||
@@ -1129,7 +1131,7 @@ int UserInterface::RenderViewNavigator(int *shift)
         for (int v = View::MIXING; v < View::TRANSITION; ++v) {
             ImGui::NextColumn();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-            ImGuiToolkit::PushFont(Settings::application.current_view == 4 ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
+            ImGuiToolkit::PushFont(Settings::application.current_view == v ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
             ImGui::Text("%s", Settings::application.views[v].name.c_str());
             ImGui::PopFont();
         }
@@ -6430,7 +6432,7 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s)
 {
-    if (s == nullptr || Settings::application.current_view >= View::TRANSITION)
+    if (s == nullptr || Settings::application.current_view == View::TRANSITION)
         return;
 
     // Next window is a side pannel

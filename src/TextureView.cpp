@@ -206,8 +206,8 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     overlay_rotation_->visible_ = false;
 
     // Mask draw
-    mask_cursor_paint_ = 0;
-    mask_cursor_shape_ = 0;
+    mask_cursor_paint_ = 1;
+    mask_cursor_shape_ = 1;
     stored_mask_size_ = glm::vec3(0.f);
     mask_cursor_circle_ = new Mesh("mesh/icon_circle.ply");
     mask_cursor_circle_->scale_ = glm::vec3(0.2f, 0.2f, 1.f);
@@ -258,6 +258,12 @@ int TextureView::size ()
 {
     float z = (scene.root()->scale_.x - APPEARANCE_MIN_SCALE) / (APPEARANCE_MAX_SCALE - APPEARANCE_MIN_SCALE);
     return (int) ( sqrt(z) * 100.f);
+}
+
+void  TextureView::recenter ()
+{
+    // restore default view
+    restoreSettings();
 }
 
 void TextureView::select(glm::vec2 A, glm::vec2 B)
@@ -441,7 +447,7 @@ void TextureView::adjustBackground()
         mask_node_->visible_ = edit_source_->maskShader()->mode > MaskShader::PAINT && mask_cursor_shape_ > 0;
 
         int shape = edit_source_->maskShader()->shape;
-        mask_circle_->visible_ = shape == MaskShader::ELIPSE;
+        mask_circle_->visible_ = shape == MaskShader::ELLIPSE;
         mask_square_->visible_ = shape == MaskShader::OBLONG || shape == MaskShader::RECTANGLE;
         mask_horizontal_->visible_ = shape == MaskShader::HORIZONTAL;
         mask_vertical_->visible_ = shape == MaskShader::VERTICAL;

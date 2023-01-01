@@ -39,7 +39,6 @@
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
-#include "Log.h"
 
 #include "MixingView.h"
 
@@ -78,13 +77,13 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     limbo_slider_root_->attach(limbo_slider_);
     limbo_up_ = new Mesh("mesh/triangle_point.ply");
     limbo_up_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
-    limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     limbo_slider_root_->attach(limbo_up_);
     limbo_down_ = new Mesh("mesh/triangle_point.ply");
     limbo_down_->translation_ = glm::vec3(0.f, -0.02f, 0.f);
     limbo_down_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
     limbo_down_->rotation_ = glm::vec3(0.f, 0.f, M_PI);
-    limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     limbo_slider_root_->attach(limbo_down_);
 
     mixingCircle_ = new Mesh("mesh/disk.ply");
@@ -136,7 +135,22 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
     tmp->shader()->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
     slider_root_->attach(tmp);
-
+    // show arrows indicating movement of slider
+    slider_arrows_ = new Group;
+    slider_arrows_->visible_ = false;
+    slider_root_->attach(slider_arrows_);
+    tmp = new Mesh("mesh/triangle_point.ply");
+    tmp->translation_ = glm::vec3(-0.012f, 1.0f, 0.f);
+    tmp->scale_ = glm::vec3(0.7f, 0.7f, 1.f);
+    tmp->rotation_ = glm::vec3(0.f, 0.f, M_PI_2);
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.1f );
+    slider_arrows_->attach(tmp);
+    tmp = new Mesh("mesh/triangle_point.ply");
+    tmp->translation_ = glm::vec3(0.012f, 1.0f, 0.f);
+    tmp->scale_ = glm::vec3(0.7f, 0.7f, 1.f);
+    tmp->rotation_ = glm::vec3(0.f, 0.f, -M_PI_2);
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.1f );
+    slider_arrows_->attach(tmp);
 
 //    stashCircle_ = new Disk();
 //    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
@@ -305,7 +319,8 @@ void MixingView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec2 res = resolution();
+    const ImGuiIO& io = ImGui::GetIO();
+    glm::vec2 res = glm::vec2(io.DisplaySize.x, io.DisplaySize.y);
     glm::vec3 border(2.3f * res.x/res.y, 2.3f, 0.f);
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
@@ -379,7 +394,8 @@ void MixingView::update(float dt)
         mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
         // update the selection overlay
-        updateSelectionOverlay();
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
 }
@@ -498,6 +514,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 
             // cursor feedback
             slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
+            slider_arrows_->visible_ = true;
             std::ostringstream info;
             info << ICON_FA_ADJUST << " Output fading " << 100 - int(f * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
@@ -511,8 +528,8 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             Mixer::manager().session()->setActivationThreshold(p);
 
             // color change of arrow indicators
-            limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p < MIXING_MAX_THRESHOLD ? 0.15f : 0.01f );
-            limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p > MIXING_MIN_THRESHOLD ? 0.15f : 0.01f );
+            limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, p < MIXING_MAX_THRESHOLD ? 0.15f : 0.01f );
+            limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, p > MIXING_MIN_THRESHOLD ? 0.15f : 0.01f );
 
             std::ostringstream info;
             info << ICON_FA_SNOWFLAKE " Deactivation limit";
@@ -595,20 +612,23 @@ View::Cursor MixingView::over (glm::vec2 pos)
 
     // deal with internal interactive objects
     if ( pick.first == slider_ ) {
-        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
-        ret.type = Cursor_Hand;
-    }
-    else
-        slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
-
-    if ( pick.first == limbo_slider_ ) {
-        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
-        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
+        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );        
+        slider_arrows_->visible_ = true;
         ret.type = Cursor_Hand;
     }
     else {
-        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
-        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+        slider_arrows_->visible_ = false;
+        slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    }
+
+    if ( pick.first == limbo_slider_ ) {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
+        ret.type = Cursor_Hand;
+    }
+    else {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     }
 
 
@@ -707,9 +727,9 @@ void MixingView::setAlpha(Source *s)
 }
 
 
-void MixingView::updateSelectionOverlay()
+void MixingView::updateSelectionOverlay(glm::vec4 color)
 {
-    View::updateSelectionOverlay();
+    View::updateSelectionOverlay(color);
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection

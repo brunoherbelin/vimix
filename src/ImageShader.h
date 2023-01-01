@@ -52,7 +52,7 @@ public:
     uint mode;
 
     enum Shapes {
-        ELIPSE = 0,
+        ELLIPSE = 0,
         OBLONG = 1,
         RECTANGLE = 2,
         HORIZONTAL = 3,

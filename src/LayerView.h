@@ -24,7 +24,7 @@ public:
     float setDepth (Source *, float d = -1.f);
 
 private:
-    void updateSelectionOverlay() override;
+    void updateSelectionOverlay(glm::vec4 color) override;
 
     float aspect_ratio;
     Mesh *persp_left_, *persp_right_;

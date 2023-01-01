@@ -7,6 +7,7 @@
 #include <mutex>
 #include <list>
 
+#include "SourceList.h"
 #include "View.h"
 
 #define DEFAULT_MIXING_TRANSLATION -1.f, 1.f

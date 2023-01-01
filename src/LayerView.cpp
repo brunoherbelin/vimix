@@ -38,7 +38,6 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
-#include "Log.h"
 
 #include "LayerView.h"
 
@@ -193,7 +192,8 @@ void LayerView::update(float dt)
     if (Mixer::manager().view() == this )
     {
         // update the selection overlay
-        updateSelectionOverlay();
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
 }
@@ -328,6 +328,11 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     info << "Depth " << std::fixed << std::setprecision(2) << d << "  ";
     current_action_ = s->name() + ": " + info.str();
 
+    if ( d > LAYER_FOREGROUND )
+        info << "\n   (Foreground)";
+    else if ( d < LAYER_BACKGROUND )
+        info << "\n   (Background)";
+
     return Cursor(Cursor_ResizeNESW, info.str() );
 }
 
@@ -393,9 +398,9 @@ void LayerView::arrow (glm::vec2 movement)
 
 
 
-void LayerView::updateSelectionOverlay()
+void LayerView::updateSelectionOverlay(glm::vec4 color)
 {
-    View::updateSelectionOverlay();
+    View::updateSelectionOverlay(color);
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection

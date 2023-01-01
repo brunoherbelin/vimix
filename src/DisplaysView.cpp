@@ -129,11 +129,6 @@ void DisplaysView::update(float dt)
         FrameBuffer *render = Mixer::manager().session()->frame();
         if (render)
             output_render_->setTextureIndex( render->texture() );
-
-//        // prevent invalid scaling
-//        float s = CLAMP(scene.root()->scale_.x, DISPLAYS_MIN_SCALE, DISPLAYS_MAX_SCALE);
-//        scene.root()->scale_.x = s;
-//        scene.root()->scale_.y = s;
     }
 
 }
@@ -164,7 +159,7 @@ void  DisplaysView::recenter ()
 
         m->attach(surf);
         Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::GLOW);
-        frame->color = glm::vec4(COLOR_MONITOR, 1.f);
+        frame->color = glm::vec4( COLOR_MONITOR, 1.f);
         m->attach(frame);
         Glyph  *label = new Glyph(4);
         label->setChar( std::to_string(index).back() );
@@ -202,12 +197,33 @@ void  DisplaysView::recenter ()
 
 void DisplaysView::resize ( int scale )
 {
+//    glm::vec3 scene_center = Rendering::manager().unProject(resolution() * 0.5f, scene.root()->transform_);
+//    scene_center.z = 0.f;
+
+
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
     z *= z;
     z *= DISPLAYS_MAX_SCALE - DISPLAYS_MIN_SCALE;
     z += DISPLAYS_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+//    scene.root()->update(0.f);
+//    glm::vec3 scene_center2 = Rendering::manager().unProject(resolution() * 0.5f, scene.root()->transform_);
+//    scene_center2.z = 0.f;
+
+//    g_printerr(" resol %f %f   -  center %f %f %f\n",resolution().x, resolution().y,
+//               scene_center.x, scene_center.y, scene_center.z);
+
+//    g_printerr(" scene.root()->translation_ %f %f \n",scene.root()->translation_.x,
+//               scene.root()->translation_.y);
+
+//    scene.root()->translation_ += scene_center2 -scene_center;
+
+//    // Clamp translation to acceptable area
+//    glm::vec3 left(-10.f, -5.f, 0.f);
+//    glm::vec3 right(5.f, 5.f, 0.f);
+//    scene.root()->translation_ = glm::clamp(scene.root()->translation_, left, right);
 }
 
 int  DisplaysView::size ()
@@ -605,7 +621,7 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     scene.accept(pv);
 
     output_selected_ = !pv.empty();
-    output_overlays_->setActive(output_selected_ ? 0 : 1);
+    output_overlays_->setActive(output_selected_ ? 1 : 0);
 }
 
 void DisplaysView::initiate()

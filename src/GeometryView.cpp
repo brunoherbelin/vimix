@@ -169,7 +169,8 @@ void GeometryView::update(float dt)
     // the current view is the geometry view
     if (Mixer::manager().view() == this )
     {
-        updateSelectionOverlay();
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
 //        overlay_selection_icon_->visible_ = false;
     }
 }
@@ -249,38 +250,64 @@ void GeometryView::draw()
     scene.accept(draw_foreground);
 
     // display interface
-    // Locate window at upper left corner
-    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01 );
+    // Locate window at upper right corner
+    glm::vec2 P = glm::vec2(output_surface_->scale_.x + 0.02f, output_surface_->scale_.y );
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
     if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
     {
-        // style grey
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));  // 1
+        // style
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.36f, 0.36f, 0.36f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.1f, 0.1, 0.1, 0.8f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f)); // 8
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.914f, 0.14f, 0.14f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.914f, 0.14f, 0.14f, 0.46f)); // 8
 
-        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
-        static std::vector< std::string > labels_ws = { "Background", "Workspace", "Foreground" };
-        if ( ImGuiToolkit::ComboIcon (icons_ws, labels_ws, &Settings::application.current_workspace) ){
-             ++View::need_deep_update_;
+        // draw vertical slider
+        ImVec2 _pos = ImGui::GetCursorPos();
+        int selected_ws = Source::FOREGROUND - Settings::application.current_workspace;
+        const ImVec2 slider_size(40, 132);
+        if (ImGui::VSliderInt("##sliderworkspace", slider_size, &selected_ws, 0, 2, "") ) {
+            Settings::application.current_workspace = Source::FOREGROUND - selected_ws;
+            ++View::need_deep_update_;
+        }
+        if (ImGui::IsItemActive()) {
+            if ( Settings::application.current_workspace == Source::BACKGROUND )
+                ImGuiToolkit::ToolTip("Background");
+            else if ( Settings::application.current_workspace == Source::FOREGROUND )
+                ImGuiToolkit::ToolTip("Foreground");
+            else
+                ImGuiToolkit::ToolTip("Workspace");
         }
 
-        ImGui::PopStyleColor(8);  // 14 colors
+        // draw icons on top of slider
+        ImGui::SetCursorPos( _pos );
+        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
+        std::vector<std::pair<int, int> >::iterator it_icon = icons_ws.begin();
+        for(int i = 0 ; it_icon != icons_ws.end(); i++, ++it_icon) {
+            // current workspace icon is light color
+            if ( Settings::application.current_workspace != i) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
+                ImGuiToolkit::Icon( (*it_icon).first, (*it_icon).second );
+                ImGui::PopStyleColor();
+            }
+            else
+                ImGuiToolkit::Icon( (*it_icon).first, (*it_icon).second );
+        }
+
+        ImGui::PopStyleColor(8);
         ImGui::End();
     }
     ImGui::PopFont();
 
-    // display popup menu
+    // display popup menu source
     if (show_context_menu_ == MENU_SOURCE) {
         ImGui::OpenPopup( "GeometrySourceContextMenu" );
         show_context_menu_ = MENU_NONE;
@@ -321,7 +348,7 @@ void GeometryView::draw()
         }
         ImGui::EndPopup();
     }
-    // display popup menu
+    // display popup menu selection
     if (show_context_menu_ == MENU_SELECTION) {
         ImGui::OpenPopup( "GeometrySelectionContextMenu" );
         show_context_menu_ = MENU_NONE;
@@ -1110,9 +1137,9 @@ void GeometryView::arrow (glm::vec2 movement)
     }
 }
 
-void GeometryView::updateSelectionOverlay()
+void GeometryView::updateSelectionOverlay(glm::vec4 color)
 {
-    View::updateSelectionOverlay();
+    View::updateSelectionOverlay(color);
 
     // create first
     if (overlay_selection_scale_ == nullptr) {

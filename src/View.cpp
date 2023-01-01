@@ -26,7 +26,6 @@
 #include <sstream>
 #include <regex>
 
-#include "ImGuiToolkit.h"
 
 #include "defines.h"
 #include "Settings.h"
@@ -261,7 +260,7 @@ bool View::canSelect(Source *s) {
     return ( s!=nullptr && !s->locked() );
 }
 
-void View::updateSelectionOverlay()
+void View::updateSelectionOverlay(glm::vec4 color)
 {
     // create first
     if (overlay_selection_ == nullptr) {
@@ -280,9 +279,9 @@ void View::updateSelectionOverlay()
     if (Mixer::selection().size() > 1) {
         // show group overlay
         overlay_selection_->visible_ = true;
-        ImVec4 c = ImGuiToolkit::HighlightColor();
-        overlay_selection_frame_->color = glm::vec4(c.x, c.y, c.z, c.w * 0.8f);
-        overlay_selection_icon_->color = glm::vec4(c.x, c.y, c.z, c.w);
+        overlay_selection_frame_->color = color;
+        overlay_selection_frame_->color.a *= 0.8;
+        overlay_selection_icon_->color = color;
     }
     // no selection: reset drawing selection overlay
     else
@@ -299,9 +298,3 @@ void View::lock(Source *s, bool on)
         Action::manager().store(s->name() + std::string(": unlock."));
 }
 
-
-glm::vec2 View::resolution() const
-{
-    const ImGuiIO& io = ImGui::GetIO();
-    return glm::vec2(io.DisplaySize.x, io.DisplaySize.y);
-}
