@@ -127,11 +127,6 @@ static void glfw_error_callback(int error, const char* description)
     g_printerr("Glfw Error %d: %s\n",  error, description);
 }
 
-static void WindowRefreshCallback( GLFWwindow * )
-{
-    Rendering::manager().draw();
-}
-
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
     if (Rendering::manager().mainWindow().window() == w) {
@@ -140,7 +135,8 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         GLFW_window_[w]->previous_size = glm::vec2(width, height);
     }
 
-    int id = GLFW_window_[w]->index();
+    int id = GLFW_window_[w]->index();    
+    Settings::application.windows[id].fullscreen = glfwGetWindowMonitor(w) != nullptr;
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].w = width;
         Settings::application.windows[id].h = height;
@@ -207,6 +203,9 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
         std::string n = glfwGetMonitorName(monitors[i]);
         // add
         Rendering::manager().monitors_geometry_[n] = glm::ivec4(x, y, vm->width, vm->height);
+
+        g_printerr("Monitor %d : %s, %d Hz, %d x %d px\n", i, glfwGetMonitorName(monitors[i]),
+                   vm->refreshRate, vm->width, vm->height);
     }
 
     // inform Displays View that monitors changed
@@ -311,7 +310,6 @@ bool Rendering::init()
     main_.setIcon("images/vimix_256x256.png");
     // additional window callbacks for main window
     glfwSetWindowCloseCallback( main_.window(), WindowCloseCallback );
-    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
     glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
     //
@@ -753,7 +751,7 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 
     // Enable vsync on output window only (i.e. not 0 if has a master)
     // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
-    glfwSwapInterval( nullptr == master_ ? 0 : Settings::application.render.vsync);
+//    glfwSwapInterval( master_ != nullptr ? Settings::application.render.vsync : 0);
 
 }
 
@@ -873,7 +871,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     }
 
     // ensure minimal window size
-    glfwSetWindowSizeLimits(window_, 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    glfwSetWindowSizeLimits(window_, 500, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     previous_size = glm::vec2(winset.w, winset.h);
 
@@ -919,7 +917,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     // if not main window
-    if ( master_ != NULL ) {
+    if ( master_ != nullptr ) {
         // Enable vsync on output window
         glfwSwapInterval(Settings::application.render.vsync);
         // no need for multisampling
