@@ -3050,7 +3050,7 @@ bool SourceController::SourceButton(Source *s, ImVec2 framesize)
     return ret;
 }
 
-void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 origin)
+void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 origin)
 {
     if (Settings::application.source.inspector_zoom > 0 && ImGui::IsWindowFocused())
     {
@@ -3078,9 +3078,11 @@ void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 origin)
         ImGui::BeginTooltip();
 
         // compute UV and display image in tooltip
-        ImVec2 uv0 = ImVec2((region_x) / texturesize.x, (region_y) / texturesize.y);
-        ImVec2 uv1 = ImVec2((region_x + region_sz) / texturesize.x, (region_y + region_sz) / texturesize.y);
-        ImGui::Image((void*)(intptr_t)texture, ImVec2(texturesize.x / 3.f, texturesize.x / 3.f), uv0, uv1, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
+        ImVec2 uv0 = ImVec2((region_x) / cropsize.x, (region_y) / cropsize.y);
+        ImVec2 uv1 = ImVec2((region_x + region_sz) / cropsize.x, (region_y + region_sz) / cropsize.y);
+        ImVec2 uv2 = ImClamp( uv1, ImVec2(0.f, 0.f), ImVec2(1.f, 1.f));
+        uv0 += (uv2-uv1);
+        ImGui::Image((void*)(intptr_t)texture, ImVec2(texturesize.x / 3.f, texturesize.x / 3.f), uv0, uv2, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 0.5f));
 
         ImGui::EndTooltip();
         ImGui::PopStyleVar(3);
@@ -3122,7 +3124,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
         ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
         ImGui::Image((void*)(uintptr_t) s->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
         if ( with_inspector && ImGui::IsItemHovered() )
-            DrawInspector(s->texture(), framesize, top_image);
+            DrawInspector(s->texture(), framesize, framesize, top_image);
 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
@@ -3132,23 +3134,21 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
         // no overlap of slider with cropped area
         if (slider.x < croptop.x) {
             // draw cropped area
-            ImGui::SetCursorScreenPos(top_image + croptop );
+            ImGui::SetCursorScreenPos( top_image + croptop );
             ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
             if ( with_inspector && ImGui::IsItemHovered() )
-                DrawInspector(s->frame()->texture(), framesize, top_image);
+                DrawInspector(s->frame()->texture(), framesize, cropsize, top_image + croptop);
         }
         // overlap of slider with cropped area (horizontally)
         else if (slider.x < croptop.x + cropsize.x ) {
             // compute slider ratio of cropped area
             float cropped_slider = (slider.x - croptop.x) / cropsize.x;
             // top x moves with slider
-            croptop.x = slider.x;
-            ImGui::SetCursorScreenPos(top_image + croptop );
+            ImGui::SetCursorScreenPos( top_image + ImVec2(slider.x, croptop.y) );
             // size is reduced by slider
-            cropsize = cropsize * ImVec2(1.f -cropped_slider, 1.f);
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
+            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize * ImVec2(1.f -cropped_slider, 1.f), ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
             if ( with_inspector && ImGui::IsItemHovered() )
-                DrawInspector(s->frame()->texture(), framesize, top_image);
+                DrawInspector(s->frame()->texture(), framesize, cropsize, top_image + croptop);
         }
         // else : no render of cropped area
 
@@ -3169,7 +3169,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     else {
         ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
         if ( with_inspector && ImGui::IsItemHovered() )
-            DrawInspector(s->texture(), framesize, top_image);
+            DrawInspector(s->texture(), framesize, framesize, top_image);
     }
 
     return ImRect( top_image, top_image + framesize);
