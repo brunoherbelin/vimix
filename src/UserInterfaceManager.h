@@ -305,6 +305,9 @@ class SourceController : public WorkspaceWindow
     float mediaplayer_timeline_zoom_;
     void RenderMediaPlayer(MediaSource *ms);
 
+    // magnifying glass
+    bool magnifying_glass;
+
     // dialog to select frame capture location
     DialogToolkit::OpenFolderDialog *captureFolderDialog;
     Screenshot capture;
@@ -338,6 +341,9 @@ class OutputPreview : public WorkspaceWindow
 
     // dialog to select record location
     DialogToolkit::OpenFolderDialog *recordFolderDialog;
+
+    // magnifying glass
+    bool magnifying_glass;
 
 public:
     OutputPreview();

@@ -2169,7 +2169,8 @@ SourceController::SourceController() : WorkspaceWindow("SourceController"),
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f)
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
+    magnifying_glass(false)
 {
     info_.setExtendedStringMode();
 
@@ -2189,6 +2190,8 @@ void SourceController::resetActiveSelection()
 
 void SourceController::setVisible(bool on)
 {
+    magnifying_glass = false;
+
     // restore workspace to show the window
     if (WorkspaceWindow::clear_workspace_enabled) {
         WorkspaceWindow::restoreWorkspace(on);
@@ -2324,6 +2327,7 @@ void SourceController::Render()
         ImGui::End();
         return;
     }
+
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
@@ -2427,10 +2431,6 @@ void SourceController::Render()
         //
         if ( ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO "  Frame", selection_.size() == 1 ) )
         {
-            bool inspect = Settings::application.source.inspector_zoom > 0.f;
-            if (ImGui::MenuItem( ICON_FA_SEARCH "  Inspector", NULL, &inspect ))
-                Settings::application.source.inspector_zoom = inspect ? 8.f : 0.f;
-
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
             if (ImGui::MenuItem( MENU_CAPTUREFRAME, "F10" ))
                 capture_request_ = true;
@@ -2544,8 +2544,24 @@ void SourceController::Render()
             ImGui::EndMenu();
         }
 
+        // button to activate the magnifying glass at top right corner
+        ImVec2 p = g.CurrentWindow->Pos;
+        p.x += g.CurrentWindow->Size.x - 2.f * g.FontSize;
+        ImGui::SetCursorScreenPos(p);
+        if (selection_.size() == 1) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+            ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
+            ImGui::PopStyleColor();
+        }
+        else
+            ImGui::TextDisabled(" " ICON_FA_SEARCH);
+
         ImGui::EndMenuBar();
     }
+
+    // disable magnifying glass if window is deactivated
+    if ( g.NavWindow != g.CurrentWindow )
+        magnifying_glass = false;
 
     // reset mediaplayer ptr
     mediaplayer_active_ = nullptr;
@@ -3322,7 +3338,7 @@ void SourceController::RenderSingleSource(Source *s)
         ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
         ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize, !show_overlay_info);
+        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize, magnifying_glass & !show_overlay_info);
 
         ///
         /// Info overlays
@@ -3388,7 +3404,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
     const ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, mediaplayer_height_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize, !show_overlay_info);
+    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize, magnifying_glass & !show_overlay_info);
 
     ///
     /// Info overlays
@@ -3837,7 +3853,8 @@ void SourceController::DrawButtonBar(ImVec2 bottom, float width)
 ///
 
 OutputPreview::OutputPreview() : WorkspaceWindow("OutputPreview"),
-    video_recorder_(nullptr), video_broadcaster_(nullptr), loopback_broadcaster_(nullptr)
+    video_recorder_(nullptr), video_broadcaster_(nullptr), loopback_broadcaster_(nullptr),
+    magnifying_glass(false)
 {
 
     recordFolderDialog = new DialogToolkit::OpenFolderDialog("Recording Location");
@@ -3845,6 +3862,8 @@ OutputPreview::OutputPreview() : WorkspaceWindow("OutputPreview"),
 
 void OutputPreview::setVisible(bool on)
 {
+    magnifying_glass = false;
+
     // restore workspace to show the window
     if (WorkspaceWindow::clear_workspace_enabled) {
         WorkspaceWindow::restoreWorkspace(on);
@@ -3974,6 +3993,7 @@ bool OutputPreview::ToggleLoopbackCamera()
 
 void OutputPreview::Render()
 {
+    const ImGuiContext& g = *GImGui;
     bool openInitializeSystemLoopback = false;
 
     FrameBuffer *output = Mixer::manager().session()->frame();
@@ -4003,6 +4023,7 @@ void OutputPreview::Render()
         {
             if (ImGuiToolkit::IconButton(4,16))
                 Settings::application.widget.preview = false;
+
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 // Output window menu
@@ -4207,6 +4228,15 @@ void OutputPreview::Render()
 
                 ImGui::EndMenu();
             }
+
+            // button to activate the magnifying glass at top right corner
+            ImVec2 p = g.CurrentWindow->Pos;
+            p.x += g.CurrentWindow->Size.x - 2.f * g.FontSize;
+            ImGui::SetCursorScreenPos(p);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+            ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
+            ImGui::PopStyleColor();
+
             ImGui::EndMenuBar();
         }
 
@@ -4221,9 +4251,19 @@ void OutputPreview::Render()
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
         // preview image
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
-        // raise window on double clic
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
-            Rendering::manager().outputWindow().show();
+        // mouse over the image
+        if ( ImGui::IsItemHovered()  ) {
+            // raise window on double clic
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+                Rendering::manager().outputWindow().show();
+            // show magnifying glass if active
+            if (magnifying_glass)
+                DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
+        }
+
+        // disable magnifying glass if window is deactivated
+        if ( g.NavWindow != g.CurrentWindow )
+            magnifying_glass = false;
 
         ///
         /// Icons overlays
@@ -6413,7 +6453,7 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
     {
         ImGui::SetCursorPosX(10.f);
         ImGui::SetCursorPosY(10.f);
-        if (ImGuiToolkit::IconButton(5,7)) {
+        if (ImGuiToolkit::IconButton(8,7)) {
             // reset zoom
             Mixer::manager().view((View::Mode)Settings::application.current_view)->recenter();
         }
