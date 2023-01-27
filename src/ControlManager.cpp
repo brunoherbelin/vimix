@@ -540,11 +540,10 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
             need_feedback = true;
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'output'", attribute.c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target 'output'", attribute.c_str());
         }
-#endif
 
     }
     catch (osc::MissingArgumentException &e) {
@@ -813,11 +812,10 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // this will require to send feedback status about source
             send_feedback = true;
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
         }
-#endif
 
         // overwrite value if source locked
         if (target->locked())
@@ -892,11 +890,10 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
                 tv->play(true);
             }
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'session'", attribute.c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target 'session'", attribute.c_str());
         }
-#endif
 
     }
     catch (osc::MissingArgumentException &e) {
