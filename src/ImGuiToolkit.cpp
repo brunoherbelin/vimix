@@ -936,7 +936,7 @@ void ImGuiToolkit::RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double t
 
 
 bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first,
-                                   guint64 end, guint64 step, const float width, double tempo, double quantum)
+                                   guint64 end, guint64 step, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -1029,16 +1029,6 @@ bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 beg
     // draw the cursor
     pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
     ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
-
-//    // draw metronome synchronization cursor
-//    if (tempo > 0 && quantum > 0) {
-
-//        static ImU32 circle_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
-//        static float circle_radius = ImGui::GetFrameHeight();
-
-//        ImVec2 circle_center ;
-//        window->DrawList->AddCircleFilled(circle_center, circle_radius, circle_color, 32);
-//    }
 
     return left_mouse_press;
 }
@@ -1664,7 +1654,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.98f, 0.59f, 0.26f, 0.64f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.98f, 0.59f, 0.26f, 1.00f);
-        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.60f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
@@ -1715,7 +1705,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.64f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.60f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
@@ -1767,7 +1757,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.64f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.60f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.13f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];

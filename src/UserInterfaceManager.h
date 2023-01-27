@@ -280,8 +280,7 @@ class SourceController : public WorkspaceWindow
 
     // re-usable ui parts
     void DrawButtonBar(ImVec2 bottom, float width);
-    const char *SourcePlayIcon(Source *s);
-    bool SourceButton(Source *s, ImVec2 framesize);
+    int SourceButton(Source *s, ImVec2 framesize);
 
     // Render the sources dynamically selected
     void RenderSelectedSources();
