@@ -25,7 +25,7 @@
 #define OSC_OUTPUT_FADE_OUT    "/fade-out"
 
 #define OSC_ALL                "/all"
-#define OSC_SELECTED           "/selected"
+#define OSC_SELECTED           "/selection"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"

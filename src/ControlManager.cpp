@@ -22,6 +22,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iomanip>
+#include <regex>
 
 #include "osc/OscOutboundPacketStream.h"
 
@@ -83,6 +84,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // next part of the OSC message is the attribute
             address.pop_front();
             std::string attribute = address.front();
+
             // Log target: just print text in log window
             if ( target.compare(OSC_INFO) == 0 )
             {
@@ -127,15 +129,37 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                         Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
-            // Selected sources target: apply attribute to all sources of the selection
-            else if ( target.compare(OSC_SELECTED) == 0 )
+            // Selection sources target: apply attribute to all sources of the selection
+            else if ( target.compare(OSC_SELECTED) >= 0 )
             {
-                // Loop over selected sources
-                for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                    // apply attributes
-                    if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
-                        // and send back feedback if needed
-                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                std::smatch reg_match;
+                static std::regex reg_exp( "\\#[[:digit:]]+");
+
+                // is the target complemented with a '#' and a number ?
+                if ( std::regex_search(target, reg_match, reg_exp) ) {
+                    int i = 0;
+                    std::string num = reg_match.str().substr(1, reg_match.length()-1);
+                    if ( BaseToolkit::is_a_number(num, &i)){
+                        // confirmed : the target is a Player selection (e.g. 'selection#2')
+                        // loop over this selection of sources
+                        SourceList _selection = Mixer::manager().session()->playGroup(i);
+                        for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
+                            // apply attributes
+                            if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                                // and send back feedback if needed
+                                Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        }
+                    }
+                }
+                // not mathching regex; should be exactly OSC_SELECTED
+                else if (target.compare(OSC_SELECTED) == 0) {
+                    // Loop over dynamically selected sources
+                    for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                        // apply attributes
+                        if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                            // and send back feedback if needed
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                    }
                 }
             }
             // Current source target: apply attribute to the current sources
