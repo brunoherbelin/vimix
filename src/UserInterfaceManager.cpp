@@ -104,7 +104,7 @@ TextEditor _editor;
 #include "UserInterfaceManager.h"
 #define PLOT_CIRCLE_SEGMENTS 64
 #define PLOT_ARRAY_SIZE 180
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_CARET_SQUARE_RIGHT "  Dynamic selection"
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_STORE_SELECTION "  Store selection"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 #define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
@@ -2308,7 +2308,7 @@ void SourceController::Render()
     h_space_ = g.Style.ItemInnerSpacing.x;
     v_space_ = g.Style.FramePadding.y;
     buttons_height_  = g.FontSize + v_space_ * 4.0f ;
-    buttons_width_  = g.FontSize * 7.0f ;
+    buttons_width_  = g.FontSize * 8.0f ;
     min_width_ = 6.f * buttons_height_;
     timeline_height_ = (g.FontSize + v_space_) * 2.0f ; // double line for each timeline
     scrollbar_ = g.Style.ScrollbarSize;
@@ -2395,16 +2395,16 @@ void SourceController::Render()
         {
             // info on selection status
             size_t N = Mixer::manager().session()->numPlayGroups();
-            bool enabled = !selection_.empty() && active_selection_ < 0;
+            bool enabled = !playable_only(selection_).empty() && active_selection_ < 0;
 
             // Menu : Dynamic selection
             if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
                 resetActiveSelection();
             // Menu : store selection
-            if (ImGui::MenuItem(ICON_FA_PLUS_SQUARE LABEL_STORE_SELECTION, NULL, false, enabled))
+            if (ImGui::MenuItem(ICON_FA_PLUS_CIRCLE LABEL_STORE_SELECTION, NULL, false, enabled))
             {
                 active_selection_ = N;
-                active_label_ = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(active_selection_);
+                active_label_ = std::string(ICON_FA_CHECK_CIRCLE "  Selection #") + std::to_string(active_selection_);
                 Mixer::manager().session()->addPlayGroup( ids(playable_only(selection_)) );
                 info_.reset();
             }
@@ -2413,7 +2413,7 @@ void SourceController::Render()
                 ImGui::Separator();
                 for (size_t i = 0 ; i < N; ++i)
                 {
-                    std::string label = std::string(ICON_FA_CHECK_SQUARE "  Selection #") + std::to_string(i);
+                    std::string label = std::string(ICON_FA_CHECK_CIRCLE "  Selection #") + std::to_string(i);
                     if (ImGui::MenuItem( label.c_str() ))
                     {
                         active_selection_ = i;
@@ -2962,7 +2962,7 @@ void SourceController::RenderSelection(size_t i)
     {
         ImGui::SameLine(0, width_combo -buttons_width_ );
         ImGui::SetNextItemWidth(buttons_width_);
-        std::string label = std::string(ICON_FA_CHECK_SQUARE "  ") + std::to_string(numsources) + ( numsources > 1 ? " sources" : " source");
+        std::string label = std::string(ICON_FA_CHECK_CIRCLE "  ") + std::to_string(numsources) + ( numsources > 1 ? " sources" : " source");
         if (ImGui::BeginCombo("##SelectionImport", label.c_str()))
         {
             // select all playable sources
@@ -2985,7 +2985,7 @@ void SourceController::RenderSelection(size_t i)
 
     ImGui::SameLine();
     ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.3f);
-    if (ImGui::Button(ICON_FA_MINUS_SQUARE)) {
+    if (ImGui::Button(ICON_FA_MINUS_CIRCLE)) {
         resetActiveSelection();
         Mixer::manager().session()->deletePlayGroup(i);
     }
@@ -3249,8 +3249,7 @@ void SourceController::RenderSelectedSources()
     if (Mixer::selection().empty())
         selection_ = Mixer::manager().validate(selection_);
     else
-        selection_ = Mixer::selection().getCopy();
-//    selection_ = playable_only(Mixer::selection().getCopy());
+        selection_ = valid_only(Mixer::selection().getCopy());
     int numsources = selection_.size();
 
     // no source selected
@@ -3310,16 +3309,16 @@ void SourceController::RenderSelectedSources()
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
+                // source icon lower left corner
+                ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
+                float h = ImGui::GetTextLineHeightWithSpacing();
+                ImGui::SetCursorPos(image_top + ImVec2( h_space_, framesize.y -v_space_ - h ));
+                ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                 if ((*source)->playable()) {
-                    // source icon lower left corner
-                    ImGuiToolkit::PushFont(framesize.x > 350.f ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO);
-                    float h = ImGui::GetTextLineHeightWithSpacing();
-                    ImGui::SetCursorPos(image_top + ImVec2( h_space_, framesize.y -v_space_ - h ));
-                    ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                     ImGui::SameLine();
                     ImGui::Text(" %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
-                    ImGui::PopFont();
                 }
+                ImGui::PopFont();
 
                 ImGui::Spacing();
                 ImGui::NextColumn();
@@ -3343,7 +3342,7 @@ void SourceController::RenderSelectedSources()
 
         float space = ImGui::GetContentRegionAvail().x;
         float width = buttons_height_;
-        std::string label(ICON_FA_PLUS_SQUARE);
+        std::string label(ICON_FA_PLUS_CIRCLE);
         if (space > buttons_width_) { // enough space to show full button with label text
             label += LABEL_STORE_SELECTION;
             width = buttons_width_;
