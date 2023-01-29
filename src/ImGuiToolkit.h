@@ -35,6 +35,7 @@ namespace ImGuiToolkit
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
     bool ButtonSwitch  (const char* label, bool* toggle, const char *shortcut = nullptr);
     void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
+    void ButtonDisabled(const char* label, const ImVec2& size_arg = ImVec2(0,0));
 
     // tooltip and mouse over help
     void setToolTipsEnabled (bool on);
