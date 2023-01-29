@@ -2,6 +2,7 @@
 #define SOURCELIST_H
 
 #include <list>
+#include <set>
 #include <glm/glm.hpp>
 
 class Source;
@@ -10,6 +11,7 @@ class Session;
 
 typedef std::list<Source *> SourceList;
 typedef std::list<SourceCore *> SourceCoreList;
+typedef std::set<Source *> SourceListUnique;
 
 SourceList playable_only (const SourceList &list);
 SourceList valid_only    (const SourceList &list);

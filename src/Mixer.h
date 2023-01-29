@@ -62,6 +62,7 @@ public:
     // operations on sources
     void addSource    (Source *s);
     void deleteSource (Source *s);
+    void replaceSource(Source *previous, Source *s);
     void renameSource (Source *s, const std::string &newname = "");
     int  numSource    () const;
 
@@ -139,10 +140,10 @@ protected:
     SourceList candidate_sources_;
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
-    bool replaceSource (Source *from, Source *to);
     bool recreateSource(Source *s);
     void attach        (Source *s);
     void detach        (Source *s);
+    bool attached      (Source *s) const;
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

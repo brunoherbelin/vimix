@@ -94,8 +94,8 @@ public:
     void setActive (bool on);
     inline bool active () { return active_; }
 
-    // return the last source which failed
-    Source *failedSource () { return failedSource_; }
+    // return the list of sources which failed
+    SourceListUnique failedSources () const { return failed_; }
 
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
@@ -183,7 +183,7 @@ protected:
     float activation_threshold_;
     RenderView render_;
     std::string filename_;
-    Source *failedSource_;
+    SourceListUnique failed_;
     SourceList sources_;
     void validate(SourceList &sources);
     std::list<SessionNote> notes_;

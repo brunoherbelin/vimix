@@ -46,7 +46,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), failedSource_(nullptr), thumbnail_(nullptr)
+    filename_(""), thumbnail_(nullptr)
 {
     // create unique id
     if (id_ == 0)
@@ -179,7 +179,6 @@ void Session::update(float dt)
     }
 
     // pre-render all sources
-    failedSource_ = nullptr;
     bool ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
@@ -190,7 +189,9 @@ void Session::update(float dt)
 
         // discard failed source
         if ( (*it)->failed() ) {
-            failedSource_ = (*it);
+            // insert source in list of failed
+            // (NB: insert in set fails if source is already listed)
+            failed_.insert( *it );
         }
         // render normally
         else {
@@ -292,6 +293,8 @@ SourceList::iterator Session::deleteSource(Source *s)
         // inform group
         if (s->mixingGroup() != nullptr)
             s->mixingGroup()->detach(s);
+        // erase the source from the failed list
+        failed_.erase(s);
         // erase the source from the update list & get next element
         its = sources_.erase(its);
         // delete the source : safe now
@@ -321,6 +324,8 @@ SourceList::iterator Session::removeSource(Source *s)
         // inform group
         if (s->mixingGroup() != nullptr)
             s->mixingGroup()->detach(s);
+        // erase the source from the failed list
+        failed_.erase(s);
         // erase the source from the update list & get next element
         ret = sources_.erase(its);
     }

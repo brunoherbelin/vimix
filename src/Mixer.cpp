@@ -204,22 +204,28 @@ void Mixer::update()
     // grab frames to recorders & streamers
     FrameGrabbing::manager().grabFrame(session_->frame());
 
-    // delete sources which failed update (one by one)
-    Source *failure = session()->failedSource();
-    if (failure != nullptr) {
-        // failed media: remove it from the list of imports
-        MediaSource *failedMedia = dynamic_cast<MediaSource *>(failure);
-        if (failedMedia != nullptr) {
-            Settings::application.recentImport.remove( failedMedia->path() );
+    // manage sources which failed update
+    SourceListUnique failures = session()->failedSources();
+    for(auto it = failures.begin(); it != failures.end(); ++it)  {
+        // if the failed source is still attached to the mixer
+        if ( attached( *it ) ) {
+            // special case of failed Render loopback :
+            // it fails when resolution change, and we can fix it by
+            // recreating it in the current session
+            RenderSource *failedRender = dynamic_cast<RenderSource *>(*it);
+            if (failedRender != nullptr) {
+                g_printerr("%s failed render \n", failedRender->initials());
+                // try to recreate the failed render source
+                if ( !recreateSource(failedRender) )
+                    // delete the source if could not
+                    deleteSource(failedRender);
+            }
+            // general case:
+            // detatch failed sources from the mixer
+            // (not deleted in the session; user can replace it)
+            else
+                detach( *it );
         }
-        // failed Render loopback: replace it with one matching the current session
-        RenderSource *failedRender = dynamic_cast<RenderSource *>(failure);
-        if (failedRender != nullptr) {
-            if ( recreateSource(failedRender) )
-                failure = nullptr; // prevent delete (already done in recreateSource)
-        }
-        // delete the source
-        deleteSource(failure);
     }
 
     // update views
@@ -477,36 +483,36 @@ void Mixer::insertSource(Source *s, View::Mode m)
 }
 
 
-bool Mixer::replaceSource(Source *from, Source *to)
+void Mixer::replaceSource(Source *previous, Source *s)
 {
-    if ( from == nullptr || to == nullptr)
-        return false;
+    if ( previous == nullptr || s == nullptr)
+        return ;
 
-    // rename
-    renameSource(to, from->name());
+    // remember name
+    std::string previous_name = previous->name();
 
-    // remove source Nodes from all views
-    detach(from);
+    // remove source Nodes of previous from all views
+    detach(previous);
 
     // copy all transforms
-    to->group(View::MIXING)->copyTransform( from->group(View::MIXING) );
-    to->group(View::GEOMETRY)->copyTransform( from->group(View::GEOMETRY) );
-    to->group(View::LAYER)->copyTransform( from->group(View::LAYER) );
-    to->group(View::TEXTURE)->copyTransform( from->group(View::TEXTURE) );
+    s->group(View::MIXING)->copyTransform( previous->group(View::MIXING) );
+    s->group(View::GEOMETRY)->copyTransform( previous->group(View::GEOMETRY) );
+    s->group(View::LAYER)->copyTransform( previous->group(View::LAYER) );
+    s->group(View::TEXTURE)->copyTransform( previous->group(View::TEXTURE) );
 
-    // TODO copy all filters
+    // apply image processing
+    SessionLoader loader( session_ );
+    loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
+    s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
 
+    // delete previous source
+    session_->deleteSource(previous);
 
-    // add source Nodes to all views
-    attach(to);
+    // rename s
+    renameSource(s, previous_name);
 
-    // add source
-    session_->addSource(to);
-
-    // delete source
-    session_->deleteSource(from);
-
-    return true;
+    // add source s
+    candidate_sources_.push_back(s);
 }
 
 
@@ -517,15 +523,20 @@ bool Mixer::recreateSource(Source *s)
 
     // get the xml description from this source, and exit if not wellformed
     tinyxml2::XMLDocument xmlDoc;
-    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(SessionVisitor::getClipboard(s), xmlDoc);
+    std::string clip = SessionVisitor::getClipboard(s);
+    g_printerr("clibboard\n%s", clip.c_str());
+
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clip, xmlDoc);
     if ( sourceNode == nullptr )
         return false;
 
     // actually create the source with SessionLoader using xml description
     SessionLoader loader( session_ );
     Source *replacement = loader.createSource(sourceNode, SessionLoader::DUPLICATE); // not clone
-    if (replacement == nullptr)
+    if (replacement == nullptr) {
+        g_printerr("replacement failed \n");
         return false;
+    }
 
     // remove source Nodes from all views
     detach(s);
@@ -588,7 +599,8 @@ void Mixer::detach(Source *s)
     if ( s != nullptr )
     {
         // in case it was the current source...
-        unsetCurrentSource();
+        if ( s == currentSource() )
+            unsetCurrentSource();
         // in case it was selected..
         selection().remove(s);
         // detach from views
@@ -600,7 +612,10 @@ void Mixer::detach(Source *s)
     }
 }
 
-
+bool Mixer::attached (Source *s) const
+{
+    return s->group(View::MIXING)->refcount_ > 0;
+}
 
 bool Mixer::concealed(Source *s)
 {
@@ -623,9 +638,8 @@ void Mixer::conceal(Source *s)
         // remove from session
         session_->removeSource(s);
 
-        // detach from scene workspace, and put only in mixing background
+        // detach from scene workspace
         detach(s);
-        mixing_.scene.bg()->attach( s->group(View::MIXING) );
     }
 }
 
@@ -635,7 +649,6 @@ void Mixer::uncover(Source *s)
     if ( it != stash_.end() ) {
         stash_.erase(it);
 
-        mixing_.scene.bg()->detach( s->group(View::MIXING) );
         attach(s);
         session_->addSource(s);
     }

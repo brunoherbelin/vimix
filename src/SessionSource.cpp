@@ -153,9 +153,10 @@ void SessionSource::update(float dt)
         timer_ += guint64(dt * 1000.f) * GST_USECOND;
     }
 
-    // delete a source which failed
-    if (session_->failedSource() != nullptr) {
-        session_->deleteSource(session_->failedSource());
+    // delete source which failed
+    SourceListUnique::iterator failure = session_->failedSources().cbegin();
+    if ( failure != session_->failedSources().cend() ) {
+        session_->deleteSource( *failure );
         // fail session if all sources failed
         if ( session_->size() < 1)
             failed_ = true;
@@ -349,8 +350,7 @@ void SessionFileSource::render()
 void SessionFileSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 SessionFileSource::icon() const
@@ -433,8 +433,7 @@ bool SessionGroupSource::import(Source *source)
 void SessionGroupSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 SessionGroupSource::icon() const

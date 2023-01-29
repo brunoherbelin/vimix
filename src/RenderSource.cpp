@@ -155,8 +155,7 @@ glm::vec3 RenderSource::resolution() const
 void RenderSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 RenderSource::icon() const

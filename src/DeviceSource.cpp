@@ -522,8 +522,7 @@ void DeviceSource::setActive (bool on)
 void DeviceSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 bool DeviceSource::failed() const

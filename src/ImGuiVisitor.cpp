@@ -376,166 +376,200 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
 void ImGuiVisitor::visit (Source& s)
 {
-    ImGui::PushID(std::to_string(s.id()).c_str());
-    // blending
-    s.blendingShader()->accept(*this);
+    const float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
+    const float space = ImGui::GetStyle().ItemSpacing.y;
 
-    // preview
-    float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-    float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
-    ImVec2 pos = ImGui::GetCursorPos(); // remember where we were...
+    if ( !s.failed() ) {
 
-    float space = ImGui::GetStyle().ItemSpacing.y;
-    float width = preview_width;
-    float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
-    if (height > preview_height - space) {
-        height = preview_height - space;
-        width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
-    }
-    // centered image
-    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
-    ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+        ImGui::PushID(std::to_string(s.id()).c_str());
 
-    // inform on visibility status
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
-    if (s.active()) {
-        if (s.blendingShader()->color.a > 0.f)
-            ImGuiToolkit::Indication("Visible", ICON_FA_EYE);
+        // blending selection
+        s.blendingShader()->accept(*this);
+
+        // remember where we were...
+        ImVec2 pos = ImGui::GetCursorPos();
+
+        // preview
+        float width = preview_width;
+        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        if (height > preview_height - space) {
+            height = preview_height - space;
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+        }
+        // centered image
+        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+        ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+
+        // inform on visibility status
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
+        if (s.active()) {
+            if (s.blendingShader()->color.a > 0.f)
+                ImGuiToolkit::Indication("Visible", ICON_FA_EYE);
+            else
+                ImGuiToolkit::Indication("Not visible", ICON_FA_EYE_SLASH);
+        }
         else
-            ImGuiToolkit::Indication("Not visible", ICON_FA_EYE_SLASH);
-    }
-    else
-        ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
+            ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
 
-    // Inform on workspace
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
-    if (s.workspace() == Source::BACKGROUND)
-        ImGuiToolkit::Indication("in Background",10, 16);
-    else if (s.workspace() == Source::FOREGROUND)
-        ImGuiToolkit::Indication("in Foreground",12, 16);
-    else
-        ImGuiToolkit::Indication("in Workspace",11, 16);
+        // Inform on workspace
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
+        if (s.workspace() == Source::BACKGROUND)
+            ImGuiToolkit::Indication("in Background",10, 16);
+        else if (s.workspace() == Source::FOREGROUND)
+            ImGuiToolkit::Indication("in Foreground",12, 16);
+        else
+            ImGuiToolkit::Indication("in Workspace",11, 16);
 
-    // Inform on link
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
-    if (s.mixingGroup() != nullptr) {
-        if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
-            Mixer::selection().clear();
-            Mixer::selection().add( s.mixingGroup()->getCopy() );
-        }
-    }
-    else
-        ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
-
-    // locking
-    ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 3.f * ImGui::GetFrameHeightWithSpacing()) );
-    const char *tooltip[2] = {"Unlocked", "Locked"};
-    bool l = s.locked();
-    if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
-        s.setLocked(l);
-        if (l) {
-            Mixer::selection().clear();
-            Action::manager().store(s.name() + std::string(": lock."));
-        }
-        else {
-            Mixer::selection().set(&s);
-            Action::manager().store(s.name() + std::string(": unlock."));
-        }
-    }
-
-    // Filter
-    bool on = s.imageProcessingEnabled();
-    ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
-    if (on)
-        ImGui::Text(ICON_FA_PALETTE "  Color correction");
-    else
-        ImGuiToolkit::Indication("Color correction filter is disabled", ICON_FA_PALETTE "  Color correction");
-    pos = ImGui::GetCursorPos();
-
-    // menu icon for image processing
-    ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
-    if (ImGuiToolkit::IconButton(5, 8))
-        ImGui::OpenPopup( "MenuImageProcessing" );
-
-    if (ImGui::BeginPopup( "MenuImageProcessing" ))
-    {
-        if (ImGui::MenuItem("Enable", NULL, &on)) {
-            std::ostringstream oss;
-            oss << s.name() << ": " << ( on ? "Enable Color correction" : "Disable Color correction");
-            Action::manager().store(oss.str());
-            s.setImageProcessingEnabled(on);
-        }
-
-        if (s.processingshader_link_.connected()) {
-            if (ImGui::MenuItem( "Unfollow", NULL, false, on)){
-                s.processingshader_link_.disconnect();
+        // Inform on link
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
+        if (s.mixingGroup() != nullptr) {
+            if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
+                Mixer::selection().clear();
+                Mixer::selection().add( s.mixingGroup()->getCopy() );
             }
         }
-        else {
-            if (ImGui::MenuItem("Reset", NULL, false, on )){
-                ImageProcessingShader defaultvalues;
-                s.processingShader()->copy(defaultvalues);
-                s.processingshader_link_.disconnect();
+        else
+            ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
+
+        // locking
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 3.f * ImGui::GetFrameHeightWithSpacing()) );
+        const char *tooltip[2] = {"Unlocked", "Locked"};
+        bool l = s.locked();
+        if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
+            s.setLocked(l);
+            if (l) {
+                Mixer::selection().clear();
+                Action::manager().store(s.name() + std::string(": lock."));
+            }
+            else {
+                Mixer::selection().set(&s);
+                Action::manager().store(s.name() + std::string(": unlock."));
+            }
+        }
+
+        // Filter
+        bool on = s.imageProcessingEnabled();
+        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+        if (on)
+            ImGui::Text(ICON_FA_PALETTE "  Color correction");
+        else
+            ImGuiToolkit::Indication("Color correction filter is disabled", ICON_FA_PALETTE "  Color correction");
+        pos = ImGui::GetCursorPos();
+
+        // menu icon for image processing
+        ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
+        if (ImGuiToolkit::IconButton(5, 8))
+            ImGui::OpenPopup( "MenuImageProcessing" );
+
+        if (ImGui::BeginPopup( "MenuImageProcessing" ))
+        {
+            if (ImGui::MenuItem("Enable", NULL, &on)) {
                 std::ostringstream oss;
-                oss << s.name() << ": " << "Reset Filter";
+                oss << s.name() << ": " << ( on ? "Enable Color correction" : "Disable Color correction");
                 Action::manager().store(oss.str());
+                s.setImageProcessingEnabled(on);
             }
-            if (ImGui::MenuItem("Copy", NULL, false, on )){
-                std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
-                if (!clipboard.empty())
-                    ImGui::SetClipboardText(clipboard.c_str());
+
+            if (s.processingshader_link_.connected()) {
+                if (ImGui::MenuItem( "Unfollow", NULL, false, on)){
+                    s.processingshader_link_.disconnect();
+                }
             }
-            const char *clipboard = ImGui::GetClipboardText();
-            const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
-            if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
-                SessionLoader::applyImageProcessing(s, clipboard);
-                std::ostringstream oss;
-                oss << s.name() << ": " << "Change Filter";
-                Action::manager().store(oss.str());
+            else {
+                if (ImGui::MenuItem("Reset", NULL, false, on )){
+                    ImageProcessingShader defaultvalues;
+                    s.processingShader()->copy(defaultvalues);
+                    s.processingshader_link_.disconnect();
+                    std::ostringstream oss;
+                    oss << s.name() << ": " << "Reset Filter";
+                    Action::manager().store(oss.str());
+                }
+                if (ImGui::MenuItem("Copy", NULL, false, on )){
+                    std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
+                    if (!clipboard.empty())
+                        ImGui::SetClipboardText(clipboard.c_str());
+                }
+                const char *clipboard = ImGui::GetClipboardText();
+                const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
+                if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
+                    SessionLoader::applyImageProcessing(s, clipboard);
+                    std::ostringstream oss;
+                    oss << s.name() << ": " << "Change Filter";
+                    Action::manager().store(oss.str());
+                }
+                //            // NON-stable style follow mechanism
+                //            ImGui::Separator();
+                //            if (ImGui::BeginMenu("Follow", on))
+                //            {
+                //                for (auto mpit = Mixer::manager().session()->begin();
+                //                     mpit != Mixer::manager().session()->end(); mpit++ )
+                //                {
+                //                    std::string label = (*mpit)->name();
+                //                    if ( (*mpit)->id() != s.id() &&
+                //                         (*mpit)->imageProcessingEnabled() &&
+                //                         !(*mpit)->processingshader_link_.connected()) {
+                //                        if (ImGui::MenuItem( label.c_str() )){
+                //                            s.processingshader_link_.connect(*mpit);
+                //                            s.touch();
+                //                        }
+                //                    }
+                //                }
+                //                ImGui::EndMenu();
+                //            }
             }
-//            // NON-stable style follow mechanism
-//            ImGui::Separator();
-//            if (ImGui::BeginMenu("Follow", on))
-//            {
-//                for (auto mpit = Mixer::manager().session()->begin();
-//                     mpit != Mixer::manager().session()->end(); mpit++ )
-//                {
-//                    std::string label = (*mpit)->name();
-//                    if ( (*mpit)->id() != s.id() &&
-//                         (*mpit)->imageProcessingEnabled() &&
-//                         !(*mpit)->processingshader_link_.connected()) {
-//                        if (ImGui::MenuItem( label.c_str() )){
-//                            s.processingshader_link_.connect(*mpit);
-//                            s.touch();
-//                        }
-//                    }
-//                }
-//                ImGui::EndMenu();
-//            }
+
+            ImGui::EndPopup();
         }
 
-        ImGui::EndPopup();
-    }
+        if (s.imageProcessingEnabled()) {
 
-    if (s.imageProcessingEnabled()) {
+            // full panel for image processing
+            ImGui::SetCursorPos( pos );
+            ImGui::Spacing();
 
-        // full panel for image processing
-        ImGui::SetCursorPos( pos );
+            if (s.processingshader_link_.connected()) {
+                Source *target = s.processingshader_link_.source();
+                ImGui::Text("Following");
+                if ( target != nullptr && ImGui::Button(target->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                    Mixer::manager().setCurrentSource(target);
+            }
+            else
+                s.processingShader()->accept(*this);
+        }
+
         ImGui::Spacing();
 
-        if (s.processingshader_link_.connected()) {
-            Source *target = s.processingshader_link_.source();
-            ImGui::Text("Following");
-            if ( target != nullptr && ImGui::Button(target->name().c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-                Mixer::manager().setCurrentSource(target);
-        }
-        else
-            s.processingShader()->accept(*this);
+        ImGui::PopID();
+
     }
+    else {
 
-    ImGui::Spacing();
+        // remember where we were...
+        ImVec2 pos = ImGui::GetCursorPos();
 
-    ImGui::PopID();
+        // preview (black texture)
+        float width = preview_width;
+        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        if (height > preview_height - space) {
+            height = preview_height - space;
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+        }
+        // centered image
+        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+        ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+
+        // centered icon of failed (skull)
+        ImGui::SetCursorPos( ImVec2(pos.x + (width  -ImGui::GetFrameHeightWithSpacing())* 0.5f ,
+                                    pos.y + (height -ImGui::GetFrameHeightWithSpacing()) * 0.5f) );
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::Text(ICON_FA_SKULL);
+        ImGui::PopFont();
+
+        // back
+        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+        ImGui::Spacing();
+    }
 
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -568,6 +602,14 @@ void ImGuiVisitor::visit (MediaSource& s)
 
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Folder");
+
+//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+//    if ( ImGui::Button("Replace") ) {
+
+//        s.setPath("/home/bh/Videos/iss.mov");
+//        Mixer::manager().recreateSource( Mixer::manager().findSource( s.id() ) );
+
+//    }
 }
 
 void ImGuiVisitor::visit (SessionFileSource& s)

@@ -65,6 +65,8 @@ void Action::init()
     store("Session start");
 }
 
+// must be called in a thread running in parrallel of the rendering
+// (needs opengl update to get thumbnail)
 void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string node, std::string label)
 {
     if (se != nullptr) {
@@ -101,6 +103,8 @@ void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string no
 
 void Action::store(const std::string &label)
 {
+    // TODO: set a maximum amount of stored steps? (even very big, just to ensure memory limit)
+
     // ignore if locked or if no label is given
     if (locked_ || label.empty())
         return;

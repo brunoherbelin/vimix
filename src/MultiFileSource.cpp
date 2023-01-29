@@ -255,8 +255,7 @@ guint64 MultiFileSource::playtime () const
 void MultiFileSource::accept (Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 MultiFile *MultiFileSource::multifile () const

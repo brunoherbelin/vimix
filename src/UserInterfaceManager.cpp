@@ -6179,6 +6179,8 @@ Navigator::Navigator()
     else
         new_media_mode = MEDIA_FOLDER;
     new_media_mode_changed = true;
+
+    source_to_replace = nullptr;
 }
 
 void Navigator::applyButtonSelection(int index)
@@ -6213,6 +6215,7 @@ void Navigator::clearButtonSelection()
 
     // clear new source pannel
     clearNewPannel();
+    source_to_replace = nullptr;
 }
 
 void Navigator::showPannelSource(int index)
@@ -6297,12 +6300,23 @@ void Navigator::Render()
             if (ImGui::IsItemHovered())
                 tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
 
+            //
             // the list of INITIALS for sources
+            //
             int index = 0;
             SourceList::iterator iter;
             for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
             {
                 Source *s = (*iter);
+
+                // ignore source if failed (managed in stash below)
+                if (s->failed()){
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.3f, 0.2f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Button));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
+                }
+
                 // draw an indicator for current source
                 if ( s->mode() >= Source::SELECTED ){
                     ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * sourceiconsize.y);
@@ -6346,12 +6360,19 @@ void Navigator::Render()
                     ImGui::EndDragDropTarget();
                 }
 
+                if (s->failed()){
+                    ImGui::PopStyleColor(4);
+                }
+
                 ImGui::PopID();
             }
 
             // the "+" icon for action of creating new source
-            if (ImGui::Selectable( ICON_FA_PLUS, &selected_button[NAV_NEW], 0, iconsize))
+            if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
+                                   &selected_button[NAV_NEW], 0, iconsize)) {
+                Mixer::manager().unsetCurrentSource();
                 applyButtonSelection(NAV_NEW);
+            }
             if (ImGui::IsItemHovered())
                 tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
         }
@@ -6539,14 +6560,48 @@ void Navigator::RenderSourcePannel(Source *s)
         if (ImGuiToolkit::InputText("Name", &sname) ){
             Mixer::manager().renameSource(s, sname);
         }
+
         // Source pannel
         static ImGuiVisitor v;
         s->accept(v);
-        // clone & delete buttons
         ImGui::Text(" ");
-        // Action on source
-        if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+
+        // clone button
+        if ( s->failed() ) {
+            ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        }
+        else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
+
+        // replace button
+        if ( s->cloned() ) {
+            ImGuiToolkit::ButtonDisabled( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Cannot replace if source is cloned");
+        }
+        else if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            // prepare panel for new source of same type
+            MediaSource *file = dynamic_cast<MediaSource *>(s);
+            MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
+            CloneSource *internal = dynamic_cast<CloneSource *>(s);
+            PatternSource *generated = dynamic_cast<PatternSource *>(s);
+            if (file != nullptr)
+                Settings::application.source.new_type = SOURCE_FILE;
+            else if (sequence != nullptr)
+                Settings::application.source.new_type = SOURCE_SEQUENCE;
+            else if (internal != nullptr)
+                Settings::application.source.new_type = SOURCE_INTERNAL;
+            else if (generated != nullptr)
+                Settings::application.source.new_type = SOURCE_GENERATED;
+            else
+                Settings::application.source.new_type = SOURCE_CONNECTED;
+
+            // switch to panel new source
+            showPannelSource(NAV_NEW);
+            // set source to be replaced
+            source_to_replace = s;
+        }
+        // delete button
         if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);
             Action::manager().store(sname + std::string(": deleted"));
@@ -6603,7 +6658,10 @@ void Navigator::RenderNewPannel()
         // TITLE
         ImGui::SetCursorPosY(10);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("Insert");
+        if (source_to_replace != nullptr)
+            ImGui::Text("Replace");
+        else
+            ImGui::Text("Insert");
         ImGui::PopFont();
 
         // Edit menu
@@ -7200,11 +7258,14 @@ void Navigator::RenderNewPannel()
             new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
             // ask to import the source in the mixer
             ImGui::NewLine();
-            if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Create", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+            if (new_source_preview_.ready() && ImGui::Button( ICON_FA_CHECK "  Ok", ImVec2(pannel_width_ - padding_width_, 0)) ) {
                 // take out the source from the preview
                 Source *s = new_source_preview_.getSource();
                 // restart and add the source.
-                Mixer::manager().addSource(s);
+                if (source_to_replace != nullptr)
+                    Mixer::manager().replaceSource(source_to_replace, s);
+                else
+                    Mixer::manager().addSource(s);
                 s->replay();
                 // close NEW pannel
                 togglePannelNew();

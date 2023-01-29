@@ -346,8 +346,7 @@ std::string NetworkSource::connection() const
 void NetworkSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 NetworkSource::icon() const

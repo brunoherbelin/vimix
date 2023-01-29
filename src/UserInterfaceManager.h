@@ -209,6 +209,7 @@ private:
     std::string sourceMediaFileCurrent;
     MediaCreateMode new_media_mode;
     bool new_media_mode_changed;
+    Source *source_to_replace;
 };
 
 class ToolBox

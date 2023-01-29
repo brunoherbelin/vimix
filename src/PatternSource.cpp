@@ -78,6 +78,8 @@ Pattern::Pattern() : Stream(), type_(UINT_MAX) // invalid pattern
 
 pattern_descriptor Pattern::get(uint type)
 {
+    type = CLAMP(type, 0, patterns_.size()-1);
+
     // check availability of feature to use this pattern
     if (!patterns_[type].available)
         patterns_[type].available = GstToolkit::has_feature(patterns_[type].feature);
@@ -164,8 +166,7 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 void PatternSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 Pattern *PatternSource::pattern() const

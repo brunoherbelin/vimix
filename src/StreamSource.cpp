@@ -71,8 +71,7 @@ std::list<std::string> GenericStreamSource::gstElements() const
 void GenericStreamSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 GenericStreamSource::icon() const
