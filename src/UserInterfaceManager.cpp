@@ -6311,7 +6311,7 @@ void Navigator::Render()
 
                 // ignore source if failed (managed in stash below)
                 if (s->failed()){
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.3f, 0.2f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                     ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Button));
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetColorU32(ImGuiCol_ButtonActive));
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_ButtonHovered));

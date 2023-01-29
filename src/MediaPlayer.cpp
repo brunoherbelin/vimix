@@ -137,22 +137,22 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         GstDiscovererResult result = gst_discoverer_info_get_result (info);
         switch (result) {
         case GST_DISCOVERER_URI_INVALID:
-            Log::Warning("'%s': Invalid URI", uri.c_str());
+            video_stream_info.log = "Invalid URI";
             break;
         case GST_DISCOVERER_ERROR:
-            Log::Warning("'%s': %s", uri.c_str(), err->message);
+            video_stream_info.log = err->message;
             break;
         case GST_DISCOVERER_TIMEOUT:
-            Log::Warning("'%s': Timeout loading", uri.c_str());
+            video_stream_info.log = "Timeout loading";
             break;
         case GST_DISCOVERER_BUSY:
-            Log::Warning("'%s': Busy", uri.c_str());
+            video_stream_info.log = "Busy";
             break;
         case GST_DISCOVERER_MISSING_PLUGINS:
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            Log::Info("'%s': Unknown file format (%s)", uri.c_str(), str);
+            video_stream_info.log = "Unknown format " + std::string(str);
             g_free (str);
         }
             break;
@@ -218,10 +218,10 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                 }
 
                 if (!video_stream_info.valid)
-                    Log::Warning("'%s': Invalid video stream", uri.c_str());
+                    video_stream_info.log = "Invalid video stream";
             }
             else
-                Log::Warning("'%s': No video stream", uri.c_str());
+                video_stream_info.log = "No video stream";
 
             gst_discoverer_stream_info_list_free(streams);
         }
@@ -929,7 +929,8 @@ void MediaPlayer::update()
                     execute_open();
                 }
                 else {
-                    Log::Warning("MediaPlayer %s Loading cancelled", std::to_string(id_).c_str());
+                    Log::Warning("'%s' : %s", uri().c_str(), media_.log.c_str());
+                    Log::Warning("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
                     failed_ = true;
                 }
             }

@@ -36,40 +36,22 @@ struct MediaInfo {
     bool valid;
     GstClockTime dt;
     GstClockTime end;
+    std::string log;
 
     MediaInfo() {
-        width = par_width = 640;
-        height = 480;
+        width = par_width = 1;
+        height = 1;
         bitrate = 0;
-        framerate_n = 1;
-        framerate_d = 25;
-        codec_name = "";
+        framerate_n = 0;
+        framerate_d = 1;
+        codec_name = "Undefined";
         isimage = false;
         interlaced = false;
         seekable = false;
         valid = false;
         dt  = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
-    }
-
-    inline MediaInfo& operator = (const MediaInfo& b)
-    {
-        if (this != &b) {
-            this->dt = b.dt;
-            this->end = b.end;
-            this->width = b.width;
-            this->par_width = b.par_width;
-            this->height = b.height;
-            this->bitrate = b.bitrate;
-            this->framerate_n = b.framerate_n;
-            this->framerate_d = b.framerate_d;
-            this->codec_name = b.codec_name;
-            this->valid = b.valid;
-            this->isimage = b.isimage;
-            this->interlaced = b.interlaced;
-            this->seekable = b.seekable;
-        }
-        return *this;
+        log = "";
     }
 };
 
@@ -283,6 +265,7 @@ public:
     static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
 
     static MediaInfo UriDiscoverer(const std::string &uri);
+    std::string log() const { return media_.log; }
 
 private:
 

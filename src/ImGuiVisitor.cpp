@@ -380,12 +380,13 @@ void ImGuiVisitor::visit (Source& s)
     const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
     const float space = ImGui::GetStyle().ItemSpacing.y;
 
+    ImGui::PushID(std::to_string(s.id()).c_str());
+
+    // blending selection
+    s.blendingShader()->accept(*this);
+
+    // Draw different info if failed or succeed
     if ( !s.failed() ) {
-
-        ImGui::PushID(std::to_string(s.id()).c_str());
-
-        // blending selection
-        s.blendingShader()->accept(*this);
 
         // remember where we were...
         ImVec2 pos = ImGui::GetCursorPos();
@@ -538,10 +539,6 @@ void ImGuiVisitor::visit (Source& s)
                 s.processingShader()->accept(*this);
         }
 
-        ImGui::Spacing();
-
-        ImGui::PopID();
-
     }
     else {
 
@@ -568,12 +565,15 @@ void ImGuiVisitor::visit (Source& s)
 
         // back
         ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
-        ImGui::Spacing();
     }
 
+    ImGui::PopID();
+
+    ImGui::Spacing();
     ImGuiToolkit::Icon(s.icon().x, s.icon().y);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("%s", s.info().c_str());
+
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
@@ -584,32 +584,28 @@ void ImGuiVisitor::visit (MediaSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
+    else
+        info.reset();
 
     // folder
     std::string path = SystemToolkit::path_filename(s.path());
     std::string label = BaseToolkit::truncated(path, 25);
     label = BaseToolkit::transliterate(label);
     ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Folder");
 
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    if ( ImGui::Button("Replace") ) {
-
-//        s.setPath("/home/bh/Videos/iss.mov");
-//        Mixer::manager().recreateSource( Mixer::manager().findSource( s.id() ) );
-
-//    }
 }
 
 void ImGuiVisitor::visit (SessionFileSource& s)
@@ -623,58 +619,65 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
-    }
+    if ( !s.failed() ) {
 
-    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().import( &s );
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Sources");
-
-    // versions
-    SessionSnapshots *versions = s.session()->snapshots();
-    if (versions->keys_.size()>0) {
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("Version", ICON_FA_CODE_BRANCH " Select" ) )
-        {
-            for (auto v = versions->keys_.crbegin() ; v != versions->keys_.crend(); ++v){
-                std::string label = std::to_string(*v);
-                const tinyxml2::XMLElement *snap = versions->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*v).c_str() );
-                if (snap)
-                    label = snap->Attribute("label");
-                if (ImGui::Selectable( label.c_str() )) {
-                    s.session()->applySnapshot(*v);
-                }
-            }
-            ImGui::EndCombo();
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
         }
-    }
 
-    // fading
-    if (ImGuiToolkit::IconButton(2, 1)) s.session()->setFadingTarget(0.f);
-    int f = 100 - int(s.session()->fading() * 100.f);
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::SliderInt("Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
-        s.session()->setFadingTarget( float(100 - f) * 0.01f );
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << s.name() << ": Fading " << f << " %";
-        Action::manager().store(oss.str());
-    }
+        if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Mixer::manager().import( &s );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Sources");
 
-    // file open
-    if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().set( s.detach() );
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("File");
+        // versions
+        SessionSnapshots *versions = s.session()->snapshots();
+        if (versions->keys_.size()>0) {
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("Version", ICON_FA_CODE_BRANCH " Select" ) )
+            {
+                for (auto v = versions->keys_.crbegin() ; v != versions->keys_.crend(); ++v){
+                    std::string label = std::to_string(*v);
+                    const tinyxml2::XMLElement *snap = versions->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*v).c_str() );
+                    if (snap)
+                        label = snap->Attribute("label");
+                    if (ImGui::Selectable( label.c_str() )) {
+                        s.session()->applySnapshot(*v);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        // fading
+        if (ImGuiToolkit::IconButton(2, 1)) s.session()->setFadingTarget(0.f);
+        int f = 100 - int(s.session()->fading() * 100.f);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderInt("Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
+            s.session()->setFadingTarget( float(100 - f) * 0.01f );
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            std::ostringstream oss;
+            oss << s.name() << ": Fading " << f << " %";
+            Action::manager().store(oss.str());
+        }
+
+        // file open
+        if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Mixer::manager().set( s.detach() );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("File");
+
+    }
+    else
+        info.reset();
+
     // file path
     std::string path = SystemToolkit::path_filename(s.path());
     std::string label = BaseToolkit::truncated(path, 25);
@@ -698,7 +701,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     ImGui::PopTextWrapPos();
 
     // icon (>) to open player
-    if ( s.playable() ) {
+    if ( s.playable() && !s.failed() ) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SameLine(0, 0);
         ImGui::SameLine(0, 10.f + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -1078,21 +1081,27 @@ void ImGuiVisitor::visit (PatternSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
+    else
+        info.reset();
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str()) )
+    if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str(), ImGuiComboFlags_HeightLarge) )
     {
         for (uint p = 0; p < Pattern::count(); ++p){
-            if (ImGui::Selectable( Pattern::get(p).label.c_str() )) {
+            pattern_descriptor pattern = Pattern::get(p);
+            std::string label = pattern.label + (pattern.animated ? " " ICON_FA_CARET_RIGHT : " ");
+            if (pattern.available && ImGui::Selectable( label.c_str(), p == s.pattern()->type() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 info.reset();
                 std::ostringstream oss;
@@ -1113,15 +1122,19 @@ void ImGuiVisitor::visit (DeviceSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
+    else
+        info.reset();
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("Device", s.device().c_str()))
@@ -1152,21 +1165,25 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
-
-    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-    {
-        s.setConnection(s.connection());
+    else
         info.reset();
-    }
+
+//    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+//    {
+//        s.setConnection(s.connection());
+//        info.reset();
+//    }
 }
 
 
@@ -1180,54 +1197,59 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
-    }
+    if ( !s.failed() ) {
 
-    // Filename pattern
-    ImGuiTextBuffer info;
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-    info.appendf("%s", SystemToolkit::base_filename(s.sequence().location).c_str());
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-    ImGui::PopStyleColor(1);
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
 
-    // change range
-    static int _begin = -1;
-    if (_begin < 0 || id != s.id())
-        _begin = s.begin();
-    static int _end = -1;
-    if (_end < 0 || id != s.id())
-        _end = s.end();
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::DragIntRange2("Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        s.setRange( _begin, _end );
-        std::ostringstream oss;
-        oss << s.name() << ": Range " << _begin << "-" << _end;
-        Action::manager().store(oss.str());
-        _begin = _end = -1;
-    }
+        // Filename pattern
+        ImGuiTextBuffer info;
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+        info.appendf("%s", SystemToolkit::base_filename(s.sequence().location).c_str());
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor(1);
 
-    // change framerate
-    static int _fps = -1;
-    if (_fps < 0 || id != s.id())
-        _fps = s.framerate();
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        s.setFramerate(_fps);
-        std::ostringstream oss;
-        oss << s.name() << ": Framerate " << _fps << " fps";
-        Action::manager().store(oss.str());
-        _fps = -1;
+        // change range
+        static int _begin = -1;
+        if (_begin < 0 || id != s.id())
+            _begin = s.begin();
+        static int _end = -1;
+        if (_end < 0 || id != s.id())
+            _end = s.end();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::DragIntRange2("Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            s.setRange( _begin, _end );
+            std::ostringstream oss;
+            oss << s.name() << ": Range " << _begin << "-" << _end;
+            Action::manager().store(oss.str());
+            _begin = _end = -1;
+        }
+
+        // change framerate
+        static int _fps = -1;
+        if (_fps < 0 || id != s.id())
+            _fps = s.framerate();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            s.setFramerate(_fps);
+            std::ostringstream oss;
+            oss << s.name() << ": Framerate " << _fps << " fps";
+            Action::manager().store(oss.str());
+            _fps = -1;
+        }
     }
+    else
+        info.reset();
 
     // offer to open file browser at location
     std::string path = SystemToolkit::path_filename(s.sequence().location);
@@ -1251,15 +1273,19 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
+    else
+        info.reset();
 
     // Prepare display pipeline text
     static int numlines = 0;
@@ -1284,15 +1310,19 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // icon (>) to open player
-    if ( s.playable() ) {
-        ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::SameLine(0, 0);
-        ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-        if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
-            UserInterface::manager().showSourceEditor(&s);
-        ImGui::SetCursorPos(pos);
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SameLine(0, 0);
+            ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+                UserInterface::manager().showSourceEditor(&s);
+            ImGui::SetCursorPos(pos);
+        }
     }
+    else
+        info.reset();
 
 //    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
 //    {

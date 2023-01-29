@@ -21,8 +21,6 @@
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
-#include "ImageShader.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"

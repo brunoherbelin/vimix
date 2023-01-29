@@ -23,11 +23,9 @@
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
-#include "defines.h"
 #include "Log.h"
 #include "Resource.h"
 #include "Visitor.h"
-#include "SystemToolkit.h"
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
 
@@ -192,8 +190,10 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
             gst_object_unref (_pipeline);
 
         }
-        else
+        else {
             info.message = error->message;
+            g_clear_error (&error);
+        }
     }
     // at this point, the info should be filled
     return info;
@@ -312,7 +312,8 @@ void Stream::execute_open()
 
 void Stream::fail(const std::string &message)
 {
-    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), message.c_str() );
+    log_ = message;
+    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), log_.c_str() );
     failed_ = true;
 }
 
@@ -877,8 +878,6 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
     return ret;
 }
-
-
 
 Stream::TimeCounter::TimeCounter(): fps(1.f)
 {
