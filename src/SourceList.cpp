@@ -45,6 +45,18 @@ SourceList playable_only (const SourceList &list)
     return pl;
 }
 
+
+bool isfailed (const Source *s) { return s->failed(); }
+
+SourceList valid_only (const SourceList &list)
+{
+    SourceList pl = list;
+
+    pl.remove_if(isfailed);
+
+    return pl;
+}
+
 bool notactive (const Source *s) { return !s->active(); }
 
 SourceList active_only (const SourceList &list)

@@ -508,6 +508,10 @@ Source *TextureView::getEditOrCurrentSource()
         }
     }
 
+    if (_source != nullptr && _source->failed() ) {
+        _source = nullptr;
+    }
+
     return _source;
 }
 

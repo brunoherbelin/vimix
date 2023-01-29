@@ -22,7 +22,7 @@ public:
     void replay () override;
     guint64 playtime () const override;
     uint texture() const override;
-    bool failed() const override  { return origin_ == nullptr; }
+    bool failed() const override  { return origin_ == nullptr || origin_->failed(); }
     void accept (Visitor& v) override;
     void render() override;
     glm::ivec2 icon() const override;

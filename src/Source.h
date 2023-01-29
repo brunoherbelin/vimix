@@ -109,6 +109,7 @@ public:
 
     // cloning mechanism
     virtual CloneSource *clone (uint64_t id = 0);
+    inline bool cloned() const { return !clones_.empty(); }
 
     // Display mode
     typedef enum {

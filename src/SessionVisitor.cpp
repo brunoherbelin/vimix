@@ -638,7 +638,8 @@ void SessionVisitor::visit (MediaSource& s)
     if (!sessionFilePath_.empty())
         uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
 
-    s.mediaplayer()->accept(*this);
+    if (!s.failed())
+        s.mediaplayer()->accept(*this);
 }
 
 void SessionVisitor::visit (SessionFileSource& s)
