@@ -424,8 +424,9 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
-    Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
-              timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
+    if (!isImage())
+        Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
+                  timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
     opened_ = true;
 

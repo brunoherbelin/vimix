@@ -157,6 +157,7 @@ void SessionSource::update(float dt)
     SourceListUnique::iterator failure = session_->failedSources().cbegin();
     if ( failure != session_->failedSources().cend() ) {
         session_->deleteSource( *failure );
+        Log::Info("Source '%s' deleted from Session group %s.", (*failure)->name().c_str(), std::to_string(session_->id()).c_str());
         // fail session if all sources failed
         if ( session_->size() < 1)
             failed_ = true;
@@ -401,8 +402,9 @@ void SessionGroupSource::init()
         // done init
         uint N = session_->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
-        Log::Info("Source '%s' groupped %s (%d x %d).", name().c_str(), numsource.c_str(),
+        Log::Info("Session group %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
                   int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+        Log::Info("Source '%s' linked to Session group %s.", name().c_str(), std::to_string(session_->id()).c_str());
     }
 }
 

@@ -1152,11 +1152,6 @@ void UserInterface::showSourceEditor(Source *s)
 
     if (s) {
         Mixer::manager().setCurrentSource( s );
-        RenderSource *rs = dynamic_cast<RenderSource *>(s);
-        if (rs != nullptr) {
-            outputcontrol.setVisible(true);
-            return;
-        }
         if (s->playable()) {
             sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();
