@@ -150,6 +150,7 @@
             "sources": [
                 {
                 "type":"git",
+                "branch":"beta",
                 "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]
