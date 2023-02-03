@@ -1019,7 +1019,7 @@ void ImGuiVisitor::visit (ImageFilter& f)
     // Open Editor
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Settings::application.widget.shader_editor = true;
+        UserInterface::manager().shadercontrol.setVisible(true);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Code");
 }

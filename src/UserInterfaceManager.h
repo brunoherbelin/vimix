@@ -431,6 +431,7 @@ public:
 
 class UserInterface
 {
+    friend class ImGuiVisitor;
     friend class Navigator;
     friend class OutputPreview;
 
