@@ -153,7 +153,8 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
     // revert to pattern Black if not available
     else {
         pattern()->open( 0, resolution );
-        Log::Warning("Pattern '%s' is not available in this version of vimix.", Pattern::get(type).label.c_str());
+        Log::Warning("Pattern '%s' is not available in this version of vimix (missing %s).",
+                     Pattern::get(type).label.c_str(), Pattern::get(type).feature.c_str());
     }
 
     // play gstreamer
