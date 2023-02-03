@@ -744,11 +744,17 @@ void Mixer::groupSelection()
         // Add source to Session
         session_->addSource(sessiongroup);
 
+        // set name (avoid name duplicates)
+        renameSource(sessiongroup, name);
+
         // Attach source to Mixer
         attach(sessiongroup);
 
-        // set name (avoid name duplicates)
-        renameSource(sessiongroup, name);
+        // needs to update !
+        ++View::need_deep_update_;
+
+        // avoid display issues
+        current_view_->update(0.f);
 
         // store in action manager
         std::ostringstream info;
@@ -759,11 +765,13 @@ void Mixer::groupSelection()
 
         // give the hand to the user
         Mixer::manager().setCurrentSource(sessiongroup);
+
     }
     else {
         delete sessiongroup;
         Log::Info("Failed to group selection");
     }
+
 }
 
 void Mixer::groupAll(bool only_active)
