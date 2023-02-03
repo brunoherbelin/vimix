@@ -154,10 +154,10 @@ void SessionSource::update(float dt)
     }
 
     // delete source which failed
-    SourceListUnique::iterator failure = session_->failedSources().cbegin();
-    if ( failure != session_->failedSources().cend() ) {
-        session_->deleteSource( *failure );
-        Log::Info("Source '%s' deleted from Session group %s.", (*failure)->name().c_str(), std::to_string(session_->id()).c_str());
+    if ( !session_->failedSources().empty() ) {
+        Source *failure = *(session_->failedSources().cbegin());
+        Log::Info("Source '%s' deleted from Session group %s.", failure->name().c_str(), std::to_string(session_->id()).c_str());
+        session_->deleteSource( failure );
         // fail session if all sources failed
         if ( session_->size() < 1)
             failed_ = true;
