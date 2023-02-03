@@ -1393,10 +1393,7 @@ void UserInterface::RenderNotes()
                     ImVec2 size = ImGui::GetContentRegionAvail();
                     ImVec2 pos = ImGui::GetCursorPos();
                     // close & delete
-                    if (ImGuiToolkit::IconButton(4,16)) close = true;
-                    if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip("Delete");
-
+                    close = ImGuiToolkit::IconButton(4,16,"Delete");
                     if (ImGui::IsWindowFocused()) {
                         // font size
                         pos.x = size.x - 2.f * ImGui::GetTextLineHeightWithSpacing();
@@ -1643,7 +1640,7 @@ void HelperToolbox::Render()
     if (ImGui::CollapsingHeader("Documentation", ImGuiTreeNodeFlags_DefaultOpen))
     {
 
-        ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
+        ImGui::Columns(2, "doccolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
 
         ImGui::Text("General"); ImGui::NextColumn();
@@ -1718,7 +1715,7 @@ void HelperToolbox::Render()
 
     if (ImGui::CollapsingHeader("Sources"))
     {
-        ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
+        ImGui::Columns(2, "sourcecolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
@@ -1788,7 +1785,7 @@ void HelperToolbox::Render()
     {
         ImGui::Text("Select 'Clone & Filter' on a source to access filters;");
 
-        ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
+        ImGui::Columns(2, "filterscolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
@@ -2984,6 +2981,8 @@ void SourceController::RenderSelection(size_t i)
         resetActiveSelection();
         Mixer::manager().session()->deletePlayGroup(i);
     }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Delete");
 
     ImGui::PopStyleColor(4);
 }
