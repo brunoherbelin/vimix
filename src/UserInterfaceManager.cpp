@@ -2421,7 +2421,7 @@ void SourceController::Render()
         //
         // Menu for capture frame
         //
-        if ( ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO "  Frame", selection_.size() == 1 ) )
+        if ( ImGui::BeginMenu(ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Capture", selection_.size() == 1 ) )
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
             if (ImGui::MenuItem( MENU_CAPTUREFRAME, "F10" ))
@@ -4116,7 +4116,7 @@ void OutputPreview::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu( ICON_FA_COMPACT_DISC " Record"))
+            if (ImGui::BeginMenu( ICON_FA_ARROW_ALT_CIRCLE_DOWN " Capture"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) ) {
