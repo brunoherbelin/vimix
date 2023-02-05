@@ -142,7 +142,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     if ( BaseToolkit::is_a_number(num, &i)){
                         // confirmed : the target is a Player selection (e.g. 'selection#2')
                         // loop over this selection of sources
-                        SourceList _selection = Mixer::manager().session()->playGroup(i);
+                        SourceList _selection = Mixer::manager().session()->getBatch(i);
                         for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
                             // apply attributes
                             if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)

@@ -3,6 +3,7 @@
 
 #include <list>
 #include <set>
+#include <variant>
 #include <glm/glm.hpp>
 
 class Source;
@@ -60,5 +61,8 @@ typedef std::list<SourceLink*> SourceLinkList;
 SourceLinkList getLinkList (const SourceList &list);
 void clearLinkList (SourceLinkList list);
 SourceList validateLinkList (const SourceLinkList &list);
+
+// utility type to target either a source or a batch
+typedef std::variant<std::monostate, Source *, size_t> Target;
 
 #endif // SOURCELIST_H

@@ -117,21 +117,26 @@ bool SourceCallback::overlap( SourceCallback *a,  SourceCallback *b)
         {
             const Grab *_a = static_cast<Grab*>(a);
             const Grab *_b = static_cast<Grab*>(b);
-            // there is no overlap if the X or Y of a vector is zero
-            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+            if ( ABS_DIFF(_a->value().x, _b->value().x) > EPSILON || ABS_DIFF(_a->value().y, _b->value().y) > EPSILON )
                 ret = false;
-            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-                ret = false;
+
+//            // there is no overlap if the X or Y of a vector is zero
+//            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+//                ret = false;
+//            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
+//                ret = false;
         }
             break;
         case SourceCallback::CALLBACK_RESIZE:
         {
             const Resize *_a = static_cast<Resize*>(a);
             const Resize *_b = static_cast<Resize*>(b);
-            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+            if ( ABS_DIFF(_a->value().x, _b->value().x) > EPSILON || ABS_DIFF(_a->value().y, _b->value().y) > EPSILON )
                 ret = false;
-            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-                ret = false;
+//            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
+//                ret = false;
+//            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
+//                ret = false;
         }
             break;
         default:

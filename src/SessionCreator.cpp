@@ -234,10 +234,24 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
             uint input = 0;
             xmlCurrent_->QueryUnsignedAttribute("input", &input);
             if (input > 0) {
-                // what id is the source ?
-                uint64_t id = 0;
-                xmlCurrent_->QueryUnsigned64Attribute("id", &id);
-                if (id > 0) {
+                Target target;
+                uint64_t sid = 0;
+                size_t bid = 0;
+                if ( xmlCurrent_->QueryUnsigned64Attribute("id", &sid) != XML_NO_ATTRIBUTE ) {
+                    // find the source with the given id
+                    SourceList::iterator sit = session_->find(sid);
+                    if (sit != session_->end()) {
+                        // assign variant
+                        target = *sit;
+                    }
+                }
+                else if ( xmlCurrent_->QueryUnsigned64Attribute("batch", &bid) != XML_NO_ATTRIBUTE ) {
+                    // assign variant
+                    target = bid;
+                }
+
+                // if could identify the target
+                if (target.index() > 0) {
                     // what type is the callback ?
                     uint type = 0;
                     xmlCurrent_->QueryUnsignedAttribute("type", &type);
@@ -247,12 +261,8 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                     if (loadedcallback) {
                         // apply specific parameters
                         loadedcallback->accept(*this);
-                        // find the source with the given id
-                        SourceList::iterator sit = session_->find(id);
-                        if (sit != session_->end()) {
-                            // assign to source in session
-                            session_->assignSourceCallback(input, *sit, loadedcallback);
-                        }
+                        // assign to target
+                        session_->assignInputCallback(input, target, loadedcallback);
                     }
                 }
             }
@@ -321,7 +331,7 @@ void SessionCreator::loadPlayGroups(tinyxml2::XMLElement *playgroupNode)
                     playgroup_sources.push_back( id__ );
 
             }
-            session_->addPlayGroup( playgroup_sources );
+            session_->addBatch( playgroup_sources );
         }
     }
 }

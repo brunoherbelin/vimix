@@ -197,7 +197,7 @@ void SessionVisitor::savePlayGroups(tinyxml2::XMLDocument *doc, Session *session
     if (doc != nullptr && session != nullptr)
     {
         XMLElement *playlistNode = doc->NewElement("PlayGroups");
-        std::vector<SourceIdList> pl = session->getPlayGroups();
+        std::vector<SourceIdList> pl = session->getAllBatch();
         for (auto plit = pl.begin(); plit != pl.end(); ++plit) {
             XMLElement *list = doc->NewElement("PlayGroup");
             playlistNode->InsertEndChild(list);
@@ -231,7 +231,14 @@ void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *ses
                     // create node for this callback
                     XMLElement *cbNode = doc->NewElement("Callback");
                     cbNode->SetAttribute("input", *i);
-                    cbNode->SetAttribute("id", kit->first->id());
+                    // 1. Case of variant as Source pointer
+                    if (Source * const* v = std::get_if<Source *>(&kit->first)) {
+                        cbNode->SetAttribute("id", (*v)->id());
+                    }
+                    // 2. Case of variant as index of batch
+                    else if ( const size_t* v = std::get_if<size_t>(&kit->first)) {
+                        cbNode->SetAttribute("batch", *v);
+                    }
                     inputsNode->InsertEndChild(cbNode);
                     // launch visitor to complete attributes
                     SessionVisitor sv(doc, cbNode);

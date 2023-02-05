@@ -105,7 +105,7 @@ TextEditor _editor;
 #define PLOT_CIRCLE_SEGMENTS 64
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
-#define LABEL_STORE_SELECTION "  Store selection"
+#define LABEL_STORE_SELECTION "  Create Batch"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 #define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
 
@@ -2386,7 +2386,7 @@ void SourceController::Render()
         if (ImGui::BeginMenu(active_label_.c_str()))
         {
             // info on selection status
-            size_t N = Mixer::manager().session()->numPlayGroups();
+            size_t N = Mixer::manager().session()->numBatch();
             bool enabled = !selection_.empty() && active_selection_ < 0;
 
             // Menu : Dynamic selection
@@ -2396,8 +2396,8 @@ void SourceController::Render()
             if (ImGui::MenuItem(ICON_FA_PLUS_CIRCLE LABEL_STORE_SELECTION, NULL, false, enabled))
             {
                 active_selection_ = N;
-                active_label_ = std::string(ICON_FA_CHECK_CIRCLE "  Selection #") + std::to_string(active_selection_);
-                Mixer::manager().session()->addPlayGroup( ids(selection_) );
+                active_label_ = std::string(ICON_FA_CHECK_CIRCLE "  Batch #") + std::to_string(active_selection_);
+                Mixer::manager().session()->addBatch( ids(selection_) );
                 info_.reset();
             }
             // Menu : list of selections
@@ -2405,7 +2405,7 @@ void SourceController::Render()
                 ImGui::Separator();
                 for (size_t i = 0 ; i < N; ++i)
                 {
-                    std::string label = std::string(ICON_FA_CHECK_CIRCLE "  Selection #") + std::to_string(i);
+                    std::string label = std::string(ICON_FA_CHECK_CIRCLE "  Batch #") + std::to_string(i);
                     if (ImGui::MenuItem( label.c_str() ))
                     {
                         active_selection_ = i;
@@ -2713,7 +2713,7 @@ void SourceController::RenderSelection(size_t i)
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    selection_ = Mixer::manager().session()->playGroup(i);
+    selection_ = Mixer::manager().session()->getBatch(i);
     int numsources = selection_.size();
 
     // no source selected
@@ -3009,11 +3009,11 @@ void SourceController::RenderSelection(size_t i)
                     std::string label = std::string((*s)->initials()) + " - " + (*s)->name();
                     if (std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
                         if (ImGui::MenuItem( label.c_str() , 0, false ))
-                            Mixer::manager().session()->addToPlayGroup(i, *s);
+                            Mixer::manager().session()->addSourceToBatch(i, *s);
                     }
                     else {
                         if (ImGui::MenuItem( label.c_str(), 0, true ))
-                            Mixer::manager().session()->removeFromPlayGroup(i, *s);
+                            Mixer::manager().session()->removeSourceFromBatch(i, *s);
                     }
                 }
             }
@@ -3025,7 +3025,7 @@ void SourceController::RenderSelection(size_t i)
     ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.3f);
     if (ImGui::Button(ICON_FA_MINUS_CIRCLE)) {
         resetActiveSelection();
-        Mixer::manager().session()->deletePlayGroup(i);
+        Mixer::manager().session()->deleteBatch(i);
     }
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip("Delete");
@@ -3390,9 +3390,9 @@ void SourceController::RenderSelectedSources()
         ImGui::SameLine(0, space -width);
         ImGui::SetNextItemWidth(width);
         if (ImGui::Button( label.c_str() )) {
-            active_selection_ = Mixer::manager().session()->numPlayGroups();
-            active_label_ = std::string("Selection #") + std::to_string(active_selection_);
-            Mixer::manager().session()->addPlayGroup( ids(selection_) );
+            active_selection_ = Mixer::manager().session()->numBatch();
+            active_label_ = std::string("Batch #") + std::to_string(active_selection_);
+            Mixer::manager().session()->addBatch( ids(selection_) );
         }
         if (space < buttons_width_ && ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip(LABEL_STORE_SELECTION);
@@ -4816,14 +4816,25 @@ bool InputMappingInterface::Visible() const
              );
 }
 
-
-Source *InputMappingInterface::ComboSelectSource(Source *current)
+///
+/// Draw a combo box listing all sources and all batch of the current session
+/// Returns a Target variant : non-assigned by default (std::monostate), or a Source, or a Batch
+/// If current element is indicated, it is displayed first
+///
+Target InputMappingInterface::ComboSelectTarget(const Target &current)
 {
-    Source *selected = nullptr;
+    Target selected;
     std::string label = "Select";
 
-    if (current)
-        label = std::string(current->initials()) + " - " + current->name();
+    // depending on variant, fill the label of combo
+    if (current.index() > 0) {
+        if (Source * const* v = std::get_if<Source *>(&current)) {
+            label = std::string((*v)->initials()) + " - " + (*v)->name();
+        }
+        else if ( const size_t* v = std::get_if<size_t>(&current)) {
+            label = std::string("Batch #") + std::to_string(*v);
+        }
+    }
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
@@ -4834,6 +4845,13 @@ Source *InputMappingInterface::ComboSelectSource(Source *current)
                 selected = *sit;
             }
         }
+        for (size_t b = 0; b < Mixer::manager().session()->numBatch(); ++b){
+            label = std::string("Batch #") + std::to_string(b);
+            if (ImGui::Selectable( label.c_str() )) {
+                selected = b;
+            }
+        }
+
         ImGui::EndCombo();
     }
 
@@ -4893,7 +4911,7 @@ struct ClosestIndex
     void operator()(float v) { if (v < val) ++index; }
 };
 
-void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, Source *source)
+void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, const Target &target)
 {
     const float right_align = -1.05f * ImGui::GetTextLineHeightWithSpacing();
     static const char *press_tooltip[3] = {"Key Press\nApply value on key press",
@@ -4956,22 +4974,52 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, S
         if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
             edited->setDuration(speed_values[speed_index]);
 
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::Button("Capture", ImVec2(right_align, 0))) {
-            edited->setTarget( source->group(View::GEOMETRY) );
+        if (target.index() > 0) {
+            // 1. Case of variant as Source pointer
+            if (Source * const* v = std::get_if<Source *>(&target)) {
+                // Button to capture the source current geometry
+                ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+                if (ImGui::Button("Capture", ImVec2(right_align, 0))) {
+                    edited->setTarget( (*v)->group(View::GEOMETRY) );
+                }
+            }
+            // 2. Case of variant as index of batch
+            else if ( const size_t* v = std::get_if<size_t>(&target)) {
+
+                std::vector<SourceIdList> _batch = Mixer::manager().session()->getAllBatch();
+
+                std::string label = "Capture";
+                // Combo box to set which source to capture
+                if (ImGui::BeginCombo("##ComboSelectGeometryCapture", label.c_str()) )
+                {
+                    if ( *v < _batch.size() )
+                    {
+                        for (auto sid = _batch[*v].begin(); sid != _batch[*v].end(); ++sid){
+                            SourceList::iterator sit = Mixer::manager().session()->find(*sid);
+                            if ( sit != Mixer::manager().session()->end() ) {
+
+                                label = std::string((*sit)->initials()) + " - " + (*sit)->name();
+                                // C to capture the source current geometry
+                                if (ImGui::Selectable( label.c_str() )) {
+                                    edited->setTarget( (*sit)->group(View::GEOMETRY) );
+                                }
+                            }
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+            }
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+            ImGuiToolkit::Indication("Target geometry places the source by setting its position, scale and rotation", 1, 16);
         }
-        // show current geometry on over
-        if (ImGui::IsItemHovered()) {
-            InfoVisitor info;
-            Group tmp; edited->getTarget(&tmp);
-            tmp.accept(info);
-            ImGui::BeginTooltip();
-            ImGui::Text("%s", info.str().c_str());
-            ImGui::EndTooltip();
+        else {
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+            ImGui::TextDisabled("Invalid");
         }
 
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Target geometry places the source by setting its position, scale and rotation", 1, 16);
 
     }
         break;
@@ -5251,7 +5299,7 @@ void InputMappingInterface::Render()
 
             // Clear all
             if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear all" ) )
-                S->clearSourceCallbacks();
+                S->clearInputCallbacks();
 
             // output manager menu
             ImGui::Separator();
@@ -5289,7 +5337,7 @@ void InputMappingInterface::Render()
         {
             if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Reset mapping", NULL, false, S->inputAssigned(current_input_) ) )
                 // remove all source callback of this input
-                S->deleteSourceCallbacks(current_input_);
+                S->deleteInputCallbacks(current_input_);
 
             if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome", S->inputAssigned(current_input_)))
             {
@@ -5315,7 +5363,7 @@ void InputMappingInterface::Render()
                 for (auto m = models.cbegin(); m != models.cend(); ++m) {
                     if ( *m != current_input_ )   {
                         if ( ImGui::MenuItem( Control::inputLabel( *m ).c_str() ) ){
-                            S->copySourceCallback( *m, current_input_);
+                            S->copyInputCallback( *m, current_input_);
                         }
                     }
                 }
@@ -5378,7 +5426,7 @@ void InputMappingInterface::Render()
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
                         // swap
-                        S->swapSourceCallback(previous_input_key, ik);
+                        S->swapInputCallback(previous_input_key, ik);
                         // switch to this key
                         current_input_ = ik;
                     }
@@ -5455,7 +5503,7 @@ void InputMappingInterface::Render()
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
                         // swap
-                        S->swapSourceCallback(previous_input_key, ik);
+                        S->swapInputCallback(previous_input_key, ik);
                         // switch to this key
                         current_input_ = ik;
                     }
@@ -5529,7 +5577,7 @@ void InputMappingInterface::Render()
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
                         // swap
-                        S->swapSourceCallback(previous_input_key, it);
+                        S->swapInputCallback(previous_input_key, it);
                         // switch to this key
                         current_input_ = it;
                     }
@@ -5623,7 +5671,7 @@ void InputMappingInterface::Render()
                         // drop means change key of input callbacks
                         uint previous_input_key = *(const int*)payload->Data;
                         // swap
-                        S->swapSourceCallback(previous_input_key, ig);
+                        S->swapInputCallback(previous_input_key, ig);
                         // switch to this key
                         current_input_ = ig;
                     }
@@ -5741,7 +5789,7 @@ void InputMappingInterface::Render()
             auto result = S->getSourceCallbacks(current_input_);
             for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
 
-                Source *source = kit->first;
+                Target target = kit->first;
                 SourceCallback *callback = kit->second;
 
                 // push ID because we repeat the same UI
@@ -5749,33 +5797,42 @@ void InputMappingInterface::Render()
 
                 // Delete interface
                 if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Remove") ){
-                    S->deleteSourceCallback(callback);
+                    S->deleteInputCallback(callback);
                     // reload
                     ImGui::PopID();
                     break;
                 }
 
-                // Select Source
+                // Select Target
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                Source *selected_source = ComboSelectSource(source);
-                if (selected_source != nullptr) {
+                Target selected_target = ComboSelectTarget(target);
+                // if the selected target variant was filled with a value
+                if (selected_target.index() > 0) {
                     // reassign the callback to newly selected source
-                    S->assignSourceCallback(current_input_, selected_source, callback);
+                    S->assignInputCallback(current_input_, selected_target, callback);
                     // reload
                     ImGui::PopID();
                     break;
+                }
+
+                // check if target is a Source with image processing enabled
+                bool withimageprocessing = false;
+                if ( selected_target.index() == 1 ) {
+                    if (Source * const* v = std::get_if<Source *>(&selected_target)) {
+                        withimageprocessing = (*v)->imageProcessingEnabled();
+                    }
                 }
 
                 // Select Reaction
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                uint type = ComboSelectCallback( callback->type(), source->imageProcessingEnabled() );
+                uint type = ComboSelectCallback( callback->type(), withimageprocessing );
                 if (type > 0) {
                     // remove previous callback
-                    S->deleteSourceCallback(callback);
+                    S->deleteInputCallback(callback);
                     // assign callback
-                    S->assignSourceCallback(current_input_, source, SourceCallback::create((SourceCallback::CallbackType)type) );
+                    S->assignInputCallback(current_input_, target, SourceCallback::create((SourceCallback::CallbackType)type) );
                     // reload
                     ImGui::PopID();
                     break;
@@ -5784,7 +5841,7 @@ void InputMappingInterface::Render()
                 // Adjust parameters
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (callback)
-                    SliderParametersCallback( callback, source );
+                    SliderParametersCallback( callback, target );
 
                 ImGui::PopID();
 
@@ -5799,13 +5856,13 @@ void InputMappingInterface::Render()
         /// Add a new interface
         ///
         static bool temp_new_input = false;
-        static Source *temp_new_source = nullptr;
+        static Target temp_new_target;
         static uint temp_new_callback = 0;
 
         // step 1 : press '+'
         if (temp_new_input) {
             if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
-                temp_new_source = nullptr;
+                temp_new_target = std::monostate();
                 temp_new_callback = 0;
                 temp_new_input = false;
             }
@@ -5817,24 +5874,32 @@ void InputMappingInterface::Render()
             // step 2 : Get input for source
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(w);
-            Source *s = ComboSelectSource(temp_new_source);
-            // user selected a source (or changed selection)
-            if (s != nullptr) {
-                temp_new_source = s;
+
+            Target selected_target = ComboSelectTarget(temp_new_target);
+            // if the selected target variant was filled with a value
+            if (selected_target.index() > 0) {
+                temp_new_target = selected_target;
                 temp_new_callback = 0;
             }
-            // possible new source
-            if (temp_new_source != nullptr) {
+            // possible new target
+            if (temp_new_target.index() > 0) {
+                // check if target is a Source with image processing enabled
+                bool withimageprocessing = false;
+                if ( temp_new_target.index() == 1 ) {
+                    if (Source * const* v = std::get_if<Source *>(&temp_new_target)) {
+                        withimageprocessing = (*v)->imageProcessingEnabled();
+                    }
+                }
                 // step 3: Get input for callback type
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
-                temp_new_callback = ComboSelectCallback( temp_new_callback, temp_new_source->imageProcessingEnabled() );
+                temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing );
                 // user selected a callback type
                 if (temp_new_callback > 0) {
                     // step 4 : create new callback and add it to source
-                    S->assignSourceCallback(current_input_, temp_new_source, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
+                    S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
                     // done
-                    temp_new_source = nullptr;
+                    temp_new_target = std::monostate();
                     temp_new_callback = 0;
                     temp_new_input = false;
                 }

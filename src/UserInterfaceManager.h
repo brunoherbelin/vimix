@@ -1,10 +1,12 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
+#include "Session.h"
 #include <string>
 #include <array>
 #include <list>
 #include <future>
+#include <variant>
 
 #include <gst/gstutils.h>
 
@@ -392,9 +394,9 @@ class InputMappingInterface : public WorkspaceWindow
     std::array< uint, 4 > current_input_for_mode;
     uint current_input_;
 
-    Source *ComboSelectSource(Source *current = nullptr);
+    Target ComboSelectTarget(const Target &current);
     uint ComboSelectCallback(uint current, bool imageprocessing);
-    void SliderParametersCallback(SourceCallback *callback, Source *source);
+    void SliderParametersCallback(SourceCallback *callback, const Target &target);
 
 public:
     InputMappingInterface();
