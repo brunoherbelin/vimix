@@ -236,7 +236,7 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
             if (input > 0) {
                 Target target;
                 uint64_t sid = 0;
-                size_t bid = 0;
+                uint64_t bid = 0;
                 if ( xmlCurrent_->QueryUnsigned64Attribute("id", &sid) != XML_NO_ATTRIBUTE ) {
                     // find the source with the given id
                     SourceList::iterator sit = session_->find(sid);
@@ -247,7 +247,7 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                 }
                 else if ( xmlCurrent_->QueryUnsigned64Attribute("batch", &bid) != XML_NO_ATTRIBUTE ) {
                     // assign variant
-                    target = bid;
+                    target = (size_t) bid;
                 }
 
                 // if could identify the target

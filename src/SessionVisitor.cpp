@@ -237,7 +237,7 @@ void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *ses
                     }
                     // 2. Case of variant as index of batch
                     else if ( const size_t* v = std::get_if<size_t>(&kit->first)) {
-                        cbNode->SetAttribute("batch", *v);
+                        cbNode->SetAttribute("batch", (uint64_t) *v);
                     }
                     inputsNode->InsertEndChild(cbNode);
                     // launch visitor to complete attributes
