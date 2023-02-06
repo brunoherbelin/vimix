@@ -105,7 +105,7 @@ TextEditor _editor;
 #define PLOT_CIRCLE_SEGMENTS 64
 #define PLOT_ARRAY_SIZE 180
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
-#define LABEL_STORE_SELECTION "  Create Batch"
+#define LABEL_STORE_SELECTION "  Create batch"
 #define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
 #define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
 
@@ -3028,7 +3028,7 @@ void SourceController::RenderSelection(size_t i)
         Mixer::manager().session()->deleteBatch(i);
     }
     if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Delete");
+        ImGuiToolkit::ToolTip("Delete batch");
 
     ImGui::PopStyleColor(4);
 }

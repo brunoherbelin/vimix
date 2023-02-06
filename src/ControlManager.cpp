@@ -130,7 +130,17 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 }
             }
             // Selection sources target: apply attribute to all sources of the selection
-            else if ( target.compare(OSC_SELECTED) >= 0 )
+            else if (target.compare(OSC_SELECTION) == 0) {
+                // Loop over dynamically selected sources
+                for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                    // apply attributes
+                    if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                        // and send back feedback if needed
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                }
+            }
+            // Batch sources target: apply attribute to all sources in the Batch
+            else if ( target.compare(OSC_BATCH) > 0 && target.compare(OSC_BATCH) < 3 )
             {
                 std::smatch reg_match;
                 static std::regex reg_exp( "\\#[[:digit:]]+");
@@ -140,25 +150,19 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     int i = 0;
                     std::string num = reg_match.str().substr(1, reg_match.length()-1);
                     if ( BaseToolkit::is_a_number(num, &i)){
-                        // confirmed : the target is a Player selection (e.g. 'selection#2')
-                        // loop over this selection of sources
-                        SourceList _selection = Mixer::manager().session()->getBatch(i);
-                        for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
-                            // apply attributes
-                            if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
-                                // and send back feedback if needed
-                                Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        if ( i <  (int) Mixer::manager().session()->numBatch() ) {
+                            // confirmed : the target is a Player Batch (e.g. 'batch#2')
+                            // loop over this list of sources
+                            SourceList _selection = Mixer::manager().session()->getBatch(i);
+                            for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
+                                // apply attributes
+                                if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                                    // and send back feedback if needed
+                                    Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                            }
                         }
-                    }
-                }
-                // not mathching regex; should be exactly OSC_SELECTED
-                else if (target.compare(OSC_SELECTED) == 0) {
-                    // Loop over dynamically selected sources
-                    for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                        // apply attributes
-                        if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
-                            // and send back feedback if needed
-                            Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        else
+                            Log::Info(CONTROL_OSC_MSG "No batch '%s' requested by %s.", target.c_str(), sender);
                     }
                 }
             }

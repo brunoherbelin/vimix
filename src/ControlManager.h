@@ -7,8 +7,6 @@
 #include <atomic>
 #include <condition_variable>
 
-#include "SourceList.h"
-#include "BaseToolkit.h"
 #include "NetworkToolkit.h"
 
 #define OSC_SYNC               "/sync"
@@ -25,7 +23,8 @@
 #define OSC_OUTPUT_FADE_OUT    "/fade-out"
 
 #define OSC_ALL                "/all"
-#define OSC_SELECTED           "/selection"
+#define OSC_SELECTION          "/selection"
+#define OSC_BATCH              "/batch#"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
