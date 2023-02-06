@@ -3154,13 +3154,13 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider =
         }
         // else : no render of cropped area
 
+        ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_NavWindowingHighlight);
         if (withslider)
         {
             //
             // SLIDER
             //
             // user input : move slider horizontally
-            ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_NavWindowingHighlight);
             ImGui::SetCursorScreenPos(top_image + ImVec2(- 20.f, 0.5f * framesize.y - 20.0f));
             ImGuiToolkit::InvisibleSliderFloat("#media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x + 40.f, 40.0f) );
             // affordance: cursor change to horizontal arrows
@@ -3170,9 +3170,9 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider =
             }
             // graphical indication of slider
             draw_list->AddCircleFilled(top_image + slider * ImVec2(1.f, 0.5f), 20.f, slider_color, 26);
-            draw_list->AddLine(top_image + slider * ImVec2(1.f,0.0f), top_image + slider, slider_color, 1);
         }
-
+        // graphical indication of separator (vertical line)
+        draw_list->AddLine(top_image + slider * ImVec2(1.f,0.0f), top_image + slider, slider_color, 1);
     }
     // no post-processed to show: draw simple texture
     else {
@@ -3180,7 +3180,6 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider =
         if ( withinspector && ImGui::IsItemHovered() )
             DrawInspector(s->texture(), framesize, framesize, top_image);
     }
-
 }
 
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
@@ -3199,6 +3198,7 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     }
     else {
         // horizontally centered
+        //        corner.x = (framesize.x - tmp.x) - MAX( (framesize.x - tmp.x) / 2.f - ImGui::GetStyle().IndentSpacing, 0.f);
         corner.x = (framesize.x - tmp.x) / 2.f;
         framesize.x = tmp.x;
     }
@@ -3208,7 +3208,10 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     ///
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
+    // 100% opacity for the image (ensure true colors)
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
     DrawSource(s, framesize, top_image, true, with_inspector);
+    ImGui::PopStyleVar();
 
     return ImRect( top_image, top_image + framesize);
 }
@@ -3423,32 +3426,54 @@ void SourceController::RenderSingleSource(Source *s)
         ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
         ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize, magnifying_glass & !show_overlay_info);
+        ImRect imgarea = DrawSourceWithSlider(s, top, rendersize, magnifying_glass);
 
         ///
         /// Info overlays
         ///
-        ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
-        ImGui::Text(ICON_FA_INFO_CIRCLE);
-        show_overlay_info = ImGui::IsItemHovered();
-        if (show_overlay_info){
-            // fill info string
-            s->accept(info_);
-            // draw overlay frame and text
-            float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-            ImGui::GetWindowDrawList()->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
+        if (!show_overlay_info){
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
+            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_-1.f, v_space_-1.f));
+            ImGui::Text("%s", s->initials());
+            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_+1.f, v_space_+1.f));
+            ImGui::Text("%s", s->initials());
+            ImGui::PopStyleColor(1);
+
             ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-            ImGui::Text("%s", info_.str().c_str());
-            // special case Streams: print framerate
-            StreamSource *sts = dynamic_cast<StreamSource*>(s);
-            if (sts && s->playing()) {
-                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - 1.5f * buttons_height_, 0.5f * tooltip_height));
-                ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
-            }
+            ImGui::Text("%s", s->initials());
+            ImGui::PopFont();
         }
-        else
-            // make sure next ItemHovered refreshes the info_
-            info_.reset();
+        if (!magnifying_glass) {
+
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
+            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
+            ImGui::Text(ICON_FA_CIRCLE);
+            ImGui::PopStyleColor(1);
+
+            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
+            ImGui::Text(ICON_FA_INFO_CIRCLE);
+            show_overlay_info = ImGui::IsItemHovered();
+            if (show_overlay_info){
+                // fill info string
+                s->accept(info_);
+                // draw overlay frame and text
+                float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
+                ImGui::GetWindowDrawList()->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
+                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
+                ImGui::Text("%s", info_.str().c_str());
+                // special case Streams: print framerate
+                StreamSource *sts = dynamic_cast<StreamSource*>(s);
+                if (sts && s->playing()) {
+                    ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - 1.5f * buttons_height_, 0.5f * tooltip_height));
+                    ImGui::Text("%.1f Hz", sts->stream()->updateFrameRate());
+                }
+            }
+            else
+                // make sure next ItemHovered refreshes the info_
+                info_.reset();
+        }
 
         ///
         /// icon & timing in lower left corner
@@ -3488,32 +3513,54 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
     const ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, mediaplayer_height_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize, magnifying_glass & !show_overlay_info);
+    ImRect imgarea = DrawSourceWithSlider(ms, top, rendersize, magnifying_glass);
 
     ///
     /// Info overlays
     ///
-    ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
-    ImGui::Text(ICON_FA_INFO_CIRCLE);
-    show_overlay_info = ImGui::IsItemHovered();
-    if (show_overlay_info){
-        // information visitor
-        mediaplayer_active_->accept(info_);
-        float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
-        draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
+    if (!show_overlay_info){
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
+        ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_-1.f, v_space_-1.f));
+        ImGui::Text("%s", ms->initials());
+        ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_+1.f, v_space_+1.f));
+        ImGui::Text("%s", ms->initials());
+        ImGui::PopStyleColor(1);
+
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-        ImGui::Text("%s", info_.str().c_str());
+        ImGui::Text("%s", ms->initials());
+        ImGui::PopFont();
+    }
+    if (!magnifying_glass) {
 
-        // Icon to inform hardware decoding
-        if ( mediaplayer_active_->decoderName().compare("software") != 0) {
-            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
-            ImGui::Text(ICON_FA_MICROCHIP);
-        }
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
+        ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
+        ImGui::Text(ICON_FA_CIRCLE);
+        ImGui::PopStyleColor(1);
 
-        // refresh frequency
-        if ( mediaplayer_active_->isPlaying()) {
-            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - 1.5f * buttons_height_, 0.667f * tooltip_height));
-            ImGui::Text("%.1f Hz", mediaplayer_active_->updateFrameRate());
+        ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), v_space_));
+        ImGui::Text(ICON_FA_INFO_CIRCLE);
+        show_overlay_info = ImGui::IsItemHovered();
+        if (show_overlay_info){
+            // information visitor
+            mediaplayer_active_->accept(info_);
+            float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
+            draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
+            ImGui::Text("%s", info_.str().c_str());
+
+            // Icon to inform hardware decoding
+            if ( mediaplayer_active_->decoderName().compare("software") != 0) {
+                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
+                ImGui::Text(ICON_FA_MICROCHIP);
+            }
+
+            // refresh frequency
+            if ( mediaplayer_active_->isPlaying()) {
+                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - 1.5f * buttons_height_, 0.667f * tooltip_height));
+                ImGui::Text("%.1f Hz", mediaplayer_active_->updateFrameRate());
+            }
         }
     }
 
@@ -4321,8 +4368,10 @@ void OutputPreview::Render()
 
         // virtual button to show the output window when clic on the preview
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-        // preview image
+        // 100% opacity for the image (ensures true colors)
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        ImGui::PopStyleVar();
         // mouse over the image
         if ( ImGui::IsItemHovered()  ) {
             // raise window on double clic
@@ -4343,9 +4392,16 @@ void OutputPreview::Render()
         const float r = ImGui::GetTextLineHeightWithSpacing();
 
         // info indicator
-        ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
-        ImGui::Text(ICON_FA_INFO_CIRCLE);
-        bool drawoverlay = ImGui::IsItemHovered();
+        bool drawoverlay = false;
+        if (!magnifying_glass) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
+            ImGui::Text(ICON_FA_CIRCLE);
+            ImGui::PopStyleColor(1);
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
+            ImGui::Text(ICON_FA_INFO_CIRCLE);
+            drawoverlay = ImGui::IsItemHovered();
+        }
 
         // icon indicators
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
