@@ -22,9 +22,7 @@
 #include "ImageProcessingShader.h"
 #include "MediaSource.h"
 #include "MediaPlayer.h"
-#include "UpdateCallback.h"
 #include "Visitor.h"
-#include "Log.h"
 
 #include "SourceCallback.h"
 
@@ -99,53 +97,6 @@ SourceCallback *SourceCallback::create(CallbackType type)
     }
 
     return loadedcallback;
-}
-
-
-bool SourceCallback::overlap( SourceCallback *a,  SourceCallback *b)
-{
-    bool ret = false;
-
-    if (a->type() == b->type()) {
-
-        // same type means overlap
-        ret = true;
-
-        // but there are some exceptions..
-        switch (a->type()) {
-        case SourceCallback::CALLBACK_GRAB:
-        {
-            const Grab *_a = static_cast<Grab*>(a);
-            const Grab *_b = static_cast<Grab*>(b);
-            if ( ABS_DIFF(_a->value().x, _b->value().x) > EPSILON || ABS_DIFF(_a->value().y, _b->value().y) > EPSILON )
-                ret = false;
-
-//            // there is no overlap if the X or Y of a vector is zero
-//            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
-//                ret = false;
-//            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-//                ret = false;
-        }
-            break;
-        case SourceCallback::CALLBACK_RESIZE:
-        {
-            const Resize *_a = static_cast<Resize*>(a);
-            const Resize *_b = static_cast<Resize*>(b);
-            if ( ABS_DIFF(_a->value().x, _b->value().x) > EPSILON || ABS_DIFF(_a->value().y, _b->value().y) > EPSILON )
-                ret = false;
-//            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
-//                ret = false;
-//            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-//                ret = false;
-        }
-            break;
-        default:
-            break;
-        }
-
-    }
-
-    return ret;
 }
 
 SourceCallback::SourceCallback(): status_(PENDING), delay_(0.f), elapsed_(0.f)
@@ -384,7 +335,6 @@ SourceCallback *Lock::clone() const
 Loom::Loom(float speed, float ms) : SourceCallback(),
     speed_(speed), duration_(ms)
 {
-    pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
 
@@ -395,13 +345,14 @@ void Loom::update(Source *s, float dt)
     if (s->locked())
         status_ = FINISHED;
 
+    // current position
+    glm::vec2 pos = glm::vec2(s->group(View::MIXING)->translation_);
+
     // set start on first time it is ready
     if ( status_ == READY ){
-        // initial position
-        pos_ = glm::vec2(s->group(View::MIXING)->translation_);
         // step in direction of source translation if possible
-        if ( glm::length(pos_) > DELTA_ALPHA)
-            step_ = glm::normalize(pos_);
+        if ( glm::length(pos) > DELTA_ALPHA)
+            step_ = glm::normalize(pos);
         status_ = ACTIVE;
     }
 
@@ -410,12 +361,12 @@ void Loom::update(Source *s, float dt)
         float progress = elapsed_ - delay_;
 
         // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
-        pos_ -= step_ * ( speed_ * dt * 0.001f );
+        pos -= step_ * ( speed_ * dt * 0.001f );
 
-        // apply alpha if pos in range [0 MIXING_MIN_THRESHOLD]
-        float l = glm::length( pos_ );
-        if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MIN_THRESHOLD && speed_ < 0.f ) )
-            s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
+        // apply alpha if pos in range [0 MIXING_MAX_THRESHOLD]
+        float l = glm::length( pos );
+        if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MAX_THRESHOLD && speed_ < 0.f ) )
+            s->group(View::MIXING)->translation_ = glm::vec3(pos, s->group(View::MIXING)->translation_.z);
         else
             status_ = FINISHED;
 
@@ -434,11 +385,6 @@ void Loom::multiply (float factor)
 SourceCallback *Loom::clone() const
 {
     return new Loom(speed_, duration_);
-}
-
-SourceCallback *Loom::reverse(Source *) const
-{
-    return new Loom(speed_, 0.f);
 }
 
 void Loom::accept(Visitor& v)
@@ -696,15 +642,15 @@ void Grab::update(Source *s, float dt)
     // set start on first time it is ready
     if ( status_ == READY ) {
         // initial position
-        pos_ = glm::vec2(s->group(View::GEOMETRY)->translation_);
         status_ = ACTIVE;
     }
 
     if ( status_ == ACTIVE ) {
 
         // move target by speed vector * time (in second)
-        pos_ += speed_ * ( dt * 0.001f);
-        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos_, s->group(View::GEOMETRY)->translation_.z);
+        glm::vec2 pos = glm::vec2(s->group(View::GEOMETRY)->translation_);
+        pos += speed_ * ( dt * 0.001f);
+        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos, s->group(View::GEOMETRY)->translation_.z);
 
         // time-out
         if ( (elapsed_ - delay_) > duration_ )
@@ -721,11 +667,6 @@ void Grab::multiply (float factor)
 SourceCallback *Grab::clone() const
 {
     return new Grab(speed_.x, speed_.y, duration_);
-}
-
-SourceCallback *Grab::reverse(Source *) const
-{
-    return new Grab(speed_.x, speed_.y, 0.f);
 }
 
 void Grab::accept(Visitor& v)
@@ -770,11 +711,6 @@ SourceCallback *Resize::clone() const
     return new Resize(speed_.x, speed_.y, duration_);
 }
 
-SourceCallback *Resize::reverse(Source *) const
-{
-    return new Resize(speed_.x, speed_.y, 0.f);
-}
-
 void Resize::accept(Visitor& v)
 {
     SourceCallback::accept(v);
@@ -795,16 +731,17 @@ void Turn::update(Source *s, float dt)
 
     // set start on first time it is ready
     if ( status_ == READY ){
-        // initial position
-        angle_ = s->group(View::GEOMETRY)->rotation_.z;
         status_ = ACTIVE;
     }
 
     if ( status_ == ACTIVE ) {
 
+        // current position
+        float angle = s->group(View::GEOMETRY)->rotation_.z;
+
         // perform movement
-        angle_ -= speed_ * ( dt * 0.001f );
-        s->group(View::GEOMETRY)->rotation_.z = angle_;
+        angle -= speed_ * ( dt * 0.001f );
+        s->group(View::GEOMETRY)->rotation_.z = angle;
 
         // timeout
         if ( (elapsed_ - delay_) > duration_ )
@@ -821,11 +758,6 @@ void Turn::multiply (float factor)
 SourceCallback *Turn::clone() const
 {
     return new Turn(speed_, duration_);
-}
-
-SourceCallback *Turn::reverse(Source *) const
-{
-    return new Turn(speed_, 0.f);
 }
 
 void Turn::accept(Visitor& v)

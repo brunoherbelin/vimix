@@ -655,38 +655,17 @@ void Source::call(SourceCallback *callback, bool override)
         // lock access to callbacks list
         access_callbacks_.lock();
 
-        bool add = true;
-
-        // look for callbacks of same type
-        for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
-        {
-            // Test if the new callback would overlap an existing one
-            SourceCallback *c = *iter;
-            if ( SourceCallback::overlap( callback, c) ) {
-                if (override) {
-                    // either remove and delete all overlapping callbacks if override...
-                    iter = update_callbacks_.erase(iter);
-                    delete c;
-                }
-                else {
-                    // ...or cancel adding overlapping callbacks if not override
-                    add = false;
-                    break;
-                }
+        // if operation should override previous callbacks of same type
+        if (override) {
+            // finish all callbacks of the same type
+            for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); ++iter) {
+                if ( callback->type() == (*iter)->type() )
+                    (*iter)->finish();
             }
-            // iterate
-            else
-                ++iter;
         }
 
-        // we can add the callback : its either not overlapping or we override it
-        if (add) {
-            // add callback to callbacks list
-            update_callbacks_.push_back(callback);
-        }
-        // or delete it if couln't be added (overlapping but not override)
-        else
-            delete callback;
+        // allways add the given callback to list of callbacks
+        update_callbacks_.push_back(callback);
 
         // release access to callbacks list
         access_callbacks_.unlock();
@@ -694,10 +673,29 @@ void Source::call(SourceCallback *callback, bool override)
 
 }
 
+void Source::finish(SourceCallback *callback)
+{
+    if (callback != nullptr) {
+
+        // lock access to callbacks list
+        access_callbacks_.lock();
+
+        // make sure the given pointer is a callback listed in this source
+        auto cb = std::find(update_callbacks_.begin(), update_callbacks_.end(), callback);
+        if (cb != update_callbacks_.end())
+            // set found callback to finish state
+            (*cb)->finish();
+
+        // release access to callbacks list
+        access_callbacks_.unlock();
+    }
+}
+
 void Source::updateCallbacks(float dt)
 {
     // lock access to callbacks list
     access_callbacks_.lock();
+
     // call callback functions
     for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {
@@ -716,9 +714,9 @@ void Source::updateCallbacks(float dt)
         else
             ++iter;
     }
+
     // release access to callbacks list
     access_callbacks_.unlock();
-
 }
 
 CloneSource *Source::clone(uint64_t id)

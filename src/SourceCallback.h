@@ -50,7 +50,6 @@ public:
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
-    static bool overlap(SourceCallback *a, SourceCallback *b);
 
     SourceCallback();
     virtual ~SourceCallback() {}
@@ -62,8 +61,9 @@ public:
     virtual CallbackType type () const { return CALLBACK_GENERIC; }
     virtual void accept (Visitor& v);
 
-    inline bool finished () const { return status_ > ACTIVE; }
     inline void reset () { status_ = PENDING; }
+    inline void finish () { status_ = FINISHED; }
+    inline bool finished () const { return status_ > ACTIVE; }
     inline void delay (float milisec) { delay_ = milisec;}
 
 protected:
@@ -146,7 +146,6 @@ public:
 class Loom : public SourceCallback
 {
     float speed_;
-    glm::vec2 pos_;
     glm::vec2 step_;
     float duration_;
 
@@ -161,7 +160,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone() const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_LOOM; }
     void accept (Visitor& v) override;
 };
@@ -273,7 +271,6 @@ public:
 class Grab : public SourceCallback
 {
     glm::vec2 speed_;
-    glm::vec2 pos_;
     float duration_;
 
 public:
@@ -287,7 +284,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_GRAB; }
     void accept (Visitor& v) override;
 };
@@ -308,7 +304,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_RESIZE; }
     void accept (Visitor& v) override;
 };
@@ -316,7 +311,6 @@ public:
 class Turn : public SourceCallback
 {
     float speed_;
-    float angle_;
     float duration_;
 
 public:
@@ -330,7 +324,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;
 };

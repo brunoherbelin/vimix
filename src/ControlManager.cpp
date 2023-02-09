@@ -632,7 +632,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new Loom(x, 0.f), true );
+            target->call( new Loom(x, 0.f) );
             // this will require to send feedback status about source
             send_feedback = true;
         }
@@ -662,7 +662,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             catch (osc::WrongArgumentTypeException &) {
             }
             arguments >> osc::EndMessage;
-            target->call( new Grab( x, y, 0.f), true );
+            target->call( new Grab( x, y, 0.f) );
         }
         /// e.g. '/vimix/current/position ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
@@ -699,7 +699,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             catch (osc::WrongArgumentTypeException &) {
             }
             arguments >> osc::EndMessage;
-            target->call( new Resize( x, y, 0.f), true );
+            target->call( new Resize( x, y, 0.f) );
         }        
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
@@ -730,7 +730,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            target->call( new Turn( x, t), true );
+            target->call( new Turn( x, t) );
         }
         /// e.g. '/vimix/current/angle f 3.1416'
         else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {

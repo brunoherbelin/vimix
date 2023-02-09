@@ -76,13 +76,18 @@ Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MI
 }
 
 
-void Session::InputSourceCallback::clearReverse()
+void Session::InputSourceCallback::clear()
 {
-    for (auto rev = reverse_.begin(); rev != reverse_.end(); ++rev) {
-        if (rev->second != nullptr)
-            delete rev->second;
+    // go through all instances stored in InputSourceCallback
+    for (auto clb = instances_.begin(); clb != instances_.end(); ++clb) {
+        // finish all
+        if (clb->second.first != nullptr)
+            clb->second.first->finish();
+        if (clb->second.second != nullptr)
+            clb->second.second->finish();
     }
-    reverse_.clear();
+    // do not keep references: will be deleted when terminated
+    instances_.clear();
 }
 
 Session::~Session()
@@ -105,7 +110,7 @@ Session::~Session()
          iter = input_callbacks_.erase(iter))  {
         if ( iter->second.model_ != nullptr)
             delete iter->second.model_;
-        iter->second.clearReverse();
+        iter->second.clear();
     }
 
     delete config_[View::RENDERING];
@@ -151,13 +156,10 @@ void Session::update(float dt)
         if ( k->second.model_ != nullptr && k->second.target_.index() > 0) {
 
             // if the value referenced as pressed changed state
-            // or repeat key if there is no reverse callback
-            if ( input_active != k->second.active_ || k->second.reverse_.empty()) {
+            if ( input_active != k->second.active_ ) {
 
                 // ON PRESS
                 if (input_active) {
-                    // delete the reverse if was not released
-                    k->second.clearReverse();
 
                     // Add callback to the target(s)
                     // 1. Case of variant as Source pointer
@@ -165,15 +167,18 @@ void Session::update(float dt)
                         // verify variant value
                         if ( *v != nullptr ) {
                             // generate a new callback from the model
-                            SourceCallback *C = k->second.model_->clone();
+                            SourceCallback *forward = k->second.model_->clone();
                             // apply value multiplyer from input
-                            C->multiply( Control::manager().inputValue(k->first) );
+                            forward->multiply( Control::manager().inputValue(k->first) );
                             // add delay
-                            C->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                            forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
                             // add callback to source
-                            (*v)->call( C, true );
-                            // get the reverse if the callback, and remember it (can be null)
-                            k->second.reverse_[(*v)->id()] = C->reverse(*v);
+                            (*v)->call( forward );
+                            // get the reverse of the callback (can be null)
+                            SourceCallback *backward = forward->reverse(*v);;
+                            // remember instances
+                            k->second.instances_[(*v)->id()] = {forward, backward};
+
                         }
                     }
                     // 2. Case of variant as index of batch
@@ -186,15 +191,17 @@ void Session::update(float dt)
                                 SourceList::const_iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId(*sid));;
                                 if ( sit != sources_.end()) {
                                     // generate a new callback from the model
-                                    SourceCallback *C = k->second.model_->clone();
+                                    SourceCallback *forward = k->second.model_->clone();
                                     // apply value multiplyer from input
-                                    C->multiply( Control::manager().inputValue(k->first) );
+                                    forward->multiply( Control::manager().inputValue(k->first) );
                                     // add delay
-                                    C->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                                    forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
                                     // add callback to source
-                                    (*sit)->call( C, true );
-                                    // get the reverse if the callback, and remember it (can be null)
-                                    k->second.reverse_[*sid] = C->reverse(*sit);
+                                    (*sit)->call( forward );
+                                    // get the reverse of the callback (can be null)
+                                    SourceCallback *backward = forward->reverse(*sit);;
+                                    // remember instances
+                                    k->second.instances_[*sid] = {forward, backward};
                                 }
                             }
                         }
@@ -202,15 +209,22 @@ void Session::update(float dt)
                 }
                 // ON RELEASE
                 else {
-                    // call all the reverse of sources (NB: invalid value tested in call)
-                    for (auto rev = k->second.reverse_.begin(); rev != k->second.reverse_.end(); ++rev) {
-                        SourceList::const_iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId(rev->first));;
+                    // go through all instances stored for that action
+                    for (auto clb = k->second.instances_.begin(); clb != k->second.instances_.end(); ++clb) {
+                        // find the source referenced by each instance
+                        SourceList::const_iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId(clb->first));;
+                        // if the source is valid
                         if ( sit != sources_.end()) {
-                            (*sit)->call( rev->second, true );
+                            // either call the reverse if exists (stored as second element in pair)
+                            if (clb->second.second != nullptr)
+                                (*sit)->call( clb->second.second, true );
+                            // or finish the called
+                            else
+                                (*sit)->finish( clb->second.first );
                         }
                     }
-                    // do not keep reference to reverse: will be deleted when terminated
-                    k->second.reverse_.clear();
+                    // do not keep reference to instances: will be deleted when finished
+                    k->second.instances_.clear();
                 }
 
                 // remember state of callback
@@ -779,7 +793,7 @@ void Session::assignInputCallback(uint input, Target target, SourceCallback *cal
         if ( k->second.model_ == callback) {
             k->second.target_ = target;
             // reverse became invalid
-            k->second.clearReverse();
+            k->second.clear();
             break;
         }
     }
@@ -837,7 +851,7 @@ void Session::deleteInputCallback(SourceCallback *callback)
     {
         if ( k->second.model_ == callback) {
             delete callback;
-            k->second.clearReverse();
+            k->second.clear();
             input_callbacks_.erase(k);
             break;
         }
@@ -851,7 +865,7 @@ void Session::deleteInputCallbacks(uint input)
         if ( k->first == input) {
             if (k->second.model_)
                 delete k->second.model_;
-            k->second.clearReverse();
+            k->second.clear();
             k = input_callbacks_.erase(k);
         }
         else
@@ -866,7 +880,7 @@ void Session::deleteInputCallbacks(Target target)
         if ( k->second.target_ == target) {
             if (k->second.model_)
                 delete k->second.model_;
-            k->second.clearReverse();
+            k->second.clear();
             k = input_callbacks_.erase(k);
         }
         else
@@ -881,7 +895,7 @@ void Session::clearInputCallbacks()
     {
         if (k->second.model_)
             delete k->second.model_;
-        k->second.clearReverse();
+        k->second.clear();
 
         k = input_callbacks_.erase(k);
     }

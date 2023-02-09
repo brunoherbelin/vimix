@@ -149,6 +149,7 @@ public:
 
     // add callback to each update
     void call(SourceCallback *callback, bool override = false);
+    void finish(SourceCallback *callback);
 
     // update mode
     inline  bool active () const { return active_; }

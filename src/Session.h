@@ -217,14 +217,14 @@ protected:
     struct InputSourceCallback {
         bool active_;
         SourceCallback *model_;
-        std::map<uint64_t, SourceCallback *> reverse_;
+        std::map<uint64_t, std::pair< SourceCallback *, SourceCallback *> > instances_;
         Target target_;
         InputSourceCallback() {
             active_ = false;
             model_   = nullptr;
             target_  = nullptr;
         }
-        void clearReverse();
+        void clear();
     };
     std::multimap<uint, InputSourceCallback> input_callbacks_;
     std::vector<Metronome::Synchronicity> input_sync_;

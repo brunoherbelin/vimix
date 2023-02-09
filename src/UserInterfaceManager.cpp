@@ -1207,7 +1207,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             float v = s->alpha();
             ImGui::SetNextItemWidth(rightalign);
             if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
-                s->call(new SetAlpha(v));
+                s->call(new SetAlpha(v), true);
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
                 Action::manager().store(info.str());
