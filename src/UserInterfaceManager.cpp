@@ -5874,8 +5874,8 @@ void InputMappingInterface::Render()
 
                 // check if target is a Source with image processing enabled
                 bool withimageprocessing = false;
-                if ( selected_target.index() == 1 ) {
-                    if (Source * const* v = std::get_if<Source *>(&selected_target)) {
+                if ( target.index() == 1 ) {
+                    if (Source * const* v = std::get_if<Source *>(&target)) {
                         withimageprocessing = (*v)->imageProcessingEnabled();
                     }
                 }
