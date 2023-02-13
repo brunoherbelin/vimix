@@ -4995,11 +4995,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         ImGui::SetNextItemWidth(right_align);
-        if (ImGui::SliderFloat("##CALLBACK_ALPHA", &val, 0.f, 1.f, "%.2f"))
+        if (ImGui::SliderFloat("##CALLBACK_ALPHA", &val, -1.f, 1.f, "%.2f"))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Target alpha makes the source\nvisible (1.0) or transparent (0.0)", 18, 12);
+        ImGuiToolkit::Indication("Target alpha makes the source\nvisible (1.0), transparent (0.0),\n or innactive (-1.0)", 18, 12);
 
     }
         break;

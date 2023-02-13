@@ -227,7 +227,7 @@ SourceCallback *ResetGeometry::clone() const
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
     duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
-    alpha_ = glm::clamp(alpha_, 0.f, 1.f);
+    alpha_ = glm::clamp(alpha_, -1.f, 1.f);
     start_  = glm::vec2();
     target_ = glm::vec2();
 }
@@ -252,8 +252,13 @@ void SetAlpha::update(Source *s, float dt)
         //
         // target mixing view position
         //
+        // special case Alpha < 0 : negative means inactive
+        if (alpha_ < -DELTA_ALPHA) {
+            // linear interpolation between 1 and the value given (max 2.f)
+            target_ = step * ( ABS(alpha_) + 1.f);
+        }
         // special case Alpha = 0
-        if (alpha_ < DELTA_ALPHA) {
+        else if (alpha_ < DELTA_ALPHA) {
             target_ = step;
         }
         // special case Alpha = 1
@@ -305,7 +310,13 @@ SourceCallback *SetAlpha::clone() const
 
 SourceCallback *SetAlpha::reverse(Source *s) const
 {
-    return bidirectional_ ? new SetAlpha(s->alpha(), duration_) : nullptr;
+    float _a = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
+    if (_a > 1.f)
+        _a *= -1.f;
+    else
+        _a = s->alpha();
+
+    return bidirectional_ ? new SetAlpha(_a, duration_) : nullptr;
 }
 
 void SetAlpha::accept(Visitor& v)
