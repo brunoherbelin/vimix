@@ -139,33 +139,6 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                         Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
-            // Batch sources target: apply attribute to all sources in the Batch
-            else if ( target.compare(OSC_BATCH) > 0 && target.compare(OSC_BATCH) < 3 )
-            {
-                std::smatch reg_match;
-                static std::regex reg_exp( "\\#[[:digit:]]+");
-
-                // is the target complemented with a '#' and a number ?
-                if ( std::regex_search(target, reg_match, reg_exp) ) {
-                    int i = 0;
-                    std::string num = reg_match.str().substr(1, reg_match.length()-1);
-                    if ( BaseToolkit::is_a_number(num, &i)){
-                        if ( i <  (int) Mixer::manager().session()->numBatch() ) {
-                            // confirmed : the target is a Player Batch (e.g. 'batch#2')
-                            // loop over this list of sources
-                            SourceList _selection = Mixer::manager().session()->getBatch(i);
-                            for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
-                                // apply attributes
-                                if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
-                                    // and send back feedback if needed
-                                    Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
-                            }
-                        }
-                        else
-                            Log::Info(CONTROL_OSC_MSG "No batch '%s' requested by %s.", target.c_str(), sender);
-                    }
-                }
-            }
             // Current source target: apply attribute to the current sources
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
@@ -198,6 +171,34 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     if ( Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream()) )
                         // and send back feedback if needed
                         Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                }
+            }
+            // Batch sources target: apply attribute to all sources in the Batch
+            else if ( target.compare(OSC_BATCH) > 0 && target.compare(OSC_BATCH) < 3 )
+            {
+                std::string reg_string = target;
+                std::smatch reg_match;
+                static std::regex reg_exp( "\\#[[:digit:]]+");
+
+                // is the target complemented with a '#' and a number ?
+                if ( std::regex_search(reg_string, reg_match, reg_exp) ) {
+                    int i = 0;
+                    std::string num = reg_match.str().substr(1, reg_match.length()-1);
+                    if ( BaseToolkit::is_a_number(num, &i)){
+                        if ( i <  (int) Mixer::manager().session()->numBatch() ) {
+                            // confirmed : the target is a Player Batch (e.g. 'batch#2')
+                            // loop over this list of sources
+                            SourceList _selection = Mixer::manager().session()->getBatch(i);
+                            for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
+                                // apply attributes
+                                if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
+                                    // and send back feedback if needed
+                                    Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                            }
+                        }
+                        else
+                            Log::Info(CONTROL_OSC_MSG "No batch '%s' requested by %s.", target.c_str(), sender);
+                    }
                 }
             }
             // General case: try to identify the target
