@@ -159,7 +159,7 @@ void InfoVisitor::visit (SessionFileSource& s)
         }
         else {
             oss << s.path() << std::endl;
-            oss << "MIX session (" << numsource << "), RGB" << std::endl;
+            oss << "Child session (" << numsource << "), RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
     }
@@ -175,7 +175,7 @@ void InfoVisitor::visit (SessionGroupSource& s)
 
     std::ostringstream oss;
 
-    if (!brief_) oss << "Group of ";
+    if (!brief_) oss << "Bundle of ";
     uint N = s.session()->size();
     oss << N << " source" << (N>1 ? "s" : "");
     uint T = s.session()->numSources();

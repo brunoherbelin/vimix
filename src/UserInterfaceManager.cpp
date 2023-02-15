@@ -959,13 +959,13 @@ void UserInterface::showMenuEdit()
 
     // GROUP
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Group active sources", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Bundle all active sources", false, Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand groups", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all bundles", false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().ungroupAll();
     }

@@ -156,7 +156,7 @@ void SessionSource::update(float dt)
     // delete source which failed
     if ( !session_->failedSources().empty() ) {
         Source *failure = *(session_->failedSources().cbegin());
-        Log::Info("Source '%s' deleted from Session group %s.", failure->name().c_str(), std::to_string(session_->id()).c_str());
+        Log::Info("Source '%s' deleted from Child Session %s.", failure->name().c_str(), std::to_string(session_->id()).c_str());
         session_->deleteSource( failure );
         // fail session if all sources failed
         if ( session_->size() < 1)
@@ -361,7 +361,7 @@ glm::ivec2 SessionFileSource::icon() const
 
 std::string SessionFileSource::info() const
 {
-    return "Session File";
+    return "Child Session";
 }
 
 
@@ -402,9 +402,9 @@ void SessionGroupSource::init()
         // done init
         uint N = session_->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
-        Log::Info("Session group %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
+        Log::Info("Buldne Session %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
                   int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
-        Log::Info("Source '%s' linked to Session group %s.", name().c_str(), std::to_string(session_->id()).c_str());
+        Log::Info("Source '%s' linked to Bundle Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
     }
 }
 
@@ -445,5 +445,5 @@ glm::ivec2 SessionGroupSource::icon() const
 
 std::string SessionGroupSource::info() const
 {
-    return "Session group";
+    return "Bundle Session";
 }

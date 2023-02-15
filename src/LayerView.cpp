@@ -119,12 +119,12 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Group" )) {
+            if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Bundle" )) {
                 Mixer::manager().groupSelection();
             }
         }
         else {
-            ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Group" );
+            ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Bundle" );
         }
         ImGui::Separator();
 
