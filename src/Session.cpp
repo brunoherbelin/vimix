@@ -247,13 +247,14 @@ void Session::update(float dt)
             // insert source in list of failed
             // (NB: insert in set fails if source is already listed)
             failed_.insert( *it );
+            // do not render
+            render_.scene.ws()->detach( (*it)->group(View::RENDERING) );
         }
         // render normally
         else {
+            // session is not ready if one source is not ready
             if ( !(*it)->ready() )
                 ready = false;
-            // set inputs
-
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);

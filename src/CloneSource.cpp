@@ -212,8 +212,9 @@ guint64 CloneSource::playtime () const
 {
     if (filter_->type() != FrameBufferFilter::FILTER_PASSTHROUGH)
         return guint64( filter_->updateTime() * GST_SECOND ) ;
-
-    return origin_->playtime();
+    if (origin_)
+        return origin_->playtime();
+    return 0;
 }
 
 
@@ -221,8 +222,7 @@ uint CloneSource::texture() const
 {
     if (origin_)
         return origin_->frame()->texture();
-    else
-        return Resource::getTextureBlack();
+    return Resource::getTextureBlack();
 }
 
 void CloneSource::accept(Visitor& v)

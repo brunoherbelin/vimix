@@ -223,12 +223,12 @@ void InfoVisitor::visit (RenderSource& s)
 
 void InfoVisitor::visit (CloneSource& s)
 {
-    if (current_id_ == s.id() || s.origin() == nullptr)
+    if (current_id_ == s.id() && !s.failed())
         return;
 
     std::ostringstream oss;
 
-    if (s.frame()){
+    if (!s.failed() && s.frame()){
         if (brief_) {
             oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
             oss << s.frame()->width() << " x " << s.frame()->height();
@@ -241,6 +241,8 @@ void InfoVisitor::visit (CloneSource& s)
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
     }
+    else
+        oss << "Undefined";
 
     information_ = oss.str();
     current_id_ = s.id();

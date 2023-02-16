@@ -1043,11 +1043,18 @@ void ImGuiVisitor::visit (CloneSource& s)
     }
 
     // link to origin source
-    std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
-    if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) ))
-        Mixer::manager().setCurrentSource(s.origin());
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Origin");
+    if ( !s.failed() ) {
+        std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
+        if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) ))
+            Mixer::manager().setCurrentSource(s.origin());
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Origin");
+    }
+    else {
+        ImGuiToolkit::ButtonDisabled("No source", ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Origin");
+    }
 
     // filter selection
     std::ostringstream oss;
