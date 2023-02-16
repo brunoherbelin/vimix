@@ -64,7 +64,7 @@ glm::ivec2 RenderView::presetFromResolution(glm::vec3 resolution)
         // get aspect ratio parameter
         float myratio = resolution.x / resolution.y;
         for(int ar = 0; ar < num_ar; ar++) {
-            if ( ABS_DIFF( myratio, RenderView::ratio_preset_value[ar].x / RenderView::ratio_preset_value[ar].y ) < EPSILON){
+            if ( ABS_DIFF( myratio, RenderView::ratio_preset_value[ar].x / RenderView::ratio_preset_value[ar].y ) < 0.01f){
                 ret.x = ar;
                 break;
             }
