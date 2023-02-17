@@ -8329,7 +8329,10 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
         ImGui::SameLine(0);
-        change |= ImGuiToolkit::ButtonSwitch( "Hardware video en/decoding", &gpu);
+        if (Settings::application.render.gpu_decoding_available)
+            change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
+        else
+            ImGui::TextDisabled("Hardware en/decoding unavailable");
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||

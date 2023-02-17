@@ -354,16 +354,19 @@ bool Rendering::init()
 
     // increase selection rank for GPU decoding plugins
     std::list<std::string> gpuplugins = GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
-    if (Settings::application.render.gpu_decoding) {
-        if (gpuplugins.size() > 0) {
-            Log::Info("Found the following GPU decoding plugin(s):");
-            int i = 1;
-            for(auto it = gpuplugins.rbegin(); it != gpuplugins.rend(); it++, ++i)
-                Log::Info("%d. %s", i, (*it).c_str());
-        }
-        else {
-            Log::Info("No GPU decoding plugin found.");
-        }
+    if (gpuplugins.size() > 0) {
+        Settings::application.render.gpu_decoding_available = true;
+        Log::Info("Found the following hardware decoding gstreamer plugin(s):");
+        int i = 1;
+        for(auto it = gpuplugins.begin(); it != gpuplugins.end(); it++, ++i)
+            Log::Info("%d. %s", i, (*it).c_str());
+        if (Settings::application.render.gpu_decoding)
+            Log::Info("Hardware decoding enabled.");
+        else
+            Log::Info("Hardware decoding disabled.");
+    }
+    else {
+        Log::Info("No hardware decoding plugin found.");
     }
 #ifdef SYNC_GSTREAMER_OPENGL_CONTEXT
 #if GST_GL_HAVE_PLATFORM_WGL

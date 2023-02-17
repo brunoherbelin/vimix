@@ -163,6 +163,7 @@ struct RenderConfig
     int custom_width, custom_height;
     float fading;
     bool gpu_decoding;
+    bool gpu_decoding_available;
 
     RenderConfig() {
         disabled = false;
@@ -175,6 +176,7 @@ struct RenderConfig
         custom_height = 600;
         fading = 0.0;
         gpu_decoding = true;
+        gpu_decoding_available = false;
     }
 };
 
