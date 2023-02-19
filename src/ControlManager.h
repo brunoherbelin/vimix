@@ -24,7 +24,7 @@
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTION          "/selection"
-#define OSC_BATCH              "/batch#"
+#define OSC_BATCH              "(\\/batch#)[[:digit:]]+$"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
@@ -135,6 +135,8 @@ protected:
                             osc::ReceivedMessageArgumentStream arguments);
     bool receiveSourceAttribute(Source *target, const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
+    bool receiveBatchAttribute(int batch, const std::string &attribute,
+                            osc::ReceivedMessageArgumentStream arguments);
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
     void receiveMultitouchAttribute(const std::string &attribute,
@@ -143,6 +145,7 @@ protected:
                              std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint,
                            osc::ReceivedMessageArgumentStream arguments);
+    void sendBatchStatus(const IpEndpointName& remoteEndpoint);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
 
 private:

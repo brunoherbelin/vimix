@@ -60,6 +60,9 @@
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
 {
+    // regular expression to check for batch
+    static std::regex osc_batch_reg_exp( OSC_BATCH );
+
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
     remoteEndpoint.AddressAndPortAsString(sender);
 
@@ -116,6 +119,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     Control::manager().sendOutputStatus(remoteEndpoint);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                    // send the status of all batch
+                    Control::manager().sendBatchStatus(remoteEndpoint);
                 }
             }
             // ALL sources target: apply attribute to all sources of the session
@@ -174,30 +179,15 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 }
             }
             // Batch sources target: apply attribute to all sources in the Batch
-            else if ( target.compare(OSC_BATCH) > 0 && target.compare(OSC_BATCH) < 3 )
+            else if ( std::regex_match(target, osc_batch_reg_exp) )
             {
-                std::string reg_string = target;
-                std::smatch reg_match;
-                static std::regex reg_exp( "\\#[[:digit:]]+");
-
-                // is the target complemented with a '#' and a number ?
-                if ( std::regex_search(reg_string, reg_match, reg_exp) ) {
-                    int i = 0;
-                    std::string num = reg_match.str().substr(1, reg_match.length()-1);
-                    if ( BaseToolkit::is_a_number(num, &i)){
-                        if ( i <  (int) Mixer::manager().session()->numBatch() ) {
-                            // confirmed : the target is a Player Batch (e.g. 'batch#2')
-                            // loop over this list of sources
-                            SourceList _selection = Mixer::manager().session()->getBatch(i);
-                            for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
-                                // apply attributes
-                                if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
-                                    // and send back feedback if needed
-                                    Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
-                            }
-                        }
-                        else
-                            Log::Info(CONTROL_OSC_MSG "No batch '%s' requested by %s.", target.c_str(), sender);
+                int i = 0;
+                std::string num = target.substr( target.find_last_of("#") + 1);
+                if ( BaseToolkit::is_a_number(num, &i)){
+                    // confirmed : the target is a Player Batch (e.g. '/batch#2')
+                    if ( Control::manager().receiveBatchAttribute(i, attribute, m.ArgumentStream()) ) {
+                        // send batch status
+                        Control::manager().sendBatchStatus(remoteEndpoint);
                     }
                 }
             }
@@ -864,6 +854,26 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
     return send_feedback;
 }
 
+bool Control::receiveBatchAttribute(int i, const std::string &attribute,
+                       osc::ReceivedMessageArgumentStream arguments)
+{
+    bool send_feedback = false;
+
+    if ( i < (int) Mixer::manager().session()->numBatch() ) {
+        // Batch sources target: apply attribute to all sources in the Batch
+        // loop over batch list of sources
+        SourceList _selection = Mixer::manager().session()->getBatch(i);
+        for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
+            // apply attributes
+            send_feedback |= Control::manager().receiveSourceAttribute( *it, attribute, arguments) ;
+        }
+    }
+    else
+        Log::Info(CONTROL_OSC_MSG "No batch %d", i);
+
+    return send_feedback;
+}
+
 bool Control::receiveSessionAttribute(const std::string &attribute,
                        osc::ReceivedMessageArgumentStream arguments)
 {
@@ -1043,8 +1053,11 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
 
 void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::ReceivedMessageArgumentStream arguments)
 {
+    // always start to send status of current source
+    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+
     //  (if an argument is given, it indicates the number of sources to update)
-    float N = 0.f;
+    float N = Mixer::manager().numSource();
     if ( !arguments.Eos())
         arguments >> N >> osc::EndMessage;
 
@@ -1061,7 +1074,8 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     int i = 0;
     char oscaddr[128];
     int index_current = Mixer::manager().indexCurrentSource();
-    for (; i < Mixer::manager().numSource(); ++i) {
+    // return status of all listed sources (up to N)
+    for (; i < Mixer::manager().numSource() && i < (int) N; ++i) {
         // send status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) << (index_current == i ? 1.f : 0.f) << osc::EndMessage;
@@ -1074,7 +1088,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
     }
-
+    // zeros for non listed sources
     for (; i < (int) N ; ++i) {
         // reset status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
@@ -1091,11 +1105,59 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
-
-    // send status of current source
-    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
 }
 
+void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
+{
+    // build socket to send message to indicated endpoint
+    UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
+
+    // build messages packet
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+
+    p.Clear();
+    p << osc::BeginBundle();
+
+    // data structures to browse batch
+    int i = 0;
+    char oscaddr[128];
+    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
+
+    Session *_session = Mixer::manager().session();
+
+    // batch list
+    for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
+
+        sprintf(oscaddr, OSC_PREFIX "/batch#%d/index" , i);
+        p << osc::BeginMessage( oscaddr );
+
+        for (auto id = plit->begin(); id != plit->end(); ++id) {
+            p << _session->index( _session->find( *id ) );
+        }
+
+        p << osc::EndMessage;
+    }
+
+    // alpha of all sources in all batches
+    i = 0;
+    for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
+
+        sprintf(oscaddr, OSC_PREFIX "/batch#%d" OSC_SOURCE_ALPHA, i);
+        p << osc::BeginMessage( oscaddr );
+
+        for (auto id = plit->begin(); id != plit->end(); ++id) {
+            SourceList::iterator s = _session->find( *id );
+            if (s != _session->end() )
+                p << (*s)->alpha();
+        }
+
+        p << osc::EndMessage;
+    }
+
+    p << osc::EndBundle;
+    socket.Send( p.Data(), p.Size() );
+}
 
 void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 {
