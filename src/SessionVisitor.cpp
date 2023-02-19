@@ -910,6 +910,12 @@ void SessionVisitor::visit (Play &c)
     xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
+void SessionVisitor::visit (PlayFastForward &c)
+{
+    xmlCurrent_->SetAttribute("step", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
 void SessionVisitor::visit (SetAlpha &c)
 {
     xmlCurrent_->SetAttribute("alpha", c.value());

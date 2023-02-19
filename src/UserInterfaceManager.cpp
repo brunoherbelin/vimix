@@ -4916,7 +4916,7 @@ Target InputMappingInterface::ComboSelectTarget(const Target &current)
 
 uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessing)
 {
-    const char* callback_names[21] = { "Select",
+    const char* callback_names[23] = { "Select",
                                        ICON_FA_BULLSEYE "  Alpha",
                                        ICON_FA_BULLSEYE "  Loom",
                                        ICON_FA_OBJECT_UNGROUP "  Geometry",
@@ -4925,7 +4925,9 @@ uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessi
                                        ICON_FA_OBJECT_UNGROUP "  Turn",
                                        ICON_FA_LAYER_GROUP "  Depth",
                                        ICON_FA_PLAY_CIRCLE "  Play",
-                                       "  None",
+                                       ICON_FA_PLAY_CIRCLE "  Play Speed",
+                                       ICON_FA_PLAY_CIRCLE "  Play Fast Fwd",
+                                       ICON_FA_PLAY_CIRCLE "  Play Seek",
                                        "  None",
                                        "  None",
                                        "  None",
@@ -4941,7 +4943,7 @@ uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessi
 
     uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
-        for (uint i = SourceCallback::CALLBACK_ALPHA; i <= SourceCallback::CALLBACK_PLAY; ++i){
+        for (uint i = SourceCallback::CALLBACK_ALPHA; i <= SourceCallback::CALLBACK_SEEK; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
                 selected = i;
             }
@@ -5075,10 +5077,9 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
             ImGui::TextDisabled("Invalid");
         }
-
-
     }
         break;
+
     case SourceCallback::CALLBACK_GRAB:
     {
         ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
@@ -5092,6 +5093,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         ImGuiToolkit::Indication("Vector (x,y) moving the source horizontally and vertically.", 6, 15);
     }
         break;
+
     case SourceCallback::CALLBACK_RESIZE:
     {
         ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
@@ -5106,6 +5108,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
 
     }
         break;
+
     case SourceCallback::CALLBACK_TURN:
     {
         ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
@@ -5116,10 +5119,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if ( ImGui::SliderAngle("##CALLBACK_TURN", &val, -180.f, 180.f) )
             edited->setValue(val );
 
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
         ImGuiToolkit::Indication("Rotation of the source (speed in \u00B0/s),\nclockwise (>0), counterclockwise (<0)", 18, 9);
     }
         break;
+
     case SourceCallback::CALLBACK_DEPTH:
     {
         SetDepth *edited = static_cast<SetDepth*>(callback);
@@ -5144,6 +5148,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         ImGuiToolkit::Indication("Target depth brings the source\nfront (12) or back (0).", 6, 6);
     }
         break;
+
     case SourceCallback::CALLBACK_PLAY:
     {
         Play *edited = static_cast<Play*>(callback);
@@ -5158,7 +5163,101 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, "Pause  |   Play "))
             edited->setValue(val>0);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Play or pause the source.", 16, 7);
+        ImGuiToolkit::Indication("Play or pause the source.", 12, 7);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_PLAYSPEED:
+    {
+        PlaySpeed *edited = static_cast<PlaySpeed*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
+
+        float val = edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_PLAYSPEED", &val, 0.1f, 20.f, "x %.1f"))
+            edited->setValue(val);
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set play speed of a video source.", 16, 7);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_PLAYFFWD:
+    {
+        PlayFastForward *edited = static_cast<PlayFastForward*>(callback);
+
+        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+
+        int val = (int) edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderInt("##CALLBACK_PLAYFFWD", &val, 30, 1000, "%d ms"))
+            edited->setValue( MAX(1, val) );
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Fast forward in a video source, by steps of the given duration (in miliseconds).", 13, 7);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_SEEK:
+    {
+        Seek *edited = static_cast<Seek*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+
+        // get value (seconds) and convert to minutes and seconds
+        float val = edited->value();
+        int min = (int) floor(val / 60.f);
+        float sec = val - 60.f * (float) min;
+
+        // filtering for reading MM:SS.MS text entry
+        static bool valid = true;
+        static std::regex RegExTime("([0-9]+\\:)*([0-5][0-9]|[0-9])(\\.[0-9]+)*");
+        struct TextFilters { static int FilterTime(ImGuiInputTextCallbackData* data) { if (data->EventChar < 256 && strchr("0123456789.:", (char)data->EventChar)) return 0; return 1; } };
+        char buf6[64] = "";
+        sprintf(buf6, "%d:%.2f", min, sec );
+
+        // Text input field for MM:SS:MS seek target time
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
+        ImGui::InputText("##CALLBACK_SEEK", buf6, 64, ImGuiInputTextFlags_CallbackCharFilter, TextFilters::FilterTime);
+        valid = std::regex_match(buf6, RegExTime);
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            if (valid){
+                // user confirmed the entry and the input is valid
+                min = 0;
+                std::string minutes = buf6;
+                std::string seconds = buf6;
+                const size_t min_idx = minutes.rfind(':');
+                if (string::npos != min_idx) {
+                    seconds = minutes.substr(min_idx+1);
+                    minutes.erase(min_idx);
+                    BaseToolkit::is_a_number(minutes, &min);
+                }
+                if (BaseToolkit::is_a_value(seconds, &sec))
+                    edited->setValue( sec + 60.f * (float) min );
+            }
+            // force to test validity next frame
+            valid = false;
+        }
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
+        ImGuiToolkit::Indication("Jump to the given time in a video source (in minutes and seconds, MM:SS.MS).", 15, 7);
     }
         break;
 
@@ -5282,7 +5381,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if (ImGui::SliderFloat("##CALLBACK_THRESHOLD", &val, 0.f, 1.f, "%.1f"))
             edited->setValue(val);
 
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
         ImGuiToolkit::Indication("Set Threshold color correction.", 8, 1);
     }
         break;

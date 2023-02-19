@@ -35,10 +35,12 @@ public:
         CALLBACK_TURN,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
+        CALLBACK_PLAYSPEED,
+        CALLBACK_PLAYFFWD,
+        CALLBACK_SEEK,
         CALLBACK_REPLAY,
         CALLBACK_RESETGEO,
         CALLBACK_LOCK,
-        CALLBACK_SEEK,
         CALLBACK_BRIGHTNESS,
         CALLBACK_CONTRAST,
         CALLBACK_SATURATION,
@@ -234,6 +236,45 @@ public:
     CallbackType type () const override { return CALLBACK_REPLAY; }
 };
 
+class PlaySpeed : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    PlaySpeed (float v = 1.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_PLAYSPEED; }
+};
+
+class PlayFastForward : public SourceCallback
+{
+    class MediaPlayer *media_;
+    uint step_;
+    float duration_;
+    double playspeed_;
+public:
+    PlayFastForward (uint seekstep = 1, float ms = FLT_MAX);
+
+    uint  value () const { return step_; }
+    void  setValue (uint s) { step_ = s; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone() const override;
+    CallbackType type () const override { return CALLBACK_PLAYFFWD; }
+    void accept (Visitor& v) override;
+};
+
+class Seek : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    Seek (float t = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_SEEK; }
+};
+
 class ResetGeometry : public SourceCallback
 {
 public:
@@ -326,15 +367,6 @@ public:
     SourceCallback *clone () const override;
     CallbackType type () const override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;
-};
-
-class Seek : public ValueSourceCallback
-{
-    float readValue(Source *s) const override;
-    void  writeValue(Source *s, float val) override;
-public:
-    Seek (float v = 0.f, float ms = 0.f, bool revert = false);
-    CallbackType type () const override { return CALLBACK_SEEK; }
 };
 
 class SetBrightness : public ValueSourceCallback

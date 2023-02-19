@@ -83,6 +83,7 @@ public:
     void visit (Resize&) override;
     void visit (Turn&) override;
     void visit (Play&) override;
+    void visit (PlayFastForward&) override;
 
     static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);

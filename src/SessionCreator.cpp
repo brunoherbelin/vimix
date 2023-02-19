@@ -1383,6 +1383,17 @@ void SessionLoader::visit (Play &c)
     c.setBidirectional(b);
 }
 
+void SessionLoader::visit (PlayFastForward &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("step", &d);
+    c.setValue(d);
+
+    d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
 void SessionLoader::visit (SetAlpha &c)
 {
     float a = 0.f;

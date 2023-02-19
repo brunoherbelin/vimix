@@ -56,6 +56,15 @@ SourceCallback *SourceCallback::create(CallbackType type)
     case SourceCallback::CALLBACK_PLAY:
         loadedcallback = new Play;
         break;
+    case SourceCallback::CALLBACK_PLAYSPEED:
+        loadedcallback = new PlaySpeed;
+        break;
+    case SourceCallback::CALLBACK_PLAYFFWD:
+        loadedcallback = new PlayFastForward;
+        break;
+    case SourceCallback::CALLBACK_SEEK:
+        loadedcallback = new Seek;
+        break;
     case SourceCallback::CALLBACK_REPLAY:
         loadedcallback = new RePlay;
         break;
@@ -64,9 +73,6 @@ SourceCallback *SourceCallback::create(CallbackType type)
         break;
     case SourceCallback::CALLBACK_LOCK:
         loadedcallback = new Lock;
-        break;
-    case SourceCallback::CALLBACK_SEEK:
-        loadedcallback = new Seek;
         break;
     case SourceCallback::CALLBACK_BRIGHTNESS:
         loadedcallback = new SetBrightness;
@@ -524,7 +530,93 @@ SourceCallback *RePlay::clone() const
     return new RePlay;
 }
 
-Seek::Seek(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+
+PlaySpeed::PlaySpeed(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+}
+
+float PlaySpeed::readValue(Source *s) const
+{
+    double ret = 1.f;
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        ret = (float) ms->mediaplayer()->playSpeed();
+    }
+
+    return (float)ret;
+}
+
+void PlaySpeed::writeValue(Source *s, float val)
+{
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        ms->mediaplayer()->setPlaySpeed((double) val);
+    }
+}
+
+PlayFastForward::PlayFastForward(uint seekstep, float ms) : SourceCallback(), media_(nullptr),
+    step_(seekstep), duration_(ms), playspeed_(0.)
+{
+
+}
+
+void PlayFastForward::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // on first start, get the media player
+    if ( status_ == READY ){
+        // works for media source only
+        MediaSource *ms = dynamic_cast<MediaSource *>(s);
+        if (ms != nullptr) {
+            MediaPlayer *mp = ms->mediaplayer();
+            // works only if media player is enabled and valid
+            if (mp && mp->isEnabled() && !mp->isImage()) {
+                media_ = mp;
+                playspeed_ = media_->playSpeed();
+            }
+        }
+        status_ = media_ ? ACTIVE : FINISHED;
+    }
+
+    if ( status_ == ACTIVE ) {
+
+        //  perform fast forward
+        if (media_->isPlaying())
+            media_->jump(step_);
+        else
+            media_->step(step_);
+
+        // time-out
+        if ( elapsed_ - delay_ > duration_ )
+            // done
+            status_ = FINISHED;
+    }
+
+    if (media_ && status_ == FINISHED)
+        media_->setPlaySpeed( playspeed_ );
+
+}
+
+void PlayFastForward::multiply (float factor)
+{
+    step_ *= MAX( 1, (uint) ceil( ABS(factor) ) );
+}
+
+SourceCallback *PlayFastForward::clone() const
+{
+    return new PlayFastForward(step_, duration_);
+}
+
+void PlayFastForward::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+Seek::Seek(float t, float ms, bool r) : ValueSourceCallback(t, ms, r)
 {
 }
 
@@ -534,16 +626,13 @@ float Seek::readValue(Source *s) const
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
-        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
         GstClockTime media_position = ms->mediaplayer()->position();
-
-        if (GST_CLOCK_TIME_IS_VALID(media_duration) && media_duration > 0 &&
-                GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
-            ret = static_cast<double>(media_position) / static_cast<double>(media_duration);
+        if (GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
+            ret = GST_TIME_AS_SECONDS( static_cast<double>(media_position) );
         }
     }
 
-    return (float)ret;
+    return (float) ret;
 }
 
 void Seek::writeValue(Source *s, float val)
@@ -552,9 +641,11 @@ void Seek::writeValue(Source *s, float val)
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
         GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        double media_position = glm::clamp( (double) val, 0.0, 1.0);
-        if (GST_CLOCK_TIME_IS_VALID(media_duration))
-            ms->mediaplayer()->seek( media_position * media_duration );
+        GstClockTime t = (double) GST_SECOND * (double) val;
+        if (GST_CLOCK_TIME_IS_VALID(t) &&
+                GST_CLOCK_TIME_IS_VALID(media_duration) &&
+                t < media_duration )
+            ms->mediaplayer()->seek( t );
     }
 }
 

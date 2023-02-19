@@ -156,17 +156,17 @@ public:
      * */
     void setLoop(LoopMode mode);
     /**
-     * Seek to next frame when paused
+     * Step when paused
      * (aka next frame)
      * Can go backward if play speed is negative
      * */
-    void step();
+    void step(uint milisecond = 0);
     /**
-     * Jump fast when playing
+     * Step forward when playing
      * (aka fast-forward)
      * Can go backward if play speed is negative
      * */
-    void jump();
+    void jump(uint milisecond = 200);
     /**
      * Seek to zero
      * */

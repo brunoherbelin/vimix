@@ -62,6 +62,7 @@ class Grab;
 class Resize;
 class Turn;
 class Play;
+class PlayFastForward;
 
 
 // Declares the interface for the visitors
@@ -129,6 +130,7 @@ public:
     virtual void visit (Resize&) {}
     virtual void visit (Turn&) {}
     virtual void visit (Play&) {}
+    virtual void visit (PlayFastForward&) {}
 };
 
 

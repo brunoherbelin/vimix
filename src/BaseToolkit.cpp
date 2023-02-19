@@ -211,6 +211,24 @@ bool BaseToolkit::is_a_number(const std::string& str, int *val)
     return isanumber;
 }
 
+bool BaseToolkit::is_a_value(const std::string& str, float *val)
+{
+    bool isavalue = false;
+
+    try {
+        *val = std::stof(str);
+        isavalue = true;
+    }
+    catch (const std::invalid_argument&) {
+        // avoids crash
+    }
+    catch (const std::out_of_range&) {
+        // avoids crash
+    }
+
+    return isavalue;
+}
+
 std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )
 {
     if (allStrings.empty())

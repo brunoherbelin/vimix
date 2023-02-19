@@ -214,7 +214,6 @@ void Mixer::update()
             // recreating it in the current session
             RenderSource *failedRender = dynamic_cast<RenderSource *>(*it);
             if (failedRender != nullptr) {
-                g_printerr("%s failed render \n", failedRender->initials());
                 // try to recreate the failed render source
                 if ( !recreateSource(failedRender) )
                     // delete the source if could not

@@ -725,7 +725,7 @@ void MediaPlayer::rewind(bool force)
 }
 
 
-void MediaPlayer::step()
+void MediaPlayer::step(uint milisecond)
 {
     // useful only when Paused
     if (!enabled_ || isPlaying() || pending_)
@@ -736,7 +736,9 @@ void MediaPlayer::step()
         rewind();
     else {
         // step event
-        GstEvent *stepevent = gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE);
+        if (milisecond < media_.dt)
+            milisecond = media_.dt;
+        GstEvent *stepevent = gst_event_new_step (GST_FORMAT_TIME, milisecond, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
         if (metro_sync_) {
@@ -750,11 +752,11 @@ void MediaPlayer::step()
                 Metronome::manager().executeAtPhase( steplater );
             else
                 Metronome::manager().executeAtBeat( steplater );
-
         }
         else
             // execute immediately
             gst_element_send_event (pipeline_, stepevent);
+
     }
 }
 
@@ -793,12 +795,16 @@ void MediaPlayer::seek(GstClockTime pos)
 
 }
 
-void MediaPlayer::jump()
+void MediaPlayer::jump(uint milisecond)
 {
     if (!enabled_ || !isPlaying())
         return;
 
-    gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, 30.f * ABS(rate_), TRUE,  FALSE));
+    gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_TIME,
+                                                           CLAMP(milisecond, 1, 1000) * GST_MSECOND,
+                                                           ABS(rate_),
+                                                           TRUE,  FALSE));
+
 }
 
 void MediaPlayer::init_texture(guint index)
